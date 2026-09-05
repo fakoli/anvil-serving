@@ -30,6 +30,7 @@ from anvil_serving.router.backends.relay import (
     _urlopen_transport,
     discover_single_model,
 )
+from anvil_serving.router.availability import AvailabilityResult
 from anvil_serving.router.config import (
     ConfigError,
     ReplicaIdentity,
@@ -41,6 +42,7 @@ from anvil_serving.router.internal import (
     BackendClientError,
     InternalRequest,
     Message,
+    NoAvailableTierError,
     StructuredResult,
 )
 from anvil_serving.router.serve import (
@@ -418,12 +420,14 @@ class _MemberBackend:
         structured: StructuredResult | None = None,
         invoked: threading.Event | None = None,
         eager_error: BaseException | None = None,
+        lazy_error: BaseException | None = None,
         barrier: threading.Barrier | None = None,
     ) -> None:
         self.fragment = fragment
         self.structured = structured
         self.invoked = invoked
         self.eager_error = eager_error
+        self.lazy_error = lazy_error
         self.barrier = barrier
         self.calls = 0
 
@@ -437,6 +441,8 @@ class _MemberBackend:
         def fragments():
             if self.barrier is not None:
                 self.barrier.wait(timeout=5)
+            if self.lazy_error is not None:
+                raise self.lazy_error
             yield self.fragment
 
         return fragments()
@@ -626,3 +632,301 @@ def test_concurrent_replica_threads_do_not_cross_structured_results():
     second.join(timeout=5)
     assert not first.is_alive() and not second.is_alive()
     assert observed == {"member-a": first_result, "member-b": second_result}
+
+
+# --------------------------------------------------------------------------- #
+# Qualified replica sets T008 — readiness snapshot, compound lease, one relay
+# --------------------------------------------------------------------------- #
+class _ReplicaAvailability:
+    """Deterministic composite-key member readiness with no tier fallback."""
+
+    def __init__(self, results: dict[tuple[str, str], AvailabilityResult]) -> None:
+        self.results = results
+        self.member_calls: list[tuple[str, str]] = []
+        self.tier_calls = 0
+
+    def check(self, _tier: Tier) -> AvailabilityResult:
+        self.tier_calls += 1
+        raise AssertionError("replica routing must not use aggregate readiness")
+
+    def check_member(self, tier: Tier, member_id: str) -> AvailabilityResult:
+        self.member_calls.append((tier.id, member_id))
+        return self.results[(tier.id, member_id)]
+
+
+def _ready() -> AvailabilityResult:
+    return AvailabilityResult(True, "ready", "ready")
+
+
+def _unavailable() -> AvailabilityResult:
+    return AvailabilityResult(False, "unavailable", "member_unavailable")
+
+
+def _replica_request(tier_id: str) -> InternalRequest:
+    return InternalRequest(model=tier_id, messages=[Message("user", "hi")])
+
+
+def _replica_routing(
+    tiers: tuple[Tier, ...],
+    runtimes: dict[str, ReplicaRuntime],
+    availability: _ReplicaAvailability,
+    *,
+    admission: object | None = None,
+) -> RoutingBackend:
+    return RoutingBackend(
+        _config(*tiers), runtimes, availability=availability, admission=admission
+    )
+
+
+def test_replica_dispatch_snapshots_members_then_rotates_one_selected_member():
+    tier = _replica_tier()
+    members = {
+        "member-a": _MemberBackend("a"),
+        "member-b": _MemberBackend("b"),
+    }
+    availability = _ReplicaAvailability({
+        (tier.id, "member-a"): _ready(),
+        (tier.id, "member-b"): _ready(),
+    })
+    routing = _replica_routing(
+        (tier,), {tier.id: ReplicaRuntime(members)}, availability
+    )
+
+    assert [list(routing.generate(_replica_request(tier.id))) for _ in range(4)] == [
+        ["a"], ["b"], ["a"], ["b"],
+    ]
+    assert members["member-a"].calls == 2
+    assert members["member-b"].calls == 2
+    assert availability.member_calls == [
+        (tier.id, "member-a"), (tier.id, "member-b"),
+    ] * 4
+    assert availability.tier_calls == 0
+    assert routing._admission.snapshot(tier.id).active_requests == 0
+
+
+def test_replica_unavailable_member_is_skipped_and_recovery_uses_cursor():
+    tier = _replica_tier()
+    members = {
+        "member-a": _MemberBackend("a"),
+        "member-b": _MemberBackend("b"),
+    }
+    availability = _ReplicaAvailability({
+        (tier.id, "member-a"): _unavailable(),
+        (tier.id, "member-b"): _ready(),
+    })
+    routing = _replica_routing(
+        (tier,), {tier.id: ReplicaRuntime(members)}, availability
+    )
+
+    assert list(routing.generate(_replica_request(tier.id))) == ["b"]
+    availability.results[(tier.id, "member-a")] = _ready()
+    assert list(routing.generate(_replica_request(tier.id))) == ["a"]
+    assert members["member-a"].calls == members["member-b"].calls == 1
+
+
+def test_replica_all_members_unavailable_has_no_dispatch_or_admission():
+    tier = _replica_tier()
+    members = {
+        "member-a": _MemberBackend("a"),
+        "member-b": _MemberBackend("b"),
+    }
+    availability = _ReplicaAvailability({
+        (tier.id, "member-a"): _unavailable(),
+        (tier.id, "member-b"): _unavailable(),
+    })
+    routing = _replica_routing(
+        (tier,), {tier.id: ReplicaRuntime(members)}, availability
+    )
+
+    with pytest.raises(NoAvailableTierError) as exc_info:
+        list(routing.generate(_replica_request(tier.id)))
+    assert exc_info.value.kind == "unavailable"
+    assert [member.calls for member in members.values()] == [0, 0]
+    snapshot = routing._admission.snapshot(tier.id)
+    assert snapshot.active_requests == 0
+    assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
+    availability.results[(tier.id, "member-a")] = _ready()
+    assert list(routing.generate(_replica_request(tier.id))) == ["a"]
+
+
+class _CountingLease:
+    def __init__(self, member_id: str) -> None:
+        self.member_id = member_id
+        self.release_calls = 0
+
+    def release(self) -> None:
+        self.release_calls += 1
+
+
+class _CountingMemberAdmission:
+    def __init__(self, member_id: str = "member-a") -> None:
+        self.lease = _CountingLease(member_id)
+        self.readiness: dict[str, AvailabilityResult] | None = None
+
+    def acquire_member(self, _tier_id: str, readiness: dict[str, AvailabilityResult]):
+        self.readiness = readiness
+        return self.lease
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeError("eager failure"),
+        BackendClientError(429, "rate_limit", "request denied"),
+        TimeoutError("deadline exceeded"),
+    ],
+)
+def test_replica_selected_eager_failures_do_not_retry_peer_or_leak_lease(error):
+    tier = _replica_tier()
+    first = _MemberBackend("a", eager_error=error)
+    second = _MemberBackend("b")
+    availability = _ReplicaAvailability({
+        (tier.id, "member-a"): _ready(),
+        (tier.id, "member-b"): _ready(),
+    })
+    admission = _CountingMemberAdmission()
+    routing = _replica_routing(
+        (tier,), {tier.id: ReplicaRuntime({"member-a": first, "member-b": second})},
+        availability,
+        admission=admission,
+    )
+
+    with pytest.raises(type(error)):
+        list(routing.generate(_replica_request(tier.id)))
+    assert first.calls == 1
+    assert second.calls == 0
+    assert admission.lease.release_calls == 1
+
+
+def test_replica_eager_failure_releases_when_error_metadata_fails(monkeypatch):
+    tier = _replica_tier()
+    first = _MemberBackend("a", eager_error=RuntimeError("backend failure"))
+    second = _MemberBackend("b")
+    availability = _ReplicaAvailability({
+        (tier.id, "member-a"): _ready(),
+        (tier.id, "member-b"): _ready(),
+    })
+    admission = _CountingMemberAdmission()
+    routing = _replica_routing(
+        (tier,), {tier.id: ReplicaRuntime({"member-a": first, "member-b": second})},
+        availability,
+        admission=admission,
+    )
+
+    def broken_record(*_args, **_kwargs) -> None:
+        raise RuntimeError("metadata failure")
+
+    monkeypatch.setattr(routing, "_record", broken_record)
+    with pytest.raises(RuntimeError, match="metadata failure"):
+        list(routing.generate(_replica_request(tier.id)))
+    assert admission.lease.release_calls == 1
+    assert first.calls == 1
+    assert second.calls == 0
+
+
+@pytest.mark.parametrize("metadata_failure", [False, True])
+def test_replica_eager_failures_leave_real_aggregate_and_member_counts_zero(
+    monkeypatch, metadata_failure: bool
+):
+    tier = _replica_tier()
+    first = _MemberBackend("a", eager_error=RuntimeError("backend failure"))
+    second = _MemberBackend("b")
+    availability = _ReplicaAvailability({
+        (tier.id, "member-a"): _ready(),
+        (tier.id, "member-b"): _ready(),
+    })
+    routing = _replica_routing(
+        (tier,), {tier.id: ReplicaRuntime({"member-a": first, "member-b": second})},
+        availability,
+    )
+    if metadata_failure:
+        monkeypatch.setattr(
+            routing,
+            "_record",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("metadata failure")),
+        )
+
+    with pytest.raises(RuntimeError):
+        list(routing.generate(_replica_request(tier.id)))
+    snapshot = routing._admission.snapshot(tier.id)
+    assert snapshot.active_requests == 0
+    assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
+    assert first.calls == 1
+    assert second.calls == 0
+
+
+def test_replica_selected_lazy_failure_releases_once_without_peer_retry():
+    tier = _replica_tier()
+    first = _MemberBackend("a", lazy_error=RuntimeError("lazy failure"))
+    second = _MemberBackend("b")
+    availability = _ReplicaAvailability({
+        (tier.id, "member-a"): _ready(),
+        (tier.id, "member-b"): _ready(),
+    })
+    admission = _CountingMemberAdmission()
+    routing = _replica_routing(
+        (tier,), {tier.id: ReplicaRuntime({"member-a": first, "member-b": second})},
+        availability,
+        admission=admission,
+    )
+
+    with pytest.raises(RuntimeError, match="lazy failure"):
+        list(routing.generate(_replica_request(tier.id)))
+    assert first.calls == 1
+    assert second.calls == 0
+    assert admission.lease.release_calls == 1
+
+
+def test_replica_semantic_rejection_precedes_member_readiness_and_admission():
+    tier = replace(_replica_tier(), context_limit=1)
+    availability = _ReplicaAvailability({})
+    routing = _replica_routing(
+        (tier,),
+        {tier.id: ReplicaRuntime({"member-a": _MemberBackend("a"), "member-b": _MemberBackend("b")})},
+        availability,
+    )
+    request = InternalRequest(
+        model=tier.id,
+        messages=[Message("user", "one two three")],
+    )
+
+    with pytest.raises(NoAvailableTierError) as exc_info:
+        list(routing.generate(request))
+    assert exc_info.value.kind == "over_context"
+    assert availability.member_calls == []
+    assert routing._admission.snapshot(tier.id).active_requests == 0
+
+
+def test_replica_member_keys_are_isolated_by_logical_tier_and_keep_outer_metadata():
+    first_tier = _replica_tier("replica-one", first_port=31101)
+    second_tier = _replica_tier("replica-two", first_port=31201)
+    first_result = StructuredResult(finish_reason="stop", usage={"input_tokens": 1})
+    second_result = StructuredResult(finish_reason="length", usage={"input_tokens": 2})
+    availability = _ReplicaAvailability({
+        (tier.id, member.id): _ready()
+        for tier in (first_tier, second_tier)
+        for member in tier.replicas
+    })
+    routing = _replica_routing(
+        (first_tier, second_tier),
+        {
+            first_tier.id: ReplicaRuntime({
+                "member-a": _MemberBackend("one", structured=first_result),
+                "member-b": _MemberBackend("unused"),
+            }),
+            second_tier.id: ReplicaRuntime({
+                "member-a": _MemberBackend("two", structured=second_result),
+                "member-b": _MemberBackend("unused"),
+            }),
+        },
+        availability,
+    )
+
+    assert list(routing.generate(_replica_request(first_tier.id))) == ["one"]
+    assert routing.get_last_structured() is first_result
+    assert list(routing.generate(_replica_request(second_tier.id))) == ["two"]
+    assert routing.get_last_structured() is second_result
+    assert availability.member_calls == [
+        (first_tier.id, "member-a"), (first_tier.id, "member-b"),
+        (second_tier.id, "member-a"), (second_tier.id, "member-b"),
+    ]

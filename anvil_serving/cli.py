@@ -15,6 +15,7 @@ import uuid
 from dataclasses import dataclass, replace
 from importlib import metadata as importlib_metadata
 from collections.abc import Mapping, Sequence
+from types import MappingProxyType
 
 from . import __version__
 from . import guard
@@ -71,10 +72,12 @@ _RESOLUTION_VALUE_OPTIONS = {
     "--transport": "transport",
 }
 _REMOTE_INTEGER_RE = re.compile(r"-?[0-9]+")
+_DIAGNOSTIC_LEAVES = frozenset(("controller inspect", "controller logs"))
 _HANDLER_PROGS = {
     "anvil_serving.benchmark": "anvil-serving eval benchmark run",
     "anvil_serving.benchmark_evidence": "anvil-serving eval benchmark evidence",
     "anvil_serving.controller": "anvil-serving controller",
+    "anvil_serving.controller_diagnostics": "anvil-serving controller",
     "anvil_serving.collectors": "anvil-serving collectors",
     "anvil_serving.observability.dashboard.app": "anvil-serving dashboard serve",
     "anvil_serving.doctor": "anvil-serving doctor",
@@ -804,6 +807,7 @@ def _dispatch_remote_tool(
     allow_ssh_fallback: bool = False,
 ) -> int:
     node = path[-1]
+    diagnostic_leaf = _command_name(path) in _DIAGNOSTIC_LEAVES
     remote = node.remote_operation
     assert remote is not None and remote.mode == "tool" and remote.tool is not None
     arguments = _remote_arguments(node, rest, confirmed=confirmed)
@@ -840,7 +844,11 @@ def _dispatch_remote_tool(
         if remote.max_response_bytes is not None:
             controller_options["max_response_bytes"] = remote.max_response_bytes
         controller = ControllerTransport(plan.transport_endpoint, **controller_options)
-    ssh = _ssh_recovery_transport(plan) if plan.transport == "ssh" or allow_ssh_fallback else None
+    ssh = (
+        _ssh_recovery_transport(plan)
+        if not diagnostic_leaf and (plan.transport == "ssh" or allow_ssh_fallback)
+        else None
+    )
     operation = Operation(plan.command.name, arguments, tool_name=remote.tool)
     ssh_operation = Operation(plan.command.name, {})
     idempotency_key = (
@@ -857,6 +865,11 @@ def _dispatch_remote_tool(
             idempotency_key=idempotency_key,
         )
     except AdapterTransportError as exc:
+        if diagnostic_leaf:
+            raise TransportError(
+                "controller diagnostic transport failed",
+                code="controller_diagnostic_transport_failed",
+            ) from None
         if execution_meta is not None and exc.code.startswith("ssh_"):
             context = plan.as_dict()
             context["transport"] = "ssh"
@@ -871,6 +884,38 @@ def _dispatch_remote_tool(
             result = _reconcile_remote_mutation(controller, idempotency_key, exc)
         else:
             raise TransportError(str(exc), code=exc.code, details=exc.as_dict()) from None
+    if diagnostic_leaf:
+        from .controller_diagnostics import validate_public_result
+
+        try:
+            outer = result.data
+            if type(outer) is not MappingProxyType or any(
+                type(key) is not str for key in outer
+            ):
+                raise ValueError
+            if set(outer) != {"ok", "data"} or outer["ok"] is not True:
+                raise ValueError
+            data = validate_public_result(outer["data"], expected_kind=node.name)
+        except (KeyError, TypeError, ValueError):
+            raise TransportError(
+                "controller diagnostic response invalid",
+                code="controller_diagnostic_response_invalid",
+            ) from None
+        error = None
+        if data["state"] != "ok":
+            error = OperatorError(
+                "controller diagnostic returned a non-ok state",
+                code=data["error_code"],
+            )
+        if execution_meta is not None:
+            execution_meta["data"] = data
+            execution_meta["plan"] = None
+            execution_meta["warnings"] = ()
+            if error is not None:
+                execution_meta["error"] = error
+        if not output_options.json_mode:
+            print(json.dumps(data, sort_keys=True, ensure_ascii=True))
+        return 0 if error is None else error.exit_code
     data = result.as_dict()
     result_context: ExecutionPlan | Mapping[str, object] = plan
     if result.transport != plan.transport:
@@ -1092,6 +1137,7 @@ def _dispatch(
     execution_meta: dict[str, object] | None = None,
 ) -> int:
     node = path[-1]
+    diagnostic_leaf = _command_name(path) in _DIAGNOSTIC_LEAVES
     separator = rest.index("--") if "--" in rest else len(rest)
     help_requested = any(token in {"-h", "--help"} for token in rest[:separator])
     if help_requested and node.children:
@@ -1210,7 +1256,9 @@ def _dispatch(
                 confirmed=confirmed,
                 output_options=output_options,
                 execution_meta=execution_meta,
-                allow_ssh_fallback=resolution_options.allow_ssh_fallback,
+                allow_ssh_fallback=(
+                    False if diagnostic_leaf else resolution_options.allow_ssh_fallback
+                ),
             )
         elif plan is not None and plan.transport != "local":
             raise TransportError(
@@ -1220,17 +1268,60 @@ def _dispatch(
                 details={"transport": plan.transport},
             )
     except OperatorError as exc:
+        if diagnostic_leaf:
+            error = (
+                exc
+                if exc.code in {
+                    "controller_diagnostic_response_invalid",
+                    "controller_diagnostic_transport_failed",
+                }
+                else UsageError(
+                    "invalid diagnostic arguments", code="invalid_diagnostic_arguments"
+                )
+            )
+            if execution_meta is not None:
+                execution_meta.update(plan=None, data=None, warnings=(), error=error)
+            if not output_options.json_mode:
+                print(error.message, file=sys.stderr)
+            return error.exit_code
         if execution_meta is not None:
             execution_meta["error"] = exc
         print(f"anvil-serving: {exc}", file=sys.stderr)
         return exc.exit_code
     except _ResolutionOptionError as exc:
+        if diagnostic_leaf:
+            error = UsageError(
+                "invalid diagnostic arguments", code="invalid_diagnostic_arguments"
+            )
+            if execution_meta is not None:
+                execution_meta.update(plan=None, data=None, warnings=(), error=error)
+            if not output_options.json_mode:
+                print(error.message, file=sys.stderr)
+            return error.exit_code
         print(f"anvil-serving: {exc}", file=sys.stderr)
         return 2
     except TopologyValidationError as exc:
+        if diagnostic_leaf:
+            error = UsageError(
+                "invalid diagnostic arguments", code="invalid_diagnostic_arguments"
+            )
+            if execution_meta is not None:
+                execution_meta.update(plan=None, data=None, warnings=(), error=error)
+            if not output_options.json_mode:
+                print(error.message, file=sys.stderr)
+            return error.exit_code
         print(f"anvil-serving: invalid topology: {exc}", file=sys.stderr)
         return 2
     except TargetResolutionError as exc:
+        if diagnostic_leaf:
+            error = UsageError(
+                "invalid diagnostic arguments", code="invalid_diagnostic_arguments"
+            )
+            if execution_meta is not None:
+                execution_meta.update(plan=None, data=None, warnings=(), error=error)
+            if not output_options.json_mode:
+                print(error.message, file=sys.stderr)
+            return error.exit_code
         print(f"anvil-serving: {exc}", file=sys.stderr)
         return exc.exit_code
     if plan is not None:
@@ -1264,8 +1355,12 @@ def _dispatch(
             execution_meta["data"] = result.data
             if result.error is not None:
                 execution_meta["error"] = result.error
-            existing_warnings = tuple(execution_meta.get("warnings", ()))
-            execution_meta["warnings"] = (*existing_warnings, *result.warnings)
+            if diagnostic_leaf:
+                execution_meta["plan"] = None
+                execution_meta["warnings"] = ()
+            else:
+                existing_warnings = tuple(execution_meta.get("warnings", ()))
+                execution_meta["warnings"] = (*existing_warnings, *result.warnings)
         if not output_options.json_mode:
             if result.human_stdout:
                 sys.stdout.write(result.human_stdout)
@@ -1363,7 +1458,9 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
     protected_leaf = canonical in {
         "router diagnose", "edge bundle validate", "edge bundle render",
         "topology validate-router-config",
+        "controller inspect", "controller logs",
     }
+    diagnostic_leaf = canonical in _DIAGNOSTIC_LEAVES
     protected_family = protected_family or protected_leaf
     unresolved_sensitive = protected_family and (
         unknown is not None or bool(path[-1].children)
@@ -1391,6 +1488,11 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
                 } if missing_action else None,
             )
             data = None
+        elif diagnostic_leaf:
+            error = execution_meta.get("error")
+            if not isinstance(error, OperatorError):
+                error = _error_for_exit(rc, "controller diagnostic command failed")
+            data = execution_meta.get("data")
         elif protected_leaf and "data" not in execution_meta:
             # argparse/resolution errors are not content-safe. Leaf-produced
             # JSON remains available (e.g. a typed unsupported bundle target).
@@ -1407,12 +1509,12 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
             data=data,
             warnings=warnings,
         )
-    if canonical == "topology validate-router-config":
+    if canonical == "topology validate-router-config" or diagnostic_leaf:
         # This offline snapshot has no dispatch or target context. Preserve
         # that distinction instead of expanding the generic empty context.
         envelope["context"] = None
         envelope["warnings"] = []
-    if canonical == "topology validate-router-config":
+    if canonical == "topology validate-router-config" or diagnostic_leaf:
         # `render_json` deliberately expands generic contexts. This exact
         # offline leaf instead promises a literal null context and contains
         # only the fixed command/error strings plus T006's safe projection.

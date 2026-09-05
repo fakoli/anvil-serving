@@ -1,6 +1,6 @@
 # Protect the complete controller diagnostic CLI envelope
 
-Status: open; required before diagnostic feature completion.
+Status: resolved in source; deployment acceptance remains separate.
 
 The strict integer refusal works, but a root CLI JSON regression remains:
 `controller logs --container synthetic-controller --tail 1_0 --json` exits two
@@ -36,3 +36,13 @@ and actual root CLI. Require complete kind-specific schemas, types checked
 before operations, and fixed parser refusals on both human and JSON surfaces.
 The existing green focused suite did not prove these boundaries; add explicit
 regressions and rerun independent review before disposition.
+
+Accepted controller-diagnostics:T009 at
+`bef0fded85a9f910da1a41049643f0ba129cd00b`, evidence `EV81101F4A`, signed
+proof `controller-diagnostics-T009-E000653.json`. All 374 post-commit CLI and
+diagnostic tests, the five-file Ruff gate and diff checking passed. Independent
+malformed-schema probes passed; bypassing the validator produced six expected
+regression failures. The complete-envelope and separator-help negative
+controls also failed as intended and were restored. The implementation is
+integrated into the isolated delivery branch. This disposition claims source
+acceptance only, not installation or controller access recovery.

@@ -329,7 +329,7 @@ owning runtime, with expected-node identity retained and no SSH fallback.
 **Feature:** F002
 **Priority:** high
 **Type:** modify
-**Dependencies:** T007, T008, T009
+**Dependencies:** T007, T008, T009, T010, T011
 **Likely files:** docs/CLI-COMMAND-MANIFEST.json, docs/cli/control-plane.md, docs/prds/README.md, .tickets/2026-09-05-controller-deployment-access.md
 
 Generate the manifest with write_manifest, document the metadata-only/unsupported
@@ -404,4 +404,69 @@ Update the old root-dispatch fixture in `tests/test_controller_diagnostics.py` t
 
 - `python scripts/run_tests.py tests/test_cli.py tests/test_controller_diagnostics.py -x -q`
 - `python -m ruff check anvil_serving/cli.py anvil_serving/controller_diagnostics.py anvil_serving/commands/control_plane.py tests/test_cli.py tests/test_controller_diagnostics.py`
+- `git diff --check`
+
+### T010: Register bounded diagnostics in both workbench skill catalogs
+
+**Feature:** F002
+**Priority:** high
+**Type:** modify
+**Dependencies:** T009
+**Likely files:** .agents/skills/anvil-serving-workbench/SKILL.md, .claude/skills/anvil-serving-workbench/SKILL.md
+
+Fix the reproduced command-tree skill-catalog gate without weakening it. Add
+`controller_inspect` and `controller_logs` to the existing MCP Tool Map in both
+skills, with the same short diagnostic playbook. Explain that these are
+metadata-only reads for one explicit Docker controller; logs have a bounded
+tail and discard raw messages. A configured binding is not observed publication,
+and either successful diagnostic is not endpoint identity or deployment proof.
+When the controller transport is unreachable, use the verified local CLI on its
+owning host; this is an explicit exception to wrapper-missing-only fallback,
+not SSH substitution. Native/macOS controller diagnostics remain unsupported.
+Preserve the skills' existing different supporting content and all mutation,
+credential and promotion gates. Do not replace one whole skill with the other.
+
+**Acceptance criteria:**
+
+- The existing runtime-MCP-versus-skill catalog audit passes for both skills.
+- Both skills give the same bounded diagnostic and unreachable-transport guidance.
+- No instruction grants repair, lifecycle, credential or promotion authority.
+- Removing either new catalog entry makes the existing audit fail.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_command_tree.py -k repo_workbench_surfaces_catalog -x -q`
+- `git diff --check`
+
+### T011: Synchronize the frozen public MCP catalog characterization
+
+**Feature:** F002
+**Priority:** high
+**Type:** modify
+**Dependencies:** T004
+**Likely files:** tests/test_mcp_foundations.py
+
+Close `.tickets/2026-09-05-controller-diagnostic-catalog-fixture.md`. The full
+suite exposed stale exact catalog expectations after the two diagnostic tools
+were added. Insert controller_inspect then controller_logs immediately after
+operation_contracts in TOOL_NAMES, and update the canonical public catalog and
+handler-map SHA256 constants only after reviewing the complete two-tool delta.
+Keep the existing family order, all existing entries and exact-order/hash checks.
+Add readable exact description, input-schema and handler-name assertions for
+these two tools so the digest update does not conceal their public contract.
+Both schemas stay closed objects with required container string length1..128;
+inspect has maxProperties1, logs maxProperties2 and optional integer tail1..200
+default100. No runtime or live change belongs in this task.
+
+**Acceptance criteria:**
+
+- Existing exact public catalog, handler-map and ordered-family checks pass.
+- Readable assertions pin the two descriptions, complete schemas and handler names.
+- Removing a diagnostic tool or widening its tail bound makes the appropriate regression fail; restore before final verification.
+- No runtime catalog, existing tool schema, metadata or family order is weakened.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_mcp_foundations.py -x -q`
+- `python -m ruff check tests/test_mcp_foundations.py`
 - `git diff --check`
