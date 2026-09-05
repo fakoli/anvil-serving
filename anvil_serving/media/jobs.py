@@ -91,6 +91,143 @@ def _quality_profile(value: str) -> str:
     return value
 
 
+def read_media_workloads(
+    path: str | os.PathLike[str],
+    host: str,
+    query: WorkloadQuery,
+    now: dt.datetime,
+    *,
+    _monotonic=time.monotonic,
+    _lock: threading.RLock | None = None,
+) -> SourceResult:
+    """Read one bounded media-workload snapshot without initializing its store."""
+    collected = normalize_workload_timestamp(now)
+    workload_id(host, WorkloadKind.MEDIA_JOB, WorkloadOwner.MEDIA, "validation")
+    if not isinstance(query, WorkloadQuery):
+        raise WorkloadError(WorkloadErrorCode.INVALID, "invalid workload query")
+    if (
+        query.host not in (None, host)
+        or query.owner not in (None, WorkloadOwner.MEDIA)
+        or query.kind not in (None, WorkloadKind.MEDIA_JOB)
+    ):
+        return SourceResult(
+            WorkloadOwner.MEDIA,
+            ResultStatus.COMPLETE,
+            collected,
+            (),
+            Truncation(0, 0),
+        )
+    if isinstance(path, str):
+        raw_path = path
+    elif isinstance(path, os.PathLike):
+        try:
+            raw_path = os.fspath(path)
+        except Exception:
+            raw_path = ""
+    else:
+        raw_path = ""
+    if type(raw_path) is not str or not raw_path:
+        return SourceResult(
+            WorkloadOwner.MEDIA,
+            ResultStatus.UNAVAILABLE,
+            collected,
+            (),
+            Truncation(0, None),
+            WorkloadErrorCode.UNAVAILABLE,
+        )
+    lock = _lock if _lock is not None else threading.RLock()
+    locked = False
+    db = None
+    try:
+        deadline = _monotonic() + 1.0
+
+        def remaining():
+            value = deadline - _monotonic()
+            if value <= 0:
+                raise TimeoutError
+            return min(value, 1.0)
+
+        read_path = Path(raw_path).expanduser().resolve(strict=False)
+        locked = lock.acquire(timeout=remaining())
+        if not locked:
+            raise TimeoutError
+        db = sqlite3.connect(
+            read_path.as_uri() + "?mode=ro",
+            uri=True,
+            timeout=remaining(),
+            isolation_level=None,
+        )
+        db.execute("PRAGMA query_only=ON")
+        db.set_progress_handler(lambda: int(_monotonic() >= deadline), 1000)
+        db.execute("BEGIN")
+        states = tuple(_MEDIA_WORKLOAD_STATES)
+        # Bounds apply in SQLite before values enter Python. Unknown text maps
+        # to a constant without copying it; even errors omit payloads.
+        rows = db.execute(
+            "SELECT CASE WHEN typeof(id)='text' AND length(CAST(id AS BLOB))<=128 THEN id END, "
+            "CASE WHEN typeof(state)!='text' THEN NULL "
+            "WHEN state IN (" + ",".join("?" for _ in states) + ") THEN state ELSE 'unsupported' END, "
+            "CASE WHEN typeof(created_at)='text' AND length(CAST(created_at AS BLOB))<=65 THEN created_at END, "
+            "CASE WHEN typeof(updated_at)='text' AND length(CAST(updated_at AS BLOB))<=65 THEN updated_at END "
+            "FROM media_jobs",
+            states,
+        )
+        heap = []
+        matched = 0
+        error = None
+        cap = min(SOURCE_LIMIT, query.limit)
+        for row in rows:
+            remaining()
+            try:
+                record = _media_workload_record(host, *row)
+                validate_source_records(
+                    (record,),
+                    owner=WorkloadOwner.MEDIA,
+                    host=host,
+                    collection_timestamp=collected,
+                )
+                selected, _ = select_records((record,), query, now=collected)
+            except (WorkloadError, MediaError, ValueError, TypeError, OverflowError) as exc:
+                code = exc.code if isinstance(exc, WorkloadError) else WorkloadErrorCode.INVALID
+                if error is None or code is WorkloadErrorCode.FUTURE:
+                    error = code
+                continue
+            if not selected:
+                continue
+            matched = min(MAX_COUNT, matched + 1)
+            item = (record.updated_at, -int(record.id, 16), record)
+            if len(heap) < cap:
+                heapq.heappush(heap, item)
+            elif item[:2] > heap[0][:2]:
+                heapq.heapreplace(heap, item)
+        remaining()
+        records, _ = select_records(tuple(item[2] for item in heap), query, now=collected)
+        omitted = None if error is not None or matched == MAX_COUNT else matched - len(records)
+        return SourceResult(
+            WorkloadOwner.MEDIA,
+            ResultStatus.PARTIAL if error is not None or omitted != 0 else ResultStatus.COMPLETE,
+            collected,
+            records,
+            Truncation(len(records), omitted),
+            error,
+        )
+    except Exception:
+        return SourceResult(
+            WorkloadOwner.MEDIA,
+            ResultStatus.UNAVAILABLE,
+            collected,
+            (),
+            Truncation(0, None),
+            WorkloadErrorCode.UNAVAILABLE,
+        )
+    finally:
+        if db is not None:
+            db.set_progress_handler(None, 0)
+            db.close()
+        if locked:
+            lock.release()
+
+
 class MediaJobStore:
     """Own durable job truth without storing prompts or generated media bytes."""
 
@@ -479,92 +616,14 @@ class MediaJobStore:
         self, host: str, query: WorkloadQuery, now: dt.datetime, *,
         _monotonic=time.monotonic,
     ) -> SourceResult:
-        """Read one coherent metadata snapshot with bounded memory and time.
-
-        Unlike nonterminal(), this never hydrates jobs/events/artifacts or calls
-        the writable connection helper. A streaming top-k heap retains at most
-        200 matching records; one shared one-second deadline bounds the scan,
-        owner lock and SQLite wait. Exhausting it reports unavailable, not idle.
-        """
-        collected = normalize_workload_timestamp(now)
-        workload_id(host, WorkloadKind.MEDIA_JOB, WorkloadOwner.MEDIA, "validation")
-        if not isinstance(query, WorkloadQuery):
-            raise WorkloadError(WorkloadErrorCode.INVALID, "invalid workload query")
-        if (query.host not in (None, host)
-                or query.owner not in (None, WorkloadOwner.MEDIA)
-                or query.kind not in (None, WorkloadKind.MEDIA_JOB)):
-            return SourceResult(WorkloadOwner.MEDIA, ResultStatus.COMPLETE, collected,
-                                (), Truncation(0, 0))
-        locked, db = False, None
-        try:
-            deadline = _monotonic() + 1.0
-
-            def remaining():
-                value = deadline - _monotonic()
-                if value <= 0:
-                    raise TimeoutError
-                return min(value, 1.0)
-
-            locked = self._lock.acquire(timeout=remaining())
-            if not locked:
-                raise TimeoutError
-            db = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True,
-                                 timeout=remaining(), isolation_level=None)
-            db.execute("PRAGMA query_only=ON")
-            db.set_progress_handler(lambda: int(_monotonic() >= deadline), 1000)
-            db.execute("BEGIN")
-            states = tuple(_MEDIA_WORKLOAD_STATES)
-            # Bounds apply in SQLite before values enter Python. Unknown text
-            # maps to a constant without copying it; even errors omit payloads.
-            rows = db.execute(
-                "SELECT CASE WHEN typeof(id)='text' AND length(CAST(id AS BLOB))<=128 THEN id END, "
-                "CASE WHEN typeof(state)!='text' THEN NULL "
-                "WHEN state IN (" + ",".join("?" for _ in states) + ") THEN state ELSE 'unsupported' END, "
-                "CASE WHEN typeof(created_at)='text' AND length(CAST(created_at AS BLOB))<=65 THEN created_at END, "
-                "CASE WHEN typeof(updated_at)='text' AND length(CAST(updated_at AS BLOB))<=65 THEN updated_at END "
-                "FROM media_jobs", states,
-            )
-            heap = []
-            matched = 0
-            error = None
-            cap = min(SOURCE_LIMIT, query.limit)
-            for row in rows:
-                remaining()
-                try:
-                    record = _media_workload_record(host, *row)
-                    validate_source_records((record,), owner=WorkloadOwner.MEDIA,
-                                            host=host, collection_timestamp=collected)
-                    selected, _ = select_records((record,), query, now=collected)
-                except (WorkloadError, MediaError, ValueError, TypeError, OverflowError) as exc:
-                    code = exc.code if isinstance(exc, WorkloadError) else WorkloadErrorCode.INVALID
-                    if error is None or code is WorkloadErrorCode.FUTURE:
-                        error = code
-                    continue
-                if not selected:
-                    continue
-                matched = min(MAX_COUNT, matched + 1)
-                item = (record.updated_at, -int(record.id, 16), record)
-                if len(heap) < cap:
-                    heapq.heappush(heap, item)
-                elif item[:2] > heap[0][:2]:
-                    heapq.heapreplace(heap, item)
-            remaining()
-            records, _ = select_records(tuple(item[2] for item in heap), query, now=collected)
-            omitted = None if error is not None or matched == MAX_COUNT else matched - len(records)
-            return SourceResult(
-                WorkloadOwner.MEDIA,
-                ResultStatus.PARTIAL if error is not None or omitted != 0 else ResultStatus.COMPLETE,
-                collected, records, Truncation(len(records), omitted), error,
-            )
-        except Exception:
-            return SourceResult(WorkloadOwner.MEDIA, ResultStatus.UNAVAILABLE, collected,
-                                (), Truncation(0, None), WorkloadErrorCode.UNAVAILABLE)
-        finally:
-            if db is not None:
-                db.set_progress_handler(None, 0)
-                db.close()
-            if locked:
-                self._lock.release()
+        return read_media_workloads(
+            self.path,
+            host,
+            query,
+            now,
+            _monotonic=_monotonic,
+            _lock=self._lock,
+        )
 
     def active_counts(self, workflow_id: str, *, principal: str) -> dict[str, int]:
         terminal = (JobState.COMPLETED.value, JobState.FAILED.value, JobState.CANCELED.value)
@@ -612,4 +671,4 @@ def _artifact_from_json(raw: str) -> MediaArtifact:
         raise MediaError("job_store_corrupt", "stored artifact record is invalid", status=500) from exc
 
 
-__all__ = ["MediaJobStore"]
+__all__ = ["MediaJobStore", "read_media_workloads"]
