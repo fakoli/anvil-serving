@@ -12,7 +12,10 @@ from anvil_serving.observability.workloads import (
     ObservationQuality,
     ResultStatus,
     WorkloadError,
+    WorkloadErrorCode,
+    WorkloadKind,
     WorkloadOutcome,
+    WorkloadOwner,
     WorkloadPhase,
     WorkloadQuery,
     WorkloadState,
@@ -20,6 +23,7 @@ from anvil_serving.observability.workloads import (
     parse_workload_timestamp,
     workload_record_to_dict,
 )
+import anvil_serving.router.workloads as workload_registry
 from anvil_serving.router.decision_log import (
     AttemptRecord,
     DecisionLog,
@@ -158,7 +162,7 @@ def test_saturation_is_exact_until_finish_and_terminal_still_projects() -> None:
     result = registry.source_result("node-a", WorkloadQuery(), NOW + timedelta(seconds=1))
     assert len(result.records) == 2
     assert result.status is ResultStatus.PARTIAL
-    assert result.truncation.omitted == 1
+    assert result.truncation.omitted is None
 
     assert tokens[2].advance(WorkloadState.ADMITTED)
     checking = registry.source_result(
@@ -170,7 +174,7 @@ def test_saturation_is_exact_until_finish_and_terminal_still_projects() -> None:
         NOW + timedelta(seconds=1),
     )
     assert checking.truncation.omitted == 0
-    assert admitted.truncation.omitted == 1
+    assert admitted.truncation.omitted is None
 
     assert tokens[2].propose_terminal(_decision(3), WorkloadOutcome.REJECTED)
     assert tokens[2].finish()
@@ -182,6 +186,189 @@ def test_saturation_is_exact_until_finish_and_terminal_still_projects() -> None:
     assert any(record.outcome is WorkloadOutcome.REJECTED for record in terminal.records)
     for token in tokens[:2]:
         token.finish()
+
+
+def test_future_candidates_are_quarantined_without_hiding_healthy_peers() -> None:
+    collected = NOW + timedelta(seconds=1)
+    log = DecisionLog()
+    allowed = collected + timedelta(seconds=30)
+    refused = allowed + timedelta(microseconds=1)
+    for index, timestamp in ((2, allowed), (3, refused)):
+        encoded = format_workload_timestamp(timestamp)
+        log.record(dataclasses.replace(
+            _decision(index),
+            workload_created_at=encoded,
+            workload_updated_at=encoded,
+            workload_outcome="success",
+        ))
+    registry = RouterWorkloadRegistry(log, clock=_Clock())
+    token = _activated(registry, 1)
+
+    result = registry.source_result("node-a", WorkloadQuery(), collected)
+
+    assert result.status is ResultStatus.PARTIAL
+    assert result.error is WorkloadErrorCode.FUTURE
+    assert {record.state for record in result.records} == {
+        WorkloadState.CHECKING, WorkloadState.TERMINAL,
+    }
+    assert all(record.updated_at != refused for record in result.records)
+    token.finish()
+
+
+def test_future_active_clock_is_quarantined_at_the_same_boundary() -> None:
+    clock = _Clock(NOW + timedelta(seconds=30))
+    registry = RouterWorkloadRegistry(DecisionLog(), clock=clock)
+    token = _activated(registry)
+
+    result = registry.source_result("node-a", WorkloadQuery(), NOW)
+
+    assert result.records == ()
+    assert result.status is ResultStatus.PARTIAL
+    assert result.error is WorkloadErrorCode.FUTURE
+    token.finish()
+
+
+def test_invalid_terminal_candidate_is_partial_without_hiding_active_peer() -> None:
+    log = DecisionLog()
+    malformed = dataclasses.replace(
+        _decision(2),
+        workload_created_at=format_workload_timestamp(NOW),
+        workload_updated_at=format_workload_timestamp(NOW),
+        workload_outcome="private-invalid-outcome",
+    )
+    # Simulate hostile or legacy in-memory material that bypassed record-time
+    # sanitization. Projection must still quarantine each candidate itself.
+    log._records.append(malformed)
+    registry = RouterWorkloadRegistry(log, clock=_Clock())
+    token = _activated(registry, 1)
+
+    result = registry.source_result(
+        "node-a", WorkloadQuery(), NOW + timedelta(seconds=1)
+    )
+
+    assert len(result.records) == 1
+    assert result.records[0].state is WorkloadState.CHECKING
+    assert result.status is ResultStatus.PARTIAL
+    assert result.error is WorkloadErrorCode.INVALID
+    assert "private-invalid-outcome" not in repr(result)
+    token.finish()
+
+
+def test_stale_anonymous_active_counts_have_unknown_omissions() -> None:
+    registry = RouterWorkloadRegistry(DecisionLog(), clock=_Clock(), max_active=1)
+    represented = _activated(registry, 1)
+    anonymous = _activated(registry, 2)
+    stale_now = NOW + timedelta(seconds=31)
+
+    for query in (WorkloadQuery(), WorkloadQuery(active_only=True)):
+        result = registry.source_result("node-a", query, stale_now)
+        assert result.records == ()
+        assert result.status is ResultStatus.PARTIAL
+        assert result.truncation.omitted is None
+
+    for query in (
+        WorkloadQuery(owner=WorkloadOwner.CONTROLLER),
+        WorkloadQuery(kind=WorkloadKind.MEDIA_JOB),
+        WorkloadQuery(host="node-b"),
+        WorkloadQuery(state=WorkloadState.TERMINAL),
+    ):
+        result = registry.source_result("node-a", query, stale_now)
+        assert result.records == ()
+        assert result.status is ResultStatus.COMPLETE
+        assert result.truncation.omitted == 0
+    represented.finish()
+    anonymous.finish()
+
+
+def test_blocked_saturated_finish_never_double_counts_terminal() -> None:
+    sink_entered = threading.Event()
+    release_sink = threading.Event()
+
+    def sink(_record: DecisionRecord) -> None:
+        sink_entered.set()
+        assert release_sink.wait(timeout=5)
+
+    registry = RouterWorkloadRegistry(
+        DecisionLog(sink=sink), clock=_Clock(), max_active=1
+    )
+    represented = _activated(registry, 1)
+    anonymous = _activated(registry, 2)
+    assert anonymous.propose_terminal(_decision(2), WorkloadOutcome.SUCCESS)
+    thread = threading.Thread(target=anonymous.finish)
+    thread.start()
+    assert sink_entered.wait(timeout=5)
+
+    result = registry.source_result(
+        "node-a", WorkloadQuery(), NOW + timedelta(seconds=1)
+    )
+    assert len(result.records) == 2
+    assert {record.state for record in result.records} == {
+        WorkloadState.CHECKING, WorkloadState.TERMINAL,
+    }
+    assert result.truncation.omitted is None
+    assert registry.unrepresented_count == 0
+    assert registry.source_result(
+        "node-a",
+        WorkloadQuery(state=WorkloadState.ADMITTED),
+        NOW + timedelta(seconds=1),
+    ).truncation.omitted == 0
+    assert registry.source_result(
+        "node-a",
+        WorkloadQuery(state=WorkloadState.TERMINAL),
+        NOW + timedelta(seconds=1),
+    ).truncation.omitted is None
+
+    release_sink.set()
+    thread.join(timeout=5)
+    assert not thread.is_alive()
+    final = registry.source_result(
+        "node-a", WorkloadQuery(), NOW + timedelta(seconds=1)
+    )
+    assert len(final.records) == 2
+    assert final.truncation.omitted == 0
+    represented.finish()
+
+
+def test_finalizing_counter_clears_when_recording_fails() -> None:
+    registry = RouterWorkloadRegistry(
+        _RaisingDecisionLog(), clock=_Clock(), max_active=1
+    )
+    represented = _activated(registry, 1)
+    anonymous = _activated(registry, 2)
+    assert anonymous.propose_terminal(_decision(2), WorkloadOutcome.ERROR)
+
+    assert anonymous.finish()
+    assert registry.unrepresented_count == 0
+    result = registry.source_result(
+        "node-a", WorkloadQuery(), NOW + timedelta(seconds=1)
+    )
+    assert len(result.records) == 1
+    assert result.truncation.omitted == 0
+    assert all(count == 0 for count in registry._finalizing.values())
+    assert anonymous._entry is None and anonymous._pending is None
+    represented.finish()
+
+
+def test_unexpected_selector_failure_is_fixed_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    registry = RouterWorkloadRegistry(DecisionLog(), clock=_Clock())
+    token = _activated(registry)
+    secret = "private-selector-detail"
+
+    def explode(*_args: object, **_kwargs: object) -> object:
+        raise RuntimeError(secret)
+
+    monkeypatch.setattr(workload_registry, "_select_source_records", explode)
+    result = registry.source_result(
+        "node-a", WorkloadQuery(), NOW + timedelta(seconds=1)
+    )
+
+    assert result.status is ResultStatus.UNAVAILABLE
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
+    assert result.records == () and result.truncation.omitted is None
+    assert secret not in repr(result)
+    token.finish()
 
 
 def test_terminal_supersedes_same_identity_while_sink_holds_finish() -> None:

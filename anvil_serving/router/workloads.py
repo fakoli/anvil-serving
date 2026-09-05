@@ -32,6 +32,7 @@ from anvil_serving.observability.workloads import (
     normalize_workload_timestamp,
     parse_workload_timestamp,
     select_records,
+    validate_source_records,
     workload_id,
 )
 from anvil_serving.router.decision_log import (
@@ -98,6 +99,7 @@ class RouterWorkloadRegistry:
         self._lock = threading.Lock()
         self._active: dict[str, _ActiveEntry] = {}
         self._unrepresented = {state: 0 for state in _ACTIVE_PHASES}
+        self._finalizing = {state: 0 for state in _ACTIVE_PHASES}
 
     def begin(self, gateway_request_id: object) -> RouterWorkloadToken:
         """Return an inert token; invalid identity disables observation only."""
@@ -138,6 +140,7 @@ class RouterWorkloadRegistry:
         with self._lock:
             active = tuple(self._active.values())
             unrepresented = dict(self._unrepresented)
+            finalizing = dict(self._finalizing)
 
         log_failed = False
         history_incomplete = False
@@ -153,20 +156,42 @@ class RouterWorkloadRegistry:
             recent = ()
             log_failed = True
 
-        invalid_record = False
+        record_error: WorkloadErrorCode | None = None
         records: dict[str, WorkloadRecord] = {}
         for entry in active:
             try:
-                record = _active_record(entry, host)
+                record = validate_source_records(
+                    (_active_record(entry, host),),
+                    owner=WorkloadOwner.ROUTER,
+                    host=host,
+                    collection_timestamp=collected,
+                )[0]
+            except WorkloadError as exc:
+                record_error = _record_error(record_error, exc.code)
+                continue
             except Exception:
-                invalid_record = True
+                record_error = _record_error(
+                    record_error, WorkloadErrorCode.INVALID
+                )
                 continue
             records[record.id] = record
         for decision in recent:
             try:
                 record = _terminal_record(decision, host)
+                if record is not None:
+                    record = validate_source_records(
+                        (record,),
+                        owner=WorkloadOwner.ROUTER,
+                        host=host,
+                        collection_timestamp=collected,
+                    )[0]
+            except WorkloadError as exc:
+                record_error = _record_error(record_error, exc.code)
+                continue
             except Exception:
-                invalid_record = True
+                record_error = _record_error(
+                    record_error, WorkloadErrorCode.INVALID
+                )
                 continue
             if record is not None:
                 records[record.id] = record
@@ -178,40 +203,35 @@ class RouterWorkloadRegistry:
                     decision.workload_outcome,
                 )
             ):
-                invalid_record = True
+                record_error = _record_error(
+                    record_error, WorkloadErrorCode.INVALID
+                )
 
-        selected, selected_omitted = _select_source_records(
-            tuple(records.values()), query, now=collected
-        )
-        matching_unrepresented = _matching_unrepresented(
-            unrepresented, query, host=host
-        )
-        if log_failed or history_incomplete:
+        try:
+            selected, selected_omitted = _select_source_records(
+                tuple(records.values()), query, now=collected
+            )
+            matching_anonymous = _matching_anonymous(
+                unrepresented, finalizing, query, host=host
+            )
+        except Exception:
+            return _unavailable_source(collected)
+        if log_failed or history_incomplete or matching_anonymous is None:
             omitted: int | None = None
         else:
-            omitted = min(
-                MAX_COUNT,
-                selected_omitted + matching_unrepresented,
-            )
+            omitted = min(MAX_COUNT, selected_omitted + matching_anonymous)
 
         error: WorkloadErrorCode | None = None
         if log_failed:
             error = WorkloadErrorCode.UNAVAILABLE
-        elif invalid_record:
-            error = WorkloadErrorCode.INVALID
+        elif record_error is not None:
+            error = record_error
         if (
             error is WorkloadErrorCode.UNAVAILABLE
             and not selected
-            and matching_unrepresented == 0
+            and matching_anonymous == 0
         ):
-            return SourceResult(
-                owner=WorkloadOwner.ROUTER,
-                status=ResultStatus.UNAVAILABLE,
-                collection_timestamp=collected,
-                records=(),
-                truncation=Truncation(0, None),
-                error=error,
-            )
+            return _unavailable_source(collected)
         status = (
             ResultStatus.COMPLETE
             if error is None and omitted == 0
@@ -285,6 +305,25 @@ class RouterWorkloadRegistry:
                 self._active.pop(gateway_request_id, None)
             elif self._unrepresented[state]:
                 self._unrepresented[state] -= 1
+
+    def _begin_finalization(
+        self,
+        gateway_request_id: str,
+        represented: bool,
+        state: WorkloadState,
+    ) -> None:
+        """Move one request out of active accounting before external work."""
+        with self._lock:
+            if represented:
+                self._active.pop(gateway_request_id, None)
+            elif self._unrepresented[state]:
+                self._unrepresented[state] -= 1
+            self._finalizing[state] += 1
+
+    def _end_finalization(self, state: WorkloadState) -> None:
+        with self._lock:
+            if self._finalizing[state]:
+                self._finalizing[state] -= 1
 
 
 class RouterWorkloadToken:
@@ -387,35 +426,48 @@ class RouterWorkloadToken:
                      or delivery_outcome not in _TERMINAL_OUTCOMES)
             ):
                 delivery_outcome = None
+            self._entry = None
+            self._pending = None
 
-        record: DecisionRecord | None = None
-        when = self._registry._now() if activated and pending is not None else None
-        if gateway_request_id is not None and entry is not None and pending is not None and when is not None:
-            decision, proposed_outcome = pending
-            outcome = delivery_outcome or proposed_outcome
-            updated = max(entry.updated_at, when)
-            try:
-                record = dataclasses.replace(
-                    decision,
-                    gateway_request_id=gateway_request_id,
-                    workload_created_at=format_workload_timestamp(entry.created_at),
-                    workload_updated_at=format_workload_timestamp(updated),
-                    workload_outcome=outcome.value,
-                )
-            except Exception:
-                record = None
+        finalizing = False
         try:
+            if activated and gateway_request_id is not None and entry is not None:
+                self._registry._begin_finalization(
+                    gateway_request_id, represented, entry.state
+                )
+                finalizing = True
+            record: DecisionRecord | None = None
+            when = self._registry._now() if pending is not None else None
+            if (
+                gateway_request_id is not None
+                and entry is not None
+                and pending is not None
+                and when is not None
+            ):
+                decision, proposed_outcome = pending
+                outcome = delivery_outcome or proposed_outcome
+                updated = max(entry.updated_at, when)
+                try:
+                    record = dataclasses.replace(
+                        decision,
+                        gateway_request_id=gateway_request_id,
+                        workload_created_at=format_workload_timestamp(
+                            entry.created_at
+                        ),
+                        workload_updated_at=format_workload_timestamp(updated),
+                        workload_outcome=outcome.value,
+                    )
+                except Exception:
+                    record = None
             if record is not None:
                 self._registry._decision_log.record(record)
         except Exception:
             pass
         finally:
-            if activated and gateway_request_id is not None:
+            if finalizing:
                 try:
                     assert entry is not None
-                    self._registry._release(
-                        gateway_request_id, represented, entry.state
-                    )
+                    self._registry._end_finalization(entry.state)
                 except Exception:
                     pass
         return True
@@ -523,21 +575,51 @@ def _select_source_records(
     return returned, matching - len(returned)
 
 
-def _matching_unrepresented(
-    counts: dict[WorkloadState, int],
+def _matching_anonymous(
+    active: dict[WorkloadState, int],
+    finalizing: dict[WorkloadState, int],
     query: WorkloadQuery,
     *,
     host: str,
-) -> int:
+) -> int | None:
     if query.owner not in (None, WorkloadOwner.ROUTER):
         return 0
     if query.kind not in (None, WorkloadKind.ROUTER_REQUEST):
         return 0
     if query.host is not None and query.host != host:
         return 0
-    if query.state is not None:
-        return counts.get(query.state, 0)
-    return sum(counts.values())
+    active_count = (
+        sum(active.values())
+        if query.state is None
+        else active.get(query.state, 0)
+    )
+    finalizing_count = 0
+    if query.state is None:
+        finalizing_count = sum(finalizing.values())
+    elif not query.active_only and query.state is WorkloadState.TERMINAL:
+        finalizing_count = sum(finalizing.values())
+    elif query.state in _ACTIVE_PHASES:
+        finalizing_count = finalizing.get(query.state, 0)
+    return None if active_count or finalizing_count else 0
+
+
+def _record_error(
+    current: WorkloadErrorCode | None, candidate: WorkloadErrorCode
+) -> WorkloadErrorCode:
+    if candidate is WorkloadErrorCode.FUTURE:
+        return candidate
+    return current or WorkloadErrorCode.INVALID
+
+
+def _unavailable_source(collected: datetime) -> SourceResult:
+    return SourceResult(
+        owner=WorkloadOwner.ROUTER,
+        status=ResultStatus.UNAVAILABLE,
+        collection_timestamp=collected,
+        records=(),
+        truncation=Truncation(0, None),
+        error=WorkloadErrorCode.UNAVAILABLE,
+    )
 
 
 def _query_includes_terminal(query: WorkloadQuery, *, host: str) -> bool:
