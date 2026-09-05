@@ -78,19 +78,9 @@ def _fixed_sources(
     return build_node_workloads(host, query, collected, sources)
 
 
-def _node_time(value: object, fallback: datetime) -> datetime:
-    if type(value) is not datetime:
-        return fallback
-    try:
-        return normalize_workload_timestamp(value)
-    except WorkloadError:
-        return fallback
-
-
 def _header(node: object, host: str, now: datetime) -> tuple[datetime, dict[WorkloadOwner, SourceResult]]:
     if type(node) is not NodeResult:
         raise ValueError
-    collected = _node_time(node.collection_timestamp, now)
     if (
         type(node.host) is not str
         or node.host != host
@@ -100,7 +90,8 @@ def _header(node: object, host: str, now: datetime) -> tuple[datetime, dict[Work
         or not 1 <= len(node.sources) <= len(_OWNERS)
     ):
         raise ValueError
-    if collected > now + timedelta(seconds=MAX_FUTURE_SECONDS):
+    collected = normalize_workload_timestamp(node.collection_timestamp)
+    if collected - now > timedelta(seconds=MAX_FUTURE_SECONDS):
         raise WorkloadError(WorkloadErrorCode.FUTURE, "future node workload timestamp")
     sources: dict[WorkloadOwner, SourceResult] = {}
     for source in node.sources:
@@ -112,6 +103,28 @@ def _header(node: object, host: str, now: datetime) -> tuple[datetime, dict[Work
     if node.status is not _status(tuple(source.status for source in node.sources)):
         raise ValueError
     return collected, sources
+
+
+def _unchanged_failure(source: SourceResult, original: SourceResult | None) -> bool:
+    """Recognize an already-canonical failure without touching unchecked records."""
+    if original is None or original.status is not ResultStatus.UNAVAILABLE:
+        return False
+    try:
+        truncation = original.truncation
+        return (
+            type(original.records) is tuple
+            and not original.records
+            and type(truncation) is Truncation
+            and type(truncation.returned) is int
+            and truncation.returned == source.truncation.returned
+            and (truncation.omitted is None or type(truncation.omitted) is int)
+            and truncation.omitted == source.truncation.omitted
+            and original.error is source.error
+            and type(original.collection_timestamp) is datetime
+            and original.collection_timestamp == source.collection_timestamp
+        )
+    except Exception:
+        return False
 
 
 def normalize_node_workloads(
@@ -131,9 +144,27 @@ def normalize_node_workloads(
         code = WorkloadErrorCode.FUTURE if exc.code is WorkloadErrorCode.FUTURE else WorkloadErrorCode.INVALID
         return _fixed_sources(host, checked_query, collected, code)
     except Exception:
-        node_time = _node_time(node.collection_timestamp, collected) if type(node) is NodeResult else collected
-        return _fixed_sources(host, checked_query, node_time, WorkloadErrorCode.INVALID)
-    return build_node_workloads(host, checked_query, node_time, sources)
+        return _fixed_sources(host, checked_query, collected, WorkloadErrorCode.INVALID)
+
+    # The remote node clock is provenance, never authority for receipt skew or
+    # query recency. Validate once at receipt time before restoring provenance.
+    checked = build_node_workloads(host, checked_query, collected, sources)
+    restored: list[SourceResult] = []
+    for source in checked.sources:
+        original = sources.get(source.owner)
+        rejected = (
+            source.status is ResultStatus.UNAVAILABLE
+            and not _unchanged_failure(source, original)
+        )
+        ahead_of_node = source.collection_timestamp - node_time > timedelta(seconds=MAX_FUTURE_SECONDS)
+        if rejected or ahead_of_node:
+            source = SourceResult(
+                source.owner, ResultStatus.UNAVAILABLE, node_time, (), Truncation(0, None),
+                source.error if rejected else WorkloadErrorCode.FUTURE,
+            )
+        restored.append(source)
+    entries = tuple(restored)
+    return NodeResult(host, _status(tuple(source.status for source in entries)), node_time, entries)
 
 
 def _increment(omitted: int | None, count: int) -> int | None:
