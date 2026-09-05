@@ -123,6 +123,44 @@ token and rotation work deferred by ADR-0033 §3.4 becomes a prerequisite
 for shipping `config-install`, not a parallel track. The read verbs
 (`fleet drift`, `config-adopt` capture) may ship against the current token.
 
+### 8. Bootstrap closes the missing-controller prerequisite, not config sync.
+
+**2026-09-05 amendment — design pending implementation.**
+[ADR-0034 section 4](0034-fleet-control-plane-and-node-runtime-classes.md)
+defines the normal, bootstrap, acceptance, rollback and manual-recovery
+boundaries for the [managed bootstrap PRD](../prds/fleet-node-enrollment.md).
+Installing the node runtime is artifact distribution under section 5, not
+permission to install/adopt configuration under section 3.
+
+A reachable node remains controller-first. Only explicit recovery of a
+declared absent/unavailable controller uses the pinned, fixed-operation SSH
+receiver; no host discovery, arbitrary SSH command or credential transfer is
+introduced. A read-only plan binds topology and artifact identities. Apply
+requires an unchanged plan, confirmation, local bootstrap policy and the
+per-client `node-admin:bootstrap` scope. That scope is required for bootstrap
+reads too; neither a legacy shared token nor `workloads:read` confers it.
+Policy references resolve separately on the operator/node and never travel in
+the install bundle.
+
+Immutable generations plus an atomic current pointer preserve the prior
+runtime. A flushed operation journal brackets activation and the declared
+supervisor restart. Acceptance must inspect the newly authenticated runtime's
+exact node, package and immutable build identity, compatible protocol, expected
+per-node catalog and health. A copied wheel, successful restart, stale
+transport or matching version alone cannot close the transition. Status
+reconciles the journal with observed runtime/supervisor state rather than
+treating journal intent as liveness. Failure requires verified rollback to the
+prior generation, or explicit manual recovery with evidence retained.
+
+Bootstrap does not modify topology, operator-home configuration, credentials,
+routes, serves, GPU modes, client profiles or deployment approvals. Config
+install/adopt and workload promotion keep their separate managed gates.
+Neither a repository merge nor bootstrap acceptance triggers them, and no
+timer retries or converges installation automatically. The first bootstrap
+adapters cover only a preprovisioned Windows scheduled task or Linux systemd
+user supervisor running a wheel-installed venv; Docker/macOS layouts remain
+unsupported, without weakening the broader fleet architecture.
+
 ## Consequences
 
 - No new infrastructure runs anywhere. The operator seat gains two
