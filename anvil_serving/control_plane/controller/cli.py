@@ -74,6 +74,11 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     serve_parser.add_argument(
+        "--authorization-policy",
+        default=None,
+        help="optional local scoped-authorization policy for new controller surfaces",
+    )
+    serve_parser.add_argument(
         "--allow-unauthenticated-loopback",
         action="store_true",
         help=(
@@ -220,6 +225,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 drain_seconds=args.drain_seconds,
                 audit_log_path=args.audit_log,
                 node_id=args.node_id,
+                authorization_policy=args.authorization_policy,
             )
         except ControllerError as exc:
             print(

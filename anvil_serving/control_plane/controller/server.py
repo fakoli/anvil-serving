@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import ipaddress
+import os
 import socket
 import sys
 from http.server import ThreadingHTTPServer
 from typing import Any, Callable, Mapping, Optional, Sequence
 
 from ... import mcp
+from ..authorization import AuthorizationError, AuthorizationPolicy, load_authorization_policy
 from ...graceful import DEFAULT_DRAIN_SECONDS, serve_until_signal
 from .catalog import CallToolFunc, ListToolsFunc
 from .http import (
@@ -77,6 +79,7 @@ def make_server(
     allowed_operations: Optional[Sequence[str]] = None,
     json_loads_func: JsonLoadsFunc = _strict_json_loads,
     node_id: Optional[str] = None,
+    authorization_policy: Optional[str] = None,
 ) -> ThreadingHTTPServer:
     """Return an unstarted controller server."""
     # ``env=None`` stays None: the real process environment may fall back to
@@ -95,6 +98,18 @@ def make_server(
         env=env,
         required=assessment.requires_auth,
     )
+    scoped_policy: Optional[AuthorizationPolicy] = None
+    if authorization_policy is not None:
+        try:
+            scoped_policy = load_authorization_policy(
+                authorization_policy,
+                env=os.environ if env is None else env,
+                legacy_token=token,
+            )
+        except AuthorizationError:
+            # A bad optional policy disables only new scoped surfaces.  The
+            # established controller token remains available for legacy APIs.
+            scoped_policy = None
     store = operation_store or OperationStore(
         idempotency_db_path,
         retention_seconds=idempotency_retention_seconds,
@@ -126,6 +141,7 @@ def make_server(
         allowed_operations=allowed_operations,
         json_loads_func=json_loads_func,
         node_id=node_id,
+        authorization_policy=scoped_policy,
     )
     cls = server_class or _server_class_for_host(host)
     httpd = cls((host, port), handler)
@@ -147,6 +163,7 @@ def serve(
     drain_seconds: float = DEFAULT_DRAIN_SECONDS,
     audit_log_path: Optional[str] = None,
     node_id: Optional[str] = None,
+    authorization_policy: Optional[str] = None,
     server_factory: Callable[..., ThreadingHTTPServer] = make_server,
 ) -> int:
     httpd = server_factory(
@@ -159,6 +176,7 @@ def serve(
         idempotency_db_path=idempotency_db_path,
         audit_log_path=audit_log_path,
         node_id=node_id,
+        authorization_policy=authorization_policy,
     )
     actual_host, actual_port = httpd.server_address[:2]
     print(
