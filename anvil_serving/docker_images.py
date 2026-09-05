@@ -23,7 +23,7 @@ _DIGEST_REFERENCE_RE = re.compile(r"^[^\s@-][^\s@]*@sha256:([0-9a-f]{64})$")
 _DOCKER_ID_RE = re.compile(r"^(?:sha256:)?([0-9a-f]{64})$")
 _IMAGE_KEY_RE = re.compile(r"(^|_)image($|_)")
 _YAML_IMAGE_RE = re.compile(
-    r"^\s*(?:image|rollback_image|inspector_image)\s*:\s*"
+    r"^\s*(?:-\s*)?(?:image|rollback_image|inspector_image)\s*:\s*"
     r"(?P<value>[^#]+?)\s*$",
     re.IGNORECASE,
 )
@@ -73,11 +73,10 @@ def _docker_json(args, *, runner, allow_missing=False):
     if result is None:
         raise DockerImageCleanupError("docker command returned no result")
     if result.returncode != 0:
-        if allow_missing:
+        detail = (result.stderr or result.stdout or "docker command failed").strip()
+        if allow_missing and "no such image" in detail.lower():
             return None
-        raise DockerImageCleanupError(
-            (result.stderr or result.stdout or "docker command failed").strip()
-        )
+        raise DockerImageCleanupError(detail)
     try:
         payload = json.loads(result.stdout or "[]")
     except json.JSONDecodeError as exc:
@@ -235,6 +234,13 @@ def _yaml_image_values(text):
             yield "line:%d" % line_number, value
 
 
+def _path_is_link_like(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction and is_junction())
+
+
 def _config_image_values(config_home):
     root = Path(config_home)
     references = []
@@ -244,10 +250,21 @@ def _config_image_values(config_home):
     if not root.is_dir() or root.is_symlink():
         return references, ["operator config home is not a plain directory"]
     for current, dirs, filenames in os.walk(root, followlinks=False):
-        dirs[:] = sorted(
-            name for name in dirs
-            if name != ".git" and not (Path(current) / name).is_symlink()
-        )
+        audited_dirs = []
+        for name in sorted(dirs):
+            if name == ".git":
+                continue
+            directory = Path(current) / name
+            relative = directory.relative_to(root).as_posix()
+            try:
+                if _path_is_link_like(directory):
+                    errors.append("%s: symlinked directory is not audited" % relative)
+                    continue
+            except OSError as exc:
+                errors.append("%s: %s" % (relative, exc))
+                continue
+            audited_dirs.append(name)
+        dirs[:] = audited_dirs
         for filename in sorted(filenames):
             path = Path(current) / filename
             suffix = path.suffix.lower()
@@ -404,9 +421,17 @@ def remove_docker_image(
             "error": (removed.stderr or removed.stdout or "docker image removal failed").strip(),
         })
         return result
-    final = _inspect_one_image(
-        first["target"]["image_id"], runner=runner, allow_missing=True
-    )
+    try:
+        final = _inspect_one_image(
+            first["target"]["image_id"], runner=runner, allow_missing=True
+        )
+    except DockerImageCleanupError as exc:
+        result.update({
+            "outcome": "failed",
+            "removal_attempted": True,
+            "error": "post-removal verification failed: %s" % exc,
+        })
+        return result
     if final is not None:
         result.update({
             "outcome": "failed",

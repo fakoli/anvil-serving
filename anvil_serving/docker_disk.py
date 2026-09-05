@@ -295,9 +295,18 @@ def compact_docker_data_disk(
     stopped_by_operation = first["docker_desktop_status"] == "running"
     if stopped_by_operation:
         _stop_docker_desktop(runner=runner)
-    second = inspect_docker_disk_compaction(path, runner=runner)
+    result.update({
+        "docker_stopped_by_operation": stopped_by_operation,
+        "docker_desktop_status": "stopped",
+        "recovery": first["recovery"],
+    })
+    try:
+        second = inspect_docker_disk_compaction(path, runner=runner)
+    except DockerDiskCompactionError as exc:
+        result.update({"outcome": "failed", "error": str(exc)})
+        return result
     result["verification"] = second
-    result["docker_stopped_by_operation"] = stopped_by_operation
+    result["docker_desktop_status"] = second["docker_desktop_status"]
     if second["docker_desktop_status"] != "stopped":
         result["outcome"] = "blocked"
         result["error"] = "Docker Desktop must be stopped before compaction"
@@ -312,9 +321,14 @@ def compact_docker_data_disk(
         return result
 
     before_bytes = second["vhd"]["file_size_bytes"]
-    compact_mode = _optimize_vhd(Path(second["path"]), runner=runner)
-    final = inspect_docker_disk_compaction(path, runner=runner)
+    try:
+        compact_mode = _optimize_vhd(Path(second["path"]), runner=runner)
+        final = inspect_docker_disk_compaction(path, runner=runner)
+    except DockerDiskCompactionError as exc:
+        result.update({"outcome": "failed", "error": str(exc)})
+        return result
     result["final"] = final
+    result["docker_desktop_status"] = final["docker_desktop_status"]
     if final["docker_desktop_status"] != "stopped" or final["vhd"]["attached"]:
         result["outcome"] = "failed"
         result["error"] = "post-compaction state is not detached with Docker Desktop stopped"

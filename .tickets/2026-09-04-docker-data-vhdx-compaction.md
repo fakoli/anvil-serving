@@ -40,6 +40,8 @@ backup procedure remains the disaster-recovery path for the data VHDX.
 Hermetic tests cover current and legacy layouts, relative and unrelated-path
 refusal, preview behavior, already-stopped and stop-first paths, attached-disk
 refusal, missing Hyper-V support, the stopped-CLI response, and the
-non-elevated detached fallback. A confirmed live run preserved the file
+non-elevated detached fallback. Second-inspection, optimization, and final-
+inspection failures after shutdown preserve the stopped state and recovery
+instruction in both library and CLI results. A confirmed live run preserved the file
 identity and virtual capacity, left Docker Desktop stopped with the disk
 detached, and reclaimed hundreds of gigabytes from the physical VHDX file.

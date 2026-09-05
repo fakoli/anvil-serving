@@ -7,6 +7,7 @@ import subprocess
 import pytest
 
 from anvil_serving import docker_disk
+from anvil_serving import host
 
 
 def _completed(argv, *, stdout="", stderr="", returncode=0):
@@ -81,6 +82,32 @@ class PrivilegeFallbackRunner(FakeRunner):
             self.calls.append(list(argv))
             self.compacted = True
             return _completed(argv)
+        return super().__call__(argv, **kwargs)
+
+
+class PostStopFailureRunner(FakeRunner):
+    def __init__(self, failure_at):
+        super().__init__()
+        self.failure_at = failure_at
+        self.vhd_inspections = 0
+
+    def __call__(self, argv, **kwargs):
+        if argv[0] == "powershell.exe" and "Get-VHD" in argv[-1]:
+            self.vhd_inspections += 1
+            if (
+                self.failure_at == "second-inspection" and self.vhd_inspections == 2
+            ) or (
+                self.failure_at == "final-inspection" and self.vhd_inspections == 3
+            ):
+                self.calls.append(list(argv))
+                return _completed(argv, stderr="Get-VHD failed after stop", returncode=1)
+        if (
+            argv[0] == "powershell.exe"
+            and "Mount-VHD" in argv[-1]
+            and self.failure_at == "optimization"
+        ):
+            self.calls.append(list(argv))
+            return _completed(argv, stderr="Optimize-VHD failed after stop", returncode=1)
         return super().__call__(argv, **kwargs)
 
 
@@ -216,3 +243,42 @@ def test_inspection_fails_closed_without_optimize_vhd(monkeypatch, tmp_path):
 
     with pytest.raises(docker_disk.DockerDiskCompactionError, match="Optimize-VHD"):
         docker_disk.inspect_docker_disk_compaction(path, runner=no_optimize)
+
+
+@pytest.mark.parametrize(
+    "failure_at",
+    ["second-inspection", "optimization", "final-inspection"],
+)
+def test_post_stop_failure_preserves_recovery_context(
+    monkeypatch, tmp_path, failure_at,
+):
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
+    path = _docker_disk_path(tmp_path)
+    runner = PostStopFailureRunner(failure_at)
+
+    result = docker_disk.compact_docker_data_disk(path, confirm=True, runner=runner)
+
+    assert result["outcome"] == "failed"
+    assert result["applied"] is False
+    assert result["docker_stopped_by_operation"] is True
+    assert result["docker_desktop_status"] == "stopped"
+    assert "failed after stop" in result["error"]
+    assert result["recovery"].startswith("restart Docker Desktop")
+
+
+def test_command_serializes_post_stop_recovery_context(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
+    path = _docker_disk_path(tmp_path)
+
+    exit_code = host.cmd_docker_disk_compact(
+        path,
+        confirm=True,
+        _run=PostStopFailureRunner("second-inspection"),
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload["outcome"] == "failed"
+    assert payload["docker_stopped_by_operation"] is True
+    assert payload["docker_desktop_status"] == "stopped"
+    assert payload["recovery"].startswith("restart Docker Desktop")

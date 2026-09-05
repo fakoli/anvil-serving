@@ -322,7 +322,9 @@ forced deletion, volumes, containers, and build cache are outside the command.
 The dry run resolves the immutable identity, reports Docker's unique-size
 reclaim estimate, and audits running and stopped containers, the operator
 configuration home, rollback declarations, and dependent child images. An
-unreadable or invalid operator configuration file fails the audit closed.
+unreadable or invalid operator configuration file, linked configuration
+directory, or untraversable directory fails the audit closed. YAML image keys
+are recognized in both mappings and sequence items.
 
 ```bash
 anvil-serving host docker-image remove \
@@ -332,7 +334,9 @@ anvil-serving host docker-image remove \
 
 Apply repeats the complete audit and requires an identical image fingerprint
 before invoking exact-ID removal with parent pruning disabled. It then verifies
-that Docker no longer resolves that ID:
+that Docker no longer resolves that ID. Only Docker's explicit no-such-image
+response proves absence; permission, daemon, and other inspection failures are
+reported as failed post-removal verification:
 
 ```bash
 anvil-serving host docker-image remove \
@@ -383,7 +387,9 @@ anvil-serving host docker-disk compact `
 Compaction does not delete Docker objects or reduce the VHDX's virtual maximum
 capacity. It can reclaim only blocks already released by the guest, so a
 successful run may reclaim zero bytes. Restart Docker Desktop normally to
-remount the same data disk.
+remount the same data disk. If inspection or optimization fails after the
+command stopped Docker Desktop, the failure result preserves that stopped state
+and the same restart recovery instruction.
 
 ## Automatic reclaim after model lifecycle operations
 
