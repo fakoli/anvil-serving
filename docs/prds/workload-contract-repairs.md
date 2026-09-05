@@ -108,6 +108,50 @@ Synchronize the existing Python markup maxlength assertion.
 - `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py -x -q`
 - `git diff --check`
 
+### T010: Declare the dashboard's actual startup options
+
+**Feature:** F001
+**Priority:** medium
+**Type:** bugfix
+**Likely files:** anvil_serving/commands/host.py, docs/CLI-COMMAND-MANIFEST.json, tests/test_command_tree.py, .tickets/2026-09-05-workload-wire-contract-repairs.md
+**Dependencies:** T007
+
+The workload guide regression reproduced missing dashboard startup options in the canonical manifest while dashboard.app.build_parser accepts them. Declare all six existing parser options on the dashboard serve node: --host (IP), --port (PORT), --auth-env (ENV), --workload-controller-url (URL), --workload-expected-node (NODE) and --workload-authorization-policy (PATH). Preserve their existing parser defaults, scope/auth requirements, local host/native runtime ownership, foreground/process behavior and global resolution options; this is metadata repair, not a parser or authority change. Match summaries to the actual parser and use existing CommandOption idioms. Regenerate the schema-7 manifest without changing its schema. Add a literal six-flag test and compare those leaf options to the real argparse parser's non-help options, with no server start, network or credential lookup. Record the mismatch and candidate-only repair in the existing ticket.
+
+**Acceptance criteria:**
+
+- Canonical and generated dashboard serve options match every current non-help parser option with value placeholders.
+- No dashboard runtime behavior, authentication, ownership or remote authority changes.
+- Manifest regeneration is deterministic and focused command/dashboard regressions pass.
+
+**Verification:**
+
+- `python -c "from anvil_serving.commands.spec import write_manifest; write_manifest()"`
+- `python scripts/run_tests.py tests/test_command_tree.py tests/observability/test_dashboard.py -x -q`
+- `python -m ruff check anvil_serving/commands/host.py tests/test_command_tree.py`
+- `git diff --check`
+
+### T011: Refresh dashboard command references after declaration repair
+
+**Feature:** F001
+**Priority:** medium
+**Type:** modify
+**Likely files:** docs/CLI.md, docs/CLI-REFERENCE-AUDIT.json, tests/fixtures/cli_reference_audit/expected.json
+**Dependencies:** T009, T010
+
+Run the existing full reference generator at the integrated tracked checkpoint after T010. Require all six dashboard startup flags in the generated row. Keep fixture inventories byte-identical unless their inputs changed; include currently tracked receiver source/test files in the full inventory. Do not edit generated blocks by hand or claim this checkpoint remains current after further source additions.
+
+**Acceptance criteria:**
+
+- Published command row and inventories match the current indexed checkpoint.
+- Full audit and documentation invocation regressions pass.
+
+**Verification:**
+
+- `python scripts/audit_cli_references.py --check --scope full`
+- `python scripts/run_tests.py tests/test_cli_reference_audit.py tests/test_docs_command_invocations.py -x -q`
+- `git diff --check`
+
 ### T004: Preserve the historical read-only dashboard regression contract
 
 **Feature:** F001
