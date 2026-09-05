@@ -6,6 +6,7 @@ import contextlib
 import difflib
 import io
 import os
+import re
 import shutil
 import sys
 import textwrap
@@ -17,6 +18,7 @@ from collections.abc import Mapping, Sequence
 from . import __version__
 from . import guard
 from .commands import COMMAND_TREE, CommandNode, CommandOption
+from .control_plane.mcp.errors import ToolError
 from .operator_output import (
     CommandResult,
     EXIT_CODES,
@@ -67,6 +69,7 @@ _RESOLUTION_VALUE_OPTIONS = {
     "--target": "target",
     "--transport": "transport",
 }
+_REMOTE_INTEGER_RE = re.compile(r"-?[0-9]+")
 _HANDLER_PROGS = {
     "anvil_serving.benchmark": "anvil-serving eval benchmark run",
     "anvil_serving.benchmark_evidence": "anvil-serving eval benchmark evidence",
@@ -635,6 +638,8 @@ def _remote_scalar(flag: str, value: str, schema: Mapping[str, object]) -> objec
     types = schema_type if isinstance(schema_type, list) else [schema_type]
     try:
         if "integer" in types:
+            if _REMOTE_INTEGER_RE.fullmatch(value) is None:
+                raise UsageError(f"{flag} requires a numeric value")
             return int(value)
         if "number" in types:
             return float(value)
@@ -744,7 +749,10 @@ def _remote_arguments(
             arguments["confirm"] = True
         if "dry_run" in properties and "dry_run" not in arguments:
             arguments["dry_run"] = False
-    return mcp.validate_tool_arguments(remote.tool, arguments)
+    try:
+        return mcp.validate_tool_arguments(remote.tool, arguments)
+    except ToolError:
+        raise UsageError(f"invalid arguments for remote {node.name}") from None
 
 
 def _reconcile_remote_mutation(
