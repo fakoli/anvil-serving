@@ -21,6 +21,7 @@ from anvil_serving.observability.workloads import (
     WorkloadError,
     WorkloadErrorCode,
     WorkloadKind,
+    WorkloadOutcome,
     WorkloadOwner,
     WorkloadPhase,
     WorkloadQuery,
@@ -180,3 +181,80 @@ def test_invalid_outer_input_refuses_before_node_values_are_touched():
         build_fleet_workloads(("node-a",), WorkloadQuery(), NOW, {"wrong": Sentinel()})
     with pytest.raises(WorkloadError):
         build_fleet_workloads(("node-a", "node-a"), WorkloadQuery(), NOW, {"node-a": Sentinel()})
+
+
+@pytest.mark.parametrize("offset,expected", ((30, None), (59, WorkloadErrorCode.FUTURE)))
+def test_source_skew_is_bounded_against_receipt_time(offset, expected):
+    node_time = NOW + timedelta(seconds=29)
+    future = _source(WorkloadOwner.CONTROLLER, collected=NOW + timedelta(seconds=offset))
+    peer = _source(WorkloadOwner.MEDIA)
+    node = NodeResult("node-a", ResultStatus.COMPLETE, node_time, (future, peer))
+    result = normalize_node_workloads("node-a", WorkloadQuery(), NOW, node)
+    sources = {source.owner: source for source in result.sources}
+    assert sources[WorkloadOwner.CONTROLLER].error is expected
+    assert sources[WorkloadOwner.MEDIA] == peer
+    assert result.collection_timestamp == node_time
+    if expected is not None:
+        assert sources[WorkloadOwner.CONTROLLER].collection_timestamp == node_time
+
+
+@pytest.mark.parametrize("node_offset,age,expected", ((-29, 15, WorkloadErrorCode.INVALID), (29, 5, None)))
+def test_recent_filter_uses_receipt_clock_not_remote_node_clock(node_offset, age, expected):
+    record = replace(
+        _record("node-a", WorkloadOwner.CONTROLLER, 1, updated=NOW - timedelta(seconds=age)),
+        state=WorkloadState.TERMINAL,
+        phase=WorkloadPhase.COMPLETED,
+        outcome=WorkloadOutcome.SUCCESS,
+    )
+    source = _source(WorkloadOwner.CONTROLLER, (record,))
+    node_time = NOW + timedelta(seconds=node_offset)
+    node = NodeResult("node-a", ResultStatus.COMPLETE, node_time, (source,))
+    result = normalize_node_workloads("node-a", WorkloadQuery(recent_seconds=10), NOW, node)
+    selected = next(item for item in result.sources if item.owner is WorkloadOwner.CONTROLLER)
+    assert selected.error is expected
+    assert selected.records == (() if expected else (record,))
+    assert result.collection_timestamp == node_time
+
+
+@pytest.mark.parametrize("bad_time", (NOW.replace(tzinfo=None), "private-clock-value", None))
+def test_invalid_node_time_is_not_silently_replaced_as_valid(bad_time):
+    node = NodeResult("node-a", ResultStatus.COMPLETE, NOW, (_source(WorkloadOwner.MEDIA),))
+    object.__setattr__(node, "collection_timestamp", bad_time)
+    result = build_fleet_workloads(("node-a",), WorkloadQuery(), NOW, {"node-a": node})
+    assert result.nodes[0].collection_timestamp == NOW
+    assert all(source.error is WorkloadErrorCode.INVALID for source in result.nodes[0].sources)
+    assert "private-clock-value" not in str(fleet_result_to_dict(result))
+
+
+def test_wrong_host_future_header_cannot_escape_fleet_composition():
+    future = NOW + timedelta(hours=1)
+    node = NodeResult("node-b", ResultStatus.COMPLETE, future, (_source(WorkloadOwner.MEDIA, collected=future),))
+    result = build_fleet_workloads(("node-a",), WorkloadQuery(), NOW, {"node-a": node})
+    assert result.nodes[0].collection_timestamp == NOW
+    assert all(source.error is WorkloadErrorCode.INVALID for source in result.nodes[0].sources)
+
+
+def test_forged_source_ahead_of_node_is_source_local_and_preserves_peer_time():
+    old = NOW - timedelta(minutes=1)
+    peer = _source(WorkloadOwner.MEDIA, collected=old)
+    ahead = _source(WorkloadOwner.CONTROLLER)
+    node = NodeResult("node-a", ResultStatus.COMPLETE, NOW, (ahead, peer))
+    object.__setattr__(node, "collection_timestamp", old)
+    result = normalize_node_workloads("node-a", WorkloadQuery(), NOW, node)
+    sources = {source.owner: source for source in result.sources}
+    assert sources[WorkloadOwner.CONTROLLER].error is WorkloadErrorCode.FUTURE
+    assert sources[WorkloadOwner.CONTROLLER].collection_timestamp == old
+    assert sources[WorkloadOwner.MEDIA] == peer
+    assert result.collection_timestamp == old
+
+
+def test_unchanged_unavailable_source_keeps_its_original_timestamp():
+    node_time = NOW - timedelta(seconds=10)
+    source = SourceResult(
+        WorkloadOwner.MEDIA, ResultStatus.UNAVAILABLE, NOW - timedelta(seconds=20),
+        (), Truncation(0, None), WorkloadErrorCode.FUTURE,
+    )
+    node = NodeResult("node-a", ResultStatus.UNAVAILABLE, node_time, (source,))
+    result = normalize_node_workloads("node-a", WorkloadQuery(), NOW, node)
+    assert next(item for item in result.sources if item.owner is WorkloadOwner.MEDIA) == source
+    assert all(item.collection_timestamp == node_time for item in result.sources if item.owner is not WorkloadOwner.MEDIA)
