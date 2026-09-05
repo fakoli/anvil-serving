@@ -100,6 +100,11 @@ def _validate_auth_env(value: object, label: str, *, detailed: bool = True) -> N
 # body cap without importing front_door (which imports this module).
 _MAX_AUDIO_GATEWAY_BYTES = 32 * 1024 * 1024
 
+# Exact-byte managed router snapshots are deliberately no larger than the
+# topology documents they join.  Readers use one overflow byte so an attacker
+# cannot force an unbounded allocation before this limit is enforced.
+MAX_ROUTER_CONFIG_BYTES = 1024 * 1024
+
 _REQUIRED_TIER_KEYS = (
     "id",
     "dialect",
@@ -1351,21 +1356,7 @@ def _parse_audio_route(raw: object) -> AudioRoute:
     )
 
 
-def load(path: str) -> RouterConfig:
-    """Load + validate the ``[router]`` block of the TOML config at ``path``.
-
-    Never reads ``os.environ`` for a secret and never requires any secret to be
-    set: it only records each tier's ``auth_env`` env-var NAME.
-    """
-    path = os.path.expanduser(path)
-    try:
-        with open(path, "rb") as f:
-            data = tomllib.load(f)
-    except OSError as e:
-        raise ConfigError(f"cannot read router config {path!r}: {e}") from e
-    except tomllib.TOMLDecodeError as e:
-        raise ConfigError(f"invalid TOML in router config {path!r}: {e}") from e
-
+def _parse_router_config(data: Mapping[str, Any], path: str) -> RouterConfig:
     router = data.get("router")
     if not isinstance(router, dict):
         raise ConfigError(f"no [router] block in {path}")
@@ -1614,3 +1605,38 @@ def load(path: str) -> RouterConfig:
         audio_max_text_chars=audio_max_text_chars,
         audio_max_concurrency=raw_audio_max_concurrency,
     )
+
+
+def _load_bytes(raw: bytes, path: str) -> RouterConfig:
+    if type(raw) is not bytes:
+        raise ConfigError("router config bytes must be an exact bytes value")
+    if len(raw) > MAX_ROUTER_CONFIG_BYTES:
+        raise ConfigError(
+            f"router config {path!r} exceeds the maximum byte size "
+            f"({MAX_ROUTER_CONFIG_BYTES})"
+        )
+    try:
+        data = tomllib.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+        raise ConfigError(f"invalid TOML in router config {path!r}: {exc}") from exc
+    return _parse_router_config(data, path)
+
+
+def load_bytes(raw: bytes) -> RouterConfig:
+    """Load a complete router config from one bounded, exact byte snapshot."""
+    return _load_bytes(raw, "<bytes>")
+
+
+def load(path: str) -> RouterConfig:
+    """Load + validate the ``[router]`` block of the TOML config at ``path``.
+
+    Never reads ``os.environ`` for a secret and never requires any secret to be
+    set: it only records each tier's ``auth_env`` env-var NAME.
+    """
+    path = os.path.expanduser(path)
+    try:
+        with open(path, "rb") as handle:
+            raw = handle.read(MAX_ROUTER_CONFIG_BYTES + 1)
+    except OSError as exc:
+        raise ConfigError(f"cannot read router config {path!r}: {exc}") from exc
+    return _load_bytes(raw, path)
