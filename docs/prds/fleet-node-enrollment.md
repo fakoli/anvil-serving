@@ -189,44 +189,46 @@ Add the shared bounded per-client authorization policy reader and scope checker 
 **Feature:** F003
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/control_plane/controller/http.py, anvil_serving/control_plane/controller/server.py, tests/test_controller.py, tests/test_controller_token_normalization.py
+**Likely files:** anvil_serving/control_plane/controller/http.py, anvil_serving/control_plane/controller/server.py, anvil_serving/control_plane/controller/cli.py, tests/test_controller.py
 **Dependencies:** T008
 
-Load the shared policy in the controller and add one pre-dispatch scope gate that future bootstrap and workload operations can declare. Preserve existing legacy-operation authentication and token normalization. Denials must occur before request bodies, stores, transports, or collectors are touched.
+Add `--authorization-policy <path>` to the controller serve parser and pass it through `serve`/`make_server` into the shared policy loader. Add one pre-dispatch scope gate that future bootstrap and workload operations can declare. Preserve existing legacy-operation authentication and token normalization. Authenticate before reading a body. The legacy `/tools/call` route identifies its operation inside JSON: perform its exact scope check after bounded parsing but before dispatch, store, transport, or collector access. For header-identified MCP operations, check scope before body consumption and require the parsed body to match the headers before dispatch. The dedicated bootstrap binary endpoint retains its stricter pre-body scope/header/policy gate in T012.
 
 **Acceptance criteria:**
 
 - Legacy, media-only, wrong-scope, missing-policy, and malformed-policy credentials receive fixed denials before controller dispatch.
 - A correctly scoped client reaches only the operation declaring that exact scope.
+- The serve parser accepts the optional policy path and forwards it unchanged; absence or invalid policy disables only new privileged operations. Tests cover parser-to-server plumbing and both header-identified and bounded-JSON authorization boundaries.
 - Duplicate or legacy-equal resolved credentials cannot create an ambiguous controller principal.
 - Existing controller operations and token-normalization regressions retain their prior behavior.
 
 **Verification:**
 
 - `python scripts/run_tests.py tests/test_controller.py tests/test_controller_token_normalization.py -x -q`
-- `python -m ruff check anvil_serving/control_plane/controller/http.py anvil_serving/control_plane/controller/server.py tests/test_controller.py tests/test_controller_token_normalization.py`
+- `python -m ruff check anvil_serving/control_plane/controller/http.py anvil_serving/control_plane/controller/server.py anvil_serving/control_plane/controller/cli.py tests/test_controller.py`
 
 ### T010: Wire scoped authorization into router operator endpoints
 
 **Feature:** F003
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/router/front_door.py, tests/router/test_front_door_auth.py, tests/test_control_plane_authorization.py
+**Likely files:** anvil_serving/router/front_door.py, anvil_serving/router/serve.py, tests/router/test_front_door_auth.py, tests/router/test_serve_cli.py
 **Dependencies:** T008
 
-Add a distinct operator-scope gate to router front-door dispatch without broadening the data-plane bearer token. This task supplies the final router authorization prerequisite for the workload PRD; it does not add the workload endpoint itself.
+Add `--authorization-policy <path>` to the router run parser and pass it through server construction into the shared policy loader. Add a distinct operator-scope gate to front-door dispatch without broadening the data-plane bearer token. This task supplies the final router authorization prerequisite for the workload PRD; it does not add the workload endpoint itself.
 
 **Acceptance criteria:**
 
 - Data-plane, legacy, media-only, wrong-scope, and missing-policy credentials cannot reach an operator-scoped handler.
 - A `workloads:read` client can pass the operator gate but receives no bootstrap or ordinary legacy-operation authority.
 - Denial happens before handler invocation and returns only fixed metadata-safe errors.
+- Parser and server-construction tests prove the optional path reaches the policy loader; absent/invalid policy disables only new operator surfaces, never silently grants them.
 - Existing chat, streaming, health, and ordinary router authentication tests retain their behavior.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/router/test_front_door_auth.py tests/test_control_plane_authorization.py -x -q`
-- `python -m ruff check anvil_serving/router/front_door.py tests/router/test_front_door_auth.py`
+- `python scripts/run_tests.py tests/router/test_front_door_auth.py tests/router/test_serve_cli.py tests/test_control_plane_authorization.py -x -q`
+- `python -m ruff check anvil_serving/router/front_door.py anvil_serving/router/serve.py tests/router/test_front_door_auth.py tests/router/test_serve_cli.py`
 
 ### T002: Define bootstrap manifests, bundles, receipts, and path validation
 
