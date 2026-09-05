@@ -91,7 +91,7 @@ None. Credential provisioning and machine prerequisites remain separate; v1 enro
 - Topology gains an optional closed host `bootstrap` declaration: enabled/authorized flags (both default false), absolute staging/install roots, exact Python executable and receiver path/digest, `python-wheel-venv` adapter, platform-matched supervisor enum and bounded preprovisioned supervisor ID. Paths stay internal/private. The supervisor and immutable receiver are machine prerequisites, not installed by this workflow.
 - CLI targeting is exclusively `--target host:<id>`. Extend the execution resolver with a host-owned bootstrap operation; do not invent a synthetic model resource. Plans bind the topology fingerprint, manifest digest, expected identity and local authorization. Apply re-resolves and compares immediately before stage.
 - Bundle wire format is a ZIP with exactly three regular entries: `manifest.json`, `runtime.whl`, `bootstrap_shim.py`. Bound the entire compressed and expanded bundle to 16 MiB, manifest to 16 KiB and shim to 256 KiB. Reject duplicate entries, links/reparse points, encryption, traversal, unsafe names and unsupported compression before installation; validate nested wheel paths too. SHA-256 binds every entry and the outer bundle.
-- Controller staging is dedicated authenticated `POST /admin/bootstrap/stage`, content type `application/octet-stream`, exact Content-Length, `X-Anvil-Bundle-SHA256`, caller-generated UUID `X-Anvil-Operation-Id`, `X-Anvil-Plan-SHA256`, and `X-Anvil-Expected-Node`. Validate authorization, policy, identity and all closed header fields before reading the body. Lost-response retries reuse the UUID; any UUID binding mismatch refuses. Subsequent typed operations carry only the validated operation ID and plan digest.
+- Controller staging is dedicated authenticated `POST /admin/bootstrap/stage`, content type `application/octet-stream`, exact Content-Length, `X-Anvil-Bundle-SHA256`, caller-generated UUID `X-Anvil-Operation-Id`, `X-Anvil-Plan-SHA256`, `X-Anvil-Target-Config-SHA256`, and `X-Anvil-Expected-Node`. Validate authorization, policy, identity and all closed header fields before reading the body. Lost-response retries reuse the UUID; any UUID binding mismatch refuses. Subsequent typed operations carry only the validated operation ID, plan digest and target configuration digest.
 - SSH requires a preprovisioned dedicated key/principal with a server-side forced command to the pinned receiver, no PTY and no forwarding. A fixed identity preflight proves receiver digest, expected owner and non-writable permissions before upload; drift refuses. The closed receiver protocol supports `identity|stage|activate|status|rollback`. Stdin begins with a 4-byte big-endian length and at most 4096 bytes of canonical JSON containing operation, UUID, plan digest, expected node, bundle digest and byte length, followed only for stage by the exact ZIP bytes. The transport supplies no caller command, path or argv. Host/root compromise is outside this threat model.
 - An operation ID is a generated UUID bound durably to one manifest/plan digest; same ID with different bytes refuses. Stage uses a newly created contained directory with restrictive permissions. Duplicate same-digest requests return the recorded phase without repeating activation. Only validated staging owned by that operation may be removed.
 - Digest domains: entry hashes cover exact entry bytes; manifest identity covers canonical UTF-8 JSON (sorted keys, compact separators, no newline) and names the immutable generation; the outer ZIP hash is transfer integrity; plan identity hashes canonical target/topology/artifact/adapter fields excluding operation UUID and timestamps. ZIP order is manifest, wheel, shim; use stored compression, DOS timestamp 1980-01-01 00:00:00, regular mode 0600, no comments/extra fields. The manifest hashes wheel and shim, not itself or the outer archive. Equivalent inputs therefore produce identical bundle bytes.
@@ -303,6 +303,15 @@ anvil-serving.fleet-bootstrap-target-config/v1. All values derive exactly from
 BootstrapPlan, with the target-config schema replacing the plan schema;
 bootstrap_target_config_sha256(plan) hashes that closed canonical domain.
 Neither a frame nor the candidate bundle supplies paths or local policy.
+
+T004.2 closes this pure configuration value before filesystem work:
+
+- Add frozen BootstrapTargetConfig in fleet_bootstrap.py with those exact fields and exact enum/Boolean types; schema is fixed, init=False. Its constructor validates the canonical node/digest/supervisor-ID grammar, platform/adapter pairing, user root class, four canonical OS-specific paths and nonoverlapping staging/install roots. False Boolean policy values are valid configuration, not permission to operate; later receiver authorization requires both true.
+- Move the existing pure _valid_bootstrap_path, _valid_bootstrap_component and _bootstrap_paths_overlap implementations and their path-only constants from topology.py to fleet_bootstrap.py, reusing identical existing Windows device/forbidden-character sets there. topology imports the same helper names for compatibility; the plan builder uses them locally. Preserve all existing topology and valid-input path behavior. Keep topology's unrelated Unicode handling and secret/transport validation intact. No new path grammar, filesystem call or topology dependency belongs in the target decoder.
+- BootstrapTargetConfig.from_bytes accepts only exact nonempty bytes bounded to 16 KiB, duplicate-free canonical JSON and the exact 14-key field set. No missing/null/extra fields, primitive coercions, enum subclasses or caller-selected schema are accepted. Reuse _decode_json, canonical_json_bytes, _validate_exact_fields and existing fixed errors; compare reserialized bytes for exact canonical identity.
+- BootstrapTargetConfig.from_plan accepts only an exact BootstrapPlan and copies only the closed target fields through the validated constructor. No field-override keywords are accepted. bootstrap_target_config_sha256(plan) is exactly SHA-256 of that target's canonical private bytes, not of BootstrapPlan.to_dict or plan_sha256. Target identity excludes topology, execution runtime, artifact, catalog, protocol, operation ID and timestamps, while the full plan continues to bind them separately.
+- The only full configuration serializer is explicitly named to_private_bytes. Revalidate exact field types and bounds before serialization, hash or repr, with a fixed metadata-only repr containing only expected_node and target_config_sha256. Do not add a generic public to_dict or print paths/supervisor IDs/policy contents. Unsafe/inconsistent values use fixed invalid-contract errors; unsupported platform/supervisor pairing uses unsupported-platform. This value layer performs no file read/write, environment lookup, target permission check, receiver hashing, provisioning or authorization decision.
+- Tests prove cross-OS canonical round trips, exact field-set/type/size/canonical-JSON failures, false flags retained without granting authority, every target field changing the digest or refusing, excluded full-plan fields leaving target identity unchanged, repr/error privacy, frozen values and no field overrides. A clean subprocess importing only fleet_bootstrap and decoding configuration must not import topology/targets/controller; existing topology/target/plan regressions prove the shared-helper relocation is behavior-preserving.
 
 A later receiver identity result must prove receiver_sha256 and
 target_config_sha256 plus bounded permission verdicts, without paths, owner IDs
@@ -542,13 +551,36 @@ Implement only the fixed receiver request framing contract above. Reuse canonica
 - `python scripts/run_tests.py tests/test_fleet_bootstrap.py -x -q`
 - `python -m ruff check anvil_serving/fleet_bootstrap.py tests/test_fleet_bootstrap.py`
 
+### T004.2: Define trusted target configuration identity
+
+**Feature:** F002
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/fleet_bootstrap.py, anvil_serving/topology.py, tests/test_fleet_bootstrap.py
+**Dependencies:** T003, T011, T004.1
+
+Implement the pure target-configuration value, canonical private serializer and plan-derived digest described above. Relocate the existing pure bootstrap path helpers into the standalone bootstrap module and preserve topology imports and behavior. This makes the future embedded receiver independent of the candidate package and topology loader without copying path rules.
+
+**Acceptance criteria:**
+
+- Exact canonical private bytes and digests round-trip for Windows and Linux with no file, environment or network access.
+- Closed field sets, exact types, safe paths, root separation and platform pairing reject malformed inputs with fixed privacy-safe errors.
+- Target identity binds every local configuration field but excludes full-plan artifact/topology/protocol/catalog identity; the full plan still binds all of those separately.
+- The shared path implementation preserves existing topology/plan behavior and the target decoder imports no topology, targets or controller module.
+- Configuration flags remain data and never authorize an operation; no provisioning, permission or deployed-state claim is made.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_fleet_bootstrap.py tests/test_topology.py tests/test_targets.py tests/test_topology_defaults.py -x -q`
+- `python -m ruff check anvil_serving/fleet_bootstrap.py anvil_serving/topology.py tests/test_fleet_bootstrap.py`
+
 ### T004: Implement the fixed receiver protocol and target validation
 
 **Feature:** F002
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/fleet_bootstrap.py, anvil_serving/control_plane/bootstrap_shim.py, tests/test_fleet_bootstrap.py
-**Dependencies:** T008, T011, T004.1
+**Dependencies:** T008, T011, T004.1, T004.2
 
 Implement the stdlib-only pinned receiver and fixed `identity|stage|activate|status|rollback` protocol. Every operation accepts only the closed framed metadata for operation ID, plan digest, and expected node; stage additionally binds the bundle digest/length and exact ZIP bytes. Install only after canonical manifest/archive/path/digest validation. This slice contains no network subprocess or controller endpoint wiring.
 

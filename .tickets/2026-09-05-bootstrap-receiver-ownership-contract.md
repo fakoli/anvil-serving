@@ -42,3 +42,10 @@ It validates exact operation field sets, canonical bounded length-prefixed
 JSON, target-config binding and stage-body digests. It performs no filesystem
 or network operations; receiver packaging, permission checks, durable staging
 and activation remain separate work.
+
+T004.2 closes canonical trusted-target configuration as a pure value and
+plan-derived digest. The existing lexical bootstrap path rules move into the
+standalone bootstrap validator and topology reuses them, avoiding either a
+second path grammar or a receiver dependency on topology/targets/controller.
+Private bytes are explicitly named and never emitted by a generic public
+serializer. False policy flags remain valid data, not operation authority.
