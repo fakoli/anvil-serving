@@ -246,6 +246,55 @@ flowchart LR
 6. **Decide.** Promotion, residency, and router calibration require an explicit
    human gate after evidence review.
 
+## Replica capacity-scheduler qualification (separately authorized)
+
+Synthetic scheduler tests and a direct measurement of individual replicas are
+not evidence that a routed scheduler works. The following is an inert method
+for a later, separately authorized real-hardware qualification. It does not
+authorize a recipe load, router change, benchmark, promotion, or deployment.
+
+1. **Prepare and pin.** Use the managed [recipe load and lifecycle
+   surfaces](../cli/models.md#load-a-recipe), not an ad hoc launcher. Before
+   the first request, retain the repository revision, router and topology
+   inputs, recipe and registry digests, image and software identities, declared
+   tier/member ceilings, scheduler strategy, and an admission/transition
+   starting-state snapshot. Record the live endpoint's exact served model
+   identity separately from its declared recipe provenance; neither substitutes
+   for the other. Start with managed status/log evidence and retain managed
+   unload evidence during restoration.
+2. **Measure matched cells.** Run the same pinned workload and engine controls
+   for (a) each direct member baseline, (b) routed round-robin, and (c) routed
+   capacity scheduling. A direct aggregate is a baseline, not routed-scheduler
+   proof. Use strict controlled output, unique-cache request canaries, the same
+   seed/context/completion controls, and at least 100 attempted requests per
+   comparison cell. Retain every request, including failures and excluded
+   samples. Exercise sustained concurrent levels through each declared member
+   ceiling and the aggregate tier ceiling, including at least one level above
+   each; record the exact configured levels instead of assuming a topology in
+   this method.
+3. **Prove terminal and adverse paths.** Retain selection/admission evidence
+   showing the selected member, pre-reservation score, readiness and pressure
+   freshness class, and one backend attempt for every routed request. Include
+   errors, timeout handling, and ordinary and streamed response close evidence
+   so release after stream close is observable. Under separately approved
+   controlled transitions, quiesce/drain/readmit a member and a tier, then
+   record stale and unknown telemetry cases. Those cells must show no replay,
+   retry, implicit fallback, or second-member selection.
+4. **Restore and decide.** Restore the captured admission, member-intent,
+   recipe, router, and topology starting state with the managed
+   [router lifecycle](../cli/router.md#lifecycle) and [tier transition]
+   (../cli/router.md#tier-transitions) procedures. Retain post-restoration
+   status/log evidence and the separately authorized real-client gates. Keep
+   raw evidence, failures, configuration/identity, and restoration records in
+   the [campaign artifact set](../findings/README.md) and
+   publish only sanitized derived claims. Human review may then decide whether
+   promotion is warranted; a complete qualification artifact never promotes a
+   route by itself.
+
+This method keeps hardware feasibility, synthetic coverage, real qualification,
+and promotion separate. It makes no claim that a particular scheduler has been
+measured, is qualified, or is deployed.
+
 ## Required publication record
 
 Every new benchmark finding should preserve:
