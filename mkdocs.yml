@@ -123,6 +123,7 @@ nav:
       - Help and project records:
           - Troubleshooting: TROUBLESHOOTING.md
           - Architecture decisions: adr/README.md
+          - Proposed improvements (PRDs): prds/README.md
           - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md
           - Product discovery personas: PRODUCT-DISCOVERY-PERSONAS.md
           - Strategy - make divergence loud: STRATEGY-MAKE-DIVERGENCE-LOUD.md
