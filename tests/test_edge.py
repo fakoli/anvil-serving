@@ -22,7 +22,7 @@ def test_default_config_is_the_adr_route_map():
     config = edge.default_config()
     assert config.https_port == 443
     assert [(r.mount, r.target) for r in config.routes] == [
-        ("/v1", "http://127.0.0.1:8000"),
+        ("/v1", "http://127.0.0.1:8000/v1"),
         ("/comfyui", "http://127.0.0.1:8188"),
     ]
 
@@ -30,7 +30,7 @@ def test_default_config_is_the_adr_route_map():
 def test_load_config_defaults_when_no_file():
     config = edge.load_config(None)
     assert [(r.mount, r.target) for r in config.routes] == [
-        ("/v1", "http://127.0.0.1:8000"),
+        ("/v1", "http://127.0.0.1:8000/v1"),
         ("/comfyui", "http://127.0.0.1:8188"),
     ]
 
@@ -56,7 +56,7 @@ def test_load_config_from_toml_ports_and_full_urls(tmp_path: Path):
     assert config.https_port == 8443
     got = {r.mount: r.target for r in config.routes}
     assert got == {
-        "/v1": "http://127.0.0.1:8000",
+        "/v1": "http://127.0.0.1:8000/v1",
         "/comfyui": "http://127.0.0.1:8188",
         "/dashboard": "http://127.0.0.1:8766",
         "/raw": "http://127.0.0.1:9000/raw",
@@ -67,7 +67,7 @@ def test_load_config_host_override_applies_to_port_routes(tmp_path: Path):
     cfg = tmp_path / "edge.toml"
     cfg.write_text('[edge]\nhost = "100.64.0.10"\n[edge.routes]\n"/v1" = 8000\n', encoding="utf-8")
     config = edge.load_config(cfg)
-    assert config.routes[0].target == "http://100.64.0.10:8000"
+    assert config.routes[0].target == "http://100.64.0.10:8000/v1"
 
 
 def test_map_override_adds_and_wins_over_defaults():
@@ -124,7 +124,7 @@ def test_render_up_plan_maps_routes_to_serve_invocations():
     config = edge.default_config()
     plan = edge.render_up_plan(config)
     assert plan == [
-        ["tailscale", "serve", "--bg", "--https=443", "--set-path=/v1", "http://127.0.0.1:8000"],
+        ["tailscale", "serve", "--bg", "--https=443", "--set-path=/v1", "http://127.0.0.1:8000/v1"],
         ["tailscale", "serve", "--bg", "--https=443", "--set-path=/comfyui", "http://127.0.0.1:8188"],
     ]
 
@@ -181,7 +181,7 @@ def test_parse_serve_status_tolerates_empty_or_malformed():
 
 def test_classify_status_flags_managed_present_and_absent():
     config = edge.default_config()
-    current = {"/": "http://127.0.0.1:8766", "/v1": "http://127.0.0.1:8000"}
+    current = {"/": "http://127.0.0.1:8766", "/v1": "http://127.0.0.1:8000/v1"}
     result = edge.classify_status(config, current)
     by_mount = {m["mount"]: m for m in result["mounts"]}
     assert by_mount["/"]["managed"] is False and by_mount["/"]["present"] is True
@@ -196,7 +196,7 @@ def test_plan_down_only_removes_managed_present_and_matching():
     config = edge.default_config()  # /v1 -> 8000, /comfyui -> 8188
     current = {
         "/": "http://127.0.0.1:8766",       # operator dashboard — NOT managed
-        "/v1": "http://127.0.0.1:8000",     # managed + present + matching -> remove
+        "/v1": "http://127.0.0.1:8000/v1",  # managed + present + matching -> remove
         # /comfyui absent -> skip
     }
     plan = edge.plan_down(config, current)
@@ -217,12 +217,28 @@ def test_plan_down_is_idempotent_when_nothing_present():
 
 def test_plan_down_never_targets_operator_root():
     config = edge.default_config()
-    current = {"/": "http://127.0.0.1:8766", "/v1": "http://127.0.0.1:8000", "/comfyui": "http://127.0.0.1:8188"}
+    current = {"/": "http://127.0.0.1:8766", "/v1": "http://127.0.0.1:8000/v1", "/comfyui": "http://127.0.0.1:8188"}
     plan = edge.plan_down(config, current)
     # Every removal carries an explicit --set-path for a managed mount; none touch root "/".
     removed_mounts = {arg.split("=", 1)[1] for cmd in plan for arg in cmd if arg.startswith("--set-path=")}
     assert removed_mounts == {"/v1", "/comfyui"}
     assert "/" not in removed_mounts
+
+
+def test_legacy_prefix_stripping_mapping_is_drift_and_never_removed_implicitly():
+    config = edge.default_config()
+    current = {"/v1": "http://127.0.0.1:8000"}
+    assert edge.plan_down(config, current) == []
+    row = next(row for row in edge.classify_status(config, current)["mounts"] if row["mount"] == "/v1")
+    assert row["managed"] is False
+    assert row["configured_target"] == "http://127.0.0.1:8000/v1"
+
+
+def test_port_only_override_retains_v1_and_explicit_target_paths_remain_authoritative():
+    config = edge.load_config(None, extra_maps=("/v1/=18000", "/dashboard=8766"))
+    assert {route.mount: route.target for route in config.routes}["/v1"] == "http://127.0.0.1:18000/v1"
+    config = edge.load_config(None, extra_maps=("/v1=http://127.0.0.1:18000/custom",))
+    assert {route.mount: route.target for route in config.routes}["/v1"] == "http://127.0.0.1:18000/custom"
 
 
 # --------------------------------------------------------------------------- #

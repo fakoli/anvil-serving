@@ -100,6 +100,9 @@ nav:
       - Capability Gateway:
           - Gateway overview: META-ROUTER.md
           - Request path: THIN-CAPABILITY-GATEWAY.md
+          - Diagnose a request: ROUTER-DIAGNOSTICS.md
+          - Remote tailnet endpoints: REMOTE-TAILNET-ENDPOINTS.md
+          - Router delivery roadmap: ROUTER-ROADMAP.md
           - Embeddings and reranking: PURPOSE-MODELS.md
       - OpenClaw integration: OPENCLAW-INTEGRATION-SPEC.md
       - Agent workbench: WORKBENCH.md

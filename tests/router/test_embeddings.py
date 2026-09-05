@@ -234,13 +234,24 @@ def test_dispatch_embeddings_relays_verbatim_and_logs_decision():
 
     body = {"model": "qwen3-embedding-0.6b", "input": ["hello world"],
             "encoding_format": "float"}
-    payload = router.dispatch("embedding", body)
+    payload = router.dispatch(
+        "embedding",
+        body,
+        correlation={
+            "request_id": "caller-purpose-1",
+            "gateway_request_id": "req_0123456789abcdef0123456789abcdef",
+            "workbench_run_id": "run-purpose-1",
+        },
+    )
 
     assert payload == EMBED_RESPONSE
     (call,) = transport.calls
     assert call["url"] == "http://127.0.0.1:30005/v1/embeddings"
     assert call["body"] == body  # relayed verbatim, extra knobs included
     assert "Authorization" not in call["headers"]  # no auth_env -> no header
+    assert call["headers"]["X-Request-Id"] == (
+        "req_0123456789abcdef0123456789abcdef"
+    )
 
     record = log.last
     assert record is not None
@@ -248,6 +259,9 @@ def test_dispatch_embeddings_relays_verbatim_and_logs_decision():
     assert record.served_tier == "embeddings-local"
     assert record.total_prompt_tokens == 7
     assert record.attempts[0].outcome == "served"
+    assert record.request_id == "caller-purpose-1"
+    assert record.gateway_request_id == "req_0123456789abcdef0123456789abcdef"
+    assert record.workbench_run_id == "run-purpose-1"
 
 
 def test_dispatch_rerank_hits_rerank_path_and_honors_timeout():

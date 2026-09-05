@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.edge-bundle/v1",
+  "target": "compose",
+  "name": "remote-inference",
+  "tailnet": {
+    "image": "registry.example/tailscale:v1@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "hostname": "remote-inference",
+    "auth_key_env": "ANVIL_TAILSCALE_AUTH_KEY",
+    "tag": "tag:anvil-inference",
+    "state_volume": "anvil-tailnet-state"
+  },
+  "inference": {
+    "image": "registry.example/vllm-openai:v1@sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "runtime": "vllm-openai",
+    "extra_args": [],
+    "port": 8000,
+    "served_model": "example/model",
+    "model_revision": "0123456789abcdef0123456789abcdef01234567",
+    "api_key_env": "ANVIL_REMOTE_INFERENCE_TOKEN",
+    "api_key_container_env": "VLLM_API_KEY",
+    "cache_volume": "anvil-model-cache",
+    "cache_mount": "/root/.cache/huggingface",
+    "gpu_count": 1
+  },
+  "router": {
+    "tier_id": "remote-inference",
+    "alias": "llm.remote",
+    "context_limit": 32768,
+    "max_output_tokens": 4096,
+    "tool_support": false
+  }
+}

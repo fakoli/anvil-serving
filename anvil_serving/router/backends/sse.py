@@ -15,8 +15,8 @@ generation time. This module is the read side of the real streaming path:
   so the verify chain and the dialect renderers see identical data either way.
 
 Stdlib-only; pure parsing — no sockets are opened here. Malformed events are
-skipped, never raised: a garbled chunk degrades to lost deltas, and the
-downstream verify gate (NonEmptyContent et al.) owns judging the result.
+skipped, while explicit provider error events raise a fixed content-free
+exception. The downstream relay maps that signal without exposing its payload.
 """
 
 from __future__ import annotations
@@ -28,6 +28,10 @@ from ..internal import StructuredResult
 
 #: OpenAI's stream terminator payload.
 DONE_SENTINEL = "[DONE]"
+
+
+class UpstreamStreamError(RuntimeError):
+    """An explicit provider error event with no provider-controlled detail."""
 
 
 def iter_sse_events(fp) -> Iterator[Tuple[Optional[str], str]]:
@@ -90,21 +94,29 @@ class OpenAIStreamAssembler:
         obj = _loads(data)
         if obj is None:
             return None
+        if "error" in obj:
+            raise UpstreamStreamError("model upstream stream reported an error")
         usage = obj.get("usage")
         if isinstance(usage, Mapping):
             i, o = usage.get("prompt_tokens"), usage.get("completion_tokens")
-            if (isinstance(i, int) and not isinstance(i, bool) and i >= 0
-                    and isinstance(o, int) and not isinstance(o, bool) and o >= 0):
-                self._usage = {"input_tokens": i, "output_tokens": o}
-                # vLLM --enable-prompt-tokens-details: prefix-cache hits ride
-                # in the trailing usage chunk. Absent (not zero-filled) when
-                # the engine does not report them.
-                details = usage.get("prompt_tokens_details")
-                cached = (details.get("cached_tokens")
-                          if isinstance(details, Mapping) else None)
-                if (isinstance(cached, int) and not isinstance(cached, bool)
-                        and cached >= 0):
-                    self._usage["cache_read_input_tokens"] = cached
+            partial: Dict[str, int] = {}
+            if isinstance(i, int) and not isinstance(i, bool) and i >= 0:
+                partial["input_tokens"] = i
+            if isinstance(o, int) and not isinstance(o, bool) and o >= 0:
+                partial["output_tokens"] = o
+            # vLLM --enable-prompt-tokens-details: prefix-cache hits ride
+            # in the trailing usage chunk. Absent (not zero-filled) when
+            # the engine does not report them.
+            details = usage.get("prompt_tokens_details")
+            cached = (details.get("cached_tokens")
+                      if isinstance(details, Mapping) else None)
+            if (isinstance(cached, int) and not isinstance(cached, bool)
+                    and cached >= 0):
+                partial["cache_read_input_tokens"] = cached
+            if partial:
+                if self._usage is None:
+                    self._usage = {}
+                self._usage.update(partial)
         choices = obj.get("choices")
         if not isinstance(choices, list) or not choices:
             return None
@@ -176,10 +188,14 @@ class AnthropicStreamAssembler:
         return v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else None
 
     def feed(self, event: Optional[str], data: str) -> Optional[str]:
+        if event == "error":
+            raise UpstreamStreamError("model upstream stream reported an error")
         obj = _loads(data)
         if obj is None:
             return None
         etype = obj.get("type") or event
+        if etype == "error":
+            raise UpstreamStreamError("model upstream stream reported an error")
         if etype == "message_start":
             msg = obj.get("message")
             usage = msg.get("usage") if isinstance(msg, Mapping) else None
@@ -253,9 +269,12 @@ class AnthropicStreamAssembler:
                               "arguments": args})
             tool_calls = calls
         usage: Optional[Dict[str, int]] = None
-        if self._input_tokens is not None and self._output_tokens is not None:
-            usage = {"input_tokens": self._input_tokens,
-                     "output_tokens": self._output_tokens}
+        if self._input_tokens is not None or self._output_tokens is not None:
+            usage = {}
+            if self._input_tokens is not None:
+                usage["input_tokens"] = self._input_tokens
+            if self._output_tokens is not None:
+                usage["output_tokens"] = self._output_tokens
             if self._cache_read_tokens is not None:
                 usage["cache_read_input_tokens"] = self._cache_read_tokens
         return StructuredResult(
