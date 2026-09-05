@@ -116,3 +116,23 @@ packaged mirror. Other transports gain no diagnostic permission. Regression
 tests resolve actual command-tree specs and refuse a removed permission
 without choosing SSH or a different controller. This template correction
 does not mutate installed private topology or repair live publication.
+
+## Managed live refresh
+
+After workspace resolution, the new local `controller inspect` and
+`controller logs --tail 20` commands were run from source revision
+`31608057933fe5d74e5a4a32bcdebbacf86f9667`. Both returned bounded v1 results
+with `state = ok`. Inspection confirms the selected container is running and
+healthy and declares one loopback binding, but still reports no observed
+published binding. Logs returned 20 recognized metadata-only audit events,
+zero rejected lines, no truncation, and dropped 120 unknown fields.
+
+These commands now replace the raw Docker diagnostic fallback for this
+incident. They do not repair publication or establish external endpoint
+identity/version parity. A source review confirms the controller has no
+managed container recovery operation yet; foreground serve/status and these
+read-only diagnostics cannot recreate its publication. That bounded recovery
+capability requires a separate implementation with selected-service-only
+mutation, explicit images/configuration, mount closure, plan freshness,
+rollback, and independent post-apply identity checks. No live service, route,
+private file or model was changed by this refresh.
