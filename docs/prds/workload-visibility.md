@@ -727,16 +727,10 @@ immutable=1, which would discard live WAL visibility.
 
 **Acceptance criteria:**
 
-- Module-level and instance readers produce literal canonical-equivalent
-  output for the same real existing database and clock, including fresh WAL
-  commits, filters, empty results, corrupt/future rows, and truncation.
-- A missing database under missing parents returns UNAVAILABLE and leaves the
-  directory tree unchanged; no run-root, initialization, recovery, writable
-  connection, job hydration, or writable store constructor is called.
-- Invalid query/host/time fails before path access, lock acquisition, or reads.
-  Excluded owner/kind/host queries retain the existing no-read COMPLETE result.
-- Instance delegation preserves the actual owner lock and snapshot clock;
-  lock contention still terminates within the existing bounded deadline.
+- Module-level and instance readers produce literal canonical-equivalent output for the same real existing database and clock, including fresh WAL commits, filters, empty results, corrupt/future rows, and truncation.
+- A missing database under missing parents returns UNAVAILABLE and leaves the directory tree unchanged; no run-root, initialization, recovery, writable connection, job hydration, or writable store constructor is called.
+- Invalid query/host/time fails before path access, lock acquisition, or reads. Excluded owner/kind/host queries retain the existing no-read COMPLETE result.
+- Instance delegation preserves the actual owner lock and snapshot clock; lock contention still terminates within the existing bounded deadline.
 
 **Verification:**
 
@@ -771,16 +765,10 @@ Do not use immutable=1: live WAL commits must remain visible.
 
 **Acceptance criteria:**
 
-- Standalone and instance reads are canonical-equivalent against one real
-  database, including live WAL commits, empty/filter/truncation cases and
-  corrupt/future records.
-- Missing parents/database remain absent after collection; no schema
-  initialization, writable connection, lifecycle construction, job/event/
-  artifact hydration, recovery, or mutation method is called.
-- Invalid query/host/time fails before path/lock/SQLite access. Existing
-  excluded-source no-read behavior remains unchanged.
-- The instance forwards its actual owner lock and monotonic clock, retaining
-  the existing bounded contention behavior and fixed safe errors.
+- Standalone and instance reads are canonical-equivalent against one real database, including live WAL commits, empty/filter/truncation cases and corrupt/future records.
+- Missing parents/database remain absent after collection; no schema initialization, writable connection, lifecycle construction, job/event/ artifact hydration, recovery, or mutation method is called.
+- Invalid query/host/time fails before path/lock/SQLite access. Existing excluded-source no-read behavior remains unchanged.
+- The instance forwards its actual owner lock and monotonic clock, retaining the existing bounded contention behavior and fixed safe errors.
 
 **Verification:**
 
