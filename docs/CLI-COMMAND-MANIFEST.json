@@ -35286,6 +35286,60 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit bind IP (default: 127.0.0.1).",
+          "value_name": "IP"
+        },
+        {
+          "flags": [
+            "--port"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bind port (default: 8766).",
+          "value_name": "PORT"
+        },
+        {
+          "flags": [
+            "--auth-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bearer-token environment variable; required for non-loopback binds.",
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--workload-controller-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit controller URL for scoped workload reads.",
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--workload-expected-node"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Expected controller node identity for workload reads.",
+          "value_name": "NODE"
+        },
+        {
+          "flags": [
+            "--workload-authorization-policy"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Absolute LOCAL authorization-policy file for workload reads.",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "foreground",

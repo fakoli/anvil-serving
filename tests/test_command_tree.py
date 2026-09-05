@@ -102,6 +102,59 @@ def test_workload_manifest_declaration_and_help_have_exact_read_only_options(cap
     assert "--target" in {flag for option in records["router status"]["options"] for flag in option["flags"]}
 
 
+def test_dashboard_serve_declaration_matches_parser_without_starting_server():
+    from anvil_serving.observability.dashboard.app import build_parser
+
+    dashboard = next(node for node in COMMAND_TREE.nodes if node.name == "dashboard")
+    serve = next(node for node in dashboard.children if node.name == "serve")
+    expected_placeholders = {
+        "--host": "IP",
+        "--port": "PORT",
+        "--auth-env": "ENV",
+        "--workload-controller-url": "URL",
+        "--workload-expected-node": "NODE",
+        "--workload-authorization-policy": "PATH",
+    }
+    declared = {option.flags[0]: option for option in serve.options}
+    parser = build_parser()
+    parser_actions = {
+        action.option_strings[0]: action
+        for action in parser._actions
+        if action.dest != "help"
+    }
+
+    assert set(declared) == set(parser_actions) == set(expected_placeholders)
+    assert {flag: option.value_name for flag, option in declared.items()} == (
+        expected_placeholders
+    )
+    assert {flag: option.summary for flag, option in declared.items()} == {
+        flag: action.help for flag, action in parser_actions.items()
+    }
+    record = next(
+        item for item in manifest_data()["commands"] if item["path"] == "dashboard serve"
+    )
+    assert {flag for option in record["options"] for flag in option["flags"]} == {
+        *expected_placeholders,
+        "--topology",
+        "--topology-overlay",
+        "--command-host",
+        "--command-runtime",
+        "--target",
+        "--transport",
+        "--allow-ssh-fallback",
+        "--experimental-model-workload",
+        "--json",
+        "--quiet",
+        "--verbose",
+        "-h",
+        "--help",
+    }
+    assert record["resource_role"] == "host"
+    assert record["execution_runtime_roles"] == ["native"]
+    assert record["mutation_class"] == "process"
+    assert record["output_policy"] == "foreground"
+
+
 def test_workload_tool_declarations_share_closed_query_schema_and_no_static_authority():
     from anvil_serving.observability.workload_tools import (
         fleet_workloads_declaration, node_workloads_declaration, parse_node_workload_query,
