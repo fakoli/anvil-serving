@@ -39,8 +39,23 @@ changes live routing by itself.
   projection, freshness validation, source identity/timestamp integrity, truthful
   truncation, aggregate limits, safe typed failures, bounded query parsing, exact
   timestamp ordering, stale visibility, and bounded canonical round trips.
-  The initial 17 passing tests do not establish acceptance; all eleven independent
-  findings require reproducing regressions and a fresh independent review.
+  The initial 17 passing tests did not establish acceptance. A second review
+  caught seven additional contract gaps: opaque cross-node IDs, safe host IDs,
+  exact wire fields, media lifecycle mapping, scalar state filtering, truthful
+  partiality, bounded sequence failures, and duplicate-key JSON rejection.
+  The corrective implementation now has 51 passing tests and Ruff passes;
+  independent re-review and post-commit acceptance remain required. The original
+  focused executor and stronger corrective author both missed wire-contract
+  drift; passing either model's own tests is not independent acceptance.
+- Replica admission, open: enforce bounded copied configuration/readiness,
+  strict member eligibility, compound lease invariants, direct snapshot ordering,
+  and event-controlled concurrency coverage. Review rejected silent counter
+  divergence and unbounded external iterable materialization before downstream
+  request dispatch can use this API.
+- Controller authorization wiring, open: add pre-body wrong-scope rejection,
+  unread-body connection closure, keepalive principal reset, store-access guards,
+  and response/audit/persisted-result credential redaction. The 95 focused tests
+  pass; independent review and post-commit acceptance remain required.
 
 ## Acceptance and closure
 
