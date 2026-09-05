@@ -26,6 +26,10 @@ class DockerDiskCompactionError(ValueError):
     """The requested Docker Desktop data-disk compaction is not safe to run."""
 
 
+def _is_windows() -> bool:
+    return os.name == "nt"
+
+
 def _known_docker_data_layout(path: Path) -> bool:
     lowered = tuple(part.lower() for part in path.parts)
     return (
@@ -195,7 +199,7 @@ def _docker_desktop_status(*, runner, vhd_attached):
 
 def inspect_docker_disk_compaction(path, *, runner=subprocess.run):
     """Return a read-only compaction preview for one exact Docker data disk."""
-    if os.name != "nt":
+    if not _is_windows():
         raise DockerDiskCompactionError("Docker Desktop VHDX compaction is Windows-only")
     resolved = validate_docker_data_disk(path)
     stat = resolved.stat()

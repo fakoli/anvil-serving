@@ -85,13 +85,13 @@ class PrivilegeFallbackRunner(FakeRunner):
 
 
 def test_validate_refuses_relative_path(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     with pytest.raises(docker_disk.DockerDiskCompactionError, match="absolute"):
         docker_disk.validate_docker_data_disk("docker_data.vhdx")
 
 
 def test_validate_refuses_unknown_vhdx_layout(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = tmp_path / "unrelated.vhdx"
     path.write_bytes(b"vhdx")
     with pytest.raises(docker_disk.DockerDiskCompactionError, match="known Docker"):
@@ -99,13 +99,13 @@ def test_validate_refuses_unknown_vhdx_layout(monkeypatch, tmp_path):
 
 
 def test_validate_accepts_current_layout(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
     assert docker_disk.validate_docker_data_disk(path) == path.resolve()
 
 
 def test_validate_accepts_legacy_layout(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = tmp_path / "Docker" / "wsl" / "disk" / "docker" / "_data.vhdx"
     path.parent.mkdir(parents=True)
     path.write_bytes(b"vhdx")
@@ -113,7 +113,7 @@ def test_validate_accepts_legacy_layout(monkeypatch, tmp_path):
 
 
 def test_preview_does_not_stop_or_compact(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
     runner = FakeRunner()
 
@@ -127,7 +127,7 @@ def test_preview_does_not_stop_or_compact(monkeypatch, tmp_path):
 
 
 def test_confirm_stops_compacts_and_reports_bytes(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
     runner = FakeRunner()
 
@@ -146,7 +146,7 @@ def test_confirm_stops_compacts_and_reports_bytes(monkeypatch, tmp_path):
 
 
 def test_confirm_preserves_already_stopped_state(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
     runner = FakeRunner(status="stopped", attached=False)
 
@@ -158,7 +158,7 @@ def test_confirm_preserves_already_stopped_state(monkeypatch, tmp_path):
 
 
 def test_known_stopped_cli_response_requires_detached_vhd(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
     runner = StoppedCliRunner(status="stopped", attached=False)
 
@@ -168,7 +168,7 @@ def test_known_stopped_cli_response_requires_detached_vhd(monkeypatch, tmp_path)
 
 
 def test_known_stopped_cli_response_is_refused_while_attached(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
     runner = StoppedCliRunner(status="stopped", attached=True)
 
@@ -177,7 +177,7 @@ def test_known_stopped_cli_response_is_refused_while_attached(monkeypatch, tmp_p
 
 
 def test_missing_mount_privilege_uses_detached_prezeroed_mode(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
     runner = PrivilegeFallbackRunner(status="stopped", attached=False)
 
@@ -189,7 +189,7 @@ def test_missing_mount_privilege_uses_detached_prezeroed_mode(monkeypatch, tmp_p
 
 
 def test_confirm_blocks_when_vhd_remains_attached(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
     runner = FakeRunner(status="stopped", attached=True)
 
@@ -201,7 +201,7 @@ def test_confirm_blocks_when_vhd_remains_attached(monkeypatch, tmp_path):
 
 
 def test_inspection_fails_closed_without_optimize_vhd(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk.os, "name", "nt")
+    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
     runner = FakeRunner()
     original = runner.__call__
