@@ -112,6 +112,24 @@ result in a heterogeneous fleet and must not be reported as failure.
 What is fleet-level is the capability question — is `llm.primary` served
 anywhere, and by what — not placement.
 
+**2026-09-05 amendment — bounded same-host replicas (design pending implementation).**
+This no-arbitration boundary permits one already-selected logical tier to
+declare an optional set of 2–16 equivalent members on its one declared host.
+Alias resolution remains one decision: an alias selects exactly one tier. Only
+inside that tier may the router admit and select one currently eligible member,
+using deterministic round robin in the initial design. Every member must share
+the tier's served model, declared model revision, engine version, image and
+configuration digests, dialect, context/output/tool/media policy, and host;
+each is independently health-checked and live-verified for its served model
+name. Declared deployment provenance is not runtime attestation, and readiness
+is not qualification or promotion.
+
+This is neither cross-host scheduling nor a second route-selection layer. It
+does not authorize lifecycle control, a different tier/model/host/capability,
+or post-dispatch replay: after selecting one member, any later failure is
+returned to the caller without selecting another member. Until the bounded
+replica contract is implemented, a tier continues to have one endpoint.
+
 ### 6. Node capability is declared along three orthogonal axes
 
 Capacity policy stops being a single opaque label. A host declares:

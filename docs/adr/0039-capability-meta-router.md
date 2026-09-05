@@ -73,6 +73,23 @@ The following are invariants, not optional deployment preferences:
 7. Readiness, configuration, qualification, promotion, package publication,
    and live deployment remain distinct states.
 
+**2026-09-05 amendment — bounded same-host replicas (design pending implementation).**
+A configured tier may eventually declare an explicit 2–16-member equivalent
+set on one host. This adds a second, internal decision only after the invariant
+alias-to-tier decision: select one eligible member of the already selected tier
+with deterministic round robin. It never creates a second tier candidate or
+cross-host scheduler. Members must have the same served model and declared
+model revision, engine version, image digest, configuration digest, dialect,
+context/output/tool/media contract, and host. Health and live served-model-name
+checks remain individual; declared provenance is not runtime attestation, and
+readiness does not qualify or promote a member.
+
+After a member is selected, the request is attempted once. No later failure may
+trigger selection of another member, model, tier, host, or capability. This
+amendment grants neither lifecycle authority nor runtime replica support; the
+direct single-endpoint behavior remains the implemented contract until the
+bounded design is delivered.
+
 Purpose-model and audio routes remain deterministic separate surfaces. This
 decision does not add lifecycle authority to the router or change the guarded
 serve/promotion operations.
