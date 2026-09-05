@@ -1,0 +1,80 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "kelnei/Qwen3.8-27B-NVFP4-vLLM0271-NoSpec-PRO6000"
+status = "qualification-control"
+source = "2026-09-05 matched no-spec control for the RTX PRO 6000 kelnei MTP2 challenger"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "kelnei/Qwen3.8-27B-NVFP4"
+revision = "29099dc7004e5731173af5c5fb5253466aee219c"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during the bounded Qwen3.8 optimization campaign."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--kelnei--Qwen3.8-27B-NVFP4/snapshots/29099dc7004e5731173af5c5fb5253466aee219c"
+quantization = "compressed-tensors NVFP4 W4A4 with FP8 attention, DeltaNet, late MLP layers, lm_head, and KV; MTP disabled"
+context_tokens = 262144
+port = 39280
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-kelnei-nvfp4-vllm0271-nospec"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-kelnei-vllm-0271:/root/.cache/vllm"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--served-model-name qwen38-27b-kelnei-nvfp4-vllm0271-nospec",
+  "--language-model-only",
+  "--tensor-parallel-size 1",
+  "--max-model-len 262144",
+  "--max-num-seqs 8",
+  "--gpu-memory-utilization 0.90",
+  "--kv-cache-dtype fp8",
+  "--no-enable-prefix-caching",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 39280",
+]
+note = "Changes only speculative decoding from the paired MTP2 arm. The same exact checkpoint, runtime, memory, context, concurrency, parser, and cache controls are retained. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification-control", "alternate-runtime", "latency", "decode", "concurrency"]
+not_suited = ["automatic-promotion", "SGLang", "DFlash2"]
+rationale = "Measures whether MTP2 provides a local end-to-end benefit instead of inheriting the publisher's external comparison."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/Qwen/Qwen3.8-27B",
+  "https://recipes.vllm.ai/Qwen/Qwen3.8-27B",
+  "https://docs.vllm.ai/en/v0.27.1/",
+]
+community = [
+  "https://huggingface.co/kelnei/Qwen3.8-27B-NVFP4/tree/29099dc7004e5731173af5c5fb5253466aee219c",
+  "https://github.com/kelnei/nvfp4-vllm",
+]
+local = [
+  "configs/qwen38-27b-kelnei-nvfp4-vllm0271-pro6000-mtp2-recipe.toml",
+]

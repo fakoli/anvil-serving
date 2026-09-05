@@ -1,0 +1,719 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K8-Compile"
+status = "qualification-candidate"
+source = "2026-09-04 matched compile arm for the current SGLang Qwen3.8 PRO 6000 optimization campaign"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft, torch.compile"
+context_tokens = 262144
+port = 39266
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k8-compile"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k8-compile",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 8",
+  "--enable-torch-compile", "--torch-compile-max-bs 4",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39266",
+]
+note = "Changes only torch.compile from the measured K8/2K control. Retain cold compile time, capture failures, and warm performance. The compiled batch ceiling is four, so C8 includes the runtime's actual compiled/eager behavior. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "decode", "concurrency", "speculative-decoding", "compile-experiment"]
+rationale = "Tests whether the Helix compile uplift survives this exact current runtime and local card."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B", "https://github.com/sgl-project/sglang/commit/5f55db35e926d50676f75b812640ea2410b0fe0e"]
+community = ["https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4/tree/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462", "https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dflash2-matrix-recipes.toml", "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K4"
+status = "qualification-candidate"
+source = "2026-09-04 matched DFlash2 draft-depth arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K4"
+context_tokens = 262144
+port = 39267
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k4"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k4",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 4",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39267",
+]
+note = "Changes only DFlash2 draft depth from K8 to K4. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "decode", "concurrency", "speculative-decoding"]
+rationale = "Tests whether lower verification overhead beats K8 at C1-C8."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B", "https://huggingface.co/incoai/Qwen3.8-27B-DFlash2/tree/dedf8df68adfb1afeaf7b7480c0a0243108177b4"]
+community = ["https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dflash2-matrix-recipes.toml"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K12"
+status = "qualification-candidate"
+source = "2026-09-04 matched DFlash2 draft-depth arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K12"
+context_tokens = 262144
+port = 39268
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 12",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39268",
+]
+note = "Changes only DFlash2 draft depth from K8 to K12. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "decode", "concurrency", "speculative-decoding"]
+rationale = "Tests whether longer accepted runs beat K8 after verification overhead."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B", "https://huggingface.co/incoai/Qwen3.8-27B-DFlash2/tree/dedf8df68adfb1afeaf7b7480c0a0243108177b4"]
+community = ["https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dflash2-matrix-recipes.toml"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K16"
+status = "qualification-candidate"
+source = "2026-09-04 matched DFlash2 draft-depth arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K16"
+context_tokens = 262144
+port = 39269
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k16"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k16",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 16",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39269",
+]
+note = "Changes only DFlash2 draft depth from K8 to K16. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "decode", "concurrency", "speculative-decoding"]
+rationale = "Tests the upper draft-depth lead without extrapolating from K8 acceptance."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B", "https://huggingface.co/incoai/Qwen3.8-27B-DFlash2/tree/dedf8df68adfb1afeaf7b7480c0a0243108177b4"]
+community = ["https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dflash2-matrix-recipes.toml"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K8-Chunk1K"
+status = "qualification-candidate"
+source = "2026-09-04 matched chunked-prefill arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K8"
+context_tokens = 262144
+port = 39270
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k8-chunk1k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k8-chunk1k",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 1024", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 8",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39270",
+]
+note = "Changes only chunked prefill from 2K to 1K on DFlash2 K8. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "prefill", "concurrency", "long-context", "speculative-decoding"]
+rationale = "Tests whether smaller chunks improve mixed short/long responsiveness."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B"]
+community = ["https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dflash2-matrix-recipes.toml"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-TP2-DFlash2-K12-Chunk1K"
+status = "qualification-candidate"
+source = "2026-09-04 matched TP=2 topology arm for the TP=1 K12/1K finalist"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Two separate PCIe devices without NVLink under WSL2; aggregate TP-sharded capacity, never unified memory."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = [
+  "bash", "-lc",
+  '''set -e; LP=/sgl-workspace/sglang/python/sglang/srt/layers/logits_processor.py; ACTUAL="$(sha256sum "$LP" | awk '{print $1}')"; case "$ACTUAL" in 43a0674df59067223fb793d78bb9f947049d2f983704a09a3c67282bf654cad0) test "$(grep -Fc 'enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,' "$LP")" = 1 || { echo 'anvil patch: logits gatherer anchor drift' >&2; exit 3; }; sed -i 's/enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,/enabled=False,/' "$LP" ;; 83986d97cd5741515477cc182a4c72d1fd6f832f26f97ffa94093740db149627) ;; *) echo "anvil patch: unknown logits processor hash $ACTUAL" >&2; exit 4 ;; esac; echo '83986d97cd5741515477cc182a4c72d1fd6f832f26f97ffa94093740db149627  /sgl-workspace/sglang/python/sglang/srt/layers/logits_processor.py' | sha256sum -c -; test "$(grep -Fc 'enabled=self.do_tensor_parallel_all_gather and not self.use_attn_tp_group,' "$LP")" = 0 || { echo 'anvil patch: old logits gatherer remains' >&2; exit 5; }; echo 'anvil patch: TP2 logits gatherer disabled'; exec python3 -m sglang.launch_server "$@"''',
+  "qwen38-tp2",
+]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K12"
+context_tokens = 262144
+port = 39277
+startup_timeout_seconds = 3000
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-tp2-dflash2-k12-chunk1k"
+ipc = "host"
+shm_size = "64gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0", "NCCL_CUMEM_ENABLE=0", "NCCL_DEBUG=INFO",
+]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-tp2-dflash2-k12-chunk1k",
+  "--tp-size 2", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--disable-custom-all-reduce",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 1024", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 12",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39277",
+]
+note = "Changes topology only from the TP=1 K12/1K finalist. Uses the locally qualified conservative WSL2 NCCL controls plus a checksum-gated, idempotent logits-gather patch after the pristine image crashed in symmetric-memory rendezvous. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "prefill", "concurrency", "long-context", "speculative-decoding", "tensor-parallel"]
+rationale = "Tests whether TP=2 long-prefill and concurrent-context gains offset PCIe collectives and DFlash candidate all-gathers."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B", "https://huggingface.co/Qwen/Qwen3.8-27B/blob/main/config.json"]
+community = ["https://github.com/sgl-project/sglang/issues/15181", "https://forums.developer.nvidia.com/t/qwen3-8-27b-on-dual-sparks/380350"]
+local = ["docs/findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md", "configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-optimization-recipes.toml"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K12-Chunk1K-Lazy96"
+status = "qualification-candidate"
+source = "2026-09-04 winning-depth Mamba strategy arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K12"
+context_tokens = 262144
+port = 39275
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk1k-lazy96"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk1k-lazy96",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 1024", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer_lazy", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 12",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39275",
+]
+note = "Changes only Mamba radix strategy from extra_buffer to extra_buffer_lazy on the K12/1K leader, retaining 96 slots. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "prefill", "concurrency", "long-context", "speculative-decoding", "mamba-state"]
+rationale = "Tests the official higher-throughput lazy state strategy without confounding it with a smaller slot cap."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B"]
+community = ["https://helix.ml/blog/the-ceiling-was-a-state-cache", "https://github.com/sgl-project/sglang/issues/36935"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-optimization-recipes.toml"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K12-Chunk1K-Mamba40"
+status = "qualification-candidate"
+source = "2026-09-04 winning-depth minimum-active-state arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K12"
+context_tokens = 262144
+port = 39276
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk1k-mamba40"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk1k-mamba40",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 1024", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 40",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 12",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39276",
+]
+note = "Changes only the Mamba slot cap from 96 to the official C8 extra_buffer active minimum of 40. Divergent long-prefix cache reuse remains a mandatory gate. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "prefill", "concurrency", "long-context", "speculative-decoding", "mamba-state"]
+rationale = "Measures reclaimed KV capacity and any branch-cache penalty from the minimum active-state allocation."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B"]
+community = ["https://helix.ml/blog/the-ceiling-was-a-state-cache", "https://github.com/sgl-project/sglang/issues/36935"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-optimization-recipes.toml"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K12-Chunk1K"
+status = "qualification-candidate"
+source = "2026-09-04 winning-depth chunked-prefill combination arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K12"
+context_tokens = 262144
+port = 39272
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk1k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk1k",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 1024", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 12",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39272",
+]
+note = "Changes only chunked prefill from 2K to 1K on the measured K12 winner. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "prefill", "concurrency", "long-context", "speculative-decoding"]
+rationale = "Tests smaller prefill chunks while retaining the measured winning DFlash2 depth."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B"]
+community = ["https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-optimization-recipes.toml"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K12-Chunk8K"
+status = "qualification-candidate"
+source = "2026-09-04 winning-depth chunked-prefill combination arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K12"
+context_tokens = 262144
+port = 39273
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk8k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk8k",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 8192", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 12",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39273",
+]
+note = "Changes only chunked prefill from 2K to 8K on the measured K12 winner. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "prefill", "concurrency", "long-context", "speculative-decoding"]
+rationale = "Tests larger prefill chunks while retaining the measured winning DFlash2 depth."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B"]
+community = ["https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-optimization-recipes.toml"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K12-Compile"
+status = "qualification-candidate"
+source = "2026-09-04 winning-depth torch.compile combination arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K12, torch.compile"
+context_tokens = 262144
+port = 39274
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-compile"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-compile",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 12",
+  "--enable-torch-compile", "--torch-compile-max-bs 8",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39274",
+]
+note = "Changes only torch.compile from the measured K12/2K winner. Retain cold compile time, capture failures, and warm performance. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "decode", "concurrency", "speculative-decoding", "compile-experiment"]
+rationale = "Tests the Helix compile lever while retaining the measured winning DFlash2 depth."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B", "https://github.com/sgl-project/sglang/commit/5f55db35e926d50676f75b812640ea2410b0fe0e"]
+community = ["https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4/tree/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462", "https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-optimization-recipes.toml", "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md"]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K8-Chunk8K"
+status = "qualification-candidate"
+source = "2026-09-04 matched chunked-prefill arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during one bounded campaign interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target, FP8 E4M3 target KV, BF16 DFlash2 draft K8"
+context_tokens = 262144
+port = 39271
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k8-chunk8k"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "SGLANG_USE_CUDA_IPC_TRANSPORT=0"]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-pro6000-dflash2-k8-chunk8k",
+  "--tp-size 1", "--language-only", "--context-length 262144",
+  "--max-running-requests 8", "--cuda-graph-max-bs 8", "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3", "--attention-backend flashinfer",
+  "--chunked-prefill-size 8192", "--disable-prefill-cuda-graph", "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer", "--mamba-ssm-dtype bfloat16", "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3", "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant", "--speculative-num-draft-tokens 8",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'", "--enable-metrics",
+  "--host 0.0.0.0", "--port 39271",
+]
+note = "Changes only chunked prefill from 2K to 8K on DFlash2 K8. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "prefill", "concurrency", "long-context", "speculative-decoding"]
+rationale = "Tests whether larger chunks improve long-context prefill without unacceptable short-request latency."
+
+[recipe.sources]
+official = ["https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B"]
+community = ["https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000"]
+local = ["configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dflash2-matrix-recipes.toml"]

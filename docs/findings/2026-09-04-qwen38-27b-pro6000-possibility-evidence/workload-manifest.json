@@ -1,0 +1,55 @@
+{
+  "schema": "anvil-serving.benchmark-workload-manifest/v1",
+  "campaign_id": "2026-09-04-qwen38-27b-pro6000-possibility",
+  "selection": {
+    "contexts_actual_prompt_token_targets": [4096, 32768, 81920, 131072, 253952],
+    "concurrency": [1, 2, 3, 4, 8, 16],
+    "natural_completion_screen_requests": [3, 4, 5, 8, 9, 12, 16, 100],
+    "headline_requests": 100,
+    "headline_response_words": 256,
+    "headline_max_tokens": 512,
+    "headline_prompt_cache_mode": "unique",
+    "headline_request_canaries": true,
+    "random_prefix_seed": 38027,
+    "thinking": "disabled"
+  },
+  "workload_classes": [
+    {"id": "optimization-screen", "description": "4K C1/C4/C8 natural-completion cells used only for within-screen selection"},
+    {"id": "headline-sustained-output", "description": "4K/C8 per replica, 100 total requests, unique per-request markers, 256 requested words, 512-token ceiling"},
+    {"id": "context-curve", "description": "32K C1 plus unique 82K/C8 stress; earlier 128K and 250K C1 controls retained"},
+    {"id": "functional", "description": "short coding, strict structured JSON, shared-prefix tools, and Responses API subset"}
+  ],
+  "controls": [
+    "one-variable SGLang draft depth K4/K8/K12/K16",
+    "one-variable 1024/2048/8192 chunked-prefill sweep at K12",
+    "torch.compile off/on at K12 and 2048-token chunks",
+    "Mamba extra_buffer 96 versus extra_buffer_lazy 96 and extra_buffer 40",
+    "matched SGLang TP1 versus TP2",
+    "two synchronized independent TP1 replicas for DP2 aggregate",
+    "Inferact versus RadixArk target under current SGLang",
+    "kelnei vLLM 0.27.1 integrated MTP2 versus exact no-spec control",
+    "API usage tokens rather than streamed chunk count"
+  ],
+  "metrics": [
+    "time_to_first_output_ms",
+    "effective_prefill_tokens_per_second",
+    "per_request_decode_tokens_per_second",
+    "aggregate_output_tokens_per_second",
+    "time_per_output_token_ms",
+    "mean_inter_token_latency_ms",
+    "end_to_end_ms",
+    "prompt_and_completion_usage_tokens",
+    "request_canary_correctness",
+    "draft_acceptance_counters"
+  ],
+  "timing_definitions": {
+    "ttft": "request start through first non-empty streamed content delta",
+    "effective_prefill": "API prompt tokens divided by TTFT; includes queueing, scheduling, prefill, and first-token work",
+    "decode": "API completion tokens after the first token divided by client-observed generation time",
+    "tpot": "client-observed generation time divided by API completion tokens after the first token",
+    "mean_inter_token_latency": "same per-request aggregate as TPOT in capacity-v3; not raw token-arrival timestamps",
+    "end_to_end": "request start through stream completion",
+    "aggregate_throughput": "sum of API completion tokens divided by the wall-clock span of the concurrent run"
+  },
+  "statistics": {"distribution": ["mean", "standard deviation", "95 percent confidence interval for mean", "min", "p25", "p50", "p75", "p90", "p95", "p99", "max"], "percentile_method": "nearest rank"}
+}
