@@ -105,7 +105,9 @@ def _validated_progress(progress: object) -> Progress | None:
         return None
     if type(progress) is not Progress:
         raise _refuse("invalid workload source result")
-    if type(progress.completed) is not int or type(progress.total) is not int:
+    if type(progress.completed) is not int or (
+        progress.total is not None and type(progress.total) is not int
+    ):
         raise _refuse("invalid workload source result")
     if type(progress.unit) is not str:
         raise _refuse("invalid workload source result")
