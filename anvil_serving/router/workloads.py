@@ -438,6 +438,11 @@ class RouterWorkloadToken:
                 finalizing = True
             record: DecisionRecord | None = None
             when = self._registry._now() if pending is not None else None
+            if pending is not None:
+                # A failed observation clock must not erase the authoritative
+                # routing decision.  Keep its legacy shape when safe workload
+                # timestamps cannot be produced.
+                record = pending[0]
             if (
                 gateway_request_id is not None
                 and entry is not None
