@@ -1,6 +1,7 @@
 # Close node workload composition before adding collection endpoints
 
-Status: bounded pure composition planned as T012.3; runtime composition pending.
+Status: T012.3 pure composition in progress; T012.4 bounded coordinator designed;
+runtime source binding and endpoint composition pending.
 
 The six owner projections can each return200 records, while NodeResult and
 the aggregate selector accept at most1000. Passing all six results directly
@@ -29,3 +30,10 @@ T012 work. They are implementation gaps, not claims of completed features:
 
 Close the remaining source-binding/deadline/dispatch contract in the PRD
 before claiming runtime T012. No live configuration or lifecycle was changed.
+
+T012.4 closes the coordinator contract: one active collection, a 1.5-second
+deadline, at most six persistent owner workers with one in-flight job each,
+no accumulated queue or result cache, source-local failure and late-result
+discard, and nonblocking close. This leaves the existing ten-second managed
+capture lifecycle intact while protecting workload request latency. The later
+server composition must own one collector; creating it per query is forbidden.

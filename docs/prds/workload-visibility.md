@@ -847,13 +847,86 @@ transport context may be returned.
 - `python scripts/run_tests.py tests/observability/test_workload_collection.py tests/observability/test_workloads.py -x -q`
 - `python -m ruff check anvil_serving/observability/workload_collection.py tests/observability/test_workload_collection.py`
 
+### T012.4: Bound concurrent node-source collection
+
+**Feature:** F003
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/observability/node_workload_collector.py, tests/observability/test_node_workload_collector.py
+**Dependencies:** T012.3
+
+Add NodeWorkloadCollector(host, readers, *, monotonic=time.monotonic) in a new
+sibling module. readers is an exact dict of at most six exact WorkloadOwner
+keys to a trusted callable or None; each callable receives (host, query, now).
+Copy this fixed registration once and validate the canonical host. Malformed
+configuration raises fixed ValueError without input echo. Construction reads
+no sources, clock or files and starts no threads. This collector is a bounded
+request coordinator, not a workload store, cache, discovery registry or plugin
+framework.
+
+collect(query, now) first obtains the canonical empty/unavailable fallback
+through build_node_workloads(host, query, now, {}). That validates exact
+query/host/time before any source callback or scheduling. Only one collection
+may be active per collector; a concurrent call returns its canonical
+unavailable fallback immediately rather than queuing or waiting. Missing
+readers remain explicit unavailable sources. The active call uses a fixed
+1.5-second monotonic collection deadline, leaving room within the fleet's
+two-second per-node request budget.
+
+Use at most six lazy persistent daemon workers for the collector lifetime,
+one for each registered non-None owner. Each owner has at most one queued or
+running job; no executor with an unbounded queue, per-request threads, retries,
+or replacement workers for stalled callbacks. A later collection can use idle
+owners while an older timed-out callback still occupies another owner. Busy
+owners are unavailable for the new collection, never awaited or presented as
+idle. Source calls and all monotonic clock reads occur outside the coordinating
+condition/lock. Do not hold any router/admission/store lock in this layer.
+
+Jobs carry collection identity, copied canonical query/time and their deadline.
+Wait only on the condition with the remaining deadline; no sleeps, polling
+loops or busy waiting. Validate clock samples as finite nonnegative built-in
+numbers (not bool); invalid or backwards readings abandon this collection to
+its unavailable fallback. Callback exceptions become fixed unavailable sources,
+without logging or retaining exception text. A callback that finishes past its
+collection deadline is discarded. A timely returned value goes through
+build_node_workloads so malformed values fail only their owner.
+
+On return or exception, clear unclaimed jobs and abandon outstanding result
+slots for this collection. Late running completions must not populate a future
+query or become cached observations. Running jobs keep their one-owner slot
+until they actually finish; healthy idle owners remain usable. Maintain only
+bounded in-flight request metadata and detached canonical results; do not keep
+a result history. close() is idempotent and nonblocking: mark closed, clear
+unclaimed jobs, wake idle workers and abandon results. Work already claimed by
+a worker may finish but cannot publish after close. Future collect calls return
+canonical unavailable without scheduling. No unbounded join or unsafe thread
+cancellation.
+
+The server must eventually own one collector and close it with server lifecycle;
+that wiring and real source/configuration binding are explicitly later T012
+work. This task only implements and tests the coordinator with injected readers,
+not HTTP, topology, credential loading or any live managed observation.
+
+**Acceptance criteria:**
+
+- Event-controlled readers prove one healthy source survives blocked peers and collection returns within the fixed deadline; concurrent collect calls do not queue or start duplicate source work.
+- Repeated timed-out queries with all readers blocked create at most six persistent workers and at most one job per owner; a subsequent query can collect a healthy idle owner while another remains occupied.
+- Invalid arguments and invalid/backwards clocks fail before new scheduling where detectable; source/clock callbacks never execute while the coordinating lock is held.
+- A late completion cannot contaminate another query, return cached work, or revive a closed collector; queued-but-unclaimed callbacks are discarded on timeout/close.
+- Callback failures/malformed source values are isolated, no raw errors or seeded private data escape, complete/partial/unavailable output uses the canonical builder, and all test workers are released and joined in bounded cleanup.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_node_workload_collector.py tests/observability/test_workload_collection.py -x -q`
+- `python -m ruff check anvil_serving/observability/node_workload_collector.py tests/observability/test_node_workload_collector.py`
+
 ### T012: Aggregate node-local workload sources
 
 **Feature:** F003
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/control_plane/controller/server.py, anvil_serving/observability/probes/remote_controller.py, tests/test_controller.py, tests/observability/test_remote_controller.py
-**Dependencies:** T003, T004, T004.2, T005, T010, T011, T011.2, T012.1, T012.2, T012.3
+**Dependencies:** T003, T004, T004.2, T005, T010, T011, T011.2, T012.1, T012.2, T012.3, T012.4
 
 Add the controller workload operation that projects its own controller/benchmark/media/managed-status sources and fetches router work only through the topology-declared authenticated loopback resource. Enforce `workloads:read` before any source read and keep a status for every source.
 
