@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
+import re
 import tomllib
 
 
@@ -85,6 +86,33 @@ def test_controller_compose_excludes_native_host_and_gateway_tools():
         "openclaw_gateway_status",
     ):
         assert f"- {excluded}\n" not in text
+
+
+def test_controller_compose_has_exact_generic_operation_allowlist():
+    operations = tuple(
+        re.findall(r"- --allow-operation\s*\n\s*- ([a-z0-9_]+)", _text())
+    )
+
+    assert operations == (
+        "operation_contracts",
+        "router_status",
+        "router_logs",
+        "router_manage",
+        "router_transition",
+        "decision_summary",
+        "controller_inspect",
+        "controller_logs",
+        "serves_status",
+        "reservation_status",
+        "serves_manage",
+        "serves_mode",
+        "serves_logs",
+        "voice_manage",
+        "gpu_inventory",
+        "preflight_probe",
+        "benchmark_probe",
+        "workflow_packet_validate",
+    )
 
 
 def test_controller_compose_pins_current_release():

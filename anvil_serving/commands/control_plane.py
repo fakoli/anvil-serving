@@ -119,6 +119,21 @@ def commands() -> tuple[CommandNode, ...]:
                     "Compare the installed topology against a canonical fleet reference.",
                     handler=_handler("anvil_serving.topology_cli", argv_prefix=("drift",)),
                 ),
+                _node(
+                    "validate-router-config",
+                    "Validate a router config against declared topology offline.",
+                    options=(
+                        _option(
+                            "--config",
+                            summary="Required router configuration TOML.",
+                            value_name="PATH",
+                        ),
+                    ),
+                    handler=_handler(
+                        "anvil_serving.topology_cli",
+                        argv_prefix=("validate-router-config",),
+                    ),
+                ),
             ),
             docs_anchor="docs/cli/control-plane.md#topology",
         ),

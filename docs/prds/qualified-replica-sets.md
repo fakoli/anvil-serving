@@ -322,12 +322,21 @@ Add a bytes-based router-config parser and a pure replica topology validator. Bo
 
 Build existing member adapters under a `ReplicaRuntime` aggregate stored at the outer logical tier ID. Derive validated per-member direct-tier views only after configuration loading, preserve the tier-wide dialect, timeout, auth, and semantic policy, and keep the outer backend map keyed by tier ID. Do not create a second alias-resolution or engine-selection path.
 
+The aggregate owns a copied, immutable mapping of exactly the declared member IDs to existing backend adapters. Expose `member_ids`, `member_backend(member_id)`, and `generate_member(member_id, request)`; unknown members fail with a fixed input-free error. Its ordinary `generate(request)` must refuse with a fixed selection-required error and invoke no adapter. T008, not this constructor, selects the member. Build direct views with `replace(tier, base_url=member.base_url, replicas=())` and forward the existing environment, transport, effective timeout and model-discovery arguments unchanged.
+
+Preserve the selected adapter's structured-result side channel. `ReplicaRuntime` keeps a thread-local selected-backend pointer, not a copied result or terminal store. Clear it before lookup/invocation and on refusal or eager failure; retain only the successfully invoked member for that thread. `get_last_structured()` delegates to that member's existing method or returns None. The existing outer wrapper already forwards this method, and `RoutingBackend.complete_metadata()` reads it after normal iterator drain for tool calls, finish reason and usage. T008 must invoke the outer wrapper's `generate_member`, never bypass its ceiling through a raw member backend.
+
+Keep readiness in the single existing `RoutingBackend._availability` provider, whose accepted T003 implementation already keys probes by `(tier.id, member.id)`. Do not add a readiness cache or a provider per replica. T008 calls `safe_check_member` on that owner to complete all snapshots before admission. Likewise, retain exactly one outer `_ConcurrencyLimitedBackend` for the logical tier. Add an explicit `generate_member` forwarding path that acquires its existing semaphore and returns the existing close-aware iterator; do not put a semaphore on each member or multiply the configured tier ceiling. Preserve direct `generate` and structured-result behavior. The source finding and ownership decision are recorded in `.tickets/2026-09-05-replica-runtime-construction.md`.
+
 **Acceptance criteria:**
 
-- Every configured member has one backend and one member-keyed readiness source inside its tier runtime.
+- Every configured member has one backend in its tier aggregate; readiness remains in the existing single provider under a composite tier/member key, with no new cache or network call during construction.
 - Equal member IDs in different tiers resolve to different runtime objects.
 - The empty replica-tier URL sentinel never reaches a URL builder.
 - Direct tiers still construct exactly one existing backend.
+- Aggregate generation without explicit selection and unknown member lookup both refuse before invoking an adapter, without echoing the member operand.
+- A tier with a concurrency limit retains one shared outer semaphore. Event-controlled cross-member tests prove it releases on error and on close-before-first-iteration, and cannot admit one request per member beyond the shared ceiling.
+- After normal drain, aggregate and outer wrapper expose exactly the selected member's structured tool calls, finish reason and usage. Event-controlled concurrent threads never cross-observe results; refusal and eager failure reset the pointer. Removing the structured-result delegation makes the regression fail.
 
 **Verification:**
 
@@ -474,22 +483,24 @@ Document a generic two-member loopback configuration, exact declared-versus-live
 **Feature:** F001
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/topology_cli.py, anvil_serving/commands/control_plane.py, tests/test_topology.py
+**Likely files:** anvil_serving/topology_cli.py, anvil_serving/commands/control_plane.py, anvil_serving/cli.py, tests/test_topology.py
 **Dependencies:** T006
 
-Add the root command `anvil-serving topology validate-router-config --config PATH [--topology PATH] [--topology-overlay PATH] [--json]` to the existing local offline topology family. It must call the T006 snapshot validator without target resolution, transport, confirmation, network, Docker, service, GPU, or mutation behavior. Library code returns a dictionary; only the wrapper prints. Success emits exactly `schema_version`, `valid`, `error_code`, `config_sha256`, `tier_count`, `replica_tier_count`, `replica_member_count`, `deployment_identity_source`, and `runtime_deployment_identity_verified`, with schema literal `replica-topology-validation/v1`, `deployment_identity_source = "declared"`, and `runtime_deployment_identity_verified = false`. Failure uses the same keys, a T006 fixed error code, null counts and provenance, false runtime verification, and a digest only when a complete bounded capture exists. Human output is one bounded line derived only from that dictionary. Exit zero means valid and exit two means refused.
+Add the root command `anvil-serving topology validate-router-config --config PATH [--topology PATH] [--topology-overlay PATH] [--json]` to the existing local offline topology family. It must call the T006 snapshot validator without target resolution, transport, confirmation, network, Docker, service, GPU, or mutation behavior. Library code returns a dictionary; only wrappers print. The result has exactly `schema_version`, `valid`, `error_code`, `config_sha256`, `tier_count`, `replica_tier_count`, `replica_member_count`, `deployment_identity_source`, and `runtime_deployment_identity_verified`, with schema literal `replica-topology-validation/v1`, success provenance `declared`, and false runtime verification. Failure uses the same keys, a T006 fixed error code, null counts and provenance, false runtime verification, and a null digest unless a complete bounded capture is available without rereading. The existing root CLI JSON envelope retains this dictionary in `data` for both success and refusal. Keep its command label exactly `topology validate-router-config`, context null, warnings empty, and errors fixed/input-free; never echo argv or paths in any wrapper field. Human output is one bounded line derived only from that dictionary. Exit zero means valid and exit two means refused.
+
+The root dispatcher special-cases the topology family before handler resolution. Extend that actual branch in `cli.py::_dispatch`, not only `topology_cli.main`; preserve other topology commands. Its generic `_json_envelope` normally includes raw argv for topology commands, so the new sensitive leaf also needs operand-free envelope handling. Invalid/missing/repeated flags must refuse without argparse echoing raw inputs or invoking the validator. Follow the existing protected metadata command idiom without broadening other commands' output contracts.
 
 **Acceptance criteria:**
 
 - The exact root CLI path and four options work locally and return the closed success or failure dictionary.
-- JSON and human output derive from the same value and contain no config path, URL, host or resource identity, auth metadata, raw value, or exception text.
+- JSON data and human output derive from the same value; the entire root envelope, parser errors and human line contain no config path, URL, host or resource identity, auth metadata, raw value, or exception text. Real `cli.main` tests exercise valid, invalid, missing/repeated/unknown flag, and private-path cases.
 - Invalid config/topology/join input exits two; a valid direct or replica snapshot exits zero without modifying a file or contacting a host.
 - A negative control proves the command invokes the shared T006 validator and cannot pass through an independently shaped fixture.
 
 **Verification:**
 
 - `python scripts/run_tests.py tests/test_topology.py -x -q`
-- `python -m ruff check anvil_serving/topology_cli.py anvil_serving/commands/control_plane.py tests/test_topology.py`
+- `python -m ruff check anvil_serving/topology_cli.py anvil_serving/commands/control_plane.py anvil_serving/cli.py tests/test_topology.py`
 
 ### T015: Activate only the validated exact-byte router snapshot
 
