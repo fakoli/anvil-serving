@@ -27,6 +27,7 @@ import json
 import socket
 import threading
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from typing import Dict, Optional, Sequence, Tuple
 
 import pytest
@@ -40,8 +41,15 @@ import anvil_serving.router.front_door as front_door
 from tests.router.helpers import StaticBackend
 from anvil_serving.router.front_door import (
     TRANSITION_ENDPOINT,
+    WORKLOADS_ENDPOINT,
     OperatorRoute,
     make_server,
+)
+from anvil_serving.observability.workloads import (
+    ResultStatus,
+    SourceResult,
+    Truncation,
+    WorkloadOwner,
 )
 
 TOKEN = "s3cr3t-router-token"
@@ -54,11 +62,16 @@ def running_server(
     *,
     authorization_policy=None,
     operator_routes: Optional[Sequence[OperatorRoute]] = None,
+    workload_host=None,
+    workload_registry=None,
+    workload_clock=None,
 ):
     """Start the front door on an ephemeral port with a fixed ``auth_token``."""
     httpd = make_server(
         "127.0.0.1", 0, backend, auth_token=auth_token,
         authorization_policy=authorization_policy, operator_routes=operator_routes,
+        workload_host=workload_host, workload_registry=workload_registry,
+        workload_clock=workload_clock,
     )
     host, port = httpd.server_address[:2]
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -151,6 +164,21 @@ def _scoped_policy(tmp_path, clients):
 
 def _operator_route(callback):
     return OperatorRoute("GET", "/v1/operator/workloads", WORKLOADS_READ, callback)
+
+
+class _WorkloadRegistry:
+    def __init__(self):
+        self.calls = []
+
+    def source_result(self, host, query, now):
+        self.calls.append((host, query, now))
+        return SourceResult(
+            owner=WorkloadOwner.ROUTER,
+            status=ResultStatus.COMPLETE,
+            collection_timestamp=now,
+            records=(),
+            truncation=Truncation(0, 0),
+        )
 
 
 def _read_until_eof(sock: socket.socket) -> bytes:
@@ -438,6 +466,107 @@ def test_operator_route_requires_exact_workloads_scope_and_preserves_legacy_auth
     assert calls == ["raw=a%2Bb", "post:"]
     assert chat == 401
     assert transition == 401
+
+
+def test_builtin_workload_route_is_scoped_strict_and_identity_bound(tmp_path):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ",
+        "token": token,
+    }])
+    registry = _WorkloadRegistry()
+    collected = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        workload_host="node-a", workload_registry=registry,
+        workload_clock=lambda: collected,
+    ) as (host, port):
+        missing, _, _ = _get(host, port, WORKLOADS_ENDPOINT)
+        legacy, _, _ = _get(
+            host, port, WORKLOADS_ENDPOINT,
+            {"Authorization": f"Bearer {TOKEN}"},
+        )
+        malformed, _, malformed_raw = _get(
+            host, port, WORKLOADS_ENDPOINT + "?limit=+1",
+            {"Authorization": f"Bearer {token}"},
+        )
+        accepted, headers, raw = _get(
+            host, port,
+            WORKLOADS_ENDPOINT + "?active_only=true&limit=2&recent_seconds=30",
+            {"Authorization": f"Bearer {token}"},
+        )
+    assert (missing, legacy, malformed, accepted) == (403, 403, 400, 200)
+    assert json.loads(malformed_raw)["error"]["type"] == "invalid_workload_query"
+    assert headers["cache-control"] == "no-store"
+    assert len(registry.calls) == 1
+    host, query, now = registry.calls[0]
+    assert host == "node-a"
+    assert query.active_only is True
+    assert query.limit == 2
+    assert query.recent_seconds == 30
+    assert now == collected
+    payload = json.loads(raw)
+    assert payload["host"] == "node-a"
+    assert payload["status"] == "complete"
+    assert payload["sources"][0]["owner"] == "router"
+
+
+def test_builtin_workload_route_unavailable_and_reserved(tmp_path):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ",
+        "token": token,
+    }])
+    registry = _WorkloadRegistry()
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        workload_registry=registry,
+    ) as (host, port):
+        status, _, raw = _get(
+            host, port, WORKLOADS_ENDPOINT,
+            {"Authorization": f"Bearer {token}"},
+        )
+    assert status == 503
+    assert json.loads(raw)["error"]["type"] == "workload_source_unavailable"
+    assert registry.calls == []
+    with pytest.raises(ValueError):
+        make_server(
+            "127.0.0.1", 0, StaticBackend(["ok"]),
+            operator_routes=[OperatorRoute(
+                "GET", WORKLOADS_ENDPOINT, WORKLOADS_READ, lambda _query: b"{}"
+            )],
+        )
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "limit=2&limit=3",
+        "unknown=value",
+        "active_only=1",
+        "recent_seconds=1_0",
+        "limit=%ZZ",
+        "a=1&b=2&c=3&d=4&e=5&f=6&g=7&h=8",
+    ],
+)
+def test_builtin_workload_query_refusals_do_not_read_registry(tmp_path, query):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ",
+        "token": token,
+    }])
+    registry = _WorkloadRegistry()
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        workload_host="node-a", workload_registry=registry,
+    ) as (host, port):
+        status, _, raw = _get(
+            host, port, WORKLOADS_ENDPOINT + "?" + query,
+            {"Authorization": f"Bearer {token}"},
+        )
+    assert status == 400
+    assert json.loads(raw)["error"]["type"] == "invalid_workload_query"
+    assert registry.calls == []
 
 
 def test_operator_route_denial_precedes_unread_body_and_closes_socket(tmp_path):

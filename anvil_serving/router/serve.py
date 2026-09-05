@@ -1362,10 +1362,11 @@ def build_server(
         capacity_metrics=capacity_metrics,
         decision_log=decision_log,
     )
+    effective_workload_clock = workload_clock or (lambda: datetime.now(timezone.utc))
     if observe_workloads:
         routing._workload_registry = RouterWorkloadRegistry(
             routing._decision_log,
-            clock=workload_clock or (lambda: datetime.now(timezone.utc)),
+            clock=effective_workload_clock,
         )
 
     purpose: Optional[PurposeRouter] = None
@@ -1455,6 +1456,9 @@ def build_server(
         purpose=purpose, audio=audio, gateway=gateway,
         authorization_policy=scoped_policy,
         operator_routes=operator_routes,
+        workload_host=server_config.workload_host,
+        workload_registry=routing._workload_registry,
+        workload_clock=effective_workload_clock,
     )
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]
