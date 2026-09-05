@@ -1,6 +1,7 @@
 # Synthetic workload credential scanner findings
 
-Status: source-only fixture repair; consolidated scan and acceptance pending.
+Status: source-only fixture repair verified; final integrated acceptance and
+merge are recorded in the merge checkpoint ticket.
 
 The pinned CI Gitleaks image found two generic-api-key matches in the clean
 tracked snapshot at `c8e551d4`: the deterministic hexadecimal TOKEN constants
@@ -17,3 +18,8 @@ rendered documentation copies. Those are not tracked publication input; the
 publication gate uses a clean Git snapshot and CI's clean checkout separately.
 Do not turn ignored artifacts into broad path allowlists or a history-clean
 claim. The final merge checkpoint records the actual scan results.
+
+At `5f96e7a7`, 79 focused tests and Ruff passed with claim-bound evidence
+`EVA54FC316`. A clean Git archive passed the pinned Gitleaks scan with no
+findings; the semantic scanner and its intentional-positive self-test also
+passed. These are current-snapshot results, not a full-history audit.

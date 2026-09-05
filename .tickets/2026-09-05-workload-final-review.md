@@ -1,6 +1,7 @@
 # Consolidated workload review repairs
 
-Status: temporal source repair verified; dashboard repair and acceptance pending.
+Status: temporal and dashboard source repairs independently verified; final
+integrated acceptance and merge are recorded in the merge checkpoint ticket.
 
 Independent review of 7ef089b6 found two source-contract gaps:
 
@@ -23,7 +24,8 @@ allow up to 30 seconds beyond observation; their existing test explicitly proves
 that boundary. The reviewer confirmed this distinction. Both classes still obey
 one exact receipt bound for every descendant timestamp; provenance adds no skew.
 This is the owner-specific interpretation of T014, not a removal of managed skew
-support. The public task wording will be clarified after active claims finish.
+support. The public and canonical task wording was clarified after the active
+claim released.
 
 The new independent regression file failed 9 cases against the pre-fix source
 (3 positive controls passed). After repair it covers 14 ordering, nested decode,
@@ -34,3 +36,9 @@ made coherent: an explicitly stale managed observation and microsecond sorting
 retain lifecycle times no later than their supplied observation; the existing
 future test still reaches the future bound. This necessary fixture file was not
 in the initial likely-files estimate; no unrelated tests or assertions changed.
+
+Independent recheck at `c8e551d4` returned SHIP for these repairs: 150 focused
+tests passed. The executed dashboard harness passed normally and failed when
+either the semantic guard or the generation guard was removed. The latter
+uses otherwise-valid canonical late data, so semantic rejection cannot mask a
+broken generation fence. No files were changed by that independent recheck.

@@ -2,8 +2,9 @@
 
 ## Status
 
-Source repair candidate implemented for workload-contract-repairs T016. Independent
-acceptance, merge, deployment, and live qualification remain pending.
+Source repair implemented for workload-contract-repairs T016 and inspected by
+the integrating reviewer. Final batch acceptance and merge are recorded in the
+merge checkpoint ticket; deployment and live qualification are not included.
 
 ## Reproduction
 
@@ -36,3 +37,10 @@ for its ready branch and a redacted mismatch for its unavailable branch.
 
 No direct-tier behavior, lifecycle authority, endpoint configuration, or live
 operator state changes in this repair.
+
+Postcommit proof at `5fc7a986` passed 1164 router/lifecycle tests, Ruff and diff
+checks; State evidence is `EVA2FEF71F`. The health-only, mismatched, inconsistent,
+subclass, non-boolean and malformed readiness cases make zero backend calls.
+Replacing the eligibility predicate with an always-true function makes the
+health-only dispatch assertion fail. The independent root inspected the
+production/test diff before integration; no per-task deployment was attempted.
