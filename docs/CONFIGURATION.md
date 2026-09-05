@@ -327,11 +327,12 @@ deployments. Unset keys mean no file I/O.
 
 ## `[[router.tiers]]`
 
-Every chat tier needs `id`, `base_url`, `dialect`, `privacy = "local"`,
+Every chat tier needs `id`, `dialect`, `privacy = "local"`,
 `tool_support`, and `auth_env`. The default `metadata_source = "configured"`
 also requires `model` and `context_limit`. An upstream-owned tier instead
 requires `metadata_source = "upstream"` and `health_path`, and omits both
-values as described above. `base_url` is an
+values as described above. A direct tier requires `base_url`; a replica tier
+instead requires the member contract below. A direct tier's `base_url` is an
 OpenAI- or Anthropic-compatible base URL; use `127.0.0.1`, never `localhost`,
 for same-host serves. Optional `health_path`, `timeout`, `max_concurrency`,
 `max_output_tokens`, `context_admission`, `extra_body`, and
@@ -370,6 +371,7 @@ substitution mechanism.
 ```toml
 [[router.tiers]]
 id = "primary-replicas"
+metadata_source = "configured"
 model = "primary-model"
 dialect = "openai"
 context_limit = 4096
@@ -390,12 +392,34 @@ replica_identity = { model_revision = "revision-1", engine_version = "engine-1.0
 llm.primary = "primary-replicas"
 ```
 
+Replica tiers require configured model metadata and exact served-model
+identity checks. The shared revision, engine version, image digest and config
+fingerprint are declared deployment identity, not runtime attestation.
+`qualification_ref` is an opaque evidence reference; parsing it does not open
+or verify the referenced qualification. Member readiness proves only the
+bounded health and served-model checks. Discovery and capacity views retain
+`deployment_identity_source = "declared"` and
+`runtime_deployment_identity_verified = false` even when every member is ready.
+
+Before activation, run
+[`topology validate-router-config`](cli/control-plane.md#validate-a-router-config-against-topology)
+to check member ownership and endpoint declarations against the selected
+topology. The offline result describes one exact-byte config snapshot, not
+live deployment. Managed router config installation captures and validates its
+own snapshot before any transition, then installs those same bytes; a previous
+CLI check is not an activation token. Unsupported single-serve promotion and
+mode shortcuts refuse replica tiers; see
+[replica lifecycle limits](cli/serves.md#replica-lifecycle-limits).
+
 `replica_strategy` defaults to `round_robin`; an explicit strategy is invalid
 on a direct tier. In capacity mode every member requires an integer
 `max_concurrency` from 1 through 100000. A configured member ceiling is still
 an admission limit in round-robin mode. Tier `max_concurrency` is the aggregate
 limit; when omitted in capacity mode, the aggregate is the sum of member
 ceilings.
+
+Round-robin starts at the lexically first eligible member ID and rotates
+deterministically across eligible members. Config order is not routing priority.
 
 Capacity selection uses exact local reservation ratios, then conservative
 bounded upstream pressure, then a rotating member-ID tie. Fresh pressure is no

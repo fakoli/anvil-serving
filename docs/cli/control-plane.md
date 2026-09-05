@@ -32,6 +32,7 @@ authority.
 | Command | Purpose |
 | --- | --- |
 | `topology validate` | Validate the base topology and optional overlay offline. |
+| `topology validate-router-config` | Validate an exact router config snapshot against declared topology offline. |
 | `topology show` | Render hosts, runtimes, resources, and transports. |
 | `topology resolve` | Explain the owner and transport for one canonical command. |
 
@@ -103,6 +104,35 @@ anvil-serving topology resolve --topology operator-topology.toml --command "host
 owner, runtime, transport, endpoint, capacity decision, and any override
 warning, but never imports or executes the command handler. Loopback remains
 host-relative; a topology never treats `127.0.0.1` on Mini as Dark.
+
+### Validate a router config against topology
+
+```bash
+anvil-serving topology validate-router-config --config ./router.toml \
+  --topology ./operator-topology.toml --json
+```
+
+This offline command checks one bounded, exact-byte router config snapshot
+against the declared topology, including replica member ownership and endpoint
+consistency. Its inputs are required `--config`, optional `--topology` and
+`--topology-overlay`, and optional `--json`. When topology is omitted, it uses
+the selected operator home's default topology. It does not resolve DNS, probe
+hosts or models, change routes, or install anything.
+
+The metadata-only `replica-topology-validation/v1` result contains
+`schema_version`, `valid`, `error_code`, `config_sha256`, `tier_count`,
+`replica_tier_count`, `replica_member_count`, `deployment_identity_source` and
+`runtime_deployment_identity_verified`. Success reports the config digest and
+counts, source `declared`, and runtime verification `false`. Refusal reports a
+fixed error code, null digest/counts/source, and runtime verification `false`;
+paths, URLs, raw parser errors and private identity values are absent. JSON
+uses the normal command envelope with this result under `data`. Exit status is
+0 for valid and 2 for refusal, including malformed arguments.
+
+A successful check is not a reusable activation token or evidence of live
+readiness. Managed router config installation recaptures and validates its own
+snapshot before a transition and installs the same captured bytes. Qualification,
+promotion approval, and post-deploy client acceptance remain separate gates.
 
 ## Harness
 
