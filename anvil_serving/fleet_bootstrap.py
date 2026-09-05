@@ -19,7 +19,7 @@ import unicodedata
 import uuid
 import zipfile
 import zlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -38,6 +38,7 @@ CONTROLLER_OPERATION_CATALOG_SCHEMA = (
 )
 RECEIVER_FRAME_SCHEMA = "anvil-serving.fleet-bootstrap-receiver-frame/v1"
 RECEIVER_RESULT_SCHEMA = "anvil-serving.fleet-bootstrap-receiver-result/v1"
+OPERATION_RECORD_SCHEMA = "anvil-serving.fleet-bootstrap-operation/v1"
 MAX_BUNDLE_BYTES = 16 * 1024 * 1024
 MAX_MANIFEST_BYTES = 16 * 1024
 MAX_SHIM_BYTES = 256 * 1024
@@ -167,6 +168,21 @@ _RECEIVER_OPERATION_RESULT_FIELDS = frozenset(
         "manifest_sha256",
         "phase",
         "outcome",
+        "error_code",
+        "trigger_error_code",
+    }
+)
+_OPERATION_RECORD_FIELDS = frozenset(
+    {
+        "schema",
+        "expected_node",
+        "operation_id",
+        "plan_sha256",
+        "target_config_sha256",
+        "bundle_sha256",
+        "bundle_length",
+        "manifest_sha256",
+        "phase",
         "error_code",
         "trigger_error_code",
     }
@@ -747,6 +763,13 @@ _RECEIVER_ORDINARY_PHASES = frozenset(
         BootstrapPhase.RESTARTED,
     }
 )
+_RECEIVER_ORDINARY_PHASE_ORDER = (
+    BootstrapPhase.STAGED,
+    BootstrapPhase.VERIFIED,
+    BootstrapPhase.INSTALLED,
+    BootstrapPhase.ACTIVATED,
+    BootstrapPhase.RESTARTED,
+)
 _RECEIVER_ROLLBACK_PHASES = frozenset(
     {
         BootstrapPhase.ROLLBACK_STARTED,
@@ -1186,6 +1209,269 @@ def match_receiver_result(
     if not matches:
         raise _refuse(BootstrapErrorCode.RECEIVER_MISMATCH, "receiver result does not match request")
     return result
+
+
+@dataclass(frozen=True, repr=False)
+class BootstrapOperationRecord:
+    """One immutable, bound receiver operation without durable-state authority."""
+
+    expected_node: str
+    operation_id: str
+    plan_sha256: str
+    target_config_sha256: str
+    bundle_sha256: str
+    bundle_length: int
+    manifest_sha256: str
+    phase: BootstrapPhase
+    error_code: BootstrapErrorCode | None
+    trigger_error_code: BootstrapErrorCode | None
+    schema: str = field(default=OPERATION_RECORD_SCHEMA, init=False)
+
+    def __post_init__(self) -> None:
+        if type(self) is not BootstrapOperationRecord:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation record is invalid")
+        if type(self.schema) is not str or self.schema != OPERATION_RECORD_SCHEMA:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation record schema is invalid")
+        _required_text(self.expected_node, _NODE_RE, "expected_node")
+        if _operation_id(self.operation_id) is None:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation_id is invalid")
+        _required_text(self.plan_sha256, _SHA256_RE, "plan_sha256")
+        _required_text(self.target_config_sha256, _SHA256_RE, "target_config_sha256")
+        _required_text(self.bundle_sha256, _SHA256_RE, "bundle_sha256")
+        _required_text(self.manifest_sha256, _SHA256_RE, "manifest_sha256")
+        if type(self.bundle_length) is not int or not 1 <= self.bundle_length <= MAX_BUNDLE_BYTES:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation bundle length is invalid")
+        if type(self.phase) is not BootstrapPhase:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation phase is invalid")
+        _optional_error_code(self.error_code, "error_code")
+        _optional_error_code(self.trigger_error_code, "trigger_error_code")
+        self._status_result()
+
+    def _outcome(self) -> BootstrapOutcome:
+        if self.phase in _RECEIVER_ORDINARY_PHASES or self.phase is BootstrapPhase.ROLLBACK_STARTED:
+            return BootstrapOutcome.PENDING
+        return BootstrapOutcome.ERROR
+
+    def _status_result(self) -> BootstrapReceiverOperationResult:
+        """Delegate legal phase/error validation to the established result contract."""
+        return BootstrapReceiverOperationResult(
+            operation=ReceiverOperation.STATUS,
+            expected_node=self.expected_node,
+            operation_id=self.operation_id,
+            plan_sha256=self.plan_sha256,
+            target_config_sha256=self.target_config_sha256,
+            bound=True,
+            bundle_sha256=self.bundle_sha256,
+            bundle_length=self.bundle_length,
+            manifest_sha256=self.manifest_sha256,
+            phase=self.phase,
+            outcome=self._outcome(),
+            error_code=self.error_code,
+            trigger_error_code=self.trigger_error_code,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        self.__post_init__()
+        return {
+            "schema": self.schema,
+            "expected_node": self.expected_node,
+            "operation_id": self.operation_id,
+            "plan_sha256": self.plan_sha256,
+            "target_config_sha256": self.target_config_sha256,
+            "bundle_sha256": self.bundle_sha256,
+            "bundle_length": self.bundle_length,
+            "manifest_sha256": self.manifest_sha256,
+            "phase": self.phase.value,
+            "error_code": self.error_code.value if self.error_code is not None else None,
+            "trigger_error_code": (
+                self.trigger_error_code.value if self.trigger_error_code is not None else None
+            ),
+        }
+
+    def to_json_bytes(self) -> bytes:
+        value = canonical_json_bytes(self.to_dict())
+        if not 1 <= len(value) <= MAX_RECEIVER_RESULT_BYTES:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation record length is invalid")
+        return value
+
+    @classmethod
+    def from_dict(cls, raw: Any) -> BootstrapOperationRecord:
+        raw = _validate_exact_fields(raw, _OPERATION_RECORD_FIELDS, "operation record fields are invalid")
+        if type(raw["schema"]) is not str or raw["schema"] != OPERATION_RECORD_SCHEMA:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation record schema is invalid")
+        return cls(
+            expected_node=raw["expected_node"],
+            operation_id=raw["operation_id"],
+            plan_sha256=raw["plan_sha256"],
+            target_config_sha256=raw["target_config_sha256"],
+            bundle_sha256=raw["bundle_sha256"],
+            bundle_length=raw["bundle_length"],
+            manifest_sha256=raw["manifest_sha256"],
+            phase=_enum(BootstrapPhase, raw["phase"], "operation phase"),
+            error_code=(
+                None
+                if raw["error_code"] is None
+                else _enum(BootstrapErrorCode, raw["error_code"], "error_code")
+            ),
+            trigger_error_code=(
+                None
+                if raw["trigger_error_code"] is None
+                else _enum(
+                    BootstrapErrorCode,
+                    raw["trigger_error_code"],
+                    "trigger_error_code",
+                )
+            ),
+        )
+
+    @classmethod
+    def from_json_bytes(cls, raw: bytes) -> BootstrapOperationRecord:
+        value = _decode_json(raw, maximum=MAX_RECEIVER_RESULT_BYTES)
+        record = cls.from_dict(value)
+        if record.to_json_bytes() != raw:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation record JSON is not canonical")
+        return record
+
+    @classmethod
+    def from_stage(
+        cls,
+        frame: BootstrapReceiverFrame,
+        payload: bytes,
+    ) -> BootstrapOperationRecord:
+        if type(frame) is not BootstrapReceiverFrame or type(payload) is not bytes:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "stage record inputs are invalid")
+        if frame.operation is not ReceiverOperation.STAGE:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "stage record frame is invalid")
+        encode_receiver_frame(frame, payload)
+        bundle = validate_bundle(payload)
+        if bundle.manifest.expected_node != frame.expected_node:
+            raise _refuse(BootstrapErrorCode.RECEIVER_MISMATCH, "bundle node does not match request")
+        return cls(
+            expected_node=frame.expected_node,
+            operation_id=frame.operation_id,
+            plan_sha256=frame.plan_sha256,
+            target_config_sha256=frame.target_config_sha256,
+            bundle_sha256=bundle.bundle_sha256,
+            bundle_length=len(payload),
+            manifest_sha256=bundle.manifest_sha256,
+            phase=BootstrapPhase.STAGED,
+            error_code=None,
+            trigger_error_code=None,
+        )
+
+    def transition(
+        self,
+        phase: BootstrapPhase,
+        *,
+        error_code: BootstrapErrorCode | None = None,
+    ) -> BootstrapOperationRecord:
+        self.__post_init__()
+        if type(phase) is not BootstrapPhase or (
+            error_code is not None and type(error_code) is not BootstrapErrorCode
+        ):
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation transition is invalid")
+        if phase is self.phase and error_code is None:
+            return self
+        if (
+            phase is BootstrapPhase.ROLLBACK_STARTED
+            and self.phase is BootstrapPhase.ROLLBACK_STARTED
+            and error_code is self.error_code
+        ):
+            return self
+        if self.phase in _RECEIVER_ORDINARY_PHASES:
+            ordinary = _RECEIVER_ORDINARY_PHASE_ORDER
+            try:
+                current = ordinary.index(self.phase)
+            except ValueError:
+                current = -1
+            if current >= 0 and current + 1 < len(ordinary) and phase is ordinary[current + 1]:
+                if error_code is None:
+                    return replace(self, phase=phase)
+            if phase is BootstrapPhase.ROLLBACK_STARTED:
+                if error_code is not None and error_code is not BootstrapErrorCode.CLEANUP_FAILED:
+                    return replace(self, phase=phase, error_code=error_code)
+        elif self.phase is BootstrapPhase.ROLLBACK_STARTED:
+            if phase in {BootstrapPhase.ROLLED_BACK, BootstrapPhase.MANUAL_RECOVERY} and error_code is None:
+                return replace(self, phase=phase)
+        elif self.phase in {BootstrapPhase.ROLLED_BACK, BootstrapPhase.MANUAL_RECOVERY}:
+            if phase is BootstrapPhase.CLEANUP_FAILED and error_code is None:
+                return replace(
+                    self,
+                    phase=BootstrapPhase.CLEANUP_FAILED,
+                    error_code=BootstrapErrorCode.CLEANUP_FAILED,
+                    trigger_error_code=self.error_code,
+                )
+        raise _refuse(BootstrapErrorCode.PRECONDITION_FAILED, "operation transition is invalid")
+
+    def to_receiver_result(
+        self,
+        frame: BootstrapReceiverFrame,
+    ) -> BootstrapReceiverOperationResult:
+        match_operation_record(frame, self)
+        try:
+            return BootstrapReceiverOperationResult(
+                operation=frame.operation,
+                expected_node=self.expected_node,
+                operation_id=self.operation_id,
+                plan_sha256=self.plan_sha256,
+                target_config_sha256=self.target_config_sha256,
+                bound=True,
+                bundle_sha256=self.bundle_sha256,
+                bundle_length=self.bundle_length,
+                manifest_sha256=self.manifest_sha256,
+                phase=self.phase,
+                outcome=self._outcome(),
+                error_code=self.error_code,
+                trigger_error_code=self.trigger_error_code,
+            )
+        except BootstrapContractError:
+            raise _refuse(
+                BootstrapErrorCode.PRECONDITION_FAILED,
+                "operation record phase cannot answer request",
+            ) from None
+
+    def __repr__(self) -> str:
+        value = self.to_dict()
+        return (
+            "BootstrapOperationRecord("
+            f"expected_node={value['expected_node']!r}, operation_id={value['operation_id']!r}, "
+            f"phase={value['phase']!r}, error_code={value['error_code']!r})"
+        )
+
+
+def match_operation_record(
+    frame: BootstrapReceiverFrame,
+    record: BootstrapOperationRecord,
+) -> BootstrapOperationRecord:
+    """Bind a retry frame to the immutable record without authorizing work."""
+    if type(frame) is not BootstrapReceiverFrame or type(record) is not BootstrapOperationRecord:
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation record is invalid")
+    frame.to_dict()
+    record.to_dict()
+    if frame.operation is ReceiverOperation.IDENTITY:
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "operation record frame is invalid")
+    if not all(
+        (
+            frame.expected_node == record.expected_node,
+            frame.operation_id == record.operation_id,
+            frame.plan_sha256 == record.plan_sha256,
+            frame.target_config_sha256 == record.target_config_sha256,
+        )
+    ):
+        raise _refuse(BootstrapErrorCode.RECEIVER_MISMATCH, "operation record does not match request")
+    if frame.operation is ReceiverOperation.STAGE and (
+        frame.bundle_sha256 != record.bundle_sha256 or frame.bundle_length != record.bundle_length
+    ):
+        raise _refuse(BootstrapErrorCode.RECEIVER_MISMATCH, "operation record does not match request")
+    if frame.operation is ReceiverOperation.ROLLBACK:
+        original = (
+            record.trigger_error_code
+            if record.phase is BootstrapPhase.CLEANUP_FAILED
+            else record.error_code
+        )
+        if original is not None and frame.trigger_error_code is not original:
+            raise _refuse(BootstrapErrorCode.RECEIVER_MISMATCH, "operation record does not match request")
+    return record
 
 
 @dataclass(frozen=True)
@@ -2367,6 +2653,7 @@ __all__ = [
     "BootstrapContractError",
     "BootstrapErrorCode",
     "BootstrapManifest",
+    "BootstrapOperationRecord",
     "BootstrapOutcome",
     "BootstrapPhase",
     "BootstrapPlatform",
@@ -2391,6 +2678,7 @@ __all__ = [
     "MAX_WHEEL_ENTRIES",
     "MAX_WHEEL_EXPANDED_BYTES",
     "OUTER_BUNDLE_NAMES",
+    "OPERATION_RECORD_SCHEMA",
     "RECEIPT_SCHEMA",
     "RECEIVER_FRAME_SCHEMA",
     "RECEIVER_RESULT_SCHEMA",
@@ -2405,6 +2693,7 @@ __all__ = [
     "encode_receiver_frame",
     "encode_receiver_result",
     "match_receiver_result",
+    "match_operation_record",
     "preflight_contained_path",
     "validate_archive_path",
     "validate_bundle",
