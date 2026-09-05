@@ -20,14 +20,24 @@ records a recipe as a side effect of benchmarking a serve) and the READ path
 from __future__ import annotations
 
 from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
 import re
 import shlex
+import stat
 import subprocess
 import tempfile
 import tomllib
+
+from .observability.workloads import (
+    MAX_FUTURE_SECONDS,
+    ResultStatus,
+    WorkloadErrorCode,
+    WorkloadState,
+)
 
 # Env-var prefixes that are part of a reproducible serve (not incidental docker noise).
 _SERVE_ENV_PREFIXES = ("VLLM_", "FLASHINFER_", "CUDA_")
@@ -51,7 +61,53 @@ RECIPE_NATIVE_KV_OFFLOAD_LABEL = "io.anvil-serving.recipe.native-kv-offload"
 RECIPE_MANAGED_VALUE = "models-recipes"
 RECIPE_CONTAINER_INVENTORY_SCHEMA = "recipe-container-inventory/v1"
 MAX_DISCOVERED_RECIPE_CONTAINERS = 256
+MAX_RECIPE_REGISTRY_BYTES = 8 * 1024 * 1024
+MAX_RECIPE_CAPTURE_BYTES = 256 * 1024
 PUBLIC_GPU_DEVICE_PLACEHOLDER = "GPU-REPLACE-WITH-HOST-DISCOVERED-UUID"
+
+_RECIPE_LIST_ARGV = (
+    "docker", "ps", "-a", "--no-trunc", "--filter",
+    "label=io.anvil-serving.managed-by=models-recipes", "--format", "{{.ID}}",
+)
+_RECIPE_INSPECT_TEMPLATE = (
+    '{"id":{{json .Id}},"managed_by":{{json (index .Config.Labels "io.anvil-serving.managed-by")}},'
+    '"recipe_digest":{{json (index .Config.Labels "io.anvil-serving.recipe.digest")}},'
+    '"created_at":{{json .Created}},"status":{{json .State.Status}},'
+    '"running":{{json .State.Running}},"started_at":{{json .State.StartedAt}},'
+    '"finished_at":{{json .State.FinishedAt}}}'
+)
+
+
+@dataclass(frozen=True)
+class RecipeConfiguredObservation:
+    recipe_digest: str
+    configured_at: datetime
+    observed_at: datetime
+
+
+@dataclass(frozen=True)
+class RecipeContainerObservation:
+    container_id: str
+    recipe_digest: str | None
+    state: WorkloadState
+    created_at: datetime
+    updated_at: datetime
+    observed_at: datetime
+
+
+@dataclass(frozen=True)
+class RecipeComponentResult:
+    status: ResultStatus
+    observed_at: datetime | None
+    records: tuple[RecipeConfiguredObservation | RecipeContainerObservation, ...]
+    omitted: int | None
+    error: WorkloadErrorCode | None
+
+
+@dataclass(frozen=True)
+class RecipeWorkloadSnapshot:
+    configuration: RecipeComponentResult
+    runtime: RecipeComponentResult
 
 
 class RecipeError(ValueError):
@@ -1057,6 +1113,279 @@ def discover_recipe_containers(*, _run=subprocess.run) -> dict:
             containers.append(record)
     containers.sort(key=lambda item: item["container"].casefold())
     return {"schema": RECIPE_CONTAINER_INVENTORY_SCHEMA, "containers": containers}
+
+
+def _recipe_component(status, observed_at, records=(), omitted=0, error=None):
+    return RecipeComponentResult(status, observed_at, tuple(records), omitted, error)
+
+
+_RECIPE_ZERO_TIME = "0001-01-01T00:00:00Z"
+
+
+def _recipe_time(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        return None
+    match = re.fullmatch(
+        r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,9}))?Z", value
+    )
+    if match is None:
+        return None
+    try:
+        base = datetime.fromisoformat(match.group(1)).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    fraction = (match.group(2) or "").ljust(9, "0")
+    return base.replace(microsecond=int(fraction[:6]))
+
+
+def _recipe_optional_time(value: object) -> tuple[bool, datetime | None]:
+    if value == _RECIPE_ZERO_TIME:
+        return True, None
+    result = _recipe_time(value)
+    return result is not None, result
+
+
+def _recipe_capture(capture, argv):
+    if capture is not None:
+        return capture(argv)
+    from .controller_diagnostics import _capture_fixed_child
+
+    return _capture_fixed_child(argv, merged=False)
+
+
+def _recipe_capture_stdout(capture) -> bytes:
+    if (
+        getattr(capture, "state", None) != "ok"
+        or getattr(capture, "truncated", None) is not False
+        or type(getattr(capture, "stdout", None)) is not bytes
+        or len(capture.stdout) > MAX_RECIPE_CAPTURE_BYTES
+    ):
+        raise ValueError
+    return capture.stdout
+
+
+def _recipe_output_lines(raw: bytes, encoding: str) -> tuple[str, ...]:
+    text = raw.decode(encoding, "strict")
+    if text.endswith("\r\n"):
+        text = text[:-2]
+    elif text.endswith("\n"):
+        text = text[:-1]
+    if not text:
+        return ()
+    lines = tuple(text.split("\n"))
+    if any(not line or "\r" in line for line in lines):
+        raise ValueError
+    return lines
+
+
+def _recipe_now(clock):
+    value = clock()
+    if not isinstance(value, datetime) or value.tzinfo is None:
+        raise ValueError
+    return value.astimezone(timezone.utc)
+
+
+def _recipe_mtime(stat_result) -> datetime:
+    seconds, remainder = divmod(stat_result.st_mtime_ns, 1_000_000_000)
+    return datetime.fromtimestamp(seconds, tz=timezone.utc).replace(
+        microsecond=remainder // 1_000
+    )
+
+
+def _same_registry_file(before, after) -> bool:
+    return (
+        before.st_dev,
+        before.st_ino,
+        before.st_size,
+        before.st_mtime_ns,
+        before.st_ctime_ns,
+    ) == (
+        after.st_dev,
+        after.st_ino,
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
+    )
+
+
+def _recipe_registry_envelope(registry: object) -> list[dict]:
+    if not isinstance(registry, dict):
+        raise ValueError
+    schema = registry.get("schema")
+    if schema is not None and (not isinstance(schema, str) or not schema.strip()):
+        raise ValueError
+    recipes = registry.get("recipe", [])
+    if not isinstance(recipes, list):
+        raise ValueError
+    return recipes
+
+
+def _recipe_partial(
+    observed_at: datetime | None,
+    records=(),
+    error: WorkloadErrorCode = WorkloadErrorCode.INVALID,
+) -> RecipeComponentResult:
+    return _recipe_component(ResultStatus.PARTIAL, observed_at, records, None, error)
+
+
+def capture_recipe_workload_snapshot(registry_path, *, clock, _capture=None):
+    """Capture bounded recipe configuration and metadata-only container state."""
+    try:
+        with open(registry_path, "rb") as handle:
+            before = os.fstat(handle.fileno())
+            if not stat.S_ISREG(before.st_mode):
+                raise ValueError
+            raw = handle.read(MAX_RECIPE_REGISTRY_BYTES + 1)
+            after = os.fstat(handle.fileno())
+        observed = _recipe_now(clock)
+        if len(raw) > MAX_RECIPE_REGISTRY_BYTES or not _same_registry_file(before, after):
+            configuration = _recipe_partial(observed)
+        else:
+            try:
+                registry = tomllib.loads(raw.decode("utf-8"))
+                recipes = _recipe_registry_envelope(registry)
+            except Exception:
+                configuration = _recipe_partial(observed)
+            else:
+                configured = _recipe_mtime(before)
+                records = []
+                invalid = False
+                future = configured - observed > timedelta(seconds=MAX_FUTURE_SECONDS)
+                for recipe in recipes:
+                    if len(records) >= MAX_DISCOVERED_RECIPE_CONTAINERS:
+                        invalid = True
+                        break
+                    try:
+                        digest = recipe_digest(recipe)
+                        if not future:
+                            records.append(
+                                RecipeConfiguredObservation(digest, configured, observed)
+                            )
+                    except Exception:
+                        invalid = True
+                configuration = (
+                    _recipe_partial(
+                        observed,
+                        records,
+                        WorkloadErrorCode.INVALID if invalid else WorkloadErrorCode.FUTURE,
+                    )
+                    if invalid or future
+                    else _recipe_component(
+                        ResultStatus.COMPLETE, observed, records, 0, None
+                    )
+                )
+    except Exception:
+        configuration = _recipe_component(
+            ResultStatus.UNAVAILABLE, None, (), None, WorkloadErrorCode.UNAVAILABLE
+        )
+
+    try:
+        listed = _recipe_capture(_capture, _RECIPE_LIST_ARGV)
+        listed_stdout = _recipe_capture_stdout(listed)
+        identifiers = []
+        invalid = False
+        try:
+            list_lines = _recipe_output_lines(listed_stdout, "ascii")
+        except Exception:
+            list_lines = ()
+            invalid = True
+        for line in list_lines:
+            if not _HEX_DIGEST_RE.fullmatch(line) or line in identifiers:
+                invalid = True
+                continue
+            if len(identifiers) >= MAX_DISCOVERED_RECIPE_CONTAINERS:
+                invalid = True
+                continue
+            identifiers.append(line)
+        if not identifiers:
+            runtime = _recipe_component(
+                ResultStatus.PARTIAL if invalid else ResultStatus.COMPLETE,
+                _recipe_now(clock), (), None if invalid else 0,
+                WorkloadErrorCode.INVALID if invalid else None,
+            )
+        else:
+            inspected = _recipe_capture(
+                _capture,
+                ("docker", "inspect", "--type", "container", "--format", _RECIPE_INSPECT_TEMPLATE, *identifiers),
+            )
+            inspected_stdout = _recipe_capture_stdout(inspected)
+            observed = _recipe_now(clock)
+            rows = []
+            responded = set()
+            future = False
+            try:
+                inspect_lines = _recipe_output_lines(inspected_stdout, "utf-8")
+            except Exception:
+                inspect_lines = ()
+                invalid = True
+            for line in inspect_lines:
+                try:
+                    def reject_duplicate(_pairs):
+                        raise ValueError
+                    row = json.loads(line, object_pairs_hook=lambda pairs: dict(pairs) if len({key for key, _ in pairs}) == len(pairs) else reject_duplicate(pairs))
+                    if set(row) != {"id", "managed_by", "recipe_digest", "created_at", "status", "running", "started_at", "finished_at"}:
+                        raise ValueError
+                    container_id = row["id"]
+                    if (
+                        not isinstance(container_id, str)
+                        or container_id not in identifiers
+                        or container_id in responded
+                    ):
+                        raise ValueError
+                    responded.add(container_id)
+                    if row["managed_by"] != RECIPE_MANAGED_VALUE:
+                        raise ValueError
+                    digest = row["recipe_digest"]
+                    if digest in {"", None}:
+                        digest = None
+                    if digest is not None and (not isinstance(digest, str) or not _HEX_DIGEST_RE.fullmatch(digest)):
+                        raise ValueError
+                    created = _recipe_time(row["created_at"])
+                    started_valid, started = _recipe_optional_time(row["started_at"])
+                    finished_valid, finished = _recipe_optional_time(row["finished_at"])
+                    status = row["status"]
+                    if (
+                        created is None
+                        or not started_valid
+                        or not finished_valid
+                        or type(row["running"]) is not bool
+                        or not isinstance(status, str)
+                        or len(status) > 64
+                    ):
+                        raise ValueError
+                    if row["running"] is True and status == "running":
+                        state, updated = WorkloadState.RUNNING, started
+                    elif row["running"] is False and status in {"created", "exited", "dead"}:
+                        state = WorkloadState.ABSENT
+                        updated = max(
+                            (item for item in (started, finished) if item is not None),
+                            default=created,
+                        )
+                    elif status in {"running", "created", "exited", "dead"}:
+                        raise ValueError
+                    else:
+                        state, updated = WorkloadState.UNSUPPORTED, created
+                    if updated is None or updated < created:
+                        raise ValueError
+                    if updated - observed > timedelta(seconds=MAX_FUTURE_SECONDS):
+                        future = True
+                        continue
+                    rows.append(RecipeContainerObservation(container_id, digest, state, created, updated, observed))
+                except Exception:
+                    invalid = True
+            if len(responded) != len(identifiers):
+                invalid = True
+            if invalid or future:
+                runtime = _recipe_partial(
+                    observed,
+                    rows,
+                    WorkloadErrorCode.INVALID if invalid else WorkloadErrorCode.FUTURE,
+                )
+            else:
+                runtime = _recipe_component(ResultStatus.COMPLETE, observed, rows, 0, None)
+    except Exception:
+        runtime = _recipe_component(ResultStatus.UNAVAILABLE, None, (), None, WorkloadErrorCode.UNAVAILABLE)
+    return RecipeWorkloadSnapshot(configuration, runtime)
 
 
 def select_recipe_container(
