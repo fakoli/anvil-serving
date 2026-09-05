@@ -15,9 +15,16 @@ from anvil_serving.control_plane.controller import server as controller_server
 from anvil_serving.control_plane.controller.http import ControllerError
 from anvil_serving.control_plane.controller.store import OperationStore
 from anvil_serving.observability.workload_tools import (
+    FLEET_WORKLOADS_TOOL_NAME,
     NODE_WORKLOADS_TOOL_NAME,
+    fleet_workloads_declaration,
+    is_exact_fleet_workloads_declaration,
     node_workloads_declaration,
+    workload_failure,
+    workload_success,
 )
+from anvil_serving.observability.fleet_workload_collection import build_fleet_workloads
+from anvil_serving.observability.workloads import WorkloadQuery, fleet_result_from_dict
 
 
 _LEGACY = "controller-legacy-token"
@@ -126,6 +133,8 @@ def test_node_workload_declaration_is_fresh_and_exact():
             "type": "object",
             "properties": first["inputSchema"]["properties"],
             "additionalProperties": False,
+            "required": [],
+            "maxProperties": 7,
         },
         "_meta": {"anvil/requiredScope": "workloads:read"},
     }
@@ -140,6 +149,48 @@ def test_node_workload_declaration_is_fresh_and_exact():
     }
     first["name"] = "changed"
     assert second["name"] == NODE_WORKLOADS_TOOL_NAME
+
+
+def test_fleet_declaration_shares_fresh_closed_query_schema():
+    first = fleet_workloads_declaration()
+    second = fleet_workloads_declaration()
+    node = node_workloads_declaration()
+    assert first["name"] == FLEET_WORKLOADS_TOOL_NAME
+    assert first["inputSchema"] == node["inputSchema"]
+    assert first["_meta"] == {"anvil/requiredScope": "workloads:read"}
+    assert is_exact_fleet_workloads_declaration(first)
+    first["inputSchema"]["properties"]["owner"]["enum"].append("private-value")
+    first["inputSchema"]["required"].append("context")
+    assert not is_exact_fleet_workloads_declaration(first)
+    assert second["inputSchema"] == node["inputSchema"]
+    assert second["inputSchema"]["maxProperties"] == 7
+    assert second["inputSchema"]["required"] == []
+
+
+def test_fleet_success_preserves_canonical_unavailable_inventory():
+    fleet = build_fleet_workloads(("node-a",), WorkloadQuery(), _NOW, {})
+    envelope = workload_success(fleet)
+    assert set(envelope) == {"ok", "data"}
+    assert envelope["ok"] is True
+    assert fleet_result_from_dict(envelope["data"]) == fleet
+
+
+@pytest.mark.parametrize("value", (None, {}, "private-value", object()))
+def test_workload_success_refuses_noncanonical_objects(value):
+    assert workload_success(value) == workload_failure("workload_source_unavailable")
+
+
+def test_workload_success_refuses_forged_fleet_without_echo():
+    fleet = build_fleet_workloads((), WorkloadQuery(), _NOW, {})
+    object.__setattr__(fleet, "status", "private-value")
+    assert workload_success(fleet) == workload_failure("workload_source_unavailable")
+
+
+def test_workload_success_revalidates_nested_host_before_public_output():
+    fleet = build_fleet_workloads(("node-a",), WorkloadQuery(), _NOW, {})
+    object.__setattr__(fleet.nodes[0], "host", "http://100.64.0.10/private")
+    assert workload_success(fleet) == workload_failure("workload_source_unavailable")
+    assert workload_success(fleet.nodes[0]) == workload_failure("workload_source_unavailable")
 
 
 @pytest.mark.parametrize(
