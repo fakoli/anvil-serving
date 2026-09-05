@@ -9,7 +9,8 @@ import pytest
 
 from anvil_serving.router.admission import AdmissionSnapshot, TierAdmission
 from anvil_serving.router.availability import AlwaysAvailable, AvailabilityResult
-from anvil_serving.router.config import RouterConfig, Tier
+from anvil_serving.router.config import RouterConfig, ServerConfig, Tier
+from anvil_serving.router import serve as serve_module
 from anvil_serving.router.front_door import MODEL_CAPACITY_ENDPOINT, make_server
 from anvil_serving.router.model_capacity import (
     MetricsSnapshot,
@@ -481,3 +482,123 @@ def test_replica_projection_rejects_unsafe_declared_metadata_before_probing():
         with pytest.raises(ValueError, match="invalid replica projection"):
             replica_metadata(replace(tier, replicas=(member, tier.replicas[1])), source)
     assert source.calls == []
+
+
+def test_replica_http_capacity_uses_the_exact_owner_for_every_lifecycle_state():
+    config = _replica_config()
+    tier = config.tiers[0]
+
+    class Owner(TierAdmission):
+        reads = 0
+
+        def __bool__(self):
+            return False  # An explicitly injected empty owner must be retained.
+
+        def snapshot(self, tier_id):
+            self.reads += 1
+            return super().snapshot(tier_id)
+
+    owner = Owner([tier.id], replica_members={tier.id: ("member-a", "member-b")})
+    metrics_calls = []
+    routing = RoutingBackend(
+        config, {tier.id: StaticBackend(["unused"])}, admission=owner,
+        availability=_MemberAvailability(),
+        capacity_metrics=lambda tier: metrics_calls.append(tier) or _live(tier),
+    )
+    assert routing._admission is owner
+    lease = None
+    with server_context(routing, token=TOKEN) as (host, port):
+        assert _get(host, port, MODEL_CAPACITY_ENDPOINT, token=None)[0] == 401
+        assert owner.reads == 0
+
+        def check(state, active, members):
+            before = owner.reads
+            status, headers, raw = _get(host, port, MODEL_CAPACITY_ENDPOINT)
+            assert status == 200
+            assert headers["Cache-Control"] == "no-store"
+            assert owner.reads == before + 1
+            row = json.loads(raw)["data"][0]
+            assert row["admission"] == {
+                "status": "available", "state": state, "active_requests": active,
+                "draining": False, "member_active_requests": members,
+            }
+            assert row["aliases"] == ["llm.primary"]
+            assert row["runtime_deployment_identity_verified"] is False
+            for prohibited in ("127.0.0.1", "private", "ANVIL_TEST_KEY", "operator_reason"):
+                assert prohibited not in raw.decode()
+
+        try:
+            check("admitting", 0, {"member-a": 0, "member-b": 0})
+            lease = owner.acquire_member(tier.id, {
+                member.id: AvailabilityResult(True, "ready", "identity_passed")
+                for member in tier.replicas
+            })
+            assert lease is not None
+            check("admitting", 1, {"member-a": 1, "member-b": 0})
+            routing.quiesce_tier(tier.id, "operator_reason")
+            check("quiesced", 1, {"member-a": 1, "member-b": 0})
+            lease.release()
+            check("quiesced", 0, {"member-a": 0, "member-b": 0})
+        finally:
+            if lease is not None:
+                lease.release()
+    assert metrics_calls == []
+
+
+@pytest.mark.parametrize("durable", [False, True])
+def test_built_server_default_replica_owner_exposes_complete_zero_counts(
+    tmp_path, monkeypatch, durable,
+):
+    config = _replica_config()
+    intent_path = str(tmp_path / "admission.json") if durable else None
+    monkeypatch.setattr(serve_module, "load", lambda path: config)
+    monkeypatch.setattr(serve_module, "load_server_config", lambda path: ServerConfig(
+        auth_env="ANVIL_TEST_KEY", admission_state_path=intent_path,
+    ))
+    httpd = serve_module.build_server(
+        "synthetic-config.toml", host="127.0.0.1", port=0,
+        backends={config.tiers[0].id: StaticBackend(["unused"])},
+        availability=_MemberAvailability(), env={"ANVIL_TEST_KEY": TOKEN},
+    )
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        host, port = httpd.server_address[:2]
+        status, _, raw = _get(host, port, MODEL_CAPACITY_ENDPOINT)
+        assert status == 200
+        assert json.loads(raw)["data"][0]["admission"] == {
+            "status": "available", "state": "admitting", "active_requests": 0,
+            "draining": False,
+            "member_active_requests": {"member-a": 0, "member-b": 0},
+        }
+        if durable:
+            httpd.anvil_admission.quiesce(config.tiers[0].id, "maintenance")
+            restored = serve_module._durable_admission(intent_path, config)
+            assert restored.snapshot(config.tiers[0].id).state == "quiesced"
+            assert dict(restored.snapshot(config.tiers[0].id).member_active_requests) == {
+                "member-a": 0, "member-b": 0,
+            }
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+    assert not thread.is_alive()
+
+
+@pytest.mark.parametrize("missing", [False, True])
+def test_http_replica_owner_failure_stays_unavailable_not_idle(missing):
+    class ForgedOwner:
+        def snapshot(self, tier):
+            return AdmissionSnapshot(tier, "admitting", "private reason", 0)
+
+    config = _replica_config()
+    routing = RoutingBackend(config, {config.tiers[0].id: StaticBackend(["unused"])},
+                             availability=_MemberAvailability())
+    routing._admission = None if missing else ForgedOwner()
+    with server_context(routing, token=TOKEN) as (host, port):
+        status, _, raw = _get(host, port, MODEL_CAPACITY_ENDPOINT)
+    assert status == 200
+    admission = json.loads(raw)["data"][0]["admission"]
+    assert admission["status"] == "unavailable"
+    assert admission["active_requests"] is None
+    assert "private" not in raw.decode()
