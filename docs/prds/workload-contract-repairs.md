@@ -90,10 +90,12 @@ Resolve the host-bound defect in the same ticket. Tighten the shared _host valid
 **Feature:** F001
 **Priority:** medium
 **Type:** bugfix
-**Likely files:** anvil_serving/observability/dashboard/static/index.html, anvil_serving/observability/dashboard/static/workloads.js, tests/observability/dashboard_workloads_ui.cjs
+**Likely files:** anvil_serving/observability/dashboard/static/index.html, anvil_serving/observability/dashboard/static/workloads.js, tests/observability/dashboard_workloads_ui.cjs, tests/observability/test_dashboard_workloads_ui.py, tests/observability/test_milestone3_dashboard.py
 **Dependencies:** T002
 
 After the workload-visibility GPU-label task releases its overlapping asset, set the host input maxlength to 64 and enforce the exact canonical ASCII grammar in both query validation and node/record host validation. Keep non-host display strings safely rendered as text with their existing independent bounds. Empty host input still means no filter. Malformed or oversized response host identities fail the closed response without showing data. Add executed DOM/fetch tests for 64/65-character inputs and response identities; adapt old unsafe-host display fixtures so malformed host is rejected while valid-host label text remains inert. Preserve credential isolation, no-storage behavior, cancellation, generation fencing, single-flight and polling deadlines.
+
+Synchronize the existing Python markup maxlength assertion. Replace the historical milestone test's total-button-count assumption with explicit allowed read-only navigation/connect/disconnect controls; retain its operational mutation exclusions. This tests the intended read-only contract rather than freezing the former tab count.
 
 **Acceptance criteria:**
 
@@ -103,6 +105,6 @@ After the workload-visibility GPU-label task releases its overlapping asset, set
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py -x -q`
+- `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py tests/observability/test_milestone3_dashboard.py -x -q`
 - `git diff --check`
 
