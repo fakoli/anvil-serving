@@ -15,6 +15,7 @@ from anvil_serving.control_plane.authorization import (
 )
 from anvil_serving.observability import workload_http
 from anvil_serving.observability.workload_http import WorkloadHTTPService, workload_http_error
+from anvil_serving.observability.workload_tools import parse_node_workload_query
 from anvil_serving.observability.workloads import (
     MAX_JSON_BYTES,
     FleetResult,
@@ -295,10 +296,11 @@ def test_default_reader_is_hermetic_and_uses_same_caller_credential(policy, monk
         calls.append(request)
         if len(calls) == 1:
             return io.BytesIO(b'{"node":"aggregator-a"}')
-        assert json.loads(request.data) == {"name": "fleet_workloads", "arguments": {
-            "owner": None, "kind": None, "state": None, "host": None,
+        sent = json.loads(request.data)
+        assert sent == {"name": "fleet_workloads", "arguments": {
             "active_only": False, "recent_seconds": 3600, "limit": 200,
         }}
+        assert parse_node_workload_query(sent["arguments"]) == WorkloadQuery()
         return io.BytesIO(json.dumps({"ok": True, "data": fleet_result_to_dict(_empty())}).encode())
 
     class NoEnvironment(dict):
