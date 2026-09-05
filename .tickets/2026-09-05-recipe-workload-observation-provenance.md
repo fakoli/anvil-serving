@@ -33,3 +33,25 @@ source emits at most observed-running and never healthy-identity.
 Implementation remains open under T004.1 and T004. Per the current delivery
 instruction, their focused gates establish implementation evidence only; final
 adversarial review and acceptance are deferred to the consolidated batch pass.
+
+Implementation framing clarification: use direct argv, never shell strings:
+`docker ps -a --no-trunc --filter label=io.anvil-serving.managed-by=models-recipes --format {{.ID}}`,
+then `docker inspect --type container --format <fixed-template> <validated-ids>`.
+The fixed template emits one JSON object per result, with exactly id,
+managed_by, recipe_digest, created_at, status, running, started_at and
+finished_at. Each value uses Docker's json template helper. Read only the two
+named management/digest labels and the lifecycle fields, not the containing
+Config or State object. Require requested full IDs, reject duplicate keys and
+unsolicited/duplicate IDs, and retain partiality for missing results. A missing
+digest (empty string or null) suppresses no configured record later.
+
+The first 256 unique valid list IDs are inspected; malformed/overflow list data
+keeps unknown omissions. Empty successful listing is complete and performs no
+inspection. Fixtures use escaped JSON lines with LF/CRLF terminators, not an
+unescaped field delimiter. This closes the executor's framing question without
+altering the public workload schema or legacy recipe inventory.
+
+The [Docker formatting contract](https://docs.docker.com/engine/cli/formatting/)
+defines the json helper; the [inspect reference](https://docs.docker.com/reference/cli/docker/inspect/)
+defines per-result templates and explicit container type. These are source
+format references, not evidence of a local runtime probe.
