@@ -644,16 +644,24 @@ def test_controller_diagnostic_command_nodes_are_local_read_only_and_bounded():
 
 def test_controller_command_tree_dispatches_to_fixed_diagnostic_handler(monkeypatch, capsys):
     calls = []
+    inspect_result = {
+        **diagnostics.safe_result("inspect", "ok", container_id="a" * 64),
+        "running": True,
+        "exit_code": 0,
+        "health": "healthy",
+        "configured_bindings": [],
+        "observed_bindings": [],
+    }
     monkeypatch.setattr(cli, "_resolve_dispatch_plan", lambda path, options: None)
     monkeypatch.setattr(
         diagnostics,
         "inspect_controller",
-        lambda container: calls.append(container) or diagnostics.safe_result("inspect", "ok"),
+        lambda container: calls.append(container) or inspect_result,
     )
 
     assert cli.main(["controller", "inspect", "--container", "controller_1"]) == 0
     assert calls == ["controller_1"]
-    assert json.loads(capsys.readouterr().out) == diagnostics.safe_result("inspect", "ok")
+    assert json.loads(capsys.readouterr().out) == inspect_result
 
 
 def test_mcp_diagnostics_match_cli_library_results_and_discovery(monkeypatch):

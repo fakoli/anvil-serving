@@ -239,6 +239,42 @@ def test_cli_remote_diagnostic_rejects_unvalidated_nested_data_without_echo(
         assert rendered.err == "controller diagnostic response invalid\n"
 
 
+def test_cli_remote_diagnostic_rejects_hostile_outer_key_before_comparison(
+    tmp_path, monkeypatch, capsys
+):
+    class HostileString(str):
+        __hash__ = str.__hash__
+
+        def __eq__(self, _other):
+            raise RuntimeError("private-outer-comparison-marker")
+
+    topology = _write_remote_controller_topology(tmp_path, "controller-inspect")
+    hostile = {HostileString("ok"): True, "data": _public_inspect_result()}
+    monkeypatch.setattr(
+        cli,
+        "execute_plan",
+        lambda plan, operation, **_kwargs: cli.TransportResult(
+            operation.name, "controller", hostile
+        ),
+    )
+
+    assert cli.main(
+        [
+            "--json",
+            "controller",
+            "inspect",
+            "--topology",
+            str(topology),
+            "--container",
+            "safe",
+        ]
+    ) == 4
+    rendered = capsys.readouterr()
+    payload = json.loads(rendered.out)
+    assert payload["error"]["code"] == "controller_diagnostic_response_invalid"
+    assert "private-outer-comparison-marker" not in rendered.out + rendered.err
+
+
 def test_cli_diagnostic_resolution_failure_is_fixed_and_operand_free(monkeypatch, capsys):
     monkeypatch.setattr(
         cli,

@@ -889,7 +889,11 @@ def _dispatch_remote_tool(
 
         try:
             outer = result.data
-            if type(outer) is not MappingProxyType or set(outer) != {"ok", "data"} or outer["ok"] is not True:
+            if type(outer) is not MappingProxyType or any(
+                type(key) is not str for key in outer
+            ):
+                raise ValueError
+            if set(outer) != {"ok", "data"} or outer["ok"] is not True:
                 raise ValueError
             data = validate_public_result(outer["data"], expected_kind=node.name)
         except (KeyError, TypeError, ValueError):
