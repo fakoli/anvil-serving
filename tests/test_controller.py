@@ -17,7 +17,7 @@ import time
 
 import pytest
 
-from anvil_serving import cli, controller, mcp
+from anvil_serving import cli, controller, controller_diagnostics, mcp
 from anvil_serving.control_plane.controller import cli as controller_cli
 from anvil_serving.control_plane.mcp import protocol as mcp_protocol
 
@@ -1851,6 +1851,205 @@ def _authorization_policy(tmp_path, clients):
     path = tmp_path / "authorization-policy.json"
     path.write_text(json.dumps({"schema_version": 1, "clients": clients}), encoding="utf-8")
     return str(path)
+
+
+_DIAGNOSTIC_CONTAINER_ID = "a" * 64
+
+
+class _DiagnosticCaptureSpy:
+    def __init__(self, *stdout_values):
+        self._stdout_values = list(stdout_values)
+        self.calls = []
+
+    def __call__(self, argv, **kwargs):
+        self.calls.append((tuple(argv), dict(kwargs)))
+        return controller_diagnostics.ChildCapture(
+            "ok",
+            self._stdout_values.pop(0),
+            b"",
+            False,
+        )
+
+
+def _diagnostic_inspect_bytes():
+    return json.dumps(
+        {
+            "container_id": _DIAGNOSTIC_CONTAINER_ID,
+            "running": True,
+            "exit_code": 0,
+            "health": "healthy",
+            "compose_service": "controller",
+            "configured_bindings": {
+                "8765/tcp": [{"HostIp": "127.0.0.1", "HostPort": "18765"}],
+            },
+            "observed_bindings": {"8765/tcp": None},
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def _install_diagnostic_capture(monkeypatch, capture):
+    inspect_controller = controller_diagnostics.inspect_controller
+    controller_logs = controller_diagnostics.controller_logs
+
+    def inspect_with_capture(container, **kwargs):
+        kwargs["platform"] = "linux"
+        kwargs["_capture"] = capture
+        return inspect_controller(container, **kwargs)
+
+    monkeypatch.setattr(
+        controller_diagnostics,
+        "inspect_controller",
+        inspect_with_capture,
+    )
+    monkeypatch.setattr(
+        controller_diagnostics,
+        "controller_logs",
+        lambda container, tail: controller_logs(
+            container,
+            tail,
+            platform="linux",
+            _capture=capture,
+        ),
+    )
+
+
+def _call_diagnostic(host, port, name, token=None):
+    headers = {} if token is None else {"Authorization": "Bearer " + token}
+    arguments = {"container": "anvil-serving-controller"}
+    if name == "controller_logs":
+        arguments["tail"] = 17
+    return _request(
+        host,
+        port,
+        "POST",
+        "/tools/call",
+        {"name": name, "arguments": arguments},
+        headers,
+    )
+
+
+def test_controller_diagnostic_authorization_denials_start_no_child(tmp_path, monkeypatch):
+    workload_token = "scoped-workload-token"
+    bootstrap_token = "scoped-bootstrap-token"
+    capture = _DiagnosticCaptureSpy()
+    _install_diagnostic_capture(monkeypatch, capture)
+    policy = _authorization_policy(
+        tmp_path,
+        [
+            {"id": "workload", "scopes": ["workloads:read"], "credential_env": "WORKLOAD"},
+            {
+                "id": "bootstrap",
+                "scopes": ["node-admin:bootstrap"],
+                "credential_env": "BOOTSTRAP",
+            },
+        ],
+    )
+    tools = ("controller_inspect", "controller_logs")
+    with running_controller(
+        env={
+            "ANVIL_CONTROLLER_TOKEN": TOKEN,
+            "WORKLOAD": workload_token,
+            "BOOTSTRAP": bootstrap_token,
+        },
+        authorization_policy=policy,
+        allowed_operations=tools,
+    ) as (host, port):
+        for name in tools:
+            for token in (None, "wrong-controller-token"):
+                status, _, body, _ = _call_diagnostic(host, port, name, token)
+                assert status == 401
+                assert body["error"]["code"] == "authentication_error"
+            for token in (workload_token, bootstrap_token):
+                status, _, body, _ = _call_diagnostic(host, port, name, token)
+                assert status == 403
+                assert body["error"]["code"] == "authorization_scope_denied"
+
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        allowed_operations=("router_status",),
+    ) as (host, port):
+        for name in tools:
+            status, _, body, _ = _call_diagnostic(host, port, name, TOKEN)
+            assert status == 400
+            assert body["error"]["code"] == "unknown_tool"
+
+    assert capture.calls == []
+
+
+def test_controller_diagnostics_legacy_operator_runs_real_handlers(monkeypatch):
+    inspect_bytes = _diagnostic_inspect_bytes()
+    private_value = "credential-shaped-private-value"
+    capture = _DiagnosticCaptureSpy(
+        inspect_bytes,
+        inspect_bytes,
+        json.dumps(
+            {
+                "operation": "tools/call",
+                "status": 200,
+                "private_detail": private_value,
+            },
+            separators=(",", ":"),
+        ).encode("utf-8"),
+    )
+    _install_diagnostic_capture(monkeypatch, capture)
+
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        allowed_operations=("controller_inspect", "controller_logs"),
+    ) as (host, port):
+        status, _, inspected, inspected_raw = _call_diagnostic(
+            host, port, "controller_inspect", TOKEN
+        )
+        assert status == 200 and inspected["ok"] is True
+        assert inspected["data"] == {
+            "schema_version": "controller-diagnostics/v1",
+            "kind": "inspect",
+            "state": "ok",
+            "error_code": None,
+            "container_id": _DIAGNOSTIC_CONTAINER_ID,
+            "truncated": False,
+            "running": True,
+            "exit_code": 0,
+            "health": "healthy",
+            "configured_bindings": [
+                {"container_port": 8765, "host_port": 18765, "bind_class": "loopback"},
+            ],
+            "observed_bindings": [],
+        }
+        status, _, logged, logged_raw = _call_diagnostic(host, port, "controller_logs", TOKEN)
+        assert status == 200 and logged["ok"] is True
+        assert logged["data"] == {
+            "schema_version": "controller-diagnostics/v1",
+            "kind": "logs",
+            "state": "ok",
+            "error_code": None,
+            "container_id": _DIAGNOSTIC_CONTAINER_ID,
+            "truncated": False,
+            "events": [{"operation": "tools/call", "status": 200}],
+            "line_count": 1,
+            "returned_events": 1,
+            "rejected_lines": 0,
+            "unknown_fields": 1,
+            "unknown_codes": 0,
+            "counters_saturated": False,
+        }
+        assert private_value.encode() not in inspected_raw + logged_raw
+
+    assert len(capture.calls) == 3
+    assert capture.calls[0][0][-2:] == (
+        controller_diagnostics._INSPECT_TEMPLATE,
+        "anvil-serving-controller",
+    )
+    assert capture.calls[1][0][-2:] == (
+        controller_diagnostics._INSPECT_TEMPLATE,
+        "anvil-serving-controller",
+    )
+    assert capture.calls[2][0][-3:] == (
+        "--tail",
+        "17",
+        _DIAGNOSTIC_CONTAINER_ID,
+    )
 
 
 def test_scoped_controller_policy_keeps_legacy_and_new_operations_separate(tmp_path):
