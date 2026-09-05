@@ -114,6 +114,7 @@ _SCAFFOLD_TEMPLATES = (
     ("host.toml", "host.toml", "configs/host.example.toml"),
     ("serve-recipes.toml", "serve-recipes.toml", "configs/serve-recipes.toml"),
     ("serves.toml", "serves.toml", "examples/primary-node/serves.toml"),
+    ("services.toml", "services.toml", "examples/primary-node/services.toml"),
     ("anvil-router.deepseek-pi.toml", "anvil-router.deepseek-pi.toml",
      "examples/primary-node/anvil-router.deepseek-pi.toml"),
     ("anvil-router.live.toml", "anvil-router.live.toml",

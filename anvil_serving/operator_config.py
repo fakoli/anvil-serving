@@ -32,11 +32,12 @@ _VERSIONABLE_NAMES = {
     "host.toml",
     "router.toml",
     "serves.toml",
+    "services.toml",
     "serve-recipes.toml",
     "edge.toml",
 }
 _VERSIONABLE_NAME_RE = re.compile(
-    r"^(?:anvil-router|router|serves|voice|host|operator-topology|serve-recipes)"
+    r"^(?:anvil-router|router|serves|services|voice|host|operator-topology|serve-recipes)"
     r"(?:\.[a-z0-9][a-z0-9._-]*)?\.toml$"
 )
 _UNSUPPORTED_VERSIONABLE_SUFFIXES = (".yaml", ".yml")
@@ -51,8 +52,12 @@ _DEPENDENCY_KEYS = {
     "manifest",
     "manifest_path",
     "serves_manifest",
+    "serve_manifest",
+    "services_manifest",
     "voice_config",
     "compose_file",
+    "source_definition",
+    "definition",
 }
 _SECRET_KEY_RE = re.compile(
     r"(?:^|_)(?:api_?key|token|secret|password|credential|"

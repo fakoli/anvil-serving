@@ -20,7 +20,7 @@ from ..errors import ok as _ok
 from ..runtime import (
     capture as _capture,
 )
-from ....paths import resolve_topology_path
+from ....paths import config_path, resolve_topology_path
 
 
 def _voice_cli_argv(
@@ -117,6 +117,18 @@ def _voice_manage_plan(config: str, *, profile: str = "") -> dict:
                     "stop_timeout": cfg.stop_timeout,
                 }
             )
+        elif lifecycle == "service":
+            services_manifest = table.get("services_manifest")
+            if services_manifest:
+                services_manifest = os.path.expanduser(services_manifest)
+                if not os.path.isabs(services_manifest):
+                    services_manifest = os.path.join(data.get("_manifest_dir", ""), services_manifest)
+            else:
+                services_manifest = config_path("services.toml")
+            item.update({
+                "service": table["service"],
+                "services_manifest": services_manifest,
+            })
         elif lifecycle == "external":
             item["note"] = "external/manual lifecycle; voice_manage will skip it"
         else:
@@ -174,7 +186,7 @@ def tool_voice_manage(args: dict) -> dict:
     tail = _bounded_int_arg(args, "tail", 200, min_value=1, max_value=5000)
     plan = _voice_manage_plan(config, profile=profile)
     try:
-        topology = load_topology(topology_path)
+        topology = load_topology(topology_path, topology_overlay or None)
         owners = tuple(topology.resource_owner("%s-serve" % kind) for kind in ("stt", "tts"))
         if owners[0].host != owners[1].host or owners[0].runtime != owners[1].runtime:
             raise voice_config.ConfigError(
@@ -265,7 +277,16 @@ def tool_voice_manage(args: dict) -> dict:
             {"applied": False, "dry_run": True, "target": target, "command": argv, "plan": plan}
         )
     result = voice_cli.execute_audio_lifecycle(
-        data, action, targets=targets, timeout_seconds=float(timeout_seconds)
+        data,
+        action,
+        targets=targets,
+        timeout_seconds=float(timeout_seconds),
+        topology=topology_path,
+        command_host=command_host or None,
+        command_runtime=command_runtime or None,
+        target=target.get("requested_target"),
+        transport=transport,
+        confirm=confirm,
     )
     if result["returncode"] != 0:
         raise ToolError(
@@ -290,6 +311,7 @@ def tool_voice_proxy_manage(args: dict) -> dict:
     """Manage the persistent Mini proxy process without touching model serves."""
     from ....topology import load_topology
     from ....voice import config as voice_config
+    from ....voice import cli as voice_cli
     from ....voice.realtime_service import ProxyProcessConfig, RealtimeProxyProcessService
 
     action = _str_arg(args, "action", required=True)
@@ -301,17 +323,28 @@ def tool_voice_proxy_manage(args: dict) -> dict:
         )
     config = voice_config.resolve_config_path(_str_arg(args, "config", "") or None)
     profile = _str_arg(args, "profile", "")
+    topology_overlay = _str_arg(args, "topology_overlay", "")
+    command_host = _str_arg(args, "command_host", "")
+    command_runtime = _str_arg(args, "command_runtime", "")
+    target = _str_arg(args, "target", "")
+    transport = _str_arg(args, "transport", "local")
+    if transport not in {"auto", "local", "controller"}:
+        raise ToolError("bad_transport", "transport must be auto, local, or controller")
     topology_path = resolve_topology_path(
         _str_arg(args, "topology", "") or None,
         env_var="ANVIL_VOICE_TOPOLOGY",
     )
     try:
         data = voice_config.load_manifest(config, profile=profile or None)
-        topology = load_topology(topology_path)
+        topology = load_topology(topology_path, topology_overlay or None)
         targets = voice_config.resolve_proxy_targets(
             topology,
             operation="voice-proxy-%s" % action,
-            transport="local",
+            target=target or None,
+            transport=transport,
+            command_host=command_host or None,
+            command_runtime=command_runtime or None,
+            overlay=topology_overlay or None,
         )
     except (OSError, ValueError) as exc:
         raise ToolError(
@@ -320,6 +353,36 @@ def tool_voice_proxy_manage(args: dict) -> dict:
             {"config": config, "topology": topology_path, "error": str(exc)},
         )
     voice = data["voice"]
+    if voice_cli._proxy_lifecycle_mode(voice) == "service":
+        dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+        confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+        cli_args = argparse.Namespace(
+            config=config,
+            profile=profile or None,
+            topology=topology_path,
+            topology_overlay=topology_overlay or None,
+            command_host=command_host or None,
+            command_runtime=command_runtime or None,
+            target=target or None,
+            transport=transport,
+            dry_run=(dry_run or not confirm) if action in {"up", "down", "restart"} else True,
+            confirm=confirm,
+            tail=_bounded_int_arg(args, "tail", 200, min_value=1, max_value=5000),
+            operation_timeout=float(_bounded_int_arg(args, "timeout_seconds", 15, min_value=1, max_value=300)),
+        )
+        result = voice_cli._execute_proxy_service_lifecycle(cli_args, action)
+        if result["returncode"] != 0:
+            raise ToolError("command_failed", "voice proxy service lifecycle failed", {"lifecycle": result})
+        return _ok({
+            "applied": bool(not cli_args.dry_run and action in {"up", "down", "restart"}),
+            "dry_run": cli_args.dry_run,
+            "plan": {
+                "lifecycle": "service",
+                "service": voice["proxy"]["service"],
+                "services_manifest": voice_cli._service_manifest_path(voice["proxy"], data),
+            },
+            "lifecycle": result,
+        })
     process = RealtimeProxyProcessService(
         ProxyProcessConfig(
             config_path=config,
@@ -406,6 +469,11 @@ FAMILY = ToolFamily(
                     "config": {"type": "string"},
                     "profile": {"type": "string"},
                     "topology": {"type": "string"},
+                    "topology_overlay": {"type": "string"},
+                    "command_host": {"type": "string"},
+                    "command_runtime": {"type": "string"},
+                    "target": {"type": "string"},
+                    "transport": {"type": "string", "enum": ["auto", "local", "controller"], "default": "local"},
                     "pid_file": {"type": "string"},
                     "log_file": {"type": "string"},
                     "tail": _bounded_integer_schema(1, 5000, 200),

@@ -1,0 +1,25 @@
+# Portable host-supervised service bindings for this private operator home.
+#
+# This generic scaffold deliberately declares no active service. Discover an
+# existing supervisor entry, preview adoption, and retain only the exact
+# binding approved for this host. Do not put commands, credentials, or model
+# downloads in this file.
+schema = "anvil-services/v1"
+
+# A staged launchd definition uses source_definition, definition, and its
+# SHA-256 pin. Docker bindings instead retain the inspected container, image,
+# and identity-label facts. Model Docker bindings also name their owning serve
+# and serve_manifest so the normal reservation ledger remains authoritative.
+#
+# [[service]]
+# id = "example-voice"
+# resource = "voice"
+# manager = "launchd"
+# engine = "kokoro"
+# support = "legacy"
+# label = "org.example.kokoro"
+# owner_uid = 1000
+# source_definition = "definitions/org.example.kokoro.plist"
+# definition = "/absolute/operator/LaunchAgents/org.example.kokoro.plist"
+# definition_sha256 = "replace-with-64-lowercase-hex-characters"
+# memory_mib = 2048

@@ -1,6 +1,7 @@
 """Command declarations for the host family."""
 
 from .family import command_family
+from .host_services import services as host_services
 from .common import CONFIRM_OPTIONS
 from .spec import CommandNode, _node, _handler, _option, _remote, _resource_node
 
@@ -19,6 +20,7 @@ def commands() -> tuple[CommandNode, ...]:
             "host",
             "Inspect and repair declared host operations.",
             children=(
+                host_services(),
                 _node(
                     "config",
                     "Inventory and safely export operator-owned configuration.",
