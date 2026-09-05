@@ -45,6 +45,20 @@ the request and tools for the selected upstream dialect, enforces the selected
 tier's context/tool/readiness/admission constraints, then relays ordinary or
 SSE responses. There is exactly one selected tier per accepted chat request.
 
+**Pending design — bounded same-host replicas.** A future explicit 2–16-member
+equivalent set may add one internal member-admission/selection step after this
+singular alias-to-tier decision. All members must be on the declared host and
+share served model, declared revision, engine version, image/configuration
+digests, dialect, and context/output/tool/media contract; each is independently
+health-checked and live-verified for its model name. The initial strategy is
+deterministic round robin among eligible member IDs. It is not a cross-host
+scheduler, hidden substitution, lifecycle authority, or replay mechanism:
+after selection, a failure returns without another member attempt. Declared
+deployment provenance is not runtime attestation, and readiness is distinct
+from qualification and promotion. Until implementation ships, each tier has
+one endpoint. See [ADR-0039](adr/0039-capability-meta-router.md) and
+[ADR-0034](adr/0034-fleet-control-plane-and-node-runtime-classes.md).
+
 The front door also has deterministic purpose-model endpoints for embeddings
 and reranking, plus normalized audio endpoints. They have separate
 operator-configured route tables and never join the chat route vocabulary.
