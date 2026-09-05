@@ -210,6 +210,96 @@ def test_generated_manifest_index_structural_invariants():
     assert len(rows) == sum(bool(record["visible"]) for record in manifest["commands"])
     assert len(rows) == len(set(rows))
     assert "`--follow`" in index
+    assert manifest["global_options"]
+    router_workloads = next(row for row in rows if "`router workloads`" in row)
+    fleet_workloads = next(row for row in rows if "`fleet workloads`" in row)
+    assert "`--router-url`" in router_workloads
+    assert "`--controller-url`" in fleet_workloads
+    assert "`--owner`" in router_workloads
+    assert "`--topology`" not in router_workloads
+    assert "`--target`" not in fleet_workloads
+
+
+def _index_record(path: str, *flag_groups: tuple[str, ...]) -> dict[str, object]:
+    return {
+        "path": path,
+        "summary": "summary",
+        "mutation_class": "read",
+        "output_policy": "bounded",
+        "visible": True,
+        "options": [{"flags": list(flags)} for flags in flag_groups],
+    }
+
+
+def _row(index: str, path: str) -> str:
+    return next(line for line in index.splitlines() if f"`{path}`" in line)
+
+
+def test_manifest_index_uses_declared_globals_not_command_intersection():
+    ordinary = _index_record(
+        "ordinary command", ("--global",), ("--shared",), ("--ordinary",)
+    )
+    peer = _index_record("peer command", ("--global",), ("--shared",), ("--peer",))
+    manifest = {
+        "global_options": [{"flags": ["--global"]}],
+        "commands": [ordinary, peer],
+    }
+    before = audit.render_manifest_index(manifest)
+    after = audit.render_manifest_index(
+        {
+            **manifest,
+            "commands": [
+                ordinary,
+                peer,
+                _index_record("sealed command", ("--shared",), ("--sealed",)),
+            ],
+        }
+    )
+
+    assert _row(before, "ordinary command") == _row(after, "ordinary command")
+    assert "`--global`" not in _row(after, "ordinary command")
+    assert "`--shared`" in _row(after, "ordinary command")
+
+
+def test_manifest_index_with_empty_globals_hides_nothing():
+    index = audit.render_manifest_index(
+        {
+            "global_options": [],
+            "commands": [_index_record("ordinary command", ("--topology",))],
+        }
+    )
+
+    assert "`--topology`" in index
+
+
+@pytest.mark.parametrize(
+    ("include_field", "global_options"),
+    [
+        (False, None),
+        (True, None),
+        (True, {}),
+        (True, [None]),
+        (True, [{}]),
+        (True, [{"flags": []}]),
+        (True, [{"flags": [""]}]),
+        (True, [{"flags": [None]}]),
+    ],
+)
+def test_manifest_global_options_are_required_and_well_formed(
+    tmp_path: Path, include_field: bool, global_options: object
+):
+    manifest = {"commands": [_index_record("ordinary command", ("--local",))]}
+    if include_field:
+        manifest["global_options"] = global_options
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "CLI-COMMAND-MANIFEST.json").write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError, match="command manifest global_options"):
+        audit._manifest(tmp_path)
+    with pytest.raises(ValueError, match="command manifest global_options"):
+        audit.render_manifest_index(manifest)
 
 
 def test_repository_discovery_does_not_walk_untracked_trees(monkeypatch):
@@ -234,6 +324,7 @@ def _nav_tree(tmp_path: Path, nav_body: str) -> Path:
         json.dumps(
             {
                 "schema_version": 1,
+                "global_options": [],
                 "commands": [
                     {
                         "path": "workbench up",
