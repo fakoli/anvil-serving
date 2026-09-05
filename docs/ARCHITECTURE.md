@@ -156,6 +156,38 @@ tailnet ACL, restricted tool catalog, and absence of home/SSH/GitHub mounts are
 the actual security boundary. Git and SSH credentials are deliberately not
 available in the image.
 
+### Planned node-runtime bootstrap boundary
+
+The [managed bootstrap design](prds/fleet-node-enrollment.md) extends the
+control plane at one host-owned coupling point; it is not yet a shipped
+installation workflow. Planning resolves one declared `host:<id>` and binds
+its topology fingerprint, expected node, software/receiver digests and
+platform adapters. Reachable nodes use the controller. Only explicit recovery
+of a declared absent/unavailable controller may use the pinned forced-command
+SSH receiver; denial or wrong identity never authorizes fallback. No remote
+Docker socket, general shell, undeclared discovery or caller-supplied endpoint
+is added.
+
+Every bootstrap read requires `node-admin:bootstrap`; mutation also requires
+local bootstrap policy, confirmation and immediate plan revalidation. The
+artifact bundle contains no credentials or operator configuration. v1 uses
+wheel-installed immutable venv generations with an already provisioned Windows
+scheduled task or Linux systemd user supervisor, receiver and stable launcher.
+It does not install/upgrade the Docker controller described above or a macOS
+runtime, create supervisors, elevate privileges or install machine prerequisites.
+
+An atomic generation pointer and flushed operation journal bracket activation.
+Fresh authenticated controller acceptance must prove exact node, package and
+immutable build identity, compatible protocol, expected per-node catalog and
+health. Journal state is reconciled against inspected runtime/supervisor state.
+Failure ends in verified prior-generation rollback or explicit manual recovery,
+not silent success or automated repair. Only validated operation staging may
+be cleaned; evidence and prior generations remain. Enrollment changes no
+model, route, GPU ownership, topology, client profile or promotion approval.
+See [ADR-0034](adr/0034-fleet-control-plane-and-node-runtime-classes.md) and
+[ADR-0035](adr/0035-fleet-configuration-reconciliation.md) for the state and
+authority boundaries.
+
 ## Durability model
 
 Every class of runtime state has exactly one authoritative home (ADR-0033). Secrets are
