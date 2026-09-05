@@ -1,0 +1,91 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "RadixArk/Qwen3.8-27B-NVFP4-PRO6000-C8-DFlash2-Compile"
+status = "qualification-candidate"
+source = "2026-09-04 matched torch.compile follow-up to the current SGLang RTX PRO 6000 DFlash2 K8 arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "RadixArk/Qwen3.8-27B-NVFP4"
+revision = "319f741cce68d7914884900c138a1fbb70a42f30"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "One card in a dedicated TP=1 qualification lane; compile cold-start cost and post-capture headroom are retained."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--RadixArk--Qwen3.8-27B-NVFP4/snapshots/319f741cce68d7914884900c138a1fbb70a42f30"
+quantization = "ModelOpt NVFP4 W4A4 target including the restored quantized LM head, FP8 E4M3 target KV, and BF16 incoai DFlash2 draft"
+context_tokens = 262144
+port = 39262
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-27b-radixark-nvfp4-sglang-pro6000-c8-dflash2-compile"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = [
+  "qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang",
+]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+]
+flags = [
+  "--served-model-name qwen38-27b-radixark-nvfp4-sglang-pro6000-c8-dflash2-compile",
+  "--tp-size 1",
+  "--language-only",
+  "--context-length 262144",
+  "--max-running-requests 8",
+  "--cuda-graph-max-bs 8",
+  "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048",
+  "--disable-prefill-cuda-graph",
+  "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer",
+  "--mamba-ssm-dtype bfloat16",
+  "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant",
+  "--speculative-num-draft-tokens 8",
+  "--enable-torch-compile",
+  "--torch-compile-max-bs 4",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--enable-metrics",
+  "--host 0.0.0.0",
+  "--port 39262",
+]
+note = "One-variable compile extension of the matched DFlash2 K8 arm. Helix measured a meaningful median uplift but also multi-minute cold compilation and graph-capture failures at an overly aggressive memory fraction. Current generic SGLang documentation describes torch.compile as weakly maintained, so this arm runs only after the non-compile DFlash2 arm passes, retains full startup logs, separates cold and warm measurements, and is rejected on any capture error or material headroom loss. The compile batch ceiling is four even though request admission is eight; C8 therefore measures the actual mixed compiled/eager behavior. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "decode", "concurrency", "text", "speculative-decoding", "compile-experiment"]
+rationale = "Measures whether Helix's compile insight survives the exact current image and local Max-Q Workstation card without hiding cold-start or stability cost."
+
+[recipe.sources]
+official = [
+  "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B",
+  "https://github.com/sgl-project/sglang/commit/5f55db35e926d50676f75b812640ea2410b0fe0e",
+  "https://huggingface.co/incoai/Qwen3.8-27B-DFlash2/tree/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+]
+community = [
+  "https://huggingface.co/RadixArk/Qwen3.8-27B-NVFP4/tree/319f741cce68d7914884900c138a1fbb70a42f30",
+  "https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000",
+]
+local = [
+  "configs/qwen38-27b-radixark-nvfp4-sglang-pro6000-c8-dflash2-recipe.toml",
+  "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md",
+]
