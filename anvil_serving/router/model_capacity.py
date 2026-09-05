@@ -20,7 +20,8 @@ from dataclasses import dataclass
 from typing import Callable, Mapping, Optional
 from urllib.parse import urlsplit, urlunsplit
 
-from .availability import AvailabilityResult, resolve_runtime_tier, safe_check
+from .admission import AdmissionSnapshot, TierAdmission
+from .availability import AvailabilityResult, resolve_runtime_tier, safe_check, safe_check_member
 from .config import METADATA_UPSTREAM, RouterConfig, Tier, normalize_model_alias
 
 CAPACITY_PARAMS_KEY = "capacity"
@@ -33,6 +34,19 @@ _METRIC_RE = re.compile(
 )
 _MODEL_LABEL_RE = re.compile(r'(?:^|,)model_name="((?:[^"\\]|\\.)*)"')
 _ROLE_RE = re.compile(r"[a-z][a-z0-9_-]{0,63}")
+_MEMBER_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
+_QUALIFICATION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")
+_IDENTITY_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}")
+_DIGEST_RE = re.compile(r"sha256:[0-9a-f]{64}")
+# JSON consumers must retain exact counters; reject beyond IEEE-754's safe
+# integer range instead of publishing rounded or unbounded owner state.
+_MAX_ADMISSION_COUNT = (1 << 53) - 1
+_MEMBER_REASONS = frozenset({
+    "identity_passed", "identity_mismatch", "identity_missing", "identity_malformed",
+    "identity_oversized", "health_transport", "identity_transport", "probe_pending",
+    "replica_probe_not_configured", "replica_member_unknown",
+    "member_readiness_not_configured", "availability_member_check_failed",
+})
 
 _LIVE_METRICS = {
     "vllm:num_requests_running": "requests_running",
@@ -170,6 +184,113 @@ def _capacity_params(tier: Tier) -> Mapping[str, object]:
 
 def _readiness(availability, tier: Tier) -> AvailabilityResult:
     return safe_check(availability, tier, include_exception_name=False)
+
+
+def replica_metadata(tier: Tier, availability: object) -> tuple[dict, AvailabilityResult]:
+    """Project configured members, not endpoints or an attestation of deployment.
+
+    This sibling of the direct projection deliberately never adopts arbitrary
+    upstream metadata. A member's observed model is visible only on exact match.
+    The returned readiness is the logical OR of verified member readiness; it
+    says nothing about admission or qualified aggregate throughput.
+    """
+    if type(tier.replicas) is not tuple or not 2 <= len(tier.replicas) <= 16:
+        raise ValueError("invalid replica projection configuration")
+    members = []
+    seen = set()
+    for member in tier.replicas:
+        if (
+            type(member.id) is not str or _MEMBER_RE.fullmatch(member.id) is None
+            or member.id in seen or type(member.qualification_ref) is not str
+            or _QUALIFICATION_RE.fullmatch(member.qualification_ref) is None
+        ):
+            raise ValueError("invalid replica projection configuration")
+        seen.add(member.id)
+    identity = tier.replica_identity
+    identity_values = {}
+    for key, pattern in (
+        ("model_revision", _IDENTITY_RE), ("engine_version", _IDENTITY_RE),
+        ("image_digest", _DIGEST_RE), ("config_fingerprint", _DIGEST_RE),
+    ):
+        value = getattr(identity, key, None)
+        if type(value) is not str or pattern.fullmatch(value) is None:
+            raise ValueError("invalid replica projection configuration")
+        identity_values[key] = value
+    for member in sorted(tier.replicas, key=lambda item: item.id):
+        result = safe_check_member(availability, tier, member.id, include_exception_name=False)
+        matched = (
+            type(result.expected_model) is str and type(result.observed_model) is str
+            and result.expected_model == tier.model and result.observed_model == tier.model
+        )
+        reason = result.reason
+        if type(reason) is not str or (
+            reason not in _MEMBER_REASONS
+            and re.fullmatch(r"(?:health|identity)_http_(?:[1-5][0-9]{2}|unknown)", reason) is None
+        ):
+            reason = "unavailable"
+        loaded = (
+            result.available is True and type(result.state) is str
+            and result.state == "ready" and reason == "identity_passed" and matched
+        )
+        if result.available is True and not matched:
+            reason = "identity_mismatch"
+        elif not loaded and reason == "identity_passed":
+            reason = "unavailable"
+        members.append({
+            "id": member.id,
+            "qualification_ref": member.qualification_ref,
+            "readiness": {"loaded": loaded, "state": "ready" if loaded else "unavailable", "reason": reason},
+            "served_identity": {"expected": tier.model, "observed": tier.model if matched else None},
+        })
+    count = sum(row["readiness"]["loaded"] for row in members)
+    readiness = AvailabilityResult(
+        count > 0, "ready" if count else "unavailable",
+        "replicas_ready" if count == len(members) else "replicas_partial" if count else "replicas_unavailable",
+        expected_model=tier.model, observed_model=tier.model if count else None,
+    )
+    return {
+        "deployment_identity_source": "declared",
+        "runtime_deployment_identity_verified": False,
+        "replica_identity": identity_values,
+        "members": members,
+    }, readiness
+
+
+def _replica_admission(tier: Tier, admission: Optional[TierAdmission]) -> dict:
+    """Read one atomic owner snapshot; an absent/broken owner is not zero load."""
+    unavailable = {"status": "unavailable", "state": None, "active_requests": None,
+                   "draining": None, "member_active_requests": None}
+    if admission is None:
+        return unavailable
+    try:
+        snapshot = admission.snapshot(tier.id)
+        if (
+            type(snapshot) is not AdmissionSnapshot or snapshot.tier_id != tier.id
+            or type(snapshot.state) is not str or snapshot.state not in {"admitting", "quiesced"}
+            or type(snapshot.draining) is not bool or type(snapshot.active_requests) is not int
+            or (snapshot.draining and snapshot.state != "quiesced")
+            or not 0 <= snapshot.active_requests <= _MAX_ADMISSION_COUNT
+            or type(snapshot.member_active_requests) is not tuple
+            or len(snapshot.member_active_requests) != len(tier.replicas)
+        ):
+            return unavailable
+        counts = {}
+        for pair in snapshot.member_active_requests:
+            if type(pair) is not tuple or len(pair) != 2:
+                return unavailable
+            member, count = pair
+            if (
+                type(member) is not str or member in counts or type(count) is not int
+                or not 0 <= count <= _MAX_ADMISSION_COUNT
+            ):
+                return unavailable
+            counts[member] = count
+        if set(counts) != {member.id for member in tier.replicas} or sum(counts.values()) != snapshot.active_requests:
+            return unavailable
+        return {"status": "available", "state": snapshot.state, "active_requests": snapshot.active_requests,
+                "draining": snapshot.draining, "member_active_requests": dict(sorted(counts.items()))}
+    except Exception:  # noqa: BLE001 - never serialize owner errors or its free-text reason
+        return unavailable
 
 
 def _metrics(provider: MetricsProvider, tier: Tier) -> MetricsSnapshot:
@@ -310,6 +431,8 @@ def build_model_capacity(
     availability,
     metrics_provider: MetricsProvider,
     query: Mapping[str, list[str]],
+    *,
+    admission: Optional[TierAdmission] = None,
 ) -> dict:
     """Build a capacity snapshot for configured chat tiers."""
     supported = {
@@ -358,13 +481,21 @@ def build_model_capacity(
             capacity.get("video_tokens_estimate")
         )
         kv_capacity = _positive_int(capacity.get("kv_cache_capacity_tokens"))
-        ready = _readiness(availability, tier)
+        replica, ready = (
+            replica_metadata(tier, availability) if tier.replicas else ({}, _readiness(availability, tier))
+        )
+        if replica:
+            # Shared declared per-request policy is not aggregate KV capacity.
+            kv_capacity = None
         effective = resolve_runtime_tier(tier, ready)
         reported = effective or tier
         context_limit = (
             reported.context_limit if reported.context_limit > 0 else None
         )
-        live = _metrics(metrics_provider, reported)
+        live = (
+            MetricsSnapshot("unavailable", {}, "replica_metrics_not_aggregated")
+            if replica else _metrics(metrics_provider, reported)
+        )
         values = dict(live.values) if live.status == "available" else {}
         usage = values.get("kv_cache_usage_fraction")
         used_tokens = None
@@ -377,7 +508,7 @@ def build_model_capacity(
             used_tokens = round(kv_capacity * usage)
             remaining_tokens = kv_capacity - used_tokens
 
-        rows.append({
+        row = {
             "object": "model_capacity",
             "id": tier.id,
             "aliases": aliases,
@@ -451,7 +582,15 @@ def build_model_capacity(
                 image_tokens_estimate=image_tokens_estimate,
                 video_tokens_estimate=video_tokens_estimate,
             ),
-        })
+        }
+        if replica:
+            row.update(replica)
+            row["admission"] = _replica_admission(tier, admission)
+            row["capacity"]["scheduler_max_num_seqs"] = None
+            row["capacity"]["model_memory_gib"] = None
+            row["gpu"]["name"] = None
+            row["gpu"]["memory_total_mib"] = None
+        rows.append(row)
     return {"object": "list", "data": rows}
 
 
@@ -459,4 +598,5 @@ __all__ = [
     "MetricsSnapshot",
     "build_model_capacity",
     "fetch_vllm_metrics",
+    "replica_metadata",
 ]
