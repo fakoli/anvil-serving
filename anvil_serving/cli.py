@@ -1440,7 +1440,8 @@ def main(argv=None):
         forwarded = _move_leading_resolution_options(forwarded)
     except UsageError as exc:
         if json_requested:
-            print(render_json(error_envelope(" ".join(argv), None, exc)))
+            # Global-option validation can fail before a command is resolved.
+            print(render_json(error_envelope("anvil-serving", None, exc)))
         else:
             print(f"anvil-serving: {exc}", file=sys.stderr)
         return EXIT_CODES["usage"]
