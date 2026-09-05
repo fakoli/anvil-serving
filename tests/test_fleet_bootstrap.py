@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import stat
 import struct
 import warnings
@@ -11,6 +12,8 @@ from dataclasses import replace
 import pytest
 
 from anvil_serving import fleet_bootstrap as bootstrap
+from anvil_serving.targets import CommandSpec, resolve_execution_plan
+from anvil_serving.topology import SCHEMA_VERSION, parse_topology
 
 
 SHA_A = "a" * 64
@@ -82,6 +85,91 @@ def receipt(
         rollback=rollback,
         error_code=error,
         trigger_error_code=trigger,
+    )
+
+
+def bootstrap_execution(
+    *,
+    platform: str = "linux",
+    operations: tuple[str, ...] = ("z-operation", "controller-bootstrap"),
+    bootstrap_changes: dict | None = None,
+):
+    windows = platform == "windows"
+    declared = {
+        "enabled": True,
+        "bootstrap_authorized": True,
+        "execution_runtime": "target-native",
+        "staging_root": "C:\\private-stage" if windows else "/var/tmp/private-stage",
+        "install_root": "C:\\private-install" if windows else "/opt/private-install",
+        "python_executable": "C:\\private-python\\python.exe" if windows else "/usr/bin/private-python",
+        "receiver_path": "C:\\private-receiver\\bootstrap.py" if windows else "/opt/private-receiver/bootstrap.py",
+        "receiver_sha256": SHA_A,
+        "install_adapter": "python-wheel-venv",
+        "supervisor_adapter": "windows-scheduled-task" if windows else "linux-systemd-user",
+        "supervisor_id": "anvil-controller",
+    }
+    declared.update(bootstrap_changes or {})
+    topology = parse_topology(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "id": "synthetic-bootstrap-plan",
+            "command_host": "host:operator",
+            "command_runtime": "runtime:operator-native",
+            "capacity_policies": [],
+            "hosts": [
+                {"id": "operator", "roles": ["operator"], "address": "127.0.0.1"},
+                {
+                    "id": "Node_1",
+                    "roles": ["controller"],
+                    "address": "100.64.0.10",
+                    "os": platform,
+                    "bootstrap": declared,
+                },
+            ],
+            "runtimes": [
+                {"id": "operator-native", "host": "operator", "role": "native"},
+                {"id": "target-native", "host": "Node_1", "role": "native"},
+            ],
+            "gpu_roles": [],
+            "resources": [],
+            "transports": [
+                {
+                    "id": "bootstrap-controller",
+                    "kind": "controller",
+                    "host": "Node_1",
+                    "runtime": "target-native",
+                    "endpoint": "http://100.64.0.10:8766",
+                    "auth_env": "SYNTHETIC_BOOTSTRAP_TOKEN",
+                    "allowed_operations": list(operations),
+                    "expected_node": "Node_1",
+                }
+            ],
+        }
+    )
+    command = CommandSpec(
+        name="controller-bootstrap",
+        resource_role=None,
+        supported_transports=("controller", "ssh"),
+        execution_runtime_roles=("native",),
+        mutation_class="write",
+        recovery_capable=True,
+        gpu_role_required=False,
+        execution_host_os=("windows", "linux"),
+        execution_policy="host-bootstrap",
+    )
+    return resolve_execution_plan(topology, command, target="host:Node_1")
+
+
+def plan_manifest(*, platform: str = "linux") -> bootstrap.BootstrapManifest:
+    value = manifest()
+    return replace(
+        value,
+        platform=bootstrap.BootstrapPlatform(platform),
+        supervisor_adapter=(
+            bootstrap.SupervisorAdapter.WINDOWS_SCHEDULED_TASK
+            if platform == "windows"
+            else bootstrap.SupervisorAdapter.LINUX_SYSTEMD_USER
+        ),
     )
 
 
@@ -168,6 +256,235 @@ def test_manifest_mutation_changes_manifest_and_bundle_identity():
 
     assert first.sha256 != second.sha256
     assert hashlib.sha256(first_bundle).digest() != hashlib.sha256(second_bundle).digest()
+
+
+@pytest.mark.parametrize("platform", ("linux", "windows"))
+def test_bootstrap_plan_from_resolved_topology_has_canonical_private_identity(platform):
+    execution = bootstrap_execution(platform=platform)
+    artifact = plan_manifest(platform=platform)
+    first = bootstrap.build_bootstrap_plan(execution, artifact)
+    second = bootstrap.BootstrapPlan(execution, artifact)
+
+    assert first == second
+    private = {
+        "schema": bootstrap.PLAN_SCHEMA,
+        "host": first.host,
+        "execution_runtime": first.execution_runtime,
+        "topology_sha256": first.topology_sha256,
+        "manifest_sha256": first.manifest_sha256,
+        "expected_node": first.expected_node,
+        "platform": first.platform.value,
+        "staging_root": first.staging_root,
+        "install_root": first.install_root,
+        "python_executable": first.python_executable,
+        "receiver_path": first.receiver_path,
+        "receiver_sha256": first.receiver_sha256,
+        "install_adapter": first.install_adapter.value,
+        "supervisor_adapter": first.supervisor_adapter.value,
+        "install_root_class": first.install_root_class.value,
+        "supervisor_id": first.supervisor_id,
+        "bootstrap_enabled": True,
+        "bootstrap_authorized": True,
+        "expected_protocol_version": "2026-07-28",
+        "expected_catalog_sha256": first.expected_catalog_sha256,
+    }
+    expected = json.dumps(
+        private, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode()
+    assert first.plan_sha256 == hashlib.sha256(expected).hexdigest()
+
+
+def test_bootstrap_plan_public_projection_and_repr_are_private_value_free():
+    value = bootstrap.build_bootstrap_plan(bootstrap_execution(), plan_manifest())
+    payload = value.to_dict()
+    rendered = json.dumps(payload, sort_keys=True) + repr(value)
+
+    assert set(payload) == {
+        "schema",
+        "host",
+        "topology_sha256",
+        "plan_sha256",
+        "manifest_sha256",
+        "expected_node",
+        "platform",
+        "install_adapter",
+        "supervisor_adapter",
+        "expected_protocol_version",
+        "expected_catalog_sha256",
+    }
+    for prohibited in (
+        "private-stage",
+        "private-install",
+        "private-python",
+        "private-receiver",
+        "SYNTHETIC_BOOTSTRAP_TOKEN",
+        "100.64.0.10",
+        "bootstrap-controller",
+    ):
+        assert prohibited not in rendered
+
+
+def test_bootstrap_plan_is_frozen_and_accepts_no_field_overrides():
+    execution = bootstrap_execution()
+    artifact = plan_manifest()
+    value = bootstrap.BootstrapPlan(execution, artifact)
+    with pytest.raises((AttributeError, TypeError)):
+        value.host = "other"  # type: ignore[misc]
+    with pytest.raises(TypeError):
+        bootstrap.BootstrapPlan(execution, artifact, host="other")
+    with pytest.raises(TypeError):
+        bootstrap.build_bootstrap_plan(execution, artifact, host="other")
+    assert not hasattr(bootstrap.BootstrapPlan, "from_dict")
+
+
+def test_catalog_hash_is_sorted_canonical_json_and_accepts_256_operations():
+    operations = (
+        "z-operation",
+        "controller-bootstrap",
+        *(f"operation-{number:03d}" for number in range(254)),
+    )
+    envelope = {
+        "schema": bootstrap.CONTROLLER_OPERATION_CATALOG_SCHEMA,
+        "operations": sorted(operations),
+    }
+    expected = json.dumps(
+        envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode()
+
+    assert len(operations) == 256
+    assert bootstrap.controller_operation_catalog_sha256(operations) == hashlib.sha256(
+        expected
+    ).hexdigest()
+    assert bootstrap.controller_operation_catalog_sha256(tuple(reversed(operations))) == (
+        hashlib.sha256(expected).hexdigest()
+    )
+
+
+@pytest.mark.parametrize(
+    "operations",
+    (
+        (),
+        ("other",),
+        ("controller-bootstrap", "controller-bootstrap"),
+        ("controller-bootstrap", "bad.operation"),
+        ["controller-bootstrap"],
+        ("controller-bootstrap", *(f"operation-{number:03d}" for number in range(256))),
+    ),
+)
+def test_catalog_hash_rejects_invalid_shape_members_and_bounds(operations):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.controller_operation_catalog_sha256(operations)
+    assert caught.value.code == "invalid-contract"
+
+
+def test_bootstrap_plan_catalog_order_is_equivalent_but_membership_changes_identity():
+    artifact = plan_manifest()
+    first = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(operations=("z-operation", "controller-bootstrap")),
+        artifact,
+    )
+    reordered = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(operations=("controller-bootstrap", "z-operation")),
+        artifact,
+    )
+    changed = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(operations=("controller-bootstrap", "other-operation")),
+        artifact,
+    )
+    assert first.expected_catalog_sha256 == reordered.expected_catalog_sha256
+    assert first.topology_sha256 != reordered.topology_sha256
+    assert first.plan_sha256 != reordered.plan_sha256
+    assert first.plan_sha256 != changed.plan_sha256
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("staging_root", "/var/tmp/other-stage"),
+        ("install_root", "/opt/other-install"),
+        ("python_executable", "/usr/bin/other-python"),
+        ("receiver_path", "/opt/other-receiver/bootstrap.py"),
+        ("receiver_sha256", SHA_B),
+        ("supervisor_id", "other-controller"),
+    ),
+)
+def test_every_private_topology_value_changes_plan_identity(field, value):
+    artifact = plan_manifest()
+    original = bootstrap.build_bootstrap_plan(bootstrap_execution(), artifact)
+    changed = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(bootstrap_changes={field: value}), artifact
+    )
+    assert original.plan_sha256 != changed.plan_sha256
+
+
+def test_manifest_artifact_identity_changes_plan_identity():
+    execution = bootstrap_execution()
+    first = bootstrap.build_bootstrap_plan(execution, plan_manifest())
+    changed = bootstrap.build_bootstrap_plan(
+        execution, replace(plan_manifest(), runtime_sha256=SHA_B)
+    )
+    assert first.plan_sha256 != changed.plan_sha256
+
+
+@pytest.mark.parametrize(
+    "artifact",
+    (
+        replace(plan_manifest(), expected_node="other-node"),
+        replace(
+            plan_manifest(),
+            controller_protocol_min="2025-11-25",
+            controller_protocol_max="2026-08-01",
+        ),
+        replace(
+            plan_manifest(),
+            platform=bootstrap.BootstrapPlatform.WINDOWS,
+            supervisor_adapter=bootstrap.SupervisorAdapter.WINDOWS_SCHEDULED_TASK,
+        ),
+    ),
+)
+def test_bootstrap_plan_refuses_manifest_target_protocol_and_platform_mismatch(artifact):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.build_bootstrap_plan(bootstrap_execution(), artifact)
+    assert caught.value.code == "precondition-failed"
+
+
+def test_bootstrap_plan_refuses_false_policy_and_unsafe_replaced_path():
+    execution = bootstrap_execution()
+    denied = replace(
+        execution,
+        host_bootstrap=replace(execution.host_bootstrap, bootstrap_authorized=False),
+        execution_host=replace(
+            execution.execution_host,
+            bootstrap=replace(execution.host_bootstrap, bootstrap_authorized=False),
+        ),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.build_bootstrap_plan(denied, plan_manifest())
+    assert caught.value.code == "authorization-denied"
+
+    unsafe_bootstrap = replace(execution.host_bootstrap, receiver_path="/opt/../private")
+    unsafe = replace(
+        execution,
+        host_bootstrap=unsafe_bootstrap,
+        execution_host=replace(execution.execution_host, bootstrap=unsafe_bootstrap),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.build_bootstrap_plan(unsafe, plan_manifest())
+    assert caught.value.code == "invalid-contract"
+
+
+def test_bootstrap_plan_refuses_forged_resource_and_runtime_boundaries():
+    execution = bootstrap_execution()
+    for changed in (
+        replace(execution, resource_endpoint="http://100.64.0.10:9999"),
+        replace(execution, selected_target="host:other-node"),
+        replace(execution, transport_auth_env=None),
+        replace(execution, transport="ssh"),
+        replace(execution, execution_runtime=replace(execution.execution_runtime, role="docker")),
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.build_bootstrap_plan(changed, plan_manifest())
+        assert caught.value.code == "precondition-failed"
 
 
 @pytest.mark.parametrize(
