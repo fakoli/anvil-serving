@@ -15,7 +15,7 @@ from anvil_serving.topology import Host, Runtime, Topology, Transport
 
 
 NOW = datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc)
-TOKEN = "0123456789abcdef"
+TOKEN = "test-token-test-token"
 
 
 def _topology(*, transports=(), hosts=("node-a", "node-b")):

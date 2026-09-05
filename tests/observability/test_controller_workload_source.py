@@ -38,7 +38,7 @@ from anvil_serving.transports import MAX_RESPONSE_BYTES, TransportResult
 
 
 HOST = "node-a"
-TOKEN = "0123456789abcdef"
+TOKEN = "test-token-test-token"
 NOW = datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc)
 ENDPOINT = "http://127.0.0.1:8765"
 
