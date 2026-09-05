@@ -11,6 +11,7 @@ from anvil_serving.observability.workload_collection import build_node_workloads
 from anvil_serving.observability.workloads import (
     AGGREGATE_LIMIT,
     MAX_COUNT,
+    MAX_NODES,
     FleetResult,
     NodeResult,
     ObservationQuality,
@@ -21,6 +22,7 @@ from anvil_serving.observability.workloads import (
     WorkloadError,
     WorkloadErrorCode,
     WorkloadKind,
+    WorkloadOutcome,
     WorkloadOwner,
     WorkloadPhase,
     WorkloadQuery,
@@ -180,3 +182,136 @@ def test_invalid_outer_input_refuses_before_node_values_are_touched():
         build_fleet_workloads(("node-a",), WorkloadQuery(), NOW, {"wrong": Sentinel()})
     with pytest.raises(WorkloadError):
         build_fleet_workloads(("node-a", "node-a"), WorkloadQuery(), NOW, {"node-a": Sentinel()})
+
+
+@pytest.mark.parametrize("offset,expected", ((30, None), (59, WorkloadErrorCode.FUTURE)))
+def test_source_skew_is_bounded_against_receipt_time(offset, expected):
+    node_time = NOW + timedelta(seconds=29)
+    future = _source(WorkloadOwner.CONTROLLER, collected=NOW + timedelta(seconds=offset))
+    peer = _source(WorkloadOwner.MEDIA)
+    node = NodeResult("node-a", ResultStatus.COMPLETE, node_time, (future, peer))
+    result = normalize_node_workloads("node-a", WorkloadQuery(), NOW, node)
+    sources = {source.owner: source for source in result.sources}
+    assert sources[WorkloadOwner.CONTROLLER].error is expected
+    assert sources[WorkloadOwner.MEDIA] == peer
+    assert result.collection_timestamp == node_time
+    if expected is not None:
+        assert sources[WorkloadOwner.CONTROLLER].collection_timestamp == node_time
+
+
+@pytest.mark.parametrize("node_offset,age,expected", ((-29, 15, WorkloadErrorCode.INVALID), (29, 5, None)))
+def test_recent_filter_uses_receipt_clock_not_remote_node_clock(node_offset, age, expected):
+    record = replace(
+        _record("node-a", WorkloadOwner.CONTROLLER, 1, updated=NOW - timedelta(seconds=age)),
+        state=WorkloadState.TERMINAL,
+        phase=WorkloadPhase.COMPLETED,
+        outcome=WorkloadOutcome.SUCCESS,
+    )
+    source = _source(WorkloadOwner.CONTROLLER, (record,))
+    node_time = NOW + timedelta(seconds=node_offset)
+    node = NodeResult("node-a", ResultStatus.COMPLETE, node_time, (source,))
+    result = normalize_node_workloads("node-a", WorkloadQuery(recent_seconds=10), NOW, node)
+    selected = next(item for item in result.sources if item.owner is WorkloadOwner.CONTROLLER)
+    assert selected.error is expected
+    assert selected.records == (() if expected else (record,))
+    assert result.collection_timestamp == node_time
+
+
+@pytest.mark.parametrize("bad_time", (NOW.replace(tzinfo=None), "private-clock-value", None))
+def test_invalid_node_time_is_not_silently_replaced_as_valid(bad_time):
+    node = NodeResult("node-a", ResultStatus.COMPLETE, NOW, (_source(WorkloadOwner.MEDIA),))
+    object.__setattr__(node, "collection_timestamp", bad_time)
+    result = build_fleet_workloads(("node-a",), WorkloadQuery(), NOW, {"node-a": node})
+    assert result.nodes[0].collection_timestamp == NOW
+    assert all(source.error is WorkloadErrorCode.INVALID for source in result.nodes[0].sources)
+    assert "private-clock-value" not in str(fleet_result_to_dict(result))
+
+
+def test_wrong_host_future_header_cannot_escape_fleet_composition():
+    future = NOW + timedelta(hours=1)
+    node = NodeResult("node-b", ResultStatus.COMPLETE, future, (_source(WorkloadOwner.MEDIA, collected=future),))
+    result = build_fleet_workloads(("node-a",), WorkloadQuery(), NOW, {"node-a": node})
+    assert result.nodes[0].collection_timestamp == NOW
+    assert all(source.error is WorkloadErrorCode.INVALID for source in result.nodes[0].sources)
+
+
+def test_forged_source_ahead_of_node_is_source_local_and_preserves_peer_time():
+    old = NOW - timedelta(minutes=1)
+    peer = _source(WorkloadOwner.MEDIA, collected=old)
+    ahead = _source(WorkloadOwner.CONTROLLER)
+    node = NodeResult("node-a", ResultStatus.COMPLETE, NOW, (ahead, peer))
+    object.__setattr__(node, "collection_timestamp", old)
+    result = normalize_node_workloads("node-a", WorkloadQuery(), NOW, node)
+    sources = {source.owner: source for source in result.sources}
+    assert sources[WorkloadOwner.CONTROLLER].error is WorkloadErrorCode.FUTURE
+    assert sources[WorkloadOwner.CONTROLLER].collection_timestamp == old
+    assert sources[WorkloadOwner.MEDIA] == peer
+    assert result.collection_timestamp == old
+
+
+def test_unchanged_unavailable_source_keeps_its_original_timestamp():
+    node_time = NOW - timedelta(seconds=10)
+    source = SourceResult(
+        WorkloadOwner.MEDIA, ResultStatus.UNAVAILABLE, NOW - timedelta(seconds=20),
+        (), Truncation(0, None), WorkloadErrorCode.FUTURE,
+    )
+    node = NodeResult("node-a", ResultStatus.UNAVAILABLE, node_time, (source,))
+    result = normalize_node_workloads("node-a", WorkloadQuery(), NOW, node)
+    assert next(item for item in result.sources if item.owner is WorkloadOwner.MEDIA) == source
+    assert all(item.collection_timestamp == node_time for item in result.sources if item.owner is not WorkloadOwner.MEDIA)
+
+
+def test_empty_fleet_constructs_source_summaries_linearly(monkeypatch):
+    constructions = 0
+    original = SourceResult.__post_init__
+
+    def counted(source):
+        nonlocal constructions
+        constructions += 1
+        original(source)
+
+    monkeypatch.setattr(SourceResult, "__post_init__", counted)
+    hosts = tuple(f"node-{index}" for index in range(MAX_NODES))
+    result = build_fleet_workloads(hosts, WorkloadQuery(), NOW, {})
+    assert len(result.nodes) == MAX_NODES
+    assert result.truncation == Truncation(0, None)
+    assert constructions <= 64 * MAX_NODES
+
+
+def test_repeated_heap_evictions_count_only_losing_source_records():
+    nodes = {}
+    for host_index in range(8):
+        host = f"node-{host_index}"
+        sources = {owner: _source(owner) for owner in OWNERS}
+        sources[WorkloadOwner.CONTROLLER] = _source(
+            WorkloadOwner.CONTROLLER,
+            tuple(_record(host, WorkloadOwner.CONTROLLER, index,
+                          updated=NOW - timedelta(seconds=8 - host_index, microseconds=index))
+                  for index in range(3)),
+        )
+        nodes[host] = _node(host, sources)
+    result = build_fleet_workloads(tuple(reversed(nodes)), WorkloadQuery(limit=3), NOW, nodes)
+    assert result.truncation == Truncation(3, 21)
+    for node in result.nodes:
+        for source in node.sources:
+            if source.owner is not WorkloadOwner.CONTROLLER:
+                assert source.status is ResultStatus.COMPLETE
+                assert source.truncation == Truncation(0, 0)
+            elif node.host == "node-7":
+                assert source.records == nodes[node.host].sources[1].records
+                assert source.status is ResultStatus.COMPLETE
+                assert source.truncation == Truncation(3, 0)
+            else:
+                assert source.status is ResultStatus.PARTIAL
+                assert source.truncation == Truncation(0, 3)
+
+
+def test_identical_cross_host_record_ids_keep_sorted_host_tie_break():
+    first = _record("node-a", WorkloadOwner.CONTROLLER, 1)
+    second = replace(_record("node-b", WorkloadOwner.CONTROLLER, 1), id=first.id)
+    nodes = {
+        "node-a": _node("node-a", {WorkloadOwner.CONTROLLER: _source(WorkloadOwner.CONTROLLER, (first,))}),
+        "node-b": _node("node-b", {WorkloadOwner.CONTROLLER: _source(WorkloadOwner.CONTROLLER, (second,))}),
+    }
+    result = build_fleet_workloads(("node-b", "node-a"), WorkloadQuery(limit=1), NOW, nodes)
+    assert [record.host for node in result.nodes for source in node.sources for record in source.records] == ["node-a"]
