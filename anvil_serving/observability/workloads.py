@@ -657,6 +657,16 @@ def select_records(
     if not isinstance(aggregate, bool):
         raise _invalid("aggregate must be a boolean")
     input_bound = AGGREGATE_LIMIT if aggregate else SOURCE_LIMIT
+    output_bound = AGGREGATE_LIMIT if aggregate else SOURCE_LIMIT
+    return _select_records_bounded(
+        records, query, now=now, input_bound=input_bound, output_bound=output_bound
+    )
+
+
+def _select_records_bounded(
+    records: Sequence[WorkloadRecord], query: WorkloadQuery, *, now: datetime,
+    input_bound: int, output_bound: int,
+) -> tuple[tuple[WorkloadRecord, ...], Truncation]:
     bounded_records = _bounded_records(records, maximum=input_bound)
     if not isinstance(query, WorkloadQuery):
         raise _invalid("query has the wrong type")
@@ -692,9 +702,25 @@ def select_records(
     # Two stable passes avoid lossy float timestamps while preserving ID tie-breaks.
     selected.sort(key=lambda item: item.id)
     selected.sort(key=lambda item: item.updated_at, reverse=True)
-    cap = min(query.limit, AGGREGATE_LIMIT if aggregate else SOURCE_LIMIT)
+    cap = min(query.limit, output_bound)
     returned = tuple(selected[:cap])
     return returned, Truncation(len(returned), len(selected) - len(returned))
+
+
+def select_managed_records(
+    records: Sequence[WorkloadRecord], query: WorkloadQuery, *, now: datetime,
+) -> tuple[tuple[WorkloadRecord, ...], Truncation]:
+    """Select bounded recipe/manifest observations without widening source defaults."""
+    bounded = _bounded_records(records, maximum=512)
+    if any(
+        not isinstance(record, WorkloadRecord)
+        or record.owner not in _MANAGED_OWNERS
+        for record in bounded
+    ):
+        raise _invalid("managed records must be recipe or manifest observations")
+    return _select_records_bounded(
+        bounded, query, now=now, input_bound=512, output_bound=SOURCE_LIMIT
+    )
 
 
 def validate_source_records(

@@ -41,6 +41,7 @@ from anvil_serving.observability.workloads import (
     node_result_to_json,
     parse_workload_query,
     select_records,
+    select_managed_records,
     source_result_from_dict,
     source_result_from_json,
     source_result_to_dict,
@@ -315,6 +316,26 @@ def test_query_limit_is_honored_at_source_and_aggregate_scope() -> None:
         )
         assert len(returned) == 3
         assert truncation == Truncation(3, 7)
+
+
+def test_managed_selection_has_a_bounded_five_hundred_twelve_row_preselection_window() -> None:
+    records = tuple(
+        _record(
+            str(index), owner=WorkloadOwner.RECIPE,
+            updated_at=NOW - timedelta(seconds=index),
+            source_timestamp=NOW,
+        )
+        for index in range(512)
+    )
+    selected, truncation = select_managed_records(
+        records, WorkloadQuery(limit=1000), now=NOW
+    )
+    assert len(selected) == SOURCE_LIMIT
+    assert truncation == Truncation(SOURCE_LIMIT, 512 - SOURCE_LIMIT)
+    with pytest.raises(WorkloadError):
+        select_managed_records(records + (records[0],), WorkloadQuery(), now=NOW)
+    with pytest.raises(WorkloadError):
+        select_managed_records((_record(),), WorkloadQuery(), now=NOW)
 
 
 @pytest.mark.parametrize(
