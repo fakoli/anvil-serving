@@ -474,22 +474,24 @@ Document a generic two-member loopback configuration, exact declared-versus-live
 **Feature:** F001
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/topology_cli.py, anvil_serving/commands/control_plane.py, tests/test_topology.py
+**Likely files:** anvil_serving/topology_cli.py, anvil_serving/commands/control_plane.py, anvil_serving/cli.py, tests/test_topology.py
 **Dependencies:** T006
 
-Add the root command `anvil-serving topology validate-router-config --config PATH [--topology PATH] [--topology-overlay PATH] [--json]` to the existing local offline topology family. It must call the T006 snapshot validator without target resolution, transport, confirmation, network, Docker, service, GPU, or mutation behavior. Library code returns a dictionary; only the wrapper prints. Success emits exactly `schema_version`, `valid`, `error_code`, `config_sha256`, `tier_count`, `replica_tier_count`, `replica_member_count`, `deployment_identity_source`, and `runtime_deployment_identity_verified`, with schema literal `replica-topology-validation/v1`, `deployment_identity_source = "declared"`, and `runtime_deployment_identity_verified = false`. Failure uses the same keys, a T006 fixed error code, null counts and provenance, false runtime verification, and a digest only when a complete bounded capture exists. Human output is one bounded line derived only from that dictionary. Exit zero means valid and exit two means refused.
+Add the root command `anvil-serving topology validate-router-config --config PATH [--topology PATH] [--topology-overlay PATH] [--json]` to the existing local offline topology family. It must call the T006 snapshot validator without target resolution, transport, confirmation, network, Docker, service, GPU, or mutation behavior. Library code returns a dictionary; only wrappers print. The result has exactly `schema_version`, `valid`, `error_code`, `config_sha256`, `tier_count`, `replica_tier_count`, `replica_member_count`, `deployment_identity_source`, and `runtime_deployment_identity_verified`, with schema literal `replica-topology-validation/v1`, success provenance `declared`, and false runtime verification. Failure uses the same keys, a T006 fixed error code, null counts and provenance, false runtime verification, and a null digest unless a complete bounded capture is available without rereading. The existing root CLI JSON envelope retains this dictionary in `data` for both success and refusal. Keep its command label exactly `topology validate-router-config`, context null, warnings empty, and errors fixed/input-free; never echo argv or paths in any wrapper field. Human output is one bounded line derived only from that dictionary. Exit zero means valid and exit two means refused.
+
+The root dispatcher special-cases the topology family before handler resolution. Extend that actual branch in `cli.py::_dispatch`, not only `topology_cli.main`; preserve other topology commands. Its generic `_json_envelope` normally includes raw argv for topology commands, so the new sensitive leaf also needs operand-free envelope handling. Invalid/missing/repeated flags must refuse without argparse echoing raw inputs or invoking the validator. Follow the existing protected metadata command idiom without broadening other commands' output contracts.
 
 **Acceptance criteria:**
 
 - The exact root CLI path and four options work locally and return the closed success or failure dictionary.
-- JSON and human output derive from the same value and contain no config path, URL, host or resource identity, auth metadata, raw value, or exception text.
+- JSON data and human output derive from the same value; the entire root envelope, parser errors and human line contain no config path, URL, host or resource identity, auth metadata, raw value, or exception text. Real `cli.main` tests exercise valid, invalid, missing/repeated/unknown flag, and private-path cases.
 - Invalid config/topology/join input exits two; a valid direct or replica snapshot exits zero without modifying a file or contacting a host.
 - A negative control proves the command invokes the shared T006 validator and cannot pass through an independently shaped fixture.
 
 **Verification:**
 
 - `python scripts/run_tests.py tests/test_topology.py -x -q`
-- `python -m ruff check anvil_serving/topology_cli.py anvil_serving/commands/control_plane.py tests/test_topology.py`
+- `python -m ruff check anvil_serving/topology_cli.py anvil_serving/commands/control_plane.py anvil_serving/cli.py tests/test_topology.py`
 
 ### T015: Activate only the validated exact-byte router snapshot
 
