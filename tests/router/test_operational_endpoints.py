@@ -4,7 +4,10 @@ from __future__ import annotations
 import json
 import threading
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
+
+import pytest
 
 from anvil_serving.router.availability import AvailabilityResult
 from anvil_serving.router.config import RouterConfig, Tier
@@ -306,3 +309,106 @@ def test_built_server_workloads_endpoint_uses_its_exact_shared_registry(tmp_path
     }
     assert payload["host"] == "node-a"
     assert payload["sources"][0]["records"] == []
+
+
+@pytest.mark.parametrize("filters,age_seconds,returned,omitted", [
+    ({"active_only": True, "recent_seconds": 60, "limit": 1}, 10, 1, 1),
+    ({"state": "checking", "active_only": False, "recent_seconds": 86400, "limit": 1000}, 10, 2, 0),
+    ({"state": "terminal", "active_only": False, "recent_seconds": 1, "limit": 1}, 10, 0, 0),
+    ({"active_only": True, "recent_seconds": 86400, "limit": 1000}, 60, 0, 0),
+])
+def test_workload_router_cli_controller_and_mcp_canonical_parity(tmp_path, monkeypatch, capsys, filters, age_seconds, returned, omitted):
+    from anvil_serving import cli, mcp
+    from anvil_serving.control_plane.controller import server as controller_server
+    from anvil_serving.observability.fleet_workload_collection import build_fleet_workloads
+    from anvil_serving.observability.workload_collection import build_node_workloads
+    from anvil_serving.observability.workloads import (
+        WorkloadOwner, node_result_from_dict, parse_workload_query,
+    )
+    from tests.control_plane.test_controller_fleet_workloads import SCOPED, _post, _server as fleet_server
+
+    now = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
+    clock = [now - timedelta(seconds=age_seconds)]
+    router = _built_workload_server(tmp_path, clock=lambda: clock[0])
+    registry = router.anvil_workloads
+    for index in (1, 2):
+        assert registry.begin(f"req_{index:032x}").activate()
+    clock[0] = now
+    arguments = {"owner": "router", "kind": "router-request", "host": "node-a", **filters}
+    query = parse_workload_query(arguments)
+    wire_query = urlencode({key: str(value).lower() if type(value) is bool else value for key, value in arguments.items()})
+
+    class Fleet:
+        def collect(self, query, now):
+            source = registry.source_result("node-a", query, now)
+            node = build_node_workloads("node-a", query, now, {WorkloadOwner.ROUTER: source})
+            return build_fleet_workloads(("node-a",), query, now, {"node-a": node})
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(controller_server, "build_workload_readers", lambda *_a, **_kw: {WorkloadOwner.ROUTER: registry.source_result})
+    monkeypatch.setattr(cli, "_workload_now", lambda: now)
+    monkeypatch.setenv("PARITY_ROUTER_TOKEN", "workloads-token-12345")
+    monkeypatch.setenv("PARITY_FLEET_TOKEN", SCOPED)
+    cli_filters = []
+    for key, value in arguments.items():
+        if key == "active_only":
+            if value:
+                cli_filters.append("--active-only")
+        else:
+            cli_filters.extend(["--" + key.replace("_", "-"), str(value)])
+    with _running(router) as (host, port), fleet_server(tmp_path, monkeypatch, collector=Fleet(), workload_clock=lambda: now) as (controller, _, _):
+        code, _, raw = _get(host, port, "/v1/workloads?" + wire_query, token="workloads-token-12345")
+        assert code == 200
+        expected = json.loads(raw)
+        parsed = node_result_from_dict(expected)
+        assert parsed.sources[0].truncation.returned == returned
+        assert parsed.sources[0].truncation.omitted == omitted
+        assert parsed.collection_timestamp == now
+        for record in parsed.sources[0].records:
+            assert record.created_at == now - timedelta(seconds=age_seconds)
+            assert not record.freshness(now).is_stale
+
+        assert cli.main(["router", "workloads", "--json", "--router-url", f"http://127.0.0.1:{port}/v1",
+                         "--auth-env", "PARITY_ROUTER_TOKEN", "--expected-node", "node-a", *cli_filters]) == 0
+        assert json.loads(capsys.readouterr().out)["data"] == expected
+        status, node = _post(controller, "/tools/call", {"name": "node_workloads", "arguments": arguments})
+        assert status == 200 and node["ok"] is True
+        controller_node = node["data"]
+        assert {key: controller_node[key] for key in ("schema", "host", "collection_timestamp")} == {
+            key: expected[key] for key in ("schema", "host", "collection_timestamp")
+        }
+        assert [source for source in controller_node["sources"] if source["owner"] == "router"] == expected["sources"]
+        # The controller reports all six authorities. Undeclared readers remain
+        # unavailable even under an owner filter; they are not silently idle.
+        assert len(controller_node["sources"]) == 6
+        assert all(source["status"] == "unavailable" and source["truncation"] == {"returned": 0, "omitted": None}
+                   for source in controller_node["sources"] if source["owner"] != "router")
+        status, fleet = _post(controller, "/tools/call", {"name": "fleet_workloads", "arguments": arguments})
+        assert status == 200 and fleet["ok"] is True
+        assert fleet["data"]["nodes"] == [controller_node]
+        assert fleet["data"]["truncation"] == {"returned": returned, "omitted": None}
+        status, rpc = _post(controller, "/mcp", {
+            "jsonrpc": "2.0", "id": "parity", "method": "tools/call", "params": {
+                "name": "fleet_workloads", "arguments": arguments, "_meta": {
+                    "io.modelcontextprotocol/protocolVersion": mcp.PROTOCOL_VERSION,
+                    "io.modelcontextprotocol/clientCapabilities": {},
+                    "io.modelcontextprotocol/clientInfo": {"name": "parity-test", "version": "1"},
+                },
+            },
+        }, headers={"Accept": "application/json, text/event-stream", "MCP-Protocol-Version": mcp.PROTOCOL_VERSION,
+                    "Mcp-Method": "tools/call", "Mcp-Name": "fleet_workloads"})
+        assert status == 200 and rpc["result"]["structuredContent"] == fleet
+        assert cli.main(["fleet", "workloads", "--json", "--controller-url", f"http://127.0.0.1:{controller.server_address[1]}",
+                         "--auth-env", "PARITY_FLEET_TOKEN", "--expected-node", "node-a", *cli_filters]) == 0
+        output = json.loads(capsys.readouterr().out)
+        assert output["data"] == fleet["data"] and output["context"] is None
+        # Free text is not an extension point on any of these workload surfaces.
+        bad_status, _, bad_raw = _get(host, port, "/v1/workloads?" + wire_query + "&callback=private-marker", token="workloads-token-12345")
+        assert bad_status == 400 and b"private-marker" not in bad_raw
+        _, bad = _post(controller, "/tools/call", {"name": "fleet_workloads", "arguments": {**arguments, "callback": "private-marker"}})
+        assert bad["ok"] is False and bad["error"]["code"] == "invalid_workload_query"
+        assert cli.main(["router", "workloads", "--json", "--callback", "private-marker"]) == 2
+        assert "private-marker" not in capsys.readouterr().out
+        assert parsed == node_result_from_dict(expected) and query.host == "node-a"

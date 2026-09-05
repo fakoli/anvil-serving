@@ -526,7 +526,15 @@ def _manifest_records(
 
     for node in nodes:
         path = parent + (node.name,)
-        options = inherited + node.options
+        # These sealed readers accept explicit connections, not dispatcher
+        # topology/transport resolution. Match their existing focused help.
+        visible_inherited = inherited
+        if path in {("router", "workloads"), ("fleet", "workloads")}:
+            output_flags = {"--json", "--quiet", "--verbose", "-h", "--help"}
+            visible_inherited = tuple(
+                option for option in inherited if set(option.flags) <= output_flags
+            )
+        options = visible_inherited + node.options
         yield {
             "path": " ".join(path),
             "product_family": family_id_for_command(path[0]),

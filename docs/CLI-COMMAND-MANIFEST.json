@@ -7331,6 +7331,154 @@
     },
     {
       "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/router.md",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.cli:_workload_command",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--router-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit loopback router /v1 URL (required).",
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--auth-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Environment variable containing the router credential (required).",
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--expected-node"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Expected router node identity (required).",
+          "value_name": "NODE"
+        },
+        {
+          "flags": [
+            "--owner"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by workload owner.",
+          "value_name": "OWNER"
+        },
+        {
+          "flags": [
+            "--kind"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by workload kind.",
+          "value_name": "KIND"
+        },
+        {
+          "flags": [
+            "--state"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by workload state.",
+          "value_name": "STATE"
+        },
+        {
+          "flags": [
+            "--host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter records by observed host.",
+          "value_name": "HOST"
+        },
+        {
+          "flags": [
+            "--active-only"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Return only active workloads.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--recent-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Recent-workload window in seconds.",
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--limit"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum returned workloads.",
+          "value_name": "COUNT"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "router workloads",
+      "product_family": "capability-gateway",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Read a bounded canonical workload snapshot from one router.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md#diagnose",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -26849,6 +26997,154 @@
       "remote_operation": null,
       "resource_role": null,
       "summary": "Cross-host visibility across the declared operator topology.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/fleet.md",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.cli:_workload_command",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--controller-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit controller URL (required).",
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--auth-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Environment variable containing the controller credential (required).",
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--expected-node"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Expected controller node identity (required).",
+          "value_name": "NODE"
+        },
+        {
+          "flags": [
+            "--owner"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by workload owner.",
+          "value_name": "OWNER"
+        },
+        {
+          "flags": [
+            "--kind"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by workload kind.",
+          "value_name": "KIND"
+        },
+        {
+          "flags": [
+            "--state"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by workload state.",
+          "value_name": "STATE"
+        },
+        {
+          "flags": [
+            "--host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter records by observed host.",
+          "value_name": "HOST"
+        },
+        {
+          "flags": [
+            "--active-only"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Return only active workloads.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--recent-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Recent-workload window in seconds.",
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--limit"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum returned workloads.",
+          "value_name": "COUNT"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "fleet workloads",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Read a bounded canonical workload snapshot from one fleet controller.",
       "transports": [],
       "visible": true
     },
