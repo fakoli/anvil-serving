@@ -2,7 +2,7 @@
 
 from .family import command_family
 from .common import CONFIRM_OPTIONS
-from .spec import CommandNode, _node, _option, _remote, _resource_node
+from .spec import CommandNode, _handler, _node, _option, _remote, _resource_node
 
 
 @command_family(category="Data plane")
@@ -11,6 +11,18 @@ def commands() -> CommandNode:
         "router",
         "Manage the deployed router and its lifecycle.",
         children=(
+            _node(
+                "diagnose",
+                "Explain one request from bounded router evidence without replaying it.",
+                handler=_handler("anvil_serving.router_diagnostics", attribute="dispatch", argv_prefix=()),
+                options=(
+                    _option("--request-id", summary="Request identifier returned by the gateway.", value_name="ID"),
+                    _option("--router-url", summary="Explicit router HTTP(S) origin.", value_name="URL"),
+                    _option("--auth-env", summary="Environment variable containing the router credential.", value_name="NAME"),
+                    _option("--timeout", summary="Per-read socket timeout, at most 30 seconds.", value_name="SECONDS"),
+                ),
+                docs_anchor="docs/cli/router.md#diagnose",
+            ),
             _resource_node(
                 "run",
                 "Run the router in the foreground.",

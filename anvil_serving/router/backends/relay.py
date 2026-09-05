@@ -35,10 +35,12 @@ from ..dialects.translate import (
     openai_tool_choice_to_anthropic,
     openai_tools_to_anthropic,
 )
+from ..decision_log import request_correlation, safe_gateway_request_id
 from ..internal import BackendClientError, InternalRequest, StructuredResult
 from .sse import (
     AnthropicStreamAssembler,
     OpenAIStreamAssembler,
+    UpstreamStreamError,
     iter_sse_events,
 )
 
@@ -103,6 +105,47 @@ class _ClosingIterator:
                 pass
 
 
+class _BoundedLineReader:
+    """Iterate raw response lines without reading beyond a byte budget.
+
+    SSE parsers accumulate non-text fields such as tool arguments and usage,
+    so the cap must apply before a line reaches JSON parsing. ``readline`` is
+    bounded to the remaining budget plus one byte, preventing a single giant
+    event from being materialized by the relay before overflow is detected.
+    """
+
+    def __init__(self, response: Any, max_bytes: int, tier_id: str) -> None:
+        self._response = response
+        self._iterator = iter(response)
+        self._readline = getattr(response, "readline", None)
+        self._max_bytes = max_bytes
+        self._tier_id = tier_id
+        self._total = 0
+
+    def __iter__(self) -> "_BoundedLineReader":
+        return self
+
+    def __next__(self) -> bytes:
+        if callable(self._readline):
+            line = self._readline(self._max_bytes - self._total + 1)
+            if not line:
+                raise StopIteration
+        else:
+            line = next(self._iterator)
+        if not isinstance(line, bytes):
+            raise RelayBackendError(
+                f"model upstream returned an invalid streaming body "
+                f"(tier={self._tier_id!r})"
+            )
+        self._total += len(line)
+        if self._total > self._max_bytes:
+            raise RelayBackendError(
+                f"cloud response body exceeded max_response_bytes="
+                f"{self._max_bytes} (tier={self._tier_id!r})"
+            )
+        return line
+
+
 def split_into_deltas(text: str) -> List[str]:
     """Split text into lossless word-sized streaming deltas."""
     if not text:
@@ -121,35 +164,76 @@ class RelayBackendError(RuntimeError):
 _CALLER_REJECTION_STATUSES = frozenset((400, 413, 415, 422))
 
 
-def _raise_http_error(e: urllib.error.HTTPError) -> None:
-    """Map caller-correctable upstream rejections without leaking details."""
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Reject redirects so configured-tier credentials stay on one origin."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _direct_open(request: urllib.request.Request, timeout: float):
+    """Open without environment proxies or redirect credential forwarding."""
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), _NoRedirect()
+    )
+    return opener.open(request, timeout=timeout)
+
+
+def _gateway_id_from_headers(headers: Mapping[str, str]) -> str:
+    return safe_gateway_request_id(headers.get("X-Request-Id")) or "-"
+
+
+def _log_transport_error(
+    error: urllib.error.URLError, headers: Mapping[str, str]
+) -> None:
+    reason = getattr(error, "reason", None)
     print(
-        f"[anvil-serving] model upstream returned HTTP {e.code} {e.reason}",
+        f"[anvil-serving] model upstream transport error: "
+        f"{type(reason).__name__} "
+        f"gateway_request_id={_gateway_id_from_headers(headers)}",
         file=sys.stderr,
         flush=True,
     )
-    if e.code in _CALLER_REJECTION_STATUSES:
-        if e.code == 413:
+
+
+def _raise_http_error(
+    e: urllib.error.HTTPError, headers: Mapping[str, str]
+) -> None:
+    """Map caller-correctable upstream rejections without leaking details."""
+    try:
+        print(
+            f"[anvil-serving] model upstream returned HTTP {e.code} "
+            f"gateway_request_id={_gateway_id_from_headers(headers)}",
+            file=sys.stderr,
+            flush=True,
+        )
+        if e.code in _CALLER_REJECTION_STATUSES:
+            if e.code == 413:
+                raise BackendClientError(
+                    413,
+                    "payload_too_large",
+                    "model upstream rejected the request as too large",
+                ) from None
             raise BackendClientError(
-                413,
-                "payload_too_large",
-                "model upstream rejected the request as too large",
+                e.code,
+                "invalid_request_error",
+                "model upstream rejected the request",
             ) from None
-        raise BackendClientError(
-            e.code,
-            "invalid_request_error",
-            "model upstream rejected the request",
+        raise RelayBackendError(
+            f"model upstream returned HTTP {e.code}"
         ) from None
-    raise RelayBackendError(
-        f"model upstream returned HTTP {e.code} {e.reason}"
-    ) from None
+    finally:
+        try:
+            e.close()
+        except Exception:  # noqa: BLE001 - preserve the mapped error
+            pass
 
 
 def _urlopen_transport(url: str, *, data: bytes, headers: Mapping[str, str],
                        timeout: float, max_bytes: Optional[int] = None) -> bytes:
     """Default stdlib transport: POST ``data`` to ``url`` and return the body.
 
-    Wraps :func:`urllib.request.urlopen`. Errors are re-raised as
+    Uses a direct no-proxy, no-redirect stdlib opener. Errors are re-raised as
     :class:`RelayBackendError` with a message that cannot contain the key (the
     request object — which holds the auth header — is never stringified).
 
@@ -160,7 +244,7 @@ def _urlopen_transport(url: str, *, data: bytes, headers: Mapping[str, str],
     """
     req = urllib.request.Request(url, data=data, headers=dict(headers), method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with _direct_open(req, timeout) as resp:
             if max_bytes is not None:
                 # Read one byte more than the cap to detect overflow without
                 # buffering the entire body. A legitimate body of exactly
@@ -176,16 +260,9 @@ def _urlopen_transport(url: str, *, data: bytes, headers: Mapping[str, str],
     except RelayBackendError:
         raise
     except urllib.error.HTTPError as e:  # status carries no secret
-        _raise_http_error(e)
+        _raise_http_error(e, headers)
     except urllib.error.URLError as e:
-        # Log the full reason server-side (may include upstream host / TLS detail)
-        # and surface only a generic, client-safe message so the upstream hostname
-        # and TLS internals cannot leak to callers via the 500 path.
-        print(
-            f"[anvil-serving] model upstream transport error: {e.reason}",
-            file=sys.stderr,
-            flush=True,
-        )
+        _log_transport_error(e, headers)
         raise RelayBackendError("model upstream request failed") from None
 
 
@@ -201,15 +278,11 @@ def _urlopen_stream_transport(url: str, *, data: bytes,
     """
     req = urllib.request.Request(url, data=data, headers=dict(headers), method="POST")
     try:
-        return urllib.request.urlopen(req, timeout=timeout)
+        return _direct_open(req, timeout)
     except urllib.error.HTTPError as e:  # status carries no secret
-        _raise_http_error(e)
+        _raise_http_error(e, headers)
     except urllib.error.URLError as e:
-        print(
-            f"[anvil-serving] model upstream transport error: {e.reason}",
-            file=sys.stderr,
-            flush=True,
-        )
+        _log_transport_error(e, headers)
         raise RelayBackendError("model upstream request failed") from None
 
 
@@ -230,8 +303,14 @@ def _urlopen_get_transport(
 ) -> bytes:
     """Default stdlib GET transport for ``/v1/models`` discovery."""
     req = urllib.request.Request(url, headers=dict(headers), method="GET")
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read()
+    try:
+        with _direct_open(req, timeout) as resp:
+            return resp.read()
+    except urllib.error.HTTPError as e:
+        _raise_http_error(e, headers)
+    except urllib.error.URLError as e:
+        _log_transport_error(e, headers)
+        raise RelayBackendError("model upstream request failed") from None
 
 
 def _models_endpoint(base_url: str) -> str:
@@ -391,13 +470,15 @@ class RelayBackend:
             if not isinstance(raw_usage, Mapping):
                 return None
             i, o = _count(raw_usage.get(in_key)), _count(raw_usage.get(out_key))
-            if i is None or o is None:
-                return None
-            usage = {"input_tokens": i, "output_tokens": o}
+            usage: Dict[str, int] = {}
+            if i is not None:
+                usage["input_tokens"] = i
+            if o is not None:
+                usage["output_tokens"] = o
             c = _count(cached)
             if c is not None:
                 usage["cache_read_input_tokens"] = c
-            return usage
+            return usage or None
 
         if self._tier.dialect == DIALECT_ANTHROPIC:
             raw_usage = data.get("usage")
@@ -478,7 +559,7 @@ class RelayBackend:
 
     def _generate_buffered(self, request: InternalRequest) -> Iterator[str]:
         url = self._endpoint()
-        headers = self._headers()
+        headers = self._headers(request)
         data = json.dumps(self._build_body(request)).encode("utf-8")
         try:
             # Pass max_bytes to the default _urlopen_transport (keyword-only).
@@ -496,12 +577,7 @@ class RelayBackend:
             # A custom transport may raise URLError directly (the default
             # _urlopen_transport already converts it, but this is the safety net).
             # Log the full reason server-side; raise a generic, client-safe message.
-            print(
-                f"[anvil-serving] local tier {self._tier.id!r} upstream error: "
-                f"{exc.reason}",
-                file=sys.stderr,
-                flush=True,
-            )
+            _log_transport_error(exc, headers)
             raise RelayBackendError(
                 f"model upstream request failed (tier={self._tier.id!r})"
             ) from None
@@ -537,7 +613,7 @@ class RelayBackend:
         (``GeneratorExit``).
         """
         url = self._endpoint()
-        headers = self._headers()
+        headers = self._headers(request)
         body = self._build_body(request)
         # Ask the upstream to stream. extra_body always wins (documented
         # precedence): an operator who explicitly pinned `stream`/`stream_options`
@@ -566,12 +642,7 @@ class RelayBackend:
             raise
         except urllib.error.URLError as exc:
             # Safety net for injected transports (the default already converts).
-            print(
-                f"[anvil-serving] local tier {self._tier.id!r} upstream error: "
-                f"{exc.reason}",
-                file=sys.stderr,
-                flush=True,
-            )
+            _log_transport_error(exc, headers)
             raise RelayBackendError(
                 f"model upstream request failed (tier={self._tier.id!r})"
             ) from None
@@ -584,7 +655,11 @@ class RelayBackend:
             if "text/event-stream" not in ctype:
                 # Upstream ignored stream:true — parse the plain JSON body
                 # with the buffered extractors (same result, no streaming).
-                raw = resp.read()
+                raw = resp.read(
+                    self._max_response_bytes + 1
+                    if self._max_response_bytes is not None
+                    else -1
+                )
                 if (
                     self._max_response_bytes is not None
                     and len(raw) > self._max_response_bytes
@@ -603,19 +678,27 @@ class RelayBackend:
                 if self._tier.dialect == DIALECT_ANTHROPIC
                 else OpenAIStreamAssembler()
             )
-            total = 0
-            for event, payload in iter_sse_events(resp):
-                delta = assembler.feed(event, payload)
+            raw_stream = (
+                _BoundedLineReader(
+                    resp, self._max_response_bytes, self._tier.id
+                )
+                if self._max_response_bytes is not None
+                else resp
+            )
+            for event, payload in iter_sse_events(raw_stream):
+                try:
+                    delta = assembler.feed(event, payload)
+                except UpstreamStreamError:
+                    raise RelayBackendError(
+                        "model upstream stream reported an error"
+                    ) from None
                 if not delta:
                     continue
-                if self._max_response_bytes is not None:
-                    total += len(delta.encode("utf-8", "surrogatepass"))
-                    if total > self._max_response_bytes:
-                        raise RelayBackendError(
-                            f"cloud response body exceeded max_response_bytes="
-                            f"{self._max_response_bytes} (tier={self._tier.id!r})"
-                        )
                 yield delta
+            if not assembler.done:
+                raise RelayBackendError(
+                    "model upstream stream ended before completion"
+                )
             self._thread_local.last_result = assembler.result()
 
         return _ClosingIterator(relay_response(), resp.close)
@@ -636,8 +719,8 @@ class RelayBackend:
             base += _OPENAI_VERSION_SEGMENT
         return base + _OPENAI_PATH
 
-    def _headers(self) -> Dict[str, str]:
-        """Outbound headers with optional local-serve authentication."""
+    def _headers(self, request: InternalRequest) -> Dict[str, str]:
+        """Outbound auth plus the gateway-generated upstream request id."""
         headers = {"Content-Type": "application/json"}
         if self._tier.dialect == DIALECT_ANTHROPIC:
             headers["anthropic-version"] = _ANTHROPIC_VERSION
@@ -646,6 +729,11 @@ class RelayBackend:
         else:  # openai-compatible
             if self._key:
                 headers["Authorization"] = f"Bearer {self._key}"
+        gateway_request_id = safe_gateway_request_id(
+            request_correlation(request).get("gateway_request_id")
+        )
+        if gateway_request_id is not None:
+            headers["X-Request-Id"] = gateway_request_id
         return headers
 
     def _build_body(self, request: InternalRequest) -> Dict[str, Any]:

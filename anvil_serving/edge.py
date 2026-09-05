@@ -18,11 +18,10 @@ Design invariants:
 * **Stdlib-only.** ``tomllib`` + ``subprocess`` + ``json``. No runtime deps, no
   in-process proxy. The router stays a pure inference gateway; the WS-capable
   proxying lives in Tailscale.
-* **Never touch the router request path.** Each managed mount forwards its path
-  to the target verbatim; ``tailscale serve`` appends the mount to the MagicDNS
-  base URL and proxies the request through, so ``/v1/models`` reaches the router
-  as ``/v1/models``. The OpenAI/Anthropic contract is preserved because the edge
-  rewrites nothing.
+* **Preserve the router's /v1 path.** Tailscale strips the matched mount before
+  joining the remainder to the target URL. The built-in and port-only ``/v1``
+  routes therefore use a target ending in ``/v1``. Other port-only mounts target
+  the service root; explicit full URLs preserve the operator's target path.
 * **Additive and idempotent.** ``up`` sets only the mounts this tool manages.
   ``down`` removes only mounts this tool manages *and* that currently point at
   our target — it never clobbers an operator-set ``tailscale serve`` mapping
@@ -99,24 +98,25 @@ class EdgeConfig:
 # --------------------------------------------------------------------------- #
 # config
 # --------------------------------------------------------------------------- #
-def _target_from_value(value: object, *, host: str) -> str:
+def _target_from_value(value: object, *, host: str, mount: str = "/") -> str:
     """Build a target URL from a config value.
 
-    An int (or numeric string) is a local port on ``host``; a string containing
-    ``://`` is used verbatim as a full target URL.
+    An int (or numeric string) is a local port on ``host``. The conventional
+    ``/v1`` mount retains its API prefix; other mounts target the service root.
+    A string containing ``://`` is used verbatim as a full target URL.
     """
     if isinstance(value, bool):  # bool is an int subclass; reject it explicitly
         raise EdgeConfigError(f"route target may not be a boolean, got {value!r}")
     if isinstance(value, int):
         if not 0 < value <= 65535:
             raise EdgeConfigError(f"route port must be 1-65535, got {value!r}")
-        return f"http://{host}:{value}"
+        return f"http://{host}:{value}" + ("/v1" if mount == "/v1" else "")
     if isinstance(value, str):
         text = value.strip()
         if "://" in text:
             return text
         if text.isdigit():
-            return _target_from_value(int(text), host=host)
+            return _target_from_value(int(text), host=host, mount=mount)
         raise EdgeConfigError(f"route target must be a port or full URL, got {value!r}")
     raise EdgeConfigError(f"route target must be a port or full URL, got {value!r}")
 
@@ -125,7 +125,7 @@ def default_config(*, https_port: int = DEFAULT_HTTPS_PORT, host: str = DEFAULT_
     """The built-in ADR-0019 route map (``/v1`` + ``/comfyui``)."""
     return EdgeConfig(
         https_port=https_port,
-        routes=tuple(EdgeRoute(mount, _target_from_value(port, host=host)) for mount, port in DEFAULT_ROUTES),
+        routes=tuple(EdgeRoute(mount, _target_from_value(port, host=host, mount=mount)) for mount, port in DEFAULT_ROUTES),
     )
 
 
@@ -170,11 +170,12 @@ def load_config(
         if not isinstance(raw_routes, Mapping):
             raise EdgeConfigError("[edge.routes] must be a table of mount -> port/URL")
         for mount, value in raw_routes.items():
-            routes[_normalize_mount(mount)] = _target_from_value(value, host=file_host)
+            normalized_mount = _normalize_mount(mount)
+            routes[normalized_mount] = _target_from_value(value, host=file_host, mount=normalized_mount)
 
     if not routes and path is None:
         for mount, port in DEFAULT_ROUTES:
-            routes[mount] = _target_from_value(port, host=file_host)
+            routes[mount] = _target_from_value(port, host=file_host, mount=mount)
 
     for item in extra_maps:
         if "=" not in item:
@@ -184,7 +185,7 @@ def load_config(
         if value.strip().lower() == "off":
             routes.pop(mount, None)
             continue
-        routes[mount] = _target_from_value(value, host=file_host)
+        routes[mount] = _target_from_value(value, host=file_host, mount=mount)
 
     resolved_port = https_port if https_port is not None else (file_https_port if file_https_port is not None else DEFAULT_HTTPS_PORT)
     return EdgeConfig(
@@ -224,8 +225,8 @@ def _normalize_mount(mount: object) -> str:
 def serve_up_argv(route: EdgeRoute, *, https_port: int) -> list[str]:
     """The ``tailscale serve`` invocation that binds one managed mount.
 
-    ``--set-path`` appends the mount to the node's MagicDNS base URL and proxies
-    the (unmodified) request path to the target. Root ("/") needs no --set-path.
+    Tailscale strips ``--set-path`` from the incoming path before joining it to
+    the target URL path. Root ("/") needs no --set-path.
     """
     argv = ["tailscale", "serve", "--bg", f"--https={https_port}"]
     if route.mount != "/":
