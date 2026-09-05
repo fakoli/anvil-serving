@@ -1,6 +1,6 @@
 # Exact Docker-image cleanup needs a managed product surface
 
-**Status:** Open
+**Status:** Completed 2026-09-05
 
 ## Problem
 
@@ -59,3 +59,20 @@ model blobs and build cache while leaving the exact-image-removal gap open.
 - Pass Ruff, focused lifecycle tests, the full suite, and strict docs.
 - Run one bounded live dry-run and confirmed cleanup of a disposable exact
   image before relying on the surface for model-campaign cleanup.
+
+## Completion evidence
+
+The managed `host docker-image remove` surface now accepts only full immutable
+identities, audits every retained container, operator configuration image
+field, rollback declaration, and child image, repeats that audit before apply,
+refuses drift, removes with parent pruning disabled, and verifies absence.
+
+Hermetic coverage exercises tags and abbreviated-ID refusal, live and stopped
+container blockers, recipe and rollback blockers, child blockers, identity
+drift, YAML sequence declarations, linked-directory audit refusal, dry-run,
+confirmed removal, explicit absence, and ambiguous post-removal inspection
+failure. The live campaign
+then proved both sides of the gate: parent images were refused while a child
+remained, became removable only after a fresh audit, and 47 exact unused image
+IDs were confirmed and verified absent. Current container-backed and declared
+runtime images remained protected.

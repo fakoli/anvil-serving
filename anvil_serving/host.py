@@ -43,6 +43,7 @@ import sys
 import time
 import tomllib
 from . import guard
+from . import docker_disk, docker_images
 from . import paths
 
 # Leave AT LEAST this much for Windows (hard floor: refuse a WSL memory that leaves less, unless --force).
@@ -679,6 +680,59 @@ def cmd_shared_memory_reclaim(
     if not authorized and result["outcome"] == "preview":
         print("re-run with --confirm to remove the verified orphan file(s)")
     return 0 if result["outcome"] in {"clean", "preview", "reclaimed"} else 1
+
+
+def cmd_docker_image_remove(
+    image, *, confirm=False, dry_run=False, config_home=None, _run=subprocess.run,
+):
+    """Preview or remove one audited immutable Docker image."""
+    authorized = bool(confirm or guard.confirmation_authorized())
+    try:
+        result = docker_images.remove_docker_image(
+            image,
+            confirm=authorized,
+            dry_run=dry_run,
+            config_home=config_home,
+            runner=_run,
+        )
+    except docker_images.DockerImageCleanupError as exc:
+        print(json.dumps({
+            "schema": "docker-image-removal/v1",
+            "applied": False,
+            "outcome": "invalid-or-unavailable",
+            "error": str(exc),
+        }, indent=2, sort_keys=True))
+        return 2
+    print(json.dumps(result, indent=2, sort_keys=True))
+    if result["outcome"] == "preview" and not authorized and not dry_run:
+        print("re-run with --confirm to remove the audited immutable image")
+    return 0 if result["outcome"] in {"preview", "removed"} else 1
+
+
+def cmd_docker_disk_compact(
+    path, *, confirm=False, dry_run=False, _run=subprocess.run,
+):
+    """Preview or compact one exact Docker Desktop data VHDX."""
+    authorized = bool(confirm or guard.confirmation_authorized())
+    try:
+        result = docker_disk.compact_docker_data_disk(
+            path,
+            confirm=authorized,
+            dry_run=dry_run,
+            runner=_run,
+        )
+    except docker_disk.DockerDiskCompactionError as exc:
+        print(json.dumps({
+            "schema": "docker-data-vhdx-compaction/v1",
+            "applied": False,
+            "outcome": "invalid-or-unavailable",
+            "error": str(exc),
+        }, indent=2, sort_keys=True))
+        return 2
+    print(json.dumps(result, indent=2, sort_keys=True))
+    if result["outcome"] == "preview" and not authorized and not dry_run:
+        print("re-run with --confirm to stop Docker Desktop and compact the exact VHDX")
+    return 0 if result["outcome"] in {"preview", "compacted"} else 1
 
 
 def wsl_meminfo(_run=subprocess.run, distro=None):
@@ -1388,6 +1442,24 @@ def _build_parser():
         "--distro", default=DEFAULT_SHARED_MEMORY_DISTRO,
         help="WSL distro owning Docker shared memory (default: docker-desktop).",
     )
+    image_remove = sub.add_parser(
+        "docker-image-remove",
+        help="audit and remove one full immutable Docker image ID or digest",
+    )
+    image_remove.add_argument("image")
+    image_remove.add_argument("--confirm", action="store_true")
+    image_remove.add_argument("--dry-run", action="store_true")
+    image_remove.add_argument(
+        "--config-home",
+        help="operator configuration home to audit (default: ANVIL_SERVING_HOME)",
+    )
+    disk_compact = sub.add_parser(
+        "docker-disk-compact",
+        help="stop Docker Desktop and compact one exact Docker data VHDX",
+    )
+    disk_compact.add_argument("path")
+    disk_compact.add_argument("--confirm", action="store_true")
+    disk_compact.add_argument("--dry-run", action="store_true")
     return p
 
 
@@ -1416,6 +1488,19 @@ def main(argv=None):
         return cmd_shared_memory_status(distro=a.distro)
     if a.action == "shared-memory-reclaim":
         return cmd_shared_memory_reclaim(confirm=a.confirm, distro=a.distro)
+    if a.action == "docker-image-remove":
+        return cmd_docker_image_remove(
+            a.image,
+            confirm=a.confirm,
+            dry_run=a.dry_run,
+            config_home=a.config_home,
+        )
+    if a.action == "docker-disk-compact":
+        return cmd_docker_disk_compact(
+            a.path,
+            confirm=a.confirm,
+            dry_run=a.dry_run,
+        )
     return 2
 
 
