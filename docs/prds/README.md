@@ -1,16 +1,37 @@
-# Proposed improvements informed by Miles
+# Proposed implementation PRDs
 
-These PRDs turn the useful parts of the Miles review into bounded Anvil Serving
-changes. They are proposed implementation contracts, not shipped features.
+These PRDs turn source reviews and concrete Anvil Serving product gaps into
+bounded changes. They are proposed implementation contracts, not shipped features.
 Each includes requirements, source pointers, small tasks, negative tests, and
 completion evidence for an agent starting without the original conversation.
+
+## Router and fleet delivery order
+
+**Reviewed:** 2026-09-05. **Anvil baseline:**
+`76137fa292951a4e9495447346c74d190cec63c2`.
+
+These four PRDs mirror named Anvil State partitions in `reviewed` status. Review
+establishes structural completeness; it is not permanent approval, planning,
+implementation, qualification, promotion, or deployment.
+
+| Order | PRD | Outcome | Suggested executor | Dependencies |
+| --- | --- | --- | --- | --- |
+| 1 | [Qualified same-host replica sets](qualified-replica-sets.md) | One alias can use an explicit closed set of exactly equivalent, independently ready endpoints on one host. | Terra high for config/router concurrency; medium for docs | None |
+| 2 | [Capacity-aware scheduling for qualified replicas](replica-capacity-scheduler.md) | Atomic least-loaded member selection without choosing a model, tier, or host. | Terra high for scheduler/admission edges | PRD 1 must be implemented and reviewed first |
+| 3 | [Unified workload visibility](workload-visibility.md) | One bounded read-only view of active and recent work with honest partial fleet results. | Terra medium; high for router stream cleanup and concurrent stores | Independent; reuse PRD 1 member IDs only if already shipped |
+| 4 | [Managed fleet node enrollment](fleet-node-enrollment.md) | Previewable, transactional bootstrap for one declared node with exact acceptance and rollback. | Terra high for transport/path security; medium for CLI/docs | Independent; credentials and machine prerequisites stay separate |
+
+PRD 1 is the narrow routing foundation and PRD 2 is its explicit follow-on.
+PRDs 3 and 4 can proceed independently. Execute one task at a time and keep
+each implementation PR-sized; do not combine all four contracts into a router
+or control-plane rewrite.
+
+## Miles-informed delivery order
 
 **Reviewed:** 2026-09-05. **Anvil baseline:** `f50dca489780b95d0cd98dee59cf620618c4ccd1`.
 **Miles baseline:** [`d2fc97ce581577e255e494801d7568747d5a10d7`](https://github.com/radixark/miles/tree/d2fc97ce581577e255e494801d7568747d5a10d7).
 Source inspection is the basis for the proposals; no Miles performance or local
 GPU qualification is claimed.
-
-## PRDs and delivery order
 
 | Order | PRD | Outcome | Suggested executor | Dependencies |
 | --- | --- | --- | --- | --- |
@@ -19,10 +40,11 @@ GPU qualification is claimed.
 | 3 | [Correlated benchmark timeline](benchmark-timeline.md) | Explain benchmark time using measured phases, turns, and resource samples. | Terra medium for schema/UI; high for persistence and cancellation edges | None; consumes existing jobs and telemetry |
 | 4 | [Isolated Harbor environment evaluation](harbor-environment-evaluation.md) | Run independently graded terminal/custom tasks through managed benchmark jobs. | Terra medium after the pinned adapter contract is proven | Its own compatibility spike must pass before adapter integration |
 
-PRDs 1 and 2 are the best first implementation batch. PRD 3 is the largest
-operator-facing improvement. PRD 4 expands evaluation coverage but has a larger
-external compatibility surface. The Harbor adapter can ship without the timeline;
-the timeline must not depend on installing Harbor.
+The readiness-fencing and session-corpus PRDs are the best first Miles-informed
+implementation batch. The correlated timeline is the largest operator-facing
+improvement. The Harbor adapter expands evaluation coverage but has a larger
+external compatibility surface. Harbor can ship without the timeline; the
+timeline must not depend on installing Harbor.
 
 ## Instructions for an implementing agent
 
@@ -78,7 +100,7 @@ Check the returned public and private repository identities against the
 machine-local values returned by the resolver. A missing skill, script, registry,
 or unsuccessful resolution is a stop condition: ask the operator to provide or
 repair the installed skill/registry; do not guess a sibling checkout, bootstrap
-private state, or silently substitute an unrelated tool. These four PRDs describe
+private state, or silently substitute an unrelated tool. These PRDs describe
 public product changes, not changes to active private assignments.
 
 ## Shared verification and completion contract
@@ -107,6 +129,18 @@ product bounds; they are not measured performance results.
 
 ## Existing work to preserve
 
+- `docs/adr/0034-fleet-control-plane-and-node-runtime-classes.md` explicitly
+  excludes a cross-host request scheduler. Same-host replica membership must
+  not weaken that decision.
+- `[router.model_routes]` maps one caller alias to exactly one logical tier.
+  Replica selection remains inside that already selected tier, with no hidden
+  model, capability, host, or fallback decision.
+- Existing direct-to-replica benchmark evidence is a performance prior, not a
+  qualified load balancer or route. Routed qualification and promotion remain
+  separate gates.
+- `docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md` tracks `fleet bootstrap` as open.
+  A PRD or reviewed source change must not mark it shipped before implementation
+  and exact node acceptance exist.
 - [Issue 379](https://github.com/fakoli/anvil-serving/issues/379) owns fleet
   environment stamping in benchmark evidence. The timeline consumes such a
   stamp when available and labels its absence; it does not duplicate that work.
@@ -131,6 +165,10 @@ product bounds; they are not measured performance results.
 
 ## Document status
 
-The PRD skill informed the requirement/feature/task structure. These files are
-repository drafts; they have not been imported into Anvil State, approved as
-State partitions, or submitted as GitHub issues.
+The PRD skill informed the requirement/feature/task structure. The four
+router/fleet documents are public mirrors of named Anvil State partitions in
+`reviewed` status; they are not permanently approved or planned. Before later State
+planning, compare the repository source to the named partition and reconcile
+any drift explicitly. The four Miles-informed files remain repository drafts;
+they have not been imported into Anvil State, approved as State partitions, or
+submitted as GitHub issues.
