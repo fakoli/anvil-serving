@@ -10,19 +10,21 @@ completion evidence for an agent starting without the original conversation.
 **Reviewed:** 2026-09-05. **Anvil baseline:**
 `76137fa292951a4e9495447346c74d190cec63c2`.
 
-These four PRDs mirror named Anvil State partitions in `reviewed` status. Review
-establishes structural completeness; it is not permanent approval, planning,
-implementation, qualification, promotion, or deployment.
+These four PRDs are independently reviewed implementation contracts. The operator
+authorized autonomous task planning, implementation, review, publication, and
+deployment on 2026-09-05. Record approvals as `codex-user-delegated`, with that
+authorization as provenance; never attribute an agent decision to a human reviewer.
+Approval and planning are not implementation, qualification, or deployment evidence.
 
 | Order | PRD | Outcome | Suggested executor | Dependencies |
 | --- | --- | --- | --- | --- |
 | 1 | [Qualified same-host replica sets](qualified-replica-sets.md) | One alias can use an explicit closed set of exactly equivalent, independently ready endpoints on one host. | Terra high for config/router concurrency; medium for docs | None |
 | 2 | [Capacity-aware scheduling for qualified replicas](replica-capacity-scheduler.md) | Atomic least-loaded member selection without choosing a model, tier, or host. | Terra high for scheduler/admission edges | PRD 1 must be implemented and reviewed first |
-| 3 | [Unified workload visibility](workload-visibility.md) | One bounded read-only view of active and recent work with honest partial fleet results. | Terra medium; high for router stream cleanup and concurrent stores | Independent; reuse PRD 1 member IDs only if already shipped |
+| 3 | [Unified workload visibility](workload-visibility.md) | One bounded read-only view of active and recent work with honest partial fleet results. | Terra medium; high for router stream cleanup and concurrent stores | Fleet enrollment T008-T010 scoped authorization and endpoint wiring must be done before workload T005; reuse PRD 1 member IDs only if already shipped |
 | 4 | [Managed fleet node enrollment](fleet-node-enrollment.md) | Previewable, transactional bootstrap for one declared node with exact acceptance and rollback. | Terra high for transport/path security; medium for CLI/docs | Independent; credentials and machine prerequisites stay separate |
 
 PRD 1 is the narrow routing foundation and PRD 2 is its explicit follow-on.
-PRDs 3 and 4 can proceed independently. Execute one task at a time and keep
+PRDs 3 and 4 can otherwise proceed independently. Execute one task at a time and keep
 each implementation PR-sized; do not combine all four contracts into a router
 or control-plane rewrite.
 
@@ -166,9 +168,18 @@ product bounds; they are not measured performance results.
 ## Document status
 
 The PRD skill informed the requirement/feature/task structure. The four
-router/fleet documents are public mirrors of named Anvil State partitions in
-`reviewed` status; they are not permanently approved or planned. Before later State
-planning, compare the repository source to the named partition and reconcile
-any drift explicitly. The four Miles-informed files remain repository drafts;
+router/fleet documents mirror named partitions in a dedicated delivery State,
+selected by setting `ANVIL_ROOT` to the isolated delivery worktree. The State's
+runtime database and `prds/` sources remain ignored, local coordination data.
+Preserve that worktree until State is safely exported or migrated. Always compare
+the public source with `anvil prd source-name --prd <id> --json` before planning;
+do not use a different checkout's default State accidentally. This isolation
+preserves unrelated historical tasks whose wildcard file scopes are rejected by
+the current planner. It does not repair or rewrite those historical tasks.
+
+Before claiming a task, inspect its actual status, dependencies, scores, and
+verification contract. Split oversized tasks before execution. Capture actual
+claim-bound command results, obtain independent review, and apply only complete
+evidence. The four Miles-informed files remain repository drafts;
 they have not been imported into Anvil State, approved as State partitions, or
 submitted as GitHub issues.
