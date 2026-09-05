@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -13,7 +14,10 @@ from anvil_serving.targets import (
     preflight_execution_plan,
     resolve_execution_plan,
 )
-from anvil_serving.topology import SCHEMA_VERSION, Topology, parse_topology, validate_topology
+from anvil_serving.topology import (
+    SCHEMA_VERSION, Topology, load_topology, parse_topology, validate_topology,
+)
+from anvil_serving.topology_cli import _command_node, _spec as command_tree_spec
 
 
 def _topology_data() -> dict:
@@ -641,3 +645,60 @@ def test_media_worker_plan_resolves_one_declared_gpu_owner_and_controller():
     assert plan.resource.id == "media-worker"
     assert plan.gpu_role.id == "fast"
     assert plan.transport_allowed_operations[-1] == "media-worker-prepare"
+
+
+_REFERENCE_TOPOLOGY = (
+    Path(__file__).resolve().parents[1] / "examples/fakoli-dark/operator-topology.toml"
+)
+
+
+@pytest.mark.parametrize("verb", ("inspect", "logs"))
+def test_generic_diagnostic_resolves_exact_controller_resource_and_transport(verb):
+    topology = load_topology(_REFERENCE_TOPOLOGY)
+    path, node = _command_node("controller " + verb)
+    spec = command_tree_spec(path, node)
+
+    plan = resolve_execution_plan(topology, spec, target="host:fakoli-dark")
+
+    assert spec.name == "controller-" + verb
+    assert spec.mutation_class == "read" and not spec.gpu_role_required
+    assert plan.resource.id == "anvil-controller"
+    assert plan.resource.role == "controller"
+    assert plan.execution_host.id == "fakoli-dark"
+    assert plan.execution_runtime.id == "dark-docker"
+    assert plan.transport == "controller" and plan.transport_id == "dark-controller"
+    assert plan.transport_expected_node == "fakoli-dark"
+    assert plan.recovery_transport_endpoint is None
+    assert plan.gpu_role is None
+
+
+@pytest.mark.parametrize("verb", ("inspect", "logs"))
+def test_generic_diagnostic_permission_refuses_without_fallback(verb):
+    topology = load_topology(_REFERENCE_TOPOLOGY)
+    operation = "controller-" + verb
+    transports = tuple(
+        replace(item, allowed_operations=tuple(
+            value for value in item.allowed_operations if value != operation
+        )) if item.id == "dark-controller" else item
+        for item in topology.transports
+    )
+    topology = replace(topology, transports=transports)
+    path, node = _command_node("controller " + verb)
+
+    with pytest.raises(TargetResolutionError):
+        resolve_execution_plan(
+            topology, command_tree_spec(path, node), target="host:fakoli-dark"
+        )
+
+
+def test_generic_diagnostic_permissions_are_scoped_and_scaffold_identical():
+    topology = load_topology(_REFERENCE_TOPOLOGY)
+    diagnostic_operations = {"controller-inspect", "controller-logs"}
+    for transport in topology.transports:
+        found = diagnostic_operations.intersection(transport.allowed_operations)
+        assert found == (diagnostic_operations if transport.id == "dark-controller" else set())
+    scaffold = (
+        Path(__file__).resolve().parents[1]
+        / "anvil_serving/_scaffold_templates/operator-topology.toml"
+    )
+    assert _REFERENCE_TOPOLOGY.read_bytes() == scaffold.read_bytes()
