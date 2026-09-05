@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from heapq import heappush, heapreplace
 
 from .workload_collection import build_node_workloads
 from .workloads import (
@@ -19,6 +20,7 @@ from .workloads import (
     WorkloadErrorCode,
     WorkloadOwner,
     WorkloadQuery,
+    WorkloadRecord,
     FleetResult,
     normalize_workload_timestamp,
 )
@@ -33,6 +35,38 @@ class _Entry:
     owner: WorkloadOwner
     record_id: str
     updated_at: datetime
+    record_index: int
+
+    def __lt__(self, other: _Entry) -> bool:
+        # The root is the worst retained record. Exact datetime comparisons
+        # avoid floating-point loss and platform timestamp range differences.
+        if self.updated_at != other.updated_at:
+            return self.updated_at < other.updated_at
+        return (self.record_id, self.host, self.owner.value, self.record_index) > (
+            other.record_id, other.host, other.owner.value, other.record_index
+        )
+
+
+@dataclass
+class _SourceBuffer:
+    owner: WorkloadOwner
+    status: ResultStatus
+    collected: datetime
+    omitted: int | None
+    error: WorkloadErrorCode | None
+    records: dict[int, WorkloadRecord] = field(default_factory=dict)
+
+    def omit(self) -> None:
+        self.omitted = _increment(self.omitted, 1)
+        if self.status is ResultStatus.COMPLETE:
+            self.status = ResultStatus.PARTIAL
+
+    def finish(self) -> SourceResult:
+        records = tuple(self.records[index] for index in sorted(self.records))
+        return SourceResult(
+            self.owner, self.status, self.collected, records,
+            Truncation(len(records), self.omitted), self.error,
+        )
 
 
 def _query_copy(query: WorkloadQuery) -> WorkloadQuery:
@@ -174,38 +208,6 @@ def _increment(omitted: int | None, count: int) -> int | None:
     return value if value <= MAX_COUNT else None
 
 
-def _reduce_node(node: NodeResult, selected: set[tuple[str, WorkloadOwner, str]]) -> NodeResult:
-    sources: list[SourceResult] = []
-    for source in node.sources:
-        records = tuple(
-            record for record in source.records
-            if (node.host, source.owner, record.id) in selected
-        )
-        removed = len(source.records) - len(records)
-        status = ResultStatus.PARTIAL if removed and source.status is ResultStatus.COMPLETE else source.status
-        sources.append(
-            SourceResult(
-                source.owner,
-                status,
-                source.collection_timestamp,
-                records,
-                Truncation(len(records), _increment(source.truncation.omitted, removed)),
-                source.error,
-            )
-        )
-    entries = tuple(sources)
-    return NodeResult(node.host, _status(tuple(source.status for source in entries)), node.collection_timestamp, entries)
-
-
-def _entries(nodes: tuple[NodeResult, ...]) -> list[_Entry]:
-    return [
-        _Entry(node.host, source.owner, record.id, record.updated_at)
-        for node in nodes
-        for source in node.sources
-        for record in source.records
-    ]
-
-
 def _fleet_omitted(nodes: tuple[NodeResult, ...]) -> int | None:
     total = 0
     for node in nodes:
@@ -228,29 +230,51 @@ def build_fleet_workloads(
     checked_now = validation.collection_timestamp
     if type(hosts) is not tuple or len(hosts) > MAX_NODES:
         raise WorkloadError(WorkloadErrorCode.INVALID, "invalid fleet workload hosts")
-    checked_hosts: list[str] = []
+    checked_hosts: set[str] = set()
     for host in hosts:
         build_node_workloads(host, checked_query, checked_now, {})
         if host in checked_hosts:
             raise WorkloadError(WorkloadErrorCode.INVALID, "invalid fleet workload hosts")
-        checked_hosts.append(host)
+        checked_hosts.add(host)
     if type(nodes) is not dict or len(nodes) > len(checked_hosts):
         raise WorkloadError(WorkloadErrorCode.INVALID, "invalid fleet workload nodes")
     if any(type(host) is not str or host not in checked_hosts for host in nodes):
         raise WorkloadError(WorkloadErrorCode.INVALID, "invalid fleet workload nodes")
 
-    summaries: tuple[NodeResult, ...] = ()
+    node_metadata: list[tuple[str, datetime, tuple[WorkloadOwner, ...]]] = []
+    buffers: dict[tuple[str, WorkloadOwner], _SourceBuffer] = {}
+    selected: list[_Entry] = []
     cap = min(checked_query.limit, AGGREGATE_LIMIT)
     for host in sorted(checked_hosts):
         current = normalize_node_workloads(host, checked_query, checked_now, nodes.get(host))
-        candidates = _entries(summaries) + _entries((current,))
-        candidates.sort(key=lambda entry: entry.record_id)
-        candidates.sort(key=lambda entry: entry.updated_at, reverse=True)
-        selected = {
-            (entry.host, entry.owner, entry.record_id)
-            for entry in candidates[:cap]
-        }
-        summaries = tuple(_reduce_node(node, selected) for node in (*summaries, current))
+        node_metadata.append((host, current.collection_timestamp, tuple(source.owner for source in current.sources)))
+        for source in current.sources:
+            buffer = _SourceBuffer(
+                source.owner, source.status, source.collection_timestamp,
+                source.truncation.omitted, source.error,
+            )
+            buffers[host, source.owner] = buffer
+            for index, record in enumerate(source.records):
+                entry = _Entry(host, source.owner, record.id, record.updated_at, index)
+                if len(selected) < cap:
+                    heappush(selected, entry)
+                elif selected[0] < entry:
+                    removed = heapreplace(selected, entry)
+                    loser = buffers[removed.host, removed.owner]
+                    del loser.records[removed.record_index]
+                    loser.omit()
+                else:
+                    buffer.omit()
+                    continue
+                buffer.records[index] = record
+
+    # No buffer retains a supplied node/source or its discarded records. Build
+    # canonical summaries once, after the bounded global selection is final.
+    final_nodes: list[NodeResult] = []
+    for host, collected, owners in node_metadata:
+        sources = tuple(buffers[host, owner].finish() for owner in owners)
+        final_nodes.append(NodeResult(host, _status(tuple(source.status for source in sources)), collected, sources))
+    summaries = tuple(final_nodes)
 
     returned = sum(len(source.records) for node in summaries for source in node.sources)
     omitted = _fleet_omitted(summaries)
