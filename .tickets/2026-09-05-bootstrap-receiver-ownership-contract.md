@@ -67,3 +67,8 @@ path, reads content, changes descriptor position, starts a receiver, or alters
 production permissions. Pure ACL/mode matrices and native temporary descriptor
 coverage remain implementation evidence only; receiver staging and activation
 are still separate work.
+
+T004.7 adds only a frozen, canonical operation record and retry matcher.  It
+binds a stage frame to the actual validated bundle and preserves rollback
+failure provenance across pure phase transitions.  It neither stores records
+nor authorizes, stages, activates, restarts, or accepts an installation.
