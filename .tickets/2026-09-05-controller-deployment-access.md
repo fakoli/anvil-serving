@@ -14,6 +14,15 @@ replacement. This is not established to be a missing-credential problem.
 A retry with the existing no-proxy/no-redirect transport returned the same 403,
 so proxy interference is not an established root cause either.
 
+The local operation catalog exposes controller status but no controller log
+operation. Controller services are not members of the model-serve manifest,
+so `serves logs` is not an appropriate controller diagnostic surface. The
+connected MCP catalog is unavailable in this session; the checkout's CLI and
+local operation contracts were verified before fallback. A narrow read-only
+listener/container inspection is necessary to identify the owning component.
+The missing bounded controller-log surface is a confirmed product gap that
+must be implemented before this becomes a repeatable operational workflow.
+
 These observations do not establish the responding service's expected node
 identity, build version, authorization policy, or controller/router parity.
 CLI version agreement and router reachability alone do not prove those facts.
@@ -37,7 +46,18 @@ public repository.
 
 ## Closure evidence
 
-Pending: root cause, durable correction if needed, regression results, and
-successful identity-checked status/deployment verification. No live route,
-model serve, controller, or private configuration has been changed for this
-investigation.
+Bounded follow-up established that all three external status targets return
+`Microsoft-HTTPAPI/2.0` text responses, with no corresponding request in the
+controller's structured logs. The current process credential equals the
+controller container credential (comparison only; neither value was exposed).
+The default listener belongs to the Windows system process. Container
+configuration declares a loopback port binding, but its live network port
+inventory has no corresponding published mapping. Thus the observed 401/403
+responses come from another listener, not the owning controller; the precise
+forwarding/publication failure and its durable correction remain unresolved.
+
+Pending: managed diagnostic surface, forwarding/publication root cause,
+durable correction, regression results, and successful identity-checked
+status/deployment verification. Do not stop or reconfigure the unrelated
+Windows listener merely to reclaim a port. No live route, model serve,
+controller, or private configuration has been changed for this investigation.
