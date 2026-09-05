@@ -189,8 +189,13 @@ preserves unrelated historical tasks whose wildcard file scopes are rejected by
 the current planner. It does not repair or rewrite those historical tasks.
 
 Before claiming a task, inspect its actual status, dependencies, scores, and
-verification contract. Split oversized tasks before execution. Capture actual
-claim-bound command results, obtain independent review, and apply only complete
-evidence. The four Miles-informed files remain repository drafts;
+verification contract. Split oversized tasks before execution. The operator's
+updated delivery instruction is to implement in batches, retain focused tests
+and claim-bound evidence, then perform one consolidated review and acceptance
+pass after implementation. Local candidate integration is not acceptance or
+deployment; source-ready dependencies may be used while their formal acceptance
+is pending. Apply only complete evidence in that final pass. See the
+[batch-delivery ticket](../../.tickets/2026-09-05-router-fleet-batch-delivery.md).
+The four Miles-informed files remain repository drafts;
 they have not been imported into Anvil State, approved as State partitions, or
 submitted as GitHub issues.
