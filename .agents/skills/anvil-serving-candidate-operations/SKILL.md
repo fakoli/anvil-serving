@@ -121,6 +121,18 @@ Stop the candidate through its owning recipe/serve lifecycle, restore the exact
 starting serve and router state, and prove the GPU returns to the recorded
 baseline. Do not remove model caches or Docker volumes as cleanup.
 
+Treat restoration as a fresh managed deployment, not as an assumed container
+restart. Use a preserved `--keep-container` baseline only when its startup
+preparation is proven restart-idempotent; an image that verifies and patches a
+file in place may fail its checksum on restart. Otherwise unload the preserved
+container and recreate the exact starting recipe. Load the router credential
+from its declared user-local environment source before a mode transaction that
+must drain or readmit a tier. After direct health and model identity pass,
+require authenticated routed smoke and structured-output acceptance, exact mode
+ownership, GPU residency, and shared-memory status. Preserve failed restore
+attempts and the root cause rather than overwriting them with the successful
+retry.
+
 Return the start-state fingerprint, credential presence boundary, GPU lane
 classification, recipe/profile identity, preview and confirmation gates,
 health and log cause, preflight/benchmark artifacts, restoration checks,

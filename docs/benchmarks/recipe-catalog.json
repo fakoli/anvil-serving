@@ -1,0 +1,420 @@
+{
+  "schema": "anvil-serving.benchmark-recipe-catalog/v1",
+  "title": "Qwen3.8 PRO campaign recipes",
+  "reviewed_at": "2026-09-05",
+  "entries": [
+    {
+      "id": "qwen38-pro6000-inferact-sglang-tp1-k12-chunk1k",
+      "title": "Inferact · SGLang TP1 K12/1K",
+      "model": "Inferact/Qwen3.8-27B-NVFP4@6128240e",
+      "hardware": "1x RTX PRO 6000 Blackwell Max-Q, 96 GB",
+      "topology": "TP=1 on one GPU",
+      "workload": "4K/C8 sustained output, 100 unique-canary requests",
+      "decision": "challenger",
+      "strengths": [
+        "Selected one-card sustained-output and end-to-end latency arm in the matched campaign.",
+        "All 100 request canaries completed and passed."
+      ],
+      "limitations": [
+        "No promotion; broad quality, routed clients, multimodal behavior, and complete power telemetry remain open.",
+        "The 82K/C8 stress result was non-interactive and is not a responsive long-context claim."
+      ],
+      "recipe": {
+        "path": "configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-optimization-recipes.toml",
+        "label": "Exact K12/1K recipe",
+        "selector": "Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K12-Chunk1K"
+      },
+      "finding": {
+        "path": "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md",
+        "label": "Full finding"
+      },
+      "dossier": {
+        "path": "docs/benchmarks/models/qwen38-27b.md",
+        "label": "Model dossier"
+      },
+      "artifact": "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-evidence/finalist-k12-chunk1k-4k-c8-canary-long256-n100.json",
+      "metrics": [
+        {
+          "label": "TTFT P50",
+          "path": "metrics.ttft_p50_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "TTFT P99",
+          "path": "metrics.ttft_p99_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "Decode P50",
+          "path": "metrics.decode_tok_s_p50",
+          "unit": "tok/s",
+          "precision": 1
+        },
+        {
+          "label": "TPOT / ITL P50",
+          "path": "metrics.tpot_p50_ms",
+          "unit": "ms/token",
+          "precision": 2
+        },
+        {
+          "label": "E2E P50",
+          "path": "metrics.e2e_p50_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "Aggregate output",
+          "path": "metrics.throughput_tok_s",
+          "unit": "tok/s",
+          "precision": 1
+        }
+      ],
+      "expected": {
+        "model": "qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk1k",
+        "engine": "sglang",
+        "gpu": "Fakoli Dark / RTX PRO 6000 Blackwell Max-Q / TP=1",
+        "measurement_protocol": "capacity-v3",
+        "concurrency": 8,
+        "context_tokens": 4096,
+        "max_tokens": 512,
+        "prompt_cache_mode": "unique",
+        "request_canaries": true,
+        "response_words": 256,
+        "controlled_output_policy": null,
+        "shared_prefix_tokens": null
+      }
+    },
+    {
+      "id": "qwen38-pro6000-radixark-sglang-tp1-k8",
+      "title": "RadixArk · SGLang TP1 K8",
+      "model": "RadixArk/Qwen3.8-27B-NVFP4@319f741c",
+      "hardware": "1x RTX PRO 6000 Blackwell Max-Q, 96 GB",
+      "topology": "TP=1 on one GPU",
+      "workload": "4K/C8 sustained output, 100 unique-canary requests",
+      "decision": "challenger",
+      "strengths": [
+        "Lower time to first token than the selected Inferact sustained-output arm.",
+        "All 100 request canaries completed and passed."
+      ],
+      "limitations": [
+        "Lower decode rate and higher end-to-end latency than the Inferact finalist on the matched workload.",
+        "No promotion; broad quality and client-path qualification remain open."
+      ],
+      "recipe": {
+        "path": "configs/qwen38-27b-radixark-nvfp4-sglang-pro6000-c8-dflash2-recipe.toml",
+        "label": "Exact K8 recipe"
+      },
+      "finding": {
+        "path": "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md",
+        "label": "Full finding"
+      },
+      "dossier": {
+        "path": "docs/benchmarks/models/qwen38-27b.md",
+        "label": "Model dossier"
+      },
+      "artifact": "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-evidence/radixark-dflash-k8-4k-c8-canary-long256-n100.json",
+      "metrics": [
+        {
+          "label": "TTFT P50",
+          "path": "metrics.ttft_p50_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "TTFT P99",
+          "path": "metrics.ttft_p99_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "Decode P50",
+          "path": "metrics.decode_tok_s_p50",
+          "unit": "tok/s",
+          "precision": 1
+        },
+        {
+          "label": "TPOT / ITL P50",
+          "path": "metrics.tpot_p50_ms",
+          "unit": "ms/token",
+          "precision": 2
+        },
+        {
+          "label": "E2E P50",
+          "path": "metrics.e2e_p50_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "Aggregate output",
+          "path": "metrics.throughput_tok_s",
+          "unit": "tok/s",
+          "precision": 1
+        }
+      ],
+      "expected": {
+        "model": "qwen38-27b-radixark-nvfp4-sglang-pro6000-c8-dflash2",
+        "engine": "sglang",
+        "gpu": "NVIDIA RTX PRO 6000 Max-Q",
+        "measurement_protocol": "capacity-v3",
+        "concurrency": 8,
+        "context_tokens": 4096,
+        "max_tokens": 512,
+        "prompt_cache_mode": "unique",
+        "request_canaries": true,
+        "response_words": 256,
+        "controlled_output_policy": null,
+        "shared_prefix_tokens": null
+      }
+    },
+    {
+      "id": "qwen38-pro6000-kelnei-vllm-mtp2",
+      "title": "kelnei · vLLM MTP2",
+      "model": "kelnei/Qwen3.8-27B-NVFP4@29099dc7",
+      "hardware": "1x RTX PRO 6000 Blackwell Max-Q, 96 GB",
+      "topology": "TP=1 on one GPU",
+      "workload": "4K/C8 sustained output, 100 unique-canary requests",
+      "decision": "challenger",
+      "strengths": [
+        "Verified alternate-runtime speculative gain over the exact vLLM no-speculation control.",
+        "Smoke, JSON, Responses, shared-prefix tools, and all 100 canaries passed."
+      ],
+      "limitations": [
+        "Did not beat the SGLang finalist on aggregate output or end-to-end latency.",
+        "No promotion; broad quality and routed-client gates remain open."
+      ],
+      "recipe": {
+        "path": "configs/qwen38-27b-kelnei-nvfp4-vllm0271-pro6000-mtp2-recipe.toml",
+        "label": "Exact MTP2 recipe"
+      },
+      "finding": {
+        "path": "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md",
+        "label": "Full finding"
+      },
+      "dossier": {
+        "path": "docs/benchmarks/models/qwen38-27b.md",
+        "label": "Model dossier"
+      },
+      "artifact": "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-evidence/kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json",
+      "metrics": [
+        {
+          "label": "TTFT P50",
+          "path": "metrics.ttft_p50_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "TTFT P99",
+          "path": "metrics.ttft_p99_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "Decode P50",
+          "path": "metrics.decode_tok_s_p50",
+          "unit": "tok/s",
+          "precision": 1
+        },
+        {
+          "label": "TPOT / ITL P50",
+          "path": "metrics.tpot_p50_ms",
+          "unit": "ms/token",
+          "precision": 2
+        },
+        {
+          "label": "E2E P50",
+          "path": "metrics.e2e_p50_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "Aggregate output",
+          "path": "metrics.throughput_tok_s",
+          "unit": "tok/s",
+          "precision": 1
+        }
+      ],
+      "expected": {
+        "model": "qwen38-27b-kelnei-nvfp4-vllm0271-mtp2",
+        "engine": "vllm-0.27.1",
+        "gpu": "Fakoli Dark / RTX PRO 6000 Blackwell Max-Q / TP=1",
+        "measurement_protocol": "capacity-v3",
+        "concurrency": 8,
+        "context_tokens": 4096,
+        "max_tokens": 512,
+        "prompt_cache_mode": "unique",
+        "request_canaries": true,
+        "response_words": 256,
+        "controlled_output_policy": null,
+        "shared_prefix_tokens": null
+      }
+    },
+    {
+      "id": "qwen38-pro6000-kelnei-vllm-nospec",
+      "title": "kelnei · vLLM no-spec control",
+      "model": "kelnei/Qwen3.8-27B-NVFP4@29099dc7",
+      "hardware": "1x RTX PRO 6000 Blackwell Max-Q, 96 GB",
+      "topology": "TP=1 on one GPU",
+      "workload": "4K/C8 sustained output, 100 unique-canary requests",
+      "decision": "no-promotion",
+      "strengths": [
+        "Exact same-checkpoint and same-runtime control for the vLLM MTP2 arm.",
+        "Smoke, JSON, Responses, shared-prefix tools, and all 100 canaries passed."
+      ],
+      "limitations": [
+        "Substantially slower than the matched MTP2 arm on this workload.",
+        "Control evidence only; not a deployment recommendation."
+      ],
+      "recipe": {
+        "path": "configs/qwen38-27b-kelnei-nvfp4-vllm0271-pro6000-nospec-recipe.toml",
+        "label": "Exact no-spec recipe"
+      },
+      "finding": {
+        "path": "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md",
+        "label": "Full finding"
+      },
+      "dossier": {
+        "path": "docs/benchmarks/models/qwen38-27b.md",
+        "label": "Model dossier"
+      },
+      "artifact": "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-evidence/kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json",
+      "metrics": [
+        {
+          "label": "TTFT P50",
+          "path": "metrics.ttft_p50_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "TTFT P99",
+          "path": "metrics.ttft_p99_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "Decode P50",
+          "path": "metrics.decode_tok_s_p50",
+          "unit": "tok/s",
+          "precision": 1
+        },
+        {
+          "label": "TPOT / ITL P50",
+          "path": "metrics.tpot_p50_ms",
+          "unit": "ms/token",
+          "precision": 2
+        },
+        {
+          "label": "E2E P50",
+          "path": "metrics.e2e_p50_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "Aggregate output",
+          "path": "metrics.throughput_tok_s",
+          "unit": "tok/s",
+          "precision": 1
+        }
+      ],
+      "expected": {
+        "model": "qwen38-27b-kelnei-nvfp4-vllm0271-nospec",
+        "engine": "vllm-0.27.1",
+        "gpu": "Fakoli Dark / RTX PRO 6000 Blackwell Max-Q / TP=1",
+        "measurement_protocol": "capacity-v3",
+        "concurrency": 8,
+        "context_tokens": 4096,
+        "max_tokens": 512,
+        "prompt_cache_mode": "unique",
+        "request_canaries": true,
+        "response_words": 256,
+        "controlled_output_policy": null,
+        "shared_prefix_tokens": null
+      }
+    },
+    {
+      "id": "qwen38-pro6000-inferact-sglang-tp2-rejected",
+      "title": "Inferact · SGLang TP2 control (rejected)",
+      "model": "Inferact/Qwen3.8-27B-NVFP4@6128240e",
+      "hardware": "2x RTX PRO 6000 Blackwell Max-Q, 192 GB aggregate",
+      "topology": "TP=2 over PCIe without NVLink",
+      "workload": "4K/C8 sustained output, 100 unique-canary requests",
+      "decision": "rejected",
+      "strengths": [
+        "Retained as a matched topology control with complete latency distributions.",
+        "All 100 request canaries completed and passed."
+      ],
+      "limitations": [
+        "Slower than one TP1 service and two independent TP1 replicas on this host.",
+        "Strict structured JSON failed twice with duplicated output and a leaked delimiter."
+      ],
+      "recipe": {
+        "path": "configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-optimization-recipes.toml",
+        "label": "Exact TP2 control recipe",
+        "selector": "Inferact/Qwen3.8-27B-NVFP4-PRO6000-TP2-DFlash2-K12-Chunk1K"
+      },
+      "finding": {
+        "path": "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md",
+        "label": "Full finding"
+      },
+      "dossier": {
+        "path": "docs/benchmarks/models/qwen38-27b.md",
+        "label": "Model dossier"
+      },
+      "artifact": "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-evidence/opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json",
+      "metrics": [
+        {
+          "label": "TTFT P50",
+          "path": "metrics.ttft_p50_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "TTFT P99",
+          "path": "metrics.ttft_p99_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "Decode P50",
+          "path": "metrics.decode_tok_s_p50",
+          "unit": "tok/s",
+          "precision": 1
+        },
+        {
+          "label": "TPOT / ITL P50",
+          "path": "metrics.tpot_p50_ms",
+          "unit": "ms/token",
+          "precision": 2
+        },
+        {
+          "label": "E2E P50",
+          "path": "metrics.e2e_p50_ms",
+          "unit": "ms",
+          "precision": 1
+        },
+        {
+          "label": "Aggregate output",
+          "path": "metrics.throughput_tok_s",
+          "unit": "tok/s",
+          "precision": 1
+        }
+      ],
+      "expected": {
+        "model": "qwen38-27b-inferact-nvfp4-pro6000-tp2-dflash2-k12-chunk1k",
+        "engine": "sglang",
+        "gpu": "2x NVIDIA RTX PRO 6000 Max-Q",
+        "measurement_protocol": "capacity-v3",
+        "concurrency": 8,
+        "context_tokens": 4096,
+        "max_tokens": 512,
+        "prompt_cache_mode": "unique",
+        "request_canaries": true,
+        "response_words": 256,
+        "controlled_output_policy": null,
+        "shared_prefix_tokens": null
+      }
+    }
+  ],
+  "source_base_url": "https://github.com/fakoli/anvil-serving/blob/47c0043ed450e1a874dd253092a8b31af58b0eea/"
+}

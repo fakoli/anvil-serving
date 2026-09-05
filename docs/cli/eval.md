@@ -129,8 +129,14 @@ anvil-serving eval benchmark capacity `
   --model MODEL `
   --engine vllm `
   --gpu <gpu-label> `
-  --requests 60 `
-  --concurrency 20 `
+  --requests 100 `
+  --concurrency 8 `
+  --ctx-tokens 4096 `
+  --max-tokens 512 `
+  --response-words 256 `
+  --controlled-output-policy strict `
+  --prompt-cache-mode unique `
+  --request-canaries `
   --seed 0 `
   --output artifacts/capacity.json `
   --confirm
@@ -141,11 +147,40 @@ seed, engine/hardware target, completed and failed requests, sanitized failure
 classes, and how output tokens were counted. Measurement protocol `capacity-v3`
 uses exact `usage.prompt_tokens` and `usage.completion_tokens` to retain
 per-request and aggregate TTFT, effective prefill rate, generation duration,
-decode rate, mean inter-token latency, E2E latency, and token counts.
+decode rate, TPOT, the backward-compatible mean-inter-token-latency proxy, E2E
+latency, and token counts. TPOT and `mean_inter_token_latency_ms` are the same
+request-level mean (`generation / (completion tokens - 1)`), not raw
+token-arrival ITL.
 Effective prefill includes queueing, scheduling, prompt processing, and
 first-token work; it is not a kernel-only measurement. When exact usage is
 unavailable, token-derived rates are null and content-chunk rate is retained
 only as a diagnostic.
+
+`--controlled-output-policy observe` is the backward-compatible default. It
+records requested/observed word counts, extra words, capture completeness, and
+exact adherence but does not fail a non-exact response. Use `strict` for
+finalist comparisons; it requires nonzero `--response-words` and excludes a
+non-exact or capture-truncated response from performance metrics. The visible
+validation capture is capped at 8,192 characters. With
+`--request-canaries`, the response must begin with its own marker and contain
+no other `ANVIL_REQ` marker. Failed and contract-invalid responses retain
+sanitized timing and token/finish metadata, never prompts or full response
+bodies. An incomplete population is marked `performance_eligible: false` and
+does not publish aggregate `throughput_tok_s`.
+
+When two independent replicas share one physical host clock, give both runs
+the same public-safe `--clock-domain-id` and the same
+`--configuration-fingerprint sha256:<64-lowercase-hex>` for the normalized
+configuration. The artifacts retain nanosecond Unix timestamps, but the
+combiner treats them as aligned only when the clock-domain identifiers match;
+never reuse one across hosts. The fingerprint is a declared identity binding,
+not independent attestation.
+
+Legacy replica artifacts without these fields remain usable as bounded
+evidence when they share the same whole-second UTC start and finish buckets.
+Their aggregate reports wall-time and throughput ranges, uses the conservative
+lower bound in `metrics.throughput_tok_s`, and labels missing identity or modern
+output-validation proof. See [Repeatable campaigns](../benchmarks/repeatable-campaigns.md).
 
 Quality runs require an explicit built-in suite or an externally authored suite
 file plus stable candidate and configuration identities:
@@ -183,6 +218,25 @@ capability alias or serve automatically.
 A nonzero exit means the requested workload did not complete or satisfy its
 gate. A stream without visible content is a failed request; it is not rewritten
 as a successful zero-TTFT completion.
+
+## Benchmark recipe report
+
+Render the [measured recipe finder](../benchmarks/recipe-results.md) from a
+reviewed catalog and native capacity artifacts. The command is offline and
+does not call a model. Numeric values, request counts, workload conditions,
+and source SHA-256 values come from artifacts; strengths, limitations, and
+recipe selection are reviewed catalog annotations.
+
+```powershell
+python -m anvil_serving.cli eval benchmark report docs/benchmarks/recipe-catalog.json --root . --output docs/benchmarks/recipe-results.md --confirm
+python -m anvil_serving.cli eval benchmark report docs/benchmarks/recipe-catalog.json --root . --output docs/benchmarks/recipe-results.md --check
+```
+
+Without `--output`, Markdown is written to stdout. Use `--format json` for
+the compact resolved report without prompts or full responses. `--check`
+fails when the generated file differs, including after a source artifact or
+catalog edit. Files must stay within `--root`; outputs cannot overwrite an
+input. Publication workflow: [Repeatable campaigns](../benchmarks/repeatable-campaigns.md).
 
 ## External benchmarks
 

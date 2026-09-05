@@ -1,0 +1,136 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-04-qwen38-27b-pro6000-possibility",
+  "complete": true,
+  "evidence_cutoff": "2026-09-05T09:00:00Z",
+  "identity": {
+    "inferact_target": "Inferact/Qwen3.8-27B-NVFP4@6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+    "radixark_target": "RadixArk/Qwen3.8-27B-NVFP4@319f741cce68d7914884900c138a1fbb70a42f30",
+    "kelnei_target": "kelnei/Qwen3.8-27B-NVFP4@29099dc7004e5731173af5c5fb5253466aee219c",
+    "dflash2_draft": "incoai/Qwen3.8-27B-DFlash2@dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+    "sglang_runtime": "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe",
+    "sglang_source_revision": "5f55db35e926d50676f75b812640ea2410b0fe0e",
+    "vllm_runtime": "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2",
+    "hardware": "two NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition GPUs, 97887 MiB each, sm_120",
+    "interconnect": "PCIe PXB without NVLink; TP2 used conservative WSL2 NCCL controls and no custom all-reduce"
+  },
+  "measurement": {
+    "path": "direct online streaming",
+    "warm_cold_state": "service warm; unique prompt variants; cache state was not discarded between requests",
+    "headline_workload": "100 requests, 4K target, C8 per replica, unique canaries, 256 requested words, 512-token ceiling, thinking disabled",
+    "statistics": ["mean", "p50", "p95", "p99", "aggregate output throughput"],
+    "metrics": ["ttft", "effective_prefill", "decode", "tpot", "mean_itl", "e2e", "aggregate_throughput"],
+    "percentile_method": "nearest rank",
+    "tpot_itl_semantics": "capacity-v3 computes both from client-observed generation time divided by completion tokens after the first token; neither is a raw timestamp distribution over every generated token"
+  },
+  "headline_results": [
+    {
+      "profile": "SGLang Inferact DFlash2 K12 chunk1K TP1",
+      "topology": "one GPU, TP1, C8",
+      "requests": 100,
+      "canaries_passed": 100,
+      "aggregate_tok_s": 764.2998,
+      "ttft_ms": {"mean": 2415.7130, "p50": 2331.2613, "p95": 5339.0604, "p99": 5513.3396},
+      "effective_prefill_tok_s": {"mean": 2609.2044, "p50": 1515.3048, "p95": 12009.0508, "p99": 12072.1462},
+      "decode_tok_s": {"mean": 201.4701, "p50": 182.4856, "p95": 298.3535, "p99": 305.9930},
+      "tpot_mean_itl_ms": {"mean": 5.4941, "p50": 5.4301, "p95": 8.1710, "p99": 8.3292},
+      "e2e_ms": {"mean": 5223.1725, "p50": 4856.4310, "p95": 9578.9489, "p99": 9758.1020},
+      "evidence": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json"
+    },
+    {
+      "profile": "two independent SGLang Inferact DFlash2 K12 chunk1K TP1 replicas",
+      "topology": "two GPUs, DP2, C16 aggregate",
+      "requests": 100,
+      "canaries_passed": 100,
+      "aggregate_tok_s": null,
+      "aggregate_tok_s_lower_bound": 1401.7693,
+      "aggregate_tok_s_upper_bound": 1423.4125,
+      "aggregate_timing_note": "Legacy whole-second timestamps support a window bound, not exact simultaneous starts; native replica evidence is unchanged.",
+      "ttft_ms": {"mean": 2612.1699, "p50": 2407.0813, "p95": 5424.0408, "p99": 5519.4272},
+      "effective_prefill_tok_s": {"mean": 1760.1093, "p50": 1512.3702, "p95": 3221.2635, "p99": 4261.5525},
+      "decode_tok_s": {"mean": 197.9558, "p50": 183.0626, "p95": 308.9220, "p99": 352.4208},
+      "tpot_mean_itl_ms": {"mean": 5.5724, "p50": 5.4412, "p95": 8.1669, "p99": 8.2206},
+      "e2e_ms": {"mean": 5459.6754, "p50": 4865.4343, "p95": 9590.3141, "p99": 9710.4612},
+      "evidence": "dp2-combined-4k-c16-canary-long256-n100.json"
+    },
+    {
+      "profile": "SGLang Inferact DFlash2 K12 chunk1K TP2",
+      "topology": "two GPUs, TP2, C8",
+      "requests": 100,
+      "canaries_passed": 100,
+      "aggregate_tok_s": 587.938,
+      "ttft_ms": {"mean": 3361.44, "p50": 3184.40, "p95": 6826.20, "p99": 6890.05},
+      "decode_tok_s": {"mean": 167.05, "p50": 150.17, "p95": 274.74, "p99": 276.28},
+      "tpot_mean_itl_ms": {"mean": 6.74, "p50": 6.56, "p95": 10.13, "p99": 10.21},
+      "e2e_ms": {"mean": 6805.15, "p50": 6046.96, "p95": 11971.51, "p99": 12072.48},
+      "performance_delta_vs_tp1_percent": -23.1,
+      "correctness_status": "rejected: structured JSON emitted a duplicate object separated by a literal closing think tag in the full preflight and isolated repeat",
+      "evidence": "opt-tp2-k12-chunk1k-4k-c8-canary-long256-n100.json"
+    },
+    {
+      "profile": "SGLang RadixArk DFlash2 K8 TP1",
+      "topology": "one GPU, TP1, C8",
+      "requests": 100,
+      "canaries_passed": 100,
+      "aggregate_tok_s": 746.6756,
+      "ttft_ms": {"mean": 1444.5307, "p50": 1238.9617, "p95": 3263.6992, "p99": 4030.2139},
+      "decode_tok_s": {"mean": 136.6168, "p50": 122.4775, "p95": 209.6687, "p99": 268.9616},
+      "tpot_mean_itl_ms": {"mean": 7.6103, "p50": 8.1326, "p95": 8.9459, "p99": 9.4419},
+      "e2e_ms": {"mean": 5209.4752, "p50": 5186.3338, "p95": 7583.1639, "p99": 8011.5732},
+      "tradeoff": "46.9 percent lower median TTFT than Inferact, but 2.3 percent lower aggregate throughput and 6.8 percent higher median E2E",
+      "evidence": "radixark-dflash-k8-4k-c8-canary-long256-n100.json"
+    },
+    {
+      "profile": "vLLM 0.27.1 kelnei integrated MTP2 TP1",
+      "topology": "one GPU, TP1, C8",
+      "requests": 100,
+      "canaries_passed": 100,
+      "aggregate_tok_s": 503.3549,
+      "ttft_ms": {"mean": 1022.6374, "p50": 483.2578, "p95": 2471.0121, "p99": 3424.7826},
+      "decode_tok_s": {"mean": 75.4311, "p50": 72.8790, "p95": 97.2561, "p99": 107.5447},
+      "tpot_mean_itl_ms": {"mean": 13.5617, "p50": 13.7109, "p95": 16.2045, "p99": 18.5578},
+      "e2e_ms": {"mean": 7922.5678, "p50": 7858.4289, "p95": 9680.6938, "p99": 10750.3246},
+      "matched_no_spec_aggregate_tok_s": 315.1822,
+      "matched_delta_percent": 59.7,
+      "active_mtp_accepted_draft_token_fraction": 0.9390436,
+      "evidence": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json"
+    }
+  ],
+  "optimization_results": {
+    "screen_workload": "4K/C8, 16 requests with natural short completions; use only for within-screen selection",
+    "draft_depth_aggregate_tok_s": {"k4": 330.90, "k8": 340.40, "k12": 421.67, "k16": 342.75},
+    "chunked_prefill_aggregate_tok_s_at_k12": {"1024": 476.20, "2048": 421.67, "8192": 463.96},
+    "torch_compile_aggregate_tok_s_at_k12_chunk2k": 361.59,
+    "mamba40_aggregate_tok_s_at_k12_chunk1k": 478.85,
+    "selected": "K12, 1024-token chunks, extra_buffer, 96 Mamba slots",
+    "selection_reason": "K12 and 1K chunks won their bounded screens; compile regressed 14.2 percent; 40 slots had no meaningful short win and worse retained 82K/C8 median E2E"
+  },
+  "gates": [
+    {"name": "functional TP1 finalists", "status": "passed", "detail": "Inferact TP1, both DP2 replicas, RadixArk arms, and kelnei MTP2/no-spec passed smoke, JSON, tools, and Responses"},
+    {"name": "request isolation", "status": "passed for headline load", "detail": "all retained 100-request headline artifacts passed 100/100 unique canaries"},
+    {"name": "TP2", "status": "rejected", "detail": "23.1 percent throughput regression versus matched TP1 plus repeatable structured-JSON corruption"},
+    {"name": "long-context concurrency", "status": "rejected for interactive use", "detail": "all 82K/C8 unique-prefix lanes completed, but median E2E remained 93.7 to 137.6 seconds across measured candidates"},
+    {"name": "broad quality and client acceptance", "status": "missing", "detail": "no repeated intelligence, agentic, SWE, multimodal, routed, or real-client campaign was run"},
+    {"name": "restoration", "status": "passed", "evidence": "restoration.json"}
+  ],
+  "limitations": [
+    "The 764.3 tok/s TP1 result and 1401.8–1423.4 tok/s DP2 timing bound are aggregate output throughput for a forced sustained-output C8/C16 workload, not single-request decode and not directly comparable to the Helix 454 tok/s workload.",
+    "The natural-completion optimization screen and the forced-output headline workload have different completion distributions; absolute throughput must not be compared across those workload shapes.",
+    "TP2 used PCIe collectives without NVLink and a patched conservative WSL2 NCCL path; results do not predict native Linux or NVLink behavior.",
+    "The DP2 result is two directly addressed replicas, not a qualified load balancer, route, or failover design.",
+    "TPOT and mean ITL are identical per-request aggregates in capacity-v3, not raw token-arrival interval distributions.",
+    "Power, clocks, temperature, host-memory pressure, cold startup, compile time, and energy per token were not retained for every arm.",
+    "No broad quality, agentic, SWE, multimodal, endurance, routed, or real-client qualification was run for these new profiles.",
+    "DFlash2 license and deployment-use review remains a separate gate; this campaign authorizes no production use."
+  ],
+  "decision": {
+    "evidence_labels": ["external-prior", "functional", "capacity", "matched-performance", "correctness-rejection", "exact-restoration"],
+    "decision_labels": ["dp2-throughput-winner", "tp2-rejected", "no-promotion"],
+    "promotion_authorized": false,
+    "winner": "two independent SGLang Inferact NVFP4 plus DFlash2 K12/chunk1K TP1 replicas for the bounded sustained-output aggregate-throughput workload",
+    "single_card_selection": "SGLang Inferact NVFP4 plus DFlash2 K12/chunk1K for sustained decode/E2E; RadixArk K8 is the lower-TTFT tradeoff",
+    "alternate_runtime_result": "kelnei/vLLM MTP2 materially beat its exact no-spec control but did not beat the SGLang finalist",
+    "reason": "DP2 supports a 1401.8–1423.4 aggregate tok/s timing bound with 100/100 canaries and per-request latency close to TP1, while TP2 delivered 587.9 tok/s and failed structured JSON twice.",
+    "promotion_boundary": "No serve, route, client catalog, or production deployment is authorized. The starting GLM service and route were restored."
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "anvil-serving.benchmark-configuration/v1",
+  "campaign_id": "2026-09-04-qwen38-27b-pro6000-possibility",
+  "repository_start": {"revision": "2e92f02ce3ed4fd1d342f983187aa69d9891769f", "dirty": false},
+  "hardware": {
+    "available_count": 2,
+    "measured_count": 2,
+    "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "memory_mib_each": 97887,
+    "architecture": "sm_120",
+    "interconnect": "PCIe PXB without NVLink",
+    "environment": "Docker Desktop/WSL2",
+    "topologies": ["single TP1", "two independent TP1 replicas (DP2)", "one TP2 service"]
+  },
+  "sglang": {
+    "image": "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe",
+    "amd64_manifest": "sha256:b91d664a8e4825afc16ab831c6035a6c88ac20ef8bd26da4fe2b9813a9f44376",
+    "source_revision": "5f55db35e926d50676f75b812640ea2410b0fe0e",
+    "cuda": "13.0.3",
+    "flashinfer": "0.6.17",
+    "common": {"context_tokens": 262144, "max_running_requests": 8, "memory_fraction": 0.85, "target_kv": "fp8_e4m3", "attention": "flashinfer", "mamba_strategy": "extra_buffer", "mamba_state_dtype": "bfloat16", "mamba_slots": 96, "thinking": "disabled", "prefix_cache_workload": "unique"},
+    "inferact_target": "Inferact/Qwen3.8-27B-NVFP4@6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+    "radixark_target": "RadixArk/Qwen3.8-27B-NVFP4@319f741cce68d7914884900c138a1fbb70a42f30",
+    "draft": "incoai/Qwen3.8-27B-DFlash2@dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+    "selected_tp1": {"draft_tokens": 12, "chunked_prefill_tokens": 1024, "topology": "TP1", "recipe": "configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-optimization-recipes.toml"},
+    "dp2": {"replicas": 2, "draft_tokens_each": 12, "chunked_prefill_tokens_each": 1024, "concurrency_each": 8, "aggregate_concurrency": 16, "replica_b_recipe": "configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dp2-replica-b-recipe.toml"},
+    "tp2": {"draft_tokens": 12, "chunked_prefill_tokens": 1024, "topology": "TP2", "custom_all_reduce": false, "wsl2_nccl_controls": ["NCCL_CUMEM_ENABLE=0", "ordinary NCCL logits gather fallback"], "status": "rejected"},
+    "radixark": {"selected_tradeoff_arm": "DFlash2 K8, 2048-token chunks", "comparison_arm": "DFlash2 K12, 1024-token chunks", "status": "measured no-promotion"}
+  },
+  "vllm": {
+    "image": "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2",
+    "target": "kelnei/Qwen3.8-27B-NVFP4@29099dc7004e5731173af5c5fb5253466aee219c",
+    "quantization": "compressed-tensors NVFP4 W4A4 with FP8 attention, DeltaNet, late MLP layers, lm_head, and KV",
+    "common": {"context_tokens": 262144, "max_num_seqs": 8, "gpu_memory_utilization": 0.90, "kv_cache_dtype": "fp8", "prefix_caching": false, "tensor_parallel_size": 1, "thinking": "disabled"},
+    "arms": [{"name": "integrated MTP2", "speculative_tokens": 2}, {"name": "matched no-spec", "speculative_tokens": 0}],
+    "recipes": ["configs/qwen38-27b-kelnei-nvfp4-vllm0271-pro6000-mtp2-recipe.toml", "configs/qwen38-27b-kelnei-nvfp4-vllm0271-pro6000-nospec-recipe.toml"]
+  },
+  "telemetry_boundary": {
+    "retained": ["request-level timing and API token usage", "aggregate wall-clock throughput", "vLLM MTP counters", "startup capacity observations where explicitly captured"],
+    "not_consistently_retained": ["power", "temperature", "clocks", "energy per token", "host memory pressure", "cold startup and compile duration"]
+  },
+  "live_boundary": {"mutation_performed": true, "restored": true, "promotion_authorized": false, "evidence": "restoration.json"}
+}

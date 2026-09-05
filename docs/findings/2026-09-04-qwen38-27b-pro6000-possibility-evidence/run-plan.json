@@ -1,0 +1,36 @@
+{
+  "schema": "anvil-serving.benchmark-run-plan/v1",
+  "campaign_id": "2026-09-04-qwen38-27b-pro6000-possibility",
+  "goal": "find the highest useful Qwen3.8 27B configuration on one or two local RTX PRO 6000 GPUs without treating any external headline as local proof",
+  "promotion_authorized": false,
+  "execution_order": [
+    {"order": 1, "stage": "baseline", "arms": ["Inferact target-only", "Inferact DFlash2 K8"], "status": "complete"},
+    {"order": 2, "stage": "SGLang optimization", "arms": ["K4", "K12", "K16", "chunk1K", "chunk8K", "torch.compile", "Mamba lazy96", "Mamba40"], "status": "complete", "selected": "K12 chunk1K extra_buffer Mamba96"},
+    {"order": 3, "stage": "matched topology", "arms": ["TP1", "TP2", "two independent TP1 replicas"], "status": "complete", "selected": "DP2 for aggregate throughput", "rejected": "TP2"},
+    {"order": 4, "stage": "target checkpoint", "arms": ["RadixArk target-only", "RadixArk DFlash2 K8", "RadixArk DFlash2 K12 chunk1K"], "status": "complete", "selected": "K8 as lower-TTFT tradeoff"},
+    {"order": 5, "stage": "alternate runtime", "arms": ["kelnei vLLM 0.27.1 MTP2", "matched no-spec"], "status": "complete", "selected": "MTP2 within vLLM; SGLang remains faster for sustained output"},
+    {"order": 6, "stage": "restore", "status": "complete", "evidence": "restoration.json"}
+  ],
+  "headline_comparison_rule": "Compare only the matched 100-request unique-canary 4K/C8-per-replica sustained-output artifacts. Do not compare their aggregate throughput with natural-completion screens or external workloads.",
+  "advance_rules": [
+    "all requests complete without restart or unexplained loss",
+    "every unique request returns its own canary and no other canary",
+    "strict structured JSON, tools, and Responses pass",
+    "performance claim includes mean, p50, p95, and p99 for TTFT, effective prefill, decode, TPOT/ITL, and E2E",
+    "topology winner must account for both throughput and communication overhead"
+  ],
+  "stop_rules": [
+    "cross-request marker or tool contamination",
+    "repeatable structured-output corruption",
+    "unexplained request loss, OOM, restart, CUDA error, or parser corruption",
+    "starting service cannot be restored through the managed path"
+  ],
+  "post_campaign_open_gates": [
+    "broad repeated quality, agentic, SWE, and endurance",
+    "multimodal and routed/client acceptance",
+    "qualified load balancing and failure behavior for DP2",
+    "power, clock, temperature, and energy-per-token capture",
+    "native-Linux TP2 control",
+    "DFlash2 license and deployment-use review"
+  ]
+}

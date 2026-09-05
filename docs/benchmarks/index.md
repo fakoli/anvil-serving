@@ -5,27 +5,81 @@ engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
 
-!!! tip "Reproduce the measured container configurations"
+!!! tip "Start with a measured recipe"
 
-    Open **[Container configurations](configurations.md)** for the exact model
-    revisions, image digests, cache and named-volume mounts, environment,
-    engine flags, context, concurrency, and matched speculation controls behind
-    the current reference results. It also maps each recipe field to a generic
-    container runtime for readers who do not use Anvil Serving.
+    Open **[Find a measured recipe](recipe-results.md)** to compare a workload,
+    its strengths and limitations, the exact configuration, and the native
+    artifact behind every displayed metric. Use the
+    **[reproduction guide](configurations.md)** for the full TOML and the field
+    mapping for readers who do not use Anvil Serving.
 
-**Last evidence review: 2026-09-03.**
+**Last evidence review: 2026-09-05 UTC.**
 
-## Start with the numbers
+## Choose by hardware and workload
 
-The **[model comparison table](comparison.md)** puts every measured
+<div class="bench-paths" markdown="1">
+
+<div class="bench-path" markdown="1">
+
+**1. Pick your hardware**
+
+Start with the measured [RTX PRO 6000](hardware/rtx-pro-6000.md) or
+[RTX 5090](hardware/rtx-5090.md) view. GPU count, interconnect, operating
+system, and runtime are part of the result.
+
+</div>
+
+<div class="bench-path" markdown="1">
+
+**2. Name the workload**
+
+For interactive use, prioritize TTFT and E2E. For sustained serving, use
+aggregate output, TPOT/ITL, and tail latency. For long context, require actual
+prompt depth rather than configured context.
+
+</div>
+
+<div class="bench-path" markdown="1">
+
+**3. Check the tradeoff**
+
+Use [measured recipe results](recipe-results.md) for explicit strengths,
+limitations, and rejection reasons. Use [model dossiers](models/index.md) when
+quality, tools, media, or client acceptance matters more than one speed number.
+
+</div>
+
+<div class="bench-path" markdown="1">
+
+**4. Reproduce and verify**
+
+Open the exact recipe, then follow its dated finding and native JSON artifact.
+A copied container configuration is not a reproduced result until the same
+workload and independent gates pass.
+
+</div>
+
+</div>
+
+## Start with comparable numbers
+
+The **[model comparison table](comparison.md)** puts the wider measured
 configuration — TTFT, throughput, context, reasoning mode, and recipe link —
-in one place, grouped by card. If you have one of these GPUs and want to know
-what runs on it and how well, start there.
+in one place, grouped by card and workload. The
+**[measured recipe finder](recipe-results.md)** is the shorter path when you
+want a current configuration, its tradeoffs, and raw evidence.
 
 For the newest single-card Qwen measurements, the dedicated
 **[Qwen3.8 27B RTX 5090 quant comparison](qwen38-27b-rtx5090-quant-comparison.md)**
 shows every fresh no-speculation/speculation pair, full-context proof, and
 failure without compressing the operator's TTFT-first ranking into one score.
+The newer **[dual-PRO Qwen3.8 27B comprehensive campaign](../findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md)**
+compares SGLang target-only/DFlash2 tuning, TP1/TP2/two-replica DP2,
+Inferact/RadixArk targets, and kelnei/vLLM MTP2/no-spec. It retains mean,
+p50, p95, and p99 TTFT, effective prefill, decode, TPOT/ITL, and E2E plus
+aggregate throughput and correctness failures. Open the
+[campaign graph (SVG)](../findings/2026-09-04-qwen38-27b-pro6000-possibility-evidence/benchmark-matrix.svg)
+or its [plotted data and source hashes](../findings/2026-09-04-qwen38-27b-pro6000-possibility-evidence/benchmark-graph-data.json).
 
 For the compact publication contract, use the
 **[finding format](finding-format.md)**. It defines screenshot-ready result
@@ -67,6 +121,10 @@ The decision labels below describe the latest dated public evidence for each
 reference configuration. They do not report or control any operator's live
 route assignments; active deployment state remains private.
 
+<details class="bench-history">
+<summary>Open the detailed decision history and recent controls</summary>
+<div markdown="1">
+
 1. **GLM-5.3-Flash ormandj W4A16/NVFP4 SGLang** — `current`
    text/tools/image/OCR published profile at 393,216 tokens/C1 in exclusive
    TP=2 across both RTX PRO 6000 cards, with adaptive EAGLE, explicit thinking
@@ -82,32 +140,39 @@ route assignments; active deployment state remains private.
    text/image/OCR/video rollback at 262,144 tokens, exclusive TP=2, router c1,
    four-image/one-video admission, and the qualified hash-gated SM120 QSA-fast
    MTP3 profile.
-4. **Gittensor Qwen3.8 27B RTX5090 NVFP4 target-only SGLang** — preferred
+4. **Inferact Qwen3.8 27B NVFP4 plus DFlash2 K12/chunk1K on the PRO pair** —
+   bounded aggregate-throughput winner: two independent TP1 replicas measured
+   1,401.8–1,423.4 tok/s at C16, versus one TP1 at 764.3 and TP2 at 587.9. All
+   headline canaries passed 100/100, but TP2 failed strict JSON twice and is
+   rejected. RadixArk is the lower-TTFT tradeoff; kelnei/vLLM MTP2 beat its
+   exact no-spec control but not SGLang. Broad quality and a balancing/client
+   path remain open; `no-promotion`, exact GLM service and route restored.
+5. **Gittensor Qwen3.8 27B RTX5090 NVFP4 target-only SGLang** — preferred
    measured direct RTX 5090 TTFT challenger: 50.9 ms warm median TTFT, 79.5
    tok/s decode, and a 244,002-token actual prompt. The advertised DSpark pair
    failed on incompatible shapes and FP8 KV scales need further validation;
    `no-promotion`, exact GGUF incumbent restored. Unsloth Dynamic V3.0 MTP3
    is the strongest clean bounded-64K speculative arm at 137.7 tok/s with
    tools 20/20.
-5. **Qwen3.8 27B NInfer NVFP4 MTP3** — retained direct decode challenger at
+6. **Qwen3.8 27B NInfer NVFP4 MTP3** — retained direct decode challenger at
    252,928 tokens/C1; 0.430-second median TTFT and 165.9 tok/s decode. Its
    admission, reserve, runtime-image, routed/client, and broader gates remain
    open.
-6. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
+7. **DeepSeek V4 Flash 0731 Infernal Invocation r18/r15** — former text
    Primary profiles with retained TP=2 long-context, performance, quality, and
    real-client evidence.
-7. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
+8. **Qwen3.8 27B official FP8 SGLang single service and FP8/BF16 vLLM split** —
    former text/image/OCR/video deployments with retained managed recipes.
-8. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
+9. **Qwen3.5 122B A10B NVFP4**, **Agents-A1 plus Omni**, **DeepSeek r16 650K**,
    **Laguna S 2.1**, and **GPT-OSS Puzzle 88B** — retained qualified or
    promotion-era recipes, not the immediate selected deployment.
-9. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
+10. **Gemma 4** and **ThinkingCap Qwen3.6 27B** — historical strict-quality
    controls.
-10. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
+11. **Nemotron 3.5 ASR** and **Qwen3-ASR 0.6B** — historical RTX 5090
    measurements. The RTX PRO 6000 was protected, not benchmarked.
-11. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
+12. **RadixArk Qwen3.8 27B NVFP4** — historical RTX 5090 multimodal challenger;
    direct 128K text/tools/image/OCR/video evidence, no route or promotion.
-12. **FLUX.2 Klein 4B FP8** — published as available for the RTX 5090 ComfyUI image
+13. **FLUX.2 Klein 4B FP8** — published as available for the RTX 5090 ComfyUI image
    workflow through Hermes/MCP at fixed 512/768/1024-pixel profiles; six of
    eight bounded visual samples passed strict review, with two retained draft
    fidelity/count failures. **Wan2.2 TI2V 5B** remains unavailable after
@@ -255,6 +320,9 @@ The then-promoted official-FP8 service subsequently qualified one video. The
 32-image ceiling, concurrency above one, and host-memory pressure remain open.
 See the
 [MTP/multimodal qualification](../findings/2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md).
+
+</div>
+</details>
 
 ## How to read the evidence
 
