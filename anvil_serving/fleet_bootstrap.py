@@ -132,6 +132,9 @@ _RECEIVER_OPERATION_FIELDS = frozenset(
 _RECEIVER_STAGE_FIELDS = frozenset(
     {*_RECEIVER_OPERATION_FIELDS, "bundle_sha256", "bundle_length"}
 )
+_RECEIVER_ROLLBACK_FIELDS = frozenset(
+    {*_RECEIVER_OPERATION_FIELDS, "trigger_error_code"}
+)
 _TARGET_CONFIG_FIELDS = frozenset(
     {
         "schema",
@@ -496,9 +499,17 @@ class BootstrapReceiverFrame:
     target_config_sha256: str | None = None
     bundle_sha256: str | None = None
     bundle_length: int | None = None
+    trigger_error_code: BootstrapErrorCode | None = None
     schema: str = field(default=RECEIVER_FRAME_SCHEMA, init=False)
 
     def __post_init__(self) -> None:
+        if type(self) is not BootstrapReceiverFrame:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
+        if type(self.schema) is not str or self.schema != RECEIVER_FRAME_SCHEMA:
+            raise _refuse(
+                BootstrapErrorCode.INVALID_CONTRACT,
+                "receiver frame schema is invalid",
+            )
         if type(self.operation) is not ReceiverOperation:
             raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver operation is invalid")
         _required_text(self.expected_node, _NODE_RE, "expected_node")
@@ -521,6 +532,7 @@ class BootstrapReceiverFrame:
                 self.target_config_sha256,
                 self.bundle_sha256,
                 self.bundle_length,
+                self.trigger_error_code,
             )
         ):
             raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
@@ -536,8 +548,20 @@ class BootstrapReceiverFrame:
                 )
         elif self.bundle_sha256 is not None or self.bundle_length is not None:
             raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
+        if self.operation is ReceiverOperation.ROLLBACK:
+            if (
+                type(self.trigger_error_code) is not BootstrapErrorCode
+                or self.trigger_error_code is BootstrapErrorCode.CLEANUP_FAILED
+            ):
+                raise _refuse(
+                    BootstrapErrorCode.INVALID_CONTRACT,
+                    "receiver rollback trigger is invalid",
+                )
+        elif self.trigger_error_code is not None:
+            raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
 
     def to_dict(self) -> dict[str, Any]:
+        self.__post_init__()
         value: dict[str, Any] = {
             "schema": self.schema,
             "operation": self.operation.value,
@@ -558,6 +582,8 @@ class BootstrapReceiverFrame:
                     "bundle_length": self.bundle_length,
                 }
             )
+        if self.operation is ReceiverOperation.ROLLBACK:
+            value["trigger_error_code"] = self.trigger_error_code.value
         return value
 
     @classmethod
@@ -577,6 +603,8 @@ class BootstrapReceiverFrame:
             if operation is ReceiverOperation.IDENTITY
             else _RECEIVER_STAGE_FIELDS
             if operation is ReceiverOperation.STAGE
+            else _RECEIVER_ROLLBACK_FIELDS
+            if operation is ReceiverOperation.ROLLBACK
             else _RECEIVER_OPERATION_FIELDS
         )
         raw = _validate_exact_fields(raw, fields, "receiver frame fields are invalid")
@@ -588,6 +616,15 @@ class BootstrapReceiverFrame:
             target_config_sha256=raw.get("target_config_sha256"),
             bundle_sha256=raw.get("bundle_sha256"),
             bundle_length=raw.get("bundle_length"),
+            trigger_error_code=(
+                _enum(
+                    BootstrapErrorCode,
+                    raw["trigger_error_code"],
+                    "trigger_error_code",
+                )
+                if operation is ReceiverOperation.ROLLBACK
+                else None
+            ),
         )
 
 
@@ -613,8 +650,9 @@ def encode_receiver_frame(
     """Encode one exact canonical receiver request without performing I/O."""
     if type(frame) is not BootstrapReceiverFrame or type(payload) is not bytes:
         raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "receiver frame is invalid")
+    value = frame.to_dict()
     _receiver_payload(frame, payload)
-    metadata = canonical_json_bytes(frame.to_dict())
+    metadata = canonical_json_bytes(value)
     if not 1 <= len(metadata) <= MAX_RECEIVER_METADATA_BYTES:
         raise _refuse(
             BootstrapErrorCode.INVALID_CONTRACT,
