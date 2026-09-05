@@ -427,10 +427,41 @@ Test through the actual front-door discovery endpoint as well as the pure helper
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** anvil_serving/router/decision_log.py, tests/router/test_decision_log.py, tests/router/test_observability_hardening.py
+**Likely files:** anvil_serving/router/decision_log.py, anvil_serving/router/serve.py, tests/router/test_decision_log.py, tests/router/test_observability_hardening.py
 **Dependencies:** T008
 
 Record the selected safe member ID, bounded pre-dispatch eligibility/identity reason, and exactly one attempt while preserving the content-free `DecisionLog` schema and ring limits. Serialize explicit allowlists rather than object dictionaries.
+
+Add only two optional DecisionRecord fields, `replica_member_id` and
+`replica_selection`, both default None. A selected member uses its configured
+ID and selection `identity_passed`; a refused compound admission uses no member
+and `not_admitted` (which deliberately does not distinguish readiness, drain or
+capacity); a replica request refused by an earlier semantic/backend-binding
+gate uses no member and `request_rejected`. Direct records keep both absent.
+Do not add a per-member readiness map, raw identity, second attempt field or
+another probe. Carry the selected lease member through every eager-error,
+completion, completion-error, stream-error and cancellation call to `_record`.
+For replica records before member selection, attempts is empty; after selection
+it contains exactly the existing single logical-tier AttemptRecord, including
+close-before-first-iteration. Selection is not successful generation.
+
+For replica attempts normalize reasons to the fixed set served,
+served_output_clamped, client_disconnected, backend_error, completion_error;
+never retain exception class names or provider strings. Direct reason behavior
+is unchanged. Validate new metadata before memory, summary, audit line and JSONL
+output: exact built-in strings, configured member grammar
+`[A-Za-z][A-Za-z0-9_-]{0,63}`, and the closed selection enum/pair rules above.
+Invalid optional metadata is dropped as a pair without echoing values; no
+arbitrary string conversion. Routing must only stamp a member actually declared
+in the selected tier. Summary also accepts untrusted mappings, so it must reuse
+the same bounded projection rather than pass through arbitrary nested values.
+Append the two new audit labels only when valid/present; omit None fields from
+summary and JSONL to preserve legacy direct output. Replace JSONL's broad
+dataclasses.asdict projection with an explicit list of the existing record and
+attempt fields plus these two, preserving every prior direct/workload field and
+its omission behavior, timestamp stamping, ring limit and rotation behavior.
+The exact wiring gap and acceptance scope are tracked in
+`.tickets/2026-09-05-replica-decision-wiring.md`.
 
 **Acceptance criteria:**
 
@@ -442,38 +473,166 @@ Record the selected safe member ID, bounded pre-dispatch eligibility/identity re
 **Verification:**
 
 - `python scripts/run_tests.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py -x -q`
-- `python -m ruff check anvil_serving/router/decision_log.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py`
+- `python -m ruff check anvil_serving/router/decision_log.py anvil_serving/router/serve.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py`
 
 ### T012: Refuse unsupported replica lifecycle operations before mutation
 
 **Feature:** F001
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/serves.py, tests/test_serves_ensure_router.py, tests/router/test_serve_cli.py
-**Dependencies:** T006, T007, T009
+**Likely files:** anvil_serving/serves.py, anvil_serving/commands/serves.py, tests/test_replica_lifecycle.py
+**Dependencies:** T006, T007, T009, T012.1, T012.2, T012.3
 
 Make `serves up-for`, promote, resume, mode/profile enter or leave, rollback, and recovery paths that assume one backing serve refuse replica tiers with typed `replica_lifecycle_unsupported` before lifecycle, route, profile, Docker, or router-transition mutation. Apply the shared guard at each entry point rather than relying on a later config-install refusal. Operators manage declared members explicitly; do not infer a multi-serve lifecycle. Router-config snapshot activation is separate T015.
+
+T012 is the integration gate for the three children below. Their shared contract
+closes the missing active-config ownership described in
+`.tickets/2026-09-05-replica-lifecycle-config-ownership.md`. A manifest's
+router_tier string is not proof of direct membership. Add
+ReplicaLifecycleUnsupported(ValueError) with fixed code and message
+replica_lifecycle_unsupported, plus a pure guard on parsed RouterConfig and the
+affected tier IDs. Missing/unloadable config or an absent affected tier uses
+the separate fixed refusal replica_lifecycle_configuration_unavailable; never
+silently treat unavailable metadata as direct or echo paths/parser details.
+Existing command wrappers retain their nonzero exit convention and render the
+fixed code. No live router query or invented topology is permitted.
+
+Promotion checks exactly affected_tiers in both promoted and rollback configs,
+before the global lock and at every _promotion_transition entry. Up-for checks
+the resolved alias's tier before candidate selection. Mode/profile checks a
+static union of the target's tier, all potential GPU victims' nonempty tiers,
+and all restore-group members' nonempty tiers, including currently stopped
+members. Validate that union in the active config; if the exclusive target owns
+promoted/rollback profiles, also validate its target tier in both. Check before
+state probes, profile noop, locks, journals, events or transitions. mode status
+and profile list remain unchanged. A transition with no routed affected tiers
+does not require a config.
+
+Give cmd_mode and cmd_profile an optional parsed active_config keyword. For
+routed transitions, the CLI loads --config or the existing operator-home-only
+doctor.resolve_default_config_path; direct library callers supply a parsed
+config. Do not infer an active config from a target/rollback profile or the
+current working directory. Missing config for a routed transition is an
+intentional fail-closed compatibility change; previously proven direct behavior
+remains unchanged when the explicit/default direct config exists. Add --config
+to local mode preview/enter/leave and profile preview/apply declarations and
+parsers only. Existing remote serves_mode uses the remote owner's default
+config; explicit --config is locally supported and refused by remote dispatch,
+not dropped or forwarded as an arbitrary remote filesystem path. Do not change
+MCP schema or privileges in this slice.
 
 **Acceptance criteria:**
 
 - Every single-serve lifecycle shortcut, including rollback and recovery branches, refuses replica tiers before lifecycle, route, profile, Docker, or router-transition mutation.
 - Event-controlled spies prove invalid operations make zero mutation calls; guarding only the eventual router-config install is insufficient.
-- Direct-tier lifecycle and activation behavior remain unchanged.
+- Direct-tier lifecycle and activation behavior remain unchanged with a proven direct config; routed transitions without one fail before mutation.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/test_serves_ensure_router.py tests/router/test_serve_cli.py -x -q`
-- `python -m ruff check anvil_serving/serves.py tests/test_serves_ensure_router.py tests/router/test_serve_cli.py`
+- `python scripts/run_tests.py tests/test_replica_lifecycle.py tests/test_serves.py tests/test_serves_up_for.py tests/test_serves_manage.py tests/test_serves_profiles.py tests/test_serves_preflight_gate.py tests/test_events.py tests/test_recipe_container_discovery.py tests/test_serves_ensure_router.py tests/router/test_serve_cli.py -x -q`
+- `python -m ruff check anvil_serving/serves.py anvil_serving/commands/serves.py tests/test_replica_lifecycle.py tests/test_serves_manage.py tests/test_serves_profiles.py tests/test_serves_preflight_gate.py tests/test_events.py tests/test_recipe_container_discovery.py`
+
+### T012.1: Guard promotion and alias shortcuts before mutation
+
+**Feature:** F001
+**Priority:** high
+**Type:** modify
+**Dependencies:** T006, T007, T009
+**Likely files:** anvil_serving/serves.py, tests/test_replica_lifecycle.py
+
+Implement the shared typed guard from parent T012. Apply it to up-for before
+candidate selection, promotion topology validation, cmd_promote before its lock,
+and every _promotion_transition entry, covering resume, explicit/automatic
+rollback and promoted-state recovery. resolve_recipe_activation already runs
+promotion validation before switch journals/locks; test that real path. Use
+both complete configs and only the exact affected tiers. An unrelated replica
+tier must not reject a direct-only promotion. Missing affected membership is a
+fixed configuration refusal. Do not implement mode/profile yet.
+
+**Acceptance criteria:**
+
+- Valid replica config refuses with the fixed code before lock/journal/transition/install/Docker/lifecycle-event calls in every promotion direction and recovery entry.
+- Up-for refuses replicas even with zero, one or multiple apparent serve backers; unknown aliases keep existing behavior.
+- Direct controls and unrelated-replica controls preserve existing behavior.
+- Bypassing the guard makes a zero-mutation regression fail; restore it.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_replica_lifecycle.py tests/test_serves.py tests/test_serves_up_for.py -x -q`
+- `python -m ruff check anvil_serving/serves.py tests/test_replica_lifecycle.py`
+
+### T012.2: Own active router configuration for mode and profile transitions
+
+**Feature:** F001
+**Priority:** high
+**Type:** modify
+**Dependencies:** T012.1
+**Likely files:** anvil_serving/serves.py, anvil_serving/commands/serves.py, tests/test_replica_lifecycle.py
+
+Implement parent T012's active_config argument, static affected-tier union,
+early mode/profile/noop guard and local --config wiring. Use the existing
+operator-home default resolver only at CLI ownership; pass parsed config to
+library calls and through profile-to-mode delegation. Keep status/list and
+entirely unrouted transitions unchanged. Missing/unloadable config and missing
+affected tiers are fixed configuration refusals, not direct membership. Test
+actual local CLI/default loading and remote explicit-config refusal without a
+transport request. Do not loosen MCP schema or create an active route registry.
+T012.3 owns explicit direct-fixture migration; T013 owns manifest regeneration
+and final docs, so do not suppress either later gate.
+
+**Acceptance criteria:**
+
+- An unrouted exclusive target with a replica-backed victim/restore member is refused before state probes or mutation, including stopped potential victims.
+- Replica target, active profile, rollback profile and apparent profile noop cannot bypass the guard.
+- Missing, malformed and incomplete config fails closed; no routed tiers needs no config; status/list remain read-only and unchanged.
+- Local explicit/default config reaches the same parsed guard; remote --config is refused without transport invocation.
+- Direct controls supplied with parsed config retain transaction order and rollback semantics; removing early preflight makes the bypass regression fail.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_replica_lifecycle.py -x -q`
+- `python -m ruff check anvil_serving/serves.py anvil_serving/commands/serves.py tests/test_replica_lifecycle.py`
+
+### T012.3: Make existing direct lifecycle fixtures explicit
+
+**Feature:** F001
+**Priority:** high
+**Type:** modify
+**Dependencies:** T012.2
+**Likely files:** tests/test_serves_manage.py, tests/test_serves_profiles.py, tests/test_serves_preflight_gate.py, tests/test_events.py, tests/test_recipe_container_discovery.py
+
+Update only existing routed mode/profile fixtures and call sites to provide
+the newly required synthetic parsed active config or temporary operator-home
+config. Preserve all prior transaction, failure, rollback, readiness, event and
+ownership assertions; do not monkeypatch out the guard or turn routed fixtures
+into unrouted ones. Extend fake delegated signatures only for active_config.
+Entirely unrouted and read-only tests remain unchanged. Report any additional
+fixture owner outside this list instead of silently editing it.
+
+**Acceptance criteria:**
+
+- Existing direct-mode/profile tests run with explicit synthetic membership and preserve their original behavioral assertions.
+- All five legacy test files pass without bypassing the new guard or consulting real operator configuration.
+- No runtime, new privileges, live service or private state changes occur.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_serves_manage.py tests/test_serves_profiles.py tests/test_serves_preflight_gate.py tests/test_events.py tests/test_recipe_container_discovery.py -x -q`
+- `python -m ruff check tests/test_serves_manage.py tests/test_serves_profiles.py tests/test_serves_preflight_gate.py tests/test_events.py tests/test_recipe_container_discovery.py`
 
 ### T013: Document replicas and run integrated release gates
 
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** docs/CONFIGURATION.md, docs/THIN-CAPABILITY-GATEWAY.md, docs/cli/control-plane.md, docs/CLI-COMMAND-MANIFEST.json
+**Likely files:** docs/CONFIGURATION.md, docs/THIN-CAPABILITY-GATEWAY.md, docs/cli/control-plane.md, docs/cli/serves.md, docs/CLI-COMMAND-MANIFEST.json
 **Dependencies:** T005.2, T009, T010, T011, T012, T014, T015
 
 Document a generic two-member loopback configuration, exact declared-versus-live identity boundary, immutable snapshot validation, `anvil-serving topology validate-router-config`, round robin, one-attempt behavior, lifecycle refusal, observability, and the later capacity-scheduler boundary. Regenerate `docs/CLI-COMMAND-MANIFEST.json` only through `anvil_serving.commands.spec.write_manifest`, then run the complete repository gates without weakening any earlier acceptance criterion.
+
+Document mode/profile's local --config option, operator-home default and parsed
+library requirement for routed transitions, the fixed missing-config refusal,
+remote explicit-config refusal, and unchanged status/list behavior.
 
 **Acceptance criteria:**
 
