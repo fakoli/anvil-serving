@@ -18,6 +18,7 @@ from . import paths
 
 DEFAULT_TIMEOUT_SECONDS = 30
 MAX_CONFIG_BYTES = 4 * 1024 * 1024
+FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 _FULL_IMAGE_ID_RE = re.compile(r"^(?:sha256:)?([0-9a-f]{64})$")
 _DIGEST_REFERENCE_RE = re.compile(r"^[^\s@-][^\s@]*@sha256:([0-9a-f]{64})$")
 _DOCKER_ID_RE = re.compile(r"^(?:sha256:)?([0-9a-f]{64})$")
@@ -236,6 +237,9 @@ def _yaml_image_values(text):
 
 def _path_is_link_like(path: Path) -> bool:
     if path.is_symlink():
+        return True
+    attributes = int(getattr(path.lstat(), "st_file_attributes", 0))
+    if attributes & FILE_ATTRIBUTE_REPARSE_POINT:
         return True
     is_junction = getattr(path, "is_junction", None)
     return bool(is_junction and is_junction())

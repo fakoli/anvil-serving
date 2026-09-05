@@ -1,5 +1,6 @@
 import json
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
@@ -229,6 +230,21 @@ def test_symlinked_config_directory_fails_closed(tmp_path, monkeypatch):
     assert result["outcome"] == "blocked"
     assert errors == ["recipes: symlinked directory is not audited"]
     assert not any(call[1:3] == ["image", "rm"] for call in fixture.calls)
+
+
+def test_windows_python311_junction_is_link_like():
+    class JunctionPath:
+        @staticmethod
+        def is_symlink():
+            return False
+
+        @staticmethod
+        def lstat():
+            return SimpleNamespace(
+                st_file_attributes=docker_images.FILE_ATTRIBUTE_REPARSE_POINT
+            )
+
+    assert docker_images._path_is_link_like(JunctionPath()) is True
 
 
 def test_dependent_child_image_blocks_exact_image_removal(tmp_path):
