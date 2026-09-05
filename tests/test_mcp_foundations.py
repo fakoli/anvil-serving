@@ -21,10 +21,10 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "6267545b55deb9221d64519e3c563a846299b20d931dde77c560b2e6454d0a1c"
+    "d2145a64f57a847b97e0b72f36f59cf853fc11e76d5c9b89b98860b2c4654954"
 )
 HANDLER_MAP_SHA256 = (
-    "4ff853831677824100c38e022f105f1edd816835f78683365b39bfeb3acf8ae3"
+    "b689515910ebfd469872b642c88cb30ce0e00299421b3a8a734790fbe386edcb"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -62,6 +62,11 @@ TOOL_NAMES = [
     "operator_config_export",
     "observability_collect",
     "host_manage",
+    "host_services_status",
+    "host_services_discover",
+    "host_services_capabilities",
+    "host_services_logs",
+    "host_services_manage",
     "models_inventory",
     "model_cache_inventory",
     "recipe_containers",
@@ -161,6 +166,7 @@ def test_explicit_ordered_families_compose_the_public_catalog():
         "media",
         "voice",
         "host",
+        "services",
         "models",
         "openclaw",
         "benchmarks",

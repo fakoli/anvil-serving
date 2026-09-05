@@ -12,6 +12,7 @@ from .models import FAMILY as MODELS
 from .openclaw import FAMILY as OPENCLAW
 from .operations import build_family as build_operations_family
 from .router import FAMILY as ROUTER
+from .services import FAMILY as SERVICES
 from .serves import FAMILY as SERVES
 from .voice import FAMILY as VOICE
 from .workflow import FAMILY as WORKFLOW
@@ -27,6 +28,7 @@ TOOL_FAMILIES = (
     MEDIA,
     VOICE,
     HOST,
+    SERVICES,
     MODELS,
     OPENCLAW,
     BENCHMARKS,

@@ -68,7 +68,8 @@ anvil_serving/
   commands/               modular command families and deterministic registry
     registry.py           explicit decorated family assembly
     spec.py               command, option, policy, and manifest contracts
-  serves.py               Compose-backed model lifecycle and GPU reservations
+  serves.py               Docker/native-bound model lifecycle and GPU reservations
+  service_runtime/        owner-checked launchd/Docker lifecycle and engine state
   models.py               model cache/source/recipe management
   preflight.py            endpoint functional qualification
   eval.py                 benchmark and evaluation commands
@@ -185,6 +186,7 @@ Use model depth at decision boundaries, then reduce it for bounded execution:
 - `docs/META-ROUTER.md` — product category, authority model, and invariants
 - `docs/ARCHITECTURE.md` — current request path and topology
 - `docs/CONFIGURATION.md` — capability and metadata-authority configuration
+- `docs/HOST-SERVICES.md` — supervisor/engine matrix, adoption, and portable lifecycle
 - `docs/OPERATOR-PRIVACY.md` — public/private repository and evidence boundary
 - `docs/THIN-CAPABILITY-GATEWAY.md` — meta-router request path and omissions
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — harness ownership and capability aliases
