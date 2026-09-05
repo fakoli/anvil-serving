@@ -91,4 +91,28 @@ An unnecessary serializer fallback that hid invalid values as null was removed.
 All 24 post-commit tests and Ruff pass. An initial evidence submission omitted
 the exact required test flag; it was rejected, then the precise commands were
 rerun under a new claim with complete proofs. No evidence gate was weakened.
-MCP parity, permissions, managed live diagnosis and deployment remain pending.
+MCP parity, permissions, managed live diagnosis and deployment remained pending
+at that checkpoint.
+
+## Diagnostic exposure and client ownership
+
+The MCP implementation is accepted at `1039f2343d8403f81070e91fe7cf7bbc291f614c`;
+strict remote integer validation at `3b1a59afc3945e9d058bfa6e42e1701faada8924`
+also closes local-versus-controller argument parity. Actual controller HTTP
+authorization and generic Compose exposure are accepted at
+`2a0e2942d9ea2c18c775c019d1c4a11ac90981b3` after 101 post-commit tests and
+Ruff. Missing/wrong/narrow-scope/excluded credentials start no child; an
+existing operator credential reaches the actual handlers with only the
+expected bounded inspect/log child sequence. These tests use synthetic
+capture, not a live daemon.
+
+Client topology review then reproduced another required correction: the
+generic template has neither diagnostic transport permissions nor a resource
+with role `controller`. The real target resolver consequently reports zero
+declared owners even after server tools exist. T007 adds one synthetic
+controller service resource on its declared Docker runtime and the two exact
+permissions on that runtime's controller transport, with a byte-identical
+packaged mirror. Other transports gain no diagnostic permission. Regression
+tests resolve actual command-tree specs and refuse a removed permission
+without choosing SSH or a different controller. This template correction
+does not mutate installed private topology or repair live publication.
