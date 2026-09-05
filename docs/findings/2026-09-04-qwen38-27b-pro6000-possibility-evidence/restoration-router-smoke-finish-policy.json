@@ -1,0 +1,87 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 256,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 256
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [
+      "disallowed finish_reason: [\"'length'\"]"
+    ],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "llm.primary",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nThat's the idiomatic way. A",
+      "content_chars": 50,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nThat's the idiomatic way. A",
+      "finish_reason": "length",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 2.503,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 256,
+        "prompt_tokens": 28,
+        "total_tokens": 284
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.538,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 53,
+        "prompt_tokens": 30,
+        "total_tokens": 83
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": false,
+  "results": [
+    {
+      "detail": "2.5s got=\"```python\\nsum(xs)\\n```\\n\\nThat's the idiomatic way. A\" finish='length' visible=50 reasoning_chars=0 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=0 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

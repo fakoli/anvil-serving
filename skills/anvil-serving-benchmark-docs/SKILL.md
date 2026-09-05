@@ -11,6 +11,9 @@ Use this skill for the publication phase of every meaningful model run. Read
 `docs/benchmarks/index.md`, and the applicable model or modality skill before
 editing.
 
+For a multi-cell, delegated, or resumable campaign, also read
+`docs/benchmarks/repeatable-campaigns.md` before the first live request.
+
 ## 1. Inspect exact evidence
 
 1. Inspect the retained artifact with
@@ -33,6 +36,10 @@ For every new campaign, copy `templates/artifact-set/` into the dated finding's
 evidence directory before the first live request. The six common files provide
 the human index, `anvil-serving.benchmark-artifact-set/v1` role ledger, source
 registry, decision summary, friction log, and restoration record.
+Use the included `campaign-state.json`, `dispatch-packet.md`, and
+`coverage-and-gaps.md` working controls to keep stage state, delegated scope,
+and every requested outcome compact and explicit. They are not evidence unless
+the final role ledger deliberately retains them.
 
 Keep the applicable native evidence schema. Do not convert capacity,
 multimodal, voice, STT, media, kernel, context, agentic, or SWE artifacts into
@@ -46,6 +53,116 @@ starting state before mutation, complete restoration after post-run checks,
 and derive `summary.json` only from retained evidence. For recognized JSON
 artifacts, use `anvil-serving eval benchmark evidence show ARTIFACT --json` to
 normalize inspection without rewriting the source artifact.
+
+For a bundle with many files, keep a reviewed
+`artifact-manifest-source.json` beside the artifacts, then finalize exact
+SHA-256 and byte counts with:
+
+```text
+python skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py PATH/artifact-manifest-source.json
+```
+
+Run the finalizer twice and require byte-identical output. The source is a
+reproducibility input, not a substitute for the canonical
+`artifact-manifest.json`.
+
+### Capacity-cell repeatability
+
+Before the first capacity request, prove that the product launcher resolves to
+the intended worktree. Run `python -m anvil_serving.cli --version`, inspect
+`anvil_serving.cli.__file__`, and use `python -m anvil_serving.cli` for every
+campaign command. Retain the version, repository commit, and a sanitized
+repo-relative source identity; never publish a personal absolute path. Do not
+assume that an `anvil-serving` executable found on `PATH` imports the worktree.
+
+Predeclare a controlled-output workload for comparative cells. Set a nonzero
+`--response-words` target and enough `--max-tokens` headroom for it to finish,
+then keep both values fixed across the comparison. Use
+`--controlled-output-policy strict` for finalist comparisons: a non-exact or
+capture-truncated completion becomes a failed, performance-ineligible request.
+The default `observe` policy records requested words, observed `code` words,
+extra words, capture completeness, and exact adherence without rejecting the
+request; it is appropriate for scouts and compatibility with older commands,
+but non-exact or unobservable output is not exact controlled-decode evidence.
+Visible output retained for validation is capped at 8,192 characters, so choose
+a target that can be captured as well as completed. Short, EOS-terminated scout
+runs may find candidates, but they are not substitutes for controlled decode
+measurements. Use at least 100 measured requests in each statistical population
+before treating p99 as meaningful; below 100, retain p99 only as a descriptive,
+maximum-like statistic and label the sample count prominently.
+
+Set `--prompt-cache-mode unique` or `--prompt-cache-mode shared` explicitly for
+every capacity cell and verify the artifact's `prompt_cache_mode` field.
+Unique-cache cells also use `--request-canaries`; every
+response must begin with its own marker, contain no other `ANVIL_REQ` marker,
+and have a complete validation capture before its latency or throughput can
+enter a comparison. Shared-cache cells are deliberate cache-reuse experiments
+and must record cold/warm state and available hit counters. Never pool or graph
+shared and unique cache populations as one series.
+
+Every speculative-decoding cell needs an otherwise matched no-speculation
+control. Hold model and revision, runtime image and engine revision, hardware,
+TP/DP topology, context, concurrency, KV/state dtype, memory fraction,
+attention and linear backends, batching, graph capture, parsers, cache mode,
+request count, controlled output, seed, and canary policy fixed. Only the
+speculative configuration and unavoidable endpoint/evidence labels may differ.
+
+For synchronized independent replicas, retain each native
+`anvil-serving.benchmark/v1` artifact and derive one aggregate with:
+
+```text
+python skills/anvil-serving-benchmark-docs/scripts/combine_capacity_artifacts.py REPLICA_A.json REPLICA_B.json --output COMBINED.json
+```
+
+Inputs must be complete, failure-free, performance-eligible, and match the
+measurement protocol, engine, context/seed, serve flags, controlled workload,
+cache mode, and canary policy. For a new exact aggregate, launch every replica
+with the same public-safe `--clock-domain-id` only when the processes use the
+same physical host clock, and the same
+`--configuration-fingerprint sha256:<64-lowercase-hex>` for the normalized
+replica configuration. Never reuse a clock-domain identifier across hosts.
+Matching nanosecond timestamps without that explicit common clock declaration
+do not prove alignment, and a missing fingerprint leaves replica identity
+unverified. A matching declared fingerprint binds the inputs for comparison;
+it is not independent attestation that the launch matched the declaration.
+
+The combiner preserves legacy whole-second artifacts, but derives a wall-time
+range from their UTC buckets and per-replica monotonic durations. In that case,
+`metrics.throughput_tok_s` is the conservative lower bound; publish it with
+`throughput_tok_s_upper_bound`, the timing precision, and the legacy identity
+or output-validation limitations. Do not relabel that range as exact
+synchronization. Pass inputs in a stable replica order and run the combiner
+twice, requiring byte-identical output. Retain both inputs and the resulting
+`anvil-serving.capacity-aggregate/v1` artifact under `raw-run-evidence`; the
+aggregate preserves input paths and hashes and never replaces its sources.
+For a 100-request DP2 population, for example, use two synchronized 50-request
+replicas rather than describing two unrelated runs as one C16 result.
+
+### Stage gates and command discipline
+
+Use `research`, `feasibility`, `scout`, `finalist`, `quality`, `restoration`,
+and `publication` stages. Scout cells can be small and diagnostic. Advance only
+correct, complete, identity-pinned, physically feasible survivors to finalist
+cells. Finalists use the controlled-output workload and the declared comparison
+population. Do not turn a performance winner into qualification until its
+quality and integration gates pass or are recorded as missing.
+
+In `capacity-v3`, TPOT and mean ITL are the same per-request aggregate proxy,
+not a distribution of raw token-arrival intervals. At exactly 100 samples,
+nearest-rank p99 is still one tail order statistic; publish the population and
+method, and do not call it a stable service-level tail without more evidence.
+
+Run one concise command per verification step and stop on its nonzero exit.
+Do not continue a compound shell block into hashing, finalization, or a broad
+worktree inventory after a native command fails. Keep reviews path-scoped and
+record the earliest actionable error in `friction-log.md` with a durable
+fix-forward artifact and independent verification. A successful retry alone
+does not close a friction entry.
+
+For delegated work, send the compact dispatch packet, owned paths, source
+artifact identities, authority boundary, stop conditions, and return contract.
+Use bounded or no-history delegation when supported instead of replaying the
+entire campaign transcript.
 
 ## 3. Reuse retained evidence for format-only work
 
@@ -64,6 +181,18 @@ claim. Record a publication gap when the retained evidence is insufficient; a
 format migration is not authority for a live rerun.
 
 ## 4. Apply the publication matrix
+
+For generated recipe-result catalogs, use the tested product workflow:
+
+```text
+python -m anvil_serving.cli eval benchmark report CATALOG --root . --output docs/benchmarks/recipe-results.md --confirm
+python -m anvil_serving.cli eval benchmark report CATALOG --root . --output docs/benchmarks/recipe-results.md --check
+```
+
+The confirmed form writes; `--check` verifies without writes. Both resolve
+identity, workload fields, numeric metric paths, and source hashes from the
+reviewed catalog and native artifacts. Do not substitute an untracked one-off
+generator.
 
 For every meaningful result:
 
@@ -140,6 +269,46 @@ public claim to the finding or raw artifact.
 Link both the common `artifact-manifest.json` and the human `README.md` evidence
 index from the result card. The manifest inventories native evidence; it is not
 a replacement for raw artifacts.
+
+When a campaign has two or more comparable performance cells, create a
+machine-derived chart pack. Put a graph manifest beside the native artifacts
+and run:
+
+```text
+python skills/anvil-serving-benchmark-docs/scripts/plot_benchmark_matrix.py PATH/graph-manifest.json
+```
+
+The manifest must name exact retained JSON artifacts and numeric metric paths;
+never copy headline numbers into the graph specification. Retain the generated
+SVG and graph-data JSON, link both from the evidence index and finding, and run
+the renderer twice to verify deterministic output. Prefer a small matrix that
+shows the decision: context, concurrency, TTFT, effective prefill, decode,
+TPOT/ITL, E2E, and aggregate throughput as applicable. Do not mix unmatched
+hardware, checkpoint, runtime, quantization, or warm/cold conditions in one
+series without labeling the break.
+
+Use the native artifact's timing methodology. For `capacity-v3`, TPOT and mean
+ITL are the same per-request aggregate—generation time divided by completion
+tokens after the first token—and are not a raw timestamp for every token.
+Report p50 and p95 when retained, keep TTFT distinct from first reasoning
+output, and label effective prefill as including queueing, scheduling, prefill,
+and first-token work.
+
+After the evidence and restoration are final, use the installed
+`engineering-learning` skill for any reusable lesson exposed by the campaign.
+Capture one evidence-linked lesson per entry—for example a runtime-version
+fence, effective-concurrency rule, or restoration invariant—not a duplicate of
+the benchmark summary. Keep raw benchmark artifacts and decisions in this
+repository; the learning entry points back to them.
+
+Close every friction-log entry with a fix-forward disposition. Prefer an
+in-scope code, recipe, test, or skill fix when the root cause belongs to Anvil
+Serving. Otherwise create or update a tracked product-gap ticket, retain an
+upstream issue/watch item, or codify an operational invariant and engineering
+learning. Record the durable artifact beside the friction entry. A successful
+manual retry is recovery evidence, not process improvement, and must not be the
+only disposition. Re-run the smallest independent gate that proves each
+fix-forward change before closing the campaign.
 
 Treat the card and publication summary as derivative views. They never replace the dated
 finding or raw artifacts, and a platform-ready sentence must not broaden the

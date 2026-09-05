@@ -67,13 +67,14 @@ nav:
       - Discover the product from the CLI: cli/product.md
   - Benchmarks & evidence:
       - Overview: benchmarks/index.md
-      - Container configurations: benchmarks/configurations.md
-      - Model comparison: benchmarks/comparison.md
+      - Find a measured recipe: benchmarks/recipe-results.md
+      - Compare models: benchmarks/comparison.md
+      - Reproduce configurations: benchmarks/configurations.md
       - Model dossiers: benchmarks/models/index.md
-      - Run catalog: benchmarks/runs.md
       - Hardware:
           - RTX PRO 6000: benchmarks/hardware/rtx-pro-6000.md
           - RTX 5090: benchmarks/hardware/rtx-5090.md
+      - Run catalog: benchmarks/runs.md
       - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
       - Methodology and evidence rules: benchmarks/methodology.md
       - Finding publication format: benchmarks/finding-format.md

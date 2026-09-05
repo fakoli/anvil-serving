@@ -1,6 +1,7 @@
 """Request construction, transport, and response normalization."""
 
 import json
+import re
 import time
 import urllib.request
 
@@ -12,6 +13,7 @@ from ..preflight import (
 FILLER = "def helper_%d():\n    return compute(%d)  # routine specialist context\n"
 CHARS_PER_TOKEN = 3.0
 DEFAULT_CTX_MARGIN = 1024
+VISIBLE_CONTENT_CAPTURE_LIMIT = 8192
 
 
 def ctx_cap(max_model_len, max_tokens, margin=DEFAULT_CTX_MARGIN):
@@ -44,18 +46,43 @@ def _fill_lines(char_budget, *, offset=0):
     return "".join(lines)
 
 
-def make_prompt(shared_prefix, ctx_tokens, uniq, max_prompt_tokens=None,
-                chars_per_token=CHARS_PER_TOKEN):
+def make_prompt(
+    shared_prefix,
+    ctx_tokens,
+    uniq,
+    max_prompt_tokens=None,
+    chars_per_token=CHARS_PER_TOKEN,
+    *,
+    marker=None,
+    response_words=0,
+    unique_prefix=False,
+):
     """Build a calibrated prompt without exceeding the requested token budget."""
     budget = ctx_tokens if max_prompt_tokens is None else min(ctx_tokens, max_prompt_tokens)
-    tail = f"\n# request {uniq}: summarize the above in one line."
+    marker_instruction = f" Begin with the exact marker {marker}." if marker else ""
+    if response_words:
+        tail = (
+            f"\n# request {uniq}:{marker_instruction} Then emit exactly "
+            f"{response_words} repetitions of the lowercase word code, separated "
+            "by single spaces. Do not add other text and do not stop early."
+        )
+    else:
+        tail = (
+            f"\n# request {uniq}:{marker_instruction} Summarize the above in one line."
+            if marker
+            else f"\n# request {uniq}: summarize the above in one line."
+        )
+    unique_header = (
+        f"# unique benchmark request {marker or uniq}\n" if unique_prefix else ""
+    )
+    prefix = unique_header + shared_prefix
     if int(budget * chars_per_token) <= len(tail):
         raise ValueError("context target is too small for the benchmark prompt envelope")
-    char_budget = int(budget * chars_per_token) - len(shared_prefix) - len(tail) - 1
+    char_budget = int(budget * chars_per_token) - len(prefix) - len(tail) - 1
     if char_budget <= 0:
-        return shared_prefix[: max(0, int(budget * chars_per_token) - len(tail))] + tail
+        return prefix[: max(0, int(budget * chars_per_token) - len(tail))] + tail
     filler = _fill_lines(char_budget, offset=uniq)[:max(0, char_budget)]
-    return shared_prefix + "\n" + filler + tail
+    return prefix + "\n" + filler + tail
 
 
 def make_shared_prefix(target_tokens, *, chars_per_token=CHARS_PER_TOKEN):
@@ -64,6 +91,76 @@ def make_shared_prefix(target_tokens, *, chars_per_token=CHARS_PER_TOKEN):
         return ""
     char_budget = int(target_tokens * chars_per_token)
     return _fill_lines(char_budget)[:char_budget]
+
+
+def output_contract_observation(
+    visible_content,
+    *,
+    expected_marker=None,
+    response_words=0,
+    controlled_output_policy="observe",
+    visible_content_truncated=False,
+):
+    """Return bounded canary and controlled-output observations.
+
+    This deliberately does not retain the response body.  A truncated capture
+    cannot prove that a foreign marker or trailing word was absent, so strict
+    checks fail closed while the default observation policy remains compatible
+    with historical ``--response-words`` runs.
+    """
+    content = visible_content if isinstance(visible_content, str) else ""
+    marker_observation = None
+    body = content
+    if expected_marker:
+        marker_at_start = content.startswith(expected_marker) and (
+            len(content) == len(expected_marker)
+            or content[len(expected_marker)].isspace()
+        )
+        observed_markers = re.findall(
+            r"ANVIL_REQ_-?[0-9]+_[0-9]{5}\b", content
+        )
+        foreign_marker_count = sum(
+            marker != expected_marker for marker in observed_markers
+        )
+        marker_observation = {
+            "marker": expected_marker,
+            "marker_at_start": marker_at_start,
+            "observed_marker_count": len(observed_markers),
+            "foreign_marker_count": foreign_marker_count,
+            "capture_complete": not visible_content_truncated,
+            "passed": (
+                marker_at_start
+                and foreign_marker_count == 0
+                and not visible_content_truncated
+            ),
+        }
+        if marker_at_start:
+            body = content[len(expected_marker):].lstrip()
+
+    controlled_observation = None
+    if response_words:
+        words = body.split()
+        observed_code_words = sum(word == "code" for word in words)
+        extra_words = len(words) - observed_code_words
+        exact = (
+            observed_code_words == response_words and extra_words == 0
+            if not visible_content_truncated
+            else None
+        )
+        controlled_observation = {
+            "policy": controlled_output_policy,
+            "requested_words": response_words,
+            "observed_code_words": observed_code_words,
+            "observed_extra_words": extra_words,
+            "capture_complete": not visible_content_truncated,
+            "exact_adherence": exact,
+            "passed": exact is True if controlled_output_policy == "strict" else True,
+        }
+
+    return {
+        "request_canary": marker_observation,
+        "controlled_output": controlled_observation,
+    }
 
 
 def build_body(model, prompt, max_tokens, chat_template_kwargs=None, reasoning_effort=None):
@@ -222,6 +319,11 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
     ttft = None
     content_chunks = 0
     reasoning_chunks = 0
+    visible_content_parts = []
+    visible_content_chars = 0
+    visible_content_truncated = False
+    finish_reasons = []
+    done_event_observed = False
     usage = None
     with urllib.request.urlopen(req, timeout=timeout) as response:
         for raw in response:
@@ -230,6 +332,7 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
                 continue
             data = line[5:].strip()
             if data == "[DONE]":
+                done_event_observed = True
                 break
             try:
                 chunk = json.loads(data)
@@ -238,18 +341,29 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
             if chunk.get("usage"):
                 usage = chunk["usage"]
             for choice in chunk.get("choices", []):
+                finish_reason = choice.get("finish_reason")
+                if finish_reason is not None:
+                    finish_reasons.append(str(finish_reason)[:128])
                 delta = choice.get("delta", {})
                 reasoning = delta.get("reasoning_content") or delta.get("reasoning")
                 if reasoning:
                     if time_to_first_output is None:
                         time_to_first_output = time.perf_counter() - t0
                     reasoning_chunks += 1
-                if delta.get("content"):
+                content = delta.get("content")
+                if content:
                     if time_to_first_output is None:
                         time_to_first_output = time.perf_counter() - t0
                     if ttft is None:
                         ttft = time.perf_counter() - t0
                     content_chunks += 1
+                    remaining = VISIBLE_CONTENT_CAPTURE_LIMIT - visible_content_chars
+                    if remaining > 0:
+                        kept = content[:remaining]
+                        visible_content_parts.append(kept)
+                        visible_content_chars += len(kept)
+                    if len(content) > max(remaining, 0):
+                        visible_content_truncated = True
     e2e = time.perf_counter() - t0
     completion_tokens = (
         usage.get("completion_tokens") if isinstance(usage, dict) else None
@@ -267,6 +381,11 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
         "output_token_source": "usage" if has_usage_tokens else "content_chunks",
         "content_chunks": content_chunks,
         "reasoning_chunks": reasoning_chunks,
+        "visible_content": "".join(visible_content_parts),
+        "visible_content_truncated": visible_content_truncated,
+        "visible_content_capture_limit": VISIBLE_CONTENT_CAPTURE_LIMIT,
+        "finish_reasons": finish_reasons,
+        "stream_terminal_observed": done_event_observed or bool(finish_reasons),
         "usage": usage,
     }
 
@@ -275,4 +394,6 @@ def validate_stream_result(result):
     """Require a completed capacity/context response to contain visible output."""
     if not isinstance(result, dict) or result.get("ttft") is None:
         raise ValueError("stream completed without visible content")
+    if "stream_terminal_observed" in result and not result["stream_terminal_observed"]:
+        raise ValueError("stream ended without a terminal event or finish reason")
     return result

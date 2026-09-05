@@ -161,6 +161,62 @@ def test_make_prompt_calibrated_chars_per_token_resizes():
     assert len(calibrated) == pytest.approx(4000 * 3.5, abs=100)
 
 
+def test_make_prompt_supports_unique_canary_and_controlled_decode():
+    prompt = benchmark_requests.make_prompt(
+        "",
+        4000,
+        7,
+        marker="ANVIL_REQ_0_00007",
+        response_words=512,
+        unique_prefix=True,
+    )
+    assert prompt.startswith("# unique benchmark request ANVIL_REQ_0_00007")
+    assert "Begin with the exact marker ANVIL_REQ_0_00007" in prompt
+    assert "512 repetitions of the lowercase word code" in prompt
+    assert abs(_est_tokens(prompt) - 4000) <= 400
+
+
+def test_output_contract_requires_canary_at_byte_zero_and_rejects_foreign_marker():
+    expected = "ANVIL_REQ_0_00001"
+    good = benchmark_requests.output_contract_observation(
+        expected + " code code", expected_marker=expected, response_words=2
+    )
+    assert good["request_canary"]["passed"] is True
+    assert good["controlled_output"]["exact_adherence"] is True
+
+    late = benchmark_requests.output_contract_observation(
+        "prefix " + expected, expected_marker=expected
+    )
+    assert late["request_canary"]["marker_at_start"] is False
+    assert late["request_canary"]["passed"] is False
+
+    foreign = benchmark_requests.output_contract_observation(
+        expected + " ANVIL_REQ_9_00002", expected_marker=expected
+    )
+    assert foreign["request_canary"]["foreign_marker_count"] == 1
+    assert foreign["request_canary"]["passed"] is False
+
+
+def test_controlled_output_observe_is_compatible_but_strict_and_truncated_fail_closed():
+    observed = benchmark_requests.output_contract_observation(
+        "code code extra", response_words=2, controlled_output_policy="observe"
+    )["controlled_output"]
+    assert observed["exact_adherence"] is False
+    assert observed["passed"] is True
+
+    strict = benchmark_requests.output_contract_observation(
+        "code code extra", response_words=2, controlled_output_policy="strict"
+    )["controlled_output"]
+    assert strict["passed"] is False
+
+    truncated = benchmark_requests.output_contract_observation(
+        "code code", response_words=2, controlled_output_policy="strict",
+        visible_content_truncated=True,
+    )["controlled_output"]
+    assert truncated["exact_adherence"] is None
+    assert truncated["passed"] is False
+
+
 def test_default_16384_serve_does_not_overflow_window():
     # End-to-end of the sizing path main() takes for a 16384-ctx serve.
     cap = benchmark_requests.ctx_cap(16384, 64, benchmark_requests.DEFAULT_CTX_MARGIN)
@@ -325,6 +381,9 @@ def test_stream_chat_prefers_usage_tokens_over_sse_chunk_count(monkeypatch):
     assert result["out_toks"] == 7
     assert result["content_chunks"] == 2
     assert result["output_token_source"] == "usage"
+    assert result["visible_content"] == "hello world"
+    assert result["visible_content_truncated"] is False
+    assert result["stream_terminal_observed"] is True
 
 
 def test_stream_result_without_visible_content_is_not_a_completion():
@@ -399,13 +458,37 @@ def test_result_metrics_record_prefill_generation_decode_and_inter_token_latency
 
     assert metrics["generation_p50_ms"] == pytest.approx(400)
     assert metrics["generation_p95_ms"] == pytest.approx(500)
+    assert metrics["generation_mean_ms"] == pytest.approx(450)
+    assert metrics["generation_stddev_ms"] == pytest.approx(100 / 2**0.5)
+    assert metrics["generation_mean_ci95_low_ms"] < 450
+    assert metrics["generation_mean_ci95_high_ms"] > 450
+    assert metrics["generation_p25_ms"] == pytest.approx(400)
+    assert metrics["generation_p75_ms"] == pytest.approx(500)
+    assert metrics["generation_p90_ms"] == pytest.approx(500)
+    assert metrics["generation_p99_ms"] == pytest.approx(500)
+    assert metrics["generation_min_ms"] == pytest.approx(400)
+    assert metrics["generation_max_ms"] == pytest.approx(500)
     assert metrics["effective_prefill_tok_s_p50"] == pytest.approx(1000)
     assert metrics["effective_prefill_tok_s_p95"] == pytest.approx(1000)
     assert metrics["decode_tok_s_p50"] == pytest.approx(20)
     assert metrics["decode_tok_s_p95"] == pytest.approx(20)
     assert metrics["mean_inter_token_latency_ms_p50"] == pytest.approx(50)
+    assert metrics["mean_time_per_output_token_p50_ms"] == pytest.approx(50)
+    assert metrics["tpot_mean_ms"] == pytest.approx(50)
+    assert metrics["tpot_p25_ms"] == pytest.approx(50)
+    assert metrics["tpot_p50_ms"] == pytest.approx(50)
+    assert metrics["tpot_p75_ms"] == pytest.approx(50)
+    assert metrics["tpot_p90_ms"] == pytest.approx(50)
+    assert metrics["tpot_p95_ms"] == pytest.approx(50)
+    assert metrics["tpot_p99_ms"] == pytest.approx(50)
+    assert metrics["tpot_samples"] == 2
     assert metrics["prompt_tokens"] == 300
     assert metrics["prompt_token_samples"] == 2
+    assert metrics["completion_tokens_mean"] == pytest.approx(10)
+    assert metrics["completion_tokens_p99"] == 11
+    assert metrics["request_canary_samples"] == 0
+    assert metrics["request_canary_passed"] == 0
+    assert metrics["controlled_output_samples"] == 0
     assert [row["request_index"] for row in benchmark_runner.result_timings([
         {
             "request_index": 1,
@@ -488,6 +571,7 @@ def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp
     assert summary["requests"] == 2
     assert summary["completed"] == 2
     assert summary["context_seed"] == 0
+    assert summary["shared_prefix_tokens"] == 8000
     assert sum(summary["context_distribution"].values()) == 2
     assert summary["metrics"]["ttft_p50_ms"] == 100.0
     assert summary["metrics"]["generation_p50_ms"] == 100.0
@@ -499,11 +583,16 @@ def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp
     )
     assert summary["metrics"]["prompt_tokens"] == 200
     assert summary["metrics"]["throughput_tok_s"] > 0
+    assert summary["metrics"]["throughput_performance_eligible"] is True
     assert summary["metrics"]["output_tokens"] == 16
     assert summary["metrics"]["output_token_sources"] == {"unknown": 2}
     assert summary["metrics"]["prefix_cache_hit_avg"] == 0.4
     assert [row["request_index"] for row in summary["request_timings"]] == [0, 1]
     assert summary["timing_methodology"]["clock"] == "client time.perf_counter"
+    assert "not raw per-token ITL" in summary["timing_methodology"]["mean_inter_token_latency"]
+    assert summary["metric_population"]["p99_interpretation"] == "descriptive-nearest-rank-only"
+    assert summary["timestamp_precision"].startswith("nanosecond-unix-fields")
+    assert isinstance(summary["started_at_unix_ns"], int)
     assert summary["wall_clock_ms"] > 0
 
 
@@ -530,15 +619,100 @@ def test_capacity_failure_retains_bounded_actionable_error(monkeypatch, tmp_path
     ]) == 1
 
     artifact = json.loads(out.read_text(encoding="utf-8"))
-    assert artifact["failures"] == [{
-        "request_index": 0,
-        "error_type": "ValueError",
-        "error_message": message,
-        "error_message_truncated": False,
-    }]
+    failure = artifact["failures"][0]
+    assert failure["request_index"] == 0
+    assert failure["error_type"] == "ValueError"
+    assert failure["error_message"] == message
+    assert failure["error_message_truncated"] is False
+    assert failure["failure_class"] == "request_error"
+    assert failure["response_received"] is False
+    assert failure["performance_eligible"] is False
+    assert failure["elapsed_ms"] >= 0
     assert "ValueError: %s" % message in capsys.readouterr().out
     assert artifact["completed"] == 0
+    assert artifact["performance_eligible"] is False
+    assert artifact["metrics"]["throughput_tok_s"] is None
     assert artifact["metrics"]["ttft_p50_ms"] is None
+
+
+def test_canary_failure_retains_sanitized_response_timing_not_response_body(
+    monkeypatch, tmp_path
+):
+    marker = "ANVIL_REQ_0_00000"
+    monkeypatch.setattr(
+        bm,
+        "stream_chat",
+        lambda *args, **kwargs: {
+            "ttft": 0.1,
+            "e2e": 0.2,
+            "out_toks": 4,
+            "output_token_source": "usage",
+            "content_chunks": 1,
+            "reasoning_chunks": 0,
+            "visible_content": "prefix " + marker,
+            "visible_content_truncated": False,
+            "finish_reasons": ["stop"],
+            "stream_terminal_observed": True,
+            "usage": {"prompt_tokens": 100, "completion_tokens": 4},
+        },
+    )
+    out = tmp_path / "canary-failure.json"
+    assert bm.main([
+        "capacity", "--base-url", "http://127.0.0.1:30002/v1",
+        "--model", "candidate", "--engine", "vllm", "--gpu", "dual-gpu",
+        "--requests", "1", "--concurrency", "1", "--ctx-tokens", "1024",
+        "--max-model-len", "8192", "--max-tokens", "16",
+        "--request-canaries", "--output", str(out),
+    ]) == 1
+
+    raw = out.read_text(encoding="utf-8")
+    artifact = json.loads(raw)
+    failure = artifact["failures"][0]
+    assert failure["failure_class"] == "request_canary_failed"
+    assert failure["response_received"] is True
+    assert failure["response_timing"]["ttft_ms"] == pytest.approx(100)
+    assert failure["response_metadata"]["usage"] == {
+        "completion_tokens": 4, "prompt_tokens": 100
+    }
+    assert failure["request_canary"]["marker_at_start"] is False
+    assert "prefix " not in raw
+    assert artifact["request_timings"] == []
+    assert artifact["metrics"]["throughput_tok_s"] is None
+
+
+def test_controlled_output_observe_records_nonadherence_while_strict_rejects(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(
+        bm,
+        "stream_chat",
+        lambda *args, **kwargs: {
+            "ttft": 0.1, "e2e": 0.2, "out_toks": 3,
+            "output_token_source": "usage", "content_chunks": 1,
+            "visible_content": "code code extra", "visible_content_truncated": False,
+            "finish_reasons": ["stop"], "stream_terminal_observed": True,
+            "usage": {"prompt_tokens": 100, "completion_tokens": 3},
+        },
+    )
+    common = [
+        "capacity", "--base-url", "http://127.0.0.1:30002/v1",
+        "--model", "candidate", "--engine", "vllm", "--gpu", "dual-gpu",
+        "--requests", "1", "--ctx-tokens", "1024", "--max-model-len", "8192",
+        "--response-words", "2",
+    ]
+    observed_path = tmp_path / "observed.json"
+    assert bm.main(common + ["--output", str(observed_path)]) == 0
+    observed = json.loads(observed_path.read_text(encoding="utf-8"))
+    assert observed["request_timings"][0]["controlled_output"]["exact_adherence"] is False
+    assert observed["metrics"]["controlled_output_exact_adherence"] == 0
+
+    strict_path = tmp_path / "strict.json"
+    assert bm.main(common + [
+        "--controlled-output-policy", "strict", "--output", str(strict_path)
+    ]) == 1
+    strict = json.loads(strict_path.read_text(encoding="utf-8"))
+    assert strict["failures"][0]["failure_class"] == "controlled_output_failed"
+    assert strict["failures"][0]["controlled_output"]["exact_adherence"] is False
 
 
 # ---- GENERATE: benchmarking a serve ALSO records its recipe (--recipe-out) ---------
@@ -1713,10 +1887,14 @@ def test_canonical_dry_runs_do_not_probe_or_write(monkeypatch, tmp_path, capsys)
         "capacity",
         "--base-url", "http://127.0.0.1:39015/v1",
         "--model", "candidate",
+        "--prompt-cache-mode", "unique",
+        "--shared-prefix-tokens", "999",
         "--output", str(capacity_out),
         "--dry-run",
     ]) == 0
-    assert json.loads(capsys.readouterr().out)["workload"] == "capacity"
+    capacity_plan = json.loads(capsys.readouterr().out)
+    assert capacity_plan["workload"] == "capacity"
+    assert capacity_plan["capacity"]["shared_prefix_tokens"] == 0
     assert not capacity_out.exists()
 
 

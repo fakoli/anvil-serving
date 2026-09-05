@@ -1,0 +1,807 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "qwen38-27b-pro6000-c8-82k",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 90112,
+    "max": 90112
+  },
+  "physical_available_bytes": {
+    "min": 102641958912,
+    "max": 102641958912
+  },
+  "policy_available_bytes": {
+    "min": 98346991616,
+    "max": 98346991616
+  },
+  "candidates": [
+    {
+      "id": "radixark-nvfp4-nospec-fp8kv",
+      "classification": "benchmark-survivor",
+      "reasons": [
+        "resource bounds pass; behavioral evidence remains incomplete"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "pass",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 90112,
+        "max": 90112
+      },
+      "demand_bytes": {
+        "min": 55411949985,
+        "max": 66343417885
+      },
+      "physical_available_bytes": {
+        "min": 102641958912,
+        "max": 102641958912
+      },
+      "policy_available_bytes": {
+        "min": 98346991616,
+        "max": 98346991616
+      },
+      "physical_margin_bytes": {
+        "min": 36298541027,
+        "max": 47230008927
+      },
+      "policy_margin_bytes": {
+        "min": 32003573731,
+        "max": 42935041631
+      },
+      "estimated_max_tokens_physical": {
+        "min": 221983,
+        "max": 270280
+      },
+      "estimated_max_tokens_policy": {
+        "min": 206380,
+        "max": 253896
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.driver_and_non_engine_headroom.variable",
+        "requirements.vram_reserves.allocator_uncertainty.variable",
+        "candidates[0].resident_components.target_weights",
+        "candidates[0].resident_components.runtime_fixed",
+        "candidates[0].per_sequence_components.bf16_mamba_extra_buffer",
+        "candidates[0].per_token_components.target_fp8_kv",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "radixark-nvfp4-dflash2-fp8-draft-kv",
+      "classification": "benchmark-survivor",
+      "reasons": [
+        "resource bounds pass; behavioral evidence remains incomplete"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "pass",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 90112,
+        "max": 90112
+      },
+      "demand_bytes": {
+        "min": 81504972621,
+        "max": 94083346859
+      },
+      "physical_available_bytes": {
+        "min": 102641958912,
+        "max": 102641958912
+      },
+      "policy_available_bytes": {
+        "min": 98346991616,
+        "max": 98346991616
+      },
+      "physical_margin_bytes": {
+        "min": 8558612053,
+        "max": 21136986291
+      },
+      "policy_margin_bytes": {
+        "min": 4263644757,
+        "max": 16842018995
+      },
+      "estimated_max_tokens_physical": {
+        "min": 109246,
+        "max": 139731
+      },
+      "estimated_max_tokens_policy": {
+        "min": 99644,
+        "max": 129648
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.driver_and_non_engine_headroom.variable",
+        "requirements.vram_reserves.allocator_uncertainty.variable",
+        "candidates[1].resident_components.target_weights",
+        "candidates[1].resident_components.draft_weights",
+        "candidates[1].resident_components.runtime_and_dflash_fixed",
+        "candidates[1].per_sequence_components.bf16_mamba_dflash_slots",
+        "candidates[1].per_token_components.target_and_draft_fp8_kv",
+        "candidates[1].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "radixark-nvfp4-dflash2-bf16-draft-kv",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 90112,
+        "max": 90112
+      },
+      "demand_bytes": {
+        "min": 96268922701,
+        "max": 109585494443
+      },
+      "physical_available_bytes": {
+        "min": 102641958912,
+        "max": 102641958912
+      },
+      "policy_available_bytes": {
+        "min": 98346991616,
+        "max": 98346991616
+      },
+      "physical_margin_bytes": {
+        "min": -6943535531,
+        "max": 6373036211
+      },
+      "policy_margin_bytes": {
+        "min": -11238502827,
+        "max": 2078068915
+      },
+      "estimated_max_tokens_physical": {
+        "min": 78900,
+        "max": 100916
+      },
+      "estimated_max_tokens_policy": {
+        "min": 71965,
+        "max": 93635
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.driver_and_non_engine_headroom.variable",
+        "requirements.vram_reserves.allocator_uncertainty.variable",
+        "candidates[2].resident_components.target_weights",
+        "candidates[2].resident_components.draft_weights",
+        "candidates[2].resident_components.runtime_and_dflash_fixed",
+        "candidates[2].per_sequence_components.bf16_mamba_dflash_slots",
+        "candidates[2].per_token_components.target_fp8_and_draft_bf16_kv",
+        "candidates[2].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "official-fp8-dflash2-fp8-draft-kv",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 90112,
+        "max": 90112
+      },
+      "demand_bytes": {
+        "min": 90449726953,
+        "max": 103475338907
+      },
+      "physical_available_bytes": {
+        "min": 102641958912,
+        "max": 102641958912
+      },
+      "policy_available_bytes": {
+        "min": 98346991616,
+        "max": 98346991616
+      },
+      "physical_margin_bytes": {
+        "min": -833379995,
+        "max": 12192231959
+      },
+      "policy_margin_bytes": {
+        "min": -5128347291,
+        "max": 7897264663
+      },
+      "estimated_max_tokens_physical": {
+        "min": 88248,
+        "max": 118733
+      },
+      "estimated_max_tokens_policy": {
+        "min": 78646,
+        "max": 108650
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.driver_and_non_engine_headroom.variable",
+        "requirements.vram_reserves.allocator_uncertainty.variable",
+        "candidates[3].resident_components.target_weights",
+        "candidates[3].resident_components.draft_weights",
+        "candidates[3].resident_components.runtime_and_dflash_fixed",
+        "candidates[3].per_sequence_components.bf16_mamba_dflash_slots",
+        "candidates[3].per_token_components.target_and_draft_fp8_kv",
+        "candidates[3].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "tracked_variables.actual_runtime_fixed_bytes",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "replace broad interval from startup logs and post-capture telemetry"
+    },
+    {
+      "path": "tracked_variables.actual_target_kv_pool_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "must support the requested workload rather than only configured context"
+    },
+    {
+      "path": "tracked_variables.actual_active_request_ceiling",
+      "status": "unknown",
+      "unit": "sequences",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "verify startup admission and concurrent execution"
+    },
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 81920,
+      "max": 81920,
+      "source": "Helix-aligned long-context concurrency cell",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "campaign long-context output reserve",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "sequences",
+      "min": 8,
+      "max": 8,
+      "source": "campaign C8 ceiling",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 102641958912,
+      "max": 102641958912,
+      "source": "live nvidia-smi total memory for one RTX PRO 6000",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.driver_and_non_engine_headroom.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 3221225472,
+      "max": 3221225472,
+      "source": "campaign dedicated-lane safety policy",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.allocator_uncertainty.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 1073741824,
+      "max": 1073741824,
+      "source": "pre-start allocator uncertainty band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "official Qwen native context",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.target_weights",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 21945295265,
+      "max": 23042560029,
+      "source": "exact logical repository bytes plus 5 percent resident-allocation band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.runtime_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 8589934592,
+      "max": 17179869184,
+      "source": "broad pre-start SGLang/CUDA/graph allocation interval",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].per_sequence_components.bf16_mamba_extra_buffer",
+      "status": "estimated",
+      "unit": "bytes/sequence",
+      "min": 156800000,
+      "max": 164640000,
+      "source": "two BF16 state slots per no-spec request with 5 percent band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].per_token_components.target_fp8_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 32768,
+      "max": 34407,
+      "source": "SGLang cookbook 32.8 KB per token plus 5 percent band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 8,
+      "max": 8,
+      "source": "eight independent 82K sequences",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1.0,
+      "max": 1.0,
+      "source": "qualification hard gate",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.max_relative_quality_loss",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.03,
+      "max": 0.03,
+      "source": "campaign quality-loss budget",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_warm_e2e_gain",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.1,
+      "max": 0.1,
+      "source": "speculation or compile retention threshold",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "official Qwen native context",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].resident_components.target_weights",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 21945295265,
+      "max": 23042560029,
+      "source": "exact logical repository bytes plus 5 percent resident-allocation band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].resident_components.draft_weights",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 3849113004,
+      "max": 4041568654,
+      "source": "exact logical repository bytes plus 5 percent resident-allocation band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].resident_components.runtime_and_dflash_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 9797894144,
+      "max": 18790481920,
+      "source": "broad runtime interval including prior 1.12 GB DFlash intermediate-state observation",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].per_sequence_components.bf16_mamba_dflash_slots",
+      "status": "estimated",
+      "unit": "bytes/sequence",
+      "min": 940800000,
+      "max": 987840000,
+      "source": "twelve BF16 state slots per request inferred from the current C8 96-slot recipe, plus 5 percent band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].per_token_components.target_and_draft_fp8_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 53248,
+      "max": 55911,
+      "source": "32.8 KB target plus 20.5 KB draft FP8 KV with 5 percent band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 8,
+      "max": 8,
+      "source": "eight independent 82K sequences",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "official Qwen native context",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].resident_components.target_weights",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 21945295265,
+      "max": 23042560029,
+      "source": "exact logical repository bytes plus 5 percent resident-allocation band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].resident_components.draft_weights",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 3849113004,
+      "max": 4041568654,
+      "source": "exact logical repository bytes plus 5 percent resident-allocation band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].resident_components.runtime_and_dflash_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 9797894144,
+      "max": 18790481920,
+      "source": "broad runtime interval including prior DFlash intermediate-state observation",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].per_sequence_components.bf16_mamba_dflash_slots",
+      "status": "estimated",
+      "unit": "bytes/sequence",
+      "min": 940800000,
+      "max": 987840000,
+      "source": "twelve BF16 state slots per request inferred from the current C8 96-slot recipe, plus 5 percent band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].per_token_components.target_fp8_and_draft_bf16_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 73728,
+      "max": 77415,
+      "source": "32.8 KB target FP8 plus 41.0 KB draft BF16 KV with 5 percent band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 8,
+      "max": 8,
+      "source": "eight independent 82K sequences",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "official Qwen native context",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].resident_components.target_weights",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 30890049597,
+      "max": 32434552077,
+      "source": "exact logical repository bytes plus 5 percent resident-allocation band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].resident_components.draft_weights",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 3849113004,
+      "max": 4041568654,
+      "source": "exact logical repository bytes plus 5 percent resident-allocation band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].resident_components.runtime_and_dflash_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 9797894144,
+      "max": 18790481920,
+      "source": "broad pre-start runtime interval",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].per_sequence_components.bf16_mamba_dflash_slots",
+      "status": "estimated",
+      "unit": "bytes/sequence",
+      "min": 940800000,
+      "max": 987840000,
+      "source": "twelve BF16 state slots per request inferred from the current C8 96-slot recipe, plus 5 percent band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].per_token_components.target_and_draft_fp8_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 53248,
+      "max": 55911,
+      "source": "32.8 KB target plus 20.5 KB draft FP8 KV with 5 percent band",
+      "observed_at": "2026-09-04",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 8,
+      "max": 8,
+      "source": "eight independent 82K sequences",
+      "observed_at": "2026-09-04",
+      "notes": null
+    }
+  ],
+  "unresolved_variables": [
+    "tracked_variables.actual_runtime_fixed_bytes",
+    "tracked_variables.actual_target_kv_pool_tokens",
+    "tracked_variables.actual_active_request_ceiling"
+  ],
+  "promotion_authority": false
+}

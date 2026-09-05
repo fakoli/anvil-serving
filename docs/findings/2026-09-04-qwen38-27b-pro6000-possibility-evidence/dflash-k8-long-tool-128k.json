@@ -1,0 +1,67 @@
+{
+  "base_url": "http://127.0.0.1:39264/v1",
+  "budget": {
+    "max_completion_tokens": 512,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "long-tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [],
+  "model": "qwen38-27b-inferact-nvfp4-sglang-pro6000-current-dflash2",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "measured_prompt_tokens": 110886,
+      "minimum_prompt_tokens": 100000,
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "requested_context_tokens": 131072,
+      "seconds": 28.488,
+      "test": "long-tools",
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 110886,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 110913
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "28.5s measured_prompt=110886 valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=0 reasoning_tokens=None",
+      "name": "tool call after >=100K prompt (target 131072)",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

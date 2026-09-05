@@ -1,0 +1,91 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "qwen38-27b-pro6000-c8-82k",
+  "requirements": {
+    "tokens": {
+      "prompt": {"value": 81920, "unit": "tokens", "status": "assumed", "source": "Helix-aligned long-context concurrency cell", "observed_at": "2026-09-04"},
+      "output_reserve": {"value": 8192, "unit": "tokens", "status": "assumed", "source": "campaign long-context output reserve", "observed_at": "2026-09-04"}
+    },
+    "concurrency": {"value": 8, "unit": "sequences", "status": "assumed", "source": "campaign C8 ceiling", "observed_at": "2026-09-04"},
+    "physical_vram_bytes": {"value": 102641958912, "unit": "bytes", "status": "measured", "source": "live nvidia-smi total memory for one RTX PRO 6000", "observed_at": "2026-09-04"},
+    "vram_reserves": {
+      "driver_and_non_engine_headroom": {"kind": "policy", "variable": {"value": 3221225472, "unit": "bytes", "status": "assumed", "source": "campaign dedicated-lane safety policy", "observed_at": "2026-09-04"}},
+      "allocator_uncertainty": {"kind": "policy", "variable": {"value": 1073741824, "unit": "bytes", "status": "assumed", "source": "pre-start allocator uncertainty band", "observed_at": "2026-09-04"}}
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {"value": 1.0, "unit": "ratio", "status": "assumed", "source": "qualification hard gate", "observed_at": "2026-09-04"},
+      "max_relative_quality_loss": {"value": 0.03, "unit": "ratio", "status": "assumed", "source": "campaign quality-loss budget", "observed_at": "2026-09-04"},
+      "min_warm_e2e_gain": {"value": 0.10, "unit": "ratio", "status": "assumed", "source": "speculation or compile retention threshold", "observed_at": "2026-09-04"}
+    }
+  },
+  "tracked_variables": {
+    "actual_runtime_fixed_bytes": {"status": "unknown", "unit": "bytes", "notes": "replace broad interval from startup logs and post-capture telemetry"},
+    "actual_target_kv_pool_tokens": {"status": "unknown", "unit": "tokens", "notes": "must support the requested workload rather than only configured context"},
+    "actual_active_request_ceiling": {"status": "unknown", "unit": "sequences", "notes": "verify startup admission and concurrent execution"}
+  },
+  "candidates": [
+    {
+      "id": "radixark-nvfp4-nospec-fp8kv",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "official Qwen native context", "observed_at": "2026-09-04"},
+      "resident_components": {
+        "target_weights": {"min": 21945295265, "max": 23042560029, "unit": "bytes", "status": "estimated", "source": "exact logical repository bytes plus 5 percent resident-allocation band", "observed_at": "2026-09-04"},
+        "runtime_fixed": {"min": 8589934592, "max": 17179869184, "unit": "bytes", "status": "estimated", "source": "broad pre-start SGLang/CUDA/graph allocation interval", "observed_at": "2026-09-04"}
+      },
+      "per_sequence_components": {
+        "bf16_mamba_extra_buffer": {"min": 156800000, "max": 164640000, "unit": "bytes/sequence", "status": "estimated", "source": "two BF16 state slots per no-spec request with 5 percent band", "observed_at": "2026-09-04"}
+      },
+      "per_token_components": {
+        "target_fp8_kv": {"min": 32768, "max": 34407, "unit": "bytes/token", "status": "estimated", "source": "SGLang cookbook 32.8 KB per token plus 5 percent band", "observed_at": "2026-09-04"}
+      },
+      "kv_token_multiplier": {"value": 8, "unit": "copies", "status": "assumed", "source": "eight independent 82K sequences", "observed_at": "2026-09-04"}
+    },
+    {
+      "id": "radixark-nvfp4-dflash2-fp8-draft-kv",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "official Qwen native context", "observed_at": "2026-09-04"},
+      "resident_components": {
+        "target_weights": {"min": 21945295265, "max": 23042560029, "unit": "bytes", "status": "estimated", "source": "exact logical repository bytes plus 5 percent resident-allocation band", "observed_at": "2026-09-04"},
+        "draft_weights": {"min": 3849113004, "max": 4041568654, "unit": "bytes", "status": "estimated", "source": "exact logical repository bytes plus 5 percent resident-allocation band", "observed_at": "2026-09-04"},
+        "runtime_and_dflash_fixed": {"min": 9797894144, "max": 18790481920, "unit": "bytes", "status": "estimated", "source": "broad runtime interval including prior 1.12 GB DFlash intermediate-state observation", "observed_at": "2026-09-04"}
+      },
+      "per_sequence_components": {
+        "bf16_mamba_dflash_slots": {"min": 940800000, "max": 987840000, "unit": "bytes/sequence", "status": "estimated", "source": "twelve BF16 state slots per request inferred from the current C8 96-slot recipe, plus 5 percent band", "observed_at": "2026-09-04"}
+      },
+      "per_token_components": {
+        "target_and_draft_fp8_kv": {"min": 53248, "max": 55911, "unit": "bytes/token", "status": "estimated", "source": "32.8 KB target plus 20.5 KB draft FP8 KV with 5 percent band", "observed_at": "2026-09-04"}
+      },
+      "kv_token_multiplier": {"value": 8, "unit": "copies", "status": "assumed", "source": "eight independent 82K sequences", "observed_at": "2026-09-04"}
+    },
+    {
+      "id": "radixark-nvfp4-dflash2-bf16-draft-kv",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "official Qwen native context", "observed_at": "2026-09-04"},
+      "resident_components": {
+        "target_weights": {"min": 21945295265, "max": 23042560029, "unit": "bytes", "status": "estimated", "source": "exact logical repository bytes plus 5 percent resident-allocation band", "observed_at": "2026-09-04"},
+        "draft_weights": {"min": 3849113004, "max": 4041568654, "unit": "bytes", "status": "estimated", "source": "exact logical repository bytes plus 5 percent resident-allocation band", "observed_at": "2026-09-04"},
+        "runtime_and_dflash_fixed": {"min": 9797894144, "max": 18790481920, "unit": "bytes", "status": "estimated", "source": "broad runtime interval including prior DFlash intermediate-state observation", "observed_at": "2026-09-04"}
+      },
+      "per_sequence_components": {
+        "bf16_mamba_dflash_slots": {"min": 940800000, "max": 987840000, "unit": "bytes/sequence", "status": "estimated", "source": "twelve BF16 state slots per request inferred from the current C8 96-slot recipe, plus 5 percent band", "observed_at": "2026-09-04"}
+      },
+      "per_token_components": {
+        "target_fp8_and_draft_bf16_kv": {"min": 73728, "max": 77415, "unit": "bytes/token", "status": "estimated", "source": "32.8 KB target FP8 plus 41.0 KB draft BF16 KV with 5 percent band", "observed_at": "2026-09-04"}
+      },
+      "kv_token_multiplier": {"value": 8, "unit": "copies", "status": "assumed", "source": "eight independent 82K sequences", "observed_at": "2026-09-04"}
+    },
+    {
+      "id": "official-fp8-dflash2-fp8-draft-kv",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "official Qwen native context", "observed_at": "2026-09-04"},
+      "resident_components": {
+        "target_weights": {"min": 30890049597, "max": 32434552077, "unit": "bytes", "status": "estimated", "source": "exact logical repository bytes plus 5 percent resident-allocation band", "observed_at": "2026-09-04"},
+        "draft_weights": {"min": 3849113004, "max": 4041568654, "unit": "bytes", "status": "estimated", "source": "exact logical repository bytes plus 5 percent resident-allocation band", "observed_at": "2026-09-04"},
+        "runtime_and_dflash_fixed": {"min": 9797894144, "max": 18790481920, "unit": "bytes", "status": "estimated", "source": "broad pre-start runtime interval", "observed_at": "2026-09-04"}
+      },
+      "per_sequence_components": {
+        "bf16_mamba_dflash_slots": {"min": 940800000, "max": 987840000, "unit": "bytes/sequence", "status": "estimated", "source": "twelve BF16 state slots per request inferred from the current C8 96-slot recipe, plus 5 percent band", "observed_at": "2026-09-04"}
+      },
+      "per_token_components": {
+        "target_and_draft_fp8_kv": {"min": 53248, "max": 55911, "unit": "bytes/token", "status": "estimated", "source": "32.8 KB target plus 20.5 KB draft FP8 KV with 5 percent band", "observed_at": "2026-09-04"}
+      },
+      "kv_token_multiplier": {"value": 8, "unit": "copies", "status": "assumed", "source": "eight independent 82K sequences", "observed_at": "2026-09-04"}
+    }
+  ]
+}

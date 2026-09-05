@@ -80,13 +80,23 @@ When usage completion tokens include reasoning tokens, the reasoning-aware
 protocol's rate describes the combined completion stream, not visible-only
 decode.
 
-**Mean inter-token latency.** Generation duration divided by
-`output tokens - 1`. This is a per-request mean interval, not a raw timestamp
-trace for every token.
+**TPOT and the legacy mean-ITL key.** Generation duration divided by
+`output tokens - 1`. `tpot_ms`, `mean_time_per_output_token_ms`, and the
+backward-compatible `mean_inter_token_latency_ms` field describe the same
+per-request aggregate proxy. They are not timestamped token-arrival intervals,
+so their percentiles summarize request-level mean TPOT values, not token-level
+ITL. Prefer TPOT in new prose and publish token-level ITL only when a native
+artifact retains token event timestamps and defines transport-chunk handling.
 
 **Aggregate output throughput.** Total output tokens across all requests divided
 by wall time. This is useful for batch capacity at a stated concurrency, but it
-is not interchangeable with per-request controlled decode.
+is not interchangeable with per-request controlled decode. The headline is
+performance-eligible only when every attempted request completes and satisfies
+its active output/canary contract with exact token usage. Failed responses
+retain bounded, sanitized timing and response metadata but are excluded from
+performance distributions; prompts and full response bodies are not retained.
+An incomplete run keeps its diagnostic samples and failures while aggregate
+`throughput_tok_s` is null.
 The local harness uses `usage.completion_tokens` when the endpoint returns it.
 Under capacity measurement protocol `capacity-v3`, usage is required for exact
 token throughput, effective prefill, decode, and mean inter-token metrics.
@@ -99,6 +109,38 @@ workload mismatch. `capacity-v4-reasoning` additionally retains TTFO,
 first-visible TTFT, reasoning-chunk count, and a generation interval beginning
 at first output. Failed reasoning-only completions remain failures rather than
 being silently converted into visible latency samples.
+
+**Controlled-output validation.** `--response-words N` requests exactly `N`
+lowercase `code` words. The default `--controlled-output-policy observe`
+records requested and observed word counts, extra words, capture completeness,
+and exact adherence without rejecting a non-exact response. Use
+`--controlled-output-policy strict` for finalist comparisons; it requires a
+nonzero target and makes non-exact or capture-truncated responses
+performance-ineligible. The bounded visible-content capture is 8,192
+characters, so completion headroom and capture capacity both constrain a
+strict target. Historical artifacts without these observations are not
+retroactively exact.
+
+**Request canaries.** In unique-cache concurrent cells, each response must
+begin with its own generated marker, contain no other `ANVIL_REQ` marker, and
+fit in the complete validation capture. A late/missing marker, any foreign
+marker, or truncation is a correctness failure. Historical `passed` fields
+that only prove substring presence retain their original meaning and are
+labeled as legacy validation by derived aggregates.
+
+**Independent-replica wall time.** New exact aggregates record nanosecond Unix
+start/finish fields and the same explicit `clock_domain_id` only when every
+replica process shares one physical host clock. A matching clock-domain label
+must never be inferred or reused across hosts. Replicas also carry the same
+declared SHA-256 configuration fingerprint; matching declarations bind the
+comparison but are not independent attestation of the launch.
+
+For legacy artifacts with only matching whole-second UTC buckets, the combiner
+uses each replica's monotonic duration to derive lower and upper union-wall
+bounds. `metrics.throughput_tok_s` is the conservative lower bound and
+`throughput_tok_s_upper_bound` is published with it. Whole-second evidence,
+missing fingerprints, or older output validation must remain labeled bounded
+or `legacy-unverified`, never exact synchronization.
 
 Context ladders retain the same timing and token fields on every context row,
 not only in the run-level percentile summary. A ladder may be cold, warmed, or
@@ -216,7 +258,7 @@ Every new benchmark finding should preserve:
 | Memory recipe | weight quantization, KV dtype, GPU utilization, served context, KV capacity, admission cap, default and effective per-device reserve, waiver scope/rationale, startup and post-representative-workload free VRAM |
 | Generation recipe | sampling settings, thinking control, reasoning headroom, visible-answer allowance, MTP/speculative settings |
 | Workload | suite revision, prompt length, request count, concurrency, cache policy, expected answer protocol |
-| Results | completion count, TTFT, effective prefill, generation duration, decode rate, mean inter-token latency, E2E, token counts, throughput class, quality attempts, truncations and failures |
+| Results | completion and performance-eligibility count, TTFT, effective prefill, generation duration, decode rate, TPOT/legacy mean-ITL proxy, E2E, token counts, throughput class or bounds, output adherence, quality attempts, truncations and failures |
 | Provenance | observed date, source dates, age class, raw artifact links, checksums or run lineage when available |
 | Decision | candidate role, caveats, gate status, and whether any human-approved promotion occurred |
 
