@@ -112,6 +112,8 @@ Confirmed review defects and fixes:
   are content-free. Bundle references now use the canonical router auth-name
   validator, with content-free error projection. Regressions cover missing and
   misspelled leaves/groups, parser failures, and both credential-shaped prefixes.
+  Follow-up review also caught conflicting global output flags failing before
+  dispatch; that error now labels only the application, never raw arguments.
 - Review found a pre-existing tool-only SSE response-size bypass. The
   [streaming cap ticket](2026-09-05-streaming-response-byte-cap.md) tracks the
   raw-byte bound and independent verification.
@@ -147,7 +149,7 @@ Final independent dispositions:
 | --- | --- | --- |
 | `adversarial_measurements` | Timing, provenance, admission cleanup, request lookup, diagnostic evidence | Pass; 72 focused checks plus independent failure probes. |
 | `adversarial_correlation` | Front door, relay/SSE, purpose/audio, terminal records, documentation | Pass; 180 focused tests and independent real HTTP/protocol reproductions. |
-| `adversarial_bundle` | Strict bundle, actual JSON CLI envelope, authenticated readiness, existing edge correction | Pass; 120 focused tests and independent Compose/source probes. |
+| `adversarial_bundle` | Strict bundle, actual JSON CLI envelope, authenticated readiness, existing edge correction | Pass; 120 initial checks, then 642 focused checks after PR findings and the global-option fix, plus independent Compose/source probes. |
 
 All reviewers were distinct from the authors of their reviewed code and made
 no implementation edits. Ruff, 517 tracked Markdown link checks, strict MkDocs,
