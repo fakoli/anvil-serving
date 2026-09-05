@@ -53,3 +53,9 @@ serializer. False policy flags remain valid data, not operation authority.
 Target configuration candidate f595dfeb passed 616 focused tests and Ruff
 after commit (EV7650D9DC). It is locally integrated pending consolidated
 acceptance; no configuration was provisioned or receiver installed.
+
+T004.5 adds only deterministic in-memory receiver ZIP application packaging:
+the exact validator and receiver source bytes are embedded with a fixed
+five-entry archive layout and isolated-launcher entry point. It performs no
+receiver provisioning, permission check, trusted-config read, staging,
+activation, or deployment.
