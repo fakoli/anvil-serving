@@ -753,6 +753,7 @@ def test_replica_all_members_unavailable_has_no_dispatch_or_admission():
 class _CountingLease:
     def __init__(self, member_id: str) -> None:
         self.member_id = member_id
+        self.selection = None  # Match a real round-robin MemberAdmissionLease.
         self.release_calls = 0
 
     def release(self) -> None:
