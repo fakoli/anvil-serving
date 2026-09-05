@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 
 from . import envfile, guard
-from .paths import config_path, runtime_url
+from .paths import config_path, resolve_topology_path, runtime_url
 from .serves import docker_state
 from .transports import _is_safe_controller_ip
 
@@ -440,6 +440,8 @@ def cmd_token(container, *, reveal=False, _run=subprocess.run):
 def install_config(
     config_file,
     *,
+    topology_path=None,
+    topology_overlay_path=None,
     router_url=None,
     drain_timeout=120,
     confirm=False,
@@ -455,11 +457,22 @@ def install_config(
     otherwise unavailable serve does not make a structurally successful config
     installation fail.
     """
-    from .router.config import load
+    from .router.topology_validation import load_validated_router_snapshot
     from .serves import _install_router_config
 
-    selected = os.path.abspath(os.path.expanduser(config_file))
-    desired = [tier.id for tier in load(selected).tiers]
+    # Capture one immutable, topology-joined artifact before any status read or
+    # lifecycle mutation.  The installer receives this same object, so a later
+    # path replacement cannot change what the deployed validator or writer see.
+    snapshot = load_validated_router_snapshot(
+        config_file,
+        resolve_topology_path(topology_path),
+        (
+            resolve_topology_path(topology_overlay_path)
+            if topology_overlay_path is not None
+            else None
+        ),
+    )
+    desired = [tier.id for tier in snapshot.config.tiers]
     status = _transition("status", router_url=router_url)
     rows = status.get("tiers", [])
     if not isinstance(rows, list):
@@ -469,8 +482,7 @@ def install_config(
         if isinstance(row, dict) and isinstance(row.get("tier_id"), str)
     ]
     plan = {
-        "config": selected,
-        "router_url": _safe_router_url(router_url or DEFAULT_ROUTER_URL),
+        "config_sha256": snapshot.config_sha256,
         "current_tiers": current,
         "desired_tiers": desired,
         "drain_timeout": drain_timeout,
@@ -506,7 +518,7 @@ def install_config(
         raise
 
     installer = _install or _install_router_config
-    if installer(selected) != 0:
+    if installer(snapshot) != 0:
         raise ValueError("router config install failed or was rolled back")
 
     deadline = time.monotonic() + 60
@@ -604,6 +616,8 @@ def _build_parser():
             )
     install = actions.add_parser("install-config")
     install.add_argument("--config", required=True)
+    install.add_argument("--topology")
+    install.add_argument("--topology-overlay")
     install.add_argument("--router-url")
     install.add_argument("--drain-timeout", type=float, default=120)
     install.add_argument("--dry-run", action="store_true")
@@ -659,13 +673,18 @@ def main(argv=None):
         try:
             result = install_config(
                 args.config,
+                topology_path=args.topology,
+                topology_overlay_path=args.topology_overlay,
                 router_url=args.router_url,
                 drain_timeout=args.drain_timeout,
                 confirm=confirmed,
                 dry_run=args.dry_run or not confirmed,
             )
         except ValueError as exc:
-            print("router config install failed: %s" % exc, file=sys.stderr)
+            code = getattr(exc, "code", None)
+            if not isinstance(code, str):
+                code = "router_config_install_refused"
+            print("router config install failed: %s" % code, file=sys.stderr)
             return 1
         print(json.dumps(result, sort_keys=True))
         return 0
