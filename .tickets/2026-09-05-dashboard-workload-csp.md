@@ -37,10 +37,16 @@ The first focused run encountered ConnectionAbortedError / WinError 10053 at
 tests/observability/test_api.py:282 in
 test_reserved_workload_rejects_unread_body_headers_and_post_before_service
 (Transfer-Encoding: chunked parameter), before the follow-up POST status line.
-The direct rerun passed 27 tests. The interruption is recorded separately from
-the CSP cause; root is running repeated framing probes before disposition.
+The direct rerun passed 27 tests. Twenty subsequent consecutive repeats of the
+four framing cases passed (80 cases). The original WinError 10053 cause remains
+unproven; no exception-masking or transport patch was made. This observation
+remains separate from the reproduced CSP cause.
+
+The CSP candidate's postcommit gate at `781708d5` (`EV321129F4`) passed 27
+focused tests and Ruff. Its synthetic browser evidence above is not a live
+controller/fleet acceptance result.
 
 ## Still pending
 
-Postcommit gates, consolidated acceptance, and deployment are pending.
+Consolidated formal acceptance and deployment are pending.
 This source repair does not claim that any deployed dashboard has changed.
