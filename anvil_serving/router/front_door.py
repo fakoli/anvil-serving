@@ -89,6 +89,7 @@ from ..a2a.protocol import (
     AGENT_CARD_PATH,
 )
 from ..media.errors import MediaError
+from ..observability.workloads import WorkloadOutcome
 
 # Path -> dialect. Stateless, so module-level singletons are fine.
 _OPENAI_DIALECT = OpenAIDialect()
@@ -390,6 +391,25 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def _reset_request_correlation(self) -> None:
             """Clear per-request state on a reused HTTP/1.1 handler."""
             self._anvil_correlation = None
+            self._anvil_workload_stream = None
+            self._anvil_delivery_outcome = None
+
+        def _generate_deltas(self, request):
+            """Retain delivery ownership before eager routing can fail."""
+            tracked = getattr(backend, "generate_tracked", None)
+            if not callable(tracked):
+                return backend.generate(request)
+            stream = tracked(
+                request,
+                gateway_request_id=(self._anvil_correlation or {}).get("gateway_request_id"),
+            )
+            self._anvil_workload_stream = stream
+            return stream.start()
+
+        def _workload_render_error(self) -> None:
+            stream = self._anvil_workload_stream
+            if stream is not None and not stream.generation_failed:
+                self._anvil_delivery_outcome = WorkloadOutcome.ERROR
 
         def _start_request_correlation(self) -> None:
             """Stamp one authenticated inference request with trusted lineage."""
@@ -881,7 +901,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # here, before the 200 is committed, so the client always sees a real
             # HTTP error status for pre-stream failures.
             try:
-                deltas = backend.generate(request)
+                deltas = self._generate_deltas(request)
             except NoAvailableTierError as e:
                 # The configured exhaustion status lets the caller apply its own
                 # transport retry policy.
@@ -952,6 +972,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._log_inference_failure(
                         500, "stream error after headers", exc
                     )
+                    self._workload_render_error()
                     error_frame_fn = getattr(dialect, "stream_error", None)
                     try:
                         if callable(error_frame_fn):
@@ -960,6 +981,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                             self.wfile.write(b"0\r\n\r\n")
                             self.wfile.flush()
                     except OSError:
+                        self._anvil_delivery_outcome = WorkloadOutcome.DISCONNECTED
                         pass  # client disconnected while we signalled failure
                     self.close_connection = True
                     return
@@ -971,7 +993,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # so backends release resources (real backends hold upstream
                 # sockets); generator .close() is idempotent.
                 for gen in (frames, deltas):
-                    closer = getattr(gen, "close", None)
+                    closer = getattr(gen, "close_upstream", None) or getattr(gen, "close", None)
                     if closer is not None:
                         try:
                             closer()
@@ -1515,8 +1537,25 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
             try:
                 self._post_inner()
+                if self._anvil_workload_stream is not None:
+                    # Commit only after buffered bytes and the last SSE trailer
+                    # have actually crossed the handler's final flush boundary.
+                    self.wfile.flush()
+            except (OSError, ConnectionError):
+                self._anvil_delivery_outcome = WorkloadOutcome.DISCONNECTED
+                raise
+            except BaseException:
+                # Preserve a typed generation cancellation/timeout proposal;
+                # only response rendering failures introduce a new error.
+                self._workload_render_error()
+                raise
             finally:
-                _CONCURRENCY_LIMIT.release()
+                try:
+                    stream = self._anvil_workload_stream
+                    if stream is not None:
+                        stream.finish_delivery(self._anvil_delivery_outcome)
+                finally:
+                    _CONCURRENCY_LIMIT.release()
 
         def _post_inner(self) -> None:
             """Core POST dispatch, called under the concurrency semaphore."""
@@ -1747,7 +1786,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # a traceback.
                 requested_model = request.model
                 try:
-                    text = "".join(backend.generate(request))
+                    text = "".join(self._generate_deltas(request))
                     # Read structured fields AFTER the generator is drained so the
                     # backend's thread-local is fully populated (#42 / #52).
                     # Falls through to dialect defaults (structured=None) when the
@@ -1773,6 +1812,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     # Unexpected backend fault: log bounded metadata only; send
                     # a generic message so internal state is not disclosed.
                     self._log_inference_failure(500, "backend error", e)
+                    self._workload_render_error()
                     self._error(500, "internal_error", "internal error",
                                 dialect=dialect)
                     return
