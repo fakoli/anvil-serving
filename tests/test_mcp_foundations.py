@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from copy import deepcopy
 import io
 import json
 from pathlib import Path
@@ -21,7 +22,7 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "b637edac3815408da26e7fc2d6f7eb80ee864702252cb661883cf42a49a54b27"
+    "ac18df8cc4bcc03821893aa20bb06a4378c5721d6da70c53252df42d3f181f49"
 )
 HANDLER_MAP_SHA256 = (
     "aed352154d729466b1abbe884e957252e909d627f7e352afbc7a9ef9c1458824"
@@ -122,6 +123,39 @@ def _canonical_sha256(value) -> str:
 
 def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable():
     assert list(mcp.TOOLS) == TOOL_NAMES
+    assert _canonical_sha256(mcp.list_tools()) == PUBLIC_CATALOG_SHA256
+
+
+def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
+    public_tools = deepcopy(mcp.list_tools())
+    transition = next(tool for tool in public_tools if tool["name"] == "router_transition")
+    schema = transition["inputSchema"]
+    assert transition["description"] == (
+        "Inspect, quiesce, drain, or safely readmit a router tier or declared member "
+        "through the authenticated router boundary."
+    )
+    assert schema["type"] == "object"
+    assert schema["additionalProperties"] is False
+    assert schema["maxProperties"] == 7
+    assert schema["required"] == ["action"]
+    assert set(schema["properties"]) == {
+        "action", "tier", "member", "router_url", "timeout", "dry_run", "confirm",
+    }
+    assert schema["properties"].pop("member") == {
+        "type": "string", "minLength": 1, "maxLength": 64,
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+    }
+
+    # Reconstruct the pinned pre-member catalog in a copy: every other schema,
+    # description, ordering and metadata field must remain byte-compatible.
+    schema["maxProperties"] = 6
+    transition["description"] = (
+        "Inspect, quiesce, drain, or safely readmit a router tier "
+        "through the authenticated router boundary."
+    )
+    assert _canonical_sha256(public_tools) == (
+        "b637edac3815408da26e7fc2d6f7eb80ee864702252cb661883cf42a49a54b27"
+    )
     assert _canonical_sha256(mcp.list_tools()) == PUBLIC_CATALOG_SHA256
 
 
