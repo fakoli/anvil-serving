@@ -29,6 +29,14 @@ bounded task in its isolated worktree, and integrate source-ready tasks in
 batches. Consolidated review and acceptance follow the completed implementation
 batch; do not combine all four contracts into an unbounded rewrite.
 
+The companion [workload contract repairs](workload-contract-repairs.md) records
+integration fixes for omitted query fields, canonical host bounds, dashboard
+regressions, and the same-origin script policy. These are repairs within the
+workload program, not a fifth deployed product. Source candidates await the
+same consolidated acceptance, CI, release, and deployment gates. The
+[workload usage guide](../WORKLOAD-VISIBILITY.md) describes their intended
+operator interface without asserting availability on installed nodes.
+
 The four router/fleet PRDs above remain partial delivery programs; an accepted
 task or source checkpoint does not mark an entire PRD deployed. The separate
 [bounded controller diagnostics](controller-diagnostics.md) source contract is

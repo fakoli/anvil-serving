@@ -93,6 +93,7 @@ nav:
           - Media workflows: cli/media.md
       - Fleet and host operations:
           - Operator playbooks: OPERATOR-PLAYBOOKS.md
+          - Read workload activity: WORKLOAD-VISIBILITY.md
           - Fleet state and replication: FLEET-STATE.md
           - Device topologies: DEVICE-TOPOLOGIES.md
           - Tailnet endpoint runbook: TAILNET-ENDPOINT-RUNBOOK.md
