@@ -506,8 +506,8 @@ class _TerminalSSEResponse(FakeStreamResponse):
         raise self.error
 
 
-def _ready() -> AvailabilityResult:
-    return AvailabilityResult(True, "ready", "identity_passed")
+def _ready(model: str = "concrete-model") -> AvailabilityResult:
+    return AvailabilityResult(True, "ready", "identity_passed", model, model)
 
 
 def _unready() -> AvailabilityResult:

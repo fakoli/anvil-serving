@@ -24,7 +24,13 @@ from typing import Callable, Mapping, Optional
 from urllib.parse import urlsplit, urlunsplit
 
 from .admission import AdmissionSnapshot, MemberAdmissionSnapshot, TierAdmission, _reason_code
-from .availability import AvailabilityResult, resolve_runtime_tier, safe_check, safe_check_member
+from .availability import (
+    AvailabilityResult,
+    replica_identity_passed,
+    resolve_runtime_tier,
+    safe_check,
+    safe_check_member,
+)
 from .config import METADATA_UPSTREAM, RouterConfig, Tier, normalize_model_alias
 from .replica_scheduler import (
     ReplicaPressure,
@@ -431,10 +437,7 @@ def replica_metadata(tier: Tier, availability: object) -> tuple[dict, Availabili
             and re.fullmatch(r"(?:health|identity)_http_(?:[1-5][0-9]{2}|unknown)", reason) is None
         ):
             reason = "unavailable"
-        loaded = (
-            result.available is True and type(result.state) is str
-            and result.state == "ready" and reason == "identity_passed" and matched
-        )
+        loaded = replica_identity_passed(tier, result)
         if result.available is True and not matched:
             reason = "identity_mismatch"
         elif not loaded and reason == "identity_passed":
