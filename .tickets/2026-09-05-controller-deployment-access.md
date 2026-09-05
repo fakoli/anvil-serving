@@ -75,5 +75,9 @@ failures, deadline precedence, exact result types and truncation invariants.
 An independent negative control raised the byte cap by one and made the
 262145-byte overflow regression fail. A passing four-test happy-path gate had
 not established those lifecycle properties. Fixed inspection/log projections
-and all user-facing wiring remain pending; this does not resolve deployment
-access. No raw diagnostic output or credentials are added to the ticket.
+are accepted in `96b961d985ed7eb3228eea109760fd188a134846` after independent
+eight-angle review, privacy/boundary negative controls, 19 post-commit tests and
+Ruff. Configured versus observed bindings stay separate, log reads use only the
+verified immutable controller ID, and raw content is discarded. CLI/MCP wiring
+and actual local-daemon validation remain pending; this does not resolve
+deployment access. No raw diagnostic output or credentials are added here.

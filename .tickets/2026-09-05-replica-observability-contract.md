@@ -1,6 +1,6 @@
 # Distinguish replica readiness, admission and declared provenance
 
-Status: implementation awaiting independent review
+Status: correcting independent review findings
 Priority: P1
 Date: 2026-09-05
 Task: qualified-replica-sets:T005
@@ -36,3 +36,22 @@ Focused metadata/capacity tests: 33 passed. Existing observability hardening:
 unexpected upstream model to a member projection failed the identity/redaction
 assertion as expected. Independent review, post-commit State proofs, publication
 and runtime/deployment acceptance are not yet complete.
+
+Independent review reproduced three additional contradictions: an ineligible
+member could retain the success reason `identity_passed`; a forged owner could
+claim admitting and draining simultaneously; and an unbounded owner counter
+could pass reconciliation but fail JSON serialization. The correction maps
+inconsistent success to unavailable, requires draining to imply quiesced, and
+bounds all counts to the exact JSON-consumer integer range `0..2^53-1`.
+Boundary/overflow and contradictory-state regressions are required before
+acceptance. The pre-correction full suite passed 4,860 tests with 10 skipped;
+this does not supersede those independently reproduced failures.
+
+Corrective review verified those three fixes, then reproduced the unresolved
+caller integration: `RoutingBackend.model_capacity()` does not pass its owner,
+so an actual endpoint still reports admission unavailable even with an active
+replica lease. The original task partition omitted that caller from T005 and
+did not bind its later wiring to an acceptance test. T005 is not accepted while
+that gap remains. Expand the scoped task to include the caller and a real HTTP
+endpoint regression after the overlapping scoped-auth task releases its claim;
+do not call the helper-only tests end-to-end capacity proof.
