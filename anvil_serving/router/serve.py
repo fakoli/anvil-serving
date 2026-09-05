@@ -29,6 +29,7 @@ from .availability import (
     HttpHealthAvailability,
     resolve_runtime_tier,
     safe_check,
+    safe_check_member,
 )
 from .backends import RelayBackend
 from .backends.relay import _ClosingIterator, DiscoveryTransport, Transport, discover_single_model
@@ -602,21 +603,43 @@ class RoutingBackend:
                 latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
             )
             raise NoAvailableTierError(request.model, (tier.id,))
-        if readiness is None:
-            readiness = _readiness_for(tier)
-        if not readiness.available:
-            self._record(
-                request, tier, served=False, reason="unavailable", outcome="skipped",
-                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+        selected_member: Optional[str] = None
+        if tier.replicas:
+            # Check every declared member before the one compound admission.  The
+            # admission cursor then makes the selection atomically without a
+            # second provider read or an implicit retry/fallback path.
+            check_started = time.monotonic()
+            member_readiness = {
+                member.id: safe_check_member(self._availability, tier, member.id)
+                for member in tier.replicas
+            }
+            readiness_check_ms = max(
+                0, int((time.monotonic() - check_started) * 1000)
             )
-            raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
-        lease = self._admission.acquire(tier.id)
-        if lease is None:
-            self._record(
-                request, tier, served=False, reason="quiesced", outcome="skipped",
-                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
-            )
-            raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
+            lease = self._admission.acquire_member(tier.id, member_readiness)
+            if lease is None:
+                self._record(
+                    request, tier, served=False, reason="unavailable", outcome="skipped",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                )
+                raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
+            selected_member = lease.member_id
+        else:
+            if readiness is None:
+                readiness = _readiness_for(tier)
+            if not readiness.available:
+                self._record(
+                    request, tier, served=False, reason="unavailable", outcome="skipped",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                )
+                raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
+            lease = self._admission.acquire(tier.id)
+            if lease is None:
+                self._record(
+                    request, tier, served=False, reason="quiesced", outcome="skipped",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                )
+                raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
 
         relay_request = request
         if configured_tier.metadata_source == METADATA_UPSTREAM:
@@ -626,21 +649,30 @@ class RoutingBackend:
             relay_request = replace(request, model=tier.model)
         try:
             upstream_call_started = time.monotonic()
-            upstream = backend.generate(relay_request)
-        except BaseException as exc:
-            self._record(
-                request,
-                tier,
-                served=False,
-                reason=f"backend_error_{type(exc).__name__}",
-                latency_ms=_elapsed_ms(),
-                readiness_check_ms=readiness_check_ms,
-                upstream_duration_ms=(
-                    max(0, int((time.monotonic() - upstream_call_started) * 1000))
-                    if upstream_call_started is not None else None
-                ),
+            upstream = (
+                backend.generate_member(selected_member, relay_request)
+                if selected_member is not None
+                else backend.generate(relay_request)
             )
-            lease.release()
+        except BaseException as exc:
+            try:
+                self._record(
+                    request,
+                    tier,
+                    served=False,
+                    reason=f"backend_error_{type(exc).__name__}",
+                    latency_ms=_elapsed_ms(),
+                    readiness_check_ms=readiness_check_ms,
+                    upstream_duration_ms=(
+                        max(0, int((time.monotonic() - upstream_call_started) * 1000))
+                        if upstream_call_started is not None else None
+                    ),
+                )
+            finally:
+                # Failure reporting is not an admission owner.  Preserve the
+                # original eager-error handling while releasing even when a
+                # clock, metadata, or sink failure interrupts its projection.
+                lease.release()
             raise
 
         fragments: List[str] = []
