@@ -45,6 +45,70 @@ Repair request omission and identifier validation with independent producer/cons
 
 ## Tasks
 
+### T014: Bind workload timestamps to ordering and receipt time
+
+**Feature:** F001
+**Priority:** high
+**Type:** bugfix
+**Likely files:** anvil_serving/observability/workloads.py, anvil_serving/observability/workload_collection.py, tests/observability/test_workload_review_regressions.py, .tickets/2026-09-05-workload-final-review.md
+
+Consolidated review at 7ef089b6 reproduced impossible updated-after-source records and stacked future allowance across source/node/fleet clocks. Enforce created <= updated <= source in the shared canonical record and validate records against trusted receipt time before query selection. Preserve independent source failure isolation and exactly 30 seconds inclusive, 30 seconds plus one microsecond exclusive. Remote provenance grants no extra skew. NodeResult/FleetResult decoding must reject compounded descendant skew against the enclosing collection as well. No schema, query selection, authentication or lifecycle change.
+
+**Acceptance criteria:**
+
+- Impossible ordering and compounded future timestamps refuse with fixed errors; source composition preserves valid peers.
+- Exact 30-second receipt boundary passes and one microsecond beyond fails, including nested node/fleet decoding.
+- Independently failing regressions and focused source gates are recorded; no live deployment is claimed.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability tests/router/test_workloads.py tests/test_manifest_workloads.py tests/test_recipe_workload_projection.py tests/control_plane/test_workload_sources.py -x -q`
+- `python -m ruff check anvil_serving/observability tests/observability`
+- `git diff --check`
+
+### T015: Reject noncanonical workload records in the dashboard
+
+**Feature:** F001
+**Priority:** high
+**Type:** bugfix
+**Likely files:** anvil_serving/observability/dashboard/static/workloads.js, tests/observability/dashboard_workloads_ui.cjs
+**Dependencies:** T014
+
+Mirror canonical owner/kind/state/phase/outcome/authority/quality and exact derived-label relations in the browser decoder. Timestamp parsing rejects rollover dates and suffixes, preserves microsecond ordering, and compares every nested timestamp to enclosing fleet collection without additive skew. Keep textContent, credential closure, generation fencing and single-flight behavior. Replace impossible arbitrary-label/store-stale happy-path fixtures with valid canonical records; keep private-label negative cases. Include every owner, invalid semantic combinations, ordering/future boundary, valid managed stale and media phases. An in-memory removed semantic guard must make the executable regression fail.
+
+**Acceptance criteria:**
+
+- Dashboard refuses contradictory states, arbitrary labels and invalid timestamps without rendering their contents.
+- Valid canonical owner/state combinations and managed stale/media phases render correctly.
+- All existing polling, credentials, abort and generation tests remain effective, including a negative control with otherwise-valid late data.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_dashboard_workloads_ui.py tests/observability/test_dashboard.py -x -q`
+- `git diff --check`
+
+### T016: Require exact replica identity at all eligibility boundaries
+
+**Feature:** F001
+**Priority:** high
+**Type:** bugfix
+**Likely files:** anvil_serving/router/availability.py, anvil_serving/router/serve.py, anvil_serving/router/model_capacity.py, tests/router/test_transition_integration.py, tests/router/test_streaming_relay.py, .tickets/2026-09-05-replica-identity-review.md
+
+Consolidated router review reproduced routing and identity_passed evidence for health-only, model-mismatched and internally inconsistent AvailabilityResult values. Introduce one non-I/O exact replica identity predicate in availability.py; require the actual result type, available is True, ready state, identity_passed reason and expected/observed names equal the tier model. Normalize inconsistent snapshots to fixed unavailable at RoutingBackend before acquire_member, reuse the predicate for readmission and capacity projection, and prevent decision evidence from inventing identity based solely on a member ID. Keep TierAdmission model-agnostic. Update replica-only readiness fixtures to reflect real exact-identity observations. Ticket the reproduction and source-only fix; no direct-tier behavior or lifecycle authority change.
+
+**Acceptance criteria:**
+
+- Health-only, mismatched, malformed and inconsistent results cause no backend dispatch and no identity_passed decision.
+- A valid equivalent member remains usable while an invalid peer is excluded; a wholly invalid set fails closed without retries.
+- Hot path, readmission and metadata projection reuse the exact predicate, preserving direct-tier compatibility and model-agnostic admission.
+- Router and replica lifecycle gates plus a broken-guard negative control pass before consolidated acceptance.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/ tests/test_replica_lifecycle.py -x -q`
+- `python -m ruff check anvil_serving/router tests/router tests/test_replica_lifecycle.py`
+- `git diff --check`
+
 ### T013: Pin manifest fixture timestamps to the injected clock
 
 **Feature:** F001

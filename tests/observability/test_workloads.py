@@ -248,6 +248,7 @@ def test_explicit_managed_stale_is_visible_by_default_but_not_active_only() -> N
     record = _record(
         owner=WorkloadOwner.RECIPE,
         quality=ObservationQuality.STALE,
+        updated_at=NOW - timedelta(seconds=5),
         source_timestamp=NOW - timedelta(seconds=5),
     )
     returned, _ = select_records((record,), WorkloadQuery(), now=NOW)
@@ -262,7 +263,7 @@ def test_source_rejects_duplicate_ids_wrong_types_truncation_and_future_times() 
         lambda: SourceResult(WorkloadOwner.ROUTER, ResultStatus.COMPLETE, NOW, (record, record), Truncation(2, 0)),
         lambda: SourceResult(WorkloadOwner.ROUTER, ResultStatus.COMPLETE, NOW, ("bad",), Truncation(1, 0)),  # type: ignore[arg-type]
         lambda: SourceResult(WorkloadOwner.ROUTER, ResultStatus.COMPLETE, NOW, (record,), Truncation(0, 1)),
-        lambda: _source(records=(_record(updated_at=NOW + timedelta(seconds=31)),)),
+        lambda: _source(records=(_record(updated_at=NOW + timedelta(seconds=31), source_timestamp=NOW + timedelta(seconds=31)),)),
         lambda: _source(records=(_record(source_timestamp=NOW + timedelta(seconds=31)),)),
     ]
     for build in cases:
@@ -491,10 +492,11 @@ def test_non_host_text_limit_remains_independent_of_host_identifier_bound() -> N
 
 
 def test_exact_datetime_sort_preserves_microseconds_and_id_tie_break() -> None:
-    first = _record("z", updated_at=NOW.replace(microsecond=1))
-    second = _record("a", updated_at=NOW.replace(microsecond=2))
-    tied_a = _record("a-tie", updated_at=NOW.replace(microsecond=3))
-    tied_b = _record("b-tie", updated_at=NOW.replace(microsecond=3))
+    observed = NOW.replace(microsecond=3)
+    first = _record("z", updated_at=NOW.replace(microsecond=1), source_timestamp=observed)
+    second = _record("a", updated_at=NOW.replace(microsecond=2), source_timestamp=observed)
+    tied_a = _record("a-tie", updated_at=observed, source_timestamp=observed)
+    tied_b = _record("b-tie", updated_at=observed, source_timestamp=observed)
     returned, _ = select_records(
         (first, tied_b, second, tied_a), WorkloadQuery(), now=NOW
     )
