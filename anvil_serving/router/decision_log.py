@@ -15,6 +15,8 @@ import threading
 import time
 from collections import Counter, deque
 from dataclasses import dataclass, field
+from datetime import datetime
+from itertools import islice
 from typing import Any, Callable, Deque, Iterable, Mapping, Optional, Tuple
 
 #: Default ring-buffer capacity for :class:`DecisionLog`. One record per routed
@@ -28,6 +30,12 @@ _SUMMARY_SECRET_RE = re.compile(
 )
 _CORRELATION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 _GATEWAY_REQUEST_ID_RE = re.compile(r"^req_[0-9a-f]{32}$")
+_WORKLOAD_TIMESTAMP_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$"
+)
+_WORKLOAD_OUTCOMES = {
+    "success", "error", "cancelled", "timeout", "rejected", "disconnected",
+}
 _MAX_MEASUREMENT = 1_000_000_000_000_000
 
 
@@ -94,6 +102,11 @@ class DecisionRecord:
     # :meth:`DecisionLog.record` when left at the zero default; aggregate views
     # remain snapshots of the buffer, never historical windows.
     unix_ts: float = 0.0
+    # Workload visibility adds only canonical timestamps and a fixed outcome.
+    # They remain absent for ordinary callers, preserving legacy projections.
+    workload_created_at: Optional[str] = field(default=None, repr=False)
+    workload_updated_at: Optional[str] = field(default=None, repr=False)
+    workload_outcome: Optional[str] = field(default=None, repr=False)
 
 
 def safe_correlation(value: Any) -> Optional[str]:
@@ -392,6 +405,7 @@ class DecisionLog:
 
     def record(self, record: DecisionRecord) -> None:
         """Append ``record`` to the log, stamping ``unix_ts`` (thread-safe)."""
+        record = _sanitize_workload_metadata(record)
         if not record.unix_ts:
             record = dataclasses.replace(record, unix_ts=time.time())
         with self._lock:
@@ -417,6 +431,14 @@ class DecisionLog:
         with self._lock:
             return tuple(self._records)
 
+    def recent(self, limit: int = 512) -> Tuple[DecisionRecord, ...]:
+        """Return at most 512 newest records, ordered oldest to newest."""
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 512:
+            raise ValueError("decision recent limit must be an integer from 1 to 512")
+        with self._lock:
+            newest_first = tuple(islice(reversed(self._records), limit))
+        return tuple(reversed(newest_first))
+
     @property
     def last(self) -> Optional[DecisionRecord]:
         """The most recently recorded decision, or ``None`` if the log is empty (thread-safe)."""
@@ -440,8 +462,9 @@ DEFAULT_DECISION_LOG_MAX_BYTES = 64 * 1024 * 1024
 class DecisionLogWriter:
     """Append-only, size-capped JSONL sink for decision records (ADR-0033).
 
-    One JSON object per line, from the record's own metadata-only fields —
-    the writer serializes :class:`DecisionRecord` dataclasses verbatim, so the
+    One JSON object per line, from the record's own metadata-only fields.
+    Absent optional workload fields are omitted to preserve the legacy shape;
+    present workload fields are validated before serialization. The
     no-prompt/no-response/no-credential guarantee is the record contract's.
     Rotation keeps exactly one previous generation (``<path>.1``).
 
@@ -465,7 +488,13 @@ class DecisionLogWriter:
             pass
 
     def __call__(self, record: DecisionRecord) -> None:
+        record = _sanitize_workload_metadata(record)
         payload = dataclasses.asdict(record)
+        for field_name in (
+            "workload_created_at", "workload_updated_at", "workload_outcome",
+        ):
+            if payload[field_name] is None:
+                del payload[field_name]
         line = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
         with self._lock:
             self._rotate_if_needed()
@@ -481,3 +510,38 @@ class DecisionLogWriter:
         if size < self.max_bytes:
             return
         os.replace(self.path, self.path + ".1")
+
+
+def _sanitize_workload_metadata(record: DecisionRecord) -> DecisionRecord:
+    """Drop malformed optional workload metadata before memory or sink writes."""
+    created = record.workload_created_at
+    updated = record.workload_updated_at
+    outcome = record.workload_outcome
+    valid = (
+        type(created) is str
+        and type(updated) is str
+        and type(outcome) is str
+        and len(created) == 27
+        and len(updated) == 27
+        and len(outcome) <= 12
+        and _WORKLOAD_TIMESTAMP_RE.fullmatch(created) is not None
+        and _WORKLOAD_TIMESTAMP_RE.fullmatch(updated) is not None
+        and created <= updated
+        and outcome in _WORKLOAD_OUTCOMES
+    )
+    if valid:
+        try:
+            datetime.strptime(created, "%Y-%m-%dT%H:%M:%S.%fZ")
+            datetime.strptime(updated, "%Y-%m-%dT%H:%M:%S.%fZ")
+        except (TypeError, ValueError):
+            valid = False
+    if created is None and updated is None and outcome is None:
+        return record
+    if valid:
+        return record
+    return dataclasses.replace(
+        record,
+        workload_created_at=None,
+        workload_updated_at=None,
+        workload_outcome=None,
+    )
