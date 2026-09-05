@@ -30,3 +30,13 @@ prerequisite task.
 Each finding was checked against the current code; closure needs regression
 tests, independent re-review and post-commit claim-bound evidence. No live
 policy, token, controller, model or route has changed.
+
+The next independent pass reproduced ambiguous duplicate/mixed credential
+headers reaching callbacks, and response-delivery slots being released before
+slow clients consumed the response. Corrections add a scoped-only exactly-one
+credential extractor (leaving legacy extraction unchanged) and retain the
+four-slot lease through response headers, body delivery and flush. Raw header
+permutations, four blocked deliveries versus a fifth client, and write-failure
+recovery now pass. Initial and corrective reviews cover all eight angles;
+77 auth/CLI/core tests, 36 streaming/front-door regressions and Ruff passed.
+Post-commit proof and acceptance are the remaining task gate, not live enablement.

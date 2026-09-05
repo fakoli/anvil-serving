@@ -224,15 +224,26 @@ Add a rotating cursor and member counters scoped to each replica tier. Accept al
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** anvil_serving/router/model_metadata.py, anvil_serving/router/model_capacity.py, tests/router/test_model_metadata.py, tests/router/test_model_capacity.py
+**Likely files:** anvil_serving/router/model_metadata.py, anvil_serving/router/model_capacity.py, anvil_serving/router/serve.py, tests/router/test_model_metadata.py, tests/router/test_model_capacity.py
 **Dependencies:** T003, T004
 
 Project one logical tier with a bounded ordered member list, declared deployment-identity source, runtime-verification flag, aggregate admission, and per-member readiness. Build allowlisted dictionaries explicitly and keep `base_url`, host address, auth environment/value, request fields, unexpected model strings, and exception text out.
+
+Wire `RoutingBackend.model_capacity()` to pass its actual admission owner to the
+projection. Its default owner must be initialized with configured replica
+membership, while an explicitly injected owner is preserved. No request dispatch
+or member-selection behavior is added in this task. Read the owner only once per
+tier; absent, invalid or inconsistent state is unavailable, never zero load.
+Draining implies quiesced, and aggregate/member counts must be exact integers
+in `0..2^53-1`. Ineligible member readiness must not retain a success reason.
+Do not fetch metrics through the replica-tier empty URL sentinel or infer
+aggregate KV capacity from per-member estimates.
 
 **Acceptance criteria:**
 
 - Metadata preserves one public alias and one logical tier.
 - Capacity shows aggregate tier admission plus per-member readiness without implying aggregate qualified throughput.
+- A real authenticated HTTP capacity request through `RoutingBackend` shows the same active, quiesced and released member counts as its injected owner; default construction reports complete zero member counts. A missing or forged owner remains unavailable.
 - Declared deployment provenance is clearly separated from live served-model verification.
 - Redaction tests prove prohibited data cannot appear in either projection.
 
@@ -240,6 +251,7 @@ Project one logical tier with a bounded ordered member list, declared deployment
 
 - `python scripts/run_tests.py tests/router/test_model_metadata.py tests/router/test_model_capacity.py -x -q`
 - `python scripts/run_tests.py tests/router/test_observability_hardening.py -x -q`
+- `python -m ruff check anvil_serving/router/model_metadata.py anvil_serving/router/model_capacity.py anvil_serving/router/serve.py tests/router/test_model_metadata.py tests/router/test_model_capacity.py`
 
 ### T006: Validate replica topology during managed rendering
 

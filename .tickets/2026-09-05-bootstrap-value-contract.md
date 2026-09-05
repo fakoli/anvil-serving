@@ -1,6 +1,6 @@
 # Close bootstrap value-contract ambiguities before implementation
 
-Status: contract resolved; T002 implementation under corrective review
+Status: value-contract implementation accepted; installation remains pending
 Priority: P1
 Date: 2026-09-05
 
@@ -62,3 +62,13 @@ casefold-aware prefix collision checks, typed decompression failure, exact
 dictionary key/schema types, and regressions that fail before each correction.
 The broader canonical digest, receipt phase, nested expansion and entry-count
 gates remain required. No extraction, installation or live mutation occurred.
+
+Final review also reproduced Windows device stems with spaces before an
+extension (`NUL .txt`, `COM1 .txt` and superscript variants). The validator now
+rejects these while retaining ordinary filenames with spaces. Original-name,
+local/central-header disagreement, decompression, schema and path probes pass;
+negative controls disabling original-name and device guards fail as expected.
+The accepted implementation is `186237d2aaddb62f08c0becae1247c34fdb964ec`, with
+92 passing post-commit tests and Ruff plus independent eight-angle review.
+This closes only T002's pure value/archive boundary, not installer, transport,
+receiver, lifecycle or live deployment acceptance.
