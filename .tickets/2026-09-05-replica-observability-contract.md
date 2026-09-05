@@ -1,6 +1,6 @@
 # Distinguish replica readiness, admission and declared provenance
 
-Status: correcting independent review findings
+Status: source correction complete; coordinator evidence gate pending
 Priority: P1
 Date: 2026-09-05
 Task: qualified-replica-sets:T005
@@ -60,6 +60,30 @@ do not call the helper-only tests end-to-end capacity proof.
 The approved amendment splits pure projection into T005.1, actual HTTP wiring
 into T005.2, and retains T005 as a coordinator integration/evidence gate with
 explicit dependencies. Dotted task IDs are not assumed to create State parent
-links. Reviewed checkpoint a5a52258 preserves the pure implementation; none of
-these split tasks is accepted yet. Claim-bound tests must be rerun on their
-current upstream-compatible revisions.
+links. Reviewed checkpoint a5a52258 preserves the pure implementation.
+
+## Corrected source and combined verification
+
+T005.1 was accepted at `d084f5a22f8e1d27bd83582cc11d6ea9018e87bf`
+with State proof `qualified-replica-sets-T005.1-E000456.json`. T005.2 was
+accepted at `f79b7cfc49664c2fcc5cd5b314e079a2a4bb7648` with proof
+`qualified-replica-sets-T005.2-E000460.json`. The actual HTTP path now uses
+the exact injected admission owner, including a falsey owner; default and
+durable construction initialize the configured member map. Unauthorized HTTP
+does not read the owner. Absent or forged owner state remains unavailable.
+
+The combined source revision is
+`6518f5195a6934c26d958b565b985af8c1e56288`. Independent Terra review of the
+HTTP wiring passed 61 capacity/admission/transition tests. Coordinator
+verification at the combined revision passed:
+
+- `python scripts/run_tests.py tests/router/test_model_metadata.py tests/router/test_model_capacity.py -x -q` — 43 passed.
+- `python scripts/run_tests.py tests/router/test_observability_hardening.py -x -q` — 5 passed.
+- `python -m ruff check anvil_serving/router/model_metadata.py anvil_serving/router/model_capacity.py anvil_serving/router/serve.py tests/router/test_model_metadata.py tests/router/test_model_capacity.py` — passed.
+
+The coordinator task modifies only this ticket and reruns these exact gates
+after commit for its claim-bound proof. Earlier failures above are retained as
+history, not current unresolved source findings. This closes the projection
+and HTTP-owner gap only: member dispatch, qualification, live identity,
+publication, and deployment remain separate feature/release gates. No runtime
+acceptance is inferred from these source tests.
