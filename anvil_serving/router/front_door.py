@@ -42,8 +42,9 @@ import re
 import sys
 import threading
 import urllib.parse
+from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional, Sequence
 
 from .audio import (
     AudioGateway,
@@ -73,6 +74,11 @@ from .internal import (
 )
 from .purpose import PurposeError, PurposeRouter
 from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
+from ..control_plane.authorization import (
+    AuthorizationPolicy,
+    WORKLOADS_READ,
+    check_scope,
+)
 from ..a2a.http import version_not_supported
 from ..a2a.protocol import (
     A2A_LEGACY_DEFAULT_VERSION,
@@ -115,6 +121,105 @@ _PURPOSE_PATHS = {
 # AudioGateway is injected from configured ``[[router.audio_routes]]``.
 _AUDIO_PATHS = (TRANSCRIPTIONS_PATH, SPEECH_PATH)
 
+
+@dataclass(frozen=True)
+class OperatorRoute:
+    """An injected, scoped, read-only operator route."""
+
+    method: str
+    path: str
+    scope: str
+    callback: Callable[[str], bytes]
+
+
+_MAX_OPERATOR_ROUTES = 8
+_MAX_OPERATOR_PATH_BYTES = 256
+_MAX_OPERATOR_QUERY_BYTES = 8192
+_MAX_OPERATOR_RESPONSE_BYTES = 8 * 1024 * 1024
+_OPERATOR_PATH_RE = re.compile(r"/[A-Za-z0-9][A-Za-z0-9._~-]*(?:/[A-Za-z0-9][A-Za-z0-9._~-]*)*")
+
+
+def _validated_operator_routes(
+    routes: Sequence[OperatorRoute] | None,
+) -> tuple[OperatorRoute, ...]:
+    """Return a copied, collision-free, bounded operator route registry."""
+    if routes is None:
+        return ()
+    if isinstance(routes, (str, bytes)) or not isinstance(routes, Sequence):
+        raise ValueError("operator routes must be a bounded sequence")
+    try:
+        declared_length = len(routes)
+    except Exception:
+        raise ValueError("operator routes must be a bounded sequence") from None
+    if declared_length > _MAX_OPERATOR_ROUTES:
+        raise ValueError("too many operator routes")
+
+    protected_paths = set(_ROUTES) | {
+        _HEALTHZ_PATH,
+        "/health",
+        "/v1/models",
+        DECISION_SUMMARY_ENDPOINT,
+        TIER_HEALTH_ENDPOINT,
+        MODEL_CAPACITY_ENDPOINT,
+        MODEL_CAPABILITIES_ENDPOINT,
+        MODEL_FINGERPRINTS_ENDPOINT,
+        ROUTER_STATUS_ENDPOINT,
+        ROUTER_STATS_ENDPOINT,
+        PROMETHEUS_ENDPOINT,
+        TRANSITION_ENDPOINT,
+        MCP_PATH,
+        A2A_PATH,
+        AGENT_CARD_PATH,
+    } | set(_PURPOSE_PATHS) | set(_AUDIO_PATHS)
+    copied: list[OperatorRoute] = []
+    seen: set[tuple[str, str]] = set()
+    for index in range(_MAX_OPERATOR_ROUTES + 1):
+        try:
+            route = routes[index]
+        except IndexError:
+            break
+        except Exception:
+            raise ValueError("operator routes must be a bounded sequence") from None
+        if len(copied) >= _MAX_OPERATOR_ROUTES:
+            raise ValueError("too many operator routes")
+        if type(route) is not OperatorRoute:
+            raise ValueError("operator route is invalid")
+        method, path, scope, callback = (
+            route.method,
+            route.path,
+            route.scope,
+            route.callback,
+        )
+        if (
+            type(method) is not str
+            or method not in {"GET", "POST"}
+            or type(scope) is not str
+            or scope != WORKLOADS_READ
+            or type(path) is not str
+            or not path.isascii()
+            or len(path) > _MAX_OPERATOR_PATH_BYTES
+            or not _OPERATOR_PATH_RE.fullmatch(path)
+            or path in protected_paths
+            or path in {ARTIFACT_PREFIX.rstrip("/"), REQUEST_TRACE_PREFIX.rstrip("/")}
+            or path.startswith(
+                (ARTIFACT_PREFIX, REQUEST_TRACE_PREFIX, "/.well-known/", "/v1/audio/")
+            )
+            or not callable(callback)
+        ):
+            raise ValueError("operator route is invalid")
+        key = (method, path)
+        if key in seen:
+            raise ValueError("operator route is invalid")
+        seen.add(key)
+        copied.append(OperatorRoute(method, path, scope, callback))
+    try:
+        stable_length = len(routes)
+    except Exception:
+        raise ValueError("operator routes must be a bounded sequence") from None
+    if stable_length != declared_length or stable_length != len(copied):
+        raise ValueError("operator routes must be a bounded sequence")
+    return tuple(copied)
+
 # --------------------------------------------------------------------------- #
 # Resource caps (DoS protection)
 # --------------------------------------------------------------------------- #
@@ -146,6 +251,9 @@ _MANAGEMENT_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(4)
 # Mutations are serialized independently of status reads.  In particular, a
 # readmit cannot race a long drain and invalidate its zero-active barrier.
 _MANAGEMENT_MUTATION_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(1)
+# Injected operator callbacks are read-only management work, not data-plane
+# relay work; retain a separate bounded capacity before invoking one.
+_OPERATOR_READ_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(4)
 
 #: Maximum bytes to drain from the socket after sending a 413 (or a response
 #: to an oversized GET body) before closing, so the OS can push the response
@@ -181,6 +289,29 @@ def _extract_bearer_token(headers) -> Optional[str]:
     api_key = headers.get("x-api-key")
     if api_key and api_key.strip():
         return api_key.strip()
+    return None
+
+
+def _extract_operator_token(headers) -> Optional[str]:
+    """Return one unambiguous scoped credential, or fail closed."""
+    try:
+        authorization = headers.get_all("Authorization") or []
+        api_keys = headers.get_all("x-api-key") or []
+    except Exception:
+        return None
+    if len(authorization) + len(api_keys) != 1:
+        return None
+    if authorization:
+        header = authorization[0]
+        if type(header) is not str:
+            return None
+        scheme, separator, value = header.partition(" ")
+        if separator and scheme.strip().lower() == "bearer" and value.strip():
+            return value.strip()
+        return None
+    header = api_keys[0]
+    if type(header) is str and header.strip():
+        return header.strip()
     return None
 
 
@@ -227,7 +358,13 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   auth_token: Optional[str] = None,
                   purpose: Optional[PurposeRouter] = None,
                   audio: Optional[AudioGateway] = None,
-                  gateway: Optional[ProtocolGateway] = None):
+                  gateway: Optional[ProtocolGateway] = None,
+                  authorization_policy: Optional[AuthorizationPolicy] = None,
+                  operator_routes: Sequence[OperatorRoute] | None = None):
+    operator_route_map = {
+        (route.method, route.path): route
+        for route in _validated_operator_routes(operator_routes)
+    }
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -288,6 +425,73 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             return hmac.compare_digest(
                 supplied.encode("utf-8"), auth_token.encode("utf-8")
             )
+
+        def _operator_route(self, method: str) -> Optional[OperatorRoute]:
+            path, _, _query = self.path.partition("?")
+            return operator_route_map.get((method, path))
+
+        def _operator_error(self, status: int, etype: str, message: str) -> None:
+            """Reply before consuming an operator body and retire the socket."""
+            self.close_connection = True
+            self._json(
+                status,
+                {"error": {"type": etype, "message": message}},
+                extra_headers={"Cache-Control": "no-store"},
+            )
+            self._flush_closing_response()
+
+        def _operator_framing_is_bodyless(self) -> bool:
+            transfer_encoding = self.headers.get_all("Transfer-Encoding") or []
+            content_lengths = self.headers.get_all("Content-Length") or []
+            return not transfer_encoding and (
+                not content_lengths
+                or (len(content_lengths) == 1 and content_lengths[0] == "0")
+            )
+
+        def _handle_operator_route(self, route: OperatorRoute) -> None:
+            """Run one already-identified scoped route without body handling."""
+            presented = _extract_operator_token(self.headers)
+            decision = check_scope(authorization_policy, presented, route.scope)
+            if not decision.allowed:
+                self._operator_error(
+                    403, "authorization_scope_denied", "authorization scope denied"
+                )
+                return
+            if not self._operator_framing_is_bodyless():
+                self._operator_error(
+                    400, "invalid_request", "operator route must not include a body"
+                )
+                return
+            _path, _separator, query = self.path.partition("?")
+            try:
+                query_bytes = query.encode("ascii", "strict")
+            except UnicodeEncodeError:
+                self._operator_error(400, "invalid_request", "invalid query")
+                return
+            if len(query_bytes) > _MAX_OPERATOR_QUERY_BYTES:
+                self._operator_error(400, "invalid_request", "invalid query")
+                return
+            if not _OPERATOR_READ_LIMIT.acquire(blocking=False):
+                self._operator_error(503, "server_busy", "operator route busy")
+                return
+            try:
+                try:
+                    payload = route.callback(query)
+                except Exception:  # noqa: BLE001 - callback details stay private
+                    self._operator_error(500, "internal_error", "operator route failed")
+                    return
+                if type(payload) is not bytes or len(payload) > _MAX_OPERATOR_RESPONSE_BYTES:
+                    self._operator_error(500, "internal_error", "operator route failed")
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(payload)
+                self.wfile.flush()
+            finally:
+                _OPERATOR_READ_LIMIT.release()
 
         def _protocol_json_error(self, status: int, code: str, message: str) -> None:
             self._json(status, {"error": {"type": code, "message": message}})
@@ -846,6 +1050,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         # --- routes ----------------------------------------------------------
         def do_GET(self) -> None:
             route = self.path.split("?", 1)[0].rstrip("/")
+            operator_route = self._operator_route("GET")
+            if operator_route is not None:
+                self._handle_operator_route(operator_route)
+                return
             if gateway is not None and (
                 route in {AGENT_CARD_PATH, MCP_PATH, A2A_PATH}
                 or route.startswith(ARTIFACT_PREFIX)
@@ -1210,6 +1418,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         def do_POST(self) -> None:
             route = self.path.split("?", 1)[0].rstrip("/")
+            operator_route = self._operator_route("POST")
+            if operator_route is not None:
+                self._handle_operator_route(operator_route)
+                return
             if gateway is not None and route in {MCP_PATH, A2A_PATH}:
                 if not _PROTOCOL_CONCURRENCY_LIMIT.acquire(blocking=False):
                     self.close_connection = True
@@ -1525,6 +1737,8 @@ def make_server(host: str, port: int,
                 purpose: Optional[PurposeRouter] = None,
                 audio: Optional[AudioGateway] = None,
                 gateway: Optional[ProtocolGateway] = None,
+                authorization_policy: Optional[AuthorizationPolicy] = None,
+                operator_routes: Sequence[OperatorRoute] | None = None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -1558,11 +1772,12 @@ def make_server(host: str, port: int,
         raise ValueError("an AudioGateway requires a resolved front-door auth token")
     if gateway is not None and auth_token is None:
         raise ValueError("a ProtocolGateway requires a resolved front-door auth token")
+    validated_operator_routes = _validated_operator_routes(operator_routes)
     httpd = ThreadingHTTPServer(
         (host, port),
         _make_handler(
             backend, timeout, model_routes, exhaustion_status, auth_token,
-            purpose, audio, gateway,
+            purpose, audio, gateway, authorization_policy, validated_operator_routes,
         ),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown
