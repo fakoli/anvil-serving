@@ -1,6 +1,6 @@
 # Persist member quiesce intent without widening its scope
 
-Status: implementation contract closed; batch acceptance pending.
+Status: source candidate locally integrated; batch acceptance pending.
 
 The existing admission-intent writer records only quiesced tiers. A member
 quiesce now reaches real admission through the CLI/controller, but a restart
@@ -16,3 +16,7 @@ Bounded input and strict new-field parsing reject malformed intent; valid
 removed IDs are ignored. Tests use real admission and temporary files only.
 
 No live service, route, model or operator intent is changed by this ticket.
+
+Candidate d810b6fa passed 57 focused tests and Ruff after commit, recorded as
+EV22DAA523. Literal old/new documents, independent scope restoration, malformed
+input, atomic-write failure and concurrent changes are covered hermetically.

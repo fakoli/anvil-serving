@@ -1,6 +1,6 @@
 # Preserve valid manifest runtime peers when Compose inspection fails
 
-Status: open; producer consistency correction identified during projection.
+Status: source candidate locally integrated; consolidated acceptance pending.
 
 manifest_workloads.py::capture_manifest_workload_snapshot can construct an
 UNAVAILABLE runtime component containing valid unsupported native/generic
@@ -17,3 +17,11 @@ canonical projection without becoming running, healthy, or idle.
 
 Keep this correction within the producer and its hermetic tests. No Docker or
 live workload operation is required.
+
+Candidate ce4f71ce passed 188 focused tests and Ruff after commit, recorded as
+EVA2AEDA27. Seventeen added cases cover native/generic peers across failed,
+malformed, truncated and empty captures, real canonical projection, timestamp
+preservation, no-peer failure and native-only no-subprocess controls. The
+mixed native/nonzero regression fails at the PARTIAL assertion against the
+literal predecessor module loaded in memory; no working-tree rollback or live
+command was used for that negative control.

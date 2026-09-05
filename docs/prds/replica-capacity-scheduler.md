@@ -475,6 +475,61 @@ replace, and event-driven concurrent changes without sleeps or live services.
 
 Project normalized freshness, bounded score components, tier/member reservation counts, ceilings, and aggregate reconciliation through the existing capacity and telemetry surfaces. Consume typed snapshots and exclude raw metric labels/text, endpoint identity, and unbounded member data.
 
+For capacity strategy only, enrich the existing admission projection with
+max_concurrency and members. Read one AdmissionSnapshot, not separate member
+queries. Require exact MemberAdmissionSnapshot values, exact configured IDs,
+matching member/tier ceilings, valid admitting/quiesced states and Boolean
+draining consistent with state and nonzero active count. Member counts must
+match the snapshot's existing member_active_requests and sum to tier active
+count; counts cannot exceed their ceilings. Tier effective ceiling equals
+configured tier max_concurrency or the sum of declared member ceilings.
+Valid members are sorted by ID and expose exactly id, state, active_requests,
+max_concurrency and draining, never reason. On malformed/absent owner preserve
+the existing unavailable fields and add max_concurrency=null, members=null.
+Direct and round-robin admission output remains byte-compatible.
+
+Add ReplicaPressureCache.peek(tier_id) using the same detached normalization,
+freshness/overdue/closed-owner logic as snapshot, but without scheduling,
+starting workers or notifying refresh. It must not call metrics or change
+cursor/reservations. Factor only this shared read path, keeping snapshot's
+existing scheduling semantics. build_model_capacity accepts optional
+replica_pressure=None; for capacity tiers read its peek once after the atomic
+admission read, with no cache/admission lock nesting. Accept only an exact
+dictionary covering configured member IDs (at most16) and copy each exact
+ReplicaPressure through its validator. A bad envelope produces all unknown;
+a malformed individual value produces unknown only for that member.
+Missing/failed provider produces unknown; no raw exception escapes.
+
+Add telemetry to each existing capacity-mode metadata member with exactly
+freshness, pressure_ppm, requests_state and kv_state from the detached value.
+These are current cached signals, not live identity or a new selection score.
+Non-fresh pressure is null. Do not rerank, expose rotating cursor, invent an
+eligible set or reinterpret the previous decision as current. Historical
+selection evidence remains the canonical optional replica_scheduler in
+find_request/summarize_decisions; test it without adding a second serializer.
+
+Extend render_capacity_prometheus only for capacity rows using fixed gauges:
+anvil_router_replica_tier_active_requests and
+anvil_router_replica_tier_max_concurrency (tier label);
+anvil_router_replica_member_active_requests and
+anvil_router_replica_member_max_concurrency (tier/member labels);
+anvil_router_replica_member_pressure_ppm (only fresh numeric values);
+anvil_router_replica_member_pressure_freshness (tier/member/freshness labels,
+one-hot fresh/stale/failed/unknown). No alias multiplication or raw labels.
+Only exact safe tier/member IDs using the existing member grammar are emitted.
+Validate exact types, finite bounded numbers, unique matching IDs, at most16
+members per row and at most256 total capacity members; reject malformed new
+metric groups instead of coercing values or printing arbitrary keys. Omit
+unavailable numeric series rather than emitting zero. Existing direct and
+round-robin metric bytes remain unchanged. Current counts are gauges, not
+historical throughput or monotonic counters. Use literal expected JSON/metric
+fixtures, fake monotonic clocks and event-controlled cache tests, with no
+network, subprocess, sleeps or lifecycle mutation.
+
+Runtime forwarding is deliberately T011.1 so this task's four-file projection
+scope stays independent of server wiring. Its default absent cache yields
+unknown, not a new cache or implicit probe.
+
 **Acceptance criteria:**
 
 - Capacity output reconciles tier active leases with the sum of member active leases.
@@ -487,13 +542,43 @@ Project normalized freshness, bounded score components, tier/member reservation 
 - `python scripts/run_tests.py tests/router/test_model_capacity.py tests/router/test_router_telemetry.py -x -q`
 - `python -m ruff check anvil_serving/router/model_capacity.py anvil_serving/router/router_telemetry.py tests/router/test_model_capacity.py tests/router/test_router_telemetry.py`
 
+### T011.1: Wire current capacity evidence to the existing runtime owner
+
+**Feature:** F004
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/router/serve.py, tests/router/test_model_capacity.py
+**Dependencies:** T011
+
+Pass the existing RoutingBackend-owned ReplicaPressureCache into
+build_model_capacity from RoutingBackend.model_capacity. Create no cache or
+worker and perform no refresh in this read path. Add actual build_server HTTP
+capacity and metrics tests for a configured capacity tier, real admission
+leases/quiesce, and the exact injected cache owner. Seed or inject completed
+typed pressure through a bounded fake cache with peek; make snapshot/metrics
+fetch fail if called by visibility. Verify identity, explicit unavailable
+owner handling, fresh zero versus unknown pressure and no implicit dispatch,
+admission, cache refresh or lifecycle change. Preserve direct/round-robin
+HTTP response behavior and endpoint authentication.
+
+**Acceptance criteria:**
+
+- Capacity and Prometheus endpoints consume the exact existing runtime owners and show matching current counts, ceilings and cached pressure classes.
+- Read requests never schedule pressure collection, reserve/release capacity, change quiesce or rerank.
+- Auth failures occur before source reads; direct and round-robin paths remain compatible.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_model_capacity.py tests/router/test_router_telemetry.py tests/router/test_serve_cli.py -x -q`
+- `python -m ruff check anvil_serving/router/serve.py tests/router/test_model_capacity.py`
+
 ### T012: Prove the integrated scheduler with a synthetic workload
 
 **Feature:** F004
 **Priority:** high
 **Type:** modify
 **Likely files:** tests/router/test_transition_integration.py, tests/router/test_model_routes.py, tests/router/test_observability_hardening.py
-**Dependencies:** T005, T007, T010, T011
+**Dependencies:** T005, T007, T010, T011, T011.1
 
 Add one hermetic event-driven workload that exercises deterministic distribution, concurrent tier/member ceilings, member and tier drains, telemetry freshness, upstream errors, decision evidence, and the one-attempt boundary. Use injected clocks, barriers, and fake backends; use no hardware, network service, or sleeps.
 
