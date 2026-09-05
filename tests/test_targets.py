@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import pytest
 from anvil_serving import targets
 from anvil_serving.targets import (
     CommandSpec,
+    CommandSpecError,
     TargetResolutionError,
     finalize_execution_plan,
     preflight_execution_plan,
@@ -127,6 +129,67 @@ def _spec(name: str, role: str, *, transports: tuple[str, ...] = ("local", "cont
         recovery_capable="ssh" in transports,
         gpu_role_required=False,
     )
+
+
+def _bootstrap_spec(**changes) -> CommandSpec:
+    values = {
+        "name": "controller-bootstrap",
+        "resource_role": None,
+        "supported_transports": ("controller", "ssh"),
+        "execution_runtime_roles": ("native",),
+        "mutation_class": "write",
+        "recovery_capable": True,
+        "gpu_role_required": False,
+        "execution_host_os": ("windows", "linux"),
+        "execution_policy": "host-bootstrap",
+    }
+    values.update(changes)
+    return CommandSpec(**values)
+
+
+def _bootstrap_topology(*, recovery: bool = True):
+    data = _topology_data()
+    data["hosts"][1]["os"] = "linux"
+    data["hosts"][1]["bootstrap"] = {
+        "enabled": True,
+        "bootstrap_authorized": True,
+        "execution_runtime": "dark-native",
+        "staging_root": "/var/tmp/private-stage",
+        "install_root": "/opt/private-install",
+        "python_executable": "/usr/bin/private-python",
+        "receiver_path": "/opt/private-receiver/bootstrap.py",
+        "receiver_sha256": "a" * 64,
+        "install_adapter": "python-wheel-venv",
+        "supervisor_adapter": "linux-systemd-user",
+        "supervisor_id": "anvil-controller",
+    }
+    data["runtimes"].append({"id": "dark-native", "host": "dark", "role": "native"})
+    data["transports"].append(
+        {
+            "id": "dark-bootstrap-controller",
+            "kind": "controller",
+            "host": "dark",
+            "runtime": "dark-native",
+            "endpoint": "http://100.64.0.10:8767",
+            "auth_env": "SYNTHETIC_BOOTSTRAP_TOKEN",
+            "allowed_operations": ["controller-bootstrap"],
+            "expected_node": "dark",
+        }
+    )
+    if recovery:
+        data["transports"].append(
+            {
+                "id": "dark-bootstrap-recovery",
+                "kind": "ssh",
+                "host": "dark",
+                "runtime": "dark-native",
+                "endpoint": "ssh://operator@100.64.0.10:22",
+                "allowed_operations": ["controller-bootstrap"],
+                "host_key_fingerprint": "SHA256:synthetic-bootstrap",
+                "known_hosts_path": "C:/synthetic/private-known-hosts",
+            }
+        )
+    return parse_topology(data)
 
 
 def test_local_target_selects_the_command_host_without_transport_endpoint():
@@ -702,3 +765,267 @@ def test_generic_diagnostic_permissions_are_scoped_and_scaffold_identical():
         / "anvil_serving/_scaffold_templates/operator-topology.toml"
     )
     assert _REFERENCE_TOPOLOGY.read_bytes() == scaffold.read_bytes()
+
+
+def test_host_bootstrap_resolves_controller_first_without_a_resource():
+    topology = _bootstrap_topology()
+
+    plan = resolve_execution_plan(topology, _bootstrap_spec(), target="host:dark")
+
+    assert plan.transport == "controller"
+    assert plan.transport_id == "dark-bootstrap-controller"
+    assert plan.recovery_transport_id == "dark-bootstrap-recovery"
+    assert plan.transport_expected_node == "dark"
+    assert plan.execution_runtime.id == "dark-native"
+    assert plan.host_bootstrap is topology.host("dark").bootstrap
+    assert plan.resource_host is plan.resource_runtime is plan.resource is None
+    assert plan.resource_endpoint is plan.gpu_role is plan.capacity is None
+
+
+def test_same_host_bootstrap_still_selects_authenticated_controller():
+    topology = _bootstrap_topology()
+
+    plan = resolve_execution_plan(
+        topology,
+        _bootstrap_spec(),
+        target="host:dark",
+        command_host="host:dark",
+        command_runtime="runtime:dark-native",
+    )
+
+    assert plan.transport == "controller"
+    assert plan.transport_id == "dark-bootstrap-controller"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"name": "other-bootstrap"},
+        {"resource_role": "host"},
+        {"supported_transports": ("controller",)},
+        {"execution_runtime_roles": ("docker",)},
+        {"mutation_class": "read"},
+        {"recovery_capable": False},
+        {"gpu_role_required": True},
+        {"execution_host_os": ("linux",)},
+    ),
+)
+def test_host_bootstrap_command_spec_is_exact(changes):
+    with pytest.raises(CommandSpecError, match="host-bootstrap"):
+        _bootstrap_spec(**changes)
+
+
+@pytest.mark.parametrize("target", (None, "host-role:serve", "dark", "host:"))
+def test_host_bootstrap_requires_exact_explicit_host_target(target):
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(_bootstrap_topology(), _bootstrap_spec(), target=target)
+
+    assert excinfo.value.metadata["reason_code"] == "bootstrap-target-required"
+    assert str(excinfo.value) == "bootstrap requires one explicit host target"
+
+
+def test_host_bootstrap_missing_host_uses_fixed_refusal():
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(_bootstrap_topology(), _bootstrap_spec(), target="host:missing")
+
+    assert excinfo.value.metadata["reason_code"] == "bootstrap-host-missing"
+    assert "missing" not in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "reason_code"),
+    (
+        ("bootstrap", None, "bootstrap-contract-missing"),
+        ("enabled", False, "bootstrap-disabled"),
+        ("bootstrap_authorized", False, "bootstrap-authorization-denied"),
+        ("execution_runtime", "missing-private-runtime", "bootstrap-runtime-invalid"),
+    ),
+)
+def test_host_bootstrap_policy_refusals_are_typed_and_input_safe(field, value, reason_code):
+    topology = _bootstrap_topology()
+    host = topology.host("dark")
+    if field == "bootstrap":
+        changed_host = replace(host, bootstrap=value)
+    else:
+        changed_host = replace(host, bootstrap=replace(host.bootstrap, **{field: value}))
+    topology = replace(
+        topology,
+        hosts=tuple(changed_host if item.id == host.id else item for item in topology.hosts),
+    )
+
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(topology, _bootstrap_spec(), target="host:dark")
+
+    assert excinfo.value.metadata["reason_code"] == reason_code
+    assert "private" not in str(excinfo.value)
+
+
+def test_host_bootstrap_controller_missing_and_ambiguity_are_distinct():
+    topology = _bootstrap_topology()
+    without = replace(
+        topology,
+        transports=tuple(
+            item for item in topology.transports if item.id != "dark-bootstrap-controller"
+        ),
+    )
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(without, _bootstrap_spec(), target="host:dark")
+    assert excinfo.value.metadata["reason_code"] == "bootstrap-controller-missing"
+
+    controller = topology.transport("dark-bootstrap-controller")
+    duplicate = replace(controller, id="private-duplicate-controller")
+    ambiguous = replace(topology, transports=topology.transports + (duplicate,))
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(ambiguous, _bootstrap_spec(), target="host:dark")
+    assert excinfo.value.metadata["reason_code"] == "bootstrap-controller-ambiguous"
+    assert "private" not in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"expected_node": None},
+        {"auth_env": None},
+        {"allow_unauthenticated_loopback": True},
+    ),
+)
+def test_host_bootstrap_controller_requires_authenticated_expected_identity(changes):
+    topology = _bootstrap_topology()
+    controller = replace(topology.transport("dark-bootstrap-controller"), **changes)
+    topology = replace(
+        topology,
+        transports=tuple(
+            controller if item.id == controller.id else item for item in topology.transports
+        ),
+    )
+
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(topology, _bootstrap_spec(), target="host:dark")
+
+    assert excinfo.value.metadata["reason_code"] == "bootstrap-controller-identity-invalid"
+
+
+def test_host_bootstrap_recovery_is_optional_but_must_not_be_ambiguous():
+    plan = resolve_execution_plan(
+        _bootstrap_topology(recovery=False), _bootstrap_spec(), target="host:dark"
+    )
+    assert plan.recovery_transport_id is None
+
+    topology = _bootstrap_topology()
+    recovery = topology.transport("dark-bootstrap-recovery")
+    topology = replace(
+        topology,
+        transports=topology.transports + (replace(recovery, id="private-recovery-copy"),),
+    )
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(topology, _bootstrap_spec(), target="host:dark")
+    assert excinfo.value.metadata["reason_code"] == "bootstrap-recovery-ambiguous"
+    assert "private" not in str(excinfo.value)
+
+
+@pytest.mark.parametrize("transport", ("local", "ssh", "bogus-private-transport"))
+def test_host_bootstrap_rejects_local_or_caller_selected_recovery(transport):
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(
+            _bootstrap_topology(),
+            _bootstrap_spec(),
+            target="host:dark",
+            transport=transport,
+        )
+
+    assert excinfo.value.metadata["reason_code"] == "bootstrap-transport-invalid"
+    assert "private" not in str(excinfo.value)
+
+
+def test_host_bootstrap_converts_command_identity_errors_to_fixed_refusal():
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(
+            _bootstrap_topology(),
+            _bootstrap_spec(),
+            target="host:dark",
+            command_host="host:private-missing-host",
+            command_runtime="runtime:operator-native",
+        )
+
+    assert excinfo.value.metadata["reason_code"] == "bootstrap-command-identity-invalid"
+    assert "private" not in str(excinfo.value)
+
+    class FailingEnvironment(dict):
+        def get(self, *_args, **_kwargs):
+            raise RuntimeError("private environment failure")
+
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(
+            _bootstrap_topology(),
+            _bootstrap_spec(),
+            target="host:dark",
+            environment=FailingEnvironment(),
+        )
+    assert excinfo.value.metadata["reason_code"] == "bootstrap-command-identity-invalid"
+    assert "private" not in str(excinfo.value)
+
+
+def test_host_bootstrap_recovery_requires_pinned_identity_metadata():
+    topology = _bootstrap_topology()
+    recovery = replace(
+        topology.transport("dark-bootstrap-recovery"),
+        host_key_fingerprint=None,
+        known_hosts_path=None,
+    )
+    topology = replace(
+        topology,
+        transports=tuple(
+            recovery if item.id == recovery.id else item for item in topology.transports
+        ),
+    )
+
+    with pytest.raises(TargetResolutionError) as excinfo:
+        resolve_execution_plan(topology, _bootstrap_spec(), target="host:dark")
+
+    assert excinfo.value.metadata["reason_code"] == "bootstrap-transport-invalid"
+
+
+def test_host_bootstrap_does_not_use_resource_or_capacity_resolution(monkeypatch):
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("host bootstrap used a resource-owned seam")
+
+    monkeypatch.setattr(targets, "_resource_owner", forbidden)
+    monkeypatch.setattr(targets, "_capacity_decision", forbidden)
+
+    plan = resolve_execution_plan(_bootstrap_topology(), _bootstrap_spec(), target="host:dark")
+
+    assert plan.resource is None and plan.capacity is None
+
+
+def test_host_bootstrap_public_projection_is_an_exact_private_value_free_allowlist():
+    topology = _bootstrap_topology()
+    plan = resolve_execution_plan(topology, _bootstrap_spec(), target="host:dark")
+
+    payload = plan.as_dict()
+    rendered = json.dumps(payload, sort_keys=True)
+
+    assert set(payload) == {
+        "command",
+        "topology",
+        "topology_snapshot",
+        "command_host",
+        "command_runtime",
+        "execution_host",
+        "execution_runtime",
+        "target",
+        "transport",
+        "transport_id",
+        "recovery_transport_id",
+        "expected_node",
+    }
+    for prohibited in (
+        "private-stage",
+        "private-install",
+        "private-python",
+        "private-receiver",
+        "SYNTHETIC_BOOTSTRAP_TOKEN",
+        "100.64.0.10",
+        "private-known-hosts",
+        "synthetic-bootstrap",
+    ):
+        assert prohibited not in rendered

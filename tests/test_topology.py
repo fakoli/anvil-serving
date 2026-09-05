@@ -6,6 +6,7 @@ import json
 import os
 import urllib.parse
 from collections.abc import Mapping
+from dataclasses import asdict, replace
 from pathlib import Path
 from types import MappingProxyType
 
@@ -13,6 +14,7 @@ import pytest
 
 from anvil_serving import cli, topology_cli
 import anvil_serving.topology as topology_module
+from anvil_serving.fleet_bootstrap import InstallAdapter, SupervisorAdapter
 from anvil_serving.targets import resolve_resource_target
 from anvil_serving.topology import (
     Resource,
@@ -118,6 +120,42 @@ def _topology() -> dict:
             },
         ],
     }
+
+
+def _host_bootstrap(platform: str = "linux") -> dict[str, object]:
+    if platform == "windows":
+        paths = {
+            "staging_root": "C:\\Anvil\\Staging",
+            "install_root": "D:\\Anvil\\Install",
+            "python_executable": "C:\\Python311\\python.exe",
+            "receiver_path": "D:\\Anvil\\Receiver\\bootstrap.py",
+        }
+        supervisor = "windows-scheduled-task"
+    else:
+        paths = {
+            "staging_root": "/var/tmp/anvil-staging",
+            "install_root": "/opt/anvil/install",
+            "python_executable": "/usr/bin/python3",
+            "receiver_path": "/opt/anvil-receiver/bootstrap.py",
+        }
+        supervisor = "linux-systemd-user"
+    return {
+        "enabled": True,
+        "bootstrap_authorized": True,
+        "execution_runtime": "operator-native",
+        **paths,
+        "receiver_sha256": "a" * 64,
+        "install_adapter": "python-wheel-venv",
+        "supervisor_adapter": supervisor,
+        "supervisor_id": "anvil-controller",
+    }
+
+
+def _topology_with_host_bootstrap(platform: str = "linux") -> dict:
+    data = _topology()
+    data["hosts"][0]["os"] = platform
+    data["hosts"][0]["bootstrap"] = _host_bootstrap(platform)
+    return data
 
 
 def _paths(result) -> set[str]:
@@ -2364,3 +2402,156 @@ def test_root_router_config_validation_returns_fixed_join_refusals(
     assert payload["data"]["error_code"] == code
     assert payload["data"]["config_sha256"] is None
     assert payload["context"] is None and payload["warnings"] == []
+
+
+def test_host_bootstrap_parses_closed_linux_and_windows_declarations():
+    linux = parse_topology(_topology_with_host_bootstrap("linux")).host("operator").bootstrap
+    windows = parse_topology(_topology_with_host_bootstrap("windows")).host("operator").bootstrap
+
+    assert linux is not None and windows is not None
+    assert linux.install_adapter is InstallAdapter.PYTHON_WHEEL_VENV
+    assert linux.supervisor_adapter is SupervisorAdapter.LINUX_SYSTEMD_USER
+    assert windows.supervisor_adapter is SupervisorAdapter.WINDOWS_SCHEDULED_TASK
+    assert windows.python_executable == "C:\\Python311\\python.exe"
+
+
+def test_host_bootstrap_flags_default_false_without_relaxing_required_fields():
+    data = _topology_with_host_bootstrap()
+    data["hosts"][0]["bootstrap"].pop("enabled")
+    data["hosts"][0]["bootstrap"].pop("bootstrap_authorized")
+
+    bootstrap = parse_topology(data).host("operator").bootstrap
+
+    assert bootstrap is not None
+    assert not bootstrap.enabled and not bootstrap.bootstrap_authorized
+
+
+@pytest.mark.parametrize(
+    ("platform", "field", "value"),
+    (
+        ("linux", "staging_root", "/"),
+        ("linux", "staging_root", "relative/path"),
+        ("linux", "staging_root", "/var//stage"),
+        ("linux", "staging_root", "/var/../stage"),
+        ("linux", "staging_root", "/var\\stage"),
+        ("linux", "receiver_path", "/opt/anvil\x00receiver.py"),
+        ("windows", "staging_root", "C:\\"),
+        ("windows", "staging_root", "\\root-relative"),
+        ("windows", "staging_root", "\\\\server\\share\\stage"),
+        ("windows", "staging_root", "C:/Anvil/Stage"),
+        ("windows", "staging_root", "C:\\Anvil\\..\\Stage"),
+        ("windows", "staging_root", "C:\\Anvil\\NUL.txt"),
+        ("windows", "staging_root", "C:\\Anvil\\stage. "),
+        ("windows", "receiver_path", "C:\\Anvil\\receiver.py:stream"),
+    ),
+)
+def test_host_bootstrap_rejects_unsafe_paths_without_host_filesystem_access(
+    platform, field, value
+):
+    data = _topology_with_host_bootstrap(platform)
+    data["hosts"][0]["bootstrap"][field] = value
+
+    errors = validate_topology(data).errors
+
+    assert any(error.path == f"hosts[0].bootstrap.{field}" for error in errors)
+
+
+def test_host_bootstrap_path_validation_is_pure_and_cross_platform(monkeypatch):
+    class NoFilesystemOS:
+        def __getattr__(self, _name):
+            raise AssertionError("bootstrap topology attempted local OS access")
+
+    monkeypatch.setattr(topology_module, "os", NoFilesystemOS())
+
+    assert parse_topology(_topology_with_host_bootstrap("linux")).host("operator").bootstrap
+    assert parse_topology(_topology_with_host_bootstrap("windows")).host("operator").bootstrap
+
+
+@pytest.mark.parametrize(
+    ("mutation", "path"),
+    (
+        (lambda raw: raw.update(extra="value"), "hosts[0].bootstrap.extra"),
+        (lambda raw: raw.pop("receiver_path"), "hosts[0].bootstrap.receiver_path"),
+        (lambda raw: raw.update(receiver_sha256="A" * 64), "hosts[0].bootstrap.receiver_sha256"),
+        (lambda raw: raw.update(install_adapter="pip"), "hosts[0].bootstrap.install_adapter"),
+        (lambda raw: raw.update(supervisor_adapter="windows-scheduled-task"), "hosts[0].bootstrap.supervisor_adapter"),
+        (lambda raw: raw.update(supervisor_id="x" * 65), "hosts[0].bootstrap.supervisor_id"),
+        (lambda raw: raw.update(enabled=1), "hosts[0].bootstrap.enabled"),
+    ),
+)
+def test_host_bootstrap_rejects_unknown_missing_or_malformed_fields(mutation, path):
+    data = _topology_with_host_bootstrap()
+    mutation(data["hosts"][0]["bootstrap"])
+
+    assert any(error.path == path for error in validate_topology(data).errors)
+
+
+def test_host_bootstrap_rejects_nested_or_overlapping_roots():
+    data = _topology_with_host_bootstrap()
+    data["hosts"][0]["bootstrap"]["install_root"] = "/var/tmp/anvil-staging/install"
+    assert any(
+        error.path == "hosts[0].bootstrap.install_root"
+        for error in validate_topology(data).errors
+    )
+
+    data = _topology_with_host_bootstrap("windows")
+    data["hosts"][0]["bootstrap"]["install_root"] = "c:\\anvil\\staging\\installed"
+    assert any(
+        error.path == "hosts[0].bootstrap.install_root"
+        for error in validate_topology(data).errors
+    )
+
+
+@pytest.mark.parametrize(
+    "runtime_mutation",
+    (
+        lambda data: data["hosts"][0]["bootstrap"].update(execution_runtime="missing"),
+        lambda data: data["hosts"][0]["bootstrap"].update(execution_runtime="serve-native"),
+        lambda data: data["runtimes"][0].update(role="docker"),
+    ),
+)
+def test_host_bootstrap_requires_one_same_host_native_runtime(runtime_mutation):
+    data = _topology_with_host_bootstrap()
+    runtime_mutation(data)
+
+    assert any(
+        error.path == "hosts[0].bootstrap.execution_runtime"
+        for error in validate_topology(data).errors
+    )
+
+
+def test_absent_bootstrap_preserves_exact_legacy_snapshot_digest():
+    topology = parse_topology(_topology())
+    legacy = asdict(topology)
+    for host in legacy["hosts"]:
+        host.pop("bootstrap")
+    expected = hashlib.sha256(
+        json.dumps(legacy, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+    ).hexdigest()
+
+    assert topology_snapshot_identity(topology) == expected
+
+
+def test_every_declared_bootstrap_field_is_snapshot_identity():
+    topology = parse_topology(_topology_with_host_bootstrap())
+    host = topology.host("operator")
+    assert host.bootstrap is not None
+    alternatives = {
+        "enabled": False,
+        "bootstrap_authorized": False,
+        "execution_runtime": "alternate-native",
+        "staging_root": "/var/tmp/alternate-stage",
+        "install_root": "/opt/anvil/alternate-install",
+        "python_executable": "/usr/local/bin/python3",
+        "receiver_path": "/opt/alternate-receiver/bootstrap.py",
+        "receiver_sha256": "b" * 64,
+        "install_adapter": "alternate-install-adapter",
+        "supervisor_adapter": "alternate-supervisor-adapter",
+        "supervisor_id": "alternate-controller",
+    }
+    baseline = topology_snapshot_identity(topology)
+    for field, value in alternatives.items():
+        changed_bootstrap = replace(host.bootstrap, **{field: value})
+        changed_host = replace(host, bootstrap=changed_bootstrap)
+        changed_hosts = (changed_host,) + topology.hosts[1:]
+        assert topology_snapshot_identity(replace(topology, hosts=changed_hosts)) != baseline
