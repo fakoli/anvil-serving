@@ -1,0 +1,62 @@
+{
+  "base_url": "http://127.0.0.1:39277/v1",
+  "budget": {
+    "max_completion_tokens": 64,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 64
+  },
+  "checks": [
+    "json"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [],
+  "model": "qwen38-27b-inferact-nvfp4-pro6000-tp2-dflash2-k12-chunk1k",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}\n</think>\n\n{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 73,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}\n</think>\n\n{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.434,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 22,
+        "prompt_tokens": 30,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 52
+      }
+    }
+  ],
+  "ocr_expect": [],
+  "passed": false,
+  "results": [
+    {
+      "detail": "error: Extra data: line 2 column 1 (char 32)",
+      "name": "structured JSON",
+      "passed": false
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

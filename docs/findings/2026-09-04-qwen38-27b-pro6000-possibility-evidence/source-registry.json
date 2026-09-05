@@ -1,0 +1,136 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-04-qwen38-27b-pro6000-possibility",
+  "sources": [
+    {
+      "id": "qwen-official-model-card",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B",
+      "published_or_observed": "observed 2026-09-04",
+      "observed_at": "2026-09-04",
+      "age_class": "current",
+      "evidence_type": "official model card",
+      "hardware_runtime_relevance": "native 262144-token context and model family contract",
+      "decision_impact": "kept the campaign at the native context ceiling; no YaRN claim"
+    },
+    {
+      "id": "sglang-official-cookbook",
+      "url": "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B",
+      "published_or_observed": "observed 2026-09-04",
+      "observed_at": "2026-09-04",
+      "age_class": "current",
+      "evidence_type": "official runtime cookbook",
+      "hardware_runtime_relevance": "SM120, FlashInfer, chunked prefill, Mamba state sizing, DFlash2, and TP controls",
+      "decision_impact": "defined the SGLang optimization levers and state-allocation checks"
+    },
+    {
+      "id": "sglang-image",
+      "url": "https://hub.docker.com/r/lmsysorg/sglang/tags?name=dev-qwen38-27b-dflash2",
+      "published_or_observed": "image created 2026-08-22",
+      "observed_at": "2026-09-04",
+      "age_class": "current",
+      "evidence_type": "official OCI artifact metadata",
+      "hardware_runtime_relevance": "CUDA 13.0.3, FlashInfer 0.6.17, SGLang source 5f55db35",
+      "decision_impact": "pinned the SGLang runtime by immutable digest"
+    },
+    {
+      "id": "helix-454",
+      "url": "https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000",
+      "published_or_observed": "2026-08-22",
+      "observed_at": "2026-09-04",
+      "age_class": "current",
+      "evidence_type": "community same-GPU benchmark and tuning report",
+      "hardware_runtime_relevance": "single RTX PRO 6000 Server Edition, SGLang, NVFP4, DFlash2, compile, draft-depth and chunk sweeps",
+      "decision_impact": "supplied hypotheses only; the 454 tok/s claim was not treated as a reproduction target"
+    },
+    {
+      "id": "inferact-target",
+      "url": "https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4/tree/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+      "published_or_observed": "observed 2026-09-04",
+      "observed_at": "2026-09-04",
+      "age_class": "current",
+      "evidence_type": "community checkpoint immutable revision",
+      "hardware_runtime_relevance": "ModelOpt NVFP4 target used for the main SGLang matrix",
+      "decision_impact": "selected the cached first target and both TP/DP topology tests"
+    },
+    {
+      "id": "radixark-target",
+      "url": "https://huggingface.co/RadixArk/Qwen3.8-27B-NVFP4/tree/319f741cce68d7914884900c138a1fbb70a42f30",
+      "published_or_observed": "2026-08-22",
+      "observed_at": "2026-09-04",
+      "age_class": "current",
+      "evidence_type": "community checkpoint immutable revision",
+      "hardware_runtime_relevance": "NVFP4 target with quantized LM head",
+      "decision_impact": "measured as the alternative SGLang target and retained as a TTFT tradeoff"
+    },
+    {
+      "id": "dflash2-draft",
+      "url": "https://huggingface.co/incoai/Qwen3.8-27B-DFlash2/tree/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+      "published_or_observed": "2026-08-19",
+      "observed_at": "2026-09-04",
+      "age_class": "current",
+      "evidence_type": "community draft checkpoint immutable revision",
+      "hardware_runtime_relevance": "BF16 1.86B DFlash2 draft used by SGLang",
+      "decision_impact": "pins every DFlash2 arm; deployment-use and license review remains separate"
+    },
+    {
+      "id": "sglang-dflash-state-report",
+      "url": "https://github.com/sgl-project/sglang/issues/36548",
+      "published_or_observed": "2026-08-26",
+      "observed_at": "2026-09-04",
+      "age_class": "current",
+      "evidence_type": "practitioner bug report",
+      "hardware_runtime_relevance": "DFlash2 cross-request state under concurrency",
+      "decision_impact": "made unique per-request canaries and structured outputs hard correctness gates"
+    },
+    {
+      "id": "vllm-official-qwen-recipe",
+      "url": "https://recipes.vllm.ai/Qwen/Qwen3.8-27B",
+      "published_or_observed": "observed 2026-09-05",
+      "observed_at": "2026-09-05",
+      "age_class": "current",
+      "evidence_type": "official runtime recipe",
+      "hardware_runtime_relevance": "vLLM Qwen3.8 launch and integrated MTP support",
+      "decision_impact": "bounded the alternate-runtime MTP2/no-spec A/B"
+    },
+    {
+      "id": "vllm-0271-docs",
+      "url": "https://docs.vllm.ai/en/v0.27.1/",
+      "published_or_observed": "v0.27.1",
+      "observed_at": "2026-09-05",
+      "age_class": "current-pinned",
+      "evidence_type": "official runtime documentation",
+      "hardware_runtime_relevance": "exact tested vLLM release",
+      "decision_impact": "required the immutable v0.27.1 runtime identity and active MTP counters"
+    },
+    {
+      "id": "kelnei-target",
+      "url": "https://huggingface.co/kelnei/Qwen3.8-27B-NVFP4/tree/29099dc7004e5731173af5c5fb5253466aee219c",
+      "published_or_observed": "observed 2026-09-05",
+      "observed_at": "2026-09-05",
+      "age_class": "current",
+      "evidence_type": "community checkpoint immutable revision",
+      "hardware_runtime_relevance": "compressed-tensors NVFP4 target with integrated MTP head for vLLM 0.27.1",
+      "decision_impact": "selected the matched alternate-runtime MTP2/no-spec pair"
+    },
+    {
+      "id": "kelnei-vllm-report",
+      "url": "https://github.com/kelnei/nvfp4-vllm",
+      "published_or_observed": "observed 2026-09-05",
+      "observed_at": "2026-09-05",
+      "age_class": "current",
+      "evidence_type": "community same-GPU recipe and benchmark lead",
+      "hardware_runtime_relevance": "RTX PRO 6000 NVFP4/vLLM/MTP settings",
+      "decision_impact": "triggered a local matched A/B; external numbers were not published as local results"
+    },
+    {
+      "id": "local-qwen-dossier",
+      "url": "../../benchmarks/models/qwen38-27b.md",
+      "published_or_observed": "reviewed 2026-09-05",
+      "observed_at": "2026-09-05",
+      "age_class": "current-local-history",
+      "evidence_type": "local measured dossier",
+      "hardware_runtime_relevance": "prior TP1/TP2, long-context, quality, multimodal, and RTX 5090 evidence",
+      "decision_impact": "kept this campaign scoped to current SGLang optimization, topology, target, and vLLM settings"
+    }
+  ]
+}

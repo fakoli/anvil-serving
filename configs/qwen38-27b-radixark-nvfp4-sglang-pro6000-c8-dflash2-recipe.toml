@@ -1,0 +1,92 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "RadixArk/Qwen3.8-27B-NVFP4-PRO6000-C8-DFlash2"
+status = "qualification-candidate"
+source = "2026-09-04 current SGLang Qwen3.8 DFlash2 image translated into a matched RTX PRO 6000 K8 arm"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "RadixArk/Qwen3.8-27B-NVFP4"
+revision = "319f741cce68d7914884900c138a1fbb70a42f30"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "One card in a dedicated TP=1 qualification lane; the paired card is tested separately before any TP=2 comparison."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--RadixArk--Qwen3.8-27B-NVFP4/snapshots/319f741cce68d7914884900c138a1fbb70a42f30"
+quantization = "ModelOpt NVFP4 W4A4 target including the restored quantized LM head, FP8 E4M3 target KV, and BF16 incoai DFlash2 draft"
+context_tokens = 262144
+port = 39261
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-radixark-nvfp4-sglang-pro6000-c8-dflash2"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = [
+  "qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang",
+]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+]
+flags = [
+  "--served-model-name qwen38-27b-radixark-nvfp4-sglang-pro6000-c8-dflash2",
+  "--tp-size 1",
+  "--language-only",
+  "--context-length 262144",
+  "--max-running-requests 8",
+  "--cuda-graph-max-bs 8",
+  "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048",
+  "--disable-prefill-cuda-graph",
+  "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer",
+  "--mamba-ssm-dtype bfloat16",
+  "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant",
+  "--speculative-num-draft-tokens 8",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--enable-metrics",
+  "--host 0.0.0.0",
+  "--port 39261",
+]
+note = "Matched DFlash2 K8 arm for the 2026-09-04 RTX PRO 6000 possibility campaign. It differs from the no-spec control only where DFlash2 requires a BF16 draft checkpoint, K8 verification, and additional Mamba state slots. The target revision restores the quantized LM head after vLLM PR 52816 and corresponding SGLang work removed the earlier dense-head restriction that shaped the Helix experiment. The 96-slot allocation follows the current C8 DFlash2 community recipe and is verified at startup rather than treated as proof of eight-way admission. Prefix-cache repeats, mixed simultaneous prompts, structured output, tools, and request isolation are hard gates because current issue reports describe cache regressions and potential cross-request state corruption. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "decode", "concurrency", "long-context", "text", "coding", "agentic", "speculative-decoding"]
+rationale = "Tests the most plausible current path to high single-stream and aggregate throughput on one 96 GB SM120 card without treating a best-case external cell as a local result."
+
+[recipe.sources]
+official = [
+  "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B",
+  "https://github.com/sgl-project/sglang/commit/5f55db35e926d50676f75b812640ea2410b0fe0e",
+  "https://github.com/vllm-project/vllm/pull/52816",
+  "https://huggingface.co/incoai/Qwen3.8-27B-DFlash2/tree/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+]
+community = [
+  "https://huggingface.co/RadixArk/Qwen3.8-27B-NVFP4/tree/319f741cce68d7914884900c138a1fbb70a42f30",
+  "https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000",
+  "https://github.com/sgl-project/sglang/issues/36548",
+]
+local = [
+  "configs/qwen38-27b-radixark-nvfp4-sglang-pro6000-c8-nospec-recipe.toml",
+  "docs/benchmarks/models/qwen38-27b.md",
+  "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md",
+]

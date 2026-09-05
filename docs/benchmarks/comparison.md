@@ -1,10 +1,56 @@
-# Model comparison table
+# Compare models by hardware and workload
 
-Every model configuration measured on this hardware, in one place: what it ran on, how fast it
-was, whether reasoning was on or off, and where the working recipe lives.
+Every retained model configuration measured on this hardware, in one place:
+what it ran on, how fast it was, whether reasoning was on or off, and where the
+working recipe lives.
 
-If you have one of these cards and want to know what actually runs on it and how well — start
-here, then follow the recipe link.
+If you already know your hardware and workload, start with
+[measured recipe results](recipe-results.md). They show a compact strength and
+limitation summary beside metrics read directly from native artifacts. Return
+here for the broader historical and cross-model record.
+
+## Choose the comparison that answers your question
+
+<div class="bench-paths bench-paths--compact" markdown="1">
+
+<div class="bench-path" markdown="1">
+
+**Interactive response**
+
+Compare TTFT, E2E, and TPOT/ITL at the same prompt depth and concurrency. Start
+with the [measured recipe results](recipe-results.md).
+
+</div>
+
+<div class="bench-path" markdown="1">
+
+**Sustained concurrency**
+
+Compare aggregate output and p95/p99 request latency only within one matched
+workload. Start with the [Qwen PRO campaign](../findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md#matched-sustained-output-topology-result).
+
+</div>
+
+<div class="bench-path" markdown="1">
+
+**Long context**
+
+Check actual prompt tokens, output reserve, and measured concurrency. Use the
+[RTX PRO 6000](hardware/rtx-pro-6000.md#comparable-quality-and-context) or
+[RTX 5090](hardware/rtx-5090.md#comparable-quality-and-capacity) view.
+
+</div>
+
+<div class="bench-path" markdown="1">
+
+**Tools, agents, and media**
+
+Speed is not enough. Use the [model dossiers](models/index.md) for structured
+output, tool use, agentic/SWE, image, OCR, video, and client evidence.
+
+</div>
+
+</div>
 
 ## How to read this table
 
@@ -46,7 +92,7 @@ dated finding before treating a row as a single experiment. Full rules:
 
 ---
 
-## Published decision snapshot as of 2026-09-03
+## Published decision snapshot as of 2026-09-05
 
 This section synthesizes the latest dated public benchmark decisions; it does
 not report active deployment, routing, placement, or availability. In the
@@ -61,6 +107,12 @@ split remain retained historical recipes. Separately, on one RTX 5090, NInfer
 NVFP4 MTP3 is the preferred measured direct Qwen3.8 27B text/tools performance
 challenger; it was not promoted and does not replace the broader GGUF
 capability evidence.
+
+The September 4–5 Qwen3.8 27B PRO 6000 topology and runtime results are
+available in the [measured recipe results](recipe-results.md) and the
+[dated campaign](../findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md).
+They remain `no-promotion` and do not replace the published current or rollback
+profiles below.
 
 | Model / config | Status | Recipe / config | Quant · KV | 4K median TTFT / E2E | Decode | Multimodal acceptance | Evidence |
 | --- | --- | --- | --- | --- | ---: | --- | --- |
@@ -392,6 +444,11 @@ image level only. STT RTF and isolated per-model VRAM were never measured.
 ---
 
 ## Where the recipes live
+
+Start with the **[measured recipe results](recipe-results.md)** for a stable
+recipe entry, native metrics, strengths, limitations, and direct evidence.
+Use the **[reproduction guide](configurations.md)** to inspect the complete TOML
+and translate its fields to another container runner.
 
 - **[`configs/serve-recipes.toml`](https://github.com/fakoli/anvil-serving/blob/main/configs/serve-recipes.toml)** — 32 recorded recipes with quantization, context, flags, and environment. **9 of the 32 pin an image by `sha256:` digest; 21 pin a mutable tag** (`vllm/vllm-openai:nightly`, `lmsysorg/sglang:latest`) **and 2 record no image at all**, so those 23 cannot be reproduced exactly. Inspect one locally:
 

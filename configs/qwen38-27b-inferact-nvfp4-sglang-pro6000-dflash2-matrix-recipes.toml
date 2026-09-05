@@ -1,0 +1,252 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-C8-Current-NoSpec"
+status = "qualification-candidate"
+source = "2026-09-04 storage-aware current-SGLang no-speculation control using the already-qualified cached Inferact target"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane after an explicitly authorized bounded interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target with FP8 projections and explicit FP8 E4M3 target KV cache"
+context_tokens = 262144
+port = 39263
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-sglang-pro6000-current-nospec"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-sglang-pro6000-current-nospec",
+  "--tp-size 1",
+  "--language-only",
+  "--context-length 262144",
+  "--max-running-requests 8",
+  "--cuda-graph-max-bs 8",
+  "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048",
+  "--disable-prefill-cuda-graph",
+  "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer",
+  "--mamba-ssm-dtype bfloat16",
+  "--max-mamba-cache-size 16",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--enable-metrics",
+  "--host 0.0.0.0",
+  "--port 39263",
+]
+note = "Storage-aware first live control for the comprehensive PRO 6000 campaign. The exact Inferact revision is already cached, safety-audited, and previously qualified on both equal cards. This recipe changes the runtime and workload envelope to the current DFlash2-capable official SGLang image, keeps speculation disabled, and otherwise matches the paired DFlash2 recipe. C8 is an admission ceiling; long-context concurrency advances only after startup-reported KV/state pools and the conservative feasibility screen are reconciled. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "prefill", "concurrency", "long-context", "text", "coding", "agentic"]
+rationale = "Establishes the matched current-runtime baseline without downloading a redundant target checkpoint during a storage-constrained campaign."
+
+[recipe.sources]
+official = [
+  "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B",
+  "https://github.com/sgl-project/sglang/commit/5f55db35e926d50676f75b812640ea2410b0fe0e",
+]
+community = [
+  "https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4/tree/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+  "https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000",
+]
+local = [
+  "configs/qwen38-27b-inferact-nvfp4-sglang-tp1-393k-control-recipe.toml",
+  "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md",
+]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-C8-Current-NoSpec-Mamba96"
+status = "qualification-candidate"
+source = "2026-09-04 measured follow-up to the state-cache-capped current-SGLang no-speculation control"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane after an explicitly authorized bounded interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target with FP8 projections and explicit FP8 E4M3 target KV cache"
+context_tokens = 262144
+port = 39265
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-sglang-pro6000-current-nospec-mamba96"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-sglang-pro6000-current-nospec-mamba96",
+  "--tp-size 1",
+  "--language-only",
+  "--context-length 262144",
+  "--max-running-requests 8",
+  "--cuda-graph-max-bs 8",
+  "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048",
+  "--disable-prefill-cuda-graph",
+  "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer",
+  "--mamba-ssm-dtype bfloat16",
+  "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--enable-metrics",
+  "--host 0.0.0.0",
+  "--port 39265",
+]
+note = "Measured startup of the 16-slot control capped max_running_requests=8 to three because this checkpoint consumes five Mamba state slots per request. This follow-up changes only max_mamba_cache_size from 16 to 96, matching the DFlash2 arm, so offered C8 throughput and queueing can be compared without a known state-cache cap. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "prefill", "concurrency", "long-context", "text", "coding", "agentic"]
+rationale = "Separates state-cache sizing from speculative decoding in the current-runtime C8 experiment."
+
+[recipe.sources]
+official = [
+  "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B",
+  "https://github.com/sgl-project/sglang/commit/5f55db35e926d50676f75b812640ea2410b0fe0e",
+]
+community = [
+  "https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4/tree/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+  "https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000",
+]
+local = [
+  "configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dflash2-matrix-recipes.toml#Inferact/Qwen3.8-27B-NVFP4-PRO6000-C8-Current-NoSpec",
+  "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-evidence/nospec-4k-c8-offered.json",
+]
+
+[[recipe]]
+model = "Inferact/Qwen3.8-27B-NVFP4-PRO6000-C8-Current-DFlash2"
+status = "qualification-candidate"
+source = "2026-09-04 storage-aware current-SGLang DFlash2 K8 arm using the already-qualified cached Inferact target"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "Inferact/Qwen3.8-27B-NVFP4"
+revision = "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane after an explicitly authorized bounded interruption."
+
+[recipe.serve]
+engine = "sglang"
+image = "lmsysorg/sglang@sha256:616a3e97f45191af975896cfa644279096cb31bd408a071c2e99ca7209c3cafe"
+entrypoint = ["python3", "-m", "sglang.launch_server"]
+model_flag = "--model-path"
+model_path = "/root/.cache/huggingface/hub/models--Inferact--Qwen3.8-27B-NVFP4/snapshots/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+quantization = "ModelOpt NVFP4 W4A4 target with FP8 E4M3 target KV and BF16 incoai DFlash2 draft"
+context_tokens = 262144
+port = 39264
+startup_timeout_seconds = 2400
+served_model_name = "qwen38-27b-inferact-nvfp4-sglang-pro6000-current-dflash2"
+ipc = "host"
+shm_size = "32gb"
+named_volumes = ["qwen38-pro6000-dflash2-sglang-cache:/root/.cache/sglang"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "SGLANG_USE_CUDA_IPC_TRANSPORT=0",
+]
+flags = [
+  "--served-model-name qwen38-27b-inferact-nvfp4-sglang-pro6000-current-dflash2",
+  "--tp-size 1",
+  "--language-only",
+  "--context-length 262144",
+  "--max-running-requests 8",
+  "--cuda-graph-max-bs 8",
+  "--mem-fraction-static 0.85",
+  "--kv-cache-dtype fp8_e4m3",
+  "--attention-backend flashinfer",
+  "--chunked-prefill-size 2048",
+  "--disable-prefill-cuda-graph",
+  "--disable-flashinfer-autotune",
+  "--mamba-radix-cache-strategy extra_buffer",
+  "--mamba-ssm-dtype bfloat16",
+  "--max-mamba-cache-size 96",
+  "--reasoning-parser qwen3",
+  "--tool-call-parser qwen3_coder",
+  "--speculative-algorithm DFLASH",
+  "--speculative-draft-model-path /root/.cache/huggingface/hub/models--incoai--Qwen3.8-27B-DFlash2/snapshots/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+  "--speculative-draft-model-quantization unquant",
+  "--speculative-num-draft-tokens 8",
+  "--default-chat-template-kwargs '{\"enable_thinking\":false}'",
+  "--enable-metrics",
+  "--host 0.0.0.0",
+  "--port 39264",
+]
+note = "Storage-aware first live DFlash2 arm. Target, image, context, scheduler, CUDA graph ceiling, memory fraction, target KV, attention, chunking, deterministic FlashInfer setting, SSM dtype, parsers, and thinking default match the prior recipe. Only the DFlash2 draft, K8 verification, and required 96 state slots are added. C8 short-context request isolation is a hard gate; 82K C8 remains unresolved by conservative interval math for this larger Inferact target and is not attempted until measured startup pools replace the estimates. Direct-only; no route or promotion authority."
+
+[recipe.fit]
+suited = ["qualification", "latency", "decode", "concurrency", "long-context", "text", "coding", "agentic", "speculative-decoding"]
+rationale = "Measures the current DFlash2 path with an already-cached, previously qualified NVFP4 target before spending storage on a target-specific RadixArk follow-up."
+
+[recipe.sources]
+official = [
+  "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-27B",
+  "https://github.com/sgl-project/sglang/commit/5f55db35e926d50676f75b812640ea2410b0fe0e",
+  "https://github.com/vllm-project/vllm/pull/52816",
+  "https://huggingface.co/incoai/Qwen3.8-27B-DFlash2/tree/dedf8df68adfb1afeaf7b7480c0a0243108177b4",
+]
+community = [
+  "https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4/tree/6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+  "https://helix.ml/blog/chasing-454-toks-qwen38-rtx-pro-6000",
+  "https://github.com/sgl-project/sglang/issues/36548",
+]
+local = [
+  "configs/qwen38-27b-inferact-nvfp4-sglang-tp1-393k-control-recipe.toml",
+  "configs/qwen38-27b-inferact-nvfp4-sglang-pro6000-dflash2-matrix-recipes.toml#Inferact/Qwen3.8-27B-NVFP4-PRO6000-C8-Current-NoSpec",
+  "docs/findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md",
+]

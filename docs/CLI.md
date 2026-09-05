@@ -233,6 +233,7 @@ required operands, choices, and defaults.
 | `eval benchmark evidence list` | List retained local benchmark artifacts. | `read` / `bounded` | - |
 | `eval benchmark evidence show` | Show a normalized benchmark artifact summary. | `read` / `bounded` | - |
 | `eval benchmark evidence compare` | Compare artifacts and flag workload mismatches. | `read` / `bounded` | - |
+| `eval benchmark report` | Generate or check an offline recipe report from retained artifacts. | `read` / `bounded` | `--format`<br>`--root`<br>`--output`<br>`--check`<br>`--confirm` |
 | `eval benchmark external` | Manage external benchmark evidence. | `read` / `bounded` | - |
 | `eval benchmark external init` | Initialize benchmark evidence storage. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark external sources` | List benchmark sources. | `read` / `bounded` | - |

@@ -1,0 +1,24 @@
+{
+  "schema": "anvil-serving.runtime-metrics-snapshot/v1",
+  "endpoint": "direct loopback /metrics",
+  "engine": "vllm 0.27.1",
+  "model": "qwen38-27b-kelnei-nvfp4-vllm0271-mtp2",
+  "counter_scope": "preflight plus all retained MTP2 capacity cells",
+  "before": {
+    "draft_steps": 187,
+    "draft_tokens": 374,
+    "accepted_tokens": 374
+  },
+  "after": {
+    "draft_steps": 21809,
+    "draft_tokens": 43618,
+    "accepted_tokens": 40982
+  },
+  "delta": {
+    "draft_steps": 21622,
+    "draft_tokens": 43244,
+    "accepted_tokens": 40608,
+    "accepted_draft_token_fraction": 0.9390435667375821
+  },
+  "semantics": "Prometheus counters prove the MTP drafter was active. Acceptance is workload-dependent and does not by itself establish an end-to-end speedup."
+}

@@ -13,6 +13,16 @@ FINDING_TEMPLATE = SKILL.parent / "templates" / "finding.md"
 PUBLICATION_TEMPLATE = SKILL.parent / "templates" / "publication-summary.md"
 DOSSIER_TEMPLATE = SKILL.parent / "templates" / "dossier.md"
 ARTIFACT_SET_TEMPLATES = SKILL.parent / "templates" / "artifact-set"
+REPEATABLE_CAMPAIGNS = ROOT / "docs" / "benchmarks" / "repeatable-campaigns.md"
+CURRENT_CAMPAIGN_EVIDENCE = (
+    ROOT
+    / "docs"
+    / "findings"
+    / "2026-09-04-qwen38-27b-pro6000-possibility-evidence"
+)
+CAPACITY_CAMPAIGN_TICKET = (
+    ROOT / ".tickets" / "2026-09-05-capacity-campaign-jobs-and-cursor-logs.md"
+)
 RUNS = ROOT / "docs" / "benchmarks" / "runs.md"
 AUDIT = ROOT / "docs" / "benchmarks" / "rtx-pro-6000-audit.md"
 PORTAL = ROOT / "docs" / "benchmarks" / "index.md"
@@ -20,6 +30,9 @@ FINDING_FORMAT = ROOT / "docs" / "benchmarks" / "finding-format.md"
 PRO = ROOT / "docs" / "benchmarks" / "hardware" / "rtx-pro-6000.md"
 ARCHIVE = ROOT / "docs" / "BENCHMARKS.md"
 DOSSIERS = ROOT / "docs" / "benchmarks" / "models"
+IMAGE_REMOVAL_TICKET = (
+    ROOT / ".tickets" / "2026-08-30-exact-docker-image-removal-surface.md"
+)
 REFERENCE_FINDING = (
     ROOT / "docs" / "findings" / "2026-08-26-qwen38-flash-next-vision-promotion.md"
 )
@@ -202,6 +215,9 @@ def test_campaign_artifact_set_contract_has_valid_common_templates():
         "summary.json",
         "friction-log.md",
         "restoration.json",
+        "campaign-state.json",
+        "dispatch-packet.md",
+        "coverage-and-gaps.md",
     }
     assert {path.name for path in ARTIFACT_SET_TEMPLATES.iterdir()} == expected_files
 
@@ -228,6 +244,23 @@ def test_campaign_artifact_set_contract_has_valid_common_templates():
     assert all(item["status"] == "pending" for item in roles)
     assert all(item["files"] == [] for item in roles)
     assert all(set(item) == {"role", "status", "files", "reason"} for item in roles)
+
+    campaign_state = json.loads(
+        (ARTIFACT_SET_TEMPLATES / "campaign-state.json").read_text(encoding="utf-8")
+    )
+    assert campaign_state["schema"] == "anvil-serving.benchmark-campaign-state/v1"
+    assert campaign_state["launcher"]["invocation"] == "python -m anvil_serving.cli"
+    assert campaign_state["promotion_authorized"] is False
+    assert [stage["id"] for stage in campaign_state["stages"]] == [
+        "research",
+        "feasibility",
+        "scout",
+        "finalist",
+        "quality",
+        "restoration",
+        "publication",
+    ]
+    assert all(stage["status"] == "pending" for stage in campaign_state["stages"])
 
     source_registry = json.loads(
         (ARTIFACT_SET_TEMPLATES / "source-registry.json").read_text(
@@ -283,6 +316,115 @@ def test_campaign_artifact_set_contract_has_valid_common_templates():
         "kernel-tune-manifest/v1",
     ):
         assert native_schema in reference
+
+
+def test_capacity_repeatability_and_replica_aggregation_contract():
+    skill = SKILL.read_text(encoding="utf-8")
+    reference = ARTIFACT_SET_REFERENCE.read_text(encoding="utf-8")
+
+    for text in (skill, reference):
+        normalized = " ".join(text.split())
+        assert "python -m anvil_serving.cli" in normalized
+        assert "controlled-output" in normalized
+        assert "at least 100 measured requests" in normalized
+        assert "prompt_cache_mode" in normalized
+        assert "unique" in normalized
+        assert "shared" in normalized
+        assert (
+            "request canaries" in normalized
+            or "--request-canaries" in normalized
+        )
+        assert "matched no-speculation control" in normalized
+        assert "anvil-serving.capacity-aggregate/v1" in normalized
+        assert "byte-identical" in normalized
+
+    assert "combine_capacity_artifacts.py" in skill
+    assert "combine_capacity_artifacts.py" in reference
+    assert "two synchronized 50-request replicas" in " ".join(skill.split())
+
+
+def test_repeatable_campaign_workflow_is_source_backed_and_fail_fast():
+    skill = SKILL.read_text(encoding="utf-8")
+    reference = ARTIFACT_SET_REFERENCE.read_text(encoding="utf-8")
+    workflow = REPEATABLE_CAMPAIGNS.read_text(encoding="utf-8")
+    coverage = (CURRENT_CAMPAIGN_EVIDENCE / "coverage-and-gaps.md").read_text(
+        encoding="utf-8"
+    )
+    efficiency = (CURRENT_CAMPAIGN_EVIDENCE / "session-efficiency.md").read_text(
+        encoding="utf-8"
+    )
+
+    report_command = (
+        "python -m anvil_serving.cli eval benchmark report CATALOG --root . "
+        "--output docs/benchmarks/recipe-results.md"
+    )
+    for text in (skill, reference, workflow):
+        normalized = " ".join(text.split())
+        assert report_command in normalized
+        assert "--confirm" in normalized
+        assert "--check" in normalized
+        assert "capacity-v3" in normalized
+        assert "raw token-arrival" in normalized
+        assert "nearest-rank p99" in normalized.lower()
+        assert "nonzero" in normalized
+
+    for name in ("nospec-250k-c1.json", "dflash-k8-250k-c1.json"):
+        artifact = json.loads(
+            (CURRENT_CAMPAIGN_EVIDENCE / name).read_text(encoding="utf-8")
+        )
+        assert artifact["schema"] == "anvil-serving.benchmark/v1"
+        assert artifact["completed"] == 1
+        assert artifact["failed"] == 0
+        assert artifact["context_tokens"] == 250000
+        assert artifact["max_context_tokens"] == 262144
+        assert artifact["request_timings"][0]["prompt_tokens"] == 241153
+
+    normalized_coverage = " ".join(coverage.split())
+    assert "241,153 actual prompt tokens" in normalized_coverage
+    assert "single-request baseline coverage" in normalized_coverage
+    assert "not all repeated near the limit" in normalized_coverage
+
+    assert "175,034,893" in efficiency
+    assert "169,816,320 (97.3%)" in efficiency
+    assert "not unique semantic-token counts" in efficiency
+    assert "makes no savings claim" in efficiency
+
+    ticket = CAPACITY_CAMPAIGN_TICKET.read_text(encoding="utf-8")
+    assert "existing benchmark job/store/worker contracts" in ticket
+    assert "cursor" in ticket
+    assert "deferred infrastructure" in ticket
+
+    for path in (
+        REPEATABLE_CAMPAIGNS,
+        ARTIFACT_SET_TEMPLATES / "dispatch-packet.md",
+        ARTIFACT_SET_TEMPLATES / "coverage-and-gaps.md",
+        CURRENT_CAMPAIGN_EVIDENCE / "coverage-and-gaps.md",
+        CURRENT_CAMPAIGN_EVIDENCE / "session-efficiency.md",
+        CAPACITY_CAMPAIGN_TICKET,
+    ):
+        text = path.read_text(encoding="utf-8")
+        assert "C:/Users/" not in text
+        assert "C:\\Users\\" not in text
+
+
+def test_exact_image_removal_ticket_preserves_managed_cleanup_boundary():
+    ticket = IMAGE_REMOVAL_TICKET.read_text(encoding="utf-8")
+    normalized_ticket = " ".join(ticket.split())
+
+    for required in (
+        "brandonmusic/GLM-5.3-Flash-tr3-4bpw@5ab363...",
+        "9,725 bytes",
+        "wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1@319d66...",
+        "137,095,744,155 bytes",
+        "protected exact Qwen revisions",
+        "31.7 to 1.8 GB",
+        "1.3 to 1.1 GB",
+        "no raw Docker image deletion",
+        "no broad Docker prune",
+    ):
+        assert required in normalized_ticket
+
+    assert "Build-cache reclamation is not Docker image deletion" in normalized_ticket
 
 
 def test_publication_surfaces_use_neutral_motivation_language():

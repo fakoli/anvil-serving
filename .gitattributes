@@ -1,4 +1,8 @@
 docs/CLI-COMMAND-MANIFEST.json text eol=lf
+# Recipe reports bind source bytes; preserve their hashes on Windows and Linux.
+docs/benchmarks/recipe-catalog.json text eol=lf
+docs/benchmarks/recipe-results.md text eol=lf
+configs/qwen38-27b-*pro6000*.toml text eol=lf
 # The packaged Node entry point is executed on macOS/Linux and must keep its
 # shebang byte-stable when built or checked out on Windows.
 anvil_serving/_node/*.mjs text eol=lf
