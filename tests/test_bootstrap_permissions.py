@@ -174,6 +174,54 @@ def test_windows_classifier_keeps_deny_conservative_and_validates_inherit_only()
     )
 
 
+@pytest.mark.parametrize("ancestor", (False, True))
+def test_windows_os_service_owner_is_trusted_only_for_ancestors(ancestor: bool) -> None:
+    service = _sid(5, 80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464)
+    expected = Verdict.OWNER_READONLY if ancestor else Verdict.UNTRUSTED_WRITABLE
+    assert shim._classify_windows_acl(service, CURRENT, _acl(), ancestor=ancestor) is expected
+    grant = _acl(_ace(0, service, 0x2))
+    expected = Verdict.OWNER_WRITABLE if ancestor else Verdict.UNTRUSTED_WRITABLE
+    assert shim._classify_windows_acl(service, CURRENT, grant, ancestor=ancestor) is expected
+    # A trusted grant does not imply that the current user can write the object.
+    grant = _acl(_ace(0, service, 0x40000))
+    expected = Verdict.OWNER_READONLY if ancestor else Verdict.UNTRUSTED_WRITABLE
+    assert shim._classify_windows_acl(CURRENT, CURRENT, grant, ancestor=ancestor) is expected
+
+
+@pytest.mark.parametrize("component", range(6))
+def test_windows_ancestor_exception_does_not_trust_similar_service_sids(component: int) -> None:
+    components = [80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464]
+    components[component] += 1
+    unknown = _sid(5, *components)
+    assert (
+        shim._classify_windows_acl(unknown, CURRENT, _acl(), ancestor=True)
+        is Verdict.UNTRUSTED_WRITABLE
+    )
+    grant = _acl(_ace(0, unknown, 0x40000))
+    assert (
+        shim._classify_windows_acl(CURRENT, CURRENT, grant, ancestor=True)
+        is Verdict.UNTRUSTED_WRITABLE
+    )
+
+
+def test_windows_os_owned_ancestor_still_refuses_untrusted_mutation_or_unknown_acl() -> None:
+    service = _sid(5, 80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464)
+    for mask in (0x10, 0x100, 0x40, 0x10000, 0x40000, 0x80000, 0x40000000, 0x10000000):
+        dacl = _acl(_ace(0, service, 0x10000000), _ace(0, OTHER, mask))
+        assert (
+            shim._classify_windows_acl(service, CURRENT, dacl, ancestor=True)
+            is Verdict.UNTRUSTED_WRITABLE
+        )
+    assert (
+        shim._classify_windows_acl(service, CURRENT, _acl(_ace(2, service, 0)), ancestor=True)
+        is Verdict.INDETERMINATE
+    )
+    assert (
+        shim._classify_windows_acl(service, CURRENT, None, ancestor=True)
+        is Verdict.UNTRUSTED_WRITABLE
+    )
+
+
 @pytest.mark.parametrize(
     "dacl",
     (

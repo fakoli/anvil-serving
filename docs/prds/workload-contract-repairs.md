@@ -45,6 +45,27 @@ Repair request omission and identifier validation with independent producer/cons
 
 ## Tasks
 
+### T013: Pin manifest fixture timestamps to the injected clock
+
+**Feature:** F001
+**Priority:** medium
+**Type:** bugfix
+**Likely files:** tests/test_manifest_workloads.py, .tickets/2026-09-05-manifest-fixture-clock.md
+
+Full source verification at f0a369b2 reproduced 33 manifest-workload failures after the real clock passed the fixtures' frozen 2026-09-05 23:00 UTC clock. The production future-mtime guard is correct. Add a test-only file helper that writes manifest text and pins its mtime with os.utime to a fixed instant before _clock; use it for the main _manifest helper and regular sibling fixtures that are observed against a frozen clock. Preserve intentionally future mtimes as explicit overrides, existing budget-file timestamps, native filesystem reads, drift tests and all runtime timestamp assertions. Do not move the fixed clock into the future, use wall-clock now, monkeypatch production stat/time checks or weaken MAX_FUTURE_SECONDS. Add a literal mtime assertion for the helper and a boundary matrix with real fixture mtimes at observed+30 seconds (allowed) and observed+31 seconds (quarantined), retaining a valid sibling. That matrix must fail if the production future check is removed, without changing production code.
+
+**Acceptance criteria:**
+
+- All manifest fixtures observed against frozen clocks have explicit file timestamps, including regular valid siblings.
+- Existing runtime/future/drift tests retain their intended independent failure causes.
+- Literal fixture-mtime and future-boundary tests pass with actual temporary files; production behavior is unchanged.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_manifest_workloads.py -x -q`
+- `python -m ruff check tests/test_manifest_workloads.py`
+- `git diff --check`
+
 ### T001: Omit absent optional controller workload query fields
 
 **Feature:** F001
@@ -106,6 +127,29 @@ Synchronize the existing Python markup maxlength assertion.
 **Verification:**
 
 - `python scripts/run_tests.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py -x -q`
+- `git diff --check`
+
+### T012: Repair rendered methodology links and reconcile CSP evidence
+
+**Feature:** F001
+**Priority:** low
+**Type:** modify
+**Likely files:** docs/benchmarks/methodology.md, .tickets/2026-09-05-dashboard-workload-csp.md, .tickets/2026-09-05-scheduler-methodology-links.md
+**Dependencies:** T006
+
+Rendered HTML at the replica documentation checkpoint shows literal [tier transition] because its Markdown destination is separated by a newline. Keep that label/destination contiguous and point campaign artifact set to the published repeatable-campaigns guide instead of the findings index. Do not change qualification thresholds, promotion authority or claim a live benchmark. Track the concrete rendered defect in the new ticket. Update the CSP ticket's stale running/pending wording: its postcommit candidate 781708d5 / EV321129F4 passed 27 focused tests and Ruff; twenty consecutive repeats of the four framing cases passed (80 cases), but the original WinError 10053 cause remains unproven and no masking patch was made. Formal consolidated acceptance and deployment remain pending.
+
+**Acceptance criteria:**
+
+- Rendered methodology contains working tier-transition and repeatable-campaign links, not a literal Markdown label.
+- CSP record distinguishes completed source tests, unreproduced transport interruption and pending formal/deployment gates.
+- No source runtime or qualification policy changes.
+
+**Verification:**
+
+- `python -m mkdocs build --strict`
+- `python scripts/check_markdown_links.py --root .`
+- `python -c "from pathlib import Path; h=Path('site/benchmarks/methodology/index.html').read_text(encoding='utf-8'); assert '../../cli/router/#tier-transitions' in h; assert '../repeatable-campaigns/' in h; assert '[tier transition]' not in h"`
 - `git diff --check`
 
 ### T010: Declare the dashboard's actual startup options

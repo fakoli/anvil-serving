@@ -282,11 +282,11 @@ authorize a recipe load, router change, benchmark, promotion, or deployment.
    retry, implicit fallback, or second-member selection.
 4. **Restore and decide.** Restore the captured admission, member-intent,
    recipe, router, and topology starting state with the managed
-   [router lifecycle](../cli/router.md#lifecycle) and [tier transition]
-   (../cli/router.md#tier-transitions) procedures. Retain post-restoration
+   [router lifecycle](../cli/router.md#lifecycle) and
+   [tier transition](../cli/router.md#tier-transitions) procedures. Retain post-restoration
    status/log evidence and the separately authorized real-client gates. Keep
    raw evidence, failures, configuration/identity, and restoration records in
-   the [campaign artifact set](../findings/README.md) and
+   the [campaign artifact set](repeatable-campaigns.md) and
    publish only sanitized derived claims. Human review may then decide whether
    promotion is warranted; a complete qualification artifact never promotes a
    route by itself.
