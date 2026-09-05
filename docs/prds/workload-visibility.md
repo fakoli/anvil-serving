@@ -2165,6 +2165,13 @@ and package metadata. Keep existing telemetry behavior intact; workload renderin
 uses textContent/createElement/replaceChildren only, not data-derived innerHTML.
 Do not infer records, authority or freshness from telemetry or DOM state.
 
+Load the classic script from /workloads.js with defer. Keep credential/request
+state in its closure and expose only a frozen window.AnvilWorkloads.setVisible
+bridge. The existing activateTab function calls that bridge when changing tabs;
+initialization also reads the workload panel's hidden state in case script load
+finishes after a tab change. document.visibilitychange is owned inside the script.
+Do not couple workload refresh to the existing telemetry refreshAll/auth form.
+
 A separate password form holds its workload token only in module memory after
 Connect; clear the input and never read/write it via session/local storage,
 cookies, URLs, telemetry authToken or HTML bootstrap. Disconnect clears memory,
@@ -2228,6 +2235,8 @@ chain is introduced. Reuse the exact environment mapping selected by the server.
 Load one immutable policy with load_authorization_policy, passing the configured
 legacy telemetry token for duplicate-material refusal. This policy resolves only
 its declared references. Create one WorkloadHTTPService and pass it to create_server.
+Retain the loader's absolute-local-file requirement for the policy path; focused
+help must state it, not silently discover or resolve a different policy location.
 Missing/invalid explicit workload configuration or policy leaves service None
 and ordinary telemetry available. Catch only at this workload startup boundary
 with no raw path, credential or exception logging. No per-request policy reload.
