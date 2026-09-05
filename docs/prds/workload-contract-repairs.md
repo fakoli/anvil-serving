@@ -389,4 +389,3 @@ After T008 is integrated, run the existing audit_cli_references.py --update --sc
 - `python scripts/audit_cli_references.py --check --scope full`
 - `python scripts/run_tests.py tests/test_cli_reference_audit.py tests/test_docs_command_invocations.py -x -q`
 - `git diff --check`
-

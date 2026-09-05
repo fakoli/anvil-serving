@@ -87,4 +87,3 @@ def build_receiver_zipapp(validator_source: bytes, receiver_source: bytes) -> by
             "receiver artifact exceeds the supported bound",
         )
     return artifact
-

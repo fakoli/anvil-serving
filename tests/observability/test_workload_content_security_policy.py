@@ -54,4 +54,3 @@ def test_dashboard_document_and_packaged_workload_script_have_exact_safe_csp() -
     assert script == files("anvil_serving.observability.dashboard.static").joinpath(
         "workloads.js"
     ).read_bytes()
-

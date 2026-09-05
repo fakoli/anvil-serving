@@ -80,4 +80,3 @@ acceptance or deployment evidence.
   `python scripts/run_tests.py tests/observability/test_workload_http.py tests/observability/test_controller_workload_source.py -x -q`.
   Claim-bound results are recorded after commit; this ticket is not evidence
   of a full-suite, CI, formal acceptance, or live deployment pass.
-
