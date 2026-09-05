@@ -56,6 +56,7 @@ def commands() -> tuple[CommandNode, ...]:
                     "Read-only metadata inspection for one controller container.",
                     "anvil_serving.controller_diagnostics",
                     role="controller",
+                    handler_attribute="command",
                     options=(
                         _option(
                             "--container",
@@ -74,6 +75,7 @@ def commands() -> tuple[CommandNode, ...]:
                     "Read bounded metadata-only controller audit events.",
                     "anvil_serving.controller_diagnostics",
                     role="controller",
+                    handler_attribute="command",
                     options=(
                         _option(
                             "--container",

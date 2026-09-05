@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving import cli
+from anvil_serving import controller_diagnostics
 from anvil_serving import harness
 from anvil_serving import host
 from anvil_serving import benchmark, multiplexer, preflight
@@ -19,6 +20,41 @@ from anvil_serving.commands import COMMAND_TREE, CommandNode, CommandOption, Han
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _public_inspect_result() -> dict[str, object]:
+    container_id = "a" * 64
+    return {
+        **controller_diagnostics.safe_result(
+            "inspect", "ok", container_id=container_id
+        ),
+        "running": True,
+        "exit_code": 0,
+        "health": "healthy",
+        "configured_bindings": [
+            {"container_port": 8080, "host_port": 8080, "bind_class": "loopback"}
+        ],
+        "observed_bindings": [],
+    }
+
+
+def _public_logs_result(
+    state: str = "ok", *, container_id: str | None = None
+) -> dict[str, object]:
+    if state == "ok" and container_id is None:
+        container_id = "b" * 64
+    return {
+        **controller_diagnostics.safe_result(
+            "logs", state, container_id=container_id
+        ),
+        "events": [],
+        "line_count": 0,
+        "returned_events": 0,
+        "rejected_lines": 0,
+        "unknown_fields": 0,
+        "unknown_codes": 0,
+        "counters_saturated": False,
+    }
 
 
 def _active_cli_document_paths():
@@ -45,6 +81,272 @@ def test_python_version_guard_blocks_even_older_interpreter():
 def test_python_version_guard_allows_supported_interpreter():
     assert cli._check_python_version((3, 11, 0)) is None
     assert cli._check_python_version((3, 13, 0)) is None
+
+
+def test_cli_local_diagnostic_json_uses_only_validated_canonical_result(
+    monkeypatch, capsys
+):
+    monkeypatch.setattr(cli, "_resolve_dispatch_plan", lambda *_args: None)
+    monkeypatch.setattr(
+        controller_diagnostics,
+        "inspect_controller",
+        lambda _container: _public_inspect_result(),
+    )
+
+    assert cli.main([
+        "--json", "controller", "inspect", "--container", "private-container-marker"
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["command"] == "controller inspect"
+    assert payload["context"] is None
+    assert payload["warnings"] == []
+    assert payload["data"] == _public_inspect_result()
+    assert "private-container-marker" not in json.dumps(payload)
+
+
+def test_cli_local_diagnostic_parser_refusal_does_not_invoke_or_echo_operands(
+    monkeypatch, capsys
+):
+    monkeypatch.setattr(cli, "_resolve_dispatch_plan", lambda *_args: None)
+    monkeypatch.setattr(
+        controller_diagnostics,
+        "controller_logs",
+        lambda *_args: pytest.fail("diagnostic invoked after invalid tail"),
+    )
+
+    assert cli.main([
+        "--json",
+        "controller",
+        "logs",
+        "--container",
+        "private-container-marker",
+        "--tail",
+        "1_0-private-tail-marker",
+    ]) == 2
+    rendered = capsys.readouterr()
+    payload = json.loads(rendered.out)
+    assert rendered.err == ""
+    assert payload["command"] == "controller logs"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["data"] is None
+    assert payload["error"]["code"] == "invalid_diagnostic_arguments"
+    assert "private-container-marker" not in rendered.out + rendered.err
+    assert "private-tail-marker" not in rendered.out + rendered.err
+
+
+@pytest.mark.parametrize("json_mode", (False, True))
+def test_cli_local_diagnostic_literal_separator_help_is_captured_and_operand_free(
+    monkeypatch, capsys, json_mode
+):
+    monkeypatch.setattr(cli, "_resolve_dispatch_plan", lambda *_args: None)
+    monkeypatch.setattr(
+        controller_diagnostics,
+        "controller_logs",
+        lambda *_args: pytest.fail("diagnostic invoked after literal separator"),
+    )
+    argv = [
+        "controller",
+        "logs",
+        "--container",
+        "safe",
+        "--",
+        "--help",
+        "private-after-separator-marker",
+    ]
+    if json_mode:
+        argv.insert(0, "--json")
+
+    assert cli.main(argv) == 2
+    rendered = capsys.readouterr()
+    assert "private-after-separator-marker" not in rendered.out + rendered.err
+    if json_mode:
+        payload = json.loads(rendered.out)
+        assert payload["data"] is None
+        assert payload["error"]["code"] == "invalid_diagnostic_arguments"
+        assert payload["context"] is None and payload["warnings"] == []
+    else:
+        assert rendered.out == ""
+        assert rendered.err == "invalid diagnostic arguments\n"
+
+
+def test_cli_remote_diagnostic_unwraps_only_exact_transport_core(
+    tmp_path, monkeypatch, capsys
+):
+    topology = _write_remote_controller_topology(tmp_path, "controller-inspect")
+    monkeypatch.setattr(
+        cli,
+        "execute_plan",
+        lambda plan, operation, **_kwargs: cli.TransportResult(
+            operation.name,
+            "controller",
+            {"ok": True, "data": _public_inspect_result()},
+        ),
+    )
+
+    assert cli.main([
+        "--json",
+        "controller",
+        "inspect",
+        "--topology",
+        str(topology),
+        "--container",
+        "private-container-marker",
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["command"] == "controller inspect"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["data"] == _public_inspect_result()
+    assert "private-container-marker" not in json.dumps(payload)
+    assert str(topology) not in json.dumps(payload)
+
+
+@pytest.mark.parametrize("json_mode", (False, True))
+def test_cli_remote_diagnostic_rejects_unvalidated_nested_data_without_echo(
+    tmp_path, monkeypatch, capsys, json_mode
+):
+    topology = _write_remote_controller_topology(tmp_path, "controller-inspect")
+    hostile = _public_inspect_result()
+    hostile["configured_bindings"] = [
+        {
+            "container_port": 8080,
+            "host_port": 8080,
+            "bind_class": "loopback",
+            "private_nested_marker": "private-nested-marker",
+        }
+    ]
+    monkeypatch.setattr(
+        cli,
+        "execute_plan",
+        lambda plan, operation, **_kwargs: cli.TransportResult(
+            operation.name, "controller", {"ok": True, "data": hostile}
+        ),
+    )
+
+    argv = [
+        "controller", "inspect", "--topology", str(topology), "--container", "safe"
+    ]
+    if json_mode:
+        argv.insert(0, "--json")
+    assert cli.main(argv) == 4
+    rendered = capsys.readouterr()
+    assert "private-nested-marker" not in rendered.out + rendered.err
+    if json_mode:
+        payload = json.loads(rendered.out)
+        assert payload["data"] is None
+        assert payload["error"]["code"] == "controller_diagnostic_response_invalid"
+    else:
+        assert rendered.out == ""
+        assert rendered.err == "controller diagnostic response invalid\n"
+
+
+def test_cli_diagnostic_resolution_failure_is_fixed_and_operand_free(monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli,
+        "_resolve_dispatch_plan",
+        lambda *_args: (_ for _ in ()).throw(
+            cli.TargetResolutionError("private-resolution-marker")
+        ),
+    )
+
+    assert cli.main([
+        "--json", "controller", "inspect", "--container", "private-container-marker"
+    ]) == 2
+    rendered = capsys.readouterr()
+    payload = json.loads(rendered.out)
+    assert payload["command"] == "controller inspect"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["data"] is None
+    assert payload["error"]["code"] == "invalid_diagnostic_arguments"
+    assert "private-resolution-marker" not in rendered.out + rendered.err
+    assert "private-container-marker" not in rendered.out + rendered.err
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    (
+        lambda value: value.__setitem__("unexpected", "private-extra-marker"),
+        lambda value: value["configured_bindings"][0].__setitem__("host_port", 0),
+        lambda value: value.__setitem__("running", 1),
+        lambda value: value.__setitem__("container_id", "not-a-container-id"),
+    ),
+)
+def test_diagnostic_public_validator_rejects_load_bearing_malformed_inspection(mutate):
+    value = _public_inspect_result()
+    mutate(value)
+    with pytest.raises(ValueError, match="invalid diagnostic public result"):
+        controller_diagnostics.validate_public_result(value, expected_kind="inspect")
+
+
+@pytest.mark.parametrize(
+    ("kind", "value"),
+    (
+        ("inspect", controller_diagnostics.safe_result("inspect", "unavailable")),
+        ("logs", controller_diagnostics.safe_result("logs", "ok", container_id="c" * 64)),
+    ),
+)
+def test_diagnostic_public_validator_requires_complete_kind_schema(kind, value):
+    with pytest.raises(ValueError, match="invalid diagnostic public result"):
+        controller_diagnostics.validate_public_result(value, expected_kind=kind)
+
+
+def test_diagnostic_public_validator_rejects_hostile_scalar_without_comparison(
+    monkeypatch, capsys
+):
+    class HostileString(str):
+        def __ne__(self, _other):
+            raise RuntimeError("private-comparison-marker")
+
+    value = _public_inspect_result()
+    value["schema_version"] = HostileString(value["schema_version"])
+    with pytest.raises(ValueError, match="invalid diagnostic public result") as exc:
+        controller_diagnostics.validate_public_result(value, expected_kind="inspect")
+    assert "private-comparison-marker" not in str(exc.value)
+
+    monkeypatch.setattr(cli, "_resolve_dispatch_plan", lambda *_args: None)
+    monkeypatch.setattr(
+        controller_diagnostics, "inspect_controller", lambda _container: value
+    )
+    assert cli.main(
+        ["--json", "controller", "inspect", "--container", "safe"]
+    ) == 4
+    rendered = capsys.readouterr()
+    payload = json.loads(rendered.out)
+    assert payload["error"]["code"] == "controller_diagnostic_response_invalid"
+    assert "private-comparison-marker" not in rendered.out + rendered.err
+
+
+@pytest.mark.parametrize("counter", (False, 0.0))
+def test_diagnostic_public_validator_rejects_coerced_failure_counters(counter):
+    value = _public_logs_result("unavailable")
+    value["line_count"] = counter
+    with pytest.raises(ValueError, match="invalid diagnostic public result"):
+        controller_diagnostics.validate_public_result(value, expected_kind="logs")
+
+
+def test_diagnostic_public_validator_enforces_success_identity_and_saturation():
+    missing_identity = _public_logs_result()
+    missing_identity["container_id"] = None
+    with pytest.raises(ValueError, match="invalid diagnostic public result"):
+        controller_diagnostics.validate_public_result(
+            missing_identity, expected_kind="logs"
+        )
+
+    impossible_saturation = _public_logs_result()
+    impossible_saturation["counters_saturated"] = True
+    with pytest.raises(ValueError, match="invalid diagnostic public result"):
+        controller_diagnostics.validate_public_result(
+            impossible_saturation, expected_kind="logs"
+        )
+
+    exact_cap = _public_logs_result()
+    exact_cap["unknown_fields"] = controller_diagnostics._MAX_COUNTER
+    assert controller_diagnostics.validate_public_result(
+        exact_cap, expected_kind="logs"
+    )["counters_saturated"] is False
+    exact_cap["counters_saturated"] = True
+    assert controller_diagnostics.validate_public_result(
+        exact_cap, expected_kind="logs"
+    )["counters_saturated"] is True
 
 
 def test_dashboard_serve_help_is_supported_and_read_only(capsys):
@@ -618,7 +920,11 @@ def test_cli_remote_controller_logs_dispatches_only_valid_tails(
     def fake_execute(plan, operation, **_kwargs):
         seen["plan"] = plan
         seen["operation"] = operation
-        return cli.TransportResult(operation.name, "controller", {"ok": True})
+        return cli.TransportResult(
+            operation.name,
+            "controller",
+            {"ok": True, "data": _public_logs_result()},
+        )
 
     monkeypatch.setattr(cli, "execute_plan", fake_execute)
     monkeypatch.setattr(

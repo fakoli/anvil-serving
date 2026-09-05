@@ -8,6 +8,8 @@ generic command runner, raw log mode, or remote daemon selection.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import os
 import ipaddress
 import json
@@ -19,6 +21,8 @@ import threading
 import time
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Optional
+
+from .operator_output import CommandResult, OperatorError, TransportError, UsageError
 
 
 SCHEMA_VERSION = "controller-diagnostics/v1"
@@ -62,6 +66,24 @@ _KNOWN_ERROR_CODES = frozenset(
     )
 )
 _EVENT_KEYS = frozenset(("operation", "event", "error_code", "status", "elapsed_ms"))
+_PUBLIC_COMMON_KEYS = frozenset(
+    ("schema_version", "kind", "state", "error_code", "container_id", "truncated")
+)
+_PUBLIC_INSPECT_KEYS = _PUBLIC_COMMON_KEYS | frozenset(
+    ("running", "exit_code", "health", "configured_bindings", "observed_bindings")
+)
+_PUBLIC_LOGS_KEYS = _PUBLIC_COMMON_KEYS | frozenset(
+    (
+        "events",
+        "line_count",
+        "returned_events",
+        "rejected_lines",
+        "unknown_fields",
+        "unknown_codes",
+        "counters_saturated",
+    )
+)
+_BIND_CLASSES = frozenset(("loopback", "wildcard", "private", "public", "unknown"))
 _INSPECT_TEMPLATE = (
     '{"container_id":{{json .Id}},'
     '"running":{{json .State.Running}},'
@@ -163,6 +185,205 @@ def safe_result(
         "container_id": container_id,
         "truncated": truncated,
     }
+
+
+def _public_failure() -> ValueError:
+    return ValueError("invalid diagnostic public result")
+
+
+def _public_int(value: object, maximum: int) -> int:
+    if type(value) is not int or not 0 <= value <= maximum:
+        raise _public_failure()
+    return value
+
+
+def _public_port(value: object) -> int:
+    port = _public_int(value, 65535)
+    if port < 1:
+        raise _public_failure()
+    return port
+
+
+def _validate_public_common(value: object, expected_kind: str) -> dict[str, object]:
+    if type(value) is not dict or type(expected_kind) is not str or expected_kind not in {"inspect", "logs"}:
+        raise _public_failure()
+    if any(type(key) is not str for key in value):
+        raise _public_failure()
+    schema_version = value.get("schema_version")
+    if type(schema_version) is not str or schema_version != SCHEMA_VERSION:
+        raise _public_failure()
+    kind = value.get("kind")
+    if type(kind) is not str or kind != expected_kind:
+        raise _public_failure()
+    state = value.get("state")
+    if type(state) is not str or state not in _STATES:
+        raise _public_failure()
+    error_code = value.get("error_code")
+    expected_error = None if state == "ok" else "diagnostic_" + state.replace("-", "_")
+    if error_code is not None and type(error_code) is not str:
+        raise _public_failure()
+    if error_code != expected_error:
+        raise _public_failure()
+    container_id = value.get("container_id")
+    if container_id is not None and (
+        type(container_id) is not str or re.fullmatch(r"[0-9a-f]{64}", container_id) is None
+    ):
+        raise _public_failure()
+    if state == "ok" and container_id is None:
+        raise _public_failure()
+    truncated = value.get("truncated")
+    if type(truncated) is not bool or (state in {"timeout", "output-limit"} and not truncated):
+        raise _public_failure()
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "kind": expected_kind,
+        "state": state,
+        "error_code": error_code,
+        "container_id": container_id,
+        "truncated": truncated,
+    }
+
+
+def _validate_public_binding(value: object) -> dict[str, object]:
+    if (
+        type(value) is not dict
+        or any(type(key) is not str for key in value)
+        or set(value) != {"container_port", "host_port", "bind_class"}
+    ):
+        raise _public_failure()
+    bind_class = value["bind_class"]
+    if type(bind_class) is not str or bind_class not in _BIND_CLASSES:
+        raise _public_failure()
+    return {
+        "container_port": _public_port(value["container_port"]),
+        "host_port": _public_port(value["host_port"]),
+        "bind_class": bind_class,
+    }
+
+
+def _validate_public_event(value: object) -> dict[str, object]:
+    if (
+        type(value) is not dict
+        or any(type(key) is not str for key in value)
+        or not set(value).issubset(_EVENT_KEYS)
+    ):
+        raise _public_failure()
+    result: dict[str, object] = {}
+    identity = False
+    for key, allowed in (("operation", _KNOWN_OPERATIONS), ("event", _KNOWN_EVENTS), ("error_code", _KNOWN_ERROR_CODES)):
+        if key in value:
+            item = value[key]
+            if type(item) is not str or item not in allowed:
+                raise _public_failure()
+            result[key] = item
+            identity = identity or key in {"operation", "event"}
+    if not identity:
+        raise _public_failure()
+    if "status" in value:
+        result["status"] = _public_int(value["status"], 599)
+        if result["status"] < 100:
+            raise _public_failure()
+    if "elapsed_ms" in value:
+        elapsed = value["elapsed_ms"]
+        if type(elapsed) not in {int, float} or (type(elapsed) is float and not math.isfinite(elapsed)):
+            raise _public_failure()
+        if not 0 <= elapsed <= 3_600_000:
+            raise _public_failure()
+        result["elapsed_ms"] = elapsed
+    return result
+
+
+def validate_public_result(value: object, *, expected_kind: str) -> dict[str, object]:
+    """Return a fresh exact v1 public projection or raise a fixed error.
+
+    This is the boundary for local command wrappers and controller transport
+    payloads.  It accepts only built-in containers and scalars so an object
+    supplied by a remote transport cannot run custom mapping/list behavior
+    while being copied into an operator-facing envelope.
+    """
+
+    common = _validate_public_common(value, expected_kind)
+    assert type(value) is dict
+    state = common["state"]
+    if expected_kind == "inspect":
+        if set(value) != _PUBLIC_INSPECT_KEYS:
+            raise _public_failure()
+        if state != "ok":
+            if any(value[key] is not None for key in ("running", "exit_code", "health")):
+                raise _public_failure()
+            configured = value["configured_bindings"]
+            observed = value["observed_bindings"]
+            if type(configured) is not list or configured or type(observed) is not list or observed:
+                raise _public_failure()
+            return {
+                **common,
+                "running": None,
+                "exit_code": None,
+                "health": None,
+                "configured_bindings": [],
+                "observed_bindings": [],
+            }
+        if type(value["running"]) is not bool:
+            raise _public_failure()
+        exit_code = _public_int(value["exit_code"], 255)
+        health = value["health"]
+        if type(health) is not str or health not in {"healthy", "unhealthy", "starting", "none"}:
+            raise _public_failure()
+        bindings: dict[str, list[dict[str, object]]] = {}
+        for key in ("configured_bindings", "observed_bindings"):
+            raw = value[key]
+            if type(raw) is not list or len(raw) > _MAX_BINDINGS:
+                raise _public_failure()
+            bindings[key] = [_validate_public_binding(item) for item in raw]
+        return {**common, "running": value["running"], "exit_code": exit_code, "health": health, **bindings}
+
+    if set(value) != _PUBLIC_LOGS_KEYS:
+        raise _public_failure()
+    if state != "ok":
+        raw_events = value["events"]
+        if type(raw_events) is not list or raw_events:
+            raise _public_failure()
+        counters = {
+            key: _public_int(value[key], _MAX_COUNTER)
+            for key in (
+                "line_count",
+                "returned_events",
+                "rejected_lines",
+                "unknown_fields",
+                "unknown_codes",
+            )
+        }
+        saturated = value["counters_saturated"]
+        if (
+            any(counter != 0 for counter in counters.values())
+            or type(saturated) is not bool
+            or saturated
+        ):
+            raise _public_failure()
+        return {
+            **common,
+            "events": [],
+            "line_count": 0,
+            "returned_events": 0,
+            "rejected_lines": 0,
+            "unknown_fields": 0,
+            "unknown_codes": 0,
+            "counters_saturated": False,
+        }
+    raw_events = value["events"]
+    if type(raw_events) is not list or len(raw_events) > _MAX_EVENTS:
+        raise _public_failure()
+    events = [_validate_public_event(item) for item in raw_events]
+    counters = {key: _public_int(value[key], _MAX_COUNTER) for key in ("line_count", "returned_events", "rejected_lines", "unknown_fields", "unknown_codes")}
+    saturated = value["counters_saturated"]
+    if (
+        counters["returned_events"] != len(events)
+        or counters["line_count"] < counters["returned_events"] + counters["rejected_lines"]
+        or type(saturated) is not bool
+        or (saturated and _MAX_COUNTER not in counters.values())
+    ):
+        raise _public_failure()
+    return {**common, "events": events, **counters, "counters_saturated": saturated}
 
 
 def _child_environment(environment: Optional[Mapping[str, str]]) -> dict[str, str]:
@@ -806,6 +1027,55 @@ def run(argv: Optional[list[str]] = None) -> dict[str, object]:
     if args.command == "inspect":
         return inspect_controller(args.container)
     return controller_logs(args.container, args.tail)
+
+
+def command(argv: Optional[list[str]] = None) -> CommandResult | int:
+    """Return one validated diagnostic result for the root command dispatcher.
+
+    The focused ``main`` keeps its historical argparse behavior.  This adapter
+    is deliberately narrower: invalid parser output is discarded before it can
+    become a root CLI envelope. Root dispatch is the sole owner of help handling.
+    """
+
+    tokens = [] if argv is None else list(argv)
+    captured = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(captured), contextlib.redirect_stderr(captured):
+            result = run(tokens)
+    except SystemExit:
+        return CommandResult(
+            error=UsageError(
+                "invalid diagnostic arguments", code="invalid_diagnostic_arguments"
+            )
+        )
+    except Exception:
+        return CommandResult(
+            error=TransportError(
+                "controller diagnostic transport failed",
+                code="controller_diagnostic_transport_failed",
+            )
+        )
+    expected_kind = tokens[0] if tokens else ""
+    try:
+        public = validate_public_result(result, expected_kind=expected_kind)
+    except ValueError:
+        return CommandResult(
+            error=TransportError(
+                "controller diagnostic response invalid",
+                code="controller_diagnostic_response_invalid",
+            )
+        )
+    human = json.dumps(public, sort_keys=True, ensure_ascii=True) + "\n"
+    if public["state"] == "ok":
+        return CommandResult(data=public, human_stdout=human)
+    return CommandResult(
+        data=public,
+        error=OperatorError(
+            "controller diagnostic returned a non-ok state",
+            code=public["error_code"],
+        ),
+        human_stdout=human,
+    )
 
 
 def main(argv: Optional[list[str]] = None) -> int:
