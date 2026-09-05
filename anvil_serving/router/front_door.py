@@ -1171,13 +1171,26 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
             self._json(200, payload)
 
-        def _transition_status(self, tier_id: Optional[str]) -> None:
+        def _transition_member_kwargs(self, body: dict) -> dict:
+            """Validate an explicit member even for previews, without probing."""
+            if "member_id" not in body:
+                return {}
+            tier_id, member_id = body.get("tier_id"), body["member_id"]
+            if type(tier_id) is not str or not tier_id or type(member_id) is not str or not member_id:
+                raise ValueError("invalid transition scope")
+            validate = getattr(backend, "validate_transition_target", None)
+            if not callable(validate):
+                raise ValueError("member transition unavailable")
+            validate(tier_id, member_id)
+            return {"member_id": member_id}
+
+        def _transition_status(self, tier_id: Optional[str], **member_kwargs) -> None:
             status_fn = getattr(backend, "transition_status", None)
             if not callable(status_fn):
                 self._error(503, "service_unavailable", "transition management unavailable")
                 return
             try:
-                self._json(200, status_fn(tier_id))
+                self._json(200, status_fn(tier_id, **member_kwargs))
             except (KeyError, ValueError):
                 self._error(400, "invalid_transition", "invalid transition request")
             except Exception:  # noqa: BLE001 - management errors are content-free
@@ -1186,8 +1199,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def _handle_transition(self, body: dict) -> None:
             action = body.get("action")
             tier_id = body.get("tier_id")
+            try:
+                member_kwargs = self._transition_member_kwargs(body)
+            except (KeyError, ValueError):
+                self._error(400, "invalid_transition", "invalid transition request")
+                return
+            except Exception:
+                self._error(503, "transition_failed", "transition operation failed")
+                return
             if action == "status":
-                self._transition_status(tier_id if isinstance(tier_id, str) else None)
+                self._transition_status(tier_id if isinstance(tier_id, str) else None, **member_kwargs)
                 return
             if not isinstance(tier_id, str) or not tier_id:
                 self._error(400, "invalid_transition", "tier_id is required")
@@ -1199,6 +1220,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         "dry_run": True,
                         "action": action,
                         "tier_id": tier_id,
+                        **member_kwargs,
                     })
                     return
             if not _MANAGEMENT_MUTATION_LIMIT.acquire(blocking=False):
@@ -1207,14 +1229,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             try:
                 if action == "quiesce":
                     fn = getattr(backend, "quiesce_tier")
-                    result = fn(tier_id, str(body.get("reason") or "promotion"))
+                    result = fn(tier_id, str(body.get("reason") or "promotion"), **member_kwargs)
                 elif action == "drain":
                     timeout_value = body.get("timeout")
                     if isinstance(timeout_value, bool) or not isinstance(timeout_value, (int, float)):
                         raise ValueError("bad timeout")
-                    result = getattr(backend, "drain_tier")(tier_id, float(timeout_value))
+                    result = getattr(backend, "drain_tier")(tier_id, float(timeout_value), **member_kwargs)
                 elif action == "readmit":
-                    result = getattr(backend, "readmit_tier")(tier_id)
+                    result = getattr(backend, "readmit_tier")(tier_id, **member_kwargs)
                 else:
                     self._error(400, "invalid_transition", "unsupported transition action")
                     return
@@ -1267,9 +1289,24 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     elif not self._authenticated():
                         self._error(401, "authentication_error", "invalid or missing API key")
                     else:
-                        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-                        raw_tier = (query.get("tier_id") or [None])[0]
-                        self._transition_status(raw_tier)
+                        query = urllib.parse.parse_qs(
+                            urllib.parse.urlparse(self.path).query, keep_blank_values=True,
+                        )
+                        if "member_id" in query:
+                            if len(query["member_id"]) != 1 or len(query.get("tier_id", [])) != 1:
+                                self._error(400, "invalid_transition", "invalid transition request")
+                                return
+                            # Use the POST status path's scope validation so
+                            # blank/unknown/direct-tier members cannot widen
+                            # to an accidental tier-wide status operation.
+                            self._handle_transition({
+                                "action": "status", "tier_id": query["tier_id"][0],
+                                "member_id": query["member_id"][0],
+                            })
+                        else:
+                            # Preserve legacy omission/blank handling exactly.
+                            raw_tier = next((value for value in query.get("tier_id", []) if value), None)
+                            self._transition_status(raw_tier)
                 finally:
                     _MANAGEMENT_LIMIT.release()
                 return

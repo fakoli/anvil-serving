@@ -123,8 +123,20 @@ def test_unadvanced_direct_stream_close_releases_admission_lease():
 # Qualified replica sets T009 — compound member lease drains on stream end
 # --------------------------------------------------------------------------- #
 class _ReplicaReadiness:
-    def check_member(self, _tier, _member_id):
-        return AvailabilityResult(True, "ready", "identity_passed")
+    def __init__(self):
+        self.calls = []
+        self.invalidated = []
+
+    def invalidate(self, tier_id):
+        self.invalidated.append(tier_id)
+
+    def check(self, tier):
+        self.calls.append((tier.id, None))
+        return AvailabilityResult(True, "ready", "identity_passed", tier.model, tier.model)
+
+    def check_member(self, tier, member_id):
+        self.calls.append((tier.id, member_id))
+        return AvailabilityResult(True, "ready", "identity_passed", tier.model, tier.model)
 
 
 def _replica_stream_routing(blocking, peer):
@@ -207,6 +219,176 @@ def test_replica_stream_drain_waits_for_compound_lease_then_releases_both_counts
     assert snapshot.active_requests == 0
     assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
     assert peer.calls == 0
+
+
+def test_member_and_tier_readmission_clear_only_their_own_quiesce_scope():
+    tier, routing = _replica_stream_routing(_TextBackend("a"), _TextBackend("b"))
+    ready = routing._availability
+    try:
+        row = routing.quiesce_tier(tier.id, "maintenance", member_id="member-a")
+        assert row["member_id"] == "member-a" and row["state"] == "quiesced"
+        assert not routing._admission.snapshot(tier.id).quiesced
+        assert "".join(routing.generate(_request("replica.stream"))) == "b"
+        routing.quiesce_tier(tier.id, "maintenance")
+        ready.calls.clear()
+        result = routing.readmit_tier(tier.id, member_id="member-a")
+        assert result["readmitted"] is True
+        assert result["status"]["tiers"][0]["member_id"] == "member-a"
+        assert ready.calls == [(tier.id, "member-a")]
+        assert ready.invalidated[-1] == tier.id
+        assert routing._admission.snapshot(tier.id).quiesced
+        assert not routing._admission.member_snapshot(tier.id, "member-a").quiesced
+        with pytest.raises(NoAvailableTierError):
+            routing.generate(_request("replica.stream"))
+        routing.quiesce_tier(tier.id, "maintenance", member_id="member-a")
+        assert routing.readmit_tier(tier.id)["readmitted"] is True
+        assert not routing._admission.snapshot(tier.id).quiesced
+        assert routing._admission.member_snapshot(tier.id, "member-a").quiesced
+        assert "".join(routing.generate(_request("replica.stream"))) == "b"
+    finally:
+        routing.close()
+
+
+def test_member_status_reads_only_selected_member_and_preserves_tier_status_shape():
+    tier, routing = _replica_stream_routing(_TextBackend("a"), _TextBackend("b"))
+    ready = routing._availability
+    try:
+        routing.quiesce_tier(tier.id, member_id="member-a")
+        status = routing.transition_status(tier.id, member_id="member-a")
+        assert len(status["tiers"]) == 1
+        row = status["tiers"][0]
+        assert row["member_id"] == "member-a" and row["state"] == "quiesced"
+        assert row["expected_model"] == row["observed_model"] == tier.model
+        assert ready.calls == [(tier.id, "member-a")]
+        legacy_row = routing.transition_status(tier.id)["tiers"][0]
+        assert "member_id" not in legacy_row and legacy_row["state"] == "admitting"
+    finally:
+        routing.close()
+
+
+@pytest.mark.parametrize("readiness", [
+    AvailabilityResult(True, "ready", "identity_passed"),
+    AvailabilityResult(True, "ready", "identity_passed", "replica-model", "other-model"),
+    AvailabilityResult(True, "ready", "configured", "replica-model", "replica-model"),
+    AvailabilityResult(False, "unavailable", "identity_mismatch", "replica-model", "other-model"),
+    RuntimeError("private upstream data"),
+    {"available": True},
+])
+def test_member_readmit_requires_exact_identity_and_never_reprobes_or_reads_peer(readiness):
+    tier, routing = _replica_stream_routing(_TextBackend("a"), _TextBackend("b"))
+    calls = []
+
+    class Ready:
+        def check_member(self, tier, member_id):
+            calls.append((tier.id, member_id))
+            if isinstance(readiness, Exception):
+                raise readiness
+            return readiness
+
+        def check(self, tier):
+            raise AssertionError("aggregate readiness is forbidden")
+
+    routing._availability = Ready()
+    try:
+        routing.quiesce_tier(tier.id, member_id="member-a")
+        result = routing.readmit_tier(tier.id, member_id="member-a")
+        assert result["readmitted"] is False
+        assert routing._admission.member_snapshot(tier.id, "member-a").quiesced
+        assert calls == [(tier.id, "member-a")]
+        assert "private upstream data" not in json.dumps(result)
+    finally:
+        routing.close()
+
+
+@pytest.mark.parametrize("member_id", ["unknown", "", " member-a", "member/a", 1, True, []])
+def test_invalid_member_scopes_fail_before_admission_or_probe(member_id):
+    tier, routing = _replica_stream_routing(_TextBackend("a"), _TextBackend("b"))
+    try:
+        before = routing._admission.snapshot(tier.id)
+        for action in (
+            lambda: routing.transition_status(tier.id, member_id=member_id),
+            lambda: routing.quiesce_tier(tier.id, member_id=member_id),
+            lambda: routing.drain_tier(tier.id, 1, member_id=member_id),
+            lambda: routing.readmit_tier(tier.id, member_id=member_id),
+        ):
+            with pytest.raises(ValueError):
+                action()
+        assert routing._admission.snapshot(tier.id) == before
+        assert routing._availability.calls == routing._availability.invalidated == []
+    finally:
+        routing.close()
+
+
+def test_member_requires_explicit_replica_tier():
+    routing = _routing(_TextBackend("a"), _TextBackend("b"))
+    try:
+        for tier_id in (None, "primary-local", "unknown"):
+            for fn in (
+                lambda: routing.transition_status(tier_id, member_id="member-a"),
+                lambda: routing.quiesce_tier(tier_id, member_id="member-a"),
+                lambda: routing.drain_tier(tier_id, 1, member_id="member-a"),
+                lambda: routing.readmit_tier(tier_id, member_id="member-a"),
+            ):
+                with pytest.raises((KeyError, ValueError)):
+                    fn()
+        assert all(not row.quiesced for row in routing._admission.snapshots())
+    finally:
+        routing.close()
+
+
+def test_member_drain_requires_own_quiesce_and_never_cancels_or_waits_for_peer():
+    tier, routing = _replica_stream_routing(_TextBackend("a"), _TextBackend("b"))
+    streams = [routing.generate(_request("replica.stream")) for _ in range(2)]
+    try:
+        routing.quiesce_tier(tier.id)
+        with pytest.raises(ValueError, match="member must be quiesced"):
+            routing.drain_tier(tier.id, 1, member_id="member-a")
+        routing.quiesce_tier(tier.id, member_id="member-a")
+        result = routing.drain_tier(tier.id, 0.001, member_id="member-a")
+        assert result["timed_out"] and result["snapshot"]["active_requests"] == 1
+        assert routing._admission.snapshot(tier.id).active_requests == 2
+        streams[0].close()
+        result = routing.drain_tier(tier.id, 1, member_id="member-a")
+        assert result["drained"] and result["snapshot"]["member_id"] == "member-a"
+        assert routing._admission.snapshot(tier.id).active_requests == 1
+        assert routing.drain_tier(tier.id, 0.001)["timed_out"]
+        streams[1].close()
+        assert routing.drain_tier(tier.id, 1)["drained"]
+    finally:
+        for stream in streams:
+            stream.close()
+        routing.close()
+
+
+def test_active_member_drain_refuses_readmit_until_real_lease_closes(monkeypatch):
+    tier, routing = _replica_stream_routing(_TextBackend("a"), _TextBackend("b"))
+    stream = routing.generate(_request("replica.stream"))
+    routing.quiesce_tier(tier.id, member_id="member-a")
+    waiting = threading.Event()
+    condition = routing._admission._condition(tier.id)
+    original_wait = condition.wait
+
+    def wait(timeout):
+        waiting.set()
+        return original_wait(timeout)
+
+    monkeypatch.setattr(condition, "wait", wait)
+    results = []
+    drainer = threading.Thread(target=lambda: results.append(
+        routing.drain_tier(tier.id, 5, member_id="member-a")
+    ))
+    try:
+        drainer.start()
+        assert waiting.wait(2)
+        with pytest.raises(ValueError, match="member drain is in progress"):
+            routing.readmit_tier(tier.id, member_id="member-a")
+        assert routing._admission.snapshot(tier.id).active_requests == 1
+    finally:
+        stream.close()
+        drainer.join(5)
+        routing.close()
+    assert not drainer.is_alive()
+    assert results[0]["drained"]
 
 
 def test_guarded_readmit_requires_identity_readiness_configuration():

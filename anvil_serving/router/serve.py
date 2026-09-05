@@ -41,6 +41,7 @@ from .config import (
     PRIVACY_LOCAL,
     RouterConfig,
     Tier,
+    _REPLICA_ID_RE,
     load,
     load_server_config,
     normalize_model_alias,
@@ -1080,43 +1081,119 @@ class RoutingBackend:
             + render_process_prometheus(self._started_at, self._decision_log.capacity)
         )
 
-    def transition_status(self, tier_id: Optional[str] = None) -> dict:
+    def validate_transition_target(self, tier_id: str, member_id: Optional[str] = None) -> Tier:
+        """Validate the declared scope without readiness probes or mutation."""
+        if type(tier_id) is not str or not tier_id:
+            raise ValueError("transition tier is required")
+        tier = self._config.tier(tier_id)
+        if member_id is not None and (
+            type(member_id) is not str
+            or not _REPLICA_ID_RE.fullmatch(member_id)
+            or not any(member.id == member_id for member in tier.replicas)
+        ):
+            raise ValueError("transition member is not declared")
+        return tier
+
+    @staticmethod
+    def _transition_row(tier: Tier, admission: dict, readiness: AvailabilityResult) -> dict:
+        return {
+            **admission,
+            "ready": readiness.available,
+            "readiness_state": readiness.state,
+            "readiness_reason": readiness.reason,
+            "expected_model": readiness.expected_model,
+            "observed_model": readiness.observed_model,
+            "observed_context_limit": (
+                readiness.runtime_metadata.context_limit
+                if readiness.runtime_metadata is not None
+                else None
+            ),
+            "metadata_source": tier.metadata_source,
+        }
+
+    def transition_status(
+        self, tier_id: Optional[str] = None, *, member_id: Optional[str] = None,
+    ) -> dict:
+        if member_id is not None:
+            tier = self.validate_transition_target(tier_id, member_id)
+            readiness = safe_check_member(
+                self._availability, tier, member_id, include_exception_name=False,
+            )
+            return {"tiers": [self._transition_row(
+                tier, self._admission.member_snapshot(tier.id, member_id).as_dict(), readiness,
+            )]}
         tier_ids = (tier_id,) if tier_id is not None else tuple(tier.id for tier in self._config.tiers)
         rows = []
         for tid in tier_ids:
             tier = self._config.tier(tid)
             admission = self._admission.snapshot(tid).as_dict()
             readiness = self._availability_for(tier)
-            rows.append({
-                **admission,
-                "ready": readiness.available,
-                "readiness_state": readiness.state,
-                "readiness_reason": readiness.reason,
-                "expected_model": readiness.expected_model,
-                "observed_model": readiness.observed_model,
-                "observed_context_limit": (
-                    readiness.runtime_metadata.context_limit
-                    if readiness.runtime_metadata is not None
-                    else None
-                ),
-                "metadata_source": tier.metadata_source,
-            })
+            rows.append(self._transition_row(tier, admission, readiness))
         return {"tiers": rows}
 
-    def quiesce_tier(self, tier_id: str, reason: str = "promotion") -> dict:
-        self._config.tier(tier_id)
-        snapshot = self._admission.quiesce(tier_id, reason)
+    def quiesce_tier(
+        self, tier_id: str, reason: str = "promotion", *, member_id: Optional[str] = None,
+    ) -> dict:
+        self.validate_transition_target(tier_id, member_id)
+        snapshot = (
+            self._admission.quiesce_member(tier_id, member_id, reason)
+            if member_id is not None else self._admission.quiesce(tier_id, reason)
+        )
         invalidate = getattr(self._availability, "invalidate", None)
         if callable(invalidate):
             invalidate(tier_id)
         return snapshot.as_dict()
 
-    def drain_tier(self, tier_id: str, timeout: float) -> dict:
-        self._config.tier(tier_id)
+    def drain_tier(
+        self, tier_id: str, timeout: float, *, member_id: Optional[str] = None,
+    ) -> dict:
+        self.validate_transition_target(tier_id, member_id)
+        if member_id is not None:
+            return self._admission.wait_for_member_drain(tier_id, member_id, timeout)
         return self._admission.wait_for_drain(tier_id, timeout)
 
-    def readmit_tier(self, tier_id: str) -> dict:
-        tier = self._config.tier(tier_id)
+    def _readmit_member(self, tier: Tier, member_id: str) -> dict:
+        """A fresh member identity check cannot clear a separate tier intent."""
+        if not tier.model_identity or not tier.health_path or not tier.model:
+            readiness = AvailabilityResult(False, "unavailable", "identity_not_configured")
+            verified = False
+            reason = "identity_not_configured"
+        else:
+            invalidate = getattr(self._availability, "invalidate", None)
+            if callable(invalidate):
+                # The existing cache invalidates by tier, but the only probe
+                # below is for this member. Peer caches never imply readmission.
+                invalidate(tier.id)
+            readiness = safe_check_member(
+                self._availability, tier, member_id, include_exception_name=False,
+            )
+            verified = (
+                readiness.available is True
+                and readiness.state == "ready"
+                and readiness.reason == "identity_passed"
+                and readiness.expected_model == tier.model
+                and readiness.observed_model == tier.model
+            )
+            reason = (
+                "readiness_passed" if verified else
+                readiness.reason if not readiness.available else "identity_not_verified"
+            )
+        snapshot = (
+            self._admission.readmit_member(tier.id, member_id) if verified
+            else self._admission.member_snapshot(tier.id, member_id)
+        )
+        # Reuse that exact readiness result, including on failure: status must
+        # not trigger a second probe (or aggregate peer check) during readmit.
+        return {
+            "readmitted": verified,
+            "reason": reason,
+            "status": {"tiers": [self._transition_row(tier, snapshot.as_dict(), readiness)]},
+        }
+
+    def readmit_tier(self, tier_id: str, *, member_id: Optional[str] = None) -> dict:
+        tier = self.validate_transition_target(tier_id, member_id)
+        if member_id is not None:
+            return self._readmit_member(tier, member_id)
         dynamic_metadata = tier.metadata_source == METADATA_UPSTREAM
         if not dynamic_metadata and (
             not tier.model_identity or not tier.health_path or not tier.model
