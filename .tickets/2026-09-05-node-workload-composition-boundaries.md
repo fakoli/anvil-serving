@@ -1,6 +1,6 @@
 # Close node workload composition before adding collection endpoints
 
-Status: T012.3 pure composition in progress; T012.4 bounded coordinator designed;
+Status: T012.3 source candidate integrated; T012.4 bounded coordinator in progress;
 runtime source binding and endpoint composition pending.
 
 The six owner projections can each return200 records, while NodeResult and
@@ -37,3 +37,19 @@ no accumulated queue or result cache, source-local failure and late-result
 discard, and nonblocking close. This leaves the existing ten-second managed
 capture lifecycle intact while protecting workload request latency. The later
 server composition must own one collector; creating it per query is forbidden.
+
+T012.3 candidate b729b5cfec6bc7976586945172100e9cdbe0ba0f passed70 focused
+tests and Ruff, recorded as EVBD0BBD19. It is integrated locally for the
+remaining implementation tasks; consolidated acceptance and deployment are
+still pending.
+
+## Fix-forward: optional progress total
+
+A literal compatibility probe on integration1e37379a reproduced a mismatch:
+canonical Progress(1) has total=None and its source is COMPLETE, but composition
+returns UNAVAILABLE with invalid-workload. The exact-type guard in
+workload_collection._validated_progress incorrectly requires total to be an
+integer even when absent. Preserve canonical unknown totals while continuing
+to reject bool/subclass/invalid numeric values and forged Progress objects.
+Add known/unknown/zero-total round-trip cases and malformed-total controls.
+This is a narrow projection correction, not a schema or source lifecycle change.

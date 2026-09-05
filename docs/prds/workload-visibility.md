@@ -847,6 +847,33 @@ transport context may be returned.
 - `python scripts/run_tests.py tests/observability/test_workload_collection.py tests/observability/test_workloads.py -x -q`
 - `python -m ruff check anvil_serving/observability/workload_collection.py tests/observability/test_workload_collection.py`
 
+### T012.3.1: Preserve canonical unknown progress totals
+
+**Feature:** F003
+**Priority:** high
+**Type:** fix
+**Likely files:** anvil_serving/observability/workload_collection.py, tests/observability/test_workload_collection.py
+**Dependencies:** T012.3
+
+Correct only _validated_progress so canonical Progress.total=None survives
+reconstruction. Progress.completed remains an exact int; a present total
+remains an exact int, never bool or an int subclass. Continue reconstruction
+through Progress to enforce bounds, completed <= total and the fixed unit
+vocabulary. Do not change the schema, source state, sorting, limits or I/O.
+The reproduced predecessor behavior is recorded in the node workload
+composition boundaries ticket.
+
+**Acceptance criteria:**
+
+- Unknown, known and zero totals survive composition and canonical JSON round-trip without changing source status, record bytes or input objects.
+- Forged boolean, subclass, negative, oversized, completed-over-total and private-text totals still fail only their source with fixed INVALID and preserve healthy peers.
+- The unknown-total regression fails against the predecessor before the one-guard correction.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_workload_collection.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/observability/workload_collection.py tests/observability/test_workload_collection.py`
+
 ### T012.4: Bound concurrent node-source collection
 
 **Feature:** F003
@@ -919,6 +946,82 @@ not HTTP, topology, credential loading or any live managed observation.
 
 - `python scripts/run_tests.py tests/observability/test_node_workload_collector.py tests/observability/test_workload_collection.py -x -q`
 - `python -m ruff check anvil_serving/observability/node_workload_collector.py tests/observability/test_node_workload_collector.py`
+
+### T012.5: Read the authenticated declared router workload source
+
+**Feature:** F003
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/observability/probes/router_workloads.py, tests/observability/test_router_workload_source.py
+**Dependencies:** T005, T012.3, T012.3.1
+
+Add read_router_workloads(endpoint, auth_env, host, query, now, *,
+environment=None, _open=None) -> SourceResult in a new bounded source module.
+This function consumes an explicitly selected local resource endpoint; it
+does not read topology, discover ports, construct a router registry or access
+router storage. Validate exact canonical host/query/time first via the node
+builder's empty fallback, then copy the canonical query fields. Invalid
+query/host/time raises the existing fixed WorkloadError before configuration,
+environment or network access.
+
+Accept only an exact ASCII endpoint string of at most2048 characters, with
+exact http scheme, hostname127.0.0.1, an explicit decimal port1..65535, path
+/v1 or /v1/, and no userinfo/query/fragment/controls/whitespace/percent escapes.
+Reject alternate numeric spellings, implicit ports, localhost, DNS, remote
+addresses and trailing-dot aliases. auth_env is an exact ASCII identifier
+[A-Za-z_][A-Za-z0-9_]{0,255}. Bad/missing endpoint, reference, credential or
+runtime alias returns fixed UNAVAILABLE without opening a socket.
+
+environment=None means os.environ only; an injected Mapping is hermetic and
+never falls back to ambient values, dotenv, config home or a credential file.
+Read only the explicitly named outbound value and the existing loopback-alias
+control when needed. Normalize the credential using the existing scoped
+authorization._normalize_credential helper, then require ASCII material for
+the HTTP Bearer header; keep the existing16..4096-byte bound. Never reuse
+an inbound token or inspect authorization-policy internals. Do not retain
+the value in a binding dataclass, result, repr, log or exception.
+
+After validating the declared loopback endpoint, apply paths.runtime_url
+with the explicit environment to honor the existing container-to-host alias.
+Append /workloads to the normalized /v1 base. Encode exactly the seven
+canonical query fields with urllib.parse.urlencode, enum.value and lowercase
+true/false; omit absent optional filters and include the scalar defaults.
+There is no arbitrary caller query, request ID, timestamp, context, body,
+alternate method, retry or secondary endpoint.
+
+Issue one GET with Accept application/json and the declared Bearer header,
+using transports._urlopen_no_proxy_no_redirect by default and a fixed
+one-second socket timeout. Read at most MAX_JSON_BYTES+1 bytes, reject
+non-bytes/overflow, require HTTP200, and close the response. Redirects and
+HTTP failures are never followed or read for explanatory text. Close an
+HTTPError without materializing its body. The caller-owned persistent
+NodeWorkloadCollector supplies the1.5-second wall-clock deadline and one
+in-flight reader bound even if an injected or trickling response outlasts a
+socket timeout; do not claim the socket timeout alone is a total deadline.
+
+Decode only through node_result_from_json. Require the expected node even
+with zero records and exactly one source whose owner is ROUTER. Node and
+source collection time must each be no more than30 seconds ahead of now.
+Pass the extracted source through build_node_workloads(host,query,now,...)
+and return only its router source, so host, timestamp, query/order/limit,
+forged-object and detached canonical rules remain shared. Preserve complete,
+partial, unavailable, fixed source errors, original times and truncation.
+Bad schema/shape/identity/query is fixed INVALID, excessive future time is
+FUTURE, network/config/credential failure is UNAVAILABLE. No raw exception,
+response, endpoint, reference, alias, address or credential escapes.
+
+**Acceptance criteria:**
+
+- Literal one-router-source wire fixtures retain canonical-equivalent populated, empty, partial and unavailable results, including original timestamps and omissions.
+- Endpoint/credential/alias rejection happens before opener calls; an injected empty mapping cannot read ambient credentials or dotenv, and the actual request uses only the exact declared endpoint, GET, bounded query and two fixed headers.
+- Wrong node even when empty, wrong/multiple owners, schema/extra fields/duplicates, oversized body, malformed records, filter/order violations and future boundaries fail with fixed typed source errors.
+- Default networking is proxy-free and redirect-rejecting;200 success and response/HTTPError cleanup are tested without live hosts, while failure bodies and exception text are never returned or logged.
+- Seeded private data is absent from every returned/repr/error/log value and independent healthy sources survive router failure through canonical node composition.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_router_workload_source.py tests/observability/test_workload_collection.py -x -q`
+- `python -m ruff check anvil_serving/observability/probes/router_workloads.py tests/observability/test_router_workload_source.py`
 
 ### T012: Aggregate node-local workload sources
 
