@@ -328,3 +328,52 @@ def test_pressure_cache_deadline_cross_tier_keys_queue_bound_and_close():
     finally:
         release.set()
         cache.close()
+
+
+def test_pressure_cache_clock_and_metrics_defects_fail_closed_without_capacity_override():
+    tier = _capacity_tier()
+    clock = _Clock()
+    cache = ReplicaPressureCache(
+        (tier,),
+        metrics_provider=lambda _view: MetricsSnapshot(
+            "available",
+            {
+                "requests_running": 2.0,
+                "requests_waiting": 0.0,
+                "scheduler_capacity": 1.0,
+            },
+        ),
+        monotonic=clock,
+    )
+    try:
+        view = next(iter(cache._entries.values())).tier
+        pressure = cache._refresh(view, 4, 0)
+        assert pressure.freshness is Freshness.FRESH
+        assert pressure.pressure_ppm == 500000
+        clock.value = -1
+        assert cache._refresh(view, 4, 0).freshness is Freshness.UNKNOWN
+        cache.snapshot(tier.id)
+        assert all(value.freshness is Freshness.UNKNOWN for value in cache.snapshot(tier.id).values())
+    finally:
+        cache.close()
+
+
+def test_pressure_cache_provider_callback_runs_outside_condition_and_provider_exception_is_failed():
+    tier = _capacity_tier()
+    cache = None
+
+    def provider(_view):
+        assert cache is not None
+        acquired = cache._condition.acquire(blocking=False)
+        if acquired:
+            cache._condition.release()
+        assert acquired
+        raise RuntimeError("private provider fault")
+
+    cache = ReplicaPressureCache((tier,), metrics_provider=provider, monotonic=_Clock())
+    try:
+        cache.snapshot(tier.id)
+        _cache_finished(cache)
+        assert all(value.freshness is Freshness.FAILED for value in cache.snapshot(tier.id).values())
+    finally:
+        cache.close()

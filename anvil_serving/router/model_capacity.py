@@ -86,6 +86,7 @@ class _PressureEntry:
     pressure: ReplicaPressure | None = None
     completed_at: float | None = None
     running_at: float | None = None
+    running: bool = False
     queued: bool = False
 
 
@@ -144,7 +145,7 @@ class ReplicaPressureCache:
             worker.start()
 
     def _schedule_locked(self, key: tuple[str, str], entry: _PressureEntry, now: float | None) -> None:
-        if self._closed or entry.queued or entry.running_at is not None or now is None:
+        if self._closed or entry.queued or entry.running or now is None:
             return
         if entry.completed_at is None or now - entry.completed_at >= 1:
             entry.queued = True
@@ -163,7 +164,9 @@ class ReplicaPressureCache:
             result = {}
             for key in keys:
                 entry = self._entries[key]
-                if self._closed:
+                if self._closed or now is None or (
+                    entry.completed_at is not None and now < entry.completed_at
+                ):
                     result[key[1]] = ReplicaPressure()
                     continue
                 self._schedule_locked(key, entry, now)
@@ -180,7 +183,7 @@ class ReplicaPressureCache:
                         pressure.requests_state,
                         pressure.kv_state,
                     )
-                if entry.running_at is not None and now is not None and now - entry.running_at > 1:
+                if entry.running_at is not None and now - entry.running_at > 1:
                     pressure = ReplicaPressure(PressureFreshness.FAILED)
                 result[key[1]] = copy_replica_pressure(pressure)
             return dict(result)
@@ -197,15 +200,22 @@ class ReplicaPressureCache:
                 if entry is None or not entry.queued:
                     continue
                 entry.queued = False
-                started = self._now()
-                entry.running_at = started
+                entry.running = True
                 tier = entry.tier
-            pressure = self._refresh(tier, entry.member_capacity, started)
+                member_capacity = entry.member_capacity
+            started = self._now()
+            with self._condition:
+                entry = self._entries.get(key)
+                if entry is None or self._closed or not entry.running:
+                    continue
+                entry.running_at = started
+            pressure = self._refresh(tier, member_capacity, started)
             ended = self._now()
             with self._condition:
                 entry = self._entries.get(key)
                 if entry is None or self._closed:
                     continue
+                entry.running = False
                 entry.running_at = None
                 entry.completed_at = ended
                 entry.pressure = pressure
@@ -213,25 +223,37 @@ class ReplicaPressureCache:
     def _refresh(self, tier: Tier, member_capacity: int, started: float | None) -> ReplicaPressure:
         try:
             snapshot = self._provider(tier)
-            ended = self._now()
-            if started is None or ended is None or ended - started > 1:
-                return ReplicaPressure(PressureFreshness.FAILED)
-            if type(snapshot) is not MetricsSnapshot:
-                return ReplicaPressure()
-            if snapshot.status == "available":
-                values = dict(snapshot.values)
-                return normalize_replica_pressure(
-                    observed_at=ended, now_monotonic=ended, successful=True,
-                    requests_running=values.get("requests_running"),
-                    requests_waiting=values.get("requests_waiting"),
-                    scheduler_capacity=values.get("scheduler_capacity", member_capacity),
-                    kv_cache_usage_fraction=values.get("kv_cache_usage_fraction"),
-                )
-            if snapshot.reason in {"metrics_transport", "metrics_http"}:
-                return ReplicaPressure(PressureFreshness.FAILED)
-            return ReplicaPressure()
         except Exception:
             return ReplicaPressure(PressureFreshness.FAILED)
+        ended = self._now()
+        if started is None or ended is None or ended < started:
+            return ReplicaPressure()
+        if ended - started > 1:
+            return ReplicaPressure(PressureFreshness.FAILED)
+        if type(snapshot) is not MetricsSnapshot:
+            return ReplicaPressure()
+        if snapshot.status == "available":
+            if not isinstance(snapshot.values, Mapping):
+                return ReplicaPressure()
+            try:
+                running = snapshot.values.get("requests_running")
+                waiting = snapshot.values.get("requests_waiting")
+                kv_usage = snapshot.values.get("kv_cache_usage_fraction")
+            except Exception:
+                return ReplicaPressure()
+            try:
+                return normalize_replica_pressure(
+                    observed_at=ended, now_monotonic=ended, successful=True,
+                    requests_running=running,
+                    requests_waiting=waiting,
+                    scheduler_capacity=member_capacity,
+                    kv_cache_usage_fraction=kv_usage,
+                )
+            except Exception:
+                return ReplicaPressure()
+        if snapshot.reason in {"metrics_transport", "metrics_http"}:
+            return ReplicaPressure(PressureFreshness.FAILED)
+        return ReplicaPressure()
 
     def close(self) -> None:
         with self._condition:
