@@ -329,7 +329,7 @@ owning runtime, with expected-node identity retained and no SSH fallback.
 **Feature:** F002
 **Priority:** high
 **Type:** modify
-**Dependencies:** T007, T008, T009, T010
+**Dependencies:** T007, T008, T009, T010, T011
 **Likely files:** docs/CLI-COMMAND-MANIFEST.json, docs/cli/control-plane.md, docs/prds/README.md, .tickets/2026-09-05-controller-deployment-access.md
 
 Generate the manifest with write_manifest, document the metadata-only/unsupported
@@ -436,4 +436,37 @@ credential and promotion gates. Do not replace one whole skill with the other.
 **Verification:**
 
 - `python scripts/run_tests.py tests/test_command_tree.py -k repo_workbench_surfaces_catalog -x -q`
+- `git diff --check`
+
+### T011: Synchronize the frozen public MCP catalog characterization
+
+**Feature:** F002
+**Priority:** high
+**Type:** modify
+**Dependencies:** T004
+**Likely files:** tests/test_mcp_foundations.py
+
+Close `.tickets/2026-09-05-controller-diagnostic-catalog-fixture.md`. The full
+suite exposed stale exact catalog expectations after the two diagnostic tools
+were added. Insert controller_inspect then controller_logs immediately after
+operation_contracts in TOOL_NAMES, and update the canonical public catalog and
+handler-map SHA256 constants only after reviewing the complete two-tool delta.
+Keep the existing family order, all existing entries and exact-order/hash checks.
+Add readable exact description, input-schema and handler-name assertions for
+these two tools so the digest update does not conceal their public contract.
+Both schemas stay closed objects with required container string length1..128;
+inspect has maxProperties1, logs maxProperties2 and optional integer tail1..200
+default100. No runtime or live change belongs in this task.
+
+**Acceptance criteria:**
+
+- Existing exact public catalog, handler-map and ordered-family checks pass.
+- Readable assertions pin the two descriptions, complete schemas and handler names.
+- Removing a diagnostic tool or widening its tail bound makes the appropriate regression fail; restore before final verification.
+- No runtime catalog, existing tool schema, metadata or family order is weakened.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_mcp_foundations.py -x -q`
+- `python -m ruff check tests/test_mcp_foundations.py`
 - `git diff --check`

@@ -21,13 +21,15 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "6267545b55deb9221d64519e3c563a846299b20d931dde77c560b2e6454d0a1c"
+    "b637edac3815408da26e7fc2d6f7eb80ee864702252cb661883cf42a49a54b27"
 )
 HANDLER_MAP_SHA256 = (
-    "4ff853831677824100c38e022f105f1edd816835f78683365b39bfeb3acf8ae3"
+    "aed352154d729466b1abbe884e957252e909d627f7e352afbc7a9ef9c1458824"
 )
 TOOL_NAMES = [
     "operation_contracts",
+    "controller_inspect",
+    "controller_logs",
     "router_status",
     "router_fleet_status",
     "router_logs",
@@ -121,6 +123,37 @@ def _canonical_sha256(value) -> str:
 def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable():
     assert list(mcp.TOOLS) == TOOL_NAMES
     assert _canonical_sha256(mcp.list_tools()) == PUBLIC_CATALOG_SHA256
+
+
+def test_controller_diagnostic_tools_have_exact_bounded_public_contracts():
+    assert mcp.TOOLS["controller_inspect"]["description"] == (
+        "Read metadata-only diagnostics for one local controller container."
+    )
+    assert mcp.TOOLS["controller_inspect"]["inputSchema"] == {
+        "type": "object",
+        "additionalProperties": False,
+        "maxProperties": 1,
+        "properties": {
+            "container": {"type": "string", "minLength": 1, "maxLength": 128},
+        },
+        "required": ["container"],
+    }
+    assert mcp.TOOLS["controller_inspect"]["handler"].__name__ == "_controller_inspect"
+
+    assert mcp.TOOLS["controller_logs"]["description"] == (
+        "Read bounded metadata-only audit diagnostics for one local controller container."
+    )
+    assert mcp.TOOLS["controller_logs"]["inputSchema"] == {
+        "type": "object",
+        "additionalProperties": False,
+        "maxProperties": 2,
+        "properties": {
+            "container": {"type": "string", "minLength": 1, "maxLength": 128},
+            "tail": {"type": "integer", "minimum": 1, "maximum": 200, "default": 100},
+        },
+        "required": ["container"],
+    }
+    assert mcp.TOOLS["controller_logs"]["handler"].__name__ == "_controller_logs"
 
 
 def test_media_artifact_discovery_describes_bounded_native_image_content():
