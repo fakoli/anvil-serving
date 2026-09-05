@@ -116,8 +116,12 @@ def test_dashboard_is_read_only_and_binds_loopback_by_default() -> None:
     assert "search probes" in lowered
     assert "probe_render_limit=500" in lowered
     assert "if(activetab==='probes')renderprobeexplorer()" in lowered
-    assert "const roles=new map()" in lowered
-    for group in ("windows system", "fast tier gpu", "heavy tier gpu", "wsl", "docker"):
+    assert "resolvegpuroles" not in lowered
+    assert "aggregate gpu memory" in lowered
+    assert "graphics card" in lowered
+    assert "fast tier gpu" not in lowered
+    assert "heavy tier gpu" not in lowered
+    for group in ("windows system", "shared graphics memory", "wsl", "docker"):
         assert group in lowered
     for action in ("/start", "/stop", "/restart", "/configure"):
         assert action not in lowered

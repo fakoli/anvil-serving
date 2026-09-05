@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const path = require('node:path');
 const vm = require('node:vm');
 
 let source = fs.readFileSync(process.argv[2], 'utf8');
@@ -426,6 +427,98 @@ async function testAuthorizationAndRetryRelease() {
   assert.equal(h.calls.length, 2, 'failed response did not release in-flight state');
 }
 
+async function testNeutralGpuGrouping() {
+  const html = fs.readFileSync(path.join(path.dirname(process.argv[2]), 'index.html'), 'utf8');
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    .map(match => match[1])
+    .find(script => script.includes('async function refreshCurves'));
+  assert.ok(inline, 'packaged dashboard script is present');
+  const start = inline.indexOf('const esc=');
+  const end = inline.indexOf('async function refreshIndicators');
+  assert.ok(start >= 0 && end > start, 'GPU renderer boundaries are present');
+
+  class DashboardElement {
+    constructor() {
+      this._html = '';
+      this.textContent = '';
+      this.value = '';
+      this.style = {};
+      this.classList = {add() {}, remove() {}};
+    }
+    set innerHTML(value) { this._html = String(value); }
+    get innerHTML() { return this._html; }
+    addEventListener() {}
+  }
+
+  const elements = new Map([
+    'auth', 'error', 'freshness', 'summary', 'curves', 'probe-search',
+    'probe-category', 'probe-count', 'probe-list',
+  ].map(id => [id, new DashboardElement()]));
+  const document = {
+    getElementById(id) {
+      if (!elements.has(id)) elements.set(id, new DashboardElement());
+      return elements.get(id);
+    },
+    querySelectorAll() { return []; },
+  };
+  const signals = {
+    'gpu-utilization': [
+      {metric: 'gpu.utilization', host_id: 'host-a', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, unit: 'percent', points: [[0, 20]]},
+      {metric: 'gpu.utilization', host_id: 'host-b', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, unit: 'percent', points: [[0, 20]]},
+      {metric: 'gpu.utilization', host_id: 'host-c', labels: {gpu_uuid: 'card-c', gpu_index: '0'}, unit: 'percent', points: [[0, 20]]},
+    ],
+    'dedicated-vram': [
+      {metric: 'gpu.memory.used', host_id: 'host-a', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, unit: 'bytes', points: [[0, 4]]},
+      {metric: 'gpu.memory.used', host_id: 'host-b', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, unit: 'bytes', points: [[0, 4]]},
+      {metric: 'gpu.memory.used', host_id: 'host-c', labels: {gpu_uuid: 'card-c', gpu_index: '0'}, unit: 'bytes', points: [[0, 4]]},
+    ],
+    'shared-gpu-memory': [
+      {metric: 'gpu.shared_memory.used', host_id: 'host-a', labels: {}, unit: 'bytes', points: [[0, 1]]},
+    ],
+  };
+  const samples = [
+    {metric: 'gpu.identity', host_id: 'host-a', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 'Equal card'},
+    {metric: 'gpu.identity', host_id: 'host-b', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 'Equal card'},
+    {metric: 'gpu.memory.used', host_id: 'host-a', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 4, unit: 'bytes'},
+    {metric: 'gpu.memory.total', host_id: 'host-a', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 8, unit: 'bytes'},
+    {metric: 'gpu.memory.used', host_id: 'host-b', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 4, unit: 'bytes'},
+    {metric: 'gpu.memory.total', host_id: 'host-b', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 8, unit: 'bytes'},
+    {metric: 'gpu.memory.used', host_id: 'host-c', labels: {gpu_uuid: 'card-c', gpu_index: '0'}, value: 4, unit: 'bytes'},
+    {metric: 'gpu.memory.total', host_id: 'host-c', labels: {gpu_uuid: 'card-c', gpu_index: '0'}, value: 8, unit: 'bytes'},
+    {metric: 'container.gpu.assignment', host_id: 'host-a', labels: {container_name: 'misleading-heavy-private'}, value: 'same-card-key'},
+    {metric: 'container.gpu.assignment', host_id: 'host-b', labels: {container_name: 'misleading-fast-private'}, value: 'same-card-key'},
+  ];
+  const context = vm.createContext({
+    console: {log() {}, warn() {}, error() {}},
+    document,
+    fetch: async () => ({ok: true, status: 200, json: async () => ({ok: true, data: {signals}})}),
+    sessionStorage: {getItem() { return ''; }, removeItem() {}, setItem() {}},
+    window: {},
+    URLSearchParams,
+  });
+  vm.runInContext(
+    inline.slice(start, end) +
+      '\nglobalThis.__gpu={renderSummary,refreshCurves,setSamples:value=>{allSamples=value}};',
+    context,
+  );
+  context.__gpu.setSamples(samples);
+  context.__gpu.renderSummary(samples);
+  await context.__gpu.refreshCurves();
+
+  const summary = elements.get('summary').innerHTML;
+  const curves = elements.get('curves').innerHTML;
+  assert.doesNotMatch(curves, /Fast tier GPU|Heavy tier GPU|No tier assignment/);
+  assert.doesNotMatch(curves, /misleading-(?:fast|heavy)-private/);
+  assert.equal((curves.match(/<h3>Graphics card<\/h3>/g) || []).length, 3);
+  assert.equal((curves.match(/Equal card/g) || []).length, 2);
+  assert.match(curves, /host-a · Equal card/);
+  assert.match(curves, /host-b · Equal card/);
+  assert.match(curves, /host-c · Graphics card/);
+  assert.match(curves, /Shared graphics memory/);
+  assert.match(summary, /Aggregate GPU memory/);
+  assert.doesNotMatch(summary, /unified/i);
+}
+
 const tests = [
   testHiddenAndCanonicalRendering,
   testStatusesAndOmissions,
@@ -438,6 +531,7 @@ const tests = [
 ];
 
 (async () => {
+  await testNeutralGpuGrouping();
   for (const test of tests) await test();
   process.stdout.write(JSON.stringify({ok: true, scenarios: tests.map(test => test.name)}) + '\n');
 })().catch(error => {
