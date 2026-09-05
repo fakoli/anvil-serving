@@ -19,6 +19,13 @@ from datetime import datetime
 from itertools import islice
 from typing import Any, Callable, Deque, Iterable, Mapping, Optional, Tuple
 
+from .replica_scheduler import (
+    PressureFreshness,
+    ReplicaDecision,
+    ReplicaDecisionReason,
+    ReplicaScore,
+)
+
 #: Default ring-buffer capacity for :class:`DecisionLog`. One record per routed
 #: request; 10k bounds a long-running server's audit memory to the recent
 #: window while staying far above what an operator inspects interactively.
@@ -111,6 +118,9 @@ class DecisionRecord:
     # Selection identifies a configured member, not successful generation.
     replica_member_id: Optional[str] = None
     replica_selection: Optional[str] = None
+    # A copied capacity-ordering observation captured before admission reserves
+    # the selected member.  It is absent for direct and round-robin routes.
+    replica_scheduler: Optional[ReplicaDecision] = None
 
 
 def safe_correlation(value: Any) -> Optional[str]:
@@ -210,6 +220,13 @@ tier=<t|-> prompt=<n> completion=<n>
         line += f" gateway_request_id={gateway_request_id}"
     for name, value in _replica_metadata(record).items():
         line += f" {name}={value}"
+    scheduler = _replica_scheduler_metadata(record)
+    if scheduler is not None:
+        line += (
+            " replica_scheduler=capacity"
+            " replica_scheduler_reason=selected"
+            f" replica_eligible_count={len(scheduler['eligible_member_ids'])}"
+        )
     return line
 
 
@@ -243,6 +260,118 @@ def _sanitize_replica_metadata(record: DecisionRecord) -> DecisionRecord:
     if _replica_metadata(record):
         return record
     return dataclasses.replace(record, replica_member_id=None, replica_selection=None)
+
+
+def _copy_replica_scheduler(value: object) -> Optional[ReplicaDecision]:
+    """Detach one exact typed scheduler observation or drop it safely."""
+    if type(value) is not ReplicaDecision:
+        return None
+    try:
+        if type(value.eligible_member_ids) is not tuple or type(value.scores) is not tuple:
+            return None
+        if len(value.eligible_member_ids) > 16 or len(value.scores) > 16:
+            return None
+        copied_scores = []
+        for score in value.scores:
+            if type(score) is not ReplicaScore:
+                return None
+            copied_scores.append(ReplicaScore(
+                score.member_id, score.local_numerator, score.local_denominator,
+                score.upstream_unknown, score.upstream_pressure_ppm,
+                score.rotating_rank, score.freshness,
+            ))
+        return ReplicaDecision(
+            value.selected_member_id, tuple(value.eligible_member_ids),
+            tuple(copied_scores), value.reason,
+        )
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def validated_replica_scheduler(
+    value: object,
+    *,
+    selected_member_id: object,
+    member_capacities: Mapping[str, int],
+) -> Optional[ReplicaDecision]:
+    """Return detached capacity evidence only when it fits this configured tier."""
+    copied = _copy_replica_scheduler(value)
+    if copied is None or type(selected_member_id) is not str:
+        return None
+    if copied.reason is not ReplicaDecisionReason.SELECTED:
+        return None
+    if copied.selected_member_id != selected_member_id:
+        return None
+    try:
+        if set(copied.eligible_member_ids) != {score.member_id for score in copied.scores}:
+            return None
+        for score in copied.scores:
+            ceiling = member_capacities.get(score.member_id)
+            if type(ceiling) is not int:
+                return None
+            if score.local_denominator != ceiling or score.local_numerator >= ceiling:
+                return None
+    except (AttributeError, TypeError, ValueError):
+        return None
+    return copied
+
+
+def _scheduler_from_mapping(value: object) -> Optional[ReplicaDecision]:
+    """Reconstruct a closed captured JSON projection without retaining mappings."""
+    if type(value) is not dict or set(value) != {
+        "selected_member_id", "eligible_member_ids", "scores", "reason",
+    }:
+        return None
+    selected = value["selected_member_id"]
+    eligible = value["eligible_member_ids"]
+    scores = value["scores"]
+    reason = value["reason"]
+    if type(selected) is not str or type(eligible) is not list or type(scores) is not list:
+        return None
+    if type(reason) is not str or len(eligible) > 16 or len(scores) > 16:
+        return None
+    if any(type(member) is not str for member in eligible):
+        return None
+    copied_scores = []
+    score_keys = {
+        "member_id", "local_numerator", "local_denominator", "upstream_unknown",
+        "upstream_pressure_ppm", "rotating_rank", "freshness",
+    }
+    try:
+        for raw_score in scores:
+            if type(raw_score) is not dict or set(raw_score) != score_keys:
+                return None
+            freshness = raw_score["freshness"]
+            if type(freshness) is not str:
+                return None
+            copied_scores.append(ReplicaScore(
+                raw_score["member_id"], raw_score["local_numerator"],
+                raw_score["local_denominator"], raw_score["upstream_unknown"],
+                raw_score["upstream_pressure_ppm"], raw_score["rotating_rank"],
+                PressureFreshness(freshness),
+            ))
+        return ReplicaDecision(
+            selected, tuple(eligible), tuple(copied_scores),
+            ReplicaDecisionReason(reason),
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _replica_scheduler_metadata(record: object) -> Optional[dict]:
+    """Return the sole safe scheduler projection for lines, summaries and JSONL."""
+    value = _field(record, "replica_scheduler")
+    copied = _copy_replica_scheduler(value)
+    if copied is None and isinstance(record, Mapping):
+        copied = _scheduler_from_mapping(value)
+    return copied.to_dict() if copied is not None else None
+
+
+def _sanitize_replica_scheduler(record: DecisionRecord) -> DecisionRecord:
+    copied = _copy_replica_scheduler(record.replica_scheduler)
+    if copied is record.replica_scheduler:
+        return record
+    return dataclasses.replace(record, replica_scheduler=copied)
 
 
 def _int_field(record: Any, name: str) -> int:
@@ -324,7 +453,7 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
         total_request_bytes += request_bytes
         total_response_bytes += response_bytes
         total_latency_ms += latency_ms
-        items.append({
+        item = {
             "route": _summary_safe(_field(record, "route")),
             "kind": _summary_safe(_field(record, "kind")),
             "requested_tier": _summary_safe(_field(record, "requested_tier")),
@@ -373,7 +502,11 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
             "workbench_run_id": _summary_safe(safe_correlation(_field(record, "workbench_run_id"))),
             "task_id": _summary_safe(safe_correlation(_field(record, "task_id"))),
             **_replica_metadata(record),
-        })
+        }
+        scheduler = _replica_scheduler_metadata(record)
+        if scheduler is not None:
+            item["replica_scheduler"] = scheduler
+        items.append(item)
     return {
         "count": len(items),
         "available": len(all_records),
@@ -438,7 +571,9 @@ class DecisionLog:
 
     def record(self, record: DecisionRecord) -> None:
         """Append ``record`` to the log, stamping ``unix_ts`` (thread-safe)."""
-        record = _sanitize_replica_metadata(_sanitize_workload_metadata(record))
+        record = _sanitize_replica_scheduler(
+            _sanitize_replica_metadata(_sanitize_workload_metadata(record))
+        )
         if not record.unix_ts:
             record = dataclasses.replace(record, unix_ts=time.time())
         with self._lock:
@@ -521,7 +656,9 @@ class DecisionLogWriter:
             pass
 
     def __call__(self, record: DecisionRecord) -> None:
-        record = _sanitize_replica_metadata(_sanitize_workload_metadata(record))
+        record = _sanitize_replica_scheduler(
+            _sanitize_replica_metadata(_sanitize_workload_metadata(record))
+        )
         # Explicit schema: future dataclass fields (including subclasses) must
         # never silently become durable audit payloads through asdict recursion.
         payload = {
@@ -546,6 +683,9 @@ class DecisionLogWriter:
             for attempt in record.attempts
         ]
         payload.update(_replica_metadata(record))
+        scheduler = _replica_scheduler_metadata(record)
+        if scheduler is not None:
+            payload["replica_scheduler"] = scheduler
         for field_name in (
             "workload_created_at", "workload_updated_at", "workload_outcome",
         ):

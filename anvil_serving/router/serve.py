@@ -51,6 +51,7 @@ from .decision_log import (
     DecisionLogWriter,
     DecisionRecord,
     request_correlation,
+    validated_replica_scheduler,
 )
 from .discovery import models_payload
 from .dialects.translate import has_tool_artifacts
@@ -515,6 +516,7 @@ class RoutingBackend:
         completion_tokens_source: str = "unknown",
         replica_member_id: Optional[str] = None,
         replica_selection: Optional[str] = None,
+        replica_scheduler: object = None,
         workload_token: Optional[RouterWorkloadToken] = None,
         workload_outcome: WorkloadOutcome = WorkloadOutcome.REJECTED,
     ) -> None:
@@ -547,6 +549,15 @@ class RoutingBackend:
                 attempts = ()
         else:
             replica_member_id = replica_selection = None
+        scheduler = validated_replica_scheduler(
+            replica_scheduler,
+            selected_member_id=replica_member_id,
+            member_capacities={
+                member.id: member.max_concurrency
+                for member in tier.replicas
+                if type(member.max_concurrency) is int
+            } if tier.replica_strategy == "capacity" else {},
+        )
         decision = DecisionRecord(
             kind="chat",
             requested_tier=tier.id,
@@ -567,6 +578,7 @@ class RoutingBackend:
             output_limit_clamped=output_limit["clamped"],
             replica_member_id=replica_member_id,
             replica_selection=replica_selection,
+            replica_scheduler=scheduler,
             **request_correlation(request),
         )
         if workload_token is not None:
@@ -676,9 +688,15 @@ class RoutingBackend:
         upstream_call_started: Optional[float] = None
         upstream_dispatched = False
         first_content_at: Optional[float] = None
+        replica_scheduler = None
 
         def record(*args, **kwargs):
-            return self._record(*args, workload_token=workload_token, **kwargs)
+            return self._record(
+                *args,
+                workload_token=workload_token,
+                replica_scheduler=replica_scheduler,
+                **kwargs,
+            )
 
         def advance(state: WorkloadState) -> None:
             if workload_token is not None:
@@ -817,6 +835,10 @@ class RoutingBackend:
                 )
                 raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
             selected_member = lease.member_id
+            # This immutable ordering was made before the lease increments its
+            # selected member counter.  Preserve it verbatim for every later
+            # terminal record without a second admission or cache observation.
+            replica_scheduler = lease.selection
         else:
             if readiness is None:
                 readiness = _readiness_for(tier)
