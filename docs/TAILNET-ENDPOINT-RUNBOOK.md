@@ -239,7 +239,7 @@ these commands (the default route map is `/v1` → router, `/comfyui` → ComfyU
 
 ```bash
 anvil-serving edge render
-# $ tailscale serve --bg --https=443 --set-path=/v1      http://127.0.0.1:8000
+# $ tailscale serve --bg --https=443 --set-path=/v1      http://127.0.0.1:8000/v1
 # $ tailscale serve --bg --https=443 --set-path=/comfyui http://127.0.0.1:8188
 
 anvil-serving edge up --confirm   # additive; only the mounts this tool manages
@@ -248,9 +248,19 @@ anvil-serving edge up --confirm   # additive; only the mounts this tool manages
 # -> https://node-a.example.ts.net/comfyui/        (ComfyUI UI)
 ```
 
-The `/v1` mount forwards its path to the router verbatim, so the OpenAI/Anthropic contract is
-untouched. Add further paths (e.g. the dashboard on `:8766`) via `[edge.routes]` config or
-`--map /dashboard=8766`.
+Tailscale strips the matched mount, then joins the remainder to the target URL.
+The `/v1` target must therefore end in `/v1` to preserve `/v1/models` and the
+inference endpoints. Built-in and port-only `/v1` routes now include that
+target path. Explicit full URLs remain authoritative; for example,
+`--map /v1=http://127.0.0.1:8000/v1`. Other numeric mounts target the service
+root. Add further paths via `[edge.routes]` or `--map /dashboard=8766`.
+
+**2026-09-05 correction:** older renders omitted the target's `/v1` suffix.
+`edge status` now reports an older mapping as drift, and `edge down` does not
+remove it implicitly. Review `edge up --dry-run` before applying the corrected
+target, then verify authenticated `/v1/models`. Source verification and the
+[fix ticket](https://github.com/fakoli/anvil-serving/blob/main/.tickets/2026-09-05-edge-v1-prefix.md) do not prove an existing
+tailnet mapping has been updated.
 
 Caveats to validate before adopting:
 
