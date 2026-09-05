@@ -1,7 +1,10 @@
 """Hermetic bounded manifest workload observation coverage."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
+import hashlib
+import json
 import os
 from types import SimpleNamespace
 from pathlib import Path
@@ -15,15 +18,24 @@ from anvil_serving.controller_diagnostics import ChildCapture
 from anvil_serving.manifest_workloads import (
     MAX_CAPTURE_BYTES,
     MAX_MANIFEST_BYTES,
+    ManifestComponentResult,
+    ManifestConfiguredObservation,
     ManifestRuntimeKind,
+    ManifestRuntimeObservation,
+    ManifestWorkloadSnapshot,
     _INSPECT_TEMPLATE,
     _compose_up,
     _paths,
     _same_file,
     _time,
     capture_manifest_workload_snapshot,
+    list_manifest_workloads,
 )
-from anvil_serving.observability.workloads import ResultStatus, WorkloadState
+from anvil_serving.observability.workloads import (
+    ObservationQuality, ResultStatus, WorkloadErrorCode, WorkloadKind,
+    WorkloadOwner, WorkloadPhase, WorkloadQuery, WorkloadState,
+    source_result_from_json, source_result_to_json,
+)
 
 
 def _clock():
@@ -676,3 +688,203 @@ def test_failed_read_or_post_read_stat_cannot_reset_aggregate_budget(monkeypatch
         assert reads[-1] == (paths[2], 11, 11)
     assert snapshot.configuration.status is ResultStatus.PARTIAL
     assert len(snapshot.configuration.records) == 1
+
+
+def _configured(digest="a" * 64, *, age=0, runtime=ManifestRuntimeKind.DOCKER_COMPOSE):
+    observed = _clock() - timedelta(seconds=age)
+    return ManifestConfiguredObservation(digest, runtime, observed - timedelta(days=100), observed)
+
+
+def _runtime(digest="a" * 64, container="b" * 64, *, state=WorkloadState.RUNNING, age=0):
+    observed = _clock() - timedelta(seconds=age)
+    return ManifestRuntimeObservation(digest, container, state, observed - timedelta(days=2), observed - timedelta(seconds=1), observed)
+
+
+def _snapshot(configured=(), runtime=()):
+    return ManifestWorkloadSnapshot(
+        ManifestComponentResult(ResultStatus.COMPLETE, _clock(), tuple(configured), 0, None),
+        ManifestComponentResult(ResultStatus.COMPLETE, _clock(), tuple(runtime), 0, None),
+    )
+
+
+def _project(snapshot, query=None):
+    return list_manifest_workloads(
+        "not-read.toml", "node-a", query or WorkloadQuery(), _clock(),
+        snapshot_reader=lambda path, *, clock: snapshot,
+    )
+
+
+def _expected_id(native, owner="manifest"):
+    material = json.dumps(["node-a", "recipe-serve", owner, native], separators=(",", ":")).encode()
+    return hashlib.sha256(material).hexdigest()
+
+
+def test_projection_uses_exact_manifest_id_namespace_and_valid_digest_reconciliation():
+    snapshot = _snapshot(
+        (_configured(), _configured("d" * 64)),
+        (_runtime(), _runtime(container="c" * 64), _runtime("e" * 64, "f" * 64, state=WorkloadState.ABSENT)),
+    )
+    result = _project(snapshot)
+    assert result.status is ResultStatus.COMPLETE
+    assert {row.id for row in result.records} == {
+        _expected_id("manifest-config:" + "d" * 64),
+        *(_expected_id("manifest-container:" + value * 64) for value in "bcf"),
+    }
+    assert all(row.kind is WorkloadKind.RECIPE_SERVE and row.owner is WorkloadOwner.MANIFEST for row in result.records)
+    assert _expected_id("manifest-config:" + "d" * 64, "recipe") not in {row.id for row in result.records}
+    payload = source_result_to_json(result)
+    assert source_result_from_json(payload) == result
+    for private in ["not-read.toml", *(value * 64 for value in "abcdef"), "healthy-identity"]:
+        assert private not in payload
+
+
+@pytest.mark.parametrize("state,phase,quality", [
+    (WorkloadState.RUNNING, WorkloadPhase.RUNNING, ObservationQuality.OBSERVED_RUNNING),
+    (WorkloadState.ABSENT, WorkloadPhase.ABSENT, ObservationQuality.ABSENT),
+    (WorkloadState.UNSUPPORTED, WorkloadPhase.UNSUPPORTED, ObservationQuality.INSPECTION_ERROR),
+])
+def test_projection_runtime_states_and_provenance_are_not_health_claims(state, phase, quality):
+    result = _project(_snapshot((_configured(),), (_runtime(state=state),)))
+    row, = result.records
+    assert (row.state, row.phase, row.observation_quality) == (state, phase, quality)
+    assert row.source_timestamp == _clock()
+    assert row.updated_at == _clock() - timedelta(seconds=1)
+
+
+def test_projection_configured_and_native_unsupported_use_one_slot_identity():
+    configured = _configured(runtime=ManifestRuntimeKind.NATIVE)
+    declared = _project(_snapshot((configured,)))
+    assert declared.records[0].observation_quality is ObservationQuality.CONFIGURED
+    observed = _project(_snapshot((configured,), (_runtime(container=None, state=WorkloadState.UNSUPPORTED),)))
+    row, = observed.records
+    assert row.id == declared.records[0].id == _expected_id("manifest-config:" + "a" * 64)
+    assert row.state is WorkloadState.UNSUPPORTED
+    assert row.observation_quality is ObservationQuality.INSPECTION_ERROR
+
+
+@pytest.mark.parametrize("age,stale", [(30, False), (30.000001, True)])
+@pytest.mark.parametrize("configured", [False, True])
+def test_projection_freshness_uses_observation_not_old_lifecycle(age, stale, configured):
+    snapshot = _snapshot((_configured(age=age),)) if configured else _snapshot(runtime=(_runtime(age=age),))
+    result = _project(snapshot)
+    row, = result.records
+    assert (row.observation_quality is ObservationQuality.STALE) is stale
+    assert row.freshness(_clock()).is_stale is stale
+    active = _project(snapshot, WorkloadQuery(active_only=True))
+    assert bool(active.records) is (not configured and not stale)
+
+
+@pytest.mark.parametrize("bad", [
+    replace(_runtime(), container_id="bad/path"),
+    replace(_runtime(), container_id=None),
+    replace(_runtime(), state="running"),
+    replace(_runtime(), state=WorkloadState.QUEUED),
+    replace(_runtime(), observed_at=_clock().replace(tzinfo=None)),
+    replace(_runtime(), created_at=_clock(), updated_at=_clock() - timedelta(seconds=1)),
+    replace(_runtime(), config_digest=None),
+    object(),
+])
+def test_invalid_runtime_peer_never_suppresses_valid_configuration(bad):
+    result = _project(_snapshot((_configured(),), (bad,)))
+    assert result.status is ResultStatus.PARTIAL and result.error is WorkloadErrorCode.INVALID
+    assert result.truncation.omitted is None
+    assert [row.state for row in result.records] == [WorkloadState.CONFIGURED]
+
+
+def test_future_runtime_cannot_suppress_configured_peer_or_hide_invalid_error():
+    future = replace(_runtime(), observed_at=_clock() + timedelta(seconds=31))
+    snapshot = _snapshot((_configured(),), (future,))
+    result = _project(snapshot)
+    assert result.status is ResultStatus.PARTIAL and result.error is WorkloadErrorCode.FUTURE
+    assert result.records[0].state is WorkloadState.CONFIGURED
+    mixed = _project(replace(snapshot, runtime=replace(snapshot.runtime, records=(future, object()))))
+    assert mixed.error is WorkloadErrorCode.INVALID and len(mixed.records) == 1
+
+
+@pytest.mark.parametrize("bad_component", [
+    object(),
+    ManifestComponentResult(ResultStatus.UNAVAILABLE, None, (), None, WorkloadErrorCode.UNAVAILABLE),
+    ManifestComponentResult(ResultStatus.COMPLETE, _clock(), (), None, None),
+    ManifestComponentResult(ResultStatus.COMPLETE, _clock(), [], 0, None),
+    ManifestComponentResult(ResultStatus.COMPLETE, _clock(), (_runtime(),) * 257, 0, None),
+    ManifestComponentResult(ResultStatus.COMPLETE, _clock() + timedelta(seconds=31), (), 0, None),
+])
+def test_projection_component_failure_preserves_valid_other_component(bad_component):
+    result = _project(replace(_snapshot((_configured(),)), runtime=bad_component))
+    assert result.status is ResultStatus.PARTIAL and result.truncation.omitted is None
+    assert result.records[0].state is WorkloadState.CONFIGURED
+
+
+def test_projection_duplicate_runtime_is_invalid_and_cannot_suppress_another_digest():
+    runtime = _runtime()
+    result = _project(_snapshot((_configured(), _configured("c" * 64)), (runtime, replace(runtime, config_digest="c" * 64))))
+    assert result.status is ResultStatus.PARTIAL and result.error is WorkloadErrorCode.INVALID
+    assert {row.id for row in result.records} == {
+        _expected_id("manifest-container:" + "b" * 64), _expected_id("manifest-config:" + "c" * 64),
+    }
+
+
+def test_projection_empty_success_and_all_failed_are_distinct():
+    empty = _project(_snapshot())
+    assert empty.status is ResultStatus.COMPLETE and empty.truncation.omitted == 0
+    failed = ManifestComponentResult(ResultStatus.UNAVAILABLE, None, (), None, WorkloadErrorCode.UNAVAILABLE)
+    result = _project(ManifestWorkloadSnapshot(failed, failed))
+    assert result.status is ResultStatus.UNAVAILABLE and result.records == ()
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
+
+
+def test_projection_applies_all_filters_before_source_cap_and_reports_exact_omissions():
+    observations = tuple(_runtime(f"{index:064x}", f"{index + 1000:064x}", state=WorkloadState.ABSENT if index < 220 else WorkloadState.RUNNING) for index in range(256))
+    snapshot = _snapshot(runtime=observations)
+    limited = _project(snapshot, WorkloadQuery(limit=1000))
+    assert len(limited.records) == 200 and limited.truncation.omitted == 56
+    assert limited.status is ResultStatus.PARTIAL and limited.error is None
+    assert source_result_from_json(source_result_to_json(limited)) == limited
+    filtered = _project(snapshot, WorkloadQuery(state=WorkloadState.RUNNING, limit=1000))
+    assert len(filtered.records) == 36 and filtered.truncation.omitted == 0
+    assert filtered.status is ResultStatus.COMPLETE
+    assert filtered.records == tuple(sorted(filtered.records, key=lambda row: row.id))
+    for query in (WorkloadQuery(owner=WorkloadOwner.RECIPE), WorkloadQuery(host="node-b"), WorkloadQuery(kind=WorkloadKind.ROUTER_REQUEST)):
+        result = _project(snapshot, query)
+        assert result.records == () and result.truncation.omitted == 0
+
+
+def test_projection_partial_producer_keeps_unknown_omissions_even_after_excluding_query():
+    snapshot = _snapshot((_configured(),))
+    snapshot = replace(snapshot, configuration=replace(snapshot.configuration, status=ResultStatus.PARTIAL, omitted=None, error=WorkloadErrorCode.INVALID))
+    result = _project(snapshot, WorkloadQuery(owner=WorkloadOwner.RECIPE))
+    assert result.status is ResultStatus.PARTIAL and result.truncation.omitted is None
+
+
+def test_projection_only_calls_snapshot_reader_and_never_reopens_or_probes(monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail("projection attempted file, lifecycle or process I/O")
+
+    monkeypatch.setattr(manifest_workloads, "open", forbidden, raising=False)
+    monkeypatch.setattr(manifest_workloads, "_paths", forbidden)
+    monkeypatch.setattr("anvil_serving.serves.load_manifest", forbidden)
+    monkeypatch.setattr("anvil_serving.controller_diagnostics._capture_fixed_child", forbidden)
+    seen = []
+
+    def reader(path, *, clock):
+        seen.append(path)
+        assert clock().tzinfo is timezone.utc
+        return _snapshot((_configured(),))
+
+    result = list_manifest_workloads("synthetic-private-path", "node-a", WorkloadQuery(), _clock(), snapshot_reader=reader)
+    assert seen == ["synthetic-private-path"] and len(result.records) == 1
+    assert "synthetic-private-path" not in source_result_to_json(result)
+
+
+def test_projection_reader_exception_is_fixed_unavailable_without_exception_text():
+    def reader(path, *, clock):
+        raise ValueError("private-token http://100.64.0.10:8000 private/path")
+
+    result = list_manifest_workloads("private/path", "node-a", WorkloadQuery(), _clock(), snapshot_reader=reader)
+    assert result.status is ResultStatus.UNAVAILABLE and result.error is WorkloadErrorCode.UNAVAILABLE
+    assert "private" not in source_result_to_json(result)
+
+
+def test_projection_malformed_frozen_snapshot_is_not_trusted():
+    result = _project(object.__new__(ManifestWorkloadSnapshot))
+    assert result.status is ResultStatus.UNAVAILABLE and result.error is WorkloadErrorCode.INVALID

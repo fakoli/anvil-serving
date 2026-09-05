@@ -20,10 +20,26 @@ from pathlib import Path
 from typing import Callable
 
 from .observability.workloads import (
+    DEFAULT_STALE_AFTER_SECONDS,
     MAX_FUTURE_SECONDS,
+    ObservationQuality,
     ResultStatus,
+    SourceAuthority,
+    SourceResult,
+    Truncation,
+    WorkloadError,
     WorkloadErrorCode,
+    WorkloadKind,
+    WorkloadOutcome,
+    WorkloadOwner,
+    WorkloadPhase,
+    WorkloadQuery,
+    WorkloadRecord,
     WorkloadState,
+    normalize_workload_timestamp,
+    select_managed_records,
+    validate_source_records,
+    workload_id,
 )
 from .serves import DEFAULT_STACK, _STACK_RE, _stack_project
 
@@ -554,3 +570,166 @@ def _no_duplicates(pairs):
             raise ValueError
         result[key] = value
     return result
+
+
+_PROJECTION_ERRORS = (
+    WorkloadErrorCode.INVALID, WorkloadErrorCode.FUTURE, WorkloadErrorCode.UNAVAILABLE,
+)
+
+
+def _projection_error(exc: Exception) -> WorkloadErrorCode:
+    return exc.code if isinstance(exc, WorkloadError) and exc.code in _PROJECTION_ERRORS else WorkloadErrorCode.INVALID
+
+
+def _projection_component(value: object, now: datetime) -> ManifestComponentResult:
+    """Validate component metadata without discarding independently valid peers."""
+    if type(value) is not ManifestComponentResult:
+        raise ValueError
+    if (
+        type(value.status) is not ResultStatus
+        or type(value.records) is not tuple
+        or len(value.records) > MAX_MANIFEST_ROWS
+        or value.omitted is not None and (type(value.omitted) is not int or not 0 <= value.omitted <= 1_000_000_000)
+        or value.error is not None and (type(value.error) is not WorkloadErrorCode or value.error not in _PROJECTION_ERRORS)
+    ):
+        raise ValueError
+    if value.observed_at is not None:
+        if type(value.observed_at) is not datetime:
+            raise ValueError
+        observed = normalize_workload_timestamp(value.observed_at)
+        if observed - now > timedelta(seconds=MAX_FUTURE_SECONDS):
+            raise WorkloadError(WorkloadErrorCode.FUTURE, "manifest observation is in the future")
+    elif value.status is not ResultStatus.UNAVAILABLE:
+        raise ValueError
+    if value.status is ResultStatus.COMPLETE and (value.error is not None or value.omitted != 0):
+        raise ValueError
+    if value.status is ResultStatus.PARTIAL and value.error is None and value.omitted == 0:
+        raise ValueError
+    if value.status is ResultStatus.UNAVAILABLE and (value.records or value.error is None):
+        raise ValueError
+    return value
+
+
+def _project_observation(observation, *, configured: bool, host: str, now: datetime) -> WorkloadRecord:
+    expected = ManifestConfiguredObservation if configured else ManifestRuntimeObservation
+    if type(observation) is not expected:
+        raise ValueError
+    digest = observation.config_digest
+    if type(digest) is not str or _ID.fullmatch(digest) is None:
+        raise ValueError
+    if configured:
+        if type(observation.runtime) is not ManifestRuntimeKind:
+            raise ValueError
+        state = WorkloadState.CONFIGURED
+        native_id = "manifest-config:" + digest
+        created = updated = observation.configured_at
+    else:
+        state = observation.state
+        if type(state) is not WorkloadState or state not in {WorkloadState.RUNNING, WorkloadState.ABSENT, WorkloadState.UNSUPPORTED}:
+            raise ValueError
+        container = observation.container_id
+        if container is None:
+            if state is not WorkloadState.UNSUPPORTED:
+                raise ValueError
+            native_id = "manifest-config:" + digest
+        else:
+            if type(container) is not str or _ID.fullmatch(container) is None:
+                raise ValueError
+            native_id = "manifest-container:" + container
+        created, updated = observation.created_at, observation.updated_at
+    if any(type(value) is not datetime for value in (created, updated, observation.observed_at)):
+        raise ValueError
+    source = normalize_workload_timestamp(observation.observed_at)
+    # Mirror the recipe state/quality contract, not its native identity namespace.
+    phase, quality = {
+        WorkloadState.CONFIGURED: (WorkloadPhase.CONFIGURED, ObservationQuality.CONFIGURED),
+        WorkloadState.RUNNING: (WorkloadPhase.RUNNING, ObservationQuality.OBSERVED_RUNNING),
+        WorkloadState.ABSENT: (WorkloadPhase.ABSENT, ObservationQuality.ABSENT),
+        WorkloadState.UNSUPPORTED: (WorkloadPhase.UNSUPPORTED, ObservationQuality.INSPECTION_ERROR),
+    }[state]
+    if state is not WorkloadState.UNSUPPORTED and now - source > timedelta(seconds=DEFAULT_STALE_AFTER_SECONDS):
+        quality = ObservationQuality.STALE
+    record = WorkloadRecord(
+        id=workload_id(host, WorkloadKind.RECIPE_SERVE, WorkloadOwner.MANIFEST, native_id),
+        kind=WorkloadKind.RECIPE_SERVE, owner=WorkloadOwner.MANIFEST, host=host,
+        state=state, phase=phase,
+        outcome=WorkloadOutcome.UNKNOWN if state is WorkloadState.UNSUPPORTED else None,
+        created_at=created, updated_at=updated, source_timestamp=source,
+        source_authority=SourceAuthority.MANAGED_STATUS, observation_quality=quality,
+    )
+    # Check source-relative lifecycle skew as well as collection-relative skew.
+    for collected in (source, now):
+        validate_source_records((record,), owner=WorkloadOwner.MANIFEST, host=host, collection_timestamp=collected)
+    return record
+
+
+def list_manifest_workloads(
+    manifest_path, host: str, query: WorkloadQuery, now: datetime,
+    *, snapshot_reader=capture_manifest_workload_snapshot,
+) -> SourceResult:
+    """Project one bounded snapshot; never reopen config or inspect a container."""
+    now = normalize_workload_timestamp(now)
+    validate_source_records((), owner=WorkloadOwner.MANIFEST, host=host, collection_timestamp=now)
+    if type(query) is not WorkloadQuery:
+        raise ValueError("manifest workload query is invalid")
+    # Revalidate the frozen input rather than trusting a tampered query instance.
+    query = WorkloadQuery(query.owner, query.kind, query.state, query.host, query.active_only, query.recent_seconds, query.limit)
+    try:
+        snapshot = snapshot_reader(manifest_path, clock=lambda: datetime.now(timezone.utc))
+    except Exception:
+        return SourceResult(WorkloadOwner.MANIFEST, ResultStatus.UNAVAILABLE, now, (), Truncation(0, None), WorkloadErrorCode.UNAVAILABLE)
+    if type(snapshot) is not ManifestWorkloadSnapshot:
+        return SourceResult(WorkloadOwner.MANIFEST, ResultStatus.UNAVAILABLE, now, (), Truncation(0, None), WorkloadErrorCode.INVALID)
+    try:
+        components = ((True, snapshot.configuration), (False, snapshot.runtime))
+    except AttributeError:
+        return SourceResult(WorkloadOwner.MANIFEST, ResultStatus.UNAVAILABLE, now, (), Truncation(0, None), WorkloadErrorCode.INVALID)
+
+    errors = set()
+    incomplete = False
+    usable_components = 0
+    configured_records = {}
+    runtime_records = {}
+    observed_digests = set()
+    for configured, raw_component in components:
+        try:
+            component = _projection_component(raw_component, now)
+        except Exception as exc:
+            errors.add(_projection_error(exc))
+            incomplete = True
+            continue
+        if component.status is not ResultStatus.COMPLETE:
+            incomplete = True
+        if component.error is not None:
+            errors.add(component.error)
+        if component.status is not ResultStatus.UNAVAILABLE:
+            usable_components += 1
+        for observation in component.records:
+            try:
+                record = _project_observation(observation, configured=configured, host=host, now=now)
+                records = configured_records if configured else runtime_records
+                if record.id in records:
+                    raise ValueError
+                records[record.id] = record
+                # Invalid/future/duplicate runtime peers never suppress a valid declaration.
+                if not configured:
+                    observed_digests.add(observation.config_digest)
+            except Exception as exc:
+                errors.add(_projection_error(exc))
+                incomplete = True
+
+    suppressed = {
+        workload_id(host, WorkloadKind.RECIPE_SERVE, WorkloadOwner.MANIFEST, "manifest-config:" + digest)
+        for digest in observed_digests
+    }
+    candidates = tuple(runtime_records.values()) + tuple(
+        record for identity, record in configured_records.items() if identity not in suppressed
+    )
+    selected, truncation = select_managed_records(candidates, query, now=now)
+    selected = validate_source_records(selected, owner=WorkloadOwner.MANIFEST, host=host, collection_timestamp=now)
+    if incomplete:
+        status = ResultStatus.PARTIAL if usable_components or candidates else ResultStatus.UNAVAILABLE
+        error = next((code for code in _PROJECTION_ERRORS if code in errors), WorkloadErrorCode.INVALID)
+        return SourceResult(WorkloadOwner.MANIFEST, status, now, selected, Truncation(len(selected), None), error)
+    status = ResultStatus.PARTIAL if truncation.omitted else ResultStatus.COMPLETE
+    return SourceResult(WorkloadOwner.MANIFEST, status, now, selected, truncation)
