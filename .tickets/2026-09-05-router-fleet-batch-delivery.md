@@ -66,3 +66,17 @@ client `30d054c1` (`EVE1C7C31B`, 95 focused tests) and dedicated MCP/chaining
 candidate `0398c5a9` (105 focused tests). Those two source branches were integrated
 only after the full baseline completed. CLI implementation continues separately;
 dashboard slice details are published but not yet re-parsed while its claim is active.
+
+The next integrated observability/chaining gate at `e23c4595` passed 383 tests
+in 8.43s, including the canonical fleet client and MCP regressions but not the
+CLI. CLI candidate `e8441649` (`EVB5A79A49`) then passed 441 focused tests,
+Ruff and both command help gates. MCP evidence is `EV2269709C`.
+
+Dashboard delivery is now split in the approved workload PRD revision27.
+Cleanup-budget correction `8943a4f3` (`EVC9807BFA`, 104 tests), scoped HTTP
+service `0e4a9f6d` (`EV91B07611`, 150 tests), and reserved observability route
+`2406fee0` (`EV12955494`, 123 tests) passed their postcommit tests and Ruff.
+Negative controls reproduced late-cleanup success, scope-check bypass, and
+generic/static shadowing respectively. Workload UI implementation and its
+executable Node harness continue separately. All these candidates remain
+`needs_review`; the older full-suite baseline does not cover them.

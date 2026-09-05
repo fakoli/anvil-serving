@@ -1,7 +1,7 @@
 # Dashboard workload authority and bounded canonical reads
 
 Date: 2026-09-05
-Status: design closed for implementation; source and acceptance pending
+Status: service and reserved API integrated; UI/startup and acceptance pending
 
 ## Ground truth
 
@@ -78,3 +78,10 @@ Each slice requires its own scoped implementation packet. The owning PRD will be
 revised only after active claims finish; formal acceptance remains consolidated.
 No live policy, credential, deployment or model mutation is authorized by this
 design record alone.
+
+Source progress: scoped HTTP service `0e4a9f6d` (`EV91B07611`) passed
+150 focused postcommit tests and Ruff. The reserved observability API candidate
+`2406fee0` (`EV12955494`) passed 123 tests and Ruff, including real loopback
+requests for independent scope, reserved-path ownership, canonical bytes and
+framing refusal. Both are locally integrated and pending the consolidated
+acceptance pass; neither changes live policy, credentials or deployment.
