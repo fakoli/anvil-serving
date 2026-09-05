@@ -37,6 +37,8 @@ from . import guard
 from . import host as host_ops
 from . import paths
 from . import serve_recipes
+from .service_runtime.operations import execute as _service_execute
+from .service_runtime.contracts import ServiceError, identifier as service_identifier
 from .operator_output import CommandResult, OperatorError
 HERE = os.path.dirname(__file__)
 
@@ -1340,11 +1342,105 @@ def _confirm_recipe_mutation(action, model, *, confirm, dry_run):
     return False
 
 
+def _native_recipe_binding(recipe, registry_path):
+    """Return one explicit native service binding or leave Docker recipes untouched."""
+    serve = recipe.get("serve") or {}
+    if serve.get("runtime") != "native":
+        return None
+    allowed = {"runtime", "service", "services_manifest", "model", "engine"}
+    unsupported = sorted(set(serve) - allowed)
+    if unsupported:
+        raise serve_recipes.RecipeError(
+            "native service recipe must keep lifecycle in services.toml; unsupported "
+            "recipe.serve fields: %s" % ", ".join(unsupported)
+        )
+    try:
+        service = service_identifier(serve.get("service"), "recipe.serve.service")
+    except ServiceError as exc:
+        raise serve_recipes.RecipeError(
+            "native service recipe requires one declared recipe.serve.service"
+        ) from exc
+    if serve.get("model") != recipe["model"]:
+        raise serve_recipes.RecipeError(
+            "native service recipe.serve.model must exactly match recipe.model"
+        )
+    try:
+        engine = service_identifier(serve.get("engine"), "recipe.serve.engine")
+    except ServiceError as exc:
+        raise serve_recipes.RecipeError(
+            "native service recipe requires one declared recipe.serve.engine"
+        ) from exc
+    manifest = serve.get("services_manifest")
+    if manifest is None:
+        manifest = paths.config_path("services.toml")
+    elif not isinstance(manifest, str) or not manifest.strip():
+        raise serve_recipes.RecipeError(
+            "native service recipe.serve.services_manifest must be a non-empty path"
+        )
+    else:
+        manifest = manifest.strip()
+        manifest = os.path.abspath(
+            manifest if os.path.isabs(manifest) else os.path.join(os.path.dirname(registry_path), manifest)
+        )
+    return {"service": service, "manifest": manifest, "engine": engine}
+
+
+def _native_recipe_lifecycle(recipe, registry_path, action, *, dry_run=True, confirm=False,
+                             tail=100, topology=None, command_host=None,
+                             command_runtime=None, target=None, transport="local",
+                             topology_overlay=None, timeout_seconds=30):
+    """Delegate a recipe explicitly bound to one supervised native service."""
+    binding = _native_recipe_binding(recipe, registry_path)
+    if binding is None:
+        return None
+    try:
+        result = _service_execute(
+            action,
+            binding["service"],
+            manifest=binding["manifest"],
+            topology=topology,
+            topology_overlay=topology_overlay,
+            command_host=command_host,
+            command_runtime=command_runtime,
+            target=target,
+            transport="local" if transport == "auto" else transport,
+            dry_run=dry_run,
+            confirm=confirm or guard.confirmation_authorized(),
+            tail=tail,
+            timeout_seconds=timeout_seconds,
+            binding=None,
+            remote=False,
+            expected_model=recipe["model"],
+            expected_engine=binding["engine"],
+        )
+    except ServiceError as exc:
+        print("native recipe service %s %s refused (%s): %s" % (
+            binding["service"], action, exc.code, exc), file=sys.stderr)
+        return 1
+    for line in result.get("lines") or ():
+        print(line)
+    if not result.get("lines"):
+        print(json.dumps(result, sort_keys=True))
+    return 0
+
+
 def _help_description(outcome, *examples):
     return "%s\n\nExamples:\n%s" % (
         outcome,
         "\n".join("  " + example for example in examples),
     )
+
+
+def _native_service_options(parser):
+    """Expose dispatcher-owned identity only on recipe lifecycle commands."""
+    parser.add_argument("--topology", help="topology declaration for a native service-bound recipe")
+    parser.add_argument("--topology-overlay", help="topology overlay for a native service-bound recipe")
+    parser.add_argument("--command-host", help="declared command host for a native service-bound recipe")
+    parser.add_argument("--command-runtime", help="declared command runtime for a native service-bound recipe")
+    parser.add_argument("--target", help="declared target for a native service-bound recipe")
+    parser.add_argument("--transport", choices=("auto", "local"), default="local")
+    parser.add_argument("--operation-timeout", type=int, default=30,
+                        help="native service operation deadline in seconds")
 
 
 def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
@@ -1945,14 +2041,15 @@ def _build_recipe_parser():
     )
     p_load.add_argument("model", metavar="MODEL",
                         help="model id or unambiguous basename")
-    p_load.add_argument("--container", required=True, metavar="NAME",
-                        help="new Docker container name for this loaded recipe")
+    p_load.add_argument("--container", metavar="NAME",
+                        help="new Docker container name; omitted only for a native service-bound recipe")
     p_load.add_argument("--registry", default=None,
                         help="registry TOML (default precedence: config home, configs/, packaged)")
     p_load.add_argument(
         "--gpu-device",
         help="override the recipe GPU with one discovered GPU UUID or index",
     )
+    _native_service_options(p_load)
     p_load.add_argument("--dry-run", action="store_true",
                         help="print the exact docker command without starting it")
     p_load.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
@@ -1976,6 +2073,7 @@ def _build_recipe_parser():
                             help="optional exact Anvil recipe container name")
         parser.add_argument("--registry", default=None,
                             help="registry TOML (default precedence: config home, configs/, packaged)")
+        _native_service_options(parser)
         if action == "logs":
             parser.add_argument("--tail", type=int, default=200,
                                 help="bounded trailing lines, 1 through 5000")
@@ -2009,12 +2107,6 @@ def _recipe_main(argv):
         return 0
 
     cache_policy = None
-    if a.recipe_action == "load":
-        try:
-            cache_policy = host_ops.load_cache_reclaim_policy()
-        except host_ops.HostConfigError as exc:
-            print("[anvil-serving] %s" % exc, file=sys.stderr)
-            return 2
 
     registry_path = a.registry or _default_registry()
     try:
@@ -2049,6 +2141,34 @@ def _recipe_main(argv):
         return 0
     if a.recipe_action in {"status", "logs", "unload"}:
         recipe = serve_recipes.find_recipe(registry, a.model) if a.model else None
+        if recipe is not None:
+            try:
+                native = _native_recipe_binding(recipe, registry_path)
+            except serve_recipes.RecipeError as exc:
+                print(str(exc), file=sys.stderr)
+                return 1
+            if native is not None:
+                if a.container:
+                    print("native service-bound recipes do not accept --container", file=sys.stderr)
+                    return 2
+                if a.recipe_action == "logs" and (a.since or a.contains):
+                    print("native service-bound recipe logs support --tail only", file=sys.stderr)
+                    return 2
+                return _native_recipe_lifecycle(
+                    recipe,
+                    registry_path,
+                    {"status": "status", "logs": "logs", "unload": "down"}[a.recipe_action],
+                    dry_run=True if a.recipe_action in {"status", "logs"} else a.dry_run,
+                    confirm=getattr(a, "confirm", False),
+                    tail=a.tail if a.recipe_action == "logs" else 100,
+                    topology=a.topology,
+                    topology_overlay=a.topology_overlay,
+                    command_host=a.command_host,
+                    command_runtime=a.command_runtime,
+                    target=a.target,
+                    transport=a.transport,
+                    timeout_seconds=a.operation_timeout,
+                )
         if recipe is not None and a.container:
             try:
                 if a.recipe_action == "status":
@@ -2167,6 +2287,26 @@ def _recipe_main(argv):
             recipe = serve_recipes.find_recipe(registry, a.model)
             if recipe is None:
                 raise serve_recipes.RecipeError("no serve recipe for %r in %s" % (a.model, registry_path))
+            native = _native_recipe_binding(recipe, registry_path)
+            if native is not None:
+                if a.container or a.gpu_device:
+                    raise serve_recipes.RecipeError(
+                        "native service-bound recipes do not accept --container or --gpu-device"
+                    )
+                return _native_recipe_lifecycle(
+                    recipe, registry_path, "up", dry_run=a.dry_run, confirm=a.confirm,
+                    topology=a.topology, command_host=a.command_host,
+                    topology_overlay=a.topology_overlay,
+                    command_runtime=a.command_runtime, target=a.target,
+                    transport=a.transport, timeout_seconds=a.operation_timeout,
+                )
+            if not a.container:
+                raise serve_recipes.RecipeError("Docker recipe load requires --container")
+            try:
+                cache_policy = host_ops.load_cache_reclaim_policy()
+            except host_ops.HostConfigError as exc:
+                print("[anvil-serving] %s" % exc, file=sys.stderr)
+                return 2
             selected_registry_digest = serve_recipes.registry_digest(registry_path)
             command = serve_recipes.docker_run_argv(
                 recipe,

@@ -291,7 +291,7 @@ _EXPECTED_HOME_FILES = {
     "host.toml", "serve-recipes.toml",
     "anvil-router.deepseek-pi.toml", "anvil-router.live.toml",
     "anvil-router.qwen35-rollback.toml",
-    "serves.toml", "serves.voice.toml", "serves.comfyui.toml",
+    "serves.toml", "services.toml", "serves.voice.toml", "serves.comfyui.toml",
     "docker-compose.yml", "docker-compose.voice-audio.yml", "docker-compose.voice-proxy.yml",
     "docker-compose.comfyui.yml",
     "Dockerfile.omni-small", "Dockerfile.comfyui", "install-comfyui-node.sh",

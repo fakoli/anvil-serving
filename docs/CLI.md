@@ -311,6 +311,18 @@ required operands, choices, and defaults.
 | `controller serve` | Run the private controller. | `process` / `foreground` | - |
 | `controller status` | Probe controller health. | `read` / `bounded` | - |
 | `host` | Inspect and repair declared host operations. | `read` / `bounded` | - |
+| `host services` | Inspect, adopt, and operate declared portable supervised services. | `read` / `bounded` | - |
+| `host services status` | Show bounded declared-service status. | `read` / `bounded` | `--manifest`<br>`--tail`<br>`--timeout-seconds` |
+| `host services discover` | Discover eligible unmanaged local services. | `read` / `bounded` | - |
+| `host services capabilities` | Show the owning runtime's supported service operations. | `read` / `bounded` | - |
+| `host services logs` | Read a bounded declared-service log tail. | `read` / `bounded` | `--manifest`<br>`--tail`<br>`--timeout-seconds` |
+| `host services adopt` | Preview or adopt an exact existing launchd or Docker service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds`<br>`--manager`<br>`--service-label`<br>`--resource`<br>`--engine`<br>`--support`<br>`--container`<br>`--endpoint`<br>`--model`<br>`--health-path`<br>`--models-path`<br>`--feature`<br>`--startup-policy`<br>`--memory-mib`<br>`--serve`<br>`--serve-manifest` |
+| `host services install` | Render a declared service supervisor definition without starting it. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
+| `host services up` | Start one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
+| `host services down` | Stop one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
+| `host services restart` | Restart one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
+| `host services enable` | Enable automatic start for one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
+| `host services disable` | Disable automatic start for one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
 | `host config` | Inventory and safely export operator-owned configuration. | `read` / `bounded` | - |
 | `host config inventory` | Classify operator-home files and verify dependency closure. | `read` / `bounded` | `--home`<br>`--max-bytes` |
 | `host config export` | Export safe config and sanitized Anvil-owned gateway fragments. | `read` / `bounded` | `--home`<br>`--gateway-path`<br>`--path`<br>`--max-bytes` |

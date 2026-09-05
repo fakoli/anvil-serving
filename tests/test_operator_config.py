@@ -58,6 +58,38 @@ def test_inventory_classifies_files_without_returning_contents(tmp_path):
     assert result["installed_revisions"]["anvil_serving"]
 
 
+def test_services_manifest_is_versionable_and_exports_definition_dependencies(tmp_path):
+    _write(
+        tmp_path / "services.toml",
+        """schema = "anvil-services/v1"
+
+[[service]]
+id = "events"
+source_definition = "definitions/voice.toml"
+definition = "definitions/host.toml"
+definition_sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+""",
+    )
+    _write(tmp_path / "definitions" / "voice.toml", "schema_version = 1\n")
+    _write(tmp_path / "definitions" / "host.toml", "schema_version = 1\n")
+
+    inventory = operator_config.inventory(str(tmp_path))
+    by_path = {row["path"]: row for row in inventory["files"]}
+    assert by_path["services.toml"]["classification"] == "versionable"
+    assert by_path["services.toml"]["dependencies"] == [
+        "definitions/voice.toml",
+        "definitions/host.toml",
+    ]
+
+    exported = operator_config.export(str(tmp_path), paths=["services.toml"])
+    assert exported["selected_paths"] == ["services.toml"]
+    assert [item["path"] for item in exported["files"]] == [
+        "definitions/host.toml",
+        "definitions/voice.toml",
+        "services.toml",
+    ]
+
+
 def test_inventory_refuses_symlink(tmp_path):
     target = _write(tmp_path / "target.toml", "schema_version = 1\n")
     link = tmp_path / "linked.toml"

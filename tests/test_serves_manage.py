@@ -1046,7 +1046,7 @@ def test_main_down_forwards_keep_container(tmp_path, monkeypatch):
     """)
     seen = {}
 
-    def fake(serves_list, names, dry_run=False, keep_container=False):
+    def fake(serves_list, names, dry_run=False, keep_container=False, **_kwargs):
         seen.update(
             names=names,
             dry_run=dry_run,
