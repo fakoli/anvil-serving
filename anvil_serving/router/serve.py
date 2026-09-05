@@ -29,6 +29,7 @@ from .availability import (
     AlwaysAvailable,
     AvailabilityResult,
     HttpHealthAvailability,
+    replica_identity_passed,
     resolve_runtime_tier,
     safe_check,
     safe_check_member,
@@ -530,10 +531,13 @@ class RoutingBackend:
         ),)
         if tier.replicas:
             # The configured tier, not caller metadata, owns member identity.
-            if type(replica_member_id) is str and any(
-                member.id == replica_member_id for member in tier.replicas
+            if (
+                replica_selection == "identity_passed"
+                and type(replica_member_id) is str
+                and any(
+                    member.id == replica_member_id for member in tier.replicas
+                )
             ):
-                replica_selection = "identity_passed"
                 if reason not in {
                     "served", "served_output_clamped", "client_disconnected",
                     "backend_error", "completion_error",
@@ -691,8 +695,14 @@ class RoutingBackend:
         upstream_dispatched = False
         first_content_at: Optional[float] = None
         replica_scheduler = None
+        replica_identity_verified = False
 
         def record(*args, **kwargs):
+            if (
+                replica_identity_verified
+                and kwargs.get("replica_member_id") is not None
+            ):
+                kwargs.setdefault("replica_selection", "identity_passed")
             return self._record(
                 *args,
                 workload_token=workload_token,
@@ -810,14 +820,22 @@ class RoutingBackend:
             # second provider read or an implicit retry/fallback path.
             check_started = time.monotonic()
             bound_members = backend.member_ids if isinstance(backend, ReplicaRuntime) else ()
-            member_readiness = {
-                member.id: (
+            member_readiness = {}
+            for member in tier.replicas:
+                result = (
                     safe_check_member(self._availability, tier, member.id)
                     if member.id in bound_members
-                    else AvailabilityResult(False, "unavailable", "replica_member_unbound")
+                    else AvailabilityResult(
+                        False, "unavailable", "replica_member_unbound"
+                    )
                 )
-                for member in tier.replicas
-            }
+                member_readiness[member.id] = (
+                    result
+                    if replica_identity_passed(tier, result)
+                    else AvailabilityResult(
+                        False, "unavailable", "identity_not_verified"
+                    )
+                )
             readiness_check_ms = max(
                 0, int((time.monotonic() - check_started) * 1000)
             )
@@ -837,6 +855,20 @@ class RoutingBackend:
                 )
                 raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
             selected_member = lease.member_id
+            replica_identity_verified = replica_identity_passed(
+                tier, member_readiness.get(selected_member)
+            )
+            if not replica_identity_verified:
+                lease.release()
+                selected_member = None
+                record(
+                    request, tier, served=False, reason="unavailable", outcome="skipped",
+                    replica_selection="not_admitted",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                )
+                raise NoAvailableTierError(
+                    request.model, (tier.id,), kind="unavailable"
+                )
             # This immutable ordering was made before the lease increments its
             # selected member counter.  Preserve it verbatim for every later
             # terminal record without a second admission or cache observation.
@@ -1169,13 +1201,7 @@ class RoutingBackend:
             readiness = safe_check_member(
                 self._availability, tier, member_id, include_exception_name=False,
             )
-            verified = (
-                readiness.available is True
-                and readiness.state == "ready"
-                and readiness.reason == "identity_passed"
-                and readiness.expected_model == tier.model
-                and readiness.observed_model == tier.model
-            )
+            verified = replica_identity_passed(tier, readiness)
             reason = (
                 "readiness_passed" if verified else
                 readiness.reason if not readiness.available else "identity_not_verified"

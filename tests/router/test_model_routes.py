@@ -209,7 +209,9 @@ def test_server_wires_capacity_strategy_ceilings_and_cache_close(tmp_path, monke
     path = tmp_path / "capacity.toml"
     path.write_text(body, encoding="utf-8")
     members = {"member-a": _MemberBackend("a"), "member-b": _MemberBackend("b")}
-    availability = _ReplicaAvailability({("primary", key): _ready() for key in members})
+    availability = _ReplicaAvailability({
+        ("primary", key): _ready("primary-model") for key in members
+    })
     server = build_server(
         str(path), host="127.0.0.1", port=0,
         backends={"primary": serve_module.ReplicaRuntime(members)}, availability=availability,

@@ -101,6 +101,24 @@ class AvailabilityResult:
     runtime_metadata: Optional[RuntimeModelMetadata] = None
 
 
+def replica_identity_passed(tier: Tier, result: object) -> bool:
+    """Return whether one replica snapshot proves the tier's exact live identity."""
+    return (
+        type(result) is AvailabilityResult
+        and result.available is True
+        and type(result.state) is str
+        and result.state == "ready"
+        and type(result.reason) is str
+        and result.reason == "identity_passed"
+        and type(tier.model) is str
+        and bool(tier.model)
+        and type(result.expected_model) is str
+        and result.expected_model == tier.model
+        and type(result.observed_model) is str
+        and result.observed_model == tier.model
+    )
+
+
 class AlwaysAvailable:
     """Backwards-compatible availability implementation with no network I/O."""
 
@@ -691,6 +709,7 @@ __all__ = [
     "AvailabilityResult",
     "HttpHealthAvailability",
     "RuntimeModelMetadata",
+    "replica_identity_passed",
     "resolve_runtime_tier",
     "safe_check",
     "safe_check_member",

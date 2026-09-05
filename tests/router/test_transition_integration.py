@@ -10,9 +10,14 @@ from dataclasses import replace
 import pytest
 
 import anvil_serving.router.serve as router_serve
-from anvil_serving.router.availability import AlwaysAvailable, AvailabilityResult
+from anvil_serving.router.availability import (
+    AlwaysAvailable,
+    AvailabilityResult,
+    replica_identity_passed,
+)
 from anvil_serving.router.config import ConfigError, ReplicaIdentity, ReplicaMember, RouterConfig, Tier
 from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
+from anvil_serving.router.model_capacity import replica_metadata
 from anvil_serving.router.replica_scheduler import (
     PressureFreshness,
     PressureSignalState,
@@ -184,6 +189,115 @@ def _replica_stream_routing(blocking, peer):
         {tier.id: ReplicaRuntime({"member-a": blocking, "member-b": peer})},
         availability=_ReplicaReadiness(),
     )
+
+
+class _AvailabilityResultSubclass(AvailabilityResult):
+    pass
+
+
+class _MemberResults:
+    def __init__(self, results):
+        self.results = results
+
+    def check_member(self, tier, member_id):
+        result = self.results[member_id]
+        if isinstance(result, BaseException):
+            raise result
+        return result
+
+
+def _replica_routing_with_readiness(results):
+    tier = _replica_tier()
+    first = _TextBackend("A")
+    second = _TextBackend("B")
+    routing = RoutingBackend(
+        RouterConfig(tiers=(tier,), model_routes={"replica.stream": tier.id}),
+        {tier.id: ReplicaRuntime({"member-a": first, "member-b": second})},
+        availability=_MemberResults(results),
+    )
+    return tier, routing, first, second
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        AvailabilityResult(True, "ready", "health_passed"),
+        AvailabilityResult(
+            True, "ready", "identity_passed", "replica-model", "other-model"
+        ),
+        AvailabilityResult(
+            True, "unavailable", "identity_mismatch", "replica-model", None
+        ),
+        _AvailabilityResultSubclass(
+            True, "ready", "identity_passed", "replica-model", "replica-model"
+        ),
+        AvailabilityResult(
+            1, "ready", "identity_passed", "replica-model", "replica-model"
+        ),
+        {"available": True},
+    ],
+    ids=[
+        "health-only",
+        "observed-mismatch",
+        "state-inconsistent",
+        "result-subclass",
+        "truthy-non-bool",
+        "malformed-result",
+    ],
+)
+def test_replica_request_requires_exact_member_identity_before_dispatch(invalid):
+    tier, routing, first, second = _replica_routing_with_readiness(
+        {"member-a": invalid, "member-b": invalid}
+    )
+    try:
+        with pytest.raises(NoAvailableTierError):
+            "".join(routing.generate(_request("replica.stream")))
+        assert first.calls == second.calls == 0
+        decision = routing._decision_log.last
+        assert decision is not None
+        assert decision.requested_tier == tier.id
+        assert decision.served_tier is None
+        assert decision.replica_member_id is None
+        assert decision.replica_selection == "not_admitted"
+    finally:
+        routing.close()
+
+
+def test_replica_request_uses_exact_member_and_excludes_invalid_peer():
+    exact = AvailabilityResult(
+        True, "ready", "identity_passed", "replica-model", "replica-model"
+    )
+    invalid = AvailabilityResult(True, "ready", "health_passed")
+    tier, routing, first, second = _replica_routing_with_readiness(
+        {"member-a": invalid, "member-b": exact}
+    )
+    try:
+        assert "".join(routing.generate(_request("replica.stream"))) == "B"
+        assert first.calls == 0
+        assert second.calls == 1
+        decision = routing._decision_log.last
+        assert decision is not None
+        assert decision.served_tier == tier.id
+        assert decision.replica_member_id == "member-b"
+        assert decision.replica_selection == "identity_passed"
+    finally:
+        routing.close()
+
+
+def test_replica_identity_guard_negative_control(monkeypatch):
+    invalid = AvailabilityResult(True, "ready", "health_passed")
+    monkeypatch.setattr(router_serve, "replica_identity_passed", lambda tier, result: True)
+    _tier, routing, first, second = _replica_routing_with_readiness(
+        {"member-a": invalid, "member-b": invalid}
+    )
+    try:
+        with pytest.raises(AssertionError, match="weakened guard dispatched"):
+            output = "".join(routing.generate(_request("replica.stream")))
+            assert output == "" and first.calls == second.calls == 0, (
+                "weakened guard dispatched"
+            )
+    finally:
+        routing.close()
 
 
 def _replica_config():
@@ -819,6 +933,10 @@ def test_member_status_reads_only_selected_member_and_preserves_tier_status_shap
     AvailabilityResult(False, "unavailable", "identity_mismatch", "replica-model", "other-model"),
     RuntimeError("private upstream data"),
     {"available": True},
+    _AvailabilityResultSubclass(
+        True, "ready", "identity_passed", "replica-model", "replica-model"
+    ),
+    AvailabilityResult(1, "ready", "identity_passed", "replica-model", "replica-model"),
 ])
 def test_member_readmit_requires_exact_identity_and_never_reprobes_or_reads_peer(readiness):
     tier, routing = _replica_stream_routing(_TextBackend("a"), _TextBackend("b"))
@@ -842,6 +960,39 @@ def test_member_readmit_requires_exact_identity_and_never_reprobes_or_reads_peer
         assert routing._admission.member_snapshot(tier.id, "member-a").quiesced
         assert calls == [(tier.id, "member-a")]
         assert "private upstream data" not in json.dumps(result)
+    finally:
+        routing.close()
+
+
+def test_exact_replica_identity_predicate_matches_projection_and_readmission():
+    tier, routing = _replica_stream_routing(_TextBackend("a"), _TextBackend("b"))
+    exact = AvailabilityResult(
+        True, "ready", "identity_passed", tier.model, tier.model
+    )
+    invalid = _AvailabilityResultSubclass(
+        True, "ready", "identity_passed", tier.model, tier.model
+    )
+    try:
+        assert replica_identity_passed(tier, exact) is True
+        assert replica_identity_passed(tier, invalid) is False
+        metadata, readiness = replica_metadata(
+            tier, _MemberResults({"member-a": invalid, "member-b": exact})
+        )
+        assert [row["readiness"]["loaded"] for row in metadata["members"]] == [
+            False,
+            True,
+        ]
+        assert readiness.available is True
+        routing.quiesce_tier(tier.id, member_id="member-a")
+        routing._availability = _MemberResults(
+            {"member-a": exact, "member-b": exact}
+        )
+        assert routing.readmit_tier(tier.id, member_id="member-a")["readmitted"] is True
+        routing.quiesce_tier(tier.id, member_id="member-b")
+        routing._availability = _MemberResults(
+            {"member-a": exact, "member-b": invalid}
+        )
+        assert routing.readmit_tier(tier.id, member_id="member-b")["readmitted"] is False
     finally:
         routing.close()
 

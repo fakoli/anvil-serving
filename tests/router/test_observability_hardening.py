@@ -234,10 +234,12 @@ class _DecisionReadiness:
 
     def check_member(self, tier, member_id):
         self.calls.append(member_id)
+        if self.available:
+            return AvailabilityResult(
+                True, "ready", "identity_passed", tier.model, tier.model
+            )
         return AvailabilityResult(
-            self.available, "ready" if self.available else "unavailable",
-            "ready" if self.available else "identity_mismatch",
-            expected_model="model-private", observed_model="unexpected-private",
+            False, "unavailable", "identity_mismatch", tier.model, None
         )
 
 
@@ -353,6 +355,13 @@ def test_router_does_not_stamp_an_undeclared_member_or_caller_metadata(tmp_path)
     request.raw.update(replica_member_id="member-b", replica_selection="identity_passed")
     assert list(routing.generate(request)) == ["response-secret"]
     assert log.last.replica_member_id == "member-a"
+    routing._record(
+        request, routing._config.tiers[0], served=False, reason="backend_error",
+        replica_member_id="member-a",
+    )
+    assert log.last.replica_member_id is None
+    assert log.last.replica_selection == "request_rejected"
+    assert log.last.attempts == ()
     routing._record(request, routing._config.tiers[0], served=False, reason="backend_error",
                     replica_member_id="not-declared")
     assert log.last.replica_member_id is None

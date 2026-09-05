@@ -655,8 +655,8 @@ class _ReplicaAvailability:
         return self.results[(tier.id, member_id)]
 
 
-def _ready() -> AvailabilityResult:
-    return AvailabilityResult(True, "ready", "ready")
+def _ready(model: str = "served-model") -> AvailabilityResult:
+    return AvailabilityResult(True, "ready", "identity_passed", model, model)
 
 
 def _unavailable() -> AvailabilityResult:
