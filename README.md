@@ -121,8 +121,9 @@ selection.
 
 ## Quick start
 
-Python 3.11+ is the only Anvil runtime prerequisite. Docker and a GPU are
-required only for real local model serves. A single-host installation can stay
+Python 3.11+ is the only Anvil runtime prerequisite. Model serves additionally
+need their declared engine: Docker and compatible hardware for container
+recipes, or an installed MLX service on Apple Silicon macOS. A single-host installation can stay
 entirely on loopback; the reference multi-device deployment also installs
 Tailscale and follows [Private networking with Tailscale](docs/TAILSCALE-NETWORKING.md).
 
@@ -163,13 +164,51 @@ Use `anvil-serving eval preflight` before mapping a real model to an alias, and
 record capacity and quality evidence with `anvil-serving eval benchmark`. A
 mapping is an exposure decision, not a model promotion claim.
 
+## Portable host services
+
+Use `anvil-serving host services` to discover supervised services, inspect
+process and engine state, read logs, and manage their lifecycle through the CLI
+or typed MCP tools. The supervisor and serving engine are separate contracts:
+
+| Platform | Implemented serving path |
+| --- | --- |
+| Windows | Docker |
+| macOS | Native MLX through launchd, or Docker |
+| Linux | Docker |
+| NeoCloud: Vast.ai, Runpod | Provider lifecycle TBD |
+| Cloud: AWS, Azure | Provider lifecycle TBD |
+
+The new lifecycle has passed an isolated live macOS LaunchAgent smoke. Docker
+adapters have simulated supervisor tests; live Docker lifecycle qualification
+on Windows, macOS, and Linux remains pending.
+
+After declaring the service and its topology owner in the private operator home:
+
+```bash
+anvil-serving host services discover
+anvil-serving host services status
+anvil-serving host services logs SERVICE_NAME --tail 100
+anvil-serving host services up SERVICE_NAME
+anvil-serving host services up SERVICE_NAME --no-dry-run --confirm
+anvil-serving host services down SERVICE_NAME --no-dry-run --confirm
+```
+
+Mutations preview by default; applying requires both flags shown above.
+`restart`, `enable`, and `disable` use the same contract. Existing macOS
+Parakeet.cpp and Kokoro LaunchAgents can be adopted as legacy services without
+restarting or migrating them. Native serves, recipes, and voice endpoints can
+delegate lifecycle to a declared service binding. See
+[Host-supervised services](docs/HOST-SERVICES.md) for adoption, installation,
+ownership, and the distinction between running, enabled, and ready.
+
 ## What it provides
 
 | Surface | Purpose |
 |---|---|
 | `anvil-serving product` | Read-only family, boundary, and ordered-journey discovery. |
 | `anvil-serving router run` | Authenticated Anthropic/OpenAI-compatible capability meta-router. |
-| `anvil-serving serves` | Compose-backed lifecycle, GPU reservations, and split/exclusive TP=2 mode transactions. |
+| `anvil-serving serves` | Docker Compose and declared native-service lifecycle; Docker GPU reservations and split/exclusive TP=2 mode transactions. |
+| `anvil-serving host services` | Supervisor discovery, adoption, state, bounded logs, and portable lifecycle through launchd or Docker. |
 | `anvil-serving eval preflight` | Functional qualification of a concrete endpoint. |
 | `anvil-serving eval benchmark` | Capacity and quality evidence collection. |
 | `anvil-serving models` | Model cache, source, and serve-recipe management. |

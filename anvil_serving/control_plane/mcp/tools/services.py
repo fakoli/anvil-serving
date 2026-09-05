@@ -50,6 +50,8 @@ def _binding(args: dict, action: str, service: str) -> dict | None:
         "support": support,
     }
     if manager == "launchd":
+        if not hasattr(os, "getuid"):
+            raise ToolError("unsupported_platform", "launchd requires the owning macOS host")
         label = _str_arg(args, "service_label", required=True)
         binding.update(
             {

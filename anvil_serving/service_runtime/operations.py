@@ -187,7 +187,8 @@ def _admission(binding, bindings, observations, resource, topo, run):
         states = serves.docker_states([s["container"] for s in declarations], _run=run)
         if any(value in {"error", "unknown", "restarting", "removing"} for value in states.values()):
             raise ServiceError("unknown_state", "reservation ledger contains unknown container state")
-        state_of = lambda name: states.get(name, "absent")
+        def state_of(name):
+            return states.get(name, "absent")
         denial = reservations.deny_exclusive_conflict(declarations, selected, state_of) or reservations.deny_over_budget(declarations, selected, state_of)
         if denial:
             raise ServiceError("capacity_refused", "owning serve reservation admission refused the service start")

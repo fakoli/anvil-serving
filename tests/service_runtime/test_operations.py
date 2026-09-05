@@ -1,5 +1,5 @@
 """Lifecycle effects require both exact ownership and an explicit apply gate."""
-import json
+import os
 import subprocess
 
 import pytest
@@ -116,6 +116,7 @@ def test_controller_refuses_self_shutdown_over_remote_tool(setup, monkeypatch):
     assert not adapter.commands
 
 
+@pytest.mark.skipif(os.name == "nt", reason="launchd installation requires POSIX directory permissions")
 def test_install_pinned_definition_does_not_register_or_start(setup, tmp_path):
     import hashlib
     from anvil_serving.service_runtime.operations import execute
