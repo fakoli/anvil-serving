@@ -44,6 +44,7 @@ import threading
 import urllib.parse
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Callable, Iterable, Optional, Sequence
 
@@ -89,7 +90,12 @@ from ..a2a.protocol import (
     AGENT_CARD_PATH,
 )
 from ..media.errors import MediaError
-from ..observability.workloads import WorkloadOutcome
+from ..observability.workloads import (
+    NodeResult,
+    WorkloadOutcome,
+    node_result_to_json,
+    parse_workload_query,
+)
 
 # Path -> dialect. Stateless, so module-level singletons are fine.
 _OPENAI_DIALECT = OpenAIDialect()
@@ -111,6 +117,7 @@ PROMETHEUS_ENDPOINT = "/metrics"
 REQUEST_TRACE_PREFIX = "/v1/requests/"
 REQUEST_TRACE_ROUTE = "/v1/requests/{request_id}"
 TRANSITION_ENDPOINT = "/v1/admin/transition"
+WORKLOADS_ENDPOINT = "/v1/workloads"
 # Purpose-model surfaces (gpu-reservations:T010 / ADR-0017 §7). POST-only,
 # routed by MODEL NAME via an injected PurposeRouter — active only when the
 # server is built with one (purpose_models configured); otherwise both paths
@@ -139,6 +146,15 @@ _MAX_OPERATOR_PATH_BYTES = 256
 _MAX_OPERATOR_QUERY_BYTES = 8192
 _MAX_OPERATOR_RESPONSE_BYTES = 8 * 1024 * 1024
 _OPERATOR_PATH_RE = re.compile(r"/[A-Za-z0-9][A-Za-z0-9._~-]*(?:/[A-Za-z0-9][A-Za-z0-9._~-]*)*")
+_PERCENT_ESCAPE_RE = re.compile(r"%(?:[0-9A-Fa-f]{2})")
+
+
+class _InvalidWorkloadQuery(ValueError):
+    """Fixed, input-free workload query refusal."""
+
+
+class _WorkloadSourceUnavailable(RuntimeError):
+    """Fixed, input-free workload source failure."""
 
 
 def _validated_operator_routes(
@@ -169,6 +185,7 @@ def _validated_operator_routes(
         ROUTER_STATS_ENDPOINT,
         PROMETHEUS_ENDPOINT,
         TRANSITION_ENDPOINT,
+        WORKLOADS_ENDPOINT,
         MCP_PATH,
         A2A_PATH,
         AGENT_CARD_PATH,
@@ -371,11 +388,20 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   audio: Optional[AudioGateway] = None,
                   gateway: Optional[ProtocolGateway] = None,
                   authorization_policy: Optional[AuthorizationPolicy] = None,
-                  operator_routes: Sequence[OperatorRoute] | None = None):
+                  operator_routes: Sequence[OperatorRoute] | None = None,
+                  workload_host: Optional[str] = None,
+                  workload_registry=None,
+                  workload_clock: Optional[Callable[[], datetime]] = None):
     operator_route_map = {
         (route.method, route.path): route
         for route in _validated_operator_routes(operator_routes)
     }
+    # This built-in route is intentionally outside the injected registry: a
+    # configuration supplied callback must never replace workload visibility.
+    operator_route_map[("GET", WORKLOADS_ENDPOINT)] = OperatorRoute(
+        "GET", WORKLOADS_ENDPOINT, WORKLOADS_READ, lambda _query: b""
+    )
+    collection_clock = workload_clock or (lambda: datetime.now(timezone.utc))
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -517,6 +543,68 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 or (len(content_lengths) == 1 and content_lengths[0] == "0")
             )
 
+        @staticmethod
+        def _workload_query(query: str):
+            try:
+                raw = query.encode("ascii", "strict")
+            except UnicodeEncodeError:
+                raise _InvalidWorkloadQuery() from None
+            if len(raw) > _MAX_OPERATOR_QUERY_BYTES:
+                raise _InvalidWorkloadQuery()
+            for index, character in enumerate(query):
+                if character == "%" and _PERCENT_ESCAPE_RE.match(query, index) is None:
+                    raise _InvalidWorkloadQuery()
+            try:
+                pairs = urllib.parse.parse_qsl(
+                    query,
+                    keep_blank_values=True,
+                    strict_parsing=False,
+                    encoding="utf-8",
+                    errors="strict",
+                    max_num_fields=7,
+                )
+            except (UnicodeDecodeError, ValueError):
+                raise _InvalidWorkloadQuery() from None
+            if len(pairs) > 7:
+                raise _InvalidWorkloadQuery()
+            normalized_pairs = []
+            for key, value in pairs:
+                if key == "active_only" and value not in {"true", "false"}:
+                    raise _InvalidWorkloadQuery()
+                if key in {"limit", "recent_seconds"} and (
+                    not re.fullmatch(r"[0-9]{1,5}", value)
+                ):
+                    raise _InvalidWorkloadQuery()
+                if key == "active_only":
+                    value = value == "true"
+                elif key in {"limit", "recent_seconds"}:
+                    value = int(value)
+                normalized_pairs.append((key, value))
+            try:
+                return parse_workload_query(normalized_pairs)
+            except Exception:
+                raise _InvalidWorkloadQuery() from None
+
+        def _workload_payload(self, query: str) -> bytes:
+            parsed = self._workload_query(query)
+            if workload_host is None or workload_registry is None:
+                raise _WorkloadSourceUnavailable()
+            try:
+                collected_at = collection_clock()
+                source = workload_registry.source_result(
+                    workload_host, parsed, collected_at
+                )
+                return node_result_to_json(NodeResult(
+                    host=workload_host,
+                    status=source.status,
+                    collection_timestamp=collected_at,
+                    sources=(source,),
+                )).encode("utf-8")
+            except _InvalidWorkloadQuery:
+                raise
+            except Exception:
+                raise _WorkloadSourceUnavailable() from None
+
         def _handle_operator_route(self, route: OperatorRoute) -> None:
             """Run one already-identified scoped route without body handling."""
             presented = _extract_operator_token(self.headers)
@@ -545,7 +633,22 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
             try:
                 try:
-                    payload = route.callback(query)
+                    payload = (
+                        self._workload_payload(query)
+                        if route.path == WORKLOADS_ENDPOINT
+                        else route.callback(query)
+                    )
+                except _InvalidWorkloadQuery:
+                    self._operator_error(
+                        400, "invalid_workload_query", "invalid workload query"
+                    )
+                    return
+                except _WorkloadSourceUnavailable:
+                    self._operator_error(
+                        503, "workload_source_unavailable",
+                        "workload source unavailable",
+                    )
+                    return
                 except Exception:  # noqa: BLE001 - callback details stay private
                     self._operator_error(500, "internal_error", "operator route failed")
                     return
@@ -1840,6 +1943,9 @@ def make_server(host: str, port: int,
                 gateway: Optional[ProtocolGateway] = None,
                 authorization_policy: Optional[AuthorizationPolicy] = None,
                 operator_routes: Sequence[OperatorRoute] | None = None,
+                workload_host: Optional[str] = None,
+                workload_registry=None,
+                workload_clock: Optional[Callable[[], datetime]] = None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -1879,6 +1985,7 @@ def make_server(host: str, port: int,
         _make_handler(
             backend, timeout, model_routes, exhaustion_status, auth_token,
             purpose, audio, gateway, authorization_policy, validated_operator_routes,
+            workload_host, workload_registry, workload_clock,
         ),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown

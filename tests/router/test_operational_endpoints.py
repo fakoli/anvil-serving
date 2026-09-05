@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import json
+import threading
+from contextlib import contextmanager
+from datetime import datetime, timezone
 
 from anvil_serving.router.availability import AvailabilityResult
 from anvil_serving.router.config import RouterConfig, Tier
@@ -16,6 +19,7 @@ from anvil_serving.router.front_door import (
 )
 from anvil_serving.router.model_capacity import MetricsSnapshot
 from anvil_serving.router.serve import RoutingBackend
+from anvil_serving.router.serve import build_server
 from tests.router.helpers import StaticBackend
 from tests.router.helpers import http_get as _http_get
 from tests.router.helpers import server_context
@@ -118,6 +122,53 @@ def _get(host, port, path, *, token=TOKEN):
     return _http_get(host, port, path, token=token)
 
 
+@contextmanager
+def _running(httpd):
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield httpd.server_address[:2]
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
+def _built_workload_server(tmp_path, *, host="node-a", clock=None):
+    config = tmp_path / "router.toml"
+    policy = tmp_path / "policy.json"
+    config.write_text(
+        f'''[server]
+auth_env = "ROUTER_TOKEN"
+workload_host = "{host}"
+[[router.tiers]]
+id = "primary"
+base_url = "http://127.0.0.1:30002/v1"
+model = "test-model"
+dialect = "openai"
+context_limit = 4096
+privacy = "local"
+tool_support = true
+auth_env = "UPSTREAM_TOKEN"
+[router.model_routes]
+llm.primary = "primary"
+''',
+        encoding="utf-8",
+    )
+    policy.write_text(
+        '{"schema_version":1,"clients":[{"id":"reader","scopes":["workloads:read"],"credential_env":"WORKLOAD_TOKEN"}]}',
+        encoding="utf-8",
+    )
+    return build_server(
+        str(config),
+        port=0,
+        backends={"primary": StaticBackend(["ok"])},
+        env={"ROUTER_TOKEN": TOKEN, "WORKLOAD_TOKEN": "workloads-token-12345"},
+        authorization_policy=str(policy),
+        workload_clock=clock,
+    )
+
+
 def test_metadata_status_stats_trace_and_metrics_are_authenticated():
     paths = (
         MODEL_CAPABILITIES_ENDPOINT,
@@ -217,3 +268,41 @@ def test_health_advertises_all_read_only_operational_routes():
         PROMETHEUS_ENDPOINT,
     ):
         assert route in routes
+
+
+def test_built_server_workloads_endpoint_uses_its_exact_shared_registry(tmp_path):
+    collected = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
+    server = _built_workload_server(tmp_path, clock=lambda: collected)
+    registry = server.anvil_workloads
+    assert registry is server.anvil_routing._workload_registry
+    calls = []
+    original = registry.source_result
+
+    def source_result(host, query, now):
+        calls.append((host, query, now))
+        return original(host, query, now)
+
+    registry.source_result = source_result
+    with _running(server) as (host, port):
+        denied, _, _ = _get(host, port, "/v1/workloads", token=TOKEN)
+        status, headers, raw = _get(
+            host, port,
+            "/v1/workloads?active_only=false&limit=1&recent_seconds=10",
+            token="workloads-token-12345",
+        )
+    assert denied == 403
+    assert status == 200
+    assert headers["Cache-Control"] == "no-store"
+    assert len(calls) == 1
+    call_host, query, call_time = calls[0]
+    assert call_host == "node-a"
+    assert query.active_only is False
+    assert query.limit == 1
+    assert query.recent_seconds == 10
+    assert call_time == collected
+    payload = json.loads(raw)
+    assert set(payload) == {
+        "schema", "host", "status", "collection_timestamp", "sources"
+    }
+    assert payload["host"] == "node-a"
+    assert payload["sources"][0]["records"] == []
