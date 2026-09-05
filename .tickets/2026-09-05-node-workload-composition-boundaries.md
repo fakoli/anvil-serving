@@ -1,7 +1,7 @@
 # Close node workload composition before adding collection endpoints
 
-Status: T012.3/T012.4 source candidates integrated; router reader in progress;
-runtime source binding and endpoint composition pending.
+Status: source composition, coordinator and router reader candidates integrated;
+runtime source binding and endpoint composition in progress.
 
 The six owner projections can each return200 records, while NodeResult and
 the aggregate selector accept at most1000. Passing all six results directly
@@ -72,3 +72,9 @@ Resource fields suffice; do not add a second role=router resource, which would
 make legacy resource_owner(router) resolution ambiguous. Controller startup
 will supply the reference explicitly rather than extending topology with
 an unrelated credential schema. No private configuration was changed.
+
+Router reader candidate e5e4d5664a91aa10211853304fd76ab80836f9b9 passed54
+focused tests and Ruff after commit (EV090F3E53), including guarded response
+cleanup failures. It uses a declared loopback endpoint, bounded authenticated
+HTTP, canonical node decoding and fixed source failures. This is source-ready
+evidence only; final consolidated acceptance and live deployment remain pending.
