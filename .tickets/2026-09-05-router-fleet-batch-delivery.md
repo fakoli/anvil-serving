@@ -21,3 +21,10 @@ strict MkDocs warning because tickets are outside the published docs tree.
 Keep the exact repository path as a code reference and synchronize the index's
 older one-task wording with isolated executors and batch integration. This
 does not relax focused testing, evidence capture or final acceptance.
+
+PRD attribution correction: one workload-visibility structural review invocation
+used the CLI's default reviewer label, human. That was an agent operation, not
+a human decision. Revision21 explicitly records the actual agent reviewer and
+notes the correction; implementation approval is separate from the deferred
+batch acceptance. Future review commands must pass --reviewer explicitly;
+ANVIL_ACTOR does not override that command's reviewer default.

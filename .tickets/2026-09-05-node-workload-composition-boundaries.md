@@ -78,3 +78,8 @@ focused tests and Ruff after commit (EV090F3E53), including guarded response
 cleanup failures. It uses a declared loopback endpoint, bounded authenticated
 HTTP, canonical node decoding and fixed source failures. This is source-ready
 evidence only; final consolidated acceptance and live deployment remain pending.
+
+Explicit binding candidate a5277f1e67c47f1a5f55f901567b305d3ea53465 passed45
+focused tests and Ruff after commit (EV19A7DA9C). It is integrated locally;
+T012 now owns the controller runtime wiring. The private operator worktree
+and live sources remain untouched.
