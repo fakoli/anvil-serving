@@ -182,6 +182,11 @@ def commands() -> CommandNode:
                         role="model-serve",
                         options=(
                             _option(
+                                "--config",
+                                summary="Active router config TOML (local only).",
+                                value_name="PATH",
+                            ),
+                            _option(
                                 "--restore-group",
                                 summary="Split group restored on entry failure.",
                                 value_name="NAME",
@@ -204,6 +209,11 @@ def commands() -> CommandNode:
                             role="model-serve",
                             options=CONFIRM_OPTIONS
                             + (
+                                _option(
+                                    "--config",
+                                    summary="Active router config TOML (local only).",
+                                    value_name="PATH",
+                                ),
                                 _option(
                                     "--restore-group",
                                     summary="Split group restored on leave or failure.",
@@ -276,6 +286,13 @@ def commands() -> CommandNode:
                         "anvil_serving.serves",
                         role="model-serve",
                         gpu=True,
+                        options=(
+                            _option(
+                                "--config",
+                                summary="Active router config TOML (local only).",
+                                value_name="PATH",
+                            ),
+                        ),
                         argv_prefix=("profile", "preview"),
                         docs_anchor="docs/cli/serves.md#serving-profiles",
                     ),
@@ -284,7 +301,14 @@ def commands() -> CommandNode:
                         "Apply a declared serving profile transactionally.",
                         "anvil_serving.serves",
                         role="model-serve",
-                        options=CONFIRM_OPTIONS,
+                        options=CONFIRM_OPTIONS
+                        + (
+                            _option(
+                                "--config",
+                                summary="Active router config TOML (local only).",
+                                value_name="PATH",
+                            ),
+                        ),
                         mutation="mutate",
                         gpu=True,
                         argv_prefix=("profile", "apply"),

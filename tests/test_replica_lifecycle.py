@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import textwrap
+from types import SimpleNamespace
 
 import pytest
 
+from anvil_serving import cli
 from anvil_serving import serves
 from anvil_serving.router import config as router_config
 
@@ -172,3 +174,309 @@ def test_recipe_activation_reuses_promotion_guard_before_compose_resolution(tmp_
         serves.resolve_recipe_activation(managed, [plan], registry, "role", "synthetic-model")
 
     assert raised.value.code == "replica_lifecycle_unsupported"
+
+
+def test_mode_guard_refuses_active_replica_before_any_state_probe(tmp_path, monkeypatch, capsys):
+    path = _write_config(tmp_path, "replica.toml", replica=True)
+    active = router_config.load(path)
+
+    monkeypatch.setattr(
+        serves, "docker_states", lambda *args, **kwargs: pytest.fail("state probe reached"),
+    )
+    result = serves.cmd_mode(
+        [{"name": "target", "router_tier": "primary"}],
+        "preview", "target", "restore", active_config=active,
+    )
+
+    assert result == 2
+    assert capsys.readouterr().err.strip() == (
+        "mode transition refused: replica_lifecycle_unsupported"
+    )
+
+
+def test_mode_guard_includes_stopped_gpu_victims_and_restore_members(tmp_path, monkeypatch, capsys):
+    path = _write_config(tmp_path, "replica.toml", replica=True)
+    active = router_config.load(path)
+    target = {"name": "target"}
+    victim = {"name": "victim", "router_tier": "primary"}
+    restore = {"name": "restore", "router_tier": "primary", "groups": ["split"]}
+
+    monkeypatch.setattr(
+        serves,
+        "docker_states",
+        lambda *args, **kwargs: pytest.fail("state probe reached"),
+    )
+    monkeypatch.setattr(
+        serves.reservations, "is_gpu_inference", lambda serve: serve is victim,
+    )
+    assert serves.cmd_mode(
+        [target, victim], "preview", "target", "split", active_config=active,
+    ) == 2
+    assert "replica_lifecycle_unsupported" in capsys.readouterr().err
+
+    monkeypatch.setattr(
+        serves.reservations, "is_gpu_inference", lambda serve: False,
+    )
+    assert serves.cmd_mode(
+        [target, restore], "preview", "target", "split", active_config=active,
+    ) == 2
+    assert "replica_lifecycle_unsupported" in capsys.readouterr().err
+
+
+def test_mode_profile_and_own_router_profiles_require_fixed_active_config(tmp_path, monkeypatch, capsys):
+    replica_path = _write_config(tmp_path, "replica.toml", replica=True)
+    direct_path = _write_config(tmp_path, "direct.toml", replica=False)
+    active = router_config.load(direct_path)
+    target = {
+        "name": "target", "router_tier": "primary",
+        "router_config": replica_path, "rollback_router_config": direct_path,
+    }
+    profile = {
+        "id": "exclusive", "mode": serves.DUAL_GPU_EXCLUSIVE_MODE,
+        "exclusive_target": "target", "restore_group": "split",
+        "startup_timeout": 1, "poll_interval": 1,
+    }
+
+    monkeypatch.setattr(
+        serves, "docker_states", lambda *args, **kwargs: pytest.fail("state probe reached"),
+    )
+    assert serves.cmd_mode([target], "preview", "target", "split") == 2
+    assert "replica_lifecycle_configuration_unavailable" in capsys.readouterr().err
+    assert serves.cmd_mode(
+        [target], "preview", "target", "split", active_config=active,
+    ) == 2
+    assert "replica_lifecycle_unsupported" in capsys.readouterr().err
+
+    target["router_config"] = direct_path
+    target["rollback_router_config"] = replica_path
+    assert serves.cmd_mode(
+        [target], "preview", "target", "split", active_config=active,
+    ) == 2
+    assert "replica_lifecycle_unsupported" in capsys.readouterr().err
+    assert serves.cmd_profile([target], [profile], "preview", "exclusive", active_config=active) == 2
+    assert "replica_lifecycle_unsupported" in capsys.readouterr().err
+
+
+def test_unrouted_mode_does_not_require_active_config(tmp_path):
+    target = {
+        "name": "target", "container": "target", "gpu_roles": ["a", "b"],
+        "vram_mib": 1, "tensor_parallel_size": 2,
+        "operating_mode": serves.DUAL_GPU_EXCLUSIVE_MODE,
+    }
+
+    assert serves._guard_mode_replica_lifecycle([target], "target", "split", None) is None
+
+
+def test_mode_cli_uses_operator_home_active_config_before_state_probe(
+    tmp_path, monkeypatch, capsys,
+):
+    home = tmp_path / "operator-home"
+    home.mkdir()
+    active = _write_config(home, "router.toml", replica=True)
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(textwrap.dedent("""
+        [[gpu_roles]]
+        id = "compute-a"
+        vram_mib = 100
+        reserve_mib = 0
+
+        [[gpu_roles]]
+        id = "compute-b"
+        vram_mib = 100
+        reserve_mib = 0
+
+        [[serve]]
+        name = "split"
+        container = "split"
+        runtime = "docker"
+        port = 30000
+        model = "split-model"
+        engine = "vllm"
+        gpu_role = "compute-a"
+        vram_mib = 50
+        residency = "resident"
+        router_tier = "primary"
+        groups = ["restore"]
+
+        [[serve]]
+        name = "target"
+        container = "target"
+        runtime = "docker"
+        port = 30001
+        model = "target-model"
+        engine = "vllm"
+        gpu_roles = ["compute-a", "compute-b"]
+        vram_mib = 100
+        residency = "on-demand"
+        operating_mode = "dual-gpu-exclusive"
+        tensor_parallel_size = 2
+    """), encoding="utf-8")
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    monkeypatch.setattr(
+        serves, "docker_states", lambda *args, **kwargs: pytest.fail("state probe reached"),
+    )
+
+    assert serves.main([
+        "mode", "preview", "target", "--restore-group", "restore",
+        "--manifest", str(manifest),
+    ]) == 2
+
+    error = capsys.readouterr().err
+    assert str(active) not in error
+    assert "replica_lifecycle_unsupported" in error
+
+    assert serves.main([
+        "mode", "preview", "target", "--restore-group", "restore",
+        "--manifest", str(manifest), "--config", str(active),
+    ]) == 2
+    error = capsys.readouterr().err
+    assert str(active) not in error
+    assert "replica_lifecycle_unsupported" in error
+
+
+@pytest.mark.parametrize(
+    "contents", ["[router", "[router]\n[router.model_routes]\nllm.other = \"other\""]
+)
+def test_mode_cli_refuses_malformed_or_incomplete_active_config_before_state_probe(
+    tmp_path, monkeypatch, capsys, contents,
+):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(textwrap.dedent("""
+        [[gpu_roles]]
+        id = "compute-a"
+        vram_mib = 100
+        reserve_mib = 0
+        [[gpu_roles]]
+        id = "compute-b"
+        vram_mib = 100
+        reserve_mib = 0
+        [[serve]]
+        name = "split"
+        container = "split"
+        runtime = "docker"
+        port = 30000
+        model = "split-model"
+        engine = "vllm"
+        gpu_role = "compute-a"
+        vram_mib = 50
+        residency = "resident"
+        router_tier = "primary"
+        groups = ["restore"]
+        [[serve]]
+        name = "target"
+        container = "target"
+        runtime = "docker"
+        port = 30001
+        model = "target-model"
+        engine = "vllm"
+        gpu_roles = ["compute-a", "compute-b"]
+        vram_mib = 100
+        residency = "on-demand"
+        operating_mode = "dual-gpu-exclusive"
+        tensor_parallel_size = 2
+    """), encoding="utf-8")
+    bad_config = tmp_path / "private-invalid-router.toml"
+    bad_config.write_text(contents, encoding="utf-8")
+    monkeypatch.setattr(
+        serves, "docker_states", lambda *args, **kwargs: pytest.fail("state probe reached"),
+    )
+
+    assert serves.main([
+        "mode", "preview", "target", "--restore-group", "restore",
+        "--manifest", str(manifest), "--config", str(bad_config),
+    ]) == 2
+    error = capsys.readouterr().err
+    assert "replica_lifecycle_configuration_unavailable" in error
+    assert str(bad_config) not in error
+
+
+def test_mode_cli_missing_default_config_refuses_before_state_probe(tmp_path, monkeypatch, capsys):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(textwrap.dedent("""
+        [[gpu_roles]]
+        id = "compute-a"
+        vram_mib = 100
+        reserve_mib = 0
+        [[gpu_roles]]
+        id = "compute-b"
+        vram_mib = 100
+        reserve_mib = 0
+        [[serve]]
+        name = "split"
+        container = "split"
+        runtime = "docker"
+        port = 30000
+        model = "split-model"
+        engine = "vllm"
+        gpu_role = "compute-a"
+        vram_mib = 50
+        residency = "resident"
+        router_tier = "primary"
+        groups = ["restore"]
+        [[serve]]
+        name = "target"
+        container = "target"
+        runtime = "docker"
+        port = 30001
+        model = "target-model"
+        engine = "vllm"
+        gpu_roles = ["compute-a", "compute-b"]
+        vram_mib = 100
+        residency = "on-demand"
+        operating_mode = "dual-gpu-exclusive"
+        tensor_parallel_size = 2
+    """), encoding="utf-8")
+    home = tmp_path / "empty-operator-home"
+    home.mkdir()
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    monkeypatch.setattr(
+        serves, "docker_states", lambda *args, **kwargs: pytest.fail("state probe reached"),
+    )
+
+    assert serves.main([
+        "mode", "preview", "target", "--restore-group", "restore",
+        "--manifest", str(manifest),
+    ]) == 2
+    assert "replica_lifecycle_configuration_unavailable" in capsys.readouterr().err
+
+
+def test_mode_direct_active_config_reaches_existing_planning_seam(tmp_path, monkeypatch):
+    active = router_config.load(_write_config(tmp_path, "direct.toml", replica=False))
+    reached = []
+    plan = {
+        "mode": serves.DUAL_GPU_EXCLUSIVE_MODE,
+        "target": "target",
+        "gpu_roles": [],
+        "tensor_parallel_size": 2,
+        "drain": [], "stop": [], "blocked": [], "unresolved": [],
+        "rollback": {"group": "restore", "serves": []},
+    }
+    monkeypatch.setattr(serves, "docker_states", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(serves, "_unmanaged_recipe_ownership", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(serves, "operating_mode_plan", lambda *_args: plan.copy())
+    monkeypatch.setattr(
+        serves, "_mode_router_plan", lambda *_args: reached.append(True) or None,
+    )
+
+    assert serves.cmd_mode(
+        [{"name": "target", "container": "target", "router_tier": "primary"}],
+        "preview", "target", "restore", active_config=active,
+    ) == 0
+    assert reached == [True]
+
+
+def test_root_cli_remote_mode_config_refuses_before_transport(monkeypatch, capsys):
+    remote_plan = SimpleNamespace(
+        command=SimpleNamespace(name="serves-mode-preview"),
+        transport="controller",
+        warnings=(),
+    )
+    monkeypatch.setattr(cli, "_resolve_dispatch_plan", lambda *_args: remote_plan)
+    monkeypatch.setattr(
+        cli, "execute_plan", lambda *_args, **_kwargs: pytest.fail("transport reached"),
+    )
+
+    assert cli.main([
+        "serves", "mode", "preview", "target", "--config", "private-router.toml",
+    ]) == 2
+    assert "not supported for remote preview" in capsys.readouterr().err
