@@ -45,3 +45,14 @@ def test_unresolved_and_malformed_sensitive_commands_hide_all_operands(args, lab
     captured = capsys.readouterr()
     assert "PRIVATE_SECRET_VALUE" not in captured.out + captured.err
     assert json.loads(captured.out)["command"] == label
+
+
+@pytest.mark.parametrize("args", [
+    ["edge", "bundle", "validate", "--manifest", "PRIVATE_SECRET_VALUE.json"],
+    ["router", "diagnose", "--router-url", "https://PRIVATE_SECRET_VALUE.invalid"],
+])
+def test_global_option_failure_before_dispatch_never_echoes_operands(args, capsys):
+    assert cli.main(["--json", "--quiet", "--verbose", *args]) == 2
+    captured = capsys.readouterr()
+    assert "PRIVATE_SECRET_VALUE" not in captured.out + captured.err
+    assert json.loads(captured.out)["command"] == "anvil-serving"
