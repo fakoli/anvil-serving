@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import difflib
 import io
+import json
 import os
 import re
 import shutil
@@ -1126,8 +1127,11 @@ def _dispatch(
             from . import topology_cli
 
             data = topology_cli.run([*_handler_argv(path), *rest])
+            router_validation = node.name == "validate-router-config"
             if node.name == "resolve":
                 context: Mapping[str, object] = data
+            elif router_validation:
+                context = None
             else:
                 context = {
                     "command": f"topology-{node.name}",
@@ -1136,31 +1140,39 @@ def _dispatch(
                 }
             if data.get("valid") is False:
                 error = UsageError(
-                    "topology validation failed",
-                    code="invalid_topology",
-                    details={"errors": data.get("errors", [])},
+                    "router config topology validation refused" if router_validation else "topology validation failed",
+                    code=data.get("error_code") if router_validation else "invalid_topology",
+                    details=None if router_validation else {"errors": data.get("errors", [])},
                 )
                 if execution_meta is not None:
                     execution_meta["plan"] = context
                     execution_meta["error"] = error
+                    if router_validation:
+                        execution_meta["data"] = data
                 if not output_options.json_mode:
-                    rendered = render_human(
-                        error_envelope(_command_name(path), context, error),
-                        options=output_options,
-                    )
-                    if rendered.stderr:
-                        print(rendered.stderr, end="", file=sys.stderr)
+                    if router_validation:
+                        print(topology_cli.validation_human(data), end="", file=sys.stderr)
+                    else:
+                        rendered = render_human(
+                            error_envelope(_command_name(path), context, error),
+                            options=output_options,
+                        )
+                        if rendered.stderr:
+                            print(rendered.stderr, end="", file=sys.stderr)
                 return error.exit_code
             if execution_meta is not None:
                 execution_meta["plan"] = context
                 execution_meta["data"] = data
             if not output_options.json_mode:
-                rendered = render_human(
-                    success_envelope(_command_name(path), context, data),
-                    options=output_options,
-                )
-                if rendered.stdout:
-                    print(rendered.stdout, end="")
+                if router_validation:
+                    print(topology_cli.validation_human(data), end="")
+                else:
+                    rendered = render_human(
+                        success_envelope(_command_name(path), context, data),
+                        options=output_options,
+                    )
+                    if rendered.stdout:
+                        print(rendered.stdout, end="")
             return 0
         resolution_options, rest = _extract_resolution_options(rest)
         resolution_options = _effective_resolution_options(resolution_options)
@@ -1350,7 +1362,9 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
     protected_family = bool(path) and path[0].name in ("router", "edge")
     protected_leaf = canonical in {
         "router diagnose", "edge bundle validate", "edge bundle render",
+        "topology validate-router-config",
     }
+    protected_family = protected_family or protected_leaf
     unresolved_sensitive = protected_family and (
         unknown is not None or bool(path[-1].children)
     )
@@ -1393,7 +1407,18 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
             data=data,
             warnings=warnings,
         )
-    print(render_json(envelope))
+    if canonical == "topology validate-router-config":
+        # This offline snapshot has no dispatch or target context. Preserve
+        # that distinction instead of expanding the generic empty context.
+        envelope["context"] = None
+        envelope["warnings"] = []
+    if canonical == "topology validate-router-config":
+        # `render_json` deliberately expands generic contexts. This exact
+        # offline leaf instead promises a literal null context and contains
+        # only the fixed command/error strings plus T006's safe projection.
+        print(json.dumps(envelope, sort_keys=True, separators=(",", ":"), allow_nan=False))
+    else:
+        print(render_json(envelope))
     return rc
 
 
