@@ -18,10 +18,15 @@ import urllib.parse
 import unicodedata
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
-from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
-from .fleet_bootstrap import InstallAdapter, SupervisorAdapter
+from .fleet_bootstrap import (
+    InstallAdapter,
+    SupervisorAdapter,
+    _valid_bootstrap_component as _valid_bootstrap_component,
+    _bootstrap_paths_overlap,
+    _valid_bootstrap_path,
+)
 
 
 SCHEMA_VERSION = 1
@@ -88,17 +93,6 @@ _MODEL_WORKLOAD_VERSION_PREFIX_RE = re.compile(r"^v[0-9]+")
 _GPU_UUID_RE = re.compile(r"^GPU-[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _SUPERVISOR_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
-_WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:$")
-_WINDOWS_DEVICES = frozenset(
-    {"CON", "PRN", "AUX", "NUL"}
-    | {f"COM{number}" for number in range(1, 10)}
-    | {f"LPT{number}" for number in range(1, 10)}
-    | {f"COM{number}" for number in ("¹", "²", "³")}
-    | {f"LPT{number}" for number in ("¹", "²", "³")}
-)
-_WINDOWS_FORBIDDEN_PATH_CHARACTERS = frozenset('<>:"|?*')
-_MAX_BOOTSTRAP_PATH_BYTES = 1024
-_MAX_BOOTSTRAP_COMPONENT_BYTES = 255
 _SSH_USERINFO_DELIMITERS = frozenset({":", ";", "@", "/", "\\", "?", "#"})
 _MAX_PERCENT_DECODE_PASSES = 4
 _MAX_NESTED_STRUCTURE_DEPTH = 64
@@ -683,69 +677,6 @@ def _required_bootstrap_path(
         _error(errors, f"{path}.{key}", "must be a canonical absolute path for the host OS", "value")
         return None
     return value
-
-
-def _valid_bootstrap_path(value: str, host_os: str) -> bool:
-    try:
-        encoded = value.encode("utf-8")
-    except UnicodeError:
-        return False
-    if (
-        not value
-        or len(encoded) > _MAX_BOOTSTRAP_PATH_BYTES
-        or unicodedata.normalize("NFC", value) != value
-        or any(unicodedata.category(character) in {"Cc", "Cs"} for character in value)
-    ):
-        return False
-    if host_os == "linux":
-        if not value.startswith("/") or value.startswith("//") or "\\" in value:
-            return False
-        parts = value[1:].split("/")
-        path = PurePosixPath(value)
-        return (
-            bool(parts)
-            and all(_valid_bootstrap_component(part, windows=False) for part in parts)
-            and path.is_absolute()
-            and str(path) == value
-        )
-    if "/" in value or value.startswith("\\\\"):
-        return False
-    path = PureWindowsPath(value)
-    if _WINDOWS_DRIVE_RE.fullmatch(path.drive) is None or path.root != "\\":
-        return False
-    prefix = f"{path.drive}\\"
-    if not value.startswith(prefix):
-        return False
-    parts = value[len(prefix) :].split("\\")
-    return (
-        bool(parts)
-        and all(_valid_bootstrap_component(part, windows=True) for part in parts)
-        and path.is_absolute()
-        and str(path) == value
-    )
-
-
-def _valid_bootstrap_component(value: str, *, windows: bool) -> bool:
-    if value in {"", ".", ".."} or len(value.encode("utf-8")) > _MAX_BOOTSTRAP_COMPONENT_BYTES:
-        return False
-    if not windows:
-        return True
-    if value.endswith((".", " ")) or any(
-        character in _WINDOWS_FORBIDDEN_PATH_CHARACTERS for character in value
-    ):
-        return False
-    return value.split(".", 1)[0].rstrip(" ").upper() not in _WINDOWS_DEVICES
-
-
-def _bootstrap_paths_overlap(first: str, second: str, host_os: str | None) -> bool:
-    path_type = PureWindowsPath if host_os == "windows" else PurePosixPath
-    first_parts = tuple(path_type(first).parts)
-    second_parts = tuple(path_type(second).parts)
-    if host_os == "windows":
-        first_parts = tuple(part.casefold() for part in first_parts)
-        second_parts = tuple(part.casefold() for part in second_parts)
-    shortest = min(len(first_parts), len(second_parts))
-    return first_parts[:shortest] == second_parts[:shortest]
 
 
 def _parse_runtimes(raw: object, errors: list[TopologyError]) -> list[tuple[int, Runtime]]:
