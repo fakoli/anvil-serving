@@ -51,6 +51,39 @@ def commands() -> tuple[CommandNode, ...]:
                     role="controller",
                     remote_operation=_remote(mode="controller-status"),
                 ),
+                _resource_node(
+                    "inspect",
+                    "Read-only metadata inspection for one controller container.",
+                    "anvil_serving.controller_diagnostics",
+                    role="controller",
+                    options=(
+                        _option(
+                            "--container",
+                            summary="Required local controller Docker name or immutable ID.",
+                            value_name="NAME",
+                        ),
+                    ),
+                    argv_prefix=("inspect",),
+                ),
+                _resource_node(
+                    "logs",
+                    "Read bounded metadata-only controller audit events.",
+                    "anvil_serving.controller_diagnostics",
+                    role="controller",
+                    options=(
+                        _option(
+                            "--container",
+                            summary="Required local controller Docker name or immutable ID.",
+                            value_name="NAME",
+                        ),
+                        _option(
+                            "--tail",
+                            summary="Audit event tail in the fixed range 1..200.",
+                            value_name="N",
+                        ),
+                    ),
+                    argv_prefix=("logs",),
+                ),
             ),
             docs_anchor="docs/cli/control-plane.md#controller",
         ),
