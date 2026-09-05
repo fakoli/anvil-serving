@@ -1,6 +1,6 @@
 # Synchronize the counting lease with scheduler evidence
 
-Status: fix queued; consolidated acceptance pending.
+Status: implemented and locally integrated; consolidated acceptance pending.
 
 ## Evidence and cause
 
@@ -23,3 +23,8 @@ T007 independently exercises both scheduling strategies.
 - `python scripts/run_tests.py tests/router/test_model_routes.py tests/router/test_backends.py -x -q`
 - `python -m ruff check tests/router/test_backends.py`
 - Rerun the integrated full suite after local integration.
+
+Candidate 7c4e68ec passed 64 focused tests and Ruff after commit, recorded as
+EV26493E43. The integrated tree at 30b8d4db then passed the full suite:
+5953 passed, 10 skipped in 248.89 seconds. This resolves the fixture defect;
+final batch acceptance and live deployment are still pending.

@@ -1,6 +1,6 @@
 # Close receiver results and rollback failure binding
 
-Status: pure protocol follow-ups specified; implementation pending.
+Status: rollback trigger locally integrated; result codec implementation active.
 
 The existing request codec binds operation, node, UUID, plan and trusted target
 configuration, but rollback cannot yet carry the failure that initiated it.
@@ -18,3 +18,10 @@ request produces a fixed null-identity protocol error rather than guessed data.
 The PRD records exact field, phase, permission, canonical-byte and matching
 matrices, plus literal-fixture regression gates. File permissions, handle-safe
 staging, zipapp packaging and activation remain separate implementation gates.
+
+T004.4 candidate d0f6550e passed 243 focused tests and Ruff after commit,
+recorded as EV483C5B8F. All non-cleanup initiating errors round-trip only on
+rollback; other operation literal bytes remain unchanged. Exact frame/schema
+revalidation rejects subclass and frozen-object tampering before serialization.
+This is a locally integrated implementation candidate, not final acceptance or
+an installed protocol change. T004.3 remains in progress in a separate tree.
