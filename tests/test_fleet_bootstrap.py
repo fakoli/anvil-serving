@@ -272,6 +272,8 @@ def receiver_frame(
             bundle_sha256=hashlib.sha256(payload).hexdigest(),
             bundle_length=len(payload),
         )
+    if operation is bootstrap.ReceiverOperation.ROLLBACK:
+        values["trigger_error_code"] = bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED
     return bootstrap.BootstrapReceiverFrame(**values)
 
 
@@ -287,6 +289,8 @@ def test_receiver_frames_have_exact_fields_and_canonical_roundtrip(operation):
         expected_fields |= {"operation_id", "plan_sha256", "target_config_sha256"}
     if operation is bootstrap.ReceiverOperation.STAGE:
         expected_fields |= {"bundle_sha256", "bundle_length"}
+    if operation is bootstrap.ReceiverOperation.ROLLBACK:
+        expected_fields.add("trigger_error_code")
     assert set(frame.to_dict()) == expected_fields
     assert decoded == frame
     assert decoded_payload == payload
@@ -307,6 +311,186 @@ def test_receiver_identity_has_literal_wire_bytes():
     )
     assert bootstrap.encode_receiver_frame(frame) == expected
     assert bootstrap.decode_receiver_frame(expected) == (frame, b"")
+
+
+@pytest.mark.parametrize(
+    ("operation", "payload", "metadata"),
+    (
+        (
+            bootstrap.ReceiverOperation.STAGE,
+            b"fixed-stage-payload",
+            b'{"bundle_length":19,"bundle_sha256":"b0d47a728249cb5916ecaefda849de7b62e3090890d326530c1804d868169b53",'
+            b'"expected_node":"Node_1","operation":"stage","operation_id":"12345678-1234-4234-9234-123456789abc",'
+            b'"plan_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+            b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1",'
+            b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}',
+        ),
+        (
+            bootstrap.ReceiverOperation.ACTIVATE,
+            b"",
+            b'{"expected_node":"Node_1","operation":"activate","operation_id":"12345678-1234-4234-9234-123456789abc",'
+            b'"plan_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+            b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1",'
+            b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}',
+        ),
+        (
+            bootstrap.ReceiverOperation.STATUS,
+            b"",
+            b'{"expected_node":"Node_1","operation":"status","operation_id":"12345678-1234-4234-9234-123456789abc",'
+            b'"plan_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+            b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1",'
+            b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}',
+        ),
+    ),
+)
+def test_existing_operational_receiver_frames_retain_literal_wire_bytes(
+    operation, payload, metadata
+):
+    expected = len(metadata).to_bytes(4, "big") + metadata + payload
+    frame = receiver_frame(operation, payload)
+    assert bootstrap.encode_receiver_frame(frame, payload) == expected
+    assert bootstrap.decode_receiver_frame(expected) == (frame, payload)
+
+
+def test_receiver_rollback_has_literal_trigger_wire_bytes():
+    metadata = (
+        b'{"expected_node":"Node_1","operation":"rollback","operation_id":"12345678-1234-4234-9234-123456789abc",'
+        b'"plan_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+        b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1",'
+        b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",'
+        b'"trigger_error_code":"acceptance-failed"}'
+    )
+    expected = len(metadata).to_bytes(4, "big") + metadata
+    frame = receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b"")
+    assert bootstrap.encode_receiver_frame(frame) == expected
+    assert bootstrap.decode_receiver_frame(expected) == (frame, b"")
+
+
+@pytest.mark.parametrize(
+    "trigger",
+    tuple(
+        code
+        for code in bootstrap.BootstrapErrorCode
+        if code is not bootstrap.BootstrapErrorCode.CLEANUP_FAILED
+    ),
+)
+def test_receiver_rollback_roundtrips_every_noncleanup_error(trigger):
+    frame = replace(
+        receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b""),
+        trigger_error_code=trigger,
+    )
+    encoded = bootstrap.encode_receiver_frame(frame)
+    decoded, payload = bootstrap.decode_receiver_frame(encoded)
+    assert decoded == frame
+    assert payload == b""
+    assert decoded.to_dict()["trigger_error_code"] == trigger.value
+
+
+@pytest.mark.parametrize(
+    "trigger",
+    (
+        None,
+        bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+        bootstrap.BootstrapOutcome.ERROR,
+        "acceptance-failed",
+        True,
+        object(),
+    ),
+)
+def test_receiver_rollback_constructor_rejects_missing_cleanup_and_wrong_trigger_types(
+    trigger,
+):
+    values = receiver_frame(bootstrap.ReceiverOperation.ACTIVATE).to_dict()
+    values["operation"] = bootstrap.ReceiverOperation.ROLLBACK
+    values.pop("schema")
+    values["trigger_error_code"] = trigger
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapReceiverFrame(**values)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    ("omit", "wire_trigger"),
+    (
+        (True, None),
+        (False, None),
+        (False, "cleanup-failed"),
+        (False, "unknown"),
+        (False, bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED),
+    ),
+)
+def test_receiver_rollback_wire_rejects_missing_null_cleanup_and_unknown_trigger(
+    omit, wire_trigger,
+):
+    raw = receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b"").to_dict()
+    if omit:
+        raw.pop("trigger_error_code")
+    else:
+        raw["trigger_error_code"] = wire_trigger
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapReceiverFrame.from_dict(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "operation",
+    (
+        bootstrap.ReceiverOperation.IDENTITY,
+        bootstrap.ReceiverOperation.STAGE,
+        bootstrap.ReceiverOperation.ACTIVATE,
+        bootstrap.ReceiverOperation.STATUS,
+    ),
+)
+def test_receiver_trigger_field_is_forbidden_for_every_nonrollback_operation(operation):
+    payload = b"fixed-stage-payload" if operation is bootstrap.ReceiverOperation.STAGE else b""
+    raw = receiver_frame(operation, payload).to_dict()
+    raw["trigger_error_code"] = "acceptance-failed"
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapReceiverFrame.from_dict(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    (
+        ("schema", "other-schema"),
+        ("operation", "rollback"),
+        ("expected_node", "private.invalid"),
+        ("plan_sha256", "A" * 64),
+        ("target_config_sha256", "D" * 64),
+        ("trigger_error_code", bootstrap.BootstrapErrorCode.CLEANUP_FAILED),
+    ),
+)
+def test_receiver_frame_tampering_is_revalidated_before_dict_or_encoding(
+    field_name, value
+):
+    frame = receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b"")
+    object.__setattr__(frame, field_name, value)
+    for action in (frame.to_dict, lambda: bootstrap.encode_receiver_frame(frame)):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            action()
+        assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_frame_subclass_is_rejected_by_constructor_dict_and_encoder():
+    class ReceiverFrameSubclass(bootstrap.BootstrapReceiverFrame):
+        pass
+
+    with pytest.raises(bootstrap.BootstrapContractError):
+        ReceiverFrameSubclass(
+            operation=bootstrap.ReceiverOperation.IDENTITY,
+            expected_node="Node_1",
+        )
+
+    frame = object.__new__(ReceiverFrameSubclass)
+    for name, value in receiver_frame(
+        bootstrap.ReceiverOperation.IDENTITY, b""
+    ).__dict__.items():
+        object.__setattr__(frame, name, value)
+    for action in (frame.to_dict, lambda: bootstrap.encode_receiver_frame(frame)):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            action()
+        assert caught.value.code == "invalid-contract"
 
 
 def test_receiver_frame_direct_constructor_is_exact_frozen_and_closed():
