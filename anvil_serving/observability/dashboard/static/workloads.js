@@ -16,10 +16,17 @@
   const kinds = ['router-request', 'controller-operation', 'benchmark-job', 'media-job', 'recipe-serve'];
   const ownerKinds = {router: kinds[0], controller: kinds[1], benchmark: kinds[2], media: kinds[3], recipe: kinds[4], manifest: kinds[4]};
   const states = ['checking', 'admitted', 'dispatched', 'streaming', 'queued', 'running', 'terminal', 'configured', 'absent', 'unavailable', 'unsupported'];
-  const phases = [...states, 'completed', 'failed', 'cancelled', 'awaiting-approval', 'preparing', 'submitting'];
-  const outcomes = ['success', 'error', 'cancelled', 'timeout', 'rejected', 'disconnected', 'unavailable', 'unknown'];
-  const qualities = ['recorded', 'configured', 'observed-running', 'healthy-identity', 'stale', 'absent', 'inspection-error'];
-  const authorities = ['router-memory', 'controller-store', 'benchmark-store', 'media-store', 'managed-status'];
+  const ownerAuthorities = {router: 'router-memory', controller: 'controller-store', benchmark: 'benchmark-store', media: 'media-store', recipe: 'managed-status', manifest: 'managed-status'};
+  const ownerStates = {
+    router: ['checking', 'admitted', 'dispatched', 'streaming', 'terminal', 'unsupported'],
+    controller: ['running', 'terminal', 'unsupported'],
+    benchmark: ['queued', 'running', 'terminal', 'unsupported'],
+    media: ['queued', 'running', 'terminal', 'unsupported'],
+    recipe: ['configured', 'running', 'absent', 'unavailable', 'unsupported'],
+    manifest: ['configured', 'running', 'absent', 'unavailable', 'unsupported'],
+  };
+  const managedQualities = {configured: ['configured', 'stale'], running: ['observed-running', 'healthy-identity', 'stale'], absent: ['absent', 'stale'], unavailable: ['inspection-error'], unsupported: ['inspection-error']};
+  const SKEW_MICROSECONDS = 30000000n;
   const sourceErrors = {
     'invalid-workload': 'Invalid workload evidence',
     'unsupported-workload': 'Unsupported workload evidence',
@@ -37,7 +44,6 @@
   let nextAt = 0;
 
   function require(value) { if (!value) throw new Error('Invalid workload response'); }
-  function text(value) { return typeof value === 'string' && value.length > 0 && value.length <= 1024; }
   // Match the entire value: JavaScript's $ alone also accepts a final newline.
   function hostId(value) { return typeof value === 'string' && /^[A-Za-z][A-Za-z0-9_-]{0,63}$/.exec(value)?.[0] === value; }
   function count(value, max = 1000000000) { return Number.isSafeInteger(value) && value >= 0 && value <= max; }
@@ -47,7 +53,37 @@
     require(Object.keys(value).every(key => required.includes(key) || optional.includes(key)));
   }
   function timestamp(value) {
-    require(typeof value === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/.test(value) && Number.isFinite(Date.parse(value)));
+    require(typeof value === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/.exec(value)?.[0] === value);
+    const milliseconds = Date.parse(value);
+    require(Number(value.slice(0, 4)) > 0 && Number.isFinite(milliseconds));
+    require(new Date(milliseconds).toISOString() === value.slice(0, 23) + 'Z');
+    return BigInt(milliseconds) * 1000n + BigInt(value.slice(23, 26));
+  }
+  function withinSkew(value, collectionTimes) {
+    require(collectionTimes.every(collected => value - collected <= SKEW_MICROSECONDS));
+  }
+  function validateSemantics(record) {
+    // Mirror WorkloadRecord's closed relations, not independent enum membership.
+    require(ownerStates[record.owner].includes(record.state));
+    require(record.source_authority === ownerAuthorities[record.owner]);
+    require(record.label === record.kind.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' '));
+    const managed = record.owner === 'recipe' || record.owner === 'manifest';
+    require(managed ? managedQualities[record.state].includes(record.observation_quality) : record.observation_quality === 'recorded');
+    const hasOutcome = Object.hasOwn(record, 'outcome');
+    if (record.state === 'terminal') {
+      const phases = {success: 'completed', error: 'failed', cancelled: 'cancelled', timeout: 'failed', rejected: 'failed', disconnected: 'failed'};
+      require(hasOutcome && Object.hasOwn(phases, record.outcome) && record.phase === phases[record.outcome]);
+      if (record.owner !== 'router') require(['success', 'error', ...(record.owner === 'controller' ? [] : ['cancelled'])].includes(record.outcome));
+    } else if (record.state === 'unavailable' || record.state === 'unsupported') {
+      require(record.phase === record.state && record.outcome === (record.state === 'unavailable' ? 'unavailable' : 'unknown'));
+    } else {
+      require(!hasOutcome);
+      const mediaPhase = record.owner === 'media' && (
+        (record.state === 'queued' && record.phase === 'awaiting-approval') ||
+        (record.state === 'running' && ['preparing', 'submitting'].includes(record.phase))
+      );
+      require(record.phase === record.state || mediaPhase);
+    }
   }
   function truncation(value, returned) {
     fields(value, ['returned', 'omitted']);
@@ -58,15 +94,17 @@
     if (values.length && values.every(value => value === 'unavailable')) return 'unavailable';
     return values.some(value => value !== 'complete') ? 'partial' : 'complete';
   }
-  function validateRecord(record, owner, host) {
+  function validateRecord(record, owner, host, collectionTimes) {
     fields(record, ['schema', 'id', 'kind', 'owner', 'host', 'label', 'state', 'phase', 'created_at', 'updated_at', 'source_timestamp', 'source_authority', 'observation_quality'], ['outcome', 'progress']);
-    require(record.schema === 'anvil-workloads/v1' && /^[0-9a-f]{64}$/.test(record.id));
+    require(record.schema === 'anvil-workloads/v1' && typeof record.id === 'string' && /^[0-9a-f]{64}$/.exec(record.id)?.[0] === record.id);
     require(record.owner === owner && record.host === host && record.kind === ownerKinds[owner]);
-    require(text(record.label) && states.includes(record.state) && phases.includes(record.phase));
-    require(authorities.includes(record.source_authority) && qualities.includes(record.observation_quality));
-    ['created_at', 'updated_at', 'source_timestamp'].forEach(key => timestamp(record[key]));
-    if (Object.hasOwn(record, 'outcome')) require(outcomes.includes(record.outcome));
-    if (Object.hasOwn(record, 'progress')) {
+    validateSemantics(record);
+    const [created, updated, observed] = ['created_at', 'updated_at', 'source_timestamp'].map(key => timestamp(record[key]));
+    require(created <= updated);
+    const managed = owner === 'recipe' || owner === 'manifest';
+    require(updated - observed <= (managed ? SKEW_MICROSECONDS : 0n));
+    for (const value of [created, updated, observed]) withinSkew(value, collectionTimes);
+    if (Object.hasOwn(record, 'progress') && record.progress !== null) {
       const progress = record.progress;
       fields(progress, ['completed', 'total', 'unit']);
       require(count(progress.completed) && (progress.total === null || (count(progress.total) && progress.completed <= progress.total)));
@@ -79,7 +117,7 @@
     const fleet = body.data;
     fields(fleet, ['schema', 'status', 'collection_timestamp', 'nodes', 'truncation']);
     require(fleet.schema === 'anvil-workloads/v1' && statuses.includes(fleet.status));
-    timestamp(fleet.collection_timestamp);
+    const fleetTime = timestamp(fleet.collection_timestamp);
     require(Array.isArray(fleet.nodes) && fleet.nodes.length <= 1000);
     let total = 0;
     const hosts = new Set();
@@ -87,7 +125,8 @@
       fields(node, ['schema', 'host', 'status', 'collection_timestamp', 'sources']);
       require(node.schema === fleet.schema && hostId(node.host) && !hosts.has(node.host) && statuses.includes(node.status));
       hosts.add(node.host);
-      timestamp(node.collection_timestamp);
+      const nodeTime = timestamp(node.collection_timestamp);
+      withinSkew(nodeTime, [fleetTime]);
       require(Array.isArray(node.sources) && node.sources.length > 0 && node.sources.length <= 6);
       const owners = new Set();
       for (const source of node.sources) {
@@ -95,7 +134,8 @@
         require(source.schema === fleet.schema && Object.hasOwn(ownerKinds, source.owner) && !owners.has(source.owner));
         owners.add(source.owner);
         require(statuses.includes(source.status) && (source.error === null || Object.hasOwn(sourceErrors, source.error)));
-        timestamp(source.collection_timestamp);
+        const sourceTime = timestamp(source.collection_timestamp);
+        withinSkew(sourceTime, [nodeTime, fleetTime]);
         require(Array.isArray(source.records) && source.records.length <= 200);
         total += source.records.length;
         require(total <= 1000);
@@ -105,7 +145,7 @@
         if (source.status === 'unavailable') require(source.records.length === 0 && source.error !== null);
         const ids = new Set();
         for (const record of source.records) {
-          validateRecord(record, source.owner, node.host);
+          validateRecord(record, source.owner, node.host, [sourceTime, nodeTime, fleetTime]);
           require(!ids.has(record.id));
           ids.add(record.id);
         }

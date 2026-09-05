@@ -16,6 +16,11 @@ if (process.argv[3] === 'negative-host-bound') {
   assert.ok(source.includes(bound));
   source = source.replace(bound, '*');
 }
+if (process.argv[3] === 'negative-semantic-guard') {
+  const guard = 'validateSemantics(record);';
+  assert.ok(source.includes(guard));
+  source = source.replace(guard, '');
+}
 const TOKEN_A = 'fixture-workload-token-a';
 const TOKEN_B = 'fixture-workload-token-b';
 const TIME = '2026-09-05T12:00:00.000001Z';
@@ -169,13 +174,15 @@ function response(body, status = 200, textPromise = null) {
   };
 }
 
-function record({id = 'a'.repeat(64), label = 'Controller Operation', state = 'terminal',
-  phase = 'completed', outcome = 'success', quality = 'recorded', progress = undefined} = {}) {
+function record({id = 'a'.repeat(64), owner = 'controller', label = undefined, state = 'terminal',
+  phase = 'completed', outcome = state === 'terminal' ? 'success' : undefined,
+  quality = 'recorded', progress = undefined} = {}) {
+  const kind = {router: 'router-request', controller: 'controller-operation', benchmark: 'benchmark-job', media: 'media-job', recipe: 'recipe-serve', manifest: 'recipe-serve'}[owner];
   const value = {
-    schema: 'anvil-workloads/v1', id, kind: 'controller-operation', owner: 'controller',
-    host: 'worker-a', label, state, phase,
+    schema: 'anvil-workloads/v1', id, kind, owner,
+    host: 'worker-a', label: label ?? kind.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' '), state, phase,
     created_at: TIME, updated_at: TIME, source_timestamp: TIME,
-    source_authority: 'controller-store', observation_quality: quality,
+    source_authority: {router: 'router-memory', controller: 'controller-store', benchmark: 'benchmark-store', media: 'media-store', recipe: 'managed-status', manifest: 'managed-status'}[owner], observation_quality: quality,
   };
   if (outcome !== undefined) value.outcome = outcome;
   if (progress !== undefined) value.progress = progress;
@@ -184,14 +191,16 @@ function record({id = 'a'.repeat(64), label = 'Controller Operation', state = 't
 
 function snapshot({status = 'complete', records = [record()], omitted = 0,
   error = null, nodes = undefined} = {}) {
-  const source = {
-    schema: 'anvil-workloads/v1', owner: 'controller', status,
-    collection_timestamp: TIME, records,
-    truncation: {returned: records.length, omitted}, error,
-  };
+  const groups = records.length ? {} : {controller: []};
+  for (const row of records) (groups[row.owner] ??= []).push(row);
+  const sources = Object.entries(groups).map(([owner, rows]) => ({
+    schema: 'anvil-workloads/v1', owner, status,
+    collection_timestamp: TIME, records: rows,
+    truncation: {returned: rows.length, omitted}, error,
+  }));
   const selectedNodes = nodes === undefined ? [{
     schema: 'anvil-workloads/v1', host: 'worker-a', status,
-    collection_timestamp: TIME, sources: [source],
+    collection_timestamp: TIME, sources,
   }] : nodes;
   return {ok: true, data: {
     schema: 'anvil-workloads/v1', status, collection_timestamp: TIME,
@@ -242,14 +251,14 @@ async function testHiddenAndCanonicalRendering() {
   assert.equal(call.options.redirect, 'error');
   assert.equal(call.options.signal.aborted, false);
   const body = deepFreeze(snapshot({records: [
-    record({label: '<img src=x onerror=private-marker>', progress: {completed: 2, total: 3, unit: 'steps'}}),
+    record({progress: {completed: 2, total: 3, unit: 'steps'}}),
     record({id: 'b'.repeat(64), state: 'running', phase: 'running', outcome: undefined}),
-    record({id: 'c'.repeat(64), state: 'running', phase: 'running', outcome: undefined, quality: 'stale'}),
+    record({id: 'c'.repeat(64), owner: 'recipe', state: 'running', phase: 'running', quality: 'stale'}),
   ]}));
   const before = JSON.stringify(body);
   await settle(h, 0, body);
   const text = allText(h);
-  assert.match(text, /<img src=x onerror=private-marker>/);
+  assert.match(text, /Controller Operation/);
   assert.match(text, /Terminal/);
   assert.match(text, /Active/);
   assert.match(text, /Stale/);
@@ -355,8 +364,8 @@ async function testCadenceTimeoutAndLateCompletion() {
   assert.equal(h.calls[1].options.signal.aborted, true);
   assert.match(h.elements.get('workload-status').textContent, /timed out/);
   assert.equal(h.calls.length, 2, 'timed out call was replaced before settlement');
-  await settle(h, 1, snapshot({records: [record({label: 'private-late-marker'})]}));
-  assert.ok(!allText(h).includes('private-late-marker'));
+  await settle(h, 1, snapshot({records: [record({id: 'd'.repeat(64)})]}));
+  assert.ok(!allText(h).includes('d'.repeat(64)));
   await h.advance(4999);
   assert.equal(h.calls.length, 2);
   await h.advance(1);
@@ -373,17 +382,17 @@ async function testGenerationInvalidationAndReconnect() {
   assert.equal(h.calls[0].options.signal.aborted, true);
   await connect(h, TOKEN_B);
   assert.equal(h.calls.length, 1, 'new credential overlapped the old text read');
-  textDone.resolve(JSON.stringify(snapshot({records: [record({label: 'private-old-marker'})]})));
+  textDone.resolve(JSON.stringify(snapshot({records: [record({id: 'e'.repeat(64)})]})));
   await h.flush();
-  assert.ok(!allText(h).includes('private-old-marker'));
+  assert.ok(!allText(h).includes('e'.repeat(64)));
   await h.advance(5000);
   assert.equal(h.calls.length, 2);
   assert.equal(h.calls[1].options.headers.Authorization, 'Bearer ' + TOKEN_B);
   h.document.hidden = true;
   h.document.dispatch('visibilitychange');
   assert.equal(h.calls[1].options.signal.aborted, true);
-  await settle(h, 1, snapshot({records: [record({label: 'private-hidden-marker'})]}));
-  assert.ok(!allText(h).includes('private-hidden-marker'));
+  await settle(h, 1, snapshot({records: [record({id: 'f'.repeat(64)})]}));
+  assert.ok(!allText(h).includes('f'.repeat(64)));
   await h.advance(10000);
   assert.equal(h.calls.length, 2);
   h.document.hidden = false;
@@ -402,8 +411,8 @@ async function testFilterChangeInvalidatesOldGeneration() {
   assert.equal(h.calls[0].options.signal.aborted, true);
   await h.advance(5000);
   assert.equal(h.calls.length, 1, 'filter change overlapped an unresolved read');
-  await settle(h, 0, snapshot({records: [record({label: 'private-filter-marker'})]}));
-  assert.ok(!allText(h).includes('private-filter-marker'));
+  await settle(h, 0, snapshot({records: [record({id: '1'.repeat(64)})]}));
+  assert.ok(!allText(h).includes('1'.repeat(64)));
   await h.advance(4999);
   assert.equal(h.calls.length, 1);
   await h.advance(1);
@@ -570,7 +579,71 @@ const tests = [
   testAuthorizationAndRetryRelease,
 ];
 
+async function testSemanticContract() {
+  const invalid = [
+    record({state: 'running', phase: 'failed', outcome: 'success'}),
+    record({label: '<img src=x onerror=private-marker>'}),
+    record({label: 'C:/private/operator-path'}),
+    record({owner: 'router', state: 'running', phase: 'running'}),
+    record({owner: 'controller', outcome: 'cancelled', phase: 'cancelled'}),
+    record({owner: 'benchmark', phase: 'failed', outcome: 'timeout'}),
+    record({owner: 'media', state: 'queued', phase: 'preparing'}),
+    record({owner: 'recipe', quality: 'healthy-identity'}),
+    record({owner: 'manifest', state: 'running', phase: 'running', quality: 'configured'}),
+    record({quality: 'stale'}),
+    {...record(), source_authority: 'router-memory'},
+    {...record(), updated_at: '2026-09-05T12:00:00.000002Z'},
+    {...record(), source_timestamp: '2026-02-30T12:00:00.000001Z'},
+    {...record(), source_timestamp: TIME + '\n'},
+    {...record(), id: 'a'.repeat(64) + '\n'},
+  ];
+  for (const row of invalid) {
+    const h = harness({hidden: false});
+    await connect(h);
+    await settle(h, 0, snapshot({records: [row]}));
+    assert.equal(h.elements.get('workload-results').children.length, 0, 'noncanonical record rendered');
+    assert.match(allText(h), /Workload evidence unavailable/);
+    assert.ok(!allText(h).includes('private-marker'));
+    assert.ok(!allText(h).includes('operator-path'));
+  }
+  for (const row of [
+    record({owner: 'router', state: 'streaming', phase: 'streaming'}),
+    record({owner: 'controller'}), record({owner: 'benchmark'}),
+    record({owner: 'media', state: 'running', phase: 'preparing'}),
+    record({owner: 'media', state: 'running', phase: 'submitting'}),
+    record({owner: 'media', state: 'queued', phase: 'awaiting-approval'}),
+    record({owner: 'recipe', state: 'running', phase: 'running', quality: 'stale'}),
+    record({owner: 'manifest', state: 'running', phase: 'running', quality: 'healthy-identity'}),
+    {...record(), progress: null},
+  ]) {
+    const h = harness({hidden: false});
+    await connect(h);
+    await settle(h, 0, snapshot({records: [row]}));
+    assert.match(allText(h), /Fleet complete/, 'canonical owner record was rejected');
+  }
+  for (const suffix of ['000001', '000002']) {
+    for (const target of ['node', 'source', 'record']) {
+      const h = harness({hidden: false});
+      await connect(h);
+      const body = snapshot();
+      const node = body.data.nodes[0];
+      const source = node.sources[0];
+      node.collection_timestamp = '2026-09-05T12:00:30.000001Z';
+      source.collection_timestamp = '2026-09-05T12:00:30.000001Z';
+      const ahead = '2026-09-05T12:00:30.' + suffix + 'Z';
+      if (target === 'node') node.collection_timestamp = ahead;
+      if (target === 'source') source.collection_timestamp = ahead;
+      if (target === 'record') {
+        for (const key of ['created_at', 'updated_at', 'source_timestamp']) source.records[0][key] = ahead;
+      }
+      await settle(h, 0, body);
+      assert.match(allText(h), suffix === '000001' ? /Fleet complete/ : /Workload evidence unavailable/);
+    }
+  }
+}
+
 (async () => {
+  await testSemanticContract();
   await testNeutralGpuGrouping();
   await testHostIdentifierBoundaries();
   for (const test of tests) await test();
