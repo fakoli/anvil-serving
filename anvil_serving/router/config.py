@@ -131,6 +131,7 @@ _TIER_KEYS = frozenset({
     "context_admission",
     "replicas",
     "replica_identity",
+    "replica_strategy",
 })
 _ROUTER_KEYS = frozenset({
     "tiers",
@@ -178,7 +179,7 @@ _QUALIFICATION_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 _REVISION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}$")
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _REPLICA_MEMBER_KEYS = frozenset(
-    {"id", "base_url", "host_id", "resource_id", "qualification_ref"}
+    {"id", "base_url", "host_id", "resource_id", "qualification_ref", "max_concurrency"}
 )
 _REPLICA_IDENTITY_KEYS = frozenset(
     {"model_revision", "engine_version", "image_digest", "config_fingerprint"}
@@ -194,6 +195,7 @@ class ReplicaMember:
     host_id: str
     resource_id: str
     qualification_ref: str
+    max_concurrency: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -294,6 +296,7 @@ class Tier:
     # before any URL builder sees the tier.
     replicas: tuple[ReplicaMember, ...] = ()
     replica_identity: Optional[ReplicaIdentity] = None
+    replica_strategy: str = "round_robin"
 
 
 @dataclass(frozen=True)
@@ -669,6 +672,12 @@ def _parse_replica_member(
     except ConfigError as exc:
         errors.append(str(exc))
     member: Optional[ReplicaMember] = None
+    ceiling = raw.get("max_concurrency")
+    invalid_ceiling = "max_concurrency" in raw and (
+        type(ceiling) is not int or not 1 <= ceiling <= 100000
+    )
+    if invalid_ceiling:
+        errors.append(f"{label} max_concurrency must be an integer from 1 through 100000")
     if len(values) == 3 and not invalid_qualification_ref and endpoint is not None:
         member = ReplicaMember(
             id=values["id"],
@@ -676,6 +685,7 @@ def _parse_replica_member(
             host_id=values["host_id"],
             resource_id=values["resource_id"],
             qualification_ref=qualification_ref,
+            max_concurrency=None if invalid_ceiling else ceiling,
         )
     return _ReplicaMemberParseResult(
         member=member,
@@ -753,6 +763,11 @@ def _parse_tier(raw: object) -> Tier:
         )
 
     has_replicas = "replicas" in raw
+    replica_strategy = raw.get("replica_strategy", "round_robin")
+    if "replica_strategy" in raw and not has_replicas:
+        raise ConfigError(f"tier {tid!r}: replica_strategy is valid only with replicas")
+    if type(replica_strategy) is not str or replica_strategy not in ("round_robin", "capacity"):
+        raise ConfigError(f"tier {tid!r}: replica_strategy must be round_robin or capacity")
     metadata_source = raw.get("metadata_source", METADATA_CONFIGURED)
     if not isinstance(metadata_source, str):
         raise ConfigError(
@@ -1124,6 +1139,10 @@ def _parse_tier(raw: object) -> Tier:
         replica_identity = _parse_replica_identity(
             raw.get("replica_identity"), tid, errors
         )
+        if replica_strategy == "capacity" and any(
+            member.max_concurrency is None for member in members
+        ):
+            errors.append(f"tier {tid!r}: capacity requires max_concurrency on every replica member")
         if errors:
             raise ConfigError("; ".join(errors))
         replicas = tuple(members)
@@ -1153,6 +1172,7 @@ def _parse_tier(raw: object) -> Tier:
         model_identity=raw_model_identity,
         replicas=replicas,
         replica_identity=replica_identity,
+        replica_strategy=replica_strategy,
     )
 
 

@@ -63,6 +63,59 @@ llm.primary = "primary"
 """
 
 
+@pytest.mark.parametrize("strategy", [None, "round_robin", "capacity"])
+def test_replica_strategy_and_independent_member_ceilings(tmp_path, strategy):
+    body = _REPLICA_TIER.replace('id = "member-a",', 'id = "member-a", max_concurrency = 1,')
+    body = body.replace('id = "member-b",', 'id = "member-b", max_concurrency = 100000,')
+    if strategy is not None:
+        body = body.replace('model_identity = true', f'model_identity = true\nreplica_strategy = "{strategy}"')
+    body = body.replace('context_limit = 4096', 'context_limit = 4096\nmax_concurrency = 3')
+    tier = load(_write(tmp_path, body)).tier("primary")
+    assert tier.replica_strategy == (strategy or "round_robin")
+    assert [member.max_concurrency for member in tier.replicas] == [1, 100000]
+    assert tier.max_concurrency == 3  # Aggregate cap, never multiplied by membership.
+    with pytest.raises(FrozenInstanceError):
+        tier.replicas[0].max_concurrency = 2
+
+
+def test_default_round_robin_leaves_member_ceilings_optional(tmp_path):
+    tier = load(_write(tmp_path, _REPLICA_TIER)).tier("primary")
+    assert tier.replica_strategy == "round_robin"
+    assert all(member.max_concurrency is None for member in tier.replicas)
+
+
+@pytest.mark.parametrize("literal", ["true", "false", "0", "-1", "100001", "1.0", '"secret-marker"', "[]", "{}"])
+def test_member_ceiling_rejects_wrong_types_and_bounds_without_echo(tmp_path, literal):
+    body = _REPLICA_TIER.replace('id = "member-a",', f'id = "member-a", max_concurrency = {literal},')
+    with pytest.raises(ConfigError, match="max_concurrency must be an integer") as caught:
+        load(_write(tmp_path, body))
+    assert "secret-marker" not in str(caught.value)
+
+
+@pytest.mark.parametrize("literal", ['"unknown-secret"', '"CAPACITY"', "true", "1", "[]", "{}"])
+def test_replica_strategy_rejects_unknown_and_wrong_types(tmp_path, literal):
+    body = _REPLICA_TIER.replace('model_identity = true', f'model_identity = true\nreplica_strategy = {literal}')
+    with pytest.raises(ConfigError, match="replica_strategy must be") as caught:
+        load(_write(tmp_path, body))
+    assert "unknown-secret" not in str(caught.value)
+
+
+@pytest.mark.parametrize("strategy", ["round_robin", "capacity"])
+def test_explicit_replica_strategy_is_rejected_on_direct_tiers(tmp_path, strategy):
+    body = _ONE_TIER.replace('tool_support = true', f'tool_support = true\nreplica_strategy = "{strategy}"')
+    with pytest.raises(ConfigError, match="valid only with replicas"):
+        load(_write(tmp_path, body))
+
+
+@pytest.mark.parametrize("capped_first", [False, True])
+def test_capacity_requires_every_member_ceiling(tmp_path, capped_first):
+    body = _REPLICA_TIER.replace('model_identity = true', 'model_identity = true\nreplica_strategy = "capacity"')
+    if capped_first:
+        body = body.replace('id = "member-a",', 'id = "member-a", max_concurrency = 2,')
+    with pytest.raises(ConfigError, match="capacity requires max_concurrency on every replica member"):
+        load(_write(tmp_path, body))
+
+
 def test_load_bytes_preserves_crlf_and_matches_path_loading(tmp_path):
     raw = _ONE_TIER.replace("\n", "\r\n").encode("utf-8")
     path = tmp_path / "router.toml"
@@ -532,7 +585,7 @@ def test_replica_validation_aggregates_shared_requirements_and_identity(tmp_path
 def test_replica_unknown_member_keys_and_shared_identity_requirements(tmp_path):
     unknown = _REPLICA_TIER.replace(
         'qualification_ref = "qualification:primary-a"',
-        'qualification_ref = "qualification:primary-a", max_concurrency = 1',
+        'qualification_ref = "qualification:primary-a", unexpected_ceiling = 1',
     )
     with pytest.raises(ConfigError, match="replica member contains unknown"):
         load(_write(tmp_path, unknown))
