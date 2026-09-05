@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from .router.config import ConfigError, _validate_auth_env
+
 
 SCHEMA = "anvil-serving.edge-bundle/v1"
 MAX_MANIFEST_BYTES = 256 * 1024
@@ -70,6 +72,16 @@ def _closed_mapping(value: object, *, name: str, fields: set[str]) -> Mapping[st
 def _matched(value: object, pattern: re.Pattern[str], *, name: str) -> str:
     if not isinstance(value, str) or not pattern.fullmatch(value):
         raise EdgeBundleError(f"{name} is invalid")
+    return value
+
+
+def _environment_reference(value: object, *, name: str) -> str:
+    value = _matched(value, _ENV_NAME, name=name)
+    try:
+        _validate_auth_env(value, name, detailed=False)
+    except ConfigError:
+        # The canonical validator quotes its input; bundle errors never do.
+        raise EdgeBundleError(f"{name} must be an environment reference, not a credential") from None
     return value
 
 
@@ -246,11 +258,11 @@ class EdgeBundle:
         if tool_support and not {"--enable-auto-tool-choice", "--tool-call-parser"}.issubset(extra_args):
             raise EdgeBundleError("router.tool_support requires explicit auto-tool-choice and tool-call-parser flags")
 
-        auth_key_env = _matched(
-            tailnet["auth_key_env"], _ENV_NAME, name="tailnet.auth_key_env"
+        auth_key_env = _environment_reference(
+            tailnet["auth_key_env"], name="tailnet.auth_key_env"
         )
-        api_key_env = _matched(
-            inference["api_key_env"], _ENV_NAME, name="inference.api_key_env"
+        api_key_env = _environment_reference(
+            inference["api_key_env"], name="inference.api_key_env"
         )
         state_volume = _matched(
             tailnet["state_volume"], _VOLUME, name="tailnet.state_volume"
