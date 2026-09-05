@@ -35,3 +35,10 @@ embedding the sole existing bundle validator. It must not import a not-yet-
 installed candidate or duplicate archive validation. Its trusted sibling
 configuration derives from the exact private plan domain; credentials remain
 separately provisioned and are absent from that document and every frame.
+
+The pure frame candidate 9c4567de passed 142 focused tests and Ruff after
+commit (EV8A6CA8D4) and is locally integrated pending consolidated acceptance.
+It validates exact operation field sets, canonical bounded length-prefixed
+JSON, target-config binding and stage-body digests. It performs no filesystem
+or network operations; receiver packaging, permission checks, durable staging
+and activation remain separate work.

@@ -1,6 +1,6 @@
 # Atomic replica member capacity and independent drain scopes
 
-Status: implemented source candidate; scheduler wiring and consolidated acceptance pending.
+Status: implemented and locally integrated source candidate; consolidated acceptance pending.
 
 Capacity scheduling needs one reservation boundary: separate member and tier
 checks could oversubscribe a selected endpoint, and a tier-only drain wakeup
@@ -62,6 +62,18 @@ During T004 call-site preparation, candidate f4f94f26 (123 focused tests passing
 still allowed an upstream scheduler_capacity field to replace the configured
 ceiling, called the injected clock under its cache condition, and did not
 consistently downgrade invalid/backward clocks to unknown. That candidate is
-not accepted or enabled. T003 is fixing these explicit contract mismatches,
+not accepted or enabled. T003 fixed these explicit contract mismatches,
 with separate regressions for configured authority, clock callback boundaries,
 single-flight state independent of timestamps, and malformed-vs-failed samples.
+
+The corrected cache at 7393c3e8 passed 125 focused tests and Ruff after commit,
+recorded as EV72F04E5B. The configured ceiling is authoritative; clock callbacks
+remain outside the cache condition and invalid/backward clocks return unknown.
+
+T004 at fe3337de wires the same compound admission owner into both construction
+paths and removes the separate replica backend semaphore. It uses completed
+pressure snapshots only for capacity mode, excludes unbound members before
+readiness probes, and closes cache resources with the server. Its 64 focused
+tests and Ruff passed after commit (EV1EE12D00); the unchanged candidate also
+passed 1027 router tests before commit. No retry, fallback or model promotion
+was added. Source integration is not final acceptance or live qualification.
