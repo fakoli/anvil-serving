@@ -580,6 +580,113 @@ runtime = "native"
     assert len(snapshot.configuration.records) == 1
 
 
+@pytest.mark.parametrize("runtime", ["native", "docker"])
+@pytest.mark.parametrize("failure", ["nonzero", "throws", "truncated", "wrong-type", "incomplete-line", "empty", "malformed"])
+def test_failed_compose_capture_keeps_unsupported_peer_as_partial(runtime, failure, tmp_path):
+    extra = "" if runtime == "native" else 'container = "generic"\nup = "docker run ignored"'
+    path = _manifest(tmp_path, f'''\
+[[serve]]
+name = "peer"
+runtime = "{runtime}"
+{extra}
+
+[[serve]]
+name = "compose"
+runtime = "docker"
+container = "compose"
+up = "docker compose -f x.yml up compose"
+''')
+    configured_time = _clock() - timedelta(hours=1)
+    os.utime(path, (configured_time.timestamp(), configured_time.timestamp()))
+    observed_time = _clock() - timedelta(seconds=10)
+    calls = []
+
+    def capture(argv):
+        calls.append(argv)
+        if failure == "throws":
+            raise OSError("private failure text")
+        if failure == "wrong-type":
+            return {"private": "not a capture"}
+        raw = b"{}\n" if failure == "malformed" else b"private" if failure == "incomplete-line" else b""
+        return ChildCapture("unavailable" if failure == "nonzero" else "ok", raw, b"private stderr", failure == "truncated")
+
+    times = iter((observed_time, _clock()))
+    snapshot = capture_manifest_workload_snapshot(
+        str(path), clock=lambda: next(times), _capture=capture,
+    )
+    assert calls == [("docker", "inspect", "--type", "container", "--format", _INSPECT_TEMPLATE, "compose")]
+    assert snapshot.runtime.status is ResultStatus.PARTIAL
+    expected_error = WorkloadErrorCode.INVALID if failure in {"empty", "malformed"} else WorkloadErrorCode.UNAVAILABLE
+    assert snapshot.runtime.error is expected_error
+    assert snapshot.runtime.omitted is None
+    assert len(snapshot.runtime.records) == 1
+    peer = snapshot.runtime.records[0]
+    assert peer.state is WorkloadState.UNSUPPORTED and peer.container_id is None
+    assert peer.created_at == peer.updated_at == configured_time
+    assert peer.observed_at == observed_time
+    expected_observed = observed_time if failure in {"throws", "wrong-type", "truncated", "incomplete-line"} else _clock()
+    assert snapshot.runtime.observed_at == expected_observed
+
+    result = list_manifest_workloads(
+        "ignored", "node-a", WorkloadQuery(), _clock(), snapshot_reader=lambda *_args, **_kwargs: snapshot,
+    )
+    assert result.status is ResultStatus.PARTIAL and result.error is expected_error
+    assert result.truncation.omitted is None
+    assert {record.state for record in result.records} == {WorkloadState.CONFIGURED, WorkloadState.UNSUPPORTED}
+    assert len(result.records) == 2
+    assert {record.observation_quality for record in result.records} == {
+        ObservationQuality.CONFIGURED, ObservationQuality.INSPECTION_ERROR,
+    }
+    assert all(record.source_timestamp == observed_time for record in result.records)
+    wire = source_result_to_json(result)
+    assert source_result_from_json(wire) == result
+    assert "private" not in wire and str(path) not in wire
+
+
+@pytest.mark.parametrize("throws", [False, True])
+def test_failed_compose_capture_without_peers_remains_unavailable(throws, tmp_path):
+    path = _manifest(tmp_path, '''[[serve]]
+name = "compose"
+runtime = "docker"
+container = "compose"
+up = "docker compose -f ignored.yml up compose"
+''')
+
+    def capture(_argv):
+        if throws:
+            raise OSError("private failure text")
+        return ChildCapture("unavailable", b"", b"", False)
+
+    snapshot = capture_manifest_workload_snapshot(str(path), clock=_clock, _capture=capture)
+    assert snapshot.runtime.status is ResultStatus.UNAVAILABLE
+    assert snapshot.runtime.records == ()
+    assert snapshot.runtime.error is WorkloadErrorCode.UNAVAILABLE
+    assert snapshot.runtime.omitted is None
+    result = list_manifest_workloads(
+        "ignored", "node-a", WorkloadQuery(), _clock(), snapshot_reader=lambda *_args, **_kwargs: snapshot,
+    )
+    assert result.status is ResultStatus.PARTIAL
+    assert [record.state for record in result.records] == [WorkloadState.CONFIGURED]
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
+
+
+def test_native_only_projection_keeps_unsupported_without_subprocess(tmp_path):
+    path = _manifest(tmp_path, '[[serve]]\nname = "native"\nruntime = "native"\n')
+
+    def forbidden(_argv):
+        pytest.fail("native-only capture invoked a subprocess")
+
+    snapshot = capture_manifest_workload_snapshot(str(path), clock=_clock, _capture=forbidden)
+    assert snapshot.runtime.status is ResultStatus.COMPLETE
+    result = list_manifest_workloads(
+        "ignored", "node-a", WorkloadQuery(), _clock(), snapshot_reader=lambda *_args, **_kwargs: snapshot,
+    )
+    assert result.status is ResultStatus.COMPLETE and result.error is None
+    assert result.truncation.omitted == 0
+    assert [record.state for record in result.records] == [WorkloadState.UNSUPPORTED]
+    assert result.records[0].observation_quality is ObservationQuality.INSPECTION_ERROR
+
+
 def _budget_files(tmp_path, contents):
     paths = []
     for index, raw in enumerate(contents):

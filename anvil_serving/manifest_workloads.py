@@ -496,12 +496,22 @@ def capture_manifest_workload_snapshot(manifest_path, *, clock, _capture=None) -
         ManifestRuntimeObservation(item.digest, None, WorkloadState.UNSUPPORTED, item.configured_at, item.configured_at, item.observed_at)
         for item in unsupported
     ]
+
+    def _failed_runtime(observed_at: datetime | None) -> ManifestComponentResult:
+        if runtime_records:
+            return _component(
+                ResultStatus.PARTIAL,
+                observed_at if observed_at is not None else configuration.observed_at,
+                runtime_records, None, WorkloadErrorCode.UNAVAILABLE,
+            )
+        return _component(ResultStatus.UNAVAILABLE, observed_at, (), None, WorkloadErrorCode.UNAVAILABLE)
+
     if not owners:
         observed = configuration.observed_at
         if configuration.status is ResultStatus.UNAVAILABLE:
             return ManifestWorkloadSnapshot(
                 configuration,
-                _component(ResultStatus.UNAVAILABLE, observed, runtime_records, None, WorkloadErrorCode.UNAVAILABLE),
+                _failed_runtime(observed),
             )
         return ManifestWorkloadSnapshot(
             configuration,
@@ -554,13 +564,13 @@ def capture_manifest_workload_snapshot(manifest_path, *, clock, _capture=None) -
         if capture.state != "ok" and not rows:
             return ManifestWorkloadSnapshot(
                 configuration,
-                _component(ResultStatus.UNAVAILABLE, observed, runtime_records, None, WorkloadErrorCode.UNAVAILABLE),
+                _failed_runtime(observed),
             )
         status = ResultStatus.PARTIAL if invalid or future or missing or owner_conflict or capture.state != "ok" else ResultStatus.COMPLETE
         error = WorkloadErrorCode.UNAVAILABLE if capture.state != "ok" else WorkloadErrorCode.FUTURE if future else WorkloadErrorCode.INVALID if invalid or missing or owner_conflict else None
         return ManifestWorkloadSnapshot(configuration, _component(status, observed, runtime_records + rows, None if status is ResultStatus.PARTIAL else 0, error))
     except Exception:
-        return ManifestWorkloadSnapshot(configuration, _component(ResultStatus.UNAVAILABLE, None, runtime_records, None, WorkloadErrorCode.UNAVAILABLE))
+        return ManifestWorkloadSnapshot(configuration, _failed_runtime(None))
 
 
 def _no_duplicates(pairs):
