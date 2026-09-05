@@ -1383,13 +1383,61 @@ remote clock. Recompute canonical status and keep failures source-local.
 - `python scripts/run_tests.py tests/observability/test_fleet_workload_collection.py tests/observability/test_workload_collection.py tests/observability/test_workloads.py -x -q`
 - `python -m ruff check anvil_serving/observability/fleet_workload_collection.py tests/observability/test_fleet_workload_collection.py`
 
+### T013.1.2: Remove quadratic fleet summary reconstruction
+
+**Feature:** F003
+**Priority:** high
+**Type:** bugfix
+**Likely files:** anvil_serving/observability/fleet_workload_collection.py, tests/observability/test_fleet_workload_collection.py
+**Dependencies:** T013.1.1
+
+Replace T013.1's repeated reduction of every earlier node on each new host.
+The1000-node empty-fleet probe took8.813 seconds before any network call and
+reconstructed roughly three million source summaries. Keep the same public
+normalizer/composer signatures and canonical output contract; do not change
+the schema, max nodes, deadlines, selection order or omission semantics.
+
+Normalize each input node once. Maintain per-call lightweight node/source
+metadata containing only already-validated scalar fields, omission counters
+and selected-record references. Use one bounded global top-K structure;
+when replacing a selected record, update only its owning source's retained
+set and omission counter. Newly discarded records increment their source
+omission exactly once. Do not hold an original full NodeResult or SourceResult
+inside metadata after it has been processed, because that would retain all
+discarded records even if the selection is bounded. Store at most the global
+record cap plus one current normalized node and bounded selection bookkeeping.
+No persistent cache, secondary registry, mutable public result or new runtime
+dependency. A heap or bounded ordered selection may be used, but all time/ID
+comparisons remain exact and deterministic; do not use float timestamps or
+platform-dependent datetime.timestamp for ordering.
+
+Construct canonical source and node summaries only once at finalization in
+sorted host order. Selected records preserve each source's original relative
+order. Preserve timestamps, error codes, known/unknown/overflow omissions and
+status transitions exactly, including repeated cross-node evictions. Empty
+host summaries require linear metadata work, not a quadratic prefix rebuild.
+Outer shape validation must also use a bounded host-ID set instead of repeated
+linear membership scans while retaining the exact canonical tuple/dict API.
+
+**Acceptance criteria:**
+
+- A deterministic counter around SourceResult.__post_init__ proves at most64*MAX_NODES source constructions for1000 empty declared nodes, with every host still present and the same unavailable/unknown-omission output.
+- Existing canonical bytes, global ordering/ties, source-local failures, host exclusions, original timestamps and known/unknown/overflow omissions remain unchanged.
+- Repeated evictions touch only affected metadata and no original full-node/source reference retains discarded records beyond the bounded current input.
+- The same1000-node empty probe is rerun and measured; tests use structural work-count bounds rather than a flaky wall-clock threshold as the regression gate.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_fleet_workload_collection.py tests/observability/test_workload_collection.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/observability/fleet_workload_collection.py tests/observability/test_fleet_workload_collection.py`
+
 ### T013.2: Read canonical workloads through expected-node controller transport
 
 **Feature:** F003
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/observability/probes/controller_workloads.py, tests/observability/test_controller_workload_source.py
-**Dependencies:** T012, T013.1, T013.1.1
+**Dependencies:** T012, T013.1, T013.1.1, T013.1.2
 
 Add read_controller_workloads(endpoint, auth_env, host, query, now, *,
 environment=None, monotonic=time.monotonic, _open=None), returning a canonical
@@ -1468,7 +1516,7 @@ only read_controller_workloads publicly.
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/observability/fleet_workload_collector.py, tests/observability/test_fleet_workload_collector.py
-**Dependencies:** T013.1, T013.1.1
+**Dependencies:** T013.1, T013.1.1, T013.1.2
 
 Add FleetWorkloadCollector(readers, *, monotonic=time.monotonic), with
 collect(query,now) and idempotent nonblocking close(). readers is an exact dict
