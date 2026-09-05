@@ -1336,7 +1336,17 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
             rc = _main(argv, output_options=options, execution_meta=execution_meta)
     except SystemExit as exc:
         rc = int(exc.code or 0)
-    command = " ".join(argv)
+    canonical = _command_name(path)
+    # These metadata surfaces accept private origins and manifest paths. Their
+    # family labels remain operand-free even when a leaf is missing/misspelled.
+    protected_family = bool(path) and path[0].name in ("router", "edge")
+    protected_leaf = canonical in {
+        "router diagnose", "edge bundle validate", "edge bundle render",
+    }
+    unresolved_sensitive = protected_family and (
+        unknown is not None or bool(path[-1].children)
+    )
+    command = canonical if protected_family else " ".join(argv)
     context = execution_meta.get("plan")
     warnings = list(execution_meta.get("warnings", ()))
     if rc == 0:
@@ -1345,9 +1355,29 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
         envelope = success_envelope(command, context, data, warnings=warnings)
     else:
         error = execution_meta.get("error")
-        if not isinstance(error, OperatorError):
-            error = _error_for_exit(rc, stderr.getvalue())
-        data = execution_meta.get("data", stdout.getvalue() or None)
+        if unresolved_sensitive:
+            # Missing-action details and unknown-command stderr can contain
+            # raw operands too, so suppress the complete diagnostic payload.
+            missing_action = isinstance(error, OperatorError) and error.code == "missing_action"
+            error = UsageError(
+                "Action required before options; use focused help." if missing_action
+                else "Unknown or incomplete command; use focused help.",
+                code="missing_action" if missing_action else "usage_error",
+                details={
+                    "command": canonical,
+                    "actions": ", ".join(child.name for child in _visible(path[-1].children)),
+                } if missing_action else None,
+            )
+            data = None
+        elif protected_leaf and "data" not in execution_meta:
+            # argparse/resolution errors are not content-safe. Leaf-produced
+            # JSON remains available (e.g. a typed unsupported bundle target).
+            error = _error_for_exit(rc, "Command failed; check input and use focused help.")
+            data = stdout.getvalue() or None
+        else:
+            if not isinstance(error, OperatorError):
+                error = _error_for_exit(rc, stderr.getvalue())
+            data = execution_meta.get("data", stdout.getvalue() or None)
         envelope = error_envelope(
             command,
             context,
@@ -1410,7 +1440,8 @@ def main(argv=None):
         forwarded = _move_leading_resolution_options(forwarded)
     except UsageError as exc:
         if json_requested:
-            print(render_json(error_envelope(" ".join(argv), None, exc)))
+            # Global-option validation can fail before a command is resolved.
+            print(render_json(error_envelope("anvil-serving", None, exc)))
         else:
             print(f"anvil-serving: {exc}", file=sys.stderr)
         return EXIT_CODES["usage"]

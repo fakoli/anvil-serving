@@ -155,6 +155,33 @@ def commands() -> tuple[CommandNode, ...]:
             "edge",
             "Own the Tailscale tailnet edge in front of the unchanged router.",
             children=(
+                _node(
+                    "bundle",
+                    "Plan a portable tailnet model endpoint offline.",
+                    children=(
+                        _resource_node(
+                            "validate",
+                            "Validate a portable endpoint manifest offline.",
+                            "anvil_serving.edge_bundle",
+                            role="host",
+                            argv_prefix=("validate",),
+                            options=(_option("--manifest", summary="Required endpoint JSON manifest.", value_name="PATH"),),
+                            execution_runtime_roles=("native",),
+                            docs_anchor="docs/REMOTE-TAILNET-ENDPOINTS.md#validate-and-render",
+                        ),
+                        _resource_node(
+                            "render",
+                            "Render Compose, Serve, and router fragments without applying.",
+                            "anvil_serving.edge_bundle",
+                            role="host",
+                            argv_prefix=("render",),
+                            options=(_option("--manifest", summary="Required endpoint JSON manifest.", value_name="PATH"),),
+                            execution_runtime_roles=("native",),
+                            docs_anchor="docs/REMOTE-TAILNET-ENDPOINTS.md#validate-and-render",
+                        ),
+                    ),
+                    docs_anchor="docs/REMOTE-TAILNET-ENDPOINTS.md",
+                ),
                 _resource_node(
                     "render",
                     "Render the tailscale serve invocations without applying.",

@@ -42,6 +42,7 @@ import re
 import sys
 import threading
 import urllib.parse
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Iterable, Optional
 
@@ -194,6 +195,15 @@ def _correlation_from_headers(headers) -> dict:
     return {key: value for key, raw in values.items() if (value := safe_correlation(raw)) is not None}
 
 
+def _new_request_correlation(headers) -> dict[str, str]:
+    """Create trusted gateway lineage while retaining a safe caller id."""
+    correlation = _correlation_from_headers(headers)
+    gateway_request_id = f"req_{uuid.uuid4().hex}"
+    correlation["gateway_request_id"] = gateway_request_id
+    correlation.setdefault("request_id", gateway_request_id)
+    return correlation
+
+
 def _output_clamp_headers(request) -> dict[str, str]:
     """Return bounded client-visible metadata for an applied tier clamp."""
     raw = getattr(request, "raw", {})
@@ -240,6 +250,41 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         # (Set to the configured value just below the class.)
 
         # --- helpers ---------------------------------------------------------
+        def _reset_request_correlation(self) -> None:
+            """Clear per-request state on a reused HTTP/1.1 handler."""
+            self._anvil_correlation = None
+
+        def _start_request_correlation(self) -> None:
+            """Stamp one authenticated inference request with trusted lineage."""
+            self._anvil_correlation = _new_request_correlation(self.headers)
+
+        def _correlation_headers(self) -> dict[str, str]:
+            correlation = getattr(self, "_anvil_correlation", None)
+            if not isinstance(correlation, dict):
+                return {}
+            gateway_request_id = correlation.get("gateway_request_id")
+            request_id = correlation.get("request_id") or gateway_request_id
+            if not gateway_request_id or not request_id:
+                return {}
+            return {
+                "X-Anvil-Request-Id": gateway_request_id,
+                "X-Request-Id": request_id,
+            }
+
+        def _log_inference_failure(
+            self, status: int, scope: str, error: BaseException
+        ) -> None:
+            """Log bounded diagnostics without caller or upstream content."""
+            gateway_request_id = self._correlation_headers().get(
+                "X-Anvil-Request-Id", "-"
+            )
+            print(
+                f"[anvil] {status} {scope}: {type(error).__name__} "
+                f"gateway_request_id={gateway_request_id}",
+                file=sys.stderr,
+                flush=True,
+            )
+
         def _json(self, status: int, obj, extra_headers=None) -> None:
             payload = json.dumps(obj).encode("utf-8")
             self.send_response(status)
@@ -249,6 +294,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # forced it on a framing error) so the client doesn't reuse the socket.
             if self.close_connection:
                 self.send_header("Connection", "close")
+            for _h_name, _h_val in self._correlation_headers().items():
+                self.send_header(_h_name, _h_val)
             if extra_headers:
                 for _h_name, _h_val in extra_headers.items():
                     self.send_header(_h_name, _h_val)
@@ -265,6 +312,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self.send_header("Content-Length", str(len(encoded)))
             if self.close_connection:
                 self.send_header("Connection", "close")
+            for _h_name, _h_val in self._correlation_headers().items():
+                self.send_header(_h_name, _h_val)
             if extra_headers:
                 for _h_name, _h_val in extra_headers.items():
                     self.send_header(_h_name, _h_val)
@@ -482,7 +531,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 )
                 return
             if getattr(e, "kind", None) == "over_context":
-                print(f"[anvil] 413 over-context request: {e}", file=sys.stderr)
+                self._log_inference_failure(413, "over-context request", e)
                 self._error(
                     413, "payload_too_large",
                     "request exceeds the context window of every available "
@@ -491,7 +540,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 )
                 return
             if getattr(e, "kind", None) == "media_limit":
-                print(f"[anvil] 413 over-media-limit request: {e}", file=sys.stderr)
+                self._log_inference_failure(413, "over-media-limit request", e)
                 self._error(
                     413,
                     "payload_too_large",
@@ -499,8 +548,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     dialect=dialect,
                 )
                 return
-            print(f"[anvil] {exhaustion_status} no available tier: {e}",
-                  file=sys.stderr)
+            self._log_inference_failure(
+                exhaustion_status, "no available tier", e
+            )
             self._error(
                 exhaustion_status, "service_unavailable",
                 "the configured model service is unavailable",
@@ -520,9 +570,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self, error: BackendClientError, dialect: Dialect
         ) -> None:
             """Return a backend-declared, sanitized caller error."""
-            print(
-                f"[anvil] {error.status} backend rejected request: {error.message}",
-                file=sys.stderr,
+            self._log_inference_failure(
+                error.status, "backend rejected request", error
             )
             self._error(
                 error.status,
@@ -638,7 +687,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._backend_client_error(e, dialect)
                 return
             except Exception as e:
-                print(f"[anvil] 500 backend error in generate(): {e}", file=sys.stderr)
+                self._log_inference_failure(500, "backend generate error", e)
                 self._error(500, "internal_error", "internal error", dialect=dialect)
                 return
 
@@ -647,6 +696,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream")
                 self.send_header("Cache-Control", "no-cache")
+                for _h_name, _h_val in self._correlation_headers().items():
+                    self.send_header(_h_name, _h_val)
                 for _h_name, _h_val in _output_clamp_headers(request).items():
                     self.send_header(_h_name, _h_val)
                 if chunked:
@@ -694,11 +745,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     # Emit one generic terminal error frame (never upstream
                     # exception text), always close the chunked body, and drop
                     # the connection so length-blind clients also see the end.
-                    print(
-                        "[anvil] stream error after headers: %s"
-                        % type(exc).__name__,
-                        file=sys.stderr,
-                        flush=True,
+                    self._log_inference_failure(
+                        500, "stream error after headers", exc
                     )
                     error_frame_fn = getattr(dialect, "stream_error", None)
                     try:
@@ -742,7 +790,13 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     parse_embeddings_request(body)
                 else:
                     parse_rerank_request(body)
-                payload = purpose.dispatch(kind, body)
+                payload = purpose.dispatch(
+                    kind,
+                    body,
+                    correlation=dict(
+                        getattr(self, "_anvil_correlation", None) or {}
+                    ),
+                )
             except DialectError as e:
                 self._error(e.status, e.etype, e.message,
                             dialect=_OPENAI_DIALECT)
@@ -751,8 +805,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._error(e.status, e.etype, e.message,
                             dialect=_OPENAI_DIALECT)
                 return
-            except Exception as e:  # unexpected fault: log detail server-side
-                print(f"[anvil] 500 {kind} error: {e}", file=sys.stderr)
+            except Exception as e:  # unexpected fault: bounded metadata only
+                self._log_inference_failure(500, f"{kind} error", e)
                 self._error(500, "internal_error", "internal error",
                             dialect=_OPENAI_DIALECT)
                 return
@@ -767,7 +821,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             AudioGateway errors are sanitized: no raw audio, transcript,
             synthesis text, or upstream host reaches callers or router logs.
             """
-            correlation = _correlation_from_headers(self.headers)
+            correlation = dict(getattr(self, "_anvil_correlation", None) or {})
             try:
                 if kind == "stt":
                     payload = audio.dispatch_transcription(body, correlation=correlation)
@@ -778,8 +832,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
             except Exception as e:  # noqa: BLE001 - never expose content/upstream details
                 print(
-                    f"[anvil] 500 audio gateway {kind} error: {type(e).__name__}",
-                    file=sys.stderr,
+                    f"[anvil] 500 audio gateway {kind} error: "
+                    f"{type(e).__name__} gateway_request_id="
+                    f"{correlation.get('gateway_request_id', '-')}",
+                    file=sys.stderr, flush=True,
                 )
                 self._error(500, "internal_error", "internal audio gateway error",
                             dialect=_OPENAI_DIALECT)
@@ -845,6 +901,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         # --- routes ----------------------------------------------------------
         def do_GET(self) -> None:
+            self._reset_request_correlation()
             route = self.path.split("?", 1)[0].rstrip("/")
             if gateway is not None and (
                 route in {AGENT_CARD_PATH, MCP_PATH, A2A_PATH}
@@ -1209,6 +1266,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 _CONCURRENCY_LIMIT.release()
 
         def do_POST(self) -> None:
+            self._reset_request_correlation()
             route = self.path.split("?", 1)[0].rstrip("/")
             if gateway is not None and route in {MCP_PATH, A2A_PATH}:
                 if not _PROTOCOL_CONCURRENCY_LIMIT.acquire(blocking=False):
@@ -1335,6 +1393,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                                    drainable, n)
                 return
 
+            if not is_transition:
+                self._start_request_correlation()
+
             # Audio requests carry a base64 blob, so cap the *encoded* body
             # before rfile.read() or json.loads() materializes it.  The small
             # audio-only pool protects the upstream hop, but is intentionally
@@ -1459,11 +1520,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                             dialect=dialect)
                 return
 
-            correlation = _correlation_from_headers(self.headers)
-            if correlation:
-                # This internal key is consumed by routing/audit only. The relay
-                # receives the dialect-shaped request body, never caller headers.
-                request.raw["_anvil_correlation"] = correlation
+            # Always overwrite caller JSON at this reserved key. Only the trusted
+            # front-door lineage may reach routing, audit, or the upstream relay.
+            request.raw["_anvil_correlation"] = dict(
+                getattr(self, "_anvil_correlation", None) or {}
+            )
 
             if request.stream:
                 self._write_sse(dialect, request)
@@ -1497,9 +1558,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._backend_client_error(e, dialect)
                     return
                 except Exception as e:
-                    # Unexpected backend fault: log the detail server-side; send
+                    # Unexpected backend fault: log bounded metadata only; send
                     # a generic message so internal state is not disclosed.
-                    print(f"[anvil] 500 backend error: {e}", file=sys.stderr)
+                    self._log_inference_failure(500, "backend error", e)
                     self._error(500, "internal_error", "internal error",
                                 dialect=dialect)
                     return

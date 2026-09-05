@@ -37,7 +37,15 @@ from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 from .backends.relay import RelayBackendError, Transport, _urlopen_transport
 from .config import PURPOSE_EMBEDDING, PURPOSE_RERANK, PurposeModel
-from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, decision_line
+from .decision_log import (
+    AttemptRecord,
+    DecisionLog,
+    DecisionRecord,
+    decision_line,
+    safe_correlation,
+    safe_gateway_request_id,
+)
+from .internal import BackendClientError
 
 #: Upstream path per purpose kind, appended to the model's ``base_url``
 #: (vLLM serves the OpenAI Embeddings API at ``/v1/embeddings`` and the
@@ -128,7 +136,13 @@ class PurposeRouter:
     # ------------------------------------------------------------------ #
     # dispatch
     # ------------------------------------------------------------------ #
-    def dispatch(self, kind: str, body: Mapping[str, Any]) -> Dict[str, Any]:
+    def dispatch(
+        self,
+        kind: str,
+        body: Mapping[str, Any],
+        *,
+        correlation: Optional[Mapping[str, str]] = None,
+    ) -> Dict[str, Any]:
         """Route one validated ``kind`` request to its serve; return the JSON.
 
         Raises :class:`PurposeError` on an unknown model name (404 — the
@@ -156,7 +170,14 @@ class PurposeRouter:
         headers = {"Content-Type": "application/json"}
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        data = json.dumps(dict(body)).encode("utf-8")
+        gateway_request_id = safe_gateway_request_id(
+            (correlation or {}).get("gateway_request_id")
+        )
+        if gateway_request_id is not None:
+            headers["X-Request-Id"] = gateway_request_id
+        outbound_body = dict(body)
+        outbound_body.pop("_anvil_correlation", None)
+        data = json.dumps(outbound_body).encode("utf-8")
         timeout = pm.timeout if pm.timeout is not None else self._default_timeout
 
         try:
@@ -167,12 +188,29 @@ class PurposeRouter:
             payload = json.loads(raw.decode("utf-8"))
             if not isinstance(payload, dict):
                 raise RelayBackendError("upstream response is not a JSON object")
+        except BackendClientError as e:
+            self._record(
+                kind, pm.id, outcome="error",
+                reason=f"upstream_rejected_{e.status}", correlation=correlation,
+            )
+            raise PurposeError(
+                e.status,
+                "payload_too_large" if e.status == 413 else "invalid_request_error",
+                "upstream rejected the purpose request",
+            ) from None
         except RelayBackendError as e:
             # Transport errors are already sanitized (no URL/credential leak).
-            self._record(kind, pm.id, outcome="error",
-                         reason=f"backend error: {type(e).__name__}")
+            self._record(
+                kind,
+                pm.id,
+                outcome="error",
+                reason=f"backend error: {type(e).__name__}",
+                correlation=correlation,
+            )
             print(
-                f"[anvil] 502 {kind} serve {pm.id!r} failed: {e}",
+                f"[anvil] 502 {kind} serve {pm.id!r} failed: "
+                f"{type(e).__name__} gateway_request_id="
+                f"{gateway_request_id or '-'}",
                 file=sys.stderr, flush=True,
             )
             raise PurposeError(
@@ -180,8 +218,13 @@ class PurposeRouter:
                 f"{kind} serve for model {model!r} failed; see router logs",
             ) from None
         except (ValueError, UnicodeDecodeError):
-            self._record(kind, pm.id, outcome="error",
-                         reason="backend error: non-JSON response")
+            self._record(
+                kind,
+                pm.id,
+                outcome="error",
+                reason="backend error: non-JSON response",
+                correlation=correlation,
+            )
             print(
                 f"[anvil] 502 {kind} serve {pm.id!r} returned a non-JSON body",
                 file=sys.stderr, flush=True,
@@ -192,9 +235,24 @@ class PurposeRouter:
                 f"response; see router logs",
             ) from None
 
+        except Exception as e:
+            self._record(
+                kind, pm.id, outcome="error",
+                reason=f"backend_error_{type(e).__name__}", correlation=correlation,
+            )
+            print(
+                f"[anvil] 502 {kind} upstream failed: {type(e).__name__} "
+                f"gateway_request_id={gateway_request_id or '-'}",
+                file=sys.stderr, flush=True,
+            )
+            raise PurposeError(
+                502, "upstream_error", "purpose upstream request failed",
+            ) from None
+
         self._record(
             kind, pm.id, outcome="served",
             prompt_tokens=_usage_prompt_tokens(payload),
+            correlation=correlation,
         )
         return payload
 
@@ -209,8 +267,10 @@ class PurposeRouter:
         outcome: str,
         prompt_tokens: int = 0,
         reason: str = "-",
+        correlation: Optional[Mapping[str, str]] = None,
     ) -> None:
         served = outcome == "served"
+        meta = correlation or {}
         record = DecisionRecord(
             kind=kind,
             requested_tier=purpose_id,
@@ -228,6 +288,12 @@ class PurposeRouter:
             total_prompt_tokens=prompt_tokens,
             total_completion_tokens=0,
             route=kind,
+            request_id=safe_correlation(meta.get("request_id")),
+            gateway_request_id=safe_gateway_request_id(
+                meta.get("gateway_request_id")
+            ),
+            workbench_run_id=safe_correlation(meta.get("workbench_run_id")),
+            task_id=safe_correlation(meta.get("task_id")),
         )
         if self._log is not None:
             self._log.record(record)

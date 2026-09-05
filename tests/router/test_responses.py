@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import re
 import threading
 from contextlib import contextmanager
 
@@ -238,4 +239,8 @@ def test_responses_preserves_safe_correlation_in_the_internal_request_only():
             "X-Request-Id": "req_91ce",
         })
     assert status == 200
-    assert backend.request.raw["_anvil_correlation"] == {"workbench_run_id": "run_7f2a", "task_id": "task_48", "request_id": "req_91ce"}
+    correlation = backend.request.raw["_anvil_correlation"]
+    assert correlation["workbench_run_id"] == "run_7f2a"
+    assert correlation["task_id"] == "task_48"
+    assert correlation["request_id"] == "req_91ce"
+    assert re.fullmatch(r"req_[0-9a-f]{32}", correlation["gateway_request_id"])

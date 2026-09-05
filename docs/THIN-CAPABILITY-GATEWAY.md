@@ -106,11 +106,11 @@ metrics. Except for `GET /healthz`, the normal router bearer token or
 | `GET /v1/models/capabilities` | Tools, modalities, thinking behavior, context, and multimodal limits. |
 | `GET /v1/models/fingerprints` | Configured identity evidence or allowlisted model configuration observed from an upstream-owned inference service. |
 | `GET /v1/router/status` | Package version, uptime, aliases, tier counts, and a secret-free effective-config hash. |
-| `GET /v1/stats` | Tokens, bytes, outcomes, and latency percentiles over the current decision-log buffer. |
-| `GET /v1/requests/{request_id}` | Metadata-only trace for an exact sanitized request identifier. |
+| `GET /v1/stats` | Tokens, bytes, outcomes, finish counts, and measured phase-latency percentiles over the current decision-log buffer. |
+| `GET /v1/requests/{request_id}` | Metadata-only trace, preferring the gateway-generated identifier over legacy caller correlation. |
 | `GET /metrics` | Prometheus gauges for router-buffer aggregates and current model capacity/load. |
 
-The unauthenticated OpenAI-compatible discovery list exposes only aliases and
+The OpenAI-compatible discovery list exposes only aliases and
 their effective context/output limits; it does not expose upstream identity,
 readiness, or private topology. Authenticated model endpoints and `/v1/stats`
 accept `model=<configured-alias>`. Capacity also
@@ -118,12 +118,20 @@ accepts `gpu_role`, `images`, `input_tokens`, `image_tokens`, and
 `output_tokens`. Stats and Prometheus accept `limit` from 1 through 10,000.
 Unknown aliases return 404; unsupported or malformed parameters return 400.
 
-The decision log is a bounded in-memory ring buffer with no record timestamps.
-Consequently, `/v1/stats` reports
+The decision log is a bounded in-memory ring buffer. Records carry creation
+timestamps, but the aggregate API does not query persisted historical windows.
+`/v1/stats` reports
 `scope = "current_decision_log_buffer"` instead of accepting a historical
 window. Prometheus values are gauges because eviction or restart can reduce
 them. Live engine-metric failures make those values unavailable; they do not
 fail routing or expose raw upstream errors.
+
+Inference responses return a gateway-generated `X-Anvil-Request-Id`. Use
+`router diagnose --request-id` to inspect its terminal record and separately
+labeled current process metadata without replaying a request. Chat measurements
+distinguish first emitted content, readiness-check time, upstream duration,
+finish reason, output limits, and upstream versus estimated token usage. See
+[request diagnostics](ROUTER-DIAGNOSTICS.md) for the exact semantics and limits.
 
 Responses omit prompts, responses, message content, audio, transcripts,
 upstream URLs, host identifiers, auth environment names, credentials, and
