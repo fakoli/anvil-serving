@@ -23,11 +23,18 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .targets import ExecutionPlan
 
 
 MANIFEST_SCHEMA = "anvil-serving.fleet-bootstrap-manifest/v1"
 RECEIPT_SCHEMA = "anvil-serving.fleet-bootstrap-receipt/v1"
+PLAN_SCHEMA = "anvil-serving.fleet-bootstrap-plan/v1"
+CONTROLLER_OPERATION_CATALOG_SCHEMA = (
+    "anvil-serving.controller-operation-catalog/v1"
+)
 MAX_BUNDLE_BYTES = 16 * 1024 * 1024
 MAX_MANIFEST_BYTES = 16 * 1024
 MAX_SHIM_BYTES = 256 * 1024
@@ -316,6 +323,40 @@ def canonical_json_bytes(value: Any) -> bytes:
         raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "JSON value is invalid") from None
 
 
+def controller_operation_catalog_sha256(operations: tuple[str, ...]) -> str:
+    """Return the identity of one validated per-node controller allowlist."""
+    if (
+        type(operations) is not tuple
+        or not 1 <= len(operations) <= 256
+        or any(type(operation) is not str for operation in operations)
+        or any(_NODE_RE.fullmatch(operation) is None for operation in operations)
+        or len(set(operations)) != len(operations)
+        or "controller-bootstrap" not in operations
+    ):
+        raise _refuse(
+            BootstrapErrorCode.INVALID_CONTRACT,
+            "controller operation catalog is invalid",
+        )
+    envelope = {
+        "schema": CONTROLLER_OPERATION_CATALOG_SCHEMA,
+        "operations": sorted(operations),
+    }
+    try:
+        encoded = json.dumps(
+            envelope,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError, UnicodeError):
+        raise _refuse(
+            BootstrapErrorCode.INVALID_CONTRACT,
+            "controller operation catalog is invalid",
+        ) from None
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def _decode_json(raw: bytes, *, maximum: int) -> Any:
     if type(raw) is not bytes or not raw or len(raw) > maximum:
         raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "JSON bytes are invalid")
@@ -423,6 +464,254 @@ class BootstrapManifest:
     @property
     def sha256(self) -> str:
         return hashlib.sha256(self.to_json_bytes()).hexdigest()
+
+
+@dataclass(frozen=True, init=False, repr=False)
+class BootstrapPlan:
+    """Immutable private bootstrap identity with a bounded public projection."""
+
+    host: str
+    execution_runtime: str
+    topology_sha256: str
+    manifest_sha256: str
+    expected_node: str
+    platform: BootstrapPlatform
+    staging_root: str
+    install_root: str
+    python_executable: str
+    receiver_path: str
+    receiver_sha256: str
+    install_adapter: InstallAdapter
+    supervisor_adapter: SupervisorAdapter
+    install_root_class: InstallRootClass
+    supervisor_id: str
+    bootstrap_enabled: bool
+    bootstrap_authorized: bool
+    expected_protocol_version: str
+    expected_catalog_sha256: str
+    schema: str = field(default=PLAN_SCHEMA, init=False)
+
+    def __init__(self, execution: ExecutionPlan, manifest: BootstrapManifest) -> None:
+        values = _bootstrap_plan_values(execution, manifest)
+        for name, value in values.items():
+            object.__setattr__(self, name, value)
+
+    @property
+    def plan_sha256(self) -> str:
+        return hashlib.sha256(canonical_json_bytes(self._identity_dict())).hexdigest()
+
+    def _identity_dict(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "host": self.host,
+            "execution_runtime": self.execution_runtime,
+            "topology_sha256": self.topology_sha256,
+            "manifest_sha256": self.manifest_sha256,
+            "expected_node": self.expected_node,
+            "platform": self.platform.value,
+            "staging_root": self.staging_root,
+            "install_root": self.install_root,
+            "python_executable": self.python_executable,
+            "receiver_path": self.receiver_path,
+            "receiver_sha256": self.receiver_sha256,
+            "install_adapter": self.install_adapter.value,
+            "supervisor_adapter": self.supervisor_adapter.value,
+            "install_root_class": self.install_root_class.value,
+            "supervisor_id": self.supervisor_id,
+            "bootstrap_enabled": self.bootstrap_enabled,
+            "bootstrap_authorized": self.bootstrap_authorized,
+            "expected_protocol_version": self.expected_protocol_version,
+            "expected_catalog_sha256": self.expected_catalog_sha256,
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the exact public, path-free plan projection."""
+        return {
+            "schema": self.schema,
+            "host": self.host,
+            "topology_sha256": self.topology_sha256,
+            "plan_sha256": self.plan_sha256,
+            "manifest_sha256": self.manifest_sha256,
+            "expected_node": self.expected_node,
+            "platform": self.platform.value,
+            "install_adapter": self.install_adapter.value,
+            "supervisor_adapter": self.supervisor_adapter.value,
+            "expected_protocol_version": self.expected_protocol_version,
+            "expected_catalog_sha256": self.expected_catalog_sha256,
+        }
+
+    def __repr__(self) -> str:
+        return (
+            "BootstrapPlan("
+            f"host={self.host!r}, topology_sha256={self.topology_sha256!r}, "
+            f"plan_sha256={self.plan_sha256!r}, manifest_sha256={self.manifest_sha256!r})"
+        )
+
+
+def build_bootstrap_plan(
+    execution: ExecutionPlan, manifest: BootstrapManifest
+) -> BootstrapPlan:
+    """Build one validated plan solely from resolved execution and artifact identity."""
+    return BootstrapPlan(execution, manifest)
+
+
+def _bootstrap_plan_values(
+    execution: ExecutionPlan, manifest: BootstrapManifest
+) -> dict[str, Any]:
+    # Imported lazily because topology owns HostBootstrap but imports this module's
+    # enums.  The plan boundary must not create a topology/bootstrap import cycle.
+    from .targets import CommandSpec, ExecutionPlan
+    from .topology import (
+        _SUPERVISOR_ID_RE,
+        Host,
+        HostBootstrap,
+        Runtime,
+        _bootstrap_paths_overlap,
+        _valid_bootstrap_path,
+    )
+
+    if type(execution) is not ExecutionPlan or type(manifest) is not BootstrapManifest:
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "bootstrap plan inputs are invalid")
+    command = execution.command
+    host = execution.execution_host
+    runtime = execution.execution_runtime
+    declared = execution.host_bootstrap
+    if (
+        type(command) is not CommandSpec
+        or command.execution_policy != "host-bootstrap"
+        or command.name != "controller-bootstrap"
+        or type(host) is not Host
+        or type(runtime) is not Runtime
+        or type(declared) is not HostBootstrap
+    ):
+        raise _refuse(BootstrapErrorCode.PRECONDITION_FAILED, "bootstrap plan is inconsistent")
+    if type(declared.enabled) is not bool or type(declared.bootstrap_authorized) is not bool:
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "bootstrap policy is invalid")
+    _required_text(host.id, _NODE_RE, "host")
+    _required_text(runtime.id, _NODE_RE, "execution_runtime")
+    _required_text(runtime.host, _NODE_RE, "execution host")
+    if type(runtime.role) is not str:
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "execution runtime is invalid")
+    _required_text(declared.execution_runtime, _NODE_RE, "execution_runtime")
+    _required_text(declared.receiver_sha256, _SHA256_RE, "receiver_sha256")
+    _required_text(declared.supervisor_id, _SUPERVISOR_ID_RE, "supervisor_id")
+    _required_text(execution.topology_snapshot, _SHA256_RE, "topology_sha256")
+    if type(host.os) is not str or host.os not in {"windows", "linux"}:
+        raise _refuse(BootstrapErrorCode.UNSUPPORTED_PLATFORM, "bootstrap platform is unsupported")
+    if any(
+        type(path) is not str or not _valid_bootstrap_path(path, host.os)
+        for path in (
+            declared.staging_root,
+            declared.install_root,
+            declared.python_executable,
+            declared.receiver_path,
+        )
+    ):
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "bootstrap path is invalid")
+    if _bootstrap_paths_overlap(declared.staging_root, declared.install_root, host.os):
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "bootstrap roots are invalid")
+    if (
+        type(declared.install_adapter) is not InstallAdapter
+        or type(declared.supervisor_adapter) is not SupervisorAdapter
+    ):
+        raise _refuse(BootstrapErrorCode.INVALID_CONTRACT, "bootstrap adapter is invalid")
+    if not declared.enabled or not declared.bootstrap_authorized:
+        raise _refuse(BootstrapErrorCode.AUTHORIZATION_DENIED, "bootstrap is not authorized")
+    if (
+        type(host.bootstrap) is not HostBootstrap
+        or host.bootstrap != declared
+        or runtime.id != declared.execution_runtime
+        or runtime.host != host.id
+        or runtime.role != "native"
+        or type(execution.selected_target) is not str
+        or execution.selected_target != f"host:{host.id}"
+        or type(execution.transport_expected_node) is not str
+        or execution.transport_expected_node != host.id
+        or type(execution.transport) is not str
+        or execution.transport != "controller"
+        or type(execution.transport_id) is not str
+        or not execution.transport_id
+        or type(execution.transport_endpoint) is not str
+        or not execution.transport_endpoint
+        or type(execution.transport_auth_env) is not str
+        or not execution.transport_auth_env
+    ):
+        raise _refuse(BootstrapErrorCode.PRECONDITION_FAILED, "bootstrap plan is inconsistent")
+    command_host = execution.command_host
+    command_runtime = execution.command_runtime
+    if (
+        type(command_host) is not Host
+        or type(command_runtime) is not Runtime
+        or type(command_host.id) is not str
+        or type(command_runtime.id) is not str
+        or type(command_runtime.host) is not str
+        or command_runtime.host != command_host.id
+    ):
+        raise _refuse(BootstrapErrorCode.PRECONDITION_FAILED, "bootstrap plan is inconsistent")
+    if any(
+        value is not None
+        for value in (
+            execution.resource_host,
+            execution.resource_runtime,
+            execution.resource,
+            execution.resource_endpoint,
+            execution.gpu_role,
+            execution.capacity,
+        )
+    ):
+        raise _refuse(BootstrapErrorCode.PRECONDITION_FAILED, "bootstrap plan is inconsistent")
+    platform = BootstrapPlatform(host.os)
+    try:
+        _validate_platform_pair(platform, declared.install_adapter, declared.supervisor_adapter)
+    except BootstrapContractError:
+        raise _refuse(
+            BootstrapErrorCode.UNSUPPORTED_PLATFORM,
+            "bootstrap platform adapter pairing is unsupported",
+        ) from None
+    if (
+        manifest.expected_node != host.id
+        or manifest.platform is not platform
+        or manifest.install_adapter is not declared.install_adapter
+        or manifest.supervisor_adapter is not declared.supervisor_adapter
+        or manifest.install_root_class is not InstallRootClass.USER
+    ):
+        raise _refuse(BootstrapErrorCode.PRECONDITION_FAILED, "bootstrap manifest is inconsistent")
+    from .control_plane.mcp.protocol import PROTOCOL_VERSION
+
+    try:
+        protocol = _protocol(PROTOCOL_VERSION, "expected_protocol_version")
+    except BootstrapContractError:
+        raise _refuse(BootstrapErrorCode.PRECONDITION_FAILED, "bootstrap protocol is inconsistent") from None
+    if not (
+        manifest.controller_protocol_min <= protocol <= manifest.controller_protocol_max
+        and protocol == manifest.controller_protocol_max
+    ):
+        raise _refuse(BootstrapErrorCode.PRECONDITION_FAILED, "bootstrap protocol is inconsistent")
+    catalog_sha256 = controller_operation_catalog_sha256(
+        execution.transport_allowed_operations
+    )
+    return {
+        "schema": PLAN_SCHEMA,
+        "host": host.id,
+        "execution_runtime": runtime.id,
+        "topology_sha256": execution.topology_snapshot,
+        "manifest_sha256": manifest.sha256,
+        "expected_node": execution.transport_expected_node,
+        "platform": platform,
+        "staging_root": declared.staging_root,
+        "install_root": declared.install_root,
+        "python_executable": declared.python_executable,
+        "receiver_path": declared.receiver_path,
+        "receiver_sha256": declared.receiver_sha256,
+        "install_adapter": declared.install_adapter,
+        "supervisor_adapter": declared.supervisor_adapter,
+        "install_root_class": manifest.install_root_class,
+        "supervisor_id": declared.supervisor_id,
+        "bootstrap_enabled": declared.enabled,
+        "bootstrap_authorized": declared.bootstrap_authorized,
+        "expected_protocol_version": protocol,
+        "expected_catalog_sha256": catalog_sha256,
+    }
 
 
 def _validate_platform_pair(
