@@ -44,10 +44,18 @@ ENDPOINT = "http://127.0.0.1:8765"
 
 
 class _Response:
-    def __init__(self, body: bytes, *, close_raises: bool = False) -> None:
+    def __init__(
+        self,
+        body: bytes,
+        *,
+        close_raises: bool = False,
+        on_close=None,
+    ) -> None:
         self.body = body
         self.close_raises = close_raises
         self.closed = False
+        self.close_calls = 0
+        self.on_close = on_close
 
     def read(self, amount: int = -1) -> bytes:
         assert amount >= len(self.body)
@@ -55,6 +63,9 @@ class _Response:
 
     def close(self) -> None:
         self.closed = True
+        self.close_calls += 1
+        if self.on_close is not None:
+            self.on_close()
         if self.close_raises:
             raise RuntimeError("private-close-detail")
 
@@ -263,11 +274,35 @@ def test_shared_deadline_prevents_post_after_health() -> None:
 
 
 def test_shared_deadline_shrinks_post_timeout_after_health() -> None:
-    clocks = iter((0.0, 0.0, 0.0, 0.0, 0.0, 1.5, 1.5, 1.5, 1.5, 1.5))
+    clocks = iter((0.0, 0.0, 0.0, 0.0, 0.0, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5))
     result, requests = _read(monotonic=lambda: next(clocks))
     assert _controller_source(result).status is ResultStatus.COMPLETE
     assert requests[0][1] == 2.0
     assert requests[1][1] == 0.5
+
+
+@pytest.mark.parametrize(
+    ("finished_at", "accepted"),
+    ((1.999999, True), (2.0, False), (8.0, False)),
+)
+def test_node_final_response_cleanup_obeys_total_budget(finished_at, accepted) -> None:
+    class _Clock:
+        value = 0.0
+
+        def __call__(self):
+            return self.value
+
+    clock = _Clock()
+    final = _Response(_payload(), on_close=lambda: setattr(clock, "value", finished_at))
+    result, _ = _read(
+        monotonic=clock,
+        responses=[_Response(b'{"node":"node-a"}'), final],
+    )
+    assert final.close_calls == 1
+    if accepted:
+        assert _controller_source(result).status is ResultStatus.COMPLETE
+    else:
+        assert _controller_source(result).error is WorkloadErrorCode.UNAVAILABLE
 
 
 @pytest.mark.parametrize(
@@ -463,7 +498,7 @@ def test_fleet_credential_capture_is_single_value_and_hermetic() -> None:
 
 
 def test_fleet_shared_budget_shrinks_and_expires_before_post() -> None:
-    clocks = iter((0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0, 4.0, 4.0, 4.0))
+    clocks = iter((0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0))
     result, requests = _read_fleet(monotonic=lambda: next(clocks))
     assert result == _fleet()
     assert requests[0][1] == 7.0
@@ -484,6 +519,72 @@ def test_fleet_shared_budget_shrinks_and_expires_before_post() -> None:
             responses=[_Response(b'{"node":"node-a"}')],
         )
     assert raised.value.code is WorkloadErrorCode.UNAVAILABLE
+
+
+@pytest.mark.parametrize(
+    ("finished_at", "accepted"),
+    ((6.999999, True), (7.0, False), (8.0, False)),
+)
+def test_fleet_final_response_cleanup_obeys_total_budget(finished_at, accepted) -> None:
+    class _Clock:
+        value = 0.0
+
+        def __call__(self):
+            return self.value
+
+    clock = _Clock()
+    final = _Response(
+        _fleet_payload(_fleet()),
+        on_close=lambda: setattr(clock, "value", finished_at),
+    )
+    if accepted:
+        assert (
+            _read_fleet(
+                monotonic=clock,
+                responses=[_Response(b'{"node":"node-a"}'), final],
+            )[0]
+            == _fleet()
+        )
+    else:
+        with pytest.raises(WorkloadError) as raised:
+            _read_fleet(
+                monotonic=clock,
+                responses=[_Response(b'{"node":"node-a"}'), final],
+            )
+        assert raised.value.code is WorkloadErrorCode.UNAVAILABLE
+        assert "private" not in str(raised.value)
+    assert final.close_calls == 1
+
+
+@pytest.mark.parametrize("failure", ("regressed", "nonfinite", "raised"))
+def test_post_close_clock_failures_are_fixed_and_close_once(failure) -> None:
+    class _Clock:
+        value = 1.0
+        fail = False
+
+        def __call__(self):
+            if self.fail:
+                raise RuntimeError("private-clock-detail")
+            return self.value
+
+    clock = _Clock()
+
+    def fail_after_close():
+        if failure == "regressed":
+            clock.value = 0.5
+        elif failure == "nonfinite":
+            clock.value = float("nan")
+        else:
+            clock.fail = True
+
+    final = _Response(_payload(), on_close=fail_after_close)
+    result, _ = _read(
+        monotonic=clock,
+        responses=[_Response(b'{"node":"node-a"}'), final],
+    )
+    assert final.close_calls == 1
+    assert _controller_source(result).error is WorkloadErrorCode.UNAVAILABLE
+    assert "private" not in json.dumps(node_result_to_dict(result))
 
 
 def test_fleet_accepts_canonical_partial_and_unavailable_data() -> None:
