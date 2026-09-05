@@ -5,6 +5,7 @@ Python-version guard (`anvil_serving.cli._check_python_version`).
 import json
 import re
 import shlex
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -605,6 +606,281 @@ def test_incompatible_json_globals_emit_only_usage_envelope(capsys):
     captured = capsys.readouterr()
     assert captured.err == ""
     assert json.loads(captured.out)["error"]["class"] == "usage"
+
+
+def test_router_workloads_cli_emits_canonical_data_and_forwards_exact_filters(
+    monkeypatch, capsys
+):
+    from anvil_serving.observability.workload_collection import build_node_workloads
+    from anvil_serving.observability.workloads import node_result_to_dict
+
+    now = datetime(2026, 9, 5, 20, 0, tzinfo=timezone.utc)
+    observed = {}
+
+    def reader(endpoint, auth_env, expected_node, query, received_now, *, environment):
+        observed.update(
+            endpoint=endpoint,
+            auth_env=auth_env,
+            expected_node=expected_node,
+            query=query,
+            now=received_now,
+            environment=environment,
+        )
+        return build_node_workloads(expected_node, query, received_now, {})
+
+    monkeypatch.setattr(cli, "_workload_now", lambda: now)
+    monkeypatch.setattr(cli, "read_router_node_workloads", reader)
+    monkeypatch.setenv("ROUTER_WORKLOAD_TOKEN", "synthetic-token")
+    monkeypatch.setenv("ANVIL_SERVING_LOOPBACK_ALIAS", "private-alias-marker")
+
+    assert cli.main([
+        "router",
+        "workloads",
+        "--json",
+        "--router-url=http://127.0.0.1:30000/v1",
+        "--auth-env",
+        "ROUTER_WORKLOAD_TOKEN",
+        "--expected-node",
+        "router-node",
+        "--owner=router",
+        "--kind",
+        "router-request",
+        "--state=running",
+        "--host",
+        "record-host",
+        "--active-only",
+        "--recent-seconds=45",
+        "--limit",
+        "7",
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["command"] == "router workloads"
+    assert payload["context"] is None
+    assert payload["warnings"] == []
+    assert payload["data"] == node_result_to_dict(
+        build_node_workloads("router-node", observed["query"], now, {})
+    )
+    assert observed["endpoint"] == "http://127.0.0.1:30000/v1"
+    assert observed["auth_env"] == "ROUTER_WORKLOAD_TOKEN"
+    assert observed["expected_node"] == "router-node"
+    assert observed["now"] == now
+    assert observed["query"].host == "record-host"
+    assert observed["query"].active_only is True
+    assert observed["query"].recent_seconds == 45
+    assert observed["query"].limit == 7
+    assert observed["environment"] == {"ROUTER_WORKLOAD_TOKEN": "synthetic-token"}
+    assert "private-alias-marker" not in json.dumps(payload)
+
+
+def test_fleet_workloads_cli_keeps_aggregator_identity_separate_from_host_filter(
+    monkeypatch, capsys
+):
+    from anvil_serving.observability.fleet_workload_collection import build_fleet_workloads
+    from anvil_serving.observability.workloads import fleet_result_to_dict
+
+    now = datetime(2026, 9, 5, 20, 0, tzinfo=timezone.utc)
+    observed = {}
+
+    def reader(endpoint, auth_env, expected_node, query, received_now, *, environment):
+        observed.update(
+            endpoint=endpoint,
+            auth_env=auth_env,
+            expected_node=expected_node,
+            query=query,
+            now=received_now,
+            environment=environment,
+        )
+        return build_fleet_workloads(("node-a",), query, received_now, {})
+
+    monkeypatch.setattr(cli, "_workload_now", lambda: now)
+    monkeypatch.setattr(cli, "read_controller_fleet_workloads", reader)
+    monkeypatch.setenv("FLEET_WORKLOAD_TOKEN", "synthetic-token")
+
+    assert cli.main([
+        "fleet",
+        "workloads",
+        "--json",
+        "--controller-url",
+        "http://100.64.0.10:9000",
+        "--auth-env=FLEET_WORKLOAD_TOKEN",
+        "--expected-node=aggregator-node",
+        "--host=node-a",
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["command"] == "fleet workloads"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["data"] == fleet_result_to_dict(
+        build_fleet_workloads(("node-a",), observed["query"], now, {})
+    )
+    assert observed["endpoint"] == "http://100.64.0.10:9000"
+    assert observed["expected_node"] == "aggregator-node"
+    assert observed["query"].host == "node-a"
+    assert observed["environment"] == {"FLEET_WORKLOAD_TOKEN": "synthetic-token"}
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ("--auth-env", "ROUTER_WORKLOAD_TOKEN", "--auth-env=PRIVATE_MARKER"),
+        ("--active-only=true",),
+        ("--lim", "7"),
+        ("--limit", "7", "--limit=8"),
+        ("--topology", "private-path-marker"),
+        ("private-positional-marker",),
+        ("--expected-node=bad/node",),
+        ("--recent-seconds=0",),
+        ("--limit=" + "9" * 5000,),
+    ),
+)
+def test_workload_cli_rejects_invalid_arguments_before_clock_env_or_reader(
+    arguments, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        cli, "_workload_now", lambda: pytest.fail("clock read after invalid arguments")
+    )
+    monkeypatch.setattr(
+        cli,
+        "read_router_node_workloads",
+        lambda *_args, **_kwargs: pytest.fail("reader called after invalid arguments"),
+    )
+    base = [
+        "router",
+        "workloads",
+        "--json",
+        "--router-url",
+        "http://127.0.0.1:30000/v1",
+        "--auth-env",
+        "ROUTER_WORKLOAD_TOKEN",
+        "--expected-node",
+        "router-node",
+    ]
+    assert cli.main([*base, *arguments]) == 2
+    rendered = capsys.readouterr()
+    payload = json.loads(rendered.out)
+    assert rendered.err == ""
+    assert payload["command"] == "router workloads"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["data"] is None
+    assert payload["error"]["code"] == "invalid_workload_arguments"
+    assert "private" not in rendered.out.lower()
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        (
+            "router",
+            "workloads",
+            "--router-url=http://localhost:30000/v1",
+            "--auth-env=ROUTER_WORKLOAD_TOKEN",
+            "--expected-node=router-node",
+        ),
+        (
+            "fleet",
+            "workloads",
+            "--controller-url=http://8.8.8.8:9000",
+            "--auth-env=FLEET_WORKLOAD_TOKEN",
+            "--expected-node=aggregator-node",
+        ),
+        (
+            "fleet",
+            "workloads",
+            "--controller-url=http://100.64.0.10:9000",
+            "--auth-env=lowercase_ref",
+            "--expected-node=aggregator-node",
+        ),
+        (
+            "router",
+            "workloads",
+            "--router-url=http://127.0.0.1:30000/v1",
+            "--auth-env=ROUTER_WORKLOAD_TOKEN",
+        ),
+    ),
+)
+def test_workload_cli_validates_required_connection_values_before_clock(
+    arguments, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        cli, "_workload_now", lambda: pytest.fail("clock read after invalid connection")
+    )
+    assert cli.main(["--json", *arguments]) == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["data"] is None
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["error"]["code"] == "invalid_workload_arguments"
+
+
+def test_workload_cli_global_option_failure_is_operand_free(monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli, "_workload_now", lambda: pytest.fail("clock read after invalid global options")
+    )
+    assert cli.main([
+        "--json",
+        "--quiet",
+        "--verbose",
+        "fleet",
+        "workloads",
+        "--controller-url",
+        "http://100.64.0.10:9000/private-url-marker",
+        "--auth-env",
+        "PRIVATE_MARKER_ENV",
+        "--expected-node",
+        "private-node-marker",
+    ]) == 2
+    rendered = capsys.readouterr()
+    payload = json.loads(rendered.out)
+    assert rendered.err == ""
+    assert payload["command"] == "fleet workloads"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["data"] is None
+    assert payload["error"]["code"] == "invalid_workload_arguments"
+    assert "private" not in rendered.out.lower()
+
+
+def test_workload_cli_source_failure_is_fixed_and_does_not_echo_inputs(
+    monkeypatch, capsys
+):
+    from anvil_serving.observability.workloads import WorkloadError, WorkloadErrorCode
+
+    now = datetime(2026, 9, 5, 20, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(cli, "_workload_now", lambda: now)
+    monkeypatch.setenv("PRIVATE_MARKER_ENV", "private-credential-marker")
+
+    def fail(*_args, **_kwargs):
+        raise WorkloadError(WorkloadErrorCode.INVALID, "private-source-marker")
+
+    monkeypatch.setattr(cli, "read_controller_fleet_workloads", fail)
+    assert cli.main([
+        "fleet",
+        "workloads",
+        "--json",
+        "--controller-url",
+        "http://100.64.0.10:9000",
+        "--auth-env",
+        "PRIVATE_MARKER_ENV",
+        "--expected-node",
+        "aggregator-node",
+    ]) == 4
+    rendered = capsys.readouterr()
+    payload = json.loads(rendered.out)
+    assert rendered.err == ""
+    assert payload["data"] is None
+    assert payload["error"]["code"] == "workload_source_unavailable"
+    assert "private" not in rendered.out.lower()
+
+
+@pytest.mark.parametrize("family, endpoint", (("router", "--router-url"), ("fleet", "--controller-url")))
+def test_workload_cli_help_returns_before_clock_and_source_access(
+    family, endpoint, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        cli, "_workload_now", lambda: pytest.fail("clock read while rendering help")
+    )
+    assert cli.main([family, "workloads", "--help", endpoint, "private-marker"]) == 0
+    rendered = capsys.readouterr()
+    assert rendered.err == ""
+    assert "usage:" in rendered.out.lower()
+    assert "private-marker" not in rendered.out
 
 
 def test_json_error_preserves_bounded_legacy_stdout(monkeypatch, capsys):

@@ -13,6 +13,7 @@ import sys
 import textwrap
 import uuid
 from dataclasses import dataclass, replace
+from datetime import datetime, timezone
 from importlib import metadata as importlib_metadata
 from collections.abc import Mapping, Sequence
 from types import MappingProxyType
@@ -37,6 +38,18 @@ from .operator_output import (
     render_json,
     success_envelope,
 )
+from .observability.probes.controller_workloads import read_controller_fleet_workloads
+from .observability.probes.router_workloads import (
+    _declared_endpoint as _declared_router_workload_endpoint,
+    read_router_node_workloads,
+)
+from .observability.workloads import (
+    WorkloadError,
+    WorkloadQuery,
+    fleet_result_to_dict,
+    node_result_to_dict,
+    parse_workload_query,
+)
 from .paths import default_topology_path
 from .targets import CommandSpec, ExecutionPlan, TargetResolutionError, resolve_execution_plan
 from .topology import TopologyValidationError, load_topology
@@ -48,6 +61,8 @@ from .transports import (
     SSHRecoveryTransport,
     TransportError as AdapterTransportError,
     TransportResult,
+    _controller_endpoint,
+    _validate_controller_endpoint_host,
     execute_plan,
 )
 
@@ -73,6 +88,18 @@ _RESOLUTION_VALUE_OPTIONS = {
 }
 _REMOTE_INTEGER_RE = re.compile(r"-?[0-9]+")
 _DIAGNOSTIC_LEAVES = frozenset(("controller inspect", "controller logs"))
+_WORKLOAD_LEAVES = frozenset(("router workloads", "fleet workloads"))
+_WORKLOAD_INTEGER_RE = re.compile(r"[1-9][0-9]*\Z", re.ASCII)
+_ROUTER_WORKLOAD_AUTH_ENV_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,255}\Z", re.ASCII)
+_FLEET_WORKLOAD_AUTH_ENV_RE = re.compile(r"[A-Z][A-Z0-9_]{0,255}\Z", re.ASCII)
+_WORKLOAD_FILTER_OPTIONS = {
+    "--owner": "owner",
+    "--kind": "kind",
+    "--state": "state",
+    "--host": "host",
+    "--recent-seconds": "recent_seconds",
+    "--limit": "limit",
+}
 _HANDLER_PROGS = {
     "anvil_serving.benchmark": "anvil-serving eval benchmark run",
     "anvil_serving.benchmark_evidence": "anvil-serving eval benchmark evidence",
@@ -1129,6 +1156,175 @@ def _confirm(
     return forwarded, True
 
 
+def _invalid_workload_arguments() -> UsageError:
+    return UsageError("invalid workload arguments", code="invalid_workload_arguments")
+
+
+def _workload_source_error() -> TransportError:
+    return TransportError(
+        "workload snapshot unavailable", code="workload_source_unavailable"
+    )
+
+
+def _parse_workload_arguments(
+    argv: Sequence[str],
+) -> tuple[str, str, str, str, WorkloadQuery]:
+    if (
+        not isinstance(argv, Sequence)
+        or isinstance(argv, (str, bytes, bytearray))
+        or not argv
+        or len(argv) > 20
+        or any(type(token) is not str or len(token) > 4096 for token in argv)
+    ):
+        raise _invalid_workload_arguments()
+    surface = argv[0]
+    if surface not in {"router", "fleet"}:
+        raise _invalid_workload_arguments()
+    connection_flag = "--router-url" if surface == "router" else "--controller-url"
+    value_options = {
+        connection_flag: "endpoint",
+        "--auth-env": "auth_env",
+        "--expected-node": "expected_node",
+        **_WORKLOAD_FILTER_OPTIONS,
+    }
+    found: dict[str, object] = {}
+    index = 1
+    while index < len(argv):
+        token = argv[index]
+        if token == "--active-only":
+            if "active_only" in found:
+                raise _invalid_workload_arguments()
+            found["active_only"] = True
+            index += 1
+            continue
+        if token.startswith("--active-only="):
+            raise _invalid_workload_arguments()
+        option, separator, inline_value = token.partition("=")
+        field = value_options.get(option)
+        if field is None or field in found:
+            raise _invalid_workload_arguments()
+        if separator:
+            value = inline_value
+        else:
+            index += 1
+            if index >= len(argv) or argv[index].startswith("--"):
+                raise _invalid_workload_arguments()
+            value = argv[index]
+        if not value:
+            raise _invalid_workload_arguments()
+        found[field] = value
+        index += 1
+    if not {"endpoint", "auth_env", "expected_node"}.issubset(found):
+        raise _invalid_workload_arguments()
+    query_values: list[tuple[str, object]] = []
+    for field in _WORKLOAD_FILTER_OPTIONS.values():
+        if field not in found:
+            continue
+        value = found[field]
+        if field in {"recent_seconds", "limit"}:
+            if (
+                type(value) is not str
+                or len(value) > 10
+                or _WORKLOAD_INTEGER_RE.fullmatch(value) is None
+            ):
+                raise _invalid_workload_arguments()
+            value = int(value)
+        query_values.append((field, value))
+    if found.get("active_only") is True:
+        query_values.append(("active_only", True))
+    try:
+        query = parse_workload_query(tuple(query_values))
+        expected = parse_workload_query((("host", found["expected_node"]),)).host
+    except Exception:
+        raise _invalid_workload_arguments() from None
+    if expected is None:
+        raise _invalid_workload_arguments()
+    endpoint = found["endpoint"]
+    auth_env = found["auth_env"]
+    if type(endpoint) is not str or type(auth_env) is not str:
+        raise _invalid_workload_arguments()
+    try:
+        if surface == "router":
+            if (
+                _declared_router_workload_endpoint(endpoint) is None
+                or _ROUTER_WORKLOAD_AUTH_ENV_RE.fullmatch(auth_env) is None
+            ):
+                raise _invalid_workload_arguments()
+        else:
+            endpoint.encode("ascii")
+            if (
+                not endpoint
+                or len(endpoint) > 2048
+                or endpoint != endpoint.strip()
+                or any(ord(char) < 32 or ord(char) == 127 for char in endpoint)
+                or _FLEET_WORKLOAD_AUTH_ENV_RE.fullmatch(auth_env) is None
+            ):
+                raise _invalid_workload_arguments()
+            _controller_endpoint(endpoint)
+            _validate_controller_endpoint_host(endpoint)
+    except UsageError:
+        raise
+    except Exception:
+        raise _invalid_workload_arguments() from None
+    return surface, endpoint, auth_env, expected, query
+
+
+def _workload_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _workload_command(argv: Sequence[str]) -> CommandResult:
+    """Run one sealed canonical workload read without target resolution."""
+    surface, endpoint, auth_env, expected_node, query = _parse_workload_arguments(argv)
+    now = _workload_now()
+    try:
+        credential = os.environ.get(auth_env)
+    except Exception:
+        raise _workload_source_error() from None
+    environment = {auth_env: credential}
+    try:
+        if surface == "router":
+            result = read_router_node_workloads(
+                endpoint,
+                auth_env,
+                expected_node,
+                query,
+                now,
+                environment=environment,
+            )
+            data = node_result_to_dict(result)
+        else:
+            result = read_controller_fleet_workloads(
+                endpoint,
+                auth_env,
+                expected_node,
+                query,
+                now,
+                environment=environment,
+            )
+            data = fleet_result_to_dict(result)
+    except WorkloadError:
+        raise _workload_source_error() from None
+    except Exception:
+        raise _workload_source_error() from None
+    try:
+        human = json.dumps(data, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    except Exception:
+        raise _workload_source_error() from None
+    return CommandResult(data=data, human_stdout=human)
+
+
+def _workload_leaf_hint(argv: Sequence[str]) -> str | None:
+    """Recognize a workload leaf without retaining or interpreting operands."""
+    for index, token in enumerate(argv[:-1]):
+        if token == "--":
+            break
+        candidate = f"{token} {argv[index + 1]}"
+        if candidate in _WORKLOAD_LEAVES:
+            return candidate
+    return None
+
+
 def _dispatch(
     path: Sequence[CommandNode],
     rest: Sequence[str],
@@ -1137,7 +1333,9 @@ def _dispatch(
     execution_meta: dict[str, object] | None = None,
 ) -> int:
     node = path[-1]
-    diagnostic_leaf = _command_name(path) in _DIAGNOSTIC_LEAVES
+    command_name = _command_name(path)
+    diagnostic_leaf = command_name in _DIAGNOSTIC_LEAVES
+    workload_leaf = command_name in _WORKLOAD_LEAVES
     separator = rest.index("--") if "--" in rest else len(rest)
     help_requested = any(token in {"-h", "--help"} for token in rest[:separator])
     if help_requested and node.children:
@@ -1164,6 +1362,25 @@ def _dispatch(
     if node.handler is None:
         _print_focused_help(path)
         return 0
+    if workload_leaf:
+        try:
+            result = _workload_command([path[0].name, *rest])
+        except UsageError as exc:
+            result = CommandResult(error=exc, human_stderr=exc.message + "\n")
+        except Exception:
+            error = _workload_source_error()
+            result = CommandResult(error=error, human_stderr=error.message + "\n")
+        if execution_meta is not None:
+            execution_meta.update(
+                plan=None,
+                data=result.data,
+                warnings=(),
+                error=result.error,
+            )
+        if not output_options.json_mode:
+            sys.stdout.write(result.human_stdout)
+            sys.stderr.write(result.human_stderr)
+        return result.exit_code
     resolution_options = _ResolutionOptions()
     try:
         policy = command_policy(path, rest)
@@ -1459,8 +1676,10 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
         "router diagnose", "edge bundle validate", "edge bundle render",
         "topology validate-router-config",
         "controller inspect", "controller logs",
+        "router workloads", "fleet workloads",
     }
     diagnostic_leaf = canonical in _DIAGNOSTIC_LEAVES
+    workload_leaf = canonical in _WORKLOAD_LEAVES
     protected_family = protected_family or protected_leaf
     unresolved_sensitive = protected_family and (
         unknown is not None or bool(path[-1].children)
@@ -1488,10 +1707,14 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
                 } if missing_action else None,
             )
             data = None
-        elif diagnostic_leaf:
+        elif diagnostic_leaf or workload_leaf:
             error = execution_meta.get("error")
             if not isinstance(error, OperatorError):
-                error = _error_for_exit(rc, "controller diagnostic command failed")
+                error = (
+                    _workload_source_error()
+                    if workload_leaf
+                    else _error_for_exit(rc, "controller diagnostic command failed")
+                )
             data = execution_meta.get("data")
         elif protected_leaf and "data" not in execution_meta:
             # argparse/resolution errors are not content-safe. Leaf-produced
@@ -1509,12 +1732,12 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
             data=data,
             warnings=warnings,
         )
-    if canonical == "topology validate-router-config" or diagnostic_leaf:
+    if canonical == "topology validate-router-config" or diagnostic_leaf or workload_leaf:
         # This offline snapshot has no dispatch or target context. Preserve
         # that distinction instead of expanding the generic empty context.
         envelope["context"] = None
         envelope["warnings"] = []
-    if canonical == "topology validate-router-config" or diagnostic_leaf:
+    if canonical == "topology validate-router-config" or diagnostic_leaf or workload_leaf:
         # `render_json` deliberately expands generic contexts. This exact
         # offline leaf instead promises a literal null context and contains
         # only the fixed command/error strings plus T006's safe projection.
@@ -1570,10 +1793,28 @@ def _move_leading_resolution_options(argv: Sequence[str]) -> tuple[str, ...]:
 def main(argv=None):
     argv = tuple(sys.argv[1:] if argv is None else argv)
     json_requested = "--json" in argv
+    workload_hint = _workload_leaf_hint(argv)
     try:
         options, forwarded = _extract_global_options(argv)
         forwarded = _move_leading_resolution_options(forwarded)
     except UsageError as exc:
+        if workload_hint is not None:
+            error = _invalid_workload_arguments()
+            if json_requested:
+                envelope = error_envelope(workload_hint, None, error)
+                envelope["context"] = None
+                envelope["warnings"] = []
+                print(
+                    json.dumps(
+                        envelope,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                        allow_nan=False,
+                    )
+                )
+            else:
+                print(error.message, file=sys.stderr)
+            return EXIT_CODES["usage"]
         if json_requested:
             # Global-option validation can fail before a command is resolved.
             print(render_json(error_envelope("anvil-serving", None, exc)))
