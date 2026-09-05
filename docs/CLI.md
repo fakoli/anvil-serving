@@ -176,6 +176,7 @@ required operands, choices, and defaults.
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
+| `router diagnose` | Explain one request from bounded router evidence without replaying it. | `read` / `bounded` | `--request-id`<br>`--router-url`<br>`--auth-env`<br>`--timeout` |
 | `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
 | `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate` |
 | `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service` |
@@ -346,6 +347,9 @@ required operands, choices, and defaults.
 | `dashboard` | Serve the read-only system observability dashboard. | `read` / `bounded` | - |
 | `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | - |
 | `edge` | Own the Tailscale tailnet edge in front of the unchanged router. | `read` / `bounded` | - |
+| `edge bundle` | Plan a portable tailnet model endpoint offline. | `read` / `bounded` | - |
+| `edge bundle validate` | Validate a portable endpoint manifest offline. | `read` / `bounded` | `--manifest` |
+| `edge bundle render` | Render Compose, Serve, and router fragments without applying. | `read` / `bounded` | `--manifest` |
 | `edge render` | Render the tailscale serve invocations without applying. | `read` / `bounded` | - |
 | `edge status` | Show serve mappings, flagging which this tool manages. | `read` / `bounded` | - |
 | `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |

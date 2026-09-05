@@ -22,6 +22,7 @@ from typing import Dict
 
 import pytest
 
+from anvil_serving.router.backends import relay as relay_module
 from anvil_serving.router.backends.relay import (
     RelayBackendError,
     _urlopen_transport,
@@ -130,7 +131,7 @@ def test_caller_correctable_upstream_status_is_sanitized_4xx(monkeypatch, status
             io.BytesIO(b'{"error":"private response body"}'),
         )
 
-    monkeypatch.setattr("urllib.request.urlopen", fail)
+    monkeypatch.setattr(relay_module, "_direct_open", fail)
 
     with pytest.raises(BackendClientError) as exc_info:
         _urlopen_transport(
@@ -154,7 +155,7 @@ def test_upstream_server_error_remains_internal(monkeypatch):
             io.BytesIO(b'{"error":"private response body"}'),
         )
 
-    monkeypatch.setattr("urllib.request.urlopen", fail)
+    monkeypatch.setattr(relay_module, "_direct_open", fail)
 
     with pytest.raises(RelayBackendError):
         _urlopen_transport(

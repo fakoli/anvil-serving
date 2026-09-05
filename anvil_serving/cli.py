@@ -1336,7 +1336,12 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
             rc = _main(argv, output_options=options, execution_meta=execution_meta)
     except SystemExit as exc:
         rc = int(exc.code or 0)
-    command = " ".join(argv)
+    canonical = _command_name(path)
+    # These metadata surfaces accept private origins and manifest paths. Their
+    # JSON command label identifies the operation without echoing operands.
+    command = canonical if canonical in {
+        "router diagnose", "edge bundle validate", "edge bundle render",
+    } else " ".join(argv)
     context = execution_meta.get("plan")
     warnings = list(execution_meta.get("warnings", ()))
     if rc == 0:

@@ -35,7 +35,14 @@ from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
 
 from .backends.relay import RelayBackendError, Transport
 from .config import AUDIO_STT, AUDIO_TTS, AudioRoute
-from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, decision_line
+from .decision_log import (
+    AttemptRecord,
+    DecisionLog,
+    DecisionRecord,
+    decision_line,
+    safe_correlation,
+    safe_gateway_request_id,
+)
 
 TRANSCRIPTIONS_PATH = "/v1/audio/transcriptions"
 SPEECH_PATH = "/v1/audio/speech"
@@ -420,11 +427,12 @@ class AudioGateway:
                 data,
                 {"Content-Type": "multipart/form-data; boundary=%s" % boundary},
                 started,
+                correlation=audit_correlation,
                 expected_content_types=("application/json",),
             )
             try:
                 payload = json.loads(raw.decode("utf-8"))
-            except (UnicodeDecodeError, ValueError) as exc:
+            except (UnicodeDecodeError, ValueError, RecursionError) as exc:
                 raise AudioGatewayError(
                     502, "upstream_error", "configured STT serve returned malformed JSON"
                 ) from exc
@@ -497,6 +505,7 @@ class AudioGateway:
                 data,
                 {"Content-Type": "application/json"},
                 started,
+                correlation=audit_correlation,
                 expected_audio_format=requested_format,
             )
         except AudioGatewayError as exc:
@@ -579,6 +588,7 @@ class AudioGateway:
         data: bytes,
         headers: Mapping[str, str],
         started: float,
+        correlation: Optional[Mapping[str, str]] = None,
         expected_audio_format: Optional[str] = None,
         expected_content_types: Optional[Sequence[str]] = None,
     ) -> bytes:
@@ -591,6 +601,11 @@ class AudioGateway:
         token = self._tokens.get(route.id)
         if token:
             outbound_headers["Authorization"] = "Bearer " + token
+        gateway_request_id = safe_gateway_request_id(
+            (correlation or {}).get("gateway_request_id")
+        )
+        if gateway_request_id is not None:
+            outbound_headers["X-Request-Id"] = gateway_request_id
         try:
             result = self._transport(
                 route.base_url.rstrip("/") + suffix,
@@ -614,10 +629,20 @@ class AudioGateway:
             raise AudioGatewayError(
                 502, "upstream_error", "configured audio serve failed; see router logs"
             ) from exc
+        except Exception:  # noqa: BLE001 - transport details are never caller-safe
+            raise AudioGatewayError(
+                502, "upstream_error", "configured audio serve failed; see router logs"
+            ) from None
         has_response_metadata = isinstance(result, _AudioResponse)
         if has_response_metadata:
             raw = result.body
             content_type = result.content_type
+            if not isinstance(raw, bytes) or not isinstance(content_type, str):
+                raise AudioGatewayError(
+                    502,
+                    "upstream_error",
+                    "configured audio serve returned an invalid response",
+                )
         elif isinstance(result, bytes):
             # Hermetic injected transports predate the audio-specific transport
             # metadata. Their byte-only result is allowed in tests; production
@@ -697,9 +722,12 @@ class AudioGateway:
             total_prompt_tokens=0,
             total_completion_tokens=0,
             route=purpose,
-            request_id=meta.get("request_id"),
-            workbench_run_id=meta.get("workbench_run_id"),
-            task_id=meta.get("task_id"),
+            request_id=safe_correlation(meta.get("request_id")),
+            gateway_request_id=safe_gateway_request_id(
+                meta.get("gateway_request_id")
+            ),
+            workbench_run_id=safe_correlation(meta.get("workbench_run_id")),
+            task_id=safe_correlation(meta.get("task_id")),
             request_bytes=request_bytes,
             response_bytes=response_bytes,
             latency_ms=self._elapsed_ms(started),

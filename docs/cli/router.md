@@ -18,6 +18,7 @@ owning documentation link.
 | --- | --- |
 | `router run` | Run the router in the foreground. |
 | `router endpoint` | Show the listen address, port, and this node's Tailscale DNS name. |
+| `router diagnose` | Explain one request using bounded metadata, without replaying it. |
 
 ### Deployment lifecycle
 
@@ -86,6 +87,25 @@ anvil-serving router token --reveal --confirm
 
 Only the second form prints the local token value. Avoid using it in automation or
 captured logs.
+
+## Diagnose
+
+Use the `X-Anvil-Request-Id` from an inference response:
+
+```bash
+anvil-serving router diagnose --request-id req_0123456789abcdef0123456789abcdef
+anvil-serving router diagnose --request-id req_0123456789abcdef0123456789abcdef --router-url http://127.0.0.1:8000 --json
+```
+
+The command reads the router credential from `ANVIL_ROUTER_TOKEN` or the
+environment variable selected by `--auth-env`. It retrieves one terminal
+decision and separately labeled current build metadata using bounded GETs.
+`--timeout` is a per-read socket timeout, at most 30 seconds. A missing record
+does not prove the request never ran: active requests, buffer eviction, older
+processes, and unsupported lookup can all explain its absence.
+
+See [request diagnostics](../ROUTER-DIAGNOSTICS.md) for timing, usage provenance,
+correlation, retention, and interpretation limits.
 
 ## Lifecycle
 

@@ -70,6 +70,8 @@ authority.
 | `edge status` | Compare live mappings with the resolved managed map. |
 | `edge up` | Add or update only the resolved managed mounts. |
 | `edge down` | Remove only live mounts still matching the managed targets. |
+| `edge bundle validate` | Validate an offline remote inference manifest. |
+| `edge bundle render` | Render Compose, Tailscale Serve, and router configuration payloads. |
 
 ## Topology
 
@@ -346,6 +348,12 @@ targets use `--host`, which defaults to `127.0.0.1`; the HTTPS listener defaults
 to 443. The built-in map publishes `/v1` to the router and `/comfyui` to
 ComfyUI.
 
+The built-in and numeric `/v1` targets include `/v1` in the upstream URL because
+Tailscale strips the public mount. Other numeric mounts target the service root;
+full URLs are used exactly as declared. An older `/v1` mapping without that
+suffix appears as drift. Review the dry run and verify `/v1/models` after any
+separately authorized apply.
+
 Preview and apply use the same resolved plan:
 
 ```bash
@@ -362,6 +370,7 @@ untouched. Each planned subprocess is attempted once with a 15-second timeout.
 
 ## Related references
 
+- [Remote tailnet endpoint bundles](../REMOTE-TAILNET-ENDPOINTS.md)
 - [Tailnet endpoint runbook](../TAILNET-ENDPOINT-RUNBOOK.md)
 - [OpenClaw integration specification](../OPENCLAW-INTEGRATION-SPEC.md)
 - [Operator playbooks](../OPERATOR-PLAYBOOKS.md)
