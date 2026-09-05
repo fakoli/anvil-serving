@@ -101,7 +101,7 @@ None. The first release is read-only, bounded, metadata-only, controller-collect
 - Node controller reads its own stores through bounded public projection methods and router active/recent state through authenticated `GET /v1/workloads` at a topology-declared loopback router resource. Missing source/config/auth is explicit unavailable, not idle. It must not open the router database or discover ports.
 - Fleet queries only expected-node controller workload operations, with at most four concurrent calls, 2-second per-node and 5-second collection deadlines, no unbounded queued work, and a visible result for every declared node. Failed or sleeping nodes remain visible. Dashboard consumes this same node/fleet result; it never reconstructs records from DOM or hardware samples.
 - All unified reads require a per-client `workloads:read` operator grant. Router data-plane bearer tokens and media-only principals are not implicitly workload operators. The shared authorization prerequisite is fleet-node-enrollment:T008; denial occurs before collection, including router/controller/MCP/dashboard.
-- Canonical record bytes are shared across surfaces. Envelopes add node/source status, collection time, completeness, and truncation; never pass generic command/transport context through them. Whole-envelope adversarial tests seed credentials, user paths, tool payloads, URLs, private addresses and raw exceptions.
+- Canonical record bytes are shared across surfaces. Application envelopes add node/source status, collection time, completeness, and truncation; never pass generic command/transport context through them. The single protocol-only exception is a validated JSON-RPC correlation ID echoed once in its outer wrapper as closed in T012, never copied into application content, metadata, audit or storage. Whole-application-envelope adversarial tests seed credentials, user paths, tool payloads, URLs, private addresses and raw exceptions.
 - Every node envelope includes per-source `complete|partial|unavailable` status. A malformed/future received router source becomes unavailable without discarding healthy store/serve sources; any surviving source makes node status partial, and only all-source failure makes it unavailable. A valid locally produced partial router source retains its safe surviving records and partial status. Fleet retains that node status.
 
 ### Recipe workload observation and projection contract
@@ -1115,22 +1115,156 @@ follow in T012; this slice performs no actual live collection.
 **Feature:** F003
 **Priority:** high
 **Type:** feature
-**Likely files:** anvil_serving/control_plane/controller/server.py, anvil_serving/observability/probes/remote_controller.py, tests/test_controller.py, tests/observability/test_remote_controller.py
-**Dependencies:** T003, T004, T004.2, T005, T010, T011, T011.2, T012.1, T012.2, T012.3, T012.4
+**Likely files:** anvil_serving/observability/workload_tools.py, anvil_serving/control_plane/controller/server.py, anvil_serving/control_plane/controller/http.py, tests/control_plane/test_controller_workloads.py
+**Dependencies:** T003, T004, T004.2, T005, T010, T011, T011.2, T012.1, T012.2, T012.3, T012.3.1, T012.4, T012.5, T012.6
 
-Add the controller workload operation that projects its own controller/benchmark/media/managed-status sources and fetches router work only through the topology-declared authenticated loopback resource. Enforce `workloads:read` before any source read and keep a status for every source.
+Wire one persistent NodeWorkloadCollector to the actual controller server and
+expose the reserved normalized node_workloads tool on REST /tools/call and
+controller /mcp. This is node-local only; fleet fan-out and standalone MCP
+registration follow. No controller GET workload route or alternate transport
+is introduced. ControllerTransport already posts /tools/call and requires
+the boolean ok field, so its existing operation path remains sufficient.
+
+Add keyword-only workload_benchmark_db, workload_media_db,
+workload_recipe_registry, workload_manifest, workload_topology,
+workload_router_resource and workload_router_auth_env (all defaultNone) to
+make_server and serve; CLI forwarding follows in T012.7. Use only the existing
+node_id as canonical workload identity. With a valid node_id, construct one
+collector over build_workload_readers and the exact OperationStore already
+owned/reconciled at startup. No new store or per-query collector. Missing or
+invalid node_id disables collection and returns fixed source-unavailable
+after authorization; it does not change legacy health/auth APIs. Add injectable
+workload_clock (UTC now by default) and workload_monotonic seams for hermetic
+tests, not CLI flags. No source read occurs during construction. Ensure
+server_close closes this collector nonblockingly and idempotently before
+delegating to the original server close; construction/bind failure also closes
+it. Preserve the supplied server_class and IPv6/lifecycle behavior.
+
+Add a small pure observability/workload_tools.py with the canonical
+node_workloads declaration, fixed workloads:read metadata and an input schema
+for exactly the seven canonical query fields. additionalProperties is false;
+owner/kind/state enums, host grammar and max64 length, exact boolean
+active_only, recent1..86400/default3600 and limit1..1000/default200 match
+WorkloadQuery. This descriptor is reused by later MCP registration, not
+hand-copied into parallel schemas. The handler receives only a parsed query;
+query.host is a filter, never server identity. Parse invalid arguments before
+reading the clock or invoking collection.
+
+Application response is exactly success {ok:true,data:<node_result_to_dict>}
+or failure {ok:false,error:{code:<fixed>,message:<fixed>}}. No request_id,
+context, details, metadata, warnings or generic command/transport dictionary.
+Tool-level outcomes use HTTP200, including invalid_workload_query,
+idempotency_not_supported, invalid_workload_request and
+workload_source_unavailable fixed code/message pairs. Actual authorization
+and protocol failures keep their appropriate HTTP/JSON-RPC status. A valid
+canonical unavailable NodeResult is successful data, not a transport failure.
+Unexpected clock/collector/serialization exceptions become fixed source
+unavailability. Never invoke generic call_tool_func, request-ID augmentation,
+OperationStore.claim/executing/complete/lookup or operation context for this
+tool.
+
+Seal the normalized node_workloads name against injected catalog/callback
+replacement. Add the canonical declaration before allowlist processing.
+A supplied declaration may match it exactly once (supporting future canonical
+MCP catalogs); a different or duplicate reserved declaration fails construction
+with fixed ControllerError and no raw descriptor. Existing allowed_operations
+continues to restrict visibility and dispatch. Removed/disallowed reserved
+names still cannot fall through to legacy undeclared-tool dispatch or acquire
+weaker scope. Authorized but disabled/disallowed invocation is a fixed failure,
+never an injected callback. Ordinary unrelated tool behavior remains unchanged.
+
+Recognize this tool before idempotency parsing and require workloads:read
+before any source read. Reject presence of any X-Anvil-Idempotency-Key header,
+even empty/repeated/malformed, without calling the generic key validator or
+persisting anything. REST body requires exactly name and arguments; MCP params
+requires name and arguments and may include only _meta additionally. Reject
+context and unknown outer/parameter fields before collection. Arguments must
+be an exact object; null is not silently an empty workload query. MCP protocol
+metadata is checked by the existing protocol layer but never forwarded to
+workload handlers. HTTP MCP header-selected requests must receive the scope
+gate before body reads as existing scoped tools do.
+
+For recognized workload requests, use a server-generated HTTP request-ID
+header, never echo the supplied one. Workload audit is only the exact fields
+event=workload_read, operation=node_workloads, status, ok, error_code (fixed
+or null), elapsed_ms (finite nonnegative bounded number). No remote address,
+caller identifier, raw tool spelling, arguments, context, idempotency key,
+credentials, paths or exception text. Apply this mode to MCP header-selected
+denials before body reads and to recognized REST bodies. Reset request-local
+mode on keepalive; an unrelated request must not inherit it. An unauthenticated
+or malformed generic REST request that cannot yet identify a tool remains
+an ordinary protocol attempt and cannot reach collection.
+
+JSON-RPC correlation is the single protocol-only exception to the application
+envelope exclusion: echo id once, only in the outer JSON-RPC wrapper. Accept
+an exact non-boolean int within -(2**53-1)..2**53-1 or a1..96-character ASCII
+string matching the existing safe request-ID grammar. Invalid IDs return
+id:null and a fixed invalid-request protocol error before collection. Never
+copy id into structuredContent, content text, metadata, audit, source inputs
+or storage. Fixed MCP result wrappers may include only server-owned protocol
+metadata and the same application envelope. Workload protocol failures must
+not echo caller version/clientInfo/context/metadata or raw parser errors;
+sanitize those failures to fixed messages/codes while retaining only the
+validated outer correlation ID. Do not rewrite the ordinary MCP protocol or
+its unrelated errors.
+
+Extend source, auth, parsing, lifetime and privacy tests on real make_server
+instances with ephemeral loopback sockets, temporary owned stores, injected
+clocks/readers and event-controlled work. This is ordinary regression proof;
+the batch's formal adversarial/acceptance pass remains deferred.
 
 **Acceptance criteria:**
 
-- Missing source/config/auth is unavailable; one surviving source makes the node partial; only all-source failure makes it unavailable.
-- Malformed schema/record, expected-node mismatch, or source time over 30 seconds in the future fails only that source.
-- Source time and collection time remain distinct; stale quality uses source observation age.
-- Controller never opens router storage, guesses a port, uses SSH, or returns token/address/path/raw-response/error content.
+- Actual server construction binds exactly one persistent collector to the same OperationStore and optional explicit readers; repeated reads do not construct stores or collectors, and close/bind-failure cleanup is bounded.
+- Legacy, missing, media-only, malformed-policy and wrong-scope credentials cannot invoke collection; allowed_operations and sealed declaration/callback rules cannot be bypassed by hyphen/underscore spellings or injected catalogs.
+- REST and controller MCP produce the same canonical application data and fixed errors; invalid arguments, context/unknown fields, null arguments and all idempotency-header forms refuse before source reads or store writes.
+- Partial/unavailable sources remain data with original times and omissions; configured host is unchanged by host filters and no router database, port discovery or SSH path exists.
+- Seeded caller IDs, raw exceptions, private strings and metadata are absent from application content, errors and workload audit; only a validated protocol correlation ID appears once in the outer MCP wrapper.
+- Keepalive mode reset, protocol errors, invalid correlation IDs, server-generated response IDs, immutable schema parity, worker close and ordinary legacy controller regressions are covered.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/test_controller.py tests/observability/test_remote_controller.py -x -q`
-- `python scripts/run_tests.py tests/test_controller_token_normalization.py -x -q`
+- `python scripts/run_tests.py tests/control_plane/test_controller_workloads.py tests/test_controller.py tests/test_controller_token_normalization.py -x -q`
+- `python -m ruff check anvil_serving/observability/workload_tools.py anvil_serving/control_plane/controller/server.py anvil_serving/control_plane/controller/http.py tests/control_plane/test_controller_workloads.py`
+
+### T012.7: Expose explicit controller workload startup options
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** anvil_serving/control_plane/controller/cli.py, tests/control_plane/test_controller_workload_cli.py
+**Dependencies:** T012
+
+Add seven optional controller serve string flags matching the make_server/
+serve keywords: --workload-benchmark-db, --workload-media-db,
+--workload-recipe-registry, --workload-manifest, --workload-topology,
+--workload-router-resource and --workload-router-auth-env. Default every value
+to None and forward it unchanged to serve. Reuse --node-id; do not add a
+second identity flag, an endpoint override, credential value, source discovery
+or per-request collector. Bindings remain the sole source-configuration
+validator; missing/invalid optional sources are explicit unavailable and
+cannot change ordinary legacy server options. Explain in help that paths are
+explicit, the three router options work together, and the auth argument names
+an environment variable rather than carrying a token.
+
+Follow existing argparse and top-level tree forwarding; the current
+commands/control_plane.py controller serve leaf already dispatches to
+anvil_serving.controller and needs no independent option parser. Do not edit
+a generated manifest by hand. Final T015/T016 own generated surface/reference
+synchronization and documentation publication. This slice starts no server,
+reads no credential or source, and changes no live configuration.
+
+**Acceptance criteria:**
+
+- All seven explicit strings reach the server entrypoint exactly, and an omitted option remains None rather than resolving an ambient path or environment value.
+- Top-level controller serve help exposes the same options without binding a port or starting a collector; ordinary existing flags retain their values.
+- Unknown/missing-value options fail at parsing before server invocation, and no credential-value or endpoint override flag is introduced.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/control_plane/test_controller_workload_cli.py tests/test_controller.py -x -q`
+- `python -m ruff check anvil_serving/control_plane/controller/cli.py tests/control_plane/test_controller_workload_cli.py`
+- `python -m anvil_serving.cli controller serve --help`
 
 ### T013: Add bounded expected-node fleet fan-out
 
