@@ -2045,13 +2045,42 @@ Declare the workload commands/operations and regenerate the command manifest thr
 - `python scripts/run_tests.py tests/test_command_tree.py tests/router/test_operational_endpoints.py -x -q`
 - `git diff --check`
 
+### T006.1.3: Include response cleanup in controller workload budgets
+
+**Feature:** F004
+**Priority:** high
+**Type:** bugfix
+**Likely files:** anvil_serving/observability/probes/controller_workloads.py, tests/observability/test_controller_workload_source.py
+**Dependencies:** T006.1
+
+Resolve `.tickets/2026-09-05-controller-workload-cleanup-budget.md`.
+After closing each _BudgetedResponse, validate monotonic completion through the
+existing _Budget.completed seam. A throwing close or invalid/regressed/expired
+post-close clock sets cleanup_failed and makes the public node/fleet result
+UNAVAILABLE. Always perform exactly one close; never mask an active exception
+with cleanup text or skip cleanup to meet a deadline. Keep both existing budgets
+and the no-proxy/no-redirect transport unchanged. A synchronous close cannot be
+preempted; this contract rejects a late result after cleanup, not hard cancellation.
+Do not change reader APIs, canonical data, CLI or generic transports.
+
+**Acceptance criteria:**
+
+- The reproduced final POST close at eight seconds fails the seven-second fleet read; equivalent node cases fail the two-second budget.
+- Exactly-at-deadline, regressed, nonfinite and throwing post-close clocks fail fixed without exception text; within-budget cleanup preserves canonical results.
+- Responses close once on success and failure and no retry/replacement request is created.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/observability/test_controller_workload_source.py tests/observability/test_router_workload_source.py tests/observability/test_fleet_workload_collection.py -x -q`
+- `python -m ruff check anvil_serving/observability/probes/controller_workloads.py tests/observability/test_controller_workload_source.py`
+
 ### T007.1: Add the scoped canonical workload HTTP service
 
 **Feature:** F004
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/observability/workload_http.py, tests/observability/test_workload_http.py
-**Dependencies:** T006.1, fleet-node-enrollment:T008
+**Dependencies:** T006.1.3, fleet-node-enrollment:T008
 
 Implement the closed service in
 `.tickets/2026-09-05-dashboard-workload-authority.md`, without server or
