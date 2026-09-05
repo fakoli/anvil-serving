@@ -21,6 +21,7 @@ authority.
 | Give Hermes bounded media generation | `harness sync hermes-media --dry-run` | Review the profiles, skill digest, and eight-tool allowlist; apply with `--confirm`, then require an empty second preview. |
 | Connect an MCP client locally | `mcp tools` | Configure the client to run `mcp serve` over stdio. |
 | Operate a split host | `controller serve` | Probe it with `controller status`, then point `mcp serve` at it. |
+| Diagnose a declared Docker controller | `controller inspect` | Compare configured and observed bindings, then use `controller logs` for bounded metadata-only request evidence. |
 | Add optional telemetry | `collectors configure` | Validate offline, then use `collectors inspect` for one bounded read. |
 | Publish tailnet routes | `edge render` | Compare `edge status`, preview `edge up`, then apply with `--confirm`. |
 
@@ -52,6 +53,8 @@ authority.
 | `mcp serve` | Run local stdio MCP or proxy calls to a controller. |
 | `controller serve` | Run the authenticated private HTTP controller. |
 | `controller status` | Validate controller health and required capabilities. |
+| `controller inspect` | Inspect bounded metadata for one explicitly selected controller container. |
+| `controller logs` | Read bounded allowlisted audit events for that verified controller identity. |
 
 ### Integrate read-only telemetry
 
@@ -291,6 +294,50 @@ anvil-serving controller status --url http://100.64.0.10:8765 --require-operatio
 Status performs authenticated reads of `/health` and `/tools/list`. Its request
 timeout must be greater than zero and no more than 60 seconds; response capture
 defaults to 64 KiB. Every repeatable `--require-operation` must be present.
+
+When status cannot establish which service owns an endpoint, inspect one
+explicitly selected Docker controller without retrieving its environment,
+command, mounts, image configuration, health-check output, or raw logs:
+
+```bash
+anvil-serving controller inspect --container controller_1
+anvil-serving controller logs --container controller_1 --tail 20
+anvil-serving --json controller inspect --container controller_1
+```
+
+Local diagnostics pin Docker to the platform-local daemon: the Windows named
+pipe or the Linux Unix socket. Docker contexts and environment overrides cannot
+redirect the read. macOS and non-Docker native service diagnostics are
+unsupported in this version. Remote execution requires the declared controller
+resource and its controller transport; it never falls back to SSH. If that
+controller transport is unreachable, run the local command on the resource
+owner instead—remote MCP cannot diagnose its own unavailable transport.
+
+Inspection returns `controller-diagnostics/v1` metadata with the immutable
+container ID, running/exit/health fields, and separate configured and observed
+TCP bindings. Each binding contains only container port, host port, and one of
+`loopback`, `wildcard`, `private`, `public`, or `unknown`; literal addresses are
+not returned. Each binding collection is capped at 64 rows. A configured row
+with no observed row is not proof that Docker published the port.
+
+Logs first require the exact Compose service label `controller`, then address
+the container by its validated 64-character ID. `--tail` is an integer from 1
+through 200 and defaults to 100. The result contains at most 200 allowlisted
+JSON audit events; input lines are capped at 16 KiB and the combined child
+capture at 256 KiB. Unknown fields and codes are counted, not copied. This is
+not an arbitrary container or free-form log reader.
+
+With root `--json`, both commands use the operand-free command name, literal
+`null` context, empty warnings, and either a fully validated result or `null`
+data. Argument, response, and transport failures use the fixed codes
+`invalid_diagnostic_arguments`, `controller_diagnostic_response_invalid`, and
+`controller_diagnostic_transport_failed`; supplied names, paths, addresses,
+transport details, and exception text are excluded.
+
+`state = ok` means only that the bounded inspection or projection completed.
+It does not attest the external listener, node/build identity, package version,
+deployment readiness, or request routing. A healthy container and configured
+binding likewise do not prove an observed published endpoint.
 
 ## Collectors
 

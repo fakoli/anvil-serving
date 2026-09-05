@@ -28,6 +28,17 @@ PRDs 3 and 4 can otherwise proceed independently. Execute one task at a time and
 each implementation PR-sized; do not combine all four contracts into a router
 or control-plane rewrite.
 
+The four router/fleet PRDs above remain partial delivery programs; an accepted
+task or source checkpoint does not mark an entire PRD deployed. The separate
+[bounded controller diagnostics](controller-diagnostics.md) source contract is
+implemented and independently accepted through its local core, MCP/HTTP
+authorization, client ownership, protected CLI envelope, and Workbench skill
+catalogs and exact public MCP catalog fixtures. Its generated command reference
+and documentation are synchronized here. A sanitized managed read confirmed
+the diagnostic surface works, but the observed controller still
+had no published binding. Endpoint identity/version parity, durable publication
+recovery, and deployment acceptance remain open operator gates.
+
 ## Miles-informed delivery order
 
 **Reviewed:** 2026-09-05. **Anvil baseline:** `f50dca489780b95d0cd98dee59cf620618c4ccd1`.

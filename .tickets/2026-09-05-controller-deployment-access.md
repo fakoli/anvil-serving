@@ -56,17 +56,18 @@ inventory has no corresponding published mapping. Thus the observed 401/403
 responses come from another listener, not the owning controller; the precise
 forwarding/publication failure and its durable correction remain unresolved.
 
-Pending: managed diagnostic surface, forwarding/publication root cause,
-durable correction, regression results, and successful identity-checked
-status/deployment verification. Do not stop or reconfigure the unrelated
+The managed diagnostic source surface is now implemented and accepted. Pending:
+forwarding/publication root cause, durable correction, recovery regression
+results, and successful identity-checked status/deployment verification. Do not stop or reconfigure the unrelated
 Windows listener merely to reclaim a port. No live route, model serve,
 controller, or private configuration has been changed for this investigation.
 
 ## Diagnostic implementation review
 
 The approved [bounded diagnostics PRD](../docs/prds/controller-diagnostics.md)
-has seven tasks covering capture, projection, CLI/MCP, both server and client
-permissions, scaffold parity, documentation and actual local diagnostic proof.
+has eleven tasks covering capture, projection, CLI/MCP, both server and client
+permissions, scaffold parity, protected envelopes, workbench skill catalogs,
+exact public catalog fixtures, documentation and actual local diagnostic proof.
 Its capture foundation is accepted in
 `b64687aae2c809633a1196534466c73e0abf75b4` after independent review and
 10 passing post-commit tests plus Ruff. Corrections cover child/reader cleanup,
@@ -79,8 +80,9 @@ are accepted in `96b961d985ed7eb3228eea109760fd188a134846` after independent
 eight-angle review, privacy/boundary negative controls, 19 post-commit tests and
 Ruff. Configured versus observed bindings stay separate, log reads use only the
 verified immutable controller ID, and raw content is discarded. CLI/MCP wiring
-and actual local-daemon validation remain pending; this does not resolve
-deployment access. No raw diagnostic output or credentials are added here.
+and actual local-daemon validation remained pending at that checkpoint; source
+acceptance did not resolve deployment access. No raw diagnostic output or
+credentials are added here.
 
 The local CLI slice is accepted at upstream-compatible checkpoint
 `cd28f53970c514019cf262fff11fa0647a98c4f0` (implementation `38af3615`). Independent
@@ -117,19 +119,52 @@ tests resolve actual command-tree specs and refuse a removed permission
 without choosing SSH or a different controller. This template correction
 does not mutate installed private topology or repair live publication.
 
+The client ownership correction is accepted at `4cb23683` and its integration
+at `a2791de5`. The protected root CLI envelope is accepted at `bef0fded` and
+integrated at `e46a8575`. Local and remote human/JSON paths now require the
+complete kind-specific schema, reject hostile scalar and mapping-key types
+before comparison, and suppress parser operands and transport details. The
+envelope review temporarily restored the obsolete six-key schema escape and
+the any-token help bypass; the dedicated regressions failed in both cases,
+including the human literal-separator operand leak, before the guards were
+restored. These are source acceptance checkpoints, not live publication or
+deployment evidence.
+
+Both public Workbench skill catalogs register the exact diagnostic MCP tools
+and their unreachable-controller local fallback at accepted checkpoint
+`c9c8a3f4`. The fallback stays on the verified owning host, grants no SSH or
+lifecycle authority, and does not turn diagnostic success into deployment
+proof.
+
+The full repository gate exposed stale frozen MCP catalog expectations. The
+separate fixture correction is accepted at `9566cb9c`, preserving exact tool
+order and catalog/handler hashes and adding readable closed-schema checks.
+Its tail-bound negative control failed before restoration. The full suite is
+rerun for this final documentation slice; focused fixture tests alone are not
+the final source gate.
+
+The earlier capture negative control raised the shared byte cap by one and made
+the 262145-byte overflow regression fail. The projection negative control
+disabled unknown-field redaction and made the credential-shaped-field privacy
+regression fail. Both controls were restored before their accepted gates.
+
 ## Managed live refresh
 
-After workspace resolution, the new local `controller inspect` and
-`controller logs --tail 20` commands were run from source revision
-`31608057933fe5d74e5a4a32bcdebbacf86f9667`. Both returned bounded v1 results
-with `state = ok`. Inspection confirms the selected container is running and
-healthy and declares one loopback binding, but still reports no observed
-published binding. Logs returned 20 recognized metadata-only audit events,
-zero rejected lines, no truncation, and dropped 120 unknown fields.
+After workspace resolution, the local root `controller inspect --json` and
+`controller logs --tail 20 --json` commands were re-run from source revision
+`7e782797df75dbcc58396edc45576cf335bfe2da`. Both exited zero with structured
+bounded v1 data, an operand-free command, null context, and empty warnings.
+Inspection reported `state = ok`, running and healthy, with one configured
+loopback binding but no observed published binding. Logs reported `state = ok`,
+20 returned events from 20 lines, zero rejected lines and unknown codes, 120
+dropped unknown fields, no truncation, and no counter saturation. The retained
+allowlisted health and tool-list audit statuses were 200. No selector,
+container ID, literal port, raw event, credential, or private path is retained
+in this ticket.
 
 These commands now replace the raw Docker diagnostic fallback for this
 incident. They do not repair publication or establish external endpoint
-identity/version parity. A source review confirms the controller has no
+identity, remote node/build identity, or version parity. A source review confirms the controller has no
 managed container recovery operation yet; foreground serve/status and these
 read-only diagnostics cannot recreate its publication. That bounded recovery
 capability requires a separate implementation with selected-service-only
