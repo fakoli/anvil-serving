@@ -211,7 +211,7 @@ def test_identity_readiness_requires_exact_model_and_sends_configured_token():
     assert result.expected_model == "served-heavy"
     assert result.observed_model == "served-heavy"
     assert calls == [
-        ("http://127.0.0.1:30002/health", None),
+        ("http://127.0.0.1:30002/health", "Bearer secret"),
         ("http://127.0.0.1:30002/v1/models", "Bearer secret"),
     ]
 
