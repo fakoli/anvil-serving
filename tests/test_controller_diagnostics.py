@@ -8,7 +8,8 @@ import json
 
 import pytest
 
-from anvil_serving import controller_diagnostics as diagnostics
+from anvil_serving import cli, controller_diagnostics as diagnostics
+from anvil_serving.commands.control_plane import commands as control_plane_commands
 
 
 def _child(source):
@@ -540,3 +541,109 @@ def test_log_counters_saturate_without_changing_safe_event_projection(monkeypatc
     assert result["line_count"] == result["unknown_fields"] == 1
     assert result["counters_saturated"] is True
     assert "secret" not in json.dumps(result)
+
+
+def test_cli_run_is_exact_and_invalid_arguments_never_call_diagnostics(monkeypatch):
+    calls = []
+    inspect_result = diagnostics.safe_result("inspect", "ok")
+    logs_result = diagnostics.safe_result("logs", "unavailable")
+    monkeypatch.setattr(
+        diagnostics,
+        "inspect_controller",
+        lambda container: calls.append(("inspect", container)) or inspect_result,
+    )
+    monkeypatch.setattr(
+        diagnostics,
+        "controller_logs",
+        lambda container, tail: calls.append(("logs", container, tail)) or logs_result,
+    )
+
+    assert diagnostics.run(["inspect", "--container", "controller_1"]) == inspect_result
+    assert diagnostics.run(["logs", "--container", "controller_1", "--tail", "17"]) == logs_result
+    assert calls == [("inspect", "controller_1"), ("logs", "controller_1", 17)]
+
+    for argv in (
+        ["inspect"],
+        ["inspect", "--container", "bad/name"],
+        ["inspect", "--cont", "controller_1"],
+        ["logs", "--container", "controller_1", "--tail", "0"],
+        ["logs", "--container", "controller_1", "--tail", "201"],
+        ["logs", "--container", "controller_1", "--tail", "true"],
+        ["logs", "--container", "controller_1", "--tail", "1.0"],
+        ["logs", "--container", "controller_1", "--tail", "+1"],
+        ["logs", "--container", "controller_1", "--tail", "1_0"],
+        ["logs", "--container", "controller_1", "--tail", " 1"],
+        ["logs", "--container", "controller_1", "--tail", "\u0661"],
+        ["logs", "--container", "controller_1", "--follow"],
+    ):
+        with pytest.raises(SystemExit) as exc:
+            diagnostics.run(argv)
+        assert exc.value.code == 2
+    assert calls == [("inspect", "controller_1"), ("logs", "controller_1", 17)]
+
+
+def test_cli_parser_uses_public_controller_identity_for_help_and_errors(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(
+        diagnostics,
+        "inspect_controller",
+        lambda container: calls.append(container) or diagnostics.safe_result("inspect", "ok"),
+    )
+
+    assert diagnostics.main(["inspect", "--help"]) == 0
+    help_output = capsys.readouterr().out
+    assert "usage: anvil-serving controller inspect" in help_output
+    assert "--container" in help_output
+
+    assert diagnostics.main(["inspect"]) == 2
+    error_output = capsys.readouterr().err
+    assert "usage: anvil-serving controller inspect" in error_output
+    assert calls == []
+
+
+def test_cli_main_prints_only_safe_json_and_has_fixed_exit_codes(monkeypatch, capsys):
+    monkeypatch.setattr(diagnostics, "run", lambda argv: diagnostics.safe_result("inspect", "ok"))
+    assert diagnostics.main(["inspect", "--container", "controller"]) == 0
+    assert json.loads(capsys.readouterr().out) == diagnostics.safe_result("inspect", "ok")
+
+    monkeypatch.setattr(diagnostics, "run", lambda argv: diagnostics.safe_result("logs", "timeout"))
+    assert diagnostics.main(["logs", "--container", "controller"]) == 1
+    assert json.loads(capsys.readouterr().out) == diagnostics.safe_result("logs", "timeout")
+
+    monkeypatch.setattr(diagnostics, "run", lambda argv: (_ for _ in ()).throw(SystemExit(2)))
+    assert diagnostics.main(["inspect"]) == 2
+    assert capsys.readouterr().out == ""
+
+
+def test_controller_diagnostic_command_nodes_are_local_read_only_and_bounded():
+    controller = next(node for node in control_plane_commands.build() if node.name == "controller")
+    nodes = {node.name: node for node in controller.children}
+    for name, prefix in (("inspect", ("inspect",)), ("logs", ("logs",))):
+        node = nodes[name]
+        assert node.handler is not None
+        assert node.handler.module == "anvil_serving.controller_diagnostics"
+        assert node.handler.argv_prefix == prefix
+        assert node.resource_role == "controller"
+        assert node.transports == ("local",)
+        assert node.execution_runtime_roles == ("native", "docker")
+        assert node.gpu_role_required is False
+        assert node.mutation_class == "read"
+        assert node.remote_operation is None
+    inspect_flags = {flag for option in nodes["inspect"].options for flag in option.flags}
+    logs_flags = {flag for option in nodes["logs"].options for flag in option.flags}
+    assert inspect_flags == {"--container"}
+    assert logs_flags == {"--container", "--tail"}
+
+
+def test_controller_command_tree_dispatches_to_fixed_diagnostic_handler(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(cli, "_resolve_dispatch_plan", lambda path, options: None)
+    monkeypatch.setattr(
+        diagnostics,
+        "inspect_controller",
+        lambda container: calls.append(container) or diagnostics.safe_result("inspect", "ok"),
+    )
+
+    assert cli.main(["controller", "inspect", "--container", "controller_1"]) == 0
+    assert calls == ["controller_1"]
+    assert json.loads(capsys.readouterr().out) == diagnostics.safe_result("inspect", "ok")

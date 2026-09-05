@@ -1,12 +1,13 @@
-"""Bounded, local-only subprocess primitives for controller diagnostics.
+"""Bounded local controller diagnostics and their fixed managed CLI.
 
-This module deliberately does not inspect Docker output or expose a generic
-command runner.  Later controller diagnostic tasks compose its private capture
-primitive with fixed Docker templates and safe projections.
+The module exposes only metadata-safe inspection and projected audit logs for
+one explicitly named local controller container.  It deliberately has no
+generic command runner, raw log mode, or remote daemon selection.
 """
 
 from __future__ import annotations
 
+import argparse
 import os
 import ipaddress
 import json
@@ -749,3 +750,73 @@ def controller_logs(
         unknown_codes=counters["unknown_codes"],
         counters_saturated=saturated,
     )
+
+
+def _container_argument(value: str) -> str:
+    try:
+        return validate_container_name(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a Docker name or ID") from exc
+
+
+def _tail_argument(value: str) -> int:
+    if type(value) is not str or re.fullmatch(r"[0-9]+", value) is None:
+        raise argparse.ArgumentTypeError("must be an integer between 1 and 200")
+    try:
+        return validate_log_tail(int(value, 10))
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError("must be an integer between 1 and 200") from exc
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="anvil-serving controller",
+        description="Read-only, metadata-only local controller diagnostics.",
+        allow_abbrev=False,
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    inspect = commands.add_parser(
+        "inspect",
+        help="Read-only metadata inspection for one controller container.",
+        allow_abbrev=False,
+    )
+    inspect.add_argument(
+        "--container", required=True, type=_container_argument, metavar="NAME",
+        help="required local controller Docker name or immutable ID",
+    )
+    logs = commands.add_parser(
+        "logs",
+        help="Read bounded metadata-only controller audit events.",
+        allow_abbrev=False,
+    )
+    logs.add_argument(
+        "--container", required=True, type=_container_argument, metavar="NAME",
+        help="required local controller Docker name or immutable ID",
+    )
+    logs.add_argument(
+        "--tail", type=_tail_argument, default=DEFAULT_LOG_TAIL, metavar="N",
+        help="metadata audit event tail (1..200; default: 100)",
+    )
+    return parser
+
+
+def run(argv: Optional[list[str]] = None) -> dict[str, object]:
+    """Execute one exact managed diagnostic without printing side effects."""
+    args = _parser().parse_args(argv)
+    if args.command == "inspect":
+        return inspect_controller(args.container)
+    return controller_logs(args.container, args.tail)
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    """Print one exact safe result; parser failures retain argparse's exit 2."""
+    try:
+        result = run(argv)
+    except SystemExit as exc:
+        return 2 if exc.code else 0
+    print(json.dumps(result, sort_keys=True, ensure_ascii=True))
+    return 0 if result.get("state") == "ok" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
