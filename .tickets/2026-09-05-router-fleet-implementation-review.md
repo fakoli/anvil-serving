@@ -1,6 +1,6 @@
 # Router and fleet implementation review corrections
 
-Status: in progress
+Status: resolved for the listed foundation tasks; source publication pending
 Priority: P1
 Date: 2026-09-05
 Scope: qualified-replica-sets, fleet-node-enrollment, workload-visibility
@@ -34,8 +34,10 @@ changes live routing by itself.
   constant-time candidate comparisons, no-follow local file validation,
   duplicate credential rejection, and strict argument validation. Required tests:
   32 passed; broader authorization/config/controller regression: 150 passed,
-  1 skipped; Ruff passed. HTTP and CLI wiring remain separate open tasks.
-- Workload schema, open: refactor owner/state/quality compatibility, unknown-state
+  1 skipped; Ruff passed. Controller HTTP/CLI wiring is now accepted below;
+  router operator authorization remains a separate task.
+- Workload schema, resolved in `db10135ada60138bf83820ccd902f301448257ae`:
+  refactor owner/state/quality compatibility, unknown-state
   projection, freshness validation, source identity/timestamp integrity, truthful
   truncation, aggregate limits, safe typed failures, bounded query parsing, exact
   timestamp ordering, stale visibility, and bounded canonical round trips.
@@ -43,26 +45,33 @@ changes live routing by itself.
   caught seven additional contract gaps: opaque cross-node IDs, safe host IDs,
   exact wire fields, media lifecycle mapping, scalar state filtering, truthful
   partiality, bounded sequence failures, and duplicate-key JSON rejection.
-  The corrective implementation now has 51 passing tests and Ruff passes;
-  independent re-review and post-commit acceptance remain required. The original
+  The corrective implementation has 51 passing post-commit tests and Ruff passes;
+  independent re-review and strict task acceptance passed. A 1000-node envelope
+  round-tripped under the shared cap and the independent reversed-ID ordering
+  negative control failed as expected. The original
   focused executor and stronger corrective author both missed wire-contract
   drift; passing either model's own tests is not independent acceptance.
-- Replica admission, open: enforce bounded copied configuration/readiness,
+- Replica admission, resolved in `c811020ac98caa88f72f8b9e26640446651ec967`:
+  enforce bounded copied configuration/readiness,
   strict member eligibility, compound lease invariants, direct snapshot ordering,
   and event-controlled concurrency coverage. Review rejected silent counter
   divergence and unbounded external iterable materialization before downstream
-  request dispatch can use this API.
-- Controller authorization wiring, open: add pre-body wrong-scope rejection,
+  request dispatch can use this API. The 64-character ID boundary test failed
+  before correction; final post-commit gates passed 28 admission/model-route
+  tests and 9 transition tests, with Ruff and independent review passed.
+- Controller authorization wiring, resolved in
+  `059c5559283b6001e3c02003903d5c1773185d87`: add pre-body wrong-scope rejection,
   unread-body connection closure, keepalive principal reset, store-access guards,
   and response/audit/persisted-result credential redaction. The 95 focused tests
-  pass; independent review and post-commit acceptance remain required.
+  pass post-commit; independent review and strict task acceptance passed. A
+  blanket-allow negative control independently failed the scope regression.
 
 ## Acceptance and closure
 
 Each corrected task must have passing post-commit command proofs, independent
 review, and strict Anvil State application. Integrate the original source commits
-so proof ancestry remains checkable. Keep this ticket open until the workload
-corrections are accepted. Runtime integration, full-product tests, deployment,
+so proof ancestry remains checkable. All listed corrections are independently
+accepted and integrated. Runtime integration, full-product tests, publication, deployment,
 and real-client acceptance remain additional gates in the owning PRDs.
 
 ## Verification commands

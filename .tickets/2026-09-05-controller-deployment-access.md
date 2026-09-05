@@ -61,3 +61,13 @@ durable correction, regression results, and successful identity-checked
 status/deployment verification. Do not stop or reconfigure the unrelated
 Windows listener merely to reclaim a port. No live route, model serve,
 controller, or private configuration has been changed for this investigation.
+
+## Diagnostic implementation review
+
+The approved [bounded diagnostics PRD](../docs/prds/controller-diagnostics.md)
+has seven tasks covering capture, projection, CLI/MCP, both server and client
+permissions, scaffold parity, documentation and actual local diagnostic proof.
+Its first implementation remains unaccepted while child/reader cleanup,
+unsupported macOS classification, capture bounds and adversarial tests are
+corrected. A passing four-test happy-path gate did not establish those lifecycle
+properties. No raw diagnostic output or credentials are added to the ticket.
