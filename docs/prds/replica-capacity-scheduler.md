@@ -257,6 +257,27 @@ Wire the acquired capacity lease's immutable decision through the existing per-r
 - `python scripts/run_tests.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py -x -q`
 - `python -m ruff check anvil_serving/router/decision_log.py anvil_serving/router/serve.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py`
 
+### T005.1: Synchronize legacy counting leases with scheduler evidence
+
+**Feature:** F004
+**Priority:** high
+**Type:** modify
+**Likely files:** tests/router/test_backends.py
+**Dependencies:** T005
+
+The integrated suite found five legacy failure-path tests whose _CountingLease predates MemberAdmissionLease.selection. Mirror the actual round-robin lease shape with selection=None; preserve release counters, injected failure paths and no-peer assertions. Do not weaken the production evidence boundary with getattr defaults or replace real admission coverage.
+
+**Acceptance criteria:**
+
+- The counting lease exposes the same absent scheduler decision as a real round-robin lease.
+- All five eager/lazy/error-metadata regressions reach their intended failure and prove exactly-once release without peer retry.
+- Existing capacity and ordinary routing tests pass without production changes.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_model_routes.py tests/router/test_backends.py -x -q`
+- `python -m ruff check tests/router/test_backends.py`
+
 ### T006: Document the capacity-scheduling contract
 
 **Feature:** F004
