@@ -83,3 +83,10 @@ decision evidence, with explicit typed/captured-JSON validation and no raw
 request authority. All 63 focused tests and Ruff passed after commit
 (EV803BFC31). Refusals have no fabricated score; existing attempt records
 remain the only dispatch accounting. Consolidated acceptance remains open.
+
+T008 candidate 1bfa95e3 implements authenticated member status, quiesce, drain
+and identity-verified readmission. Its 72 focused endpoint/integration tests
+and Ruff passed after commit (EV47295DD3). Member probes and admission changes
+stay scoped; tier readmission does not clear member intent. Invalid scopes
+refuse even during preview without readiness probes. CLI/controller addressing
+and durable member intent remain T009/T010, not completed deployment claims.

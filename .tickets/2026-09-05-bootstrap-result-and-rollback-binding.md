@@ -1,6 +1,6 @@
 # Close receiver results and rollback failure binding
 
-Status: rollback trigger locally integrated; result codec implementation active.
+Status: rollback trigger and result codec locally integrated; batch acceptance pending.
 
 The existing request codec binds operation, node, UUID, plan and trusted target
 configuration, but rollback cannot yet carry the failure that initiated it.
@@ -24,4 +24,11 @@ recorded as EV483C5B8F. All non-cleanup initiating errors round-trip only on
 rollback; other operation literal bytes remain unchanged. Exact frame/schema
 revalidation rejects subclass and frozen-object tampering before serialization.
 This is a locally integrated implementation candidate, not final acceptance or
-an installed protocol change. T004.3 remains in progress in a separate tree.
+an installed protocol change.
+
+T004.3 candidate daf94fe7 passed 418 focused tests and Ruff after commit,
+recorded as EVF22630A6. Frozen protocol-error, identity and operation results
+now have exact bounded framing and request/result matching. Literal fixtures
+and operation/phase matrices cover advanced retries, rollback causes,
+permission verdicts, malformed payloads and privacy without filesystem I/O.
+Receiver staging, permission measurement and installation remain separate work.
