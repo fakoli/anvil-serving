@@ -171,3 +171,48 @@ A real headless Edge smoke at the integrated candidate found script-src 'unsafe-
 - `python scripts/run_tests.py tests/observability/test_workload_content_security_policy.py tests/observability/test_api.py tests/observability/test_dashboard.py tests/observability/test_dashboard_workloads_ui.py -x -q`
 - `python -m ruff check anvil_serving/observability/api.py tests/observability/test_workload_content_security_policy.py`
 
+### T007: Declare global options explicitly in the command manifest
+
+**Feature:** F001
+**Priority:** medium
+**Type:** bugfix
+**Likely files:** anvil_serving/commands/spec.py, docs/CLI-COMMAND-MANIFEST.json, tests/test_command_tree.py
+
+The generated CLI index currently infers global options by intersecting every visible command's options. Sealed workload readers correctly omit topology-resolution globals, so this makes unrelated rows repeat all those flags. Export the canonical CommandTree.global_options as a top-level global_options array using the existing _option_data serializer, and increment the manifest schema from 6 to 7. Per-command options stay authoritative for supported flags; the new array is classification metadata, not inherited authority. Regenerate the manifest with write_manifest. No parser, dispatch, transport or workload policy change belongs here.
+
+**Acceptance criteria:**
+
+- Manifest global_options equals the canonical declared global options, including summaries and option metadata, with deterministic bytes.
+- Schema version is 7; existing command records and the exact sealed workload/help options remain unchanged.
+- Empty and custom global-option trees serialize their actual declaration instead of inferring it from commands.
+
+**Verification:**
+
+- `python -c "from anvil_serving.commands.spec import write_manifest; write_manifest()"`
+- `python scripts/run_tests.py tests/test_command_tree.py -x -q`
+- `python -m ruff check anvil_serving/commands/spec.py tests/test_command_tree.py`
+
+### T008: Generate concise CLI rows from declared global metadata
+
+**Feature:** F001
+**Priority:** medium
+**Type:** bugfix
+**Likely files:** scripts/audit_cli_references.py, tests/test_cli_reference_audit.py, docs/CLI.md, .tickets/2026-09-05-workload-wire-contract-repairs.md
+**Dependencies:** T007
+
+Use the manifest's explicit global_options flag tuples in render_manifest_index, never an intersection or hardcoded flag list. Require a well-formed global_options array with the existing nonempty-string flag shape; malformed or missing metadata fails closed with a bounded ValueError before generation. Preserve command-local options even if every command happens to share them. No legacy-schema fallback is needed: the checked-in generator and schema ship together. Regenerate CLI.md through the existing update path; the inventory should remain byte-identical because this task adds no files or command examples. If regeneration changes other artifacts, report the discrepancy before widening this task. Record the defect and candidate-only fix in the existing repair ticket.
+
+**Acceptance criteria:**
+
+- Adding a sealed command that omits resolution globals does not change unrelated rendered option rows.
+- A shared non-global command flag remains visible; an empty global declaration hides nothing.
+- Missing/malformed global metadata refuses; real workload rows retain exact explicit endpoint/query options and no resolution globals.
+- Generated reference and inventory checks pass without hand-edited generated blocks.
+
+**Verification:**
+
+- `python scripts/audit_cli_references.py --check --scope full`
+- `python scripts/run_tests.py tests/test_cli_reference_audit.py tests/test_docs_command_invocations.py -x -q`
+- `python -m ruff check scripts/audit_cli_references.py tests/test_cli_reference_audit.py`
+- `git diff --check`
+
