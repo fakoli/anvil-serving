@@ -63,7 +63,7 @@ _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 _SECRET_KEY_NAMES = {"api_key", "token", "secret", "password", "realtime_token"}
 _SECRET_VALUE_PREFIXES = ("sk-", "hf_", "hf-", "ghp_", "ghp-")
 _SECRET_VALUE_RE = re.compile(r"\b(sk-(?:proj-)?[A-Za-z0-9_-]{8,}|hf[_-][A-Za-z0-9_-]{8,}|ghp[_-][A-Za-z0-9_-]{8,})\b")
-_LIFECYCLES = {"managed", "external", "native"}
+_LIFECYCLES = {"managed", "external", "native", "service"}
 _STT_RESPONSE_FORMATS = {"json"}
 _TTS_RESPONSE_FORMATS = {"pcm"}
 _TTS_PROTOCOLS = {"openai", "cartesia", "gepard"}
@@ -731,6 +731,7 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
             "voice.%s.lifecycle must be one of %s" % (name, ", ".join(sorted(_LIFECYCLES)))
         )
     _validate_native_lifecycle(table, name, lifecycle, parsed)
+    _validate_service_lifecycle(table, name, lifecycle)
     if "timeout" in table:
         _positive_float(table, "timeout")
     if "ready_timeout" in table:
@@ -743,7 +744,7 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
         )
     if "stop_timeout" in table:
         _positive_float(table, "stop_timeout")
-    for key in ("serve_name", "manifest_path", "serves_manifest"):
+    for key in ("serve_name", "manifest_path", "serves_manifest", "services_manifest"):
         if key in table:
             _string(table, key)
     if name == "stt":
@@ -813,6 +814,16 @@ def _validate_native_lifecycle(table: dict, name: str, lifecycle: str, parsed_ba
             _string(table, key)
 
 
+def _validate_service_lifecycle(table: dict, name: str, lifecycle: str) -> None:
+    """Require an exact shared-supervisor binding only for service lifecycle."""
+    if lifecycle == "service":
+        _string(table, "service")
+    elif "service" in table or "services_manifest" in table:
+        raise ConfigError(
+            "voice.%s service binding keys require lifecycle = \"service\"" % name
+        )
+
+
 def _validate_proxy(data: dict) -> None:
     """Validate the OPTIONAL ``[voice.proxy]`` table.
 
@@ -824,7 +835,8 @@ def _validate_proxy(data: dict) -> None:
 
     Fields (all optional):
       * ``lifecycle`` -- ``managed`` (Docker container), ``native`` (same-host
-        process, the historical default), or ``external``. DEFAULT ``native``.
+        process, the historical default), ``service`` (a declared shared
+        supervisor binding), or ``external``. DEFAULT ``native``.
       * ``serve_name`` / ``manifest_path`` / ``serves_manifest`` -- select the
         ``[[serve]]`` entry (managed lifecycle) fronting the proxy container.
       * ``ready_url`` -- explicit readiness probe (defaults to
@@ -846,9 +858,10 @@ def _validate_proxy(data: dict) -> None:
         raise ConfigError(
             "voice.proxy.lifecycle must be one of %s" % ", ".join(sorted(_LIFECYCLES))
         )
-    for key in ("serve_name", "manifest_path", "serves_manifest"):
+    for key in ("serve_name", "manifest_path", "serves_manifest", "services_manifest"):
         if key in table:
             _string(table, key)
+    _validate_service_lifecycle(table, "proxy", lifecycle)
     if "ready_url" in table:
         _parsed_url(
             _string(table, "ready_url"),
