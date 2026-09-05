@@ -943,6 +943,21 @@ def _format_datetime(value: datetime) -> str:
     return _normalize_datetime(value, field="timestamp").isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
+def normalize_workload_timestamp(value: object) -> datetime:
+    """Return one exact UTC workload timestamp with fixed safe diagnostics."""
+    return _normalize_datetime(value, field="workload timestamp")
+
+
+def format_workload_timestamp(value: object) -> str:
+    """Encode one workload timestamp in canonical microsecond-Z form."""
+    return _format_datetime(normalize_workload_timestamp(value))
+
+
+def parse_workload_timestamp(value: object) -> datetime:
+    """Decode one canonical microsecond-Z workload timestamp."""
+    return _parse_datetime(value, field="workload timestamp")
+
+
 def _parse_datetime(value: object, *, field: str) -> datetime:
     if not isinstance(value, str) or _TIMESTAMP_RE.fullmatch(value) is None:
         raise _invalid(f"{field} must use exact UTC microsecond-Z format")
