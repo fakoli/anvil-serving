@@ -117,19 +117,39 @@ tests resolve actual command-tree specs and refuse a removed permission
 without choosing SSH or a different controller. This template correction
 does not mutate installed private topology or repair live publication.
 
+The client ownership correction is accepted at `4cb23683` and its integration
+at `a2791de5`. The protected root CLI envelope is accepted at `bef0fded` and
+integrated at `e46a8575`. Local and remote human/JSON paths now require the
+complete kind-specific schema, reject hostile scalar and mapping-key types
+before comparison, and suppress parser operands and transport details. The
+envelope review temporarily restored the obsolete six-key schema escape and
+the any-token help bypass; the dedicated regressions failed in both cases,
+including the human literal-separator operand leak, before the guards were
+restored. These are source acceptance checkpoints, not live publication or
+deployment evidence.
+
+The earlier capture negative control raised the shared byte cap by one and made
+the 262145-byte overflow regression fail. The projection negative control
+disabled unknown-field redaction and made the credential-shaped-field privacy
+regression fail. Both controls were restored before their accepted gates.
+
 ## Managed live refresh
 
-After workspace resolution, the new local `controller inspect` and
-`controller logs --tail 20` commands were run from source revision
-`31608057933fe5d74e5a4a32bcdebbacf86f9667`. Both returned bounded v1 results
-with `state = ok`. Inspection confirms the selected container is running and
-healthy and declares one loopback binding, but still reports no observed
-published binding. Logs returned 20 recognized metadata-only audit events,
-zero rejected lines, no truncation, and dropped 120 unknown fields.
+After workspace resolution, the local root `controller inspect --json` and
+`controller logs --tail 20 --json` commands were re-run from source revision
+`7e782797df75dbcc58396edc45576cf335bfe2da`. Both exited zero with structured
+bounded v1 data, an operand-free command, null context, and empty warnings.
+Inspection reported `state = ok`, running and healthy, with one configured
+loopback binding but no observed published binding. Logs reported `state = ok`,
+20 returned events from 20 lines, zero rejected lines and unknown codes, 120
+dropped unknown fields, no truncation, and no counter saturation. The retained
+allowlisted health and tool-list audit statuses were 200. No selector,
+container ID, literal port, raw event, credential, or private path is retained
+in this ticket.
 
 These commands now replace the raw Docker diagnostic fallback for this
 incident. They do not repair publication or establish external endpoint
-identity/version parity. A source review confirms the controller has no
+identity, remote node/build identity, or version parity. A source review confirms the controller has no
 managed container recovery operation yet; foreground serve/status and these
 read-only diagnostics cannot recreate its publication. That bounded recovery
 capability requires a separate implementation with selected-service-only
