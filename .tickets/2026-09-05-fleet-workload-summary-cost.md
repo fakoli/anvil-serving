@@ -1,7 +1,6 @@
 # Make fleet summary composition linear in declared-node metadata
 
-Status: reproduced on e66bfcc6; fix-forward required before bounded fleet
-collection is wired.
+Status: source fix integrated; consolidated acceptance and deployment pending.
 
 A synthetic build_fleet_workloads query with1000 declared nodes, no supplied
 node results and no retained records took8.813 seconds locally. It violates
@@ -26,3 +25,15 @@ Add a deterministic SourceResult construction-count regression demonstrating
 linear metadata work, plus existing global tie/eviction/omission cases. Re-run
 the same1000-node empty probe and record its measured result without claiming
 remote deadline or deployment acceptance.
+
+Candidate 7986e1c1 replaces prefix reconstruction with a bounded worst-first
+heap and lightweight per-source buffers. A deterministic regression failed
+before the fix at 3,045,012 SourceResult constructions for 1,000 empty nodes;
+the fixed implementation passes the ceiling of 64 constructions per node.
+The same local empty-fleet probe took 0.138 seconds after the fix, versus
+8.813 seconds in the earlier concurrent-run probe. These are local timings,
+not a hardware-matched benchmark or remote deadline qualification.
+
+Postcommit proof EVCE315F7D records 102 focused tests passing and Ruff passing.
+Repeated eviction, cross-host identical-ID ties, source-relative order,
+unknown/overflow omissions and receipt-clock regressions remain covered.

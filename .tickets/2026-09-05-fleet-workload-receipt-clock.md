@@ -1,7 +1,6 @@
 # Validate remote workload timestamps against the receipt clock
 
-Status: reproduced on candidate e66bfcc6; fix-forward required before fleet
-reader integration or final acceptance.
+Status: source fix integrated; consolidated acceptance and deployment pending.
 
 A literal node-composition probe has a node timestamp29 seconds after the
 collector's now and an empty COMPLETE controller source timestamp59 seconds
@@ -31,3 +30,9 @@ accepted with a COMPLETE controller source, and a wrong-host node timestamped
 one hour ahead escapes build_fleet_workloads as WorkloadError instead of an
 isolated node failure. Invalid-header fallbacks must use trusted receipt time;
 only a fully valid header can supply the preserved original node time.
+
+Candidate a54c25c3 fixes receipt-relative skew/recency and invalid-header
+fallbacks. The added regressions failed against the predecessor; postcommit
+evidence EVCF77296C records 99 focused tests and Ruff passing. Fleet reader
+and collector candidates include this correction before their claim-bound
+proof. Source integration does not establish live acceptance.
