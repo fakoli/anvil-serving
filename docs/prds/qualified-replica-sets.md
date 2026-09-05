@@ -397,6 +397,20 @@ Carry the selected compound lease through the existing close-aware streaming ite
 
 Expose one logical tier and bounded safe member state through discovery while retaining one public alias. Do not publish member URLs, topology identity, auth references, or synthetic per-member model aliases.
 
+Reuse the accepted `model_capacity.replica_metadata(tier, availability)` projection
+once per logical tier per payload. For each existing configured alias entry backed
+by that replica tier, add exactly `logical_tier` (the configured tier ID), `members`,
+`replica_identity`, `deployment_identity_source` and
+`runtime_deployment_identity_verified`; the last four values come only from the
+shared allowlisted projection. Do not synthesize an extra model entry for the tier
+or any member, remove unavailable aliases, multiply context/concurrency limits,
+or adopt member runtime metadata. Multiple deliberately configured aliases remain
+multiple entries as before, sharing one cached projection for the request. Skip
+the direct `safe_check`/runtime-tier resolution branch for replicas, including
+when no availability provider exists; the empty replica base URL never reaches a
+direct probe. Keep iterable-only and direct-tier output byte-for-behavior unchanged.
+Test through the actual front-door discovery endpoint as well as the pure helper.
+
 **Acceptance criteria:**
 
 - Discovery contains one alias and one logical tier for a replica set.
