@@ -510,6 +510,61 @@ Build the read-only recipe-managed adapter only from the T004.1 `RecipeWorkloadS
 
 - `python scripts/run_tests.py tests/test_serve_recipes.py tests/observability/test_workloads.py -x -q`
 
+### T004.2: Correct recipe workload validation and reconciliation
+
+**Feature:** F003
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/serve_recipes.py, tests/test_recipe_workload_projection.py
+**Dependencies:** T004, T004.1
+
+Repair the projection defects recorded in the recipe workload reconciliation
+ticket without changing producers or lifecycle. First reproduce query
+truncation and invalid/future runtime suppression using literal immutable
+snapshots. Validate the exact query, safe host and collection time before
+calling the reader. Revalidate frozen query fields; malformed calls fail
+through the canonical typed validation boundary before any source read.
+
+Validate the snapshot envelope once and each configuration/runtime component
+independently. Exact component types, enum status, tuple of at most 256 rows,
+bounded omission (0..1000000000 or null), allowed fixed errors, UTC observation
+time and complete/partial/unavailable consistency follow the existing closed
+contract. A malformed component becomes fixed INVALID unavailable without
+discarding its valid peer; bad individual rows are quarantined independently.
+Complete/partial components require a source observation time; failed empty
+components may omit it. Validate source and lifecycle timestamps against both
+their component observation and collection time using the canonical validator.
+
+Only exact typed observations with lowercase 64-hex digests and full container
+IDs enter identity construction. Runtime recipe digest may be null; runtime
+state is exactly running, absent or unsupported. Validate and deduplicate
+runtime candidates before adding their digests to reconciliation. A rejected
+or duplicate runtime row cannot suppress a configured row. Keep the first
+valid row for each native ID, all distinct real containers and valid configured
+peers; duplicate input is INVALID partial. Unknown digest suppresses nothing.
+Use existing recipe namespaces and canonical managed selection, with no new
+I/O, probe, shared state or generic framework.
+
+Normal query truncation of complete input returns PARTIAL, exact omitted
+count and no source error. Producer or validation partiality instead reports
+unknown omission and fixed INVALID, FUTURE, UNAVAILABLE precedence. Both failed
+components are unavailable; a successful empty peer remains partial, not false
+all-source failure. Validate final selected records before constructing the
+SourceResult. Follow the manifest projector's independently validated-candidate
+idiom while keeping recipe data types and namespaces distinct.
+
+**Acceptance criteria:**
+
+- Literal regressions fail on the predecessor's truncated COMPLETE result and pre-validation suppression, then pass after the correction.
+- Invalid/future/duplicate runtime rows cannot hide valid configured peers; malformed components and rows preserve independently valid data.
+- Query filters precede the 200-row cap; exact normal omissions and unknown source omissions remain distinct.
+- IDs, times, component consistency and fixed error precedence match the closed contract without raw private values or extra I/O.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_recipe_workload_projection.py tests/test_serve_recipes.py tests/test_recipe_container_discovery.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/serve_recipes.py tests/test_recipe_workload_projection.py`
+
 ### T011.1: Produce bounded manifest workload observations
 
 **Feature:** F003
@@ -554,6 +609,43 @@ Project only the immutable manifest snapshot through canonical workload_id, inde
 
 - `python scripts/run_tests.py tests/test_manifest_workloads.py tests/observability/test_workloads.py -x -q`
 - `python -m ruff check anvil_serving/manifest_workloads.py tests/test_manifest_workloads.py tests/observability/test_workloads.py`
+
+### T011.2: Preserve valid manifest runtime peers after failed capture
+
+**Feature:** F003
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/manifest_workloads.py, tests/test_manifest_workloads.py
+**Dependencies:** T011.1, T011
+
+Correct only failed-runtime component construction in
+capture_manifest_workload_snapshot. Retained unsupported native/generic
+observations make a failed Compose inspection PARTIAL, with fixed UNAVAILABLE
+error and omitted null; UNAVAILABLE is reserved for zero trustworthy runtime
+rows. Preserve each retained row's original observation/lifecycle timestamps.
+When the failed component has no capture observation time but retains rows,
+use the existing configuration observation time, never the collection clock.
+Keep capture bounds, partial successful parsing and all lifecycle code intact.
+
+Add hermetic mixed native/Compose and generic/Compose fixtures for nonzero empty
+capture, thrown capture failure, malformed/truncated capture, and empty or
+malformed successful output. Pass each resulting snapshot through the canonical
+manifest projection and prove retained unsupported peers, configured Compose
+fallback, fixed errors and unknown omissions. Add no-peer failure controls and
+a no-subprocess native-only control. Record the literal predecessor failure
+before modifying production.
+
+**Acceptance criteria:**
+
+- A failed component with trustworthy rows is PARTIAL and never an invalid UNAVAILABLE-with-records combination.
+- Canonical projection retains valid unsupported peers and never upgrades them to running, healthy identity or idle.
+- Empty failed runtime remains UNAVAILABLE and valid configured peers remain available.
+- All tests are hermetic; source bounds, timestamps and default capture behavior remain unchanged.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_manifest_workloads.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/manifest_workloads.py tests/test_manifest_workloads.py`
 
 ### T005.1: Declare the router workload host identity at startup
 
@@ -611,7 +703,7 @@ Implement the Router workload endpoint ownership and wire contract above. Expose
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/control_plane/controller/server.py, anvil_serving/observability/probes/remote_controller.py, tests/test_controller.py, tests/observability/test_remote_controller.py
-**Dependencies:** T003, T004, T005, T010, T011
+**Dependencies:** T003, T004, T004.2, T005, T010, T011, T011.2
 
 Add the controller workload operation that projects its own controller/benchmark/media/managed-status sources and fetches router work only through the topology-declared authenticated loopback resource. Enforce `workloads:read` before any source read and keep a status for every source.
 
