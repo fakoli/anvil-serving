@@ -277,15 +277,36 @@ must not expose internal paths or resolved transport values.
 
 ### Fixed receiver request framing contract
 
-T004.1 is pure framing. It performs no receiver provisioning, target file read,
+T004.1 supplies pure framing; T004.4 adds the rollback trigger described below.
+Neither performs receiver provisioning, target file read,
 bundle validation, staging, installation, transport or authorization decision.
 
-- Export ReceiverOperation with exactly identity, stage, activate, status and rollback. Frozen BootstrapReceiverFrame has operation, expected_node and optional operation_id, plan_sha256, target_config_sha256, bundle_sha256 and bundle_length; schema is fixed to anvil-serving.fleet-bootstrap-receiver-frame/v1. Direct constructors require exact enum/value types; from_dict requires exact primitive wire types and the exact operation-specific key set. Unknown keys, explicit nulls for omitted fields and Boolean integer substitutes refuse.
-- identity has exactly schema, operation and expected_node. stage additionally requires operation_id, plan_sha256, target_config_sha256, bundle_sha256 and bundle_length. activate/status/rollback additionally require operation_id, plan_sha256 and target_config_sha256, and forbid bundle fields. Reuse the existing canonical node, UUIDv4 and lowercase SHA-256 grammars. bundle_length is an exact integer from 1 through MAX_BUNDLE_BYTES.
+- Export ReceiverOperation with exactly identity, stage, activate, status and rollback. Frozen BootstrapReceiverFrame has operation, expected_node and optional operation_id, plan_sha256, target_config_sha256, bundle_sha256, bundle_length and trigger_error_code; schema is fixed to anvil-serving.fleet-bootstrap-receiver-frame/v1. Direct constructors require exact enum/value types; from_dict requires exact primitive wire types and the exact operation-specific key set. Unknown keys, explicit nulls for omitted fields and Boolean integer substitutes refuse.
+- identity has exactly schema, operation and expected_node. stage additionally requires operation_id, plan_sha256, target_config_sha256, bundle_sha256 and bundle_length. activate/status additionally require operation_id, plan_sha256 and target_config_sha256, and forbid bundle fields. rollback requires those same fields plus its exact trigger_error_code and forbids bundle fields. Every other operation forbids trigger_error_code. Reuse the existing canonical node, UUIDv4 and lowercase SHA-256 grammars. bundle_length is an exact integer from 1 through MAX_BUNDLE_BYTES.
 - encode_receiver_frame(frame, payload=b"") returns four-byte unsigned big-endian JSON length, canonical JSON bytes and stage payload. decode_receiver_frame(raw) returns the validated immutable frame and exact payload bytes. Both accept exact bytes, reject metadata lengths outside 1..4096 before JSON parsing, enforce canonical duplicate-free JSON through the existing decoder, and bound total input before slicing. Identity and non-stage requests have no trailing bytes; stage requires exactly bundle_length bytes, no truncation or trailing bytes.
 - The framing layer checks the outer payload SHA-256 against bundle_sha256 before returning or encoding stage bytes, using digest-mismatch on disagreement. It does not parse ZIP or install anything: structurally framed non-ZIP bytes are still subject to later validate_bundle. Malformed framing, wrong types, unknown fields and noncanonical JSON use invalid-contract with fixed input-free messages. to_dict serializes only the operation-specific allowlist, never object __dict__.
 - target_config_sha256 binds the trusted local target configuration independently of the opaque full plan hash. A transport first compares receiver identity and configuration digests against BootstrapPlan, then includes the expected configuration digest on every non-identity request. The receiver must re-read and compare it at each stage/activation mutation boundary. This closes configuration drift between identity preflight and upload. Controller stage additionally carries X-Anvil-Target-Config-SHA256 and applies the same pre-body check; later typed calls carry that digest with operation_id and plan_sha256.
 - Tests cover all five operation round trips, exact literal byte framing, 0/4097 metadata lengths, truncated header/JSON/payload, trailing data, duplicate keys, noncanonical JSON, invalid UTF-8, unknown operations/fields, explicit null/Boolean substitutions, UUID/digest/node bounds, maximum payload, digest mismatch, immutable values and no seeded private payload in errors. No filesystem/network/environment/mutation seam is called.
+
+### Receiver rollback trigger and result framing contract
+
+T004.4 is a fix-forward of the unpublished request contract: rollback must
+carry its initiating failure so post-restart acceptance failure can be bound
+durably without caller prose or an inferred cause. T004.3 then closes only
+pure result values/codecs; permissions, filesystem state and operation policy
+remain later receiver responsibilities.
+
+- Add optional trigger_error_code to BootstrapReceiverFrame, required only for rollback and omitted for every other operation. Its exact enum is BootstrapErrorCode except cleanup-failed: cleanup requires an original cause, not itself. Rollback wire adds this one required enum string to its existing closed fields; explicit null, missing, wrong type and extra-operation use refuse. Every other operation remains byte-identical. Revalidate exact frame type/schema/fields before to_dict or encoding, including tampered frozen values. This fixes an unpublished v1 candidate; it does not claim an installed protocol migration.
+- The trigger is evidence, never permission to roll back an arbitrary successful operation. T004/T005 authorize the operation/state separately, bind the initiating code when rollback starts, and refuse a changed trigger on an identical-UUID retry before action. Internal automatic rollback binds its own fixed initiating failure. No trigger text, command, path or environment value is accepted.
+- Result schema is anvil-serving.fleet-bootstrap-receiver-result/v1. MAX_RECEIVER_RESULT_BYTES is 4096. encode_receiver_result(result) and decode_receiver_result(raw) use exactly four-byte unsigned big-endian JSON length, canonical JSON and EOF; length is 1..4096 and total input is checked before slicing/parsing. Reuse the existing duplicate-free bounded decoder, exact primitive/enum validators, closed field sets and canonical byte comparison. No result payload/trailing bytes exist.
+- Add BootstrapPermissionVerdict with exactly owner-readonly, owner-writable, untrusted-writable, indeterminate and unsupported. Add frozen BootstrapReceiverProtocolError, BootstrapReceiverIdentityResult and BootstrapReceiverOperationResult, plus their BootstrapReceiverResult union. Constructors, to_dict and codecs revalidate exact types/schema/fields and reject subclasses/tampering with fixed input-free invalid-contract errors. Only closed safe fields are retained/serialized/repr; no raw mapping, path, owner/UID/ACL detail, command, exception or provider output is stored.
+- BootstrapReceiverProtocolError has exactly schema, operation=null, expected_node=null, outcome=error and error_code=invalid-contract. These are fixed init=False constants: an undecodable request or unavailable trusted identity cannot supply guessed/partially echoed fields.
+- BootstrapReceiverIdentityResult has exactly schema, operation=identity, expected_node, outcome, receiver_sha256, target_config_sha256, receiver_permission, target_config_permission and error_code. Node uses the existing exact grammar; digests are exact lowercase SHA-256 or null when unmeasurable, and permissions always use exact verdict enums. Success requires both digests, receiver owner-readonly, configuration owner-readonly or owner-writable, and null error. Error requires one of receiver-mismatch, precondition-failed, unsupported-platform, invalid-contract or internal-error; pending is forbidden. A codec verifies shape, not measured digest truth or permissions.
+- BootstrapReceiverOperationResult has exactly schema, operation, expected_node, operation_id, plan_sha256, target_config_sha256, bound, bundle_sha256, bundle_length, manifest_sha256, phase, outcome, error_code and trigger_error_code. Operation is stage, activate, status or rollback only; UUID/node/digests reuse existing grammars and bound is exact bool. Bound=true requires bundle/manifest digests and exact integer bundle_length in 1..MAX_BUNDLE_BYTES, asserting a validated durable binding matching all echoed request identity. Bound=false requires all three bundle fields null, phase refused, outcome error, nonnull fixed error and null trigger; it reveals no conflicting stored identity.
+- Bound ordinary phases staged, verified, installed, activated and restarted are pending with both error fields null. Rollback-started is pending with a nonnull non-cleanup original error and null trigger. Rolled-back and manual-recovery are error with a nonnull non-cleanup original error and null trigger. Cleanup-failed is error with error_code=cleanup-failed and required nonnull non-cleanup trigger_error_code. No planned, accepted or bound refused result exists; controller acceptance and cleanup after accepted success remain orchestration/receipt work.
+- Stage and status may report any bound receiver-owned phase, including already-advanced or rollback state on an identical lost-response retry. Activate may report installed, activated, restarted, rollback-started, rolled-back, manual-recovery or cleanup-failed. Rollback may report rollback-started, rolled-back, manual-recovery or cleanup-failed. Every operation may instead return unbound refused. Use existing fixed error enums with phase consistency, not per-operation allowlists that prevent status from reporting historical errors.
+- match_receiver_result(frame,result) validates exact input objects, raises fixed invalid-contract for protocol-error, and otherwise requires exact operation/node plus operational UUID/plan/config equality. Bound stage additionally matches request bundle SHA/length. Bound rollback requires its original error (error_code, or trigger_error_code for cleanup-failed) equal the request trigger. A well-formed but mismatched response raises fixed receiver-mismatch. The matcher returns the validated result unchanged and performs no state/IO/authorization. Expected measured receiver/config digests and permission policy are compared separately during T004/T013 preflight.
+- Tests use literal canonical bytes for all three variants and every phase/operation row, malformed prefix/length/truncation/trailing/UTF-8/duplicate/noncanonical JSON, exact field/type/enum/null/subclass failures, binding and trigger mismatches, permission combinations, tampered values, bounds and seeded private-data absence. No file, network, environment, staging, installation, permission measurement or live availability is implied.
 
 ### Receiver ownership and staging boundary
 
@@ -574,13 +595,58 @@ Implement the pure target-configuration value, canonical private serializer and 
 - `python scripts/run_tests.py tests/test_fleet_bootstrap.py tests/test_topology.py tests/test_targets.py tests/test_topology_defaults.py -x -q`
 - `python -m ruff check anvil_serving/fleet_bootstrap.py anvil_serving/topology.py tests/test_fleet_bootstrap.py`
 
+### T004.4: Bind rollback requests to their initiating failure
+
+**Feature:** F002
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/fleet_bootstrap.py, tests/test_fleet_bootstrap.py
+**Dependencies:** T004.1
+
+Implement the closed rollback-only trigger field and exact frame revalidation above. Preserve the other four operation wire bytes and all stage framing/digest limits. This pure fix-forward does not authorize or execute rollback.
+
+**Acceptance criteria:**
+
+- Rollback requires and round-trips one exact non-cleanup fixed initiating error; every other operation forbids the field.
+- Missing/null/extra/wrong-type/subclass and tampered frame values refuse before serialization with fixed privacy-safe errors.
+- Existing identity/stage/activate/status bytes and stage payload validation remain unchanged.
+- No filesystem, transport, rollback action or authorization behavior is introduced.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_fleet_bootstrap.py -x -q`
+- `python -m ruff check anvil_serving/fleet_bootstrap.py tests/test_fleet_bootstrap.py`
+
+### T004.3: Define bounded receiver result frames
+
+**Feature:** F002
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/fleet_bootstrap.py, tests/test_fleet_bootstrap.py
+**Dependencies:** T002, T004.1, T004.2, T004.4
+
+Implement only the closed immutable result variants, canonical bounded codec and request/result matcher above. Results report receiver-owned current state; they neither replace BootstrapReceipt nor claim controller acceptance. Reuse existing enum, ID, JSON and fixed-error idioms without adding IO or receiver execution.
+
+**Acceptance criteria:**
+
+- All result variants round-trip through exact bounded canonical length-prefixed bytes with closed field/type/phase contracts.
+- Malformed or mismatched responses fail with fixed invalid-contract or receiver-mismatch errors without retaining private raw data.
+- Identical stage retries can truthfully report advanced bound state, and rollback results bind their original triggering failure.
+- Identity permissions/digests are typed evidence only; no codec or result confers operation authorization or deployment acceptance.
+- Literal fixtures and negative matrices cover every documented result, framing, binding, permission and tampering boundary.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_fleet_bootstrap.py -x -q`
+- `python -m ruff check anvil_serving/fleet_bootstrap.py tests/test_fleet_bootstrap.py`
+
 ### T004: Implement the fixed receiver protocol and target validation
 
 **Feature:** F002
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/fleet_bootstrap.py, anvil_serving/control_plane/bootstrap_shim.py, tests/test_fleet_bootstrap.py
-**Dependencies:** T008, T011, T004.1, T004.2
+**Dependencies:** T008, T011, T004.1, T004.2, T004.3, T004.4
 
 Implement the stdlib-only pinned receiver and fixed `identity|stage|activate|status|rollback` protocol. Every operation accepts only the closed framed metadata for operation ID, plan digest, and expected node; stage additionally binds the bundle digest/length and exact ZIP bytes. Install only after canonical manifest/archive/path/digest validation. This slice contains no network subprocess or controller endpoint wiring.
 

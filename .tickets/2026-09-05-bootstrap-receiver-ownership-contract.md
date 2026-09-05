@@ -49,3 +49,7 @@ standalone bootstrap validator and topology reuses them, avoiding either a
 second path grammar or a receiver dependency on topology/targets/controller.
 Private bytes are explicitly named and never emitted by a generic public
 serializer. False policy flags remain valid data, not operation authority.
+
+Target configuration candidate f595dfeb passed 616 focused tests and Ruff
+after commit (EV7650D9DC). It is locally integrated pending consolidated
+acceptance; no configuration was provisioned or receiver installed.

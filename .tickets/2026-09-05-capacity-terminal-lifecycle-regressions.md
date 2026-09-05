@@ -1,6 +1,6 @@
 # Capacity scheduler terminal lifecycle regression matrix
 
-Status: implementation queued; consolidated acceptance pending.
+Status: candidate implemented; consolidated acceptance pending.
 
 ## Why
 
@@ -27,3 +27,10 @@ discovered gets its own scoped implementation record.
 
 Per the operator's batch cadence, ordinary regression proof accompanies the
 candidate; formal acceptance occurs with the completed feature batch.
+
+Candidate e1b21ff2 passed 69 focused tests and Ruff after commit (EV48A70564).
+Real admission counters and real relay parsers are exercised with fake
+upstream transports and ephemeral loopback front doors. Buffered close before
+first iteration makes zero upstream transport attempts; eager SSE closes its
+selected response. Both release the reservation exactly once with no peer
+dispatch. No production code or live deployment changed.
