@@ -307,6 +307,13 @@ topology file is the registry, and Docker restart policy is the supervisor.
 
 ## Evidence and observability
 
+The read-only [workload visibility](WORKLOAD-VISIBILITY.md) schema projects
+bounded active and recent metadata from router, controller, benchmark, media,
+recipe, and manifest owners without becoming a second lifecycle authority.
+Node and fleet completeness, source timestamps, observation quality, and
+unknown omissions remain explicit across CLI, scoped HTTP/MCP, and dashboard
+surfaces.
+
 `DecisionLog` records routing metadata without request/response content:
 normalized alias, selected tier, timing, token counters where available, and
 terminal outcome. Records carry a creation timestamp and can be persisted
