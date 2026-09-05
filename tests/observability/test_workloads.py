@@ -38,6 +38,8 @@ from anvil_serving.observability.workloads import (
     fleet_result_to_json,
     map_unknown_owner_state,
     node_result_from_json,
+    node_result_from_dict,
+    node_result_to_dict,
     node_result_to_json,
     parse_workload_query,
     select_records,
@@ -52,6 +54,10 @@ from anvil_serving.observability.workloads import (
     workload_record_from_json,
     workload_record_to_dict,
     workload_record_to_json,
+)
+from anvil_serving.observability.workload_tools import (
+    node_workloads_declaration,
+    parse_node_workload_query,
 )
 
 NOW = datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc)
@@ -412,6 +418,78 @@ def test_query_filters_and_limit_one_thousand() -> None:
     assert select_records(records, query, now=NOW)[0] == (records[0],)
 
 
+def test_host_identifier_bound_is_shared_by_construction_decoding_and_tool_parser() -> None:
+    valid = "h" * 64
+    overlong = "h" * 65
+    record = _record(host=valid)
+    source = _source(records=(record,))
+    node = _node(valid, (source,))
+    fleet = _fleet((node,))
+
+    assert WorkloadQuery(host=valid).host == valid
+    assert parse_workload_query({"host": valid}).host == valid
+    assert parse_node_workload_query({"host": valid}).host == valid
+    assert len(
+        workload_id(valid, WorkloadKind.ROUTER_REQUEST, WorkloadOwner.ROUTER, "native")
+    ) == 64
+    assert record.host == valid
+    assert node.host == valid
+    assert fleet.nodes[0].host == valid
+    assert workload_record_from_dict(workload_record_to_dict(record)) == record
+    assert node_result_from_dict(node_result_to_dict(node)) == node
+    assert fleet_result_from_dict(fleet_result_to_dict(fleet)) == fleet
+
+    record_data = workload_record_to_dict(record)
+    node_data = node_result_to_dict(node)
+    fleet_data = fleet_result_to_dict(fleet)
+    record_data["host"] = overlong
+    node_data["host"] = overlong
+    fleet_data["nodes"][0]["host"] = overlong  # type: ignore[index]
+    for build in (
+        lambda: WorkloadQuery(host=overlong),
+        lambda: parse_workload_query({"host": overlong}),
+        lambda: parse_node_workload_query({"host": overlong}),
+        lambda: workload_id(overlong, WorkloadKind.ROUTER_REQUEST, WorkloadOwner.ROUTER, "native"),
+        lambda: _record(host=overlong),
+        lambda: NodeResult(overlong, ResultStatus.COMPLETE, NOW, (source,)),
+        lambda: workload_record_from_dict(record_data),
+        lambda: node_result_from_dict(node_data),
+        lambda: fleet_result_from_dict(fleet_data),
+    ):
+        with pytest.raises(WorkloadError):
+            build()
+
+    declaration = node_workloads_declaration()["inputSchema"]["properties"]["host"]
+    assert declaration == {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+        "maxLength": 64,
+    }
+    for invalid in ("h" * 63 + "\n", "h" * 63 + " ", "\u00e9" + "h" * 63):
+        for parse in (parse_workload_query, parse_node_workload_query):
+            with pytest.raises(WorkloadError):
+                parse({"host": invalid})
+
+
+def test_non_host_text_limit_remains_independent_of_host_identifier_bound() -> None:
+    host = "h" * 64
+    assert len(
+        workload_id(
+            host,
+            WorkloadKind.ROUTER_REQUEST,
+            WorkloadOwner.ROUTER,
+            "n" * MAX_TEXT_LENGTH,
+        )
+    ) == 64
+    with pytest.raises(WorkloadError):
+        workload_id(
+            host,
+            WorkloadKind.ROUTER_REQUEST,
+            WorkloadOwner.ROUTER,
+            "n" * (MAX_TEXT_LENGTH + 1),
+        )
+
+
 def test_exact_datetime_sort_preserves_microseconds_and_id_tie_break() -> None:
     first = _record("z", updated_at=NOW.replace(microsecond=1))
     second = _record("a", updated_at=NOW.replace(microsecond=2))
@@ -461,7 +539,7 @@ def test_maximum_valid_envelope_round_trips_within_common_json_cap() -> None:
         WorkloadOwner.MEDIA,
         WorkloadOwner.RECIPE,
     )
-    host = "h" * MAX_TEXT_LENGTH
+    host = "h" * 64
     sources_list: list[SourceResult] = []
     for owner in owners:
         records = tuple(
