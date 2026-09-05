@@ -67,7 +67,13 @@ controller, or private configuration has been changed for this investigation.
 The approved [bounded diagnostics PRD](../docs/prds/controller-diagnostics.md)
 has seven tasks covering capture, projection, CLI/MCP, both server and client
 permissions, scaffold parity, documentation and actual local diagnostic proof.
-Its first implementation remains unaccepted while child/reader cleanup,
-unsupported macOS classification, capture bounds and adversarial tests are
-corrected. A passing four-test happy-path gate did not establish those lifecycle
-properties. No raw diagnostic output or credentials are added to the ticket.
+Its capture foundation is accepted in
+`b64687aae2c809633a1196534466c73e0abf75b4` after independent review and
+10 passing post-commit tests plus Ruff. Corrections cover child/reader cleanup,
+unsupported macOS classification, shared capture bounds, hostile post-spawn
+failures, deadline precedence, exact result types and truncation invariants.
+An independent negative control raised the byte cap by one and made the
+262145-byte overflow regression fail. A passing four-test happy-path gate had
+not established those lifecycle properties. Fixed inspection/log projections
+and all user-facing wiring remain pending; this does not resolve deployment
+access. No raw diagnostic output or credentials are added to the ticket.

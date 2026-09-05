@@ -74,6 +74,11 @@ so proof ancestry remains checkable. All listed corrections are independently
 accepted and integrated. Runtime integration, full-product tests, publication, deployment,
 and real-client acceptance remain additional gates in the owning PRDs.
 
+The integrated eight-task foundation at code revision `d9b4943b` passed
+4848 tests with 10 skips in 197.31 seconds. The router/controller/workload
+combined subset passed 733 tests in 92.54 seconds. These are baseline regression
+results, not acceptance of unimplemented PRD tasks or deployment proof.
+
 ## Verification commands
 
 ```console
