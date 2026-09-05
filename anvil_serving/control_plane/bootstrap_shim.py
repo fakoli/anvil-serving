@@ -81,6 +81,11 @@ def _sid(authority: int, *subauthorities: int) -> bytes:
 
 _SYSTEM_SID = _sid(5, 18)
 _ADMINISTRATORS_SID = _sid(5, 32, 544)
+# Windows Resource Protection owns some system ancestors. This exception must
+# never expand the set of trusted receiver/configuration file principals.
+_TRUSTED_INSTALLER_SID = _sid(
+    5, 80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464
+)
 
 
 def _valid_sid(value: object) -> bool:
@@ -183,7 +188,10 @@ def _classify_windows_acl(
         return BootstrapPermissionVerdict.INDETERMINATE
     owner = bytes(owner_sid)
     current = bytes(current_sid)
-    if owner not in {current, _SYSTEM_SID, _ADMINISTRATORS_SID}:
+    trusted = {current, _SYSTEM_SID, _ADMINISTRATORS_SID}
+    if ancestor:
+        trusted.add(_TRUSTED_INSTALLER_SID)
+    if owner not in trusted:
         return BootstrapPermissionVerdict.UNTRUSTED_WRITABLE
     if dacl is None:
         return BootstrapPermissionVerdict.UNTRUSTED_WRITABLE
@@ -194,7 +202,6 @@ def _classify_windows_acl(
     if ancestor:
         untrusted_mutation_mask &= ~(_FILE_WRITE_DATA | _FILE_APPEND_DATA)
     owner_writable = False
-    trusted = {current, _SYSTEM_SID, _ADMINISTRATORS_SID}
     for ace_type, flags, mask, sid in aces:
         # A deny ACE is structurally validated but never used to subtract an
         # overlapping allow. This is deliberately not an access evaluator.

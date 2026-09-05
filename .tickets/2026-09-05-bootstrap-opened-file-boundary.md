@@ -32,3 +32,9 @@ API mechanics are documented by Microsoft's
 and Python's [descriptor-relative file operations](https://docs.python.org/3/library/os.html#os.open).
 The ancestor trust policy is Anvil's explicit bounded choice, not a guarantee
 that an OS API alone eliminates path races.
+
+T004.8 now recognizes only that exact SID for ancestor classification. Literal
+tests keep ordinary file trust unchanged, reject one-component SID changes,
+and retain independent rejection of unrelated mutation grants and malformed
+ACLs. No native permissions or paths were modified. This is candidate source
+pending consolidated acceptance; the anchored file reader remains separate.
