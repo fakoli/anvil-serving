@@ -106,6 +106,55 @@ _STOPPED = ("exited", "created", "dead")
 _MAX_COMMAND_FAILURE_CHARS = 8192
 
 
+class ReplicaLifecycleUnsupported(ValueError):
+    """Fixed, non-mutating refusal for lifecycle paths with replica tiers."""
+
+    code = "replica_lifecycle_unsupported"
+
+    def __init__(self) -> None:
+        super().__init__(self.code)
+
+
+class ReplicaLifecycleConfigurationUnavailable(ReplicaLifecycleUnsupported):
+    """Fixed refusal when lifecycle ownership cannot be established locally."""
+
+    code = "replica_lifecycle_configuration_unavailable"
+
+
+def _guard_replica_lifecycle(config, tier_ids) -> None:
+    """Refuse replica lifecycle work from an already parsed, bounded config."""
+    from .router.config import RouterConfig
+
+    if not isinstance(config, RouterConfig):
+        raise ReplicaLifecycleConfigurationUnavailable()
+    if not isinstance(tier_ids, (list, tuple)) or not 1 <= len(tier_ids) <= 200:
+        raise ReplicaLifecycleConfigurationUnavailable()
+    for tier_id in tier_ids:
+        if not isinstance(tier_id, str) or not tier_id:
+            raise ReplicaLifecycleConfigurationUnavailable()
+        try:
+            tier = config.tier(tier_id)
+        except Exception:
+            raise ReplicaLifecycleConfigurationUnavailable() from None
+        if tier.replicas:
+            raise ReplicaLifecycleUnsupported()
+
+
+def _promotion_lifecycle_configs(plan):
+    """Load both declared promotion configurations only for the pure guard."""
+    from .router.config import load as load_router_config
+
+    try:
+        promoted = load_router_config(plan["router_config"])
+        rolled_back = load_router_config(plan["rollback_router_config"])
+        affected = plan["affected_tiers"]
+    except Exception:
+        raise ReplicaLifecycleConfigurationUnavailable() from None
+    _guard_replica_lifecycle(promoted, affected)
+    _guard_replica_lifecycle(rolled_back, affected)
+    return promoted, rolled_back
+
+
 def _command_failure_text(result, env=None):
     """Return a bounded, redacted tail from a failed lifecycle command.
 
@@ -1087,8 +1136,6 @@ def _exact_serve(serves, name):
 
 def _validate_promotion_topology(serves, plan):
     """Validate both complete capability meta-router configs against their selected serve."""
-    from .router.config import load as load_router_config
-
     target = _exact_serve(serves, plan["target"])
     old = _exact_serve(serves, plan["rollback"])
     affected = set(plan["affected_tiers"])
@@ -1098,8 +1145,7 @@ def _validate_promotion_topology(serves, plan):
         raise ValueError("promotion target and rollback must use the same fixed endpoint port")
     if target["name"] == old["name"]:
         raise ValueError("promotion target and rollback must be distinct serves")
-    promoted = load_router_config(plan["router_config"])
-    rolled_back = load_router_config(plan["rollback_router_config"])
+    promoted, rolled_back = _promotion_lifecycle_configs(plan)
     if dict(promoted.model_routes) != dict(rolled_back.model_routes):
         raise ValueError("promotion router configs must declare identical capability aliases")
     promoted_ids = {tier.id for tier in promoted.tiers}
@@ -1563,6 +1609,9 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                           dry_run=False, require_candidate=True, resume=False,
                           _run=subprocess.run,
                           _open=urllib.request.urlopen, _sleep=time.sleep):
+    # Direct callers include rollback/recovery paths; refuse before any probe,
+    # transition, container operation, or compensating lifecycle action.
+    _promotion_lifecycle_configs(plan)
     target = _exact_serve(serves, plan["rollback"] if rollback else plan["target"])
     displaced = _exact_serve(serves, plan["target"] if rollback else plan["rollback"])
     candidate = _exact_serve(serves, plan["candidate"]) if plan.get("candidate") else None
@@ -2257,6 +2306,13 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
     # Promotion plans may overlap on only some affected tiers. A lock derived
     # from the complete tier set would let partially overlapping plans race, so
     # all live promotions share one short, explicit transaction lock.
+    matches = [plan for plan in promotions if plan["name"] == name]
+    if len(matches) == 1:
+        try:
+            _promotion_lifecycle_configs(matches[0])
+        except ReplicaLifecycleUnsupported as exc:
+            print("promotion refused: %s" % exc)
+            return 1
     lock = nullcontext() if dry_run else _switch_role_lock("promotion")
     try:
         with lock:
@@ -3624,6 +3680,16 @@ def cmd_up_for(config, serves, alias, config_path, as_json=False, confirm=False,
         else:
             print(message, file=sys.stderr)
         return 2
+
+    try:
+        _guard_replica_lifecycle(config, [result["tier_id"]])
+    except ReplicaLifecycleUnsupported as exc:
+        message = str(exc)
+        if as_json:
+            print(json.dumps({**result, "error": message}, indent=2, sort_keys=True))
+        else:
+            print(message, file=sys.stderr)
+        return 1
 
     candidates = result["candidates"]
     if not candidates:
