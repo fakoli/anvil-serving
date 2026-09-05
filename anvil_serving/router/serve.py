@@ -261,6 +261,14 @@ class _ConcurrencyLimitedBackend:
         return fn() if callable(fn) else None
 
 
+def _configured_replica_members(config: RouterConfig) -> dict[str, tuple[str, ...]]:
+    """Use the same declared membership for volatile and durable admission."""
+    return {
+        tier.id: tuple(member.id for member in tier.replicas)
+        for tier in config.tiers if tier.replicas
+    }
+
+
 class RoutingBackend:
     """Resolve one configured capability alias and relay to its one tier."""
 
@@ -284,7 +292,10 @@ class RoutingBackend:
             for tier_id, backend in backends.items()
         }
         self._availability = availability if availability is not None else AlwaysAvailable()
-        self._admission = admission or TierAdmission(tier.id for tier in config.tiers)
+        self._admission = admission if admission is not None else TierAdmission(
+            (tier.id for tier in config.tiers),
+            replica_members=_configured_replica_members(config),
+        )
         self._capacity_metrics = capacity_metrics or fetch_vllm_metrics
         self._started_at = time.time()
         # `is None`, not truthiness: DecisionLog defines __len__, so an empty
@@ -695,6 +706,7 @@ class RoutingBackend:
             self._availability,
             self._capacity_metrics,
             query,
+            admission=self._admission,
         )
 
     def model_discovery(self) -> dict:
@@ -913,7 +925,10 @@ def _durable_admission(path: str, config: RouterConfig) -> TierAdmission:
                 flush=True,
             )
 
-    admission = TierAdmission(tier_ids, on_state_change=_persist)
+    admission = TierAdmission(
+        tier_ids, replica_members=_configured_replica_members(config),
+        on_state_change=_persist,
+    )
     holder["admission"] = admission
     for tier_id, reason in intent.items():
         try:
