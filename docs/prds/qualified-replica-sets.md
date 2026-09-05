@@ -322,12 +322,21 @@ Add a bytes-based router-config parser and a pure replica topology validator. Bo
 
 Build existing member adapters under a `ReplicaRuntime` aggregate stored at the outer logical tier ID. Derive validated per-member direct-tier views only after configuration loading, preserve the tier-wide dialect, timeout, auth, and semantic policy, and keep the outer backend map keyed by tier ID. Do not create a second alias-resolution or engine-selection path.
 
+The aggregate owns a copied, immutable mapping of exactly the declared member IDs to existing backend adapters. Expose `member_ids`, `member_backend(member_id)`, and `generate_member(member_id, request)`; unknown members fail with a fixed input-free error. Its ordinary `generate(request)` must refuse with a fixed selection-required error and invoke no adapter. T008, not this constructor, selects the member. Build direct views with `replace(tier, base_url=member.base_url, replicas=())` and forward the existing environment, transport, effective timeout and model-discovery arguments unchanged.
+
+Preserve the selected adapter's structured-result side channel. `ReplicaRuntime` keeps a thread-local selected-backend pointer, not a copied result or terminal store. Clear it before lookup/invocation and on refusal or eager failure; retain only the successfully invoked member for that thread. `get_last_structured()` delegates to that member's existing method or returns None. The existing outer wrapper already forwards this method, and `RoutingBackend.complete_metadata()` reads it after normal iterator drain for tool calls, finish reason and usage. T008 must invoke the outer wrapper's `generate_member`, never bypass its ceiling through a raw member backend.
+
+Keep readiness in the single existing `RoutingBackend._availability` provider, whose accepted T003 implementation already keys probes by `(tier.id, member.id)`. Do not add a readiness cache or a provider per replica. T008 calls `safe_check_member` on that owner to complete all snapshots before admission. Likewise, retain exactly one outer `_ConcurrencyLimitedBackend` for the logical tier. Add an explicit `generate_member` forwarding path that acquires its existing semaphore and returns the existing close-aware iterator; do not put a semaphore on each member or multiply the configured tier ceiling. Preserve direct `generate` and structured-result behavior. The source finding and ownership decision are recorded in `.tickets/2026-09-05-replica-runtime-construction.md`.
+
 **Acceptance criteria:**
 
-- Every configured member has one backend and one member-keyed readiness source inside its tier runtime.
+- Every configured member has one backend in its tier aggregate; readiness remains in the existing single provider under a composite tier/member key, with no new cache or network call during construction.
 - Equal member IDs in different tiers resolve to different runtime objects.
 - The empty replica-tier URL sentinel never reaches a URL builder.
 - Direct tiers still construct exactly one existing backend.
+- Aggregate generation without explicit selection and unknown member lookup both refuse before invoking an adapter, without echoing the member operand.
+- A tier with a concurrency limit retains one shared outer semaphore. Event-controlled cross-member tests prove it releases on error and on close-before-first-iteration, and cannot admit one request per member beyond the shared ceiling.
+- After normal drain, aggregate and outer wrapper expose exactly the selected member's structured tool calls, finish reason and usage. Event-controlled concurrent threads never cross-observe results; refusal and eager failure reset the pointer. Removing the structured-result delegation makes the regression fail.
 
 **Verification:**
 

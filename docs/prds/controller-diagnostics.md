@@ -40,6 +40,7 @@ adding a lifecycle supervisor or bypassing endpoint authentication.
 - R008: Expose the same read-only implementation through `controller_inspect` and `controller_logs` MCP tools and command-tree operation contracts. They target the controller resource on its owning native/Docker runtime, never require a model GPU role, and do not gain SSH fallback. Existing operator/controller authentication applies; the new workload-read and bootstrap scopes do not grant these legacy operator tools.
 - R009: Document that local CLI diagnosis is required when the remote controller is unavailable; remote MCP cannot diagnose its own unreachable transport. Neither a successful inspect/log result nor an image label proves node/build identity or deployment readiness.
 - R010: Unit, CLI, MCP, help/manifest, privacy and full repository gates must pass; a negative control must demonstrate at least the subprocess bound and unknown-field redaction tests fail when those guards are removed.
+- R011: The entire root CLI output for controller inspect/logs, local or remote, must retain only the canonical diagnostic result and fixed input-free errors. Use an operand-free command label, literal null context, empty warnings and structured data; never wrap printed JSON or expose topology, raw argv, transport details or nested unvalidated response fields.
 
 ## Acceptance Criteria
 
@@ -170,7 +171,7 @@ Provide a fixed-target, fixed-output diagnostic core.
 
 Make diagnostics usable through supported operator surfaces and prove parity.
 
-**Requirements:** R008, R009, R010
+**Requirements:** R008, R009, R010, R011
 
 ## Tasks
 
@@ -328,7 +329,7 @@ owning runtime, with expected-node identity retained and no SSH fallback.
 **Feature:** F002
 **Priority:** high
 **Type:** modify
-**Dependencies:** T007, T008
+**Dependencies:** T007, T008, T009
 **Likely files:** docs/CLI-COMMAND-MANIFEST.json, docs/cli/control-plane.md, docs/prds/README.md, .tickets/2026-09-05-controller-deployment-access.md
 
 Generate the manifest with write_manifest, document the metadata-only/unsupported
@@ -370,3 +371,35 @@ Fix `cli.py::_remote_scalar` so schema-declared integer values require an option
 
 - `python scripts/run_tests.py tests/test_cli.py tests/test_controller_diagnostics.py -x -q`
 - `python -m ruff check anvil_serving/cli.py tests/test_cli.py tests/test_controller_diagnostics.py`
+
+### T009: Protect structured diagnostic results at the complete CLI boundary
+
+**Feature:** F002
+**Priority:** high
+**Type:** modify
+**Dependencies:** T007, T008
+**Likely files:** anvil_serving/controller_diagnostics.py, anvil_serving/commands/control_plane.py, anvil_serving/cli.py, tests/test_cli.py
+
+Close `.tickets/2026-09-05-controller-diagnostic-envelope-privacy.md` through the actual root CLI, not only the diagnostic core. Add `controller_diagnostics.validate_public_result(value, *, expected_kind)` that returns a fresh allowlisted dictionary or raises a fixed input-free ValueError. Require exact built-in dictionary/list/scalar types in the core result, exact top-level keys, the existing v1 schema/state/error/truncation invariants, bounded hexadecimal container IDs, exact inspection binding rows and strict port ranges/classes. Validate log event keys/enums, finite elapsed values, collection bounds, strict counters, returned-events equality, and empty/null/zero failure forms. Reject the entire malformed response rather than retaining nested unknown values. Reuse the existing constants and public result contract; do not invent a second diagnostic schema.
+
+Add a thin `command(argv=None) -> CommandResult` handler using `operator_output.CommandResult`. Redirect parser error output and translate parser refusal to fixed `invalid_diagnostic_arguments` with exit two and no data. Retain real zero-child help and the existing focused module `main` behavior. Validated non-ok diagnostic results retain their structured data and fixed `diagnostic_<state>` error with exit one. Set only the two diagnostic command nodes' existing `handler_attribute` to `command`.
+
+In `cli.py`, recognize only the exact `controller inspect` and `controller logs` leaves. Both local and remote paths use canonical operand-free command names, null context, empty warnings, and only validated structured data. Suppress generic plan/context/warnings and captured parser/exception output at every output branch for those leaves, including early target-resolution failures. Other controller commands keep their existing behavior. Follow the exact protected offline topology leaf for literal-null JSON serialization; the generic renderer normally expands null into an unrelated empty context shape.
+
+For remote diagnostics, `TransportResult.data` is the transport-owned read-only mapping containing the HTTP envelope, not the core result. Require exactly `ok` and `data`, with `ok is True`, before validating its core dictionary. The outer mapping proxy may be copied to inspect these two keys; nested input must still pass the strict validator. Never expose `TransportResult.as_dict`, transport metadata, or an execution plan. Malformed outer/core results yield fixed `controller_diagnostic_response_invalid`, null data and exit four. Transport failures yield fixed `controller_diagnostic_transport_failed`, null data and exit four without exception strings/details, reconciliation, retries or SSH fallback. JSON and human error paths must use the same bounded contract; no validated typed result means no captured text may become data.
+
+The implementation gate deliberately excludes generated-manifest equality: T006 owns deterministic regeneration, command-tree/full-suite checks and final documentation after all diagnostic nodes are complete. This dependency is not permission to weaken those final gates.
+
+**Acceptance criteria:**
+
+- Actual `cli.main` local inspect/log success returns structured canonical data, exact operand-free command, null context and empty warnings; local non-ok results exit one with their fixed diagnostic code.
+- Invalid/missing selectors, malformed tails and resolution options refuse with fixed errors before diagnostics or operation transport; full human/JSON output contains no supplied operand, path, address or raw exception.
+- Actual fake-controller dispatch unwraps the legitimate transport mapping and validates the same core schema. Non-ok core results exit one; hostile/malformed responses and transport errors exit four with null data and fixed codes.
+- Extra/missing/wrong outer or core keys, nested arbitrary strings, bool-as-int, bad enums/IDs, 65 bindings, 201 events, returned-count mismatches and nonfinite elapsed values are rejected without echoing attacker content. A negative control removing the strict validator makes these regressions fail.
+- Real help remains zero-child, no failure retries or chooses SSH, and representative unrelated CLI commands/envelopes remain compatible.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_cli.py tests/test_controller_diagnostics.py -x -q`
+- `python -m ruff check anvil_serving/cli.py anvil_serving/controller_diagnostics.py anvil_serving/commands/control_plane.py tests/test_cli.py`
+- `git diff --check`
