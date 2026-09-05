@@ -1685,15 +1685,129 @@ Register `router workloads` and `fleet workloads` CLI parsers and dispatch backe
 - `python -m anvil_serving.cli router workloads --help`
 - `python -m anvil_serving.cli fleet workloads --help`
 
-### T014: Register read-only controller and MCP workload tools
+### T014.1: Seal the fleet controller workload operation
+
+**Feature:** F004
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/observability/workload_tools.py, anvil_serving/control_plane/controller/server.py, anvil_serving/control_plane/controller/http.py, tests/control_plane/test_controller_workloads.py, tests/control_plane/test_controller_fleet_workloads.py
+**Dependencies:** T012, T013
+
+Extend the existing sealed node-workload path to exactly two reserved names,
+node_workloads and fleet_workloads. Do not register either in the standalone
+static MCP catalog: local stdio has no authenticated workload principal and
+its generic call path does not enforce requiredScope. Supported MCP delivery
+is the controller's authenticated /mcp endpoint and the modern bridge that
+dynamically consumes that controller's tools/list and tools/call. The legacy
+Python proxy is not a workload surface in v1; leave unrelated tools intact.
+
+In workload_tools.py add FLEET_WORKLOADS_TOOL_NAME, a fresh
+fleet_workloads_declaration and an exact-declaration predicate beside the
+node equivalents. Share one canonical seven-field schema: required is an
+empty list, additionalProperties is false, maxProperties is 7, and the
+existing enums, host grammar, numeric bounds and defaults remain unchanged.
+Update the node declaration's exact-schema fixture accordingly. Reuse
+parse_node_workload_query for both names; its name is compatibility, not a
+second query contract. Extend workload_success to exact NodeResult or exact
+FleetResult and their canonical serializers. Keep the fixed failure codes;
+do not serialize arbitrary duck-typed objects or exception details.
+
+Add optional workload_fleet_topology to make_server and serve, default None.
+It is separate from workload_topology, which binds a node's router source.
+Only an explicit fleet path may construct one persistent collector through
+create_fleet_workload_collector, using the existing injected env and
+workload_monotonic seams. Invalid/missing explicit configuration leaves the
+fleet collector disabled and legacy controller behavior available; it never
+creates an empty COMPLETE inventory or discovers a default. Pass the
+collector to make_handler and expose it as anvil_fleet_workload_collector
+beside the existing node attribute. Close both collectors on handler/bind
+failure and normal server_close, even if one close raises. No per-request
+construction, topology reload, source mutation or worker replacement occurs.
+
+Generalize the existing sealed HTTP path, not the generic dispatcher, across
+REST /tools/call and controller /mcp. Canonical normalization accepts the
+existing underscore/hyphen spelling only. One identical caller-supplied
+declaration per reserved name is allowed; a mismatch or duplicate fails
+without echo. Existing allowed_operations hides/refuses disallowed names.
+Absent collectors remain sealed: authorized calls receive the fixed
+workload_source_unavailable failure and cannot fall through to call_tool_func.
+Scope workloads:read is checked before the query clock or collector. Retain
+the exact REST outer fields name/arguments, the existing bounded MCP
+protocol wrapper and ignored protocol _meta, seven query fields, and refusal
+of every idempotency-header presence. Host is only a query filter, never a
+target/context override. No generic OperationStore request path, mutation,
+context hook or transport serializer is allowed for either reserved name.
+
+Success is exactly ok/data with the canonical node or fleet value. Keep the
+existing fixed workload application/protocol/auth failures and generated
+HTTP request IDs; a validated MCP correlation stays only in the JSON-RPC
+wrapper. Track the selected reserved name as closed per-request metadata so
+the existing six-field workload audit records the correct fixed operation,
+status, ok, error_code, elapsed_ms and event. Reset it on keepalive. Never
+copy request labels, remote addresses, arguments, origins, topology paths,
+credentials, response bodies or exception text into response/audit data.
+
+**Acceptance criteria:**
+
+- Exact fresh node/fleet declarations share all seven canonical query fields and bounds; duplicate/conflicting declarations fail closed and allowed_operations retains its authority.
+- REST and direct controller MCP preserve canonical record bytes, statuses, source timestamps and omissions, and both deny unauthenticated, legacy, media-only and wrong-scope callers before clock/collection.
+- Fleet configuration is explicit and independent of node router topology; absent/invalid config is unavailable, repeated requests reuse one collector, and handler/bind/shutdown cleanup closes both collectors.
+- Both reserved names bypass generic tool, store, idempotency and context callbacks; missing collectors never fall through and query host cannot replace declared identity.
+- Fixed per-request audit operations and generated HTTP IDs survive keepalive and all tested failures without seeded private operands, paths, credentials or exception text.
+- The standalone static MCP catalog remains unchanged; scoped controller MCP remains the sole server-side workload authority.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/control_plane/test_controller_fleet_workloads.py tests/control_plane/test_controller_workloads.py tests/test_controller.py tests/test_controller_token_normalization.py -x -q`
+- `python -m ruff check anvil_serving/observability/workload_tools.py anvil_serving/control_plane/controller/server.py anvil_serving/control_plane/controller/http.py tests/control_plane/test_controller_workloads.py tests/control_plane/test_controller_fleet_workloads.py`
+
+### T014.2: Expose the explicit fleet collector startup option
 
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** anvil_serving/control_plane/controller/server.py, anvil_serving/control_plane/mcp/tools/__init__.py, anvil_serving/control_plane/mcp/tools/workloads.py, tests/control_plane/test_controller_chaining.py
-**Dependencies:** T012, T013
+**Likely files:** anvil_serving/control_plane/controller/cli.py, tests/control_plane/test_controller_workload_startup.py
+**Dependencies:** T014.1
 
-Register the node/fleet read-only operations and MCP tools over the same canonical query/result. Require `workloads:read` at the controller boundary and expose no mutation callback, raw transport context, or alternate serializer.
+Extend the existing controller serve parser with exactly one optional
+--workload-fleet-topology PATH, default None, forwarded exactly once to
+serve(workload_fleet_topology=...). No new environment default, path lookup,
+source read, policy change or collector construction belongs in the parser.
+This path enables declared fleet aggregation; --workload-topology remains
+only the node router-source topology. Preserve the seven existing startup
+options, scoped authorization option and legacy parser defaults. Extend the
+existing injected-serve startup tests and the real top-level focused help
+probe. Generated manifest/reference synchronization remains T015/T016.
+
+**Acceptance criteria:**
+
+- Direct and top-level controller serve help expose the new optional path with its fleet-only meaning; defaults pass None and an explicit operand is forwarded unchanged once.
+- The existing node-source options remain independent and byte-preserved; parser/help tests perform no source, network, credential or lifecycle operation.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/control_plane/test_controller_workload_startup.py tests/test_controller.py tests/test_cli.py -x -q`
+- `python -m ruff check anvil_serving/control_plane/controller/cli.py tests/control_plane/test_controller_workload_startup.py`
+- `python -m anvil_serving.cli controller serve --help`
+
+### T014: Verify the scoped controller MCP workload contract
+
+**Feature:** F004
+**Priority:** medium
+**Type:** modify
+**Likely files:** tests/control_plane/test_controller_chaining.py, tests/control_plane/test_controller_fleet_workloads.py
+**Dependencies:** T014.1, T014.2
+
+Verify the integrated node/fleet read-only operations over direct scoped
+controller MCP and its dynamic tools/list contract. T014.1 owns production
+wiring; do not repeat it or add unauthenticated standalone tools. Add the
+cross-surface/chaining regression proving a controller-scoped workload token
+gets only authorized declarations, canonical application data has no target
+context or mutation callback, and a caller-supplied context is rejected
+without invocation. The modern bridge forwards this same controller
+declaration/call path; the legacy Python proxy and local static catalog do
+not expose workload tools in v1. Require workloads:read at the authority
+boundary; no local collector can substitute for that authentication gate.
 
 **Acceptance criteria:**
 
@@ -1705,7 +1819,7 @@ Register the node/fleet read-only operations and MCP tools over the same canonic
 **Verification:**
 
 - `python scripts/run_tests.py tests/control_plane/test_controller_chaining.py tests/test_controller.py -x -q`
-- `python -m ruff check anvil_serving/control_plane/controller/server.py anvil_serving/control_plane/mcp/tools tests/control_plane/test_controller_chaining.py`
+- `python -m ruff check tests/control_plane/test_controller_chaining.py tests/control_plane/test_controller_fleet_workloads.py`
 
 ### T015: Generate workload command-manifest and surface parity
 
