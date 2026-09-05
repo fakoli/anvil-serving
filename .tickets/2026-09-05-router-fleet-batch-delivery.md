@@ -1,6 +1,14 @@
 # Batch implementation with consolidated final acceptance
 
-Status: active delivery workflow; operator-directed on 2026-09-05.
+Status: historical delivery log; current stopping point is the source-only PR
+merge described in `.tickets/2026-09-05-router-fleet-merge-checkpoint.md`.
+
+The operator subsequently narrowed this batch: finish the in-flight source
+work, perform consolidated acceptance, create and merge the PR, then stop.
+Package publication, live deployment, controller recovery and remaining fleet
+enrollment implementation are deferred. The dated candidate entries below
+retain their historical test counts and then-pending statuses; consult the
+merge checkpoint and current State for final acceptance, not those old counts.
 
 The operator explicitly replaced per-task adversarial review and acceptance
 with implementation batches followed by one consolidated review and acceptance
@@ -13,8 +21,10 @@ Do not mislabel a local candidate merge, evidence submission or task graph as
 accepted, publicly merged or deployed. Previously accepted tasks retain their
 history. Newly reproduced defects are fixed forward with tickets during the
 build; deliberate per-task adversarial passes are deferred to the final review.
-The final pass includes complete source/docs/package gates, PR review/merge,
-managed deployment, rollback readiness and real endpoint/client acceptance.
+The original broader final pass also included managed deployment, rollback
+readiness and real endpoint/client acceptance. The later stopping instruction
+defers those live gates; only source/docs/package-build gates and PR merge are
+part of this checkpoint. Package building is not package publication.
 
 Documentation correction: the PRD index's relative link into .tickets was a
 strict MkDocs warning because tickets are outside the published docs tree.
