@@ -33,10 +33,24 @@ import tempfile
 import tomllib
 
 from .observability.workloads import (
+    DEFAULT_STALE_AFTER_SECONDS,
     MAX_FUTURE_SECONDS,
+    ObservationQuality,
     ResultStatus,
+    SourceAuthority,
+    SourceResult,
+    Truncation,
     WorkloadErrorCode,
+    WorkloadKind,
+    WorkloadOutcome,
+    WorkloadOwner,
+    WorkloadPhase,
+    WorkloadQuery,
+    WorkloadRecord,
     WorkloadState,
+    select_managed_records,
+    validate_source_records,
+    workload_id,
 )
 
 # Env-var prefixes that are part of a reproducible serve (not incidental docker noise).
@@ -1386,6 +1400,211 @@ def capture_recipe_workload_snapshot(registry_path, *, clock, _capture=None):
     except Exception:
         runtime = _recipe_component(ResultStatus.UNAVAILABLE, None, (), None, WorkloadErrorCode.UNAVAILABLE)
     return RecipeWorkloadSnapshot(configuration, runtime)
+
+
+def _recipe_source_error(codes: set[WorkloadErrorCode]) -> WorkloadErrorCode:
+    for code in (
+        WorkloadErrorCode.INVALID,
+        WorkloadErrorCode.FUTURE,
+        WorkloadErrorCode.UNAVAILABLE,
+    ):
+        if code in codes:
+            return code
+    return WorkloadErrorCode.INVALID
+
+
+def _recipe_component_shape(component: object, record_type: type) -> RecipeComponentResult:
+    if type(component) is not RecipeComponentResult:
+        raise ValueError
+    if (
+        not isinstance(component.status, ResultStatus)
+        or component.observed_at is not None and not isinstance(component.observed_at, datetime)
+        or not isinstance(component.records, tuple)
+        or len(component.records) > MAX_DISCOVERED_RECIPE_CONTAINERS
+        or component.omitted is not None and (
+            type(component.omitted) is not int or component.omitted < 0
+        )
+        or component.error is not None and not isinstance(component.error, WorkloadErrorCode)
+        or any(type(record) is not record_type for record in component.records)
+    ):
+        raise ValueError
+    return component
+
+
+def _recipe_quality(state: WorkloadState, source_timestamp: datetime, now: datetime) -> ObservationQuality:
+    stale = now - source_timestamp > timedelta(seconds=DEFAULT_STALE_AFTER_SECONDS)
+    if stale and state in {WorkloadState.CONFIGURED, WorkloadState.RUNNING, WorkloadState.ABSENT}:
+        return ObservationQuality.STALE
+    if state is WorkloadState.CONFIGURED:
+        return ObservationQuality.CONFIGURED
+    if state is WorkloadState.RUNNING:
+        return ObservationQuality.OBSERVED_RUNNING
+    if state is WorkloadState.ABSENT:
+        return ObservationQuality.ABSENT
+    return ObservationQuality.INSPECTION_ERROR
+
+
+def _recipe_record(
+    host: str,
+    native_id: str,
+    state: WorkloadState,
+    created_at: datetime,
+    updated_at: datetime,
+    source_timestamp: datetime,
+    now: datetime,
+) -> WorkloadRecord:
+    if state is WorkloadState.CONFIGURED:
+        phase, outcome = WorkloadPhase.CONFIGURED, None
+    elif state is WorkloadState.RUNNING:
+        phase, outcome = WorkloadPhase.RUNNING, None
+    elif state is WorkloadState.ABSENT:
+        phase, outcome = WorkloadPhase.ABSENT, None
+    else:
+        phase, outcome = WorkloadPhase.UNSUPPORTED, WorkloadOutcome.UNKNOWN
+    return WorkloadRecord(
+        id=workload_id(host, WorkloadKind.RECIPE_SERVE, WorkloadOwner.RECIPE, native_id),
+        kind=WorkloadKind.RECIPE_SERVE,
+        owner=WorkloadOwner.RECIPE,
+        host=host,
+        state=state,
+        phase=phase,
+        outcome=outcome,
+        created_at=created_at,
+        updated_at=updated_at,
+        source_timestamp=source_timestamp,
+        source_authority=SourceAuthority.MANAGED_STATUS,
+        observation_quality=_recipe_quality(state, source_timestamp, now=now),
+    )
+
+
+def _recipe_projection_error(exc: Exception) -> WorkloadErrorCode:
+    code = getattr(exc, "code", None)
+    return code if isinstance(code, WorkloadErrorCode) else WorkloadErrorCode.INVALID
+
+
+def list_recipe_workloads(
+    registry_path,
+    host: str,
+    query: WorkloadQuery,
+    now: datetime,
+    *,
+    snapshot_reader=capture_recipe_workload_snapshot,
+) -> SourceResult:
+    """Project one recipe-owned, metadata-only snapshot into canonical records."""
+    try:
+        if not isinstance(query, WorkloadQuery):
+            raise ValueError
+        snapshot = snapshot_reader(
+            registry_path, clock=lambda: datetime.now(timezone.utc)
+        )
+        if type(snapshot) is not RecipeWorkloadSnapshot:
+            raise ValueError
+        configuration = _recipe_component_shape(
+            snapshot.configuration, RecipeConfiguredObservation
+        )
+        runtime = _recipe_component_shape(
+            snapshot.runtime, RecipeContainerObservation
+        )
+    except Exception:
+        return SourceResult(
+            WorkloadOwner.RECIPE, ResultStatus.UNAVAILABLE, now, (),
+            Truncation(0, None), WorkloadErrorCode.UNAVAILABLE,
+        )
+
+    errors: set[WorkloadErrorCode] = set()
+    incomplete = False
+    for component in (configuration, runtime):
+        if component.status is not ResultStatus.COMPLETE or component.error is not None or component.omitted is None:
+            incomplete = True
+        if component.error is not None:
+            errors.add(component.error)
+        elif component.status is ResultStatus.UNAVAILABLE:
+            errors.add(WorkloadErrorCode.UNAVAILABLE)
+
+    candidates: list[WorkloadRecord] = []
+    configured: dict[str, RecipeConfiguredObservation] = {}
+    for observation in configuration.records:
+        try:
+            if observation.recipe_digest not in configured:
+                configured[observation.recipe_digest] = observation
+        except Exception:
+            incomplete = True
+            errors.add(WorkloadErrorCode.INVALID)
+
+    observed_digests = set()
+    for observation in runtime.records:
+        try:
+            if observation.recipe_digest is not None:
+                observed_digests.add(observation.recipe_digest)
+        except Exception:
+            incomplete = True
+            errors.add(WorkloadErrorCode.INVALID)
+    for digest, observation in configured.items():
+        if digest in observed_digests:
+            continue
+        try:
+            record = _recipe_record(
+                host,
+                "recipe-config:" + digest,
+                WorkloadState.CONFIGURED,
+                observation.configured_at,
+                observation.configured_at,
+                observation.observed_at,
+                now,
+            )
+            candidates.extend(
+                validate_source_records(
+                    (record,), owner=WorkloadOwner.RECIPE, host=host,
+                    collection_timestamp=now,
+                )
+            )
+        except Exception as exc:
+            incomplete = True
+            errors.add(_recipe_projection_error(exc))
+
+    container_ids: set[str] = set()
+    for observation in runtime.records:
+        try:
+            if observation.container_id in container_ids:
+                raise ValueError
+            container_ids.add(observation.container_id)
+            record = _recipe_record(
+                host,
+                "recipe-container:" + observation.container_id,
+                observation.state,
+                observation.created_at,
+                observation.updated_at,
+                observation.observed_at,
+                now,
+            )
+            candidates.extend(
+                validate_source_records(
+                    (record,), owner=WorkloadOwner.RECIPE, host=host,
+                    collection_timestamp=now,
+                )
+            )
+        except Exception as exc:
+            incomplete = True
+            errors.add(_recipe_projection_error(exc))
+
+    try:
+        selected, truncation = select_managed_records(candidates, query, now=now)
+    except Exception:
+        selected, truncation = (), Truncation(0, None)
+        incomplete = True
+        errors.add(WorkloadErrorCode.INVALID)
+    if incomplete:
+        status = ResultStatus.PARTIAL if selected or any(
+            component.status is not ResultStatus.UNAVAILABLE
+            for component in (configuration, runtime)
+        ) else ResultStatus.UNAVAILABLE
+        return SourceResult(
+            WorkloadOwner.RECIPE, status, now, selected,
+            Truncation(len(selected), None), _recipe_source_error(errors),
+        )
+    return SourceResult(
+        WorkloadOwner.RECIPE, ResultStatus.COMPLETE, now, selected, truncation, None
+    )
 
 
 def select_recipe_container(
