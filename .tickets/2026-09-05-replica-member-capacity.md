@@ -57,3 +57,11 @@ contract, not a claim that a socket timeout is an absolute body deadline.
 
 No live route, model, or deployment was changed. Final batch acceptance remains
 open, and these synthetic tests are not routed hardware qualification.
+
+During T004 call-site preparation, candidate f4f94f26 (123 focused tests passing)
+still allowed an upstream scheduler_capacity field to replace the configured
+ceiling, called the injected clock under its cache condition, and did not
+consistently downgrade invalid/backward clocks to unknown. That candidate is
+not accepted or enabled. T003 is fixing these explicit contract mismatches,
+with separate regressions for configured authority, clock callback boundaries,
+single-flight state independent of timestamps, and malformed-vs-failed samples.
