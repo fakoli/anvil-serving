@@ -1,6 +1,6 @@
 # Bind manifest workload projection to bounded source observations
 
-Status: source producer locally integrated; projection and batch acceptance pending.
+Status: source producer and projection locally integrated; batch acceptance pending.
 
 serves.py::status_summary reports configured model and container names plus
 Docker state and health, but no source observation or lifecycle timestamps and
@@ -45,3 +45,12 @@ opens after exhaustion, and retains validated peers. Literal runtime fixtures
 cover lifecycle timestamps and future-time partiality; pure import tests keep
 the diagnostic capture dependency lazy. These are hermetic source gates, not
 proof of live runtime identity, workload projection or deployment.
+
+Projection candidate 00cca192 passed 171 focused tests and Ruff after commit,
+recorded as EV5D238962. It validates configured and runtime components
+independently, reconciles only valid runtime identities, applies canonical
+filtering before bounded truncation, and preserves fixed source-error and
+freshness semantics. It consumes one immutable snapshot without additional
+filesystem or runtime probes. The producer partial-peer consistency follow-up
+is recorded in 2026-09-05-manifest-runtime-partial-peers.md. No live identity or
+deployment claim is made by these hermetic projection gates.
