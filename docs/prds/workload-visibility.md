@@ -2080,11 +2080,14 @@ Do not change reader APIs, canonical data, CLI or generic transports.
 **Priority:** high
 **Type:** feature
 **Likely files:** anvil_serving/observability/workload_http.py, tests/observability/test_workload_http.py
-**Dependencies:** T006.1.3, fleet-node-enrollment:T008
+**Dependencies:** T006.1.3
 
 Implement the closed service in
 `.tickets/2026-09-05-dashboard-workload-authority.md`, without server or
-dashboard wiring. WorkloadHTTPService(endpoint, expected_node, policy, *,
+dashboard wiring. Reuse the already-delivered shared authorization prerequisite
+fleet-node-enrollment:T008; the named-PRD parser cannot encode cross-PRD task
+dependencies in this field, so verify that source is present before claiming.
+WorkloadHTTPService(endpoint, expected_node, policy, *,
 clock=None, monotonic=time.monotonic, reader=read_controller_fleet_workloads)
 owns only one explicit controller binding and four non-waiting upstream slots.
 Validate endpoint through the existing controller-reader _endpoint helper plus
