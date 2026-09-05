@@ -102,6 +102,87 @@ None. Credential provisioning and machine prerequisites remain separate; v1 enro
 - All whole-response contexts and errors use new metadata-only serializers; seeded endpoint/path/token/command values must be absent from success, refusal, rollback, logs and CLI text/JSON.
 - Authorization policy is optional local `--authorization-policy <path>`, schema `{"schema_version":1,"clients":[{"id":"operator","credential_env":"EXAMPLE_OPERATOR_TOKEN","scopes":["workloads:read"]}]}`. Each client has exactly one `credential_env` or `credential_file` reference, never an inline value. Limit policy size to 64 KiB and clients to 32; IDs use the bounded identifier grammar. Only the two new scopes are valid. Reject unknown keys, duplicate IDs/references/resolved credentials, a resolved credential equal to the legacy shared token, and tokens outside 16-4096 bytes. Missing/malformed policy disables new privileged surfaces with fixed errors. No references/material enter responses/logs. New scoped credentials do not authorize legacy operations.
 
+### Canonical bootstrap value contracts
+
+T002 owns the following exact v1 values. Later tasks consume these definitions;
+they do not introduce alternate receipt fields or serialization.
+
+- Manifest schema is `anvil-serving.fleet-bootstrap-manifest/v1`. Exact fields
+  are schema, package_version, source_commit, runtime_sha256, shim_sha256,
+  expected_node, platform, install_adapter, supervisor_adapter,
+  install_root_class, controller_protocol_min and controller_protocol_max.
+  Digests are exactly64 lowercase hexadecimal characters; source_commit is
+  exactly40 lowercase hexadecimal characters. Node IDs use
+  `[A-Za-z][A-Za-z0-9_-]{0,63}`. Version uses three decimal components of1..9
+  digits, optionally followed by a/b/rc and1..9 digits; no arbitrary labels.
+- Platform is windows/linux. Install adapter is python-wheel-venv. Supervisor
+  is windows-scheduled-task for Windows or linux-systemd-user for Linux.
+  install_root_class is exactly user: it identifies the explicitly declared
+  user-managed root, never derives or grants a filesystem location.
+- Controller protocol bounds are exact valid ISO calendar dates YYYY-MM-DD,
+  inclusive and ordered min<=max. They refer to the controller's existing MCP
+  protocol date (currently2026-07-28), not the separately versioned receiver
+  framing schema. No numeric version, wildcard or unparsable range is accepted.
+- Canonical JSON is UTF-8, sorted keys, compact separators, ensure_ascii=true,
+  allow_nan=false, no trailing newline. Reject duplicate keys at every depth.
+  Inbound manifests and outer bundles must already be canonical; do not
+  silently normalize a different byte identity.
+- The outer compressed and expanded16 MiB bounds are separate from an additional
+ 16 MiB aggregate expanded nested-wheel ceiling. Limit the wheel to4096
+  entries, names to1024 UTF-8 bytes, and components to255 UTF-8 bytes. Nested
+  wheel members may use stored/deflated compression; the outer bundle remains
+  stored-only. Reject path/link/encryption/collision violations in both layers.
+  Wheel entry count and declared expansion bounds are checked before payload
+  reads; actual bounded reads and CRC validation must agree with declarations.
+- Receipt schema is `anvil-serving.fleet-bootstrap-receipt/v1`. Exact fields:
+  schema, operation_id, host, topology_sha256, plan_sha256, manifest_sha256,
+  bundle_sha256, platform, install_adapter, supervisor_adapter, phase, outcome,
+  created_at, updated_at, acceptance, rollback, error_code and trigger_error_code. No generic
+  context, message, exception, path, endpoint or command field exists.
+  Identity/digest/adapter fields are null until validated; supplied values obey
+  the manifest grammar and platform pairing. operation_id is null for planning
+  or early refusal, otherwise a canonical lowercase hyphenated UUIDv4.
+  Timestamps are exact UTC microsecond-Z strings with created_at<=updated_at.
+- Phase enum is planned, staged, verified, installed, activated, restarted,
+  accepted, rollback-started, rolled-back, manual-recovery, refused, cleanup-failed.
+  Outcome enum is pending/success/error. Acceptance enum is
+  not-checked/accepted/rejected; rollback enum is
+  not-required/pending/verified/failed/unavailable.
+  Fixed error codes are invalid-contract, unsupported-platform, unsafe-path,
+  invalid-bundle, digest-mismatch, topology-drift, authorization-denied,
+  precondition-failed, transport-unavailable, receiver-mismatch, install-failed,
+  activation-failed, restart-failed, acceptance-failed, rollback-failed,
+  cleanup-failed, timeout and internal-error; success has null error_code.
+- Receipt consistency: planned is success/not-checked/not-required with no
+  operation ID; staged through restarted are pending/not-checked/not-required;
+  accepted is success/accepted/not-required. These phases have null error_code.
+  rollback-started is pending with rollback=pending and a fixed triggering
+  error; rolled-back is error with rollback=verified and that error retained.
+  manual-recovery is error with rollback=failed/unavailable and a fixed error.
+  refused is error/not-checked/not-required with a fixed error. Recovery phases
+  allow acceptance=not-checked/rejected, never accepted. Every phase other than
+  planned/refused requires an operation ID and all validated identity/digest/
+  adapter fields; planned requires all those fields except operation ID.
+  Early refused receipts may omit them, but never emit unvalidated input.
+  trigger_error_code is null outside cleanup-failed.
+- Cleanup runs after a terminal accepted/rolled-back/manual-recovery/refused
+  disposition, not while rollback is pending. If owned staging cleanup fails,
+  phase becomes cleanup-failed, outcome=error and error_code=cleanup-failed;
+  preserve the last validated acceptance/rollback statuses and put the prior
+  error_code in trigger_error_code (null after successful acceptance, otherwise
+  the fixed primary failure). Thus cleanup-failed permits accepted/not-required
+  with no trigger, or not-checked/rejected with not-required/verified/failed/
+  unavailable and a nonnull fixed trigger. It requires the validated operation
+  ID and identities of the staging owner. Cleanup failure never rewrites an
+  accepted runtime as rejected or a verified rollback as failed, and never
+  drops a primary error. No staging exists for a pre-plan refusal.
+- Pure T002 path checks are preflight, not a race-free extraction capability.
+  Reject both POSIX and Windows lexical hazards on every platform; inspect
+  existing ancestors with lstat/reparse/junction checks and containment after
+  resolve. T004/T005 must recheck at safe create/open/replace boundaries.
+  T002 performs no extraction, install, transport, topology mutation or
+  operation-ID generation.
+
 ## Code Map
 
 - `anvil_serving/topology.py::Host`, `Transport`, `Topology`, `validate_topology`, `load_topology`, and `topology_snapshot_identity` own declared host identity, transport policy, and stable drift detection.
