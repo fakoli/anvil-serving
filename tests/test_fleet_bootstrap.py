@@ -18,6 +18,7 @@ from anvil_serving.topology import SCHEMA_VERSION, parse_topology
 
 SHA_A = "a" * 64
 SHA_B = "b" * 64
+SHA_D = "d" * 64
 COMMIT = "c" * 40
 OPERATION_ID = "12345678-1234-4234-9234-123456789abc"
 CREATED = "2026-09-05T12:00:00.000001Z"
@@ -223,6 +224,244 @@ def corrupt_first_compressed_byte(raw: bytes) -> bytes:
     assert payload < len(changed)
     changed[payload] = 7
     return bytes(changed)
+
+
+def receiver_frame(
+    operation: bootstrap.ReceiverOperation,
+    payload: bytes = b"fixed-stage-payload",
+) -> bootstrap.BootstrapReceiverFrame:
+    values = {
+        "operation": operation,
+        "expected_node": "Node_1",
+    }
+    if operation is not bootstrap.ReceiverOperation.IDENTITY:
+        values.update(
+            operation_id=OPERATION_ID,
+            plan_sha256=SHA_B,
+            target_config_sha256=SHA_D,
+        )
+    if operation is bootstrap.ReceiverOperation.STAGE:
+        values.update(
+            bundle_sha256=hashlib.sha256(payload).hexdigest(),
+            bundle_length=len(payload),
+        )
+    return bootstrap.BootstrapReceiverFrame(**values)
+
+
+@pytest.mark.parametrize("operation", tuple(bootstrap.ReceiverOperation))
+def test_receiver_frames_have_exact_fields_and_canonical_roundtrip(operation):
+    payload = b"fixed-stage-payload" if operation is bootstrap.ReceiverOperation.STAGE else b""
+    frame = receiver_frame(operation, payload)
+    encoded = bootstrap.encode_receiver_frame(frame, payload)
+    decoded, decoded_payload = bootstrap.decode_receiver_frame(encoded)
+
+    expected_fields = {"schema", "operation", "expected_node"}
+    if operation is not bootstrap.ReceiverOperation.IDENTITY:
+        expected_fields |= {"operation_id", "plan_sha256", "target_config_sha256"}
+    if operation is bootstrap.ReceiverOperation.STAGE:
+        expected_fields |= {"bundle_sha256", "bundle_length"}
+    assert set(frame.to_dict()) == expected_fields
+    assert decoded == frame
+    assert decoded_payload == payload
+    assert encoded[4 : 4 + int.from_bytes(encoded[:4], "big")] == bootstrap.canonical_json_bytes(
+        frame.to_dict()
+    )
+
+
+def test_receiver_identity_has_literal_wire_bytes():
+    metadata = (
+        b'{"expected_node":"Node_1","operation":"identity",'
+        b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1"}'
+    )
+    expected = len(metadata).to_bytes(4, "big") + metadata
+    frame = bootstrap.BootstrapReceiverFrame(
+        operation=bootstrap.ReceiverOperation.IDENTITY,
+        expected_node="Node_1",
+    )
+    assert bootstrap.encode_receiver_frame(frame) == expected
+    assert bootstrap.decode_receiver_frame(expected) == (frame, b"")
+
+
+def test_receiver_frame_direct_constructor_is_exact_frozen_and_closed():
+    identity = receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b"")
+    with pytest.raises((AttributeError, TypeError)):
+        identity.expected_node = "other"  # type: ignore[misc]
+    for values in (
+        {"operation": "identity", "expected_node": "Node_1"},
+        {
+            "operation": bootstrap.ReceiverOperation.IDENTITY,
+            "expected_node": "Node_1",
+            "operation_id": OPERATION_ID,
+        },
+        {
+            "operation": bootstrap.ReceiverOperation.STAGE,
+            "expected_node": "Node_1",
+            "operation_id": OPERATION_ID,
+            "plan_sha256": SHA_B,
+            "target_config_sha256": SHA_D,
+            "bundle_sha256": SHA_A,
+            "bundle_length": True,
+        },
+        {
+            "operation": bootstrap.ReceiverOperation.ACTIVATE,
+            "expected_node": "Node_1",
+            "operation_id": OPERATION_ID,
+            "plan_sha256": SHA_B,
+            "target_config_sha256": SHA_D,
+            "bundle_sha256": SHA_A,
+            "bundle_length": 1,
+        },
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.BootstrapReceiverFrame(**values)
+        assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "change",
+    (
+        {"expected_node": "1node"},
+        {"operation_id": OPERATION_ID.upper()},
+        {"operation_id": "12345678-1234-1234-9234-123456789abc"},
+        {"plan_sha256": "A" * 64},
+        {"target_config_sha256": "sha256:" + SHA_D},
+    ),
+)
+def test_receiver_operational_frames_reject_identity_defects(change):
+    raw = receiver_frame(bootstrap.ReceiverOperation.ACTIVATE).to_dict()
+    raw.update(change)
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapReceiverFrame.from_dict(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "raw",
+    (
+        {"schema": bootstrap.RECEIVER_FRAME_SCHEMA, "operation": "unknown", "expected_node": "Node_1"},
+        {
+            "schema": bootstrap.RECEIVER_FRAME_SCHEMA,
+            "operation": "identity",
+            "expected_node": "Node_1",
+            "command": "private-command",
+        },
+        {
+            "schema": bootstrap.RECEIVER_FRAME_SCHEMA,
+            "operation": "activate",
+            "expected_node": "Node_1",
+            "operation_id": OPERATION_ID,
+            "plan_sha256": SHA_B,
+            "target_config_sha256": None,
+        },
+        {
+            "schema": bootstrap.RECEIVER_FRAME_SCHEMA,
+            "operation": "stage",
+            "expected_node": "Node_1",
+            "operation_id": OPERATION_ID,
+            "plan_sha256": SHA_B,
+            "target_config_sha256": SHA_D,
+            "bundle_sha256": SHA_A,
+            "bundle_length": False,
+        },
+    ),
+)
+def test_receiver_frame_from_dict_rejects_unknown_null_extra_and_bool(raw):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapReceiverFrame.from_dict(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "raw",
+    (
+        b"",
+        b"\x00\x00\x00",
+        b"\x00\x00\x00\x00x",
+        (4097).to_bytes(4, "big") + b"x",
+        (10).to_bytes(4, "big") + b"{}",
+        (1).to_bytes(4, "big") + b"\xff",
+    ),
+)
+def test_receiver_decode_rejects_header_metadata_and_utf8_bounds(raw):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_frame(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_decode_rejects_duplicate_noncanonical_and_unknown_json():
+    duplicate = (
+        b'{"expected_node":"Node_1","operation":"identity","operation":"identity",'
+        b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1"}'
+    )
+    noncanonical = json.dumps(
+        receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b"").to_dict()
+    ).encode()
+    unknown = bootstrap.canonical_json_bytes(
+        {
+            "schema": bootstrap.RECEIVER_FRAME_SCHEMA,
+            "operation": "identity",
+            "expected_node": "Node_1",
+            "path": "private-path",
+        }
+    )
+    for metadata in (duplicate, noncanonical, unknown):
+        raw = len(metadata).to_bytes(4, "big") + metadata
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.decode_receiver_frame(raw)
+        assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_payload_requires_exact_length_digest_and_eof():
+    payload = b"fixed-stage-payload"
+    stage = receiver_frame(bootstrap.ReceiverOperation.STAGE, payload)
+    metadata = bootstrap.canonical_json_bytes(stage.to_dict())
+    prefix = len(metadata).to_bytes(4, "big") + metadata
+    for bad in (prefix + payload[:-1], prefix + payload + b"x"):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.decode_receiver_frame(bad)
+        assert caught.value.code == "invalid-contract"
+
+    wrong = replace(stage, bundle_sha256=SHA_A)
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.encode_receiver_frame(wrong, payload)
+    assert caught.value.code == "digest-mismatch"
+    wrong_metadata = bootstrap.canonical_json_bytes(wrong.to_dict())
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_frame(
+            len(wrong_metadata).to_bytes(4, "big") + wrong_metadata + payload
+        )
+    assert caught.value.code == "digest-mismatch"
+
+    identity = receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b"")
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_frame(bootstrap.encode_receiver_frame(identity) + b"x")
+    assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_stage_accepts_maximum_payload_without_bundle_parsing(monkeypatch):
+    payload = b"x" * bootstrap.MAX_BUNDLE_BYTES
+    frame = receiver_frame(bootstrap.ReceiverOperation.STAGE, payload)
+
+    def unexpected(*_args, **_kwargs):
+        raise AssertionError("frame codec called bundle validation")
+
+    monkeypatch.setattr(bootstrap, "validate_bundle", unexpected)
+    encoded = bootstrap.encode_receiver_frame(frame, payload)
+    decoded, decoded_payload = bootstrap.decode_receiver_frame(encoded)
+    assert decoded == frame
+    assert decoded_payload == payload
+
+
+def test_receiver_codec_errors_do_not_echo_seeded_private_values():
+    seeded = "private-path-token-command.invalid"
+    raw = receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b"").to_dict()
+    raw["expected_node"] = seeded
+    metadata = bootstrap.canonical_json_bytes(raw)
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_frame(len(metadata).to_bytes(4, "big") + metadata)
+    rendered = str(caught.value) + repr(caught.value)
+    assert seeded not in rendered
+    assert caught.value.__cause__ is None
 
 
 def test_manifest_canonical_roundtrip_and_digest_domains():
