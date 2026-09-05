@@ -65,9 +65,9 @@ controller, or private configuration has been changed for this investigation.
 ## Diagnostic implementation review
 
 The approved [bounded diagnostics PRD](../docs/prds/controller-diagnostics.md)
-has ten tasks covering capture, projection, CLI/MCP, both server and client
+has eleven tasks covering capture, projection, CLI/MCP, both server and client
 permissions, scaffold parity, protected envelopes, workbench skill catalogs,
-documentation and actual local diagnostic proof.
+exact public catalog fixtures, documentation and actual local diagnostic proof.
 Its capture foundation is accepted in
 `b64687aae2c809633a1196534466c73e0abf75b4` after independent review and
 10 passing post-commit tests plus Ruff. Corrections cover child/reader cleanup,
@@ -80,8 +80,9 @@ are accepted in `96b961d985ed7eb3228eea109760fd188a134846` after independent
 eight-angle review, privacy/boundary negative controls, 19 post-commit tests and
 Ruff. Configured versus observed bindings stay separate, log reads use only the
 verified immutable controller ID, and raw content is discarded. CLI/MCP wiring
-and actual local-daemon validation remain pending; this does not resolve
-deployment access. No raw diagnostic output or credentials are added here.
+and actual local-daemon validation remained pending at that checkpoint; source
+acceptance did not resolve deployment access. No raw diagnostic output or
+credentials are added here.
 
 The local CLI slice is accepted at upstream-compatible checkpoint
 `cd28f53970c514019cf262fff11fa0647a98c4f0` (implementation `38af3615`). Independent
@@ -134,6 +135,13 @@ and their unreachable-controller local fallback at accepted checkpoint
 `c9c8a3f4`. The fallback stays on the verified owning host, grants no SSH or
 lifecycle authority, and does not turn diagnostic success into deployment
 proof.
+
+The full repository gate exposed stale frozen MCP catalog expectations. The
+separate fixture correction is accepted at `9566cb9c`, preserving exact tool
+order and catalog/handler hashes and adding readable closed-schema checks.
+Its tail-bound negative control failed before restoration. The full suite is
+rerun for this final documentation slice; focused fixture tests alone are not
+the final source gate.
 
 The earlier capture negative control raised the shared byte cap by one and made
 the 262145-byte overflow regression fail. The projection negative control
