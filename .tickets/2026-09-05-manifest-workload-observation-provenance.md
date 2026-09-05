@@ -1,6 +1,6 @@
 # Bind manifest workload projection to bounded source observations
 
-Status: source contract gap identified before workload-visibility:T011.
+Status: source contract closed as workload-visibility:T011.1; implementation pending.
 
 serves.py::status_summary reports configured model and container names plus
 Docker state and health, but no source observation or lifecycle timestamps and
@@ -23,3 +23,16 @@ paths, commands, network identity, mounts and raw errors out of public records.
 Do not call the legacy broad status path or turn a failure into an empty idle
 source. Record partial sources and keep valid peers. No live operation was run
 to identify this code-level gap.
+
+The observation-only reader will consume minimal declared identity and exact
+Compose ownership in a separate manifest_workloads module. It will not invoke
+load_manifest: that loader checks referenced router files and deliberately
+rejects native runtimes. Configured is not a launch-validation verdict.
+
+Runtime capture uses one bounded inspect of only declared Compose names. The
+existing child capture discards all stdout on nonzero exit; a missing named
+container would therefore erase valid peer rows. An internal opt-in retains
+bounded stdout only for fully completed nonzero children, with unavailable
+status and no stderr. Timeout/overflow/read/cleanup failure and default callers
+remain unchanged. The producer validates each row independently and never
+turns missing/error output into absence. No live Docker was run for diagnosis.

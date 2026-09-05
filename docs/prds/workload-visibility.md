@@ -44,7 +44,7 @@ Add one versioned, metadata-only workload projection that lets operators answer 
 - Each fixture record has byte-identical canonical serialization through CLI, endpoint, MCP/controller, fleet, and dashboard. Envelopes may add collection timestamps, node status, and truncation metadata; those wrappers are not claimed byte-identical.
 - Router tests cover ordinary success, rejection before admission, eager backend failure, upstream HTTP error, timeout, cancellation, disconnect, normal SSE completion, malformed SSE, close-before-first-iteration, buffered and streaming socket-write failure, and final-flush failure. Active records always return to zero and exactly one safe terminal projection remains where policy allows; the actual `build_server` path uses the same registry and `DecisionLog` as `RoutingBackend`.
 - Controller operation, benchmark, and media stores return deterministic bounded snapshots without direct cross-module SQL access; concurrent writer/reader tests never expose partial rows.
-- Managed-serve projections distinguish configured, observed-running, stale, absent, unsupported and inspection-error states without claiming deployment or qualification; the recipe source never emits healthy-identity, while the later manifest source may do so only from exact live identity evidence.
+- Managed-serve projections distinguish configured, observed-running, stale, absent, unsupported and inspection-error states without claiming deployment or qualification; neither recipe nor manifest source emits healthy-identity in v1 because neither has an authoritative container-bound served-identity observation.
 - A fleet query with one healthy node, one wrong-identity node, and one unreachable/sleeping node returns the healthy records plus explicit error rows and overall `partial` status.
 - Redaction/adversarial tests seed every prohibited field and prove none appear in JSON, text, logs, endpoint errors, or dashboard bootstrap data.
 - Every query surface enforces filters, stable ordering, freshness, per-source/aggregate limits, and truncation metadata.
@@ -117,6 +117,27 @@ T004.1 owns a bounded metadata-only producer; T004 consumes that producer and ne
 - `list_recipe_workloads(registry_path, host, query, now, *, snapshot_reader=capture_recipe_workload_snapshot) -> SourceResult` is the T004 adapter. Config identity is native `recipe-config:<semantic recipe digest>`; observed identity is native `recipe-container:<validated full container ID>`; pass those exact owner-generated values only to canonical `workload_id`.
 - An observed row suppresses a configured row only when its exact recipe digest matches; every real matching container remains a distinct observed row, and a missing or unknown digest suppresses nothing. Map configured to `configured/configured/configured`, running to `running/running/observed-running`, stopped to `absent/absent/absent`, and unknown to `unsupported/unsupported/unknown/inspection-error`. When source age exceeds the canonical threshold, retain the supported state with stale quality; active-only excludes it.
 - Add one canonical `select_managed_records` helper bounded to 512 recipe/manifest candidates that applies all canonical filters and stable ordering before the source cap of `min(query.limit, 200)`; T011 reuses it. Validate each candidate independently with `validate_source_records` before selection, quarantine invalid/future peers, then validate the final source. Complete producer data reports exact query omissions; any producer overflow/malformed/failure reports omitted null. Fixed final error precedence is `invalid-workload`, then `future-workload-timestamp`, then `workload-source-unavailable`; one surviving component yields partial, and both failed with no trustworthy records yields unavailable. Empty successful components are complete, never inferred idle or failure.
+
+### Manifest workload observation and projection contract
+
+T011.1 owns the bounded observation-only producer in manifest_workloads.py;
+T011 projects only its immutable snapshot. Neither calls load_manifest or
+status_summary: launch validation checks referenced files and rejects native
+runtime, while status has no authoritative observation/identity timestamps.
+
+- Add ManifestRuntimeKind with docker-compose, docker-generic and native. Frozen ManifestConfiguredObservation has config_digest: str, runtime: ManifestRuntimeKind, configured_at: datetime and observed_at: datetime. Frozen ManifestRuntimeObservation has config_digest: str, container_id: str | None, state: WorkloadState, created_at: datetime, updated_at: datetime and observed_at: datetime. ManifestComponentResult and ManifestWorkloadSnapshot mirror the recipe component/two-component structure with these record types, at most 256 rows each, fixed errors, and unknown omissions for incomplete capture. Retain no raw names, commands, paths, labels, capture results or exceptions in returned values or repr.
+- capture_manifest_workload_snapshot(manifest_path, *, clock, _capture=None) discovers only the explicit manifest and non-link regular serves*.toml siblings in its directory. Stream at most 4096 directory entries and 64 selected files; enumeration overflow fails configuration unavailable rather than selecting an arbitrary subset. Sort the bounded selected paths lexically. Read at most 8 MiB aggregate plus one sentinel before TOML parsing, through one handle per file with matching lstat/fstat regular-file identity and before/after stable metadata; reject symlinks/reparse files. Per-file failures preserve previously valid files as partial. Missing/unreadable explicit input is an error, not silent complete-empty.
+- Read only top-level serve as an exact list of exact tables, at most 256 declarations across files. Required observation fields are exact bounded ASCII name/runtime strings; Docker also needs container. Names/containers are 1-64 characters matching [A-Za-z0-9][A-Za-z0-9_.-]*. Runtime uses existing strip/lower normalization to docker or native. Native forbids container; unknown runtime is invalid. Model, port, reservation and referenced paths are neither required nor inspected: configured means declared identity, never launchable or qualified. Unknown bounded TOML fields are ignored, never retained.
+- config_digest hashes canonical compact ensure_ascii JSON of ["manifest-config/v1", normalized declared runtime, name, container-or-empty]. It identifies a declared slot, not launch content or a recipe. File mtime_ns floors to UTC microseconds as configured_at; observed_at comes from the injected clock immediately after stable reading. Use the recipe time/skew rules; future/malformed peers are quarantined. No observation time is fabricated from mtime.
+- Parse up only to establish explicit Compose ownership. Absent/empty up is a read-only mirror; other up values must be exact strings bounded to 8192 UTF-8 bytes and 128 shlex tokens. The only supported grammar starts docker compose or docker-compose, then -f|--file, --profile and -p|--project-name options (separate value or long-option=value), then exact up, optional -d|--detach, exactly one safe service token and EOF. Require at least one file. Each option value is a nonempty non-option token of at most 1024 UTF-8 bytes without controls; service/profile/project IDs use the same 1-64 ASCII identifier bound. Forbid duplicate project option, unknown flags/commands, missing values, multiple services and trailing arguments. Do not open/resolve file values or substitute environment variables. Unsupported syntax stays docker-generic and is never executed.
+- Stack defaults to serving and uses serves.DEFAULT_STACK/_STACK_RE with an additional 64-character observation bound; derive project only through serves._stack_project. An explicit project must match it. Group identical normalized (runtime,name,container) declarations; identical up/stack mirrors collapse. One supported lifecycle owner may supersede absent-up mirrors only when stack agrees. Differing nonempty token sequences/stack, competing unsupported commands, one name bound to multiple containers, or one container bound to multiple names quarantine every affected declaration; valid unrelated peers survive. These stricter observation conflicts do not change lifecycle loader behavior.
+- Runtime collection inspects only sorted exact supported declared Compose container names (maximum 256), never host-wide enumeration. Use one fixed docker inspect --type container --format TEMPLATE invocation. TEMPLATE has exactly id, name, created_at, status, running, started_at, finished_at, project and service from Docker Id, Name, Created, State and the two Compose ownership labels. No Args/Cmd/Env/mounts/ports/health/model fields. Match exact name after removing one leading Docker slash, exact project/service and a lowercase 64-hex ID before retaining a row; name/label reuse mismatch never becomes running.
+- Reuse controller_diagnostics._capture_fixed_child lazily with existing local-Docker environment, 256-KiB cap and ten-second execution deadline plus bounded cleanup. Add optional internal retain_stdout_on_error=False: default behavior remains byte-for-behavior unchanged. When explicitly true, only a fully completed, cleanup-successful nonzero child may return its bounded stdout with state unavailable; discard stderr. Timeout, overflow, read failure and cleanup failure still discard all bytes. No public CLI option or raw error output is added. This lets one absent declared container avoid erasing valid complete peer rows from the same inspection.
+- The producer requires exact ChildCapture/type/byte bounds, accepts complete newline-delimited JSON rows only, rejects duplicate keys/unknown fields and limits traversal to 256 rows. For successful capture, missing/duplicate/unmatched/malformed rows make runtime partial with unknown omissions. For completed nonzero capture, retain only independently valid rows as partial with unavailable error; no rows means unavailable. Failed/truncated capture cannot become absence. Never parse stderr or reflect its contents.
+- Coherent running/True maps running; created|exited|dead with False maps absent; coherent paused|restarting|removing maps unsupported; unknown textual states map unsupported, but wrong types or contradictory known Boolean/state pairs are invalid. Use strict recipe RFC3339Nano parsing and source ordering: Created and StartedAt for running; Created and latest nonzero StartedAt/FinishedAt for absent; source observation is clock time immediately after bounded capture, not lifecycle time. Unsupported generic/native declarations produce unsupported runtime observations with no container ID and the configuration timestamps; no subprocess is needed when no supported Compose owners exist. No health/model probe is performed and healthy-identity is impossible.
+- list_manifest_workloads(manifest_path, host, query, now, *, snapshot_reader=capture_manifest_workload_snapshot) returns SourceResult through the canonical validator/selector. A validated runtime row suppresses only its exact config_digest. Config native identity is manifest-config:<digest>; runtime identity with a real full container ID is manifest-container:<ID>; unsupported observations without ID retain the configured native identity. WorkloadOwner.MANIFEST shares recipe-serve kind, never recipe ownership.
+- Map configured/running/absent/unsupported and freshness exactly as the recipe contract. Validate every candidate independently before reconciliation/selection, at most 512 total. Apply all canonical filters and newest-updated/digest ordering before min(query.limit,200). Preserve fixed error precedence invalid-workload, future-workload-timestamp, workload-source-unavailable; partial producer data has omitted null. Failed runtime plus valid configuration is partial with configured rows, not false idle/absence. Empty successful configuration with no owners is complete-empty.
+- Producer/projection tests cover bounds and sentinel reads, unstable/link files, minimal native/Compose declarations, narrow grammar and mirrors/conflicts, exact declared-name argv, completed-nonzero capture preserving valid peers, malformed/missing/name-reused rows, lifecycle versus observation times and future peers, no forbidden fields or launch/health calls, all source states, filtering-before-cap and honest omissions. No live Docker or host operation is part of these tests.
 
 ### Router workload endpoint ownership and wire contract
 
@@ -489,27 +510,50 @@ Build the read-only recipe-managed adapter only from the T004.1 `RecipeWorkloadS
 
 - `python scripts/run_tests.py tests/test_serve_recipes.py tests/observability/test_workloads.py -x -q`
 
+### T011.1: Produce bounded manifest workload observations
+
+**Feature:** F003
+**Priority:** high
+**Type:** feature
+**Likely files:** anvil_serving/manifest_workloads.py, anvil_serving/controller_diagnostics.py, tests/test_manifest_workloads.py, tests/test_controller_diagnostics.py
+**Dependencies:** T001
+
+Implement the closed observation-only manifest producer above and the opt-in completed-error stdout retention in the existing bounded child capture. Do not call lifecycle manifest loading/status or add another subprocess runner. Return only immutable bounded observation values; canonical workload projection follows in T011.
+
+**Acceptance criteria:**
+
+- Bounded deterministic discovery/read/capture keeps configuration and runtime evidence distinct and preserves valid peers without inspecting undeclared containers.
+- Configured identity is observation-only; unsupported native or Docker syntax never becomes launch validity, running, healthy identity or subprocess authority.
+- Exact Compose/name/ID ownership, timestamps, mirror/conflict rules and partiality match the closed contract with no raw private data retained.
+- Opt-in capture preserves only completed nonzero stdout with unavailable status; legacy callers and all timeout/overflow/read/cleanup failure behavior remain unchanged.
+- Tests cover every closed bound, grammar, identity and failure boundary without live commands or lifecycle mutation.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_manifest_workloads.py tests/test_controller_diagnostics.py -x -q`
+- `python -m ruff check anvil_serving/manifest_workloads.py anvil_serving/controller_diagnostics.py tests/test_manifest_workloads.py tests/test_controller_diagnostics.py`
+
 ### T011: Project manifest-managed serve workloads
 
 **Feature:** F003
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/serves.py, anvil_serving/observability/workloads.py, tests/test_serves.py, tests/observability/test_workloads.py
-**Dependencies:** T001
+**Likely files:** anvil_serving/manifest_workloads.py, tests/test_manifest_workloads.py, tests/observability/test_workloads.py
+**Dependencies:** T001, T011.1
 
-Build the read-only manifest-managed adapter from existing serve status results with the same provenance rules as recipes and a distinct owner identity. Do not start, stop, inspect via raw Docker, or infer running from configuration/health alone.
+Project only the immutable manifest snapshot through canonical workload_id, independent candidate validation and select_managed_records. Reconcile exact config digests and follow the closed manifest source contract. Do not read manifests, call Docker/status, mutate lifecycle, or infer health/model identity in the projection.
 
 **Acceptance criteria:**
 
 - Manifest and recipe records share kind `recipe-serve` but have distinct stable owner IDs.
-- Configured-only, running-observed, health-plus-exact-identity, stale, absent, and inspection-error cases map exactly.
-- Health without served identity never becomes `healthy-identity`.
+- Configured-only, running-observed, stale, absent, unsupported and component inspection-error cases map exactly with bounded canonical filtering and honest omissions.
+- Neither health nor configuration can produce `healthy-identity`; v1 never emits it.
 - Container IDs, commands, mounts, URLs, paths, engine/quantization selection, and raw inspection errors are absent.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/test_serves.py tests/observability/test_workloads.py -x -q`
-- `python -m ruff check anvil_serving/serves.py anvil_serving/observability/workloads.py tests/test_serves.py`
+- `python scripts/run_tests.py tests/test_manifest_workloads.py tests/observability/test_workloads.py -x -q`
+- `python -m ruff check anvil_serving/manifest_workloads.py tests/test_manifest_workloads.py tests/observability/test_workloads.py`
 
 ### T005.1: Declare the router workload host identity at startup
 
@@ -527,11 +571,8 @@ server forwarding to T005.
 **Acceptance criteria:**
 
 - Absent workload_host is None and existing server fields retain their behavior.
-- Exact canonical IDs parse unchanged; wrong types, empty/oversized values,
-  whitespace, non-ASCII, punctuation and injected paths/URLs fail with fixed
-  ConfigError prose that never echoes input.
-- Tests call load_server_config on actual temporary TOML; no identity discovery
-  or environment lookup is performed.
+- Exact canonical IDs parse unchanged; wrong types, empty/oversized values, whitespace, non-ASCII, punctuation and injected paths/URLs fail with fixed ConfigError prose that never echoes input.
+- Tests call load_server_config on actual temporary TOML; no identity discovery or environment lookup is performed.
 
 **Verification:**
 

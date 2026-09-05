@@ -77,3 +77,9 @@ readiness probes, and closes cache resources with the server. Its 64 focused
 tests and Ruff passed after commit (EV1EE12D00); the unchanged candidate also
 passed 1027 router tests before commit. No retry, fallback or model promotion
 was added. Source integration is not final acceptance or live qualification.
+
+T005 at 6e8bbb5f retains the lease's immutable selection in bounded optional
+decision evidence, with explicit typed/captured-JSON validation and no raw
+request authority. All 63 focused tests and Ruff passed after commit
+(EV803BFC31). Refusals have no fabricated score; existing attempt records
+remain the only dispatch accounting. Consolidated acceptance remains open.
