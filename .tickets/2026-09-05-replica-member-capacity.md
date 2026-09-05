@@ -42,5 +42,18 @@ without an aggregate ceiling; event-driven tests cover member/tier drains and
 quiesce races. The old unknown-field fixture used max_concurrency, now a valid
 member field; it now uses an actually unknown key and retains the rejection gate.
 
+T002 implementation 1cb94e56 passed 163 focused scheduler/admission tests and
+Ruff after commit, recorded as EV91673477. Exact-ratio ranking, pressure signal
+validation, freshness, rotating ties and atomic capacity reservations are now
+implemented candidates; routing construction remains T004.
+
+T003 closes the request-latency gap in an inline metrics refresh: use a fixed
+two-worker cache with at most 256 registered member keys, one queued/running
+refresh per key, nonblocking reads and shutdown, one-second refresh/deadline,
+and five-second freshness. A slow/trickling collector cannot be forcibly
+cancelled by Python threads, so overdue and late samples fail conservatively
+and workers never grow to compensate. This is an explicit bounded degradation
+contract, not a claim that a socket timeout is an absolute body deadline.
+
 No live route, model, or deployment was changed. Final batch acceptance remains
 open, and these synthetic tests are not routed hardware qualification.

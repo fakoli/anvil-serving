@@ -1,6 +1,6 @@
 # Make recipe workload provenance match actual observations
 
-Status: contract closed; T004.1 producer and T004 projection implementation pending.
+Status: producer and projection implemented; consolidated acceptance pending.
 
 The existing recipe inventory's served_identity comes from configured container
 arguments, not a live exact-model response. Inventory has no source observation
@@ -30,9 +30,11 @@ Exact semantic recipe digests reconcile configuration with observations;
 validated full container IDs distinguish multiple observed containers. This
 source emits at most observed-running and never healthy-identity.
 
-Implementation remains open under T004.1 and T004. Per the current delivery
-instruction, their focused gates establish implementation evidence only; final
-adversarial review and acceptance are deferred to the consolidated batch pass.
+Producer T004.1 implementation 76a190b6 passed 89 post-commit focused tests and
+Ruff, recorded as EV717FC6C9. Projection T004 implementation 7e7ab1b0 passed
+113 post-commit focused tests and Ruff, recorded as EV99362599. Both are locally
+integrated source candidates. These gates establish implementation evidence
+only; final review and acceptance are deferred to the consolidated batch pass.
 
 Implementation framing clarification: use direct argv, never shell strings:
 `docker ps -a --no-trunc --filter label=io.anvil-serving.managed-by=models-recipes --format {{.ID}}`,
