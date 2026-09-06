@@ -45,18 +45,31 @@ the request and tools for the selected upstream dialect, enforces the selected
 tier's context/tool/readiness/admission constraints, then relays ordinary or
 SSE responses. There is exactly one selected tier per accepted chat request.
 
-**Pending design — bounded same-host replicas.** A future explicit 2–16-member
-equivalent set may add one internal member-admission/selection step after this
-singular alias-to-tier decision. All members must be on the declared host and
-share served model, declared revision, engine version, image/configuration
-digests, dialect, and context/output/tool/media contract; each is independently
-health-checked and live-verified for its model name. The initial strategy is
-deterministic round robin among eligible member IDs. It is not a cross-host
-scheduler, hidden substitution, lifecycle authority, or replay mechanism:
-after selection, a failure returns without another member attempt. Declared
-deployment provenance is not runtime attestation, and readiness is distinct
-from qualification and promotion. Until implementation ships, each tier has
-one endpoint. See [ADR-0039](adr/0039-capability-meta-router.md) and
+**Qualified same-host replicas.** A declared 2–16-member equivalent set adds
+one internal member-admission/selection step only after the singular
+alias-to-tier decision. Members share one declared host and compatible served
+model, declared revision, engine/image/configuration provenance, dialect, and
+context/output/tool/media contract; each member has independent readiness.
+Declared provenance is not runtime attestation, and readiness is distinct from
+qualification and promotion.
+
+`round_robin` is the default member strategy. Opt-in `capacity` scheduling
+orders eligible members by local reservations divided by their declared
+ceiling, conservative normalized upstream pressure, and rotating stable ID.
+Tier admission owns the atomic selection and compound lease; aggregate tier
+capacity is an explicit tier ceiling or the sum of member ceilings, never a
+per-member multiplier. The pressure cache is bounded to configured members and
+two workers, runs outside admission locks, and treats absent, stale, failed, or
+malformed observations as unknown for ranking. It is scheduling evidence, not
+qualification or a live deployment measurement.
+
+One selected member receives one dispatch attempt. No member failure, changed
+readiness, metric change, or stream terminal path can reselect a peer. The same
+compound lease remains held until buffered or SSE terminal closure and is then
+released once. Current capacity projections do not start a refresh; historical
+DecisionLog scheduler values are pre-reservation selection evidence, not live
+gauges. See [Configuration](CONFIGURATION.md#qualified-same-host-replicas),
+[ADR-0039](adr/0039-capability-meta-router.md), and
 [ADR-0034](adr/0034-fleet-control-plane-and-node-runtime-classes.md).
 
 The front door also has deterministic purpose-model endpoints for embeddings
@@ -155,6 +168,38 @@ still host-equivalent authority over Docker, so the token, loopback publish,
 tailnet ACL, restricted tool catalog, and absence of home/SSH/GitHub mounts are
 the actual security boundary. Git and SSH credentials are deliberately not
 available in the image.
+
+### Planned node-runtime bootstrap boundary
+
+The [managed bootstrap design](prds/fleet-node-enrollment.md) extends the
+control plane at one host-owned coupling point; it is not yet a shipped
+installation workflow. Planning resolves one declared `host:<id>` and binds
+its topology fingerprint, expected node, software/receiver digests and
+platform adapters. Reachable nodes use the controller. Only explicit recovery
+of a declared absent/unavailable controller may use the pinned forced-command
+SSH receiver; denial or wrong identity never authorizes fallback. No remote
+Docker socket, general shell, undeclared discovery or caller-supplied endpoint
+is added.
+
+Every bootstrap read requires `node-admin:bootstrap`; mutation also requires
+local bootstrap policy, confirmation and immediate plan revalidation. The
+artifact bundle contains no credentials or operator configuration. v1 uses
+wheel-installed immutable venv generations with an already provisioned Windows
+scheduled task or Linux systemd user supervisor, receiver and stable launcher.
+It does not install/upgrade the Docker controller described above or a macOS
+runtime, create supervisors, elevate privileges or install machine prerequisites.
+
+An atomic generation pointer and flushed operation journal bracket activation.
+Fresh authenticated controller acceptance must prove exact node, package and
+immutable build identity, compatible protocol, expected per-node catalog and
+health. Journal state is reconciled against inspected runtime/supervisor state.
+Failure ends in verified prior-generation rollback or explicit manual recovery,
+not silent success or automated repair. Only validated operation staging may
+be cleaned; evidence and prior generations remain. Enrollment changes no
+model, route, GPU ownership, topology, client profile or promotion approval.
+See [ADR-0034](adr/0034-fleet-control-plane-and-node-runtime-classes.md) and
+[ADR-0035](adr/0035-fleet-configuration-reconciliation.md) for the state and
+authority boundaries.
 
 ## Durability model
 
@@ -261,6 +306,13 @@ likewise no fleet registry service and no background reconciler daemon: the
 topology file is the registry, and Docker restart policy is the supervisor.
 
 ## Evidence and observability
+
+The read-only [workload visibility](WORKLOAD-VISIBILITY.md) schema projects
+bounded active and recent metadata from router, controller, benchmark, media,
+recipe, and manifest owners without becoming a second lifecycle authority.
+Node and fleet completeness, source timestamps, observation quality, and
+unknown omissions remain explicit across CLI, scoped HTTP/MCP, and dashboard
+surfaces.
 
 `DecisionLog` records routing metadata without request/response content:
 normalized alias, selected tier, timing, token counters where available, and

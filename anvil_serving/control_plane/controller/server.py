@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 import ipaddress
+import os
 import socket
 import sys
+import time
+from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer
 from typing import Any, Callable, Mapping, Optional, Sequence
 
 from ... import mcp
+from ..authorization import AuthorizationError, AuthorizationPolicy, load_authorization_policy
 from ...graceful import DEFAULT_DRAIN_SECONDS, serve_until_signal
+from ...observability.node_workload_collector import NodeWorkloadCollector
+from ...observability.fleet_workload_collector import FleetWorkloadCollector
+from ...observability.fleet_workload_sources import create_fleet_workload_collector
+from ...observability.workloads import WorkloadQuery
 from .catalog import CallToolFunc, ListToolsFunc
 from .http import (
     AuditLogger,
@@ -33,6 +41,7 @@ from .store import (
     DEFAULT_IDEMPOTENCY_RETENTION_SECONDS,
     OperationStore,
 )
+from .workload_sources import build_workload_readers
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -77,6 +86,17 @@ def make_server(
     allowed_operations: Optional[Sequence[str]] = None,
     json_loads_func: JsonLoadsFunc = _strict_json_loads,
     node_id: Optional[str] = None,
+    authorization_policy: Optional[str] = None,
+    workload_benchmark_db: Optional[str] = None,
+    workload_media_db: Optional[str] = None,
+    workload_recipe_registry: Optional[str] = None,
+    workload_manifest: Optional[str] = None,
+    workload_topology: Optional[str] = None,
+    workload_router_resource: Optional[str] = None,
+    workload_router_auth_env: Optional[str] = None,
+    workload_fleet_topology: Optional[str] = None,
+    workload_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    workload_monotonic: Callable[[], object] = time.monotonic,
 ) -> ThreadingHTTPServer:
     """Return an unstarted controller server."""
     # ``env=None`` stays None: the real process environment may fall back to
@@ -95,6 +115,18 @@ def make_server(
         env=env,
         required=assessment.requires_auth,
     )
+    scoped_policy: Optional[AuthorizationPolicy] = None
+    if authorization_policy is not None:
+        try:
+            scoped_policy = load_authorization_policy(
+                authorization_policy,
+                env=os.environ if env is None else env,
+                legacy_token=token,
+            )
+        except AuthorizationError:
+            # A bad optional policy disables only new scoped surfaces.  The
+            # established controller token remains available for legacy APIs.
+            scoped_policy = None
     store = operation_store or OperationStore(
         idempotency_db_path,
         retention_seconds=idempotency_retention_seconds,
@@ -115,20 +147,76 @@ def make_server(
                 "request_id": interrupted["request_id"],
             }
         )
-    handler = make_handler(
-        list_tools_func=list_tools_func,
-        call_tool_func=call_tool_func,
-        auth_token=token,
-        audit_logger=audit_logger,
-        max_body_bytes=max_body_bytes,
-        read_timeout_seconds=read_timeout_seconds,
-        operation_store=store,
-        allowed_operations=allowed_operations,
-        json_loads_func=json_loads_func,
-        node_id=node_id,
-    )
-    cls = server_class or _server_class_for_host(host)
-    httpd = cls((host, port), handler)
+    collector: Optional[NodeWorkloadCollector] = None
+    fleet_collector: Optional[FleetWorkloadCollector] = None
+    try:
+        valid_node = type(node_id) is str and WorkloadQuery(host=node_id).host == node_id
+    except Exception:
+        valid_node = False
+    if valid_node:
+        readers = build_workload_readers(
+            node_id,
+            store,
+            benchmark_db=workload_benchmark_db,
+            media_db=workload_media_db,
+            recipe_registry=workload_recipe_registry,
+            manifest=workload_manifest,
+            router_topology=workload_topology,
+            router_resource=workload_router_resource,
+            router_auth_env=workload_router_auth_env,
+            environment=env,
+        )
+        collector = NodeWorkloadCollector(
+            node_id, readers, monotonic=workload_monotonic
+        )
+    if workload_fleet_topology is not None:
+        try:
+            fleet_collector = create_fleet_workload_collector(
+                workload_fleet_topology, environment=env, monotonic=workload_monotonic
+            )
+        except Exception:
+            fleet_collector = None
+    try:
+        handler = make_handler(
+            list_tools_func=list_tools_func,
+            call_tool_func=call_tool_func,
+            auth_token=token,
+            audit_logger=audit_logger,
+            max_body_bytes=max_body_bytes,
+            read_timeout_seconds=read_timeout_seconds,
+            operation_store=store,
+            allowed_operations=allowed_operations,
+            json_loads_func=json_loads_func,
+            node_id=node_id,
+            authorization_policy=scoped_policy,
+            workload_collector=collector,
+            fleet_workload_collector=fleet_collector,
+            workload_clock=workload_clock,
+        )
+        cls = server_class or _server_class_for_host(host)
+        httpd = cls((host, port), handler)
+    except Exception:
+        for owned in (collector, fleet_collector):
+            if owned is not None:
+                try:
+                    owned.close()
+                except Exception:
+                    pass
+        raise
+    original_server_close = httpd.server_close
+
+    def server_close() -> None:
+        for owned in (collector, fleet_collector):
+            if owned is not None:
+                try:
+                    owned.close()
+                except Exception:
+                    pass
+        original_server_close()
+
+    httpd.server_close = server_close
+    httpd.anvil_workload_collector = collector
+    httpd.anvil_fleet_workload_collector = fleet_collector
     httpd.anvil_controller_bind = assessment
     httpd.anvil_controller_auth_token_env = auth_token_env
     httpd.anvil_controller_auth_enabled = token is not None
@@ -147,6 +235,15 @@ def serve(
     drain_seconds: float = DEFAULT_DRAIN_SECONDS,
     audit_log_path: Optional[str] = None,
     node_id: Optional[str] = None,
+    authorization_policy: Optional[str] = None,
+    workload_benchmark_db: Optional[str] = None,
+    workload_media_db: Optional[str] = None,
+    workload_recipe_registry: Optional[str] = None,
+    workload_manifest: Optional[str] = None,
+    workload_topology: Optional[str] = None,
+    workload_router_resource: Optional[str] = None,
+    workload_router_auth_env: Optional[str] = None,
+    workload_fleet_topology: Optional[str] = None,
     server_factory: Callable[..., ThreadingHTTPServer] = make_server,
 ) -> int:
     httpd = server_factory(
@@ -159,6 +256,15 @@ def serve(
         idempotency_db_path=idempotency_db_path,
         audit_log_path=audit_log_path,
         node_id=node_id,
+        authorization_policy=authorization_policy,
+        workload_benchmark_db=workload_benchmark_db,
+        workload_media_db=workload_media_db,
+        workload_recipe_registry=workload_recipe_registry,
+        workload_manifest=workload_manifest,
+        workload_topology=workload_topology,
+        workload_router_resource=workload_router_resource,
+        workload_router_auth_env=workload_router_auth_env,
+        workload_fleet_topology=workload_fleet_topology,
     )
     actual_host, actual_port = httpd.server_address[:2]
     print(

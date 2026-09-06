@@ -44,6 +44,44 @@ facts through bounded readiness metadata and fails closed when the service is
 ambiguous or incomplete. This is runtime configuration discovery, not inferred
 routing, model selection, or lifecycle control.
 
+### Qualified same-host replicas
+
+One selected alias may target a declared 2–16-member replica tier on one host.
+The alias still selects exactly that logical tier; member scheduling happens
+only after the normal request gates, member readiness, and admission checks.
+It never selects another alias, host, model, deployment recipe, or serving
+runtime, and it never creates a fallback path.
+
+Replica tiers use `round_robin` unless `replica_strategy = "capacity"` is
+explicitly configured. Capacity mode orders already eligible members by exact
+local reservation ratio, then treats non-fresh upstream pressure as unknown,
+then uses normalized pressure and a rotating stable member-ID tie break. For
+example, unknown upstream pressure ranks conservatively behind fresh pressure
+at the same local ratio; it does not turn a missing metric into zero load.
+Read [Configuration](CONFIGURATION.md#qualified-same-host-replicas) for the
+closed tier/member contract.
+
+Replica revisions, image digests, engine versions, config fingerprints and
+qualification references are operator declarations. Health plus served-model
+identity is checked independently for each member; it does not attest those
+deployment declarations or verify the referenced qualification. Metadata keeps
+`deployment_identity_source = "declared"` and
+`runtime_deployment_identity_verified = false` after readiness succeeds.
+
+Offline [router/topology validation](cli/control-plane.md#validate-a-router-config-against-topology)
+checks one exact-byte config snapshot against declared ownership. Managed
+config activation captures and validates its own snapshot and installs those
+same bytes. Neither check grants promotion authority. Existing single-serve
+promotion and mode transactions [refuse affected replica tiers](cli/serves.md#replica-lifecycle-limits)
+before mutation; member admission controls do not install or restart serves.
+
+Selection reserves one compound tier/member lease and invokes one member once.
+There is no retry, replay, or second selection after dispatch. Buffered and
+SSE terminal paths retain that lease through terminal close, then release it
+exactly once. Current capacity views read bounded cached signals without
+starting metric collection; DecisionLog scheduler scores are selection-time,
+pre-reservation history rather than current capacity.
+
 ## Authority boundary
 
 | Fact or decision | Authority |
@@ -76,6 +114,12 @@ lifecycle. Unknown live values remain unavailable rather than being inferred
 from GPU memory. Optional request-scenario arithmetic checks configured image
 and context limits, but requires caller-supplied `image_tokens` for requests
 that include images.
+
+For capacity replica tiers, those signals are bounded per-member observations:
+fresh values are at most five seconds old; stale, failed, and unknown values do
+not establish availability, qualification, or a deployment claim. The cache is
+bounded to configured members and two workers, and a capacity read or
+Prometheus scrape does not refresh it.
 
 Additional authenticated read-only surfaces expose model capabilities,
 fingerprints, router status, current-buffer statistics, request traces, and
@@ -110,9 +154,12 @@ metrics. Except for `GET /healthz`, the normal router bearer token or
 | `GET /v1/requests/{request_id}` | Metadata-only trace, preferring the gateway-generated identifier over legacy caller correlation. |
 | `GET /metrics` | Prometheus gauges for router-buffer aggregates and current model capacity/load. |
 
-The OpenAI-compatible discovery list exposes only aliases and
-their effective context/output limits; it does not expose upstream identity,
-readiness, or private topology. Authenticated model endpoints and `/v1/stats`
+Direct-tier discovery retains aliases and their effective context/output limits.
+Replica-tier entries additionally expose the logical tier, allowlisted member
+IDs, qualification references, bounded readiness, expected/matching served
+identity, and declared replica identity with its provenance flags. They do not
+expose member URLs, private host/resource addresses, raw upstream errors, or
+mismatching observed model names. Authenticated model endpoints and `/v1/stats`
 accept `model=<configured-alias>`. Capacity also
 accepts `gpu_role`, `images`, `input_tokens`, `image_tokens`, and
 `output_tokens`. Stats and Prometheus accept `limit` from 1 through 10,000.

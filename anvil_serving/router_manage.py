@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 
 from . import envfile, guard
-from .paths import config_path, runtime_url
+from .paths import config_path, resolve_topology_path, runtime_url
 from .serves import docker_state
 from .transports import _is_safe_controller_ip
 
@@ -120,25 +120,40 @@ def _safe_router_url(value):
     return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
 
 
-def transition_request(action, *, tier_id=None, timeout=None, router_url=None,
+def transition_request(action, *, tier_id=None, member_id=None, timeout=None, router_url=None,
                        confirm=False, dry_run=True, reason="operator", env=None, _open=None):
     if action not in ("status", "quiesce", "drain", "readmit"):
         raise ValueError("unsupported transition action")
     if action != "status" and not tier_id:
         raise ValueError("tier_id is required")
+    if member_id is not None:
+        from .router.config import _REPLICA_ID_RE
+
+        if type(member_id) is not str or not _REPLICA_ID_RE.fullmatch(member_id):
+            raise ValueError("member_id must be a safe replica member ID")
+        if type(tier_id) is not str or not tier_id:
+            raise ValueError("tier_id is required for member transitions")
     base = _safe_router_url(router_url or (env or os.environ).get("ANVIL_ROUTER_URL") or DEFAULT_ROUTER_URL)
-    if action in ("quiesce", "readmit") and (not confirm or dry_run):
+    preview = action in ("quiesce", "readmit") and (not confirm or dry_run)
+    if preview and member_id is None:
         return {"applied": False, "dry_run": True, "action": action, "tier_id": tier_id, "router_url": base}
     token = (env or os.environ).get("ANVIL_ROUTER_TOKEN") or ""
     if not token:
         raise ValueError("ANVIL_ROUTER_TOKEN is required")
     headers = {"Accept": "application/json", "Authorization": "Bearer " + token}
     if action == "status":
-        suffix = "" if not tier_id else "?" + urllib.parse.urlencode({"tier_id": tier_id})
+        scope = {"tier_id": tier_id} if tier_id else {}
+        if member_id is not None:
+            scope["member_id"] = member_id
+        suffix = "?" + urllib.parse.urlencode(scope) if scope else ""
         request = urllib.request.Request(base + TRANSITION_PATH + suffix, headers=headers)
         request_timeout = 5.0
     else:
         body = {"action": action, "tier_id": tier_id, "confirm": bool(confirm), "dry_run": bool(dry_run), "reason": reason}
+        if member_id is not None:
+            body["member_id"] = member_id
+            if preview:
+                body["dry_run"] = True
         request_timeout = 5.0
         if action == "drain":
             if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 0 < timeout <= 3600:
@@ -163,6 +178,11 @@ def transition_request(action, *, tier_id=None, timeout=None, router_url=None,
         raise ValueError("router transition response was malformed") from None
     if not isinstance(result, dict):
         raise ValueError("router transition response was malformed")
+    if member_id is not None and preview:
+        expected = {"applied": False, "dry_run": True, "action": action, "tier_id": tier_id, "member_id": member_id}
+        if result != expected or result.get("applied") is not False or result.get("dry_run") is not True:
+            raise ValueError("router member transition preview was malformed")
+        return expected
     return result
 
 
@@ -440,6 +460,8 @@ def cmd_token(container, *, reveal=False, _run=subprocess.run):
 def install_config(
     config_file,
     *,
+    topology_path=None,
+    topology_overlay_path=None,
     router_url=None,
     drain_timeout=120,
     confirm=False,
@@ -455,11 +477,22 @@ def install_config(
     otherwise unavailable serve does not make a structurally successful config
     installation fail.
     """
-    from .router.config import load
+    from .router.topology_validation import load_validated_router_snapshot
     from .serves import _install_router_config
 
-    selected = os.path.abspath(os.path.expanduser(config_file))
-    desired = [tier.id for tier in load(selected).tiers]
+    # Capture one immutable, topology-joined artifact before any status read or
+    # lifecycle mutation.  The installer receives this same object, so a later
+    # path replacement cannot change what the deployed validator or writer see.
+    snapshot = load_validated_router_snapshot(
+        config_file,
+        resolve_topology_path(topology_path),
+        (
+            resolve_topology_path(topology_overlay_path)
+            if topology_overlay_path is not None
+            else None
+        ),
+    )
+    desired = [tier.id for tier in snapshot.config.tiers]
     status = _transition("status", router_url=router_url)
     rows = status.get("tiers", [])
     if not isinstance(rows, list):
@@ -469,8 +502,7 @@ def install_config(
         if isinstance(row, dict) and isinstance(row.get("tier_id"), str)
     ]
     plan = {
-        "config": selected,
-        "router_url": _safe_router_url(router_url or DEFAULT_ROUTER_URL),
+        "config_sha256": snapshot.config_sha256,
         "current_tiers": current,
         "desired_tiers": desired,
         "drain_timeout": drain_timeout,
@@ -506,7 +538,7 @@ def install_config(
         raise
 
     installer = _install or _install_router_config
-    if installer(selected) != 0:
+    if installer(snapshot) != 0:
         raise ValueError("router config install failed or was rolled back")
 
     deadline = time.monotonic() + 60
@@ -590,6 +622,7 @@ def _build_parser():
     for action in ("transition-status", "quiesce", "drain", "readmit"):
         item = actions.add_parser(action)
         item.add_argument("--tier", required=action != "transition-status")
+        item.add_argument("--member", help="optional declared replica member; requires --tier")
         item.add_argument("--router-url")
         if action == "drain":
             item.add_argument("--timeout", type=float, required=True)
@@ -604,6 +637,8 @@ def _build_parser():
             )
     install = actions.add_parser("install-config")
     install.add_argument("--config", required=True)
+    install.add_argument("--topology")
+    install.add_argument("--topology-overlay")
     install.add_argument("--router-url")
     install.add_argument("--drain-timeout", type=float, default=120)
     install.add_argument("--dry-run", action="store_true")
@@ -659,13 +694,18 @@ def main(argv=None):
         try:
             result = install_config(
                 args.config,
+                topology_path=args.topology,
+                topology_overlay_path=args.topology_overlay,
                 router_url=args.router_url,
                 drain_timeout=args.drain_timeout,
                 confirm=confirmed,
                 dry_run=args.dry_run or not confirmed,
             )
         except ValueError as exc:
-            print("router config install failed: %s" % exc, file=sys.stderr)
+            code = getattr(exc, "code", None)
+            if not isinstance(code, str):
+                code = "router_config_install_refused"
+            print("router config install failed: %s" % code, file=sys.stderr)
             return 1
         print(json.dumps(result, sort_keys=True))
         return 0
@@ -678,6 +718,7 @@ def main(argv=None):
             result = transition_request(
                 action,
                 tier_id=getattr(args, "tier", None),
+                **({"member_id": args.member} if args.member is not None else {}),
                 timeout=getattr(args, "timeout", None),
                 router_url=args.router_url,
                 confirm=confirmed,

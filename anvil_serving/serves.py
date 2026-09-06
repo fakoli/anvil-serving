@@ -108,6 +108,55 @@ _STOPPED = ("exited", "created", "dead")
 _MAX_COMMAND_FAILURE_CHARS = 8192
 
 
+class ReplicaLifecycleUnsupported(ValueError):
+    """Fixed, non-mutating refusal for lifecycle paths with replica tiers."""
+
+    code = "replica_lifecycle_unsupported"
+
+    def __init__(self) -> None:
+        super().__init__(self.code)
+
+
+class ReplicaLifecycleConfigurationUnavailable(ReplicaLifecycleUnsupported):
+    """Fixed refusal when lifecycle ownership cannot be established locally."""
+
+    code = "replica_lifecycle_configuration_unavailable"
+
+
+def _guard_replica_lifecycle(config, tier_ids) -> None:
+    """Refuse replica lifecycle work from an already parsed, bounded config."""
+    from .router.config import RouterConfig
+
+    if not isinstance(config, RouterConfig):
+        raise ReplicaLifecycleConfigurationUnavailable()
+    if not isinstance(tier_ids, (list, tuple)) or not 1 <= len(tier_ids) <= 200:
+        raise ReplicaLifecycleConfigurationUnavailable()
+    for tier_id in tier_ids:
+        if not isinstance(tier_id, str) or not tier_id:
+            raise ReplicaLifecycleConfigurationUnavailable()
+        try:
+            tier = config.tier(tier_id)
+        except Exception:
+            raise ReplicaLifecycleConfigurationUnavailable() from None
+        if tier.replicas:
+            raise ReplicaLifecycleUnsupported()
+
+
+def _promotion_lifecycle_configs(plan):
+    """Load both declared promotion configurations only for the pure guard."""
+    from .router.config import load as load_router_config
+
+    try:
+        promoted = load_router_config(plan["router_config"])
+        rolled_back = load_router_config(plan["rollback_router_config"])
+        affected = plan["affected_tiers"]
+    except Exception:
+        raise ReplicaLifecycleConfigurationUnavailable() from None
+    _guard_replica_lifecycle(promoted, affected)
+    _guard_replica_lifecycle(rolled_back, affected)
+    return promoted, rolled_back
+
+
 def _command_failure_text(result, env=None):
     """Return a bounded, redacted tail from a failed lifecycle command.
 
@@ -1121,8 +1170,6 @@ def _exact_serve(serves, name):
 
 def _validate_promotion_topology(serves, plan):
     """Validate both complete capability meta-router configs against their selected serve."""
-    from .router.config import load as load_router_config
-
     target = _exact_serve(serves, plan["target"])
     old = _exact_serve(serves, plan["rollback"])
     affected = set(plan["affected_tiers"])
@@ -1132,8 +1179,7 @@ def _validate_promotion_topology(serves, plan):
         raise ValueError("promotion target and rollback must use the same fixed endpoint port")
     if target["name"] == old["name"]:
         raise ValueError("promotion target and rollback must be distinct serves")
-    promoted = load_router_config(plan["router_config"])
-    rolled_back = load_router_config(plan["rollback_router_config"])
+    promoted, rolled_back = _promotion_lifecycle_configs(plan)
     if dict(promoted.model_routes) != dict(rolled_back.model_routes):
         raise ValueError("promotion router configs must declare identical capability aliases")
     promoted_ids = {tier.id for tier in promoted.tiers}
@@ -1346,30 +1392,55 @@ def _install_router_config(
     Returns 0 on success, 1 when the prior config was certainly retained or
     restored, and 4 when the deployed router state is uncertain.
     """
-    try:
-        with open(config_file, "r", encoding="utf-8") as handle:
-            config_text = handle.read().replace("\r\n", "\n").replace("\r", "\n")
-    except OSError as exc:
-        print("  router config unreadable: %s" % exc)
-        return 1
+    from .router.topology_validation import ValidatedRouterConfigSnapshot
+
+    if isinstance(config_file, ValidatedRouterConfigSnapshot):
+        # Managed activation has already captured and topology-validated these
+        # bytes.  Never reopen or newline-normalize the original source path.
+        config_bytes = config_file.config_bytes
+        config_label = "validated snapshot"
+    else:
+        try:
+            with open(config_file, "r", encoding="utf-8") as handle:
+                config_text = handle.read().replace("\r\n", "\n").replace("\r", "\n")
+        except OSError:
+            print("  router config unreadable")
+            return 1
+        # Direct internal callers retain the deployed image as their syntax
+        # authority. A locally parseable replica config is nevertheless
+        # refused before Docker; malformed direct input remains a validator
+        # refusal just as it was before the snapshot-managed activation path.
+        try:
+            from .router.config import load as load_router_config
+
+            direct_config = load_router_config(config_file)
+        except Exception:
+            direct_config = None
+        if direct_config is not None:
+            try:
+                _guard_replica_lifecycle(
+                    direct_config, [tier.id for tier in direct_config.tiers]
+                )
+            except ReplicaLifecycleUnsupported as exc:
+                print("  router config install refused: %s" % exc.code)
+                return 1
+        config_bytes = config_text.encode("utf-8")
+        config_label = "direct config"
 
     validate = [
         "docker", "exec", "-i", container, "python", "-c",
         _DIRECT_CONFIG_VALIDATOR,
     ]
-    print("  validate capability meta-router config: %s" % config_file)
+    print("  validate capability meta-router config: %s" % config_label)
     try:
         result = _run(
-            validate, input=config_text, capture_output=True, text=True,
-            encoding="utf-8",
+            validate, input=config_bytes, capture_output=True,
         )
     except FileNotFoundError:
         print("  router config install failed: docker not available")
         return 1
     if result.returncode != 0:
-        print("  router config rejected by deployed image: %s" % (
-            result.stderr or result.stdout or "validation failed"
-        ).strip())
+        print("  router config rejected by deployed image")
         return 1
 
     image_result = _run(
@@ -1394,9 +1465,7 @@ def _install_router_config(
         capture_output=True, text=True,
     )
     if backup.returncode != 0:
-        print("  router config backup failed: %s" % (
-            backup.stderr or backup.stdout or "unknown error"
-        ).strip())
+        print("  router config backup failed")
         return 1
     write_script = "cat > {new} && mv {new} {cfg}".format(
         new=new_path, cfg=config_path
@@ -1404,17 +1473,13 @@ def _install_router_config(
     write = _run(
         ["docker", "run", "--rm", "-i", "--user", "0", "-v", mount,
          "--entrypoint", "sh", image, "-c", write_script],
-        # Bytes are deliberate.  On Windows, subprocess text mode rewrites
-        # every canonical LF to CRLF before Docker receives stdin, defeating
-        # the normalization above and making the installed artifact differ by
-        # host OS.  A binary pipe preserves the exact validated UTF-8 bytes.
-        input=config_text.encode("utf-8"), capture_output=True,
+        # Bytes are deliberate. On Windows, text mode can rewrite line endings
+        # before Docker receives stdin. A binary pipe preserves the exact
+        # snapshot (or legacy direct-path canonicalization) selected above.
+        input=config_bytes, capture_output=True,
     )
     if write.returncode != 0:
-        detail = write.stderr or write.stdout or b"unknown error"
-        if isinstance(detail, bytes):
-            detail = detail.decode("utf-8", "replace")
-        print("  router config write failed: %s" % detail.strip())
+        print("  router config write failed")
         return 1
 
     restart = _run(
@@ -1597,6 +1662,9 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                           dry_run=False, require_candidate=True, resume=False,
                           _run=subprocess.run,
                           _open=urllib.request.urlopen, _sleep=time.sleep):
+    # Direct callers include rollback/recovery paths; refuse before any probe,
+    # transition, container operation, or compensating lifecycle action.
+    _promotion_lifecycle_configs(plan)
     target = _exact_serve(serves, plan["rollback"] if rollback else plan["target"])
     displaced = _exact_serve(serves, plan["target"] if rollback else plan["rollback"])
     candidate = _exact_serve(serves, plan["candidate"]) if plan.get("candidate") else None
@@ -2291,6 +2359,13 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
     # Promotion plans may overlap on only some affected tiers. A lock derived
     # from the complete tier set would let partially overlapping plans race, so
     # all live promotions share one short, explicit transaction lock.
+    matches = [plan for plan in promotions if plan["name"] == name]
+    if len(matches) == 1:
+        try:
+            _promotion_lifecycle_configs(matches[0])
+        except ReplicaLifecycleUnsupported as exc:
+            print("promotion refused: %s" % exc)
+            return 1
     lock = nullcontext() if dry_run else _switch_role_lock("promotion")
     try:
         with lock:
@@ -3778,6 +3853,16 @@ def cmd_up_for(config, serves, alias, config_path, as_json=False, confirm=False,
             print(message, file=sys.stderr)
         return 2
 
+    try:
+        _guard_replica_lifecycle(config, [result["tier_id"]])
+    except ReplicaLifecycleUnsupported as exc:
+        message = str(exc)
+        if as_json:
+            print(json.dumps({**result, "error": message}, indent=2, sort_keys=True))
+        else:
+            print(message, file=sys.stderr)
+        return 1
+
     candidates = result["candidates"]
     if not candidates:
         message = (
@@ -4969,6 +5054,61 @@ def _mode_router_plan(serves, target, plan):
     }
 
 
+def _mode_affected_router_tiers(serves, target_name, restore_group):
+    """Return the complete static routed blast radius of one mode transition."""
+    target = _exact_serve(serves, target_name)
+    restore_names = {serve["name"] for serve in resolve_group(serves, restore_group)}
+    affected: list[str] = []
+    for serve in serves:
+        if (
+            serve["name"] == target_name
+            or reservations.is_gpu_inference(serve)
+            or serve["name"] in restore_names
+        ):
+            tier_id = serve.get("router_tier")
+            if tier_id and tier_id not in affected:
+                affected.append(tier_id)
+    return target, tuple(affected)
+
+
+def _load_active_router_config(path=None):
+    """Load only the operator-owned active config, never a target profile."""
+    from .doctor import resolve_default_config_path
+    from .router.config import load as load_router_config
+
+    selected = path or resolve_default_config_path()
+    if not selected:
+        raise ReplicaLifecycleConfigurationUnavailable()
+    try:
+        return load_router_config(selected)
+    except Exception:
+        raise ReplicaLifecycleConfigurationUnavailable() from None
+
+
+def _guard_mode_replica_lifecycle(serves, target_name, restore_group, active_config):
+    """Validate every statically affected routed tier before any state probe."""
+    target, affected = _mode_affected_router_tiers(serves, target_name, restore_group)
+    if not affected:
+        return
+    _guard_replica_lifecycle(active_config, affected)
+
+    tier_id = target.get("router_tier")
+    router_profiles = (
+        target.get("router_config"), target.get("rollback_router_config"),
+    )
+    if tier_id and any(router_profiles):
+        from .router.config import load as load_router_config
+
+        for path in router_profiles:
+            if not path:
+                raise ReplicaLifecycleConfigurationUnavailable()
+            try:
+                profile = load_router_config(path)
+            except Exception:
+                raise ReplicaLifecycleConfigurationUnavailable() from None
+            _guard_replica_lifecycle(profile, [tier_id])
+
+
 def _print_operating_mode_plan(plan):
     print("mode: %s" % plan["mode"])
     print("target: %s (TP=%s)" % (plan["target"], plan["tensor_parallel_size"]))
@@ -5058,6 +5198,7 @@ def cmd_mode(
     readiness_timeout=LIFECYCLE_READINESS_TIMEOUT_SECONDS,
     readiness_poll=LIFECYCLE_READINESS_POLL_SECONDS,
     router_url=None,
+    active_config=None,
     _transition=None,
     _run=subprocess.run,
     _open=urllib.request.urlopen,
@@ -5066,6 +5207,14 @@ def cmd_mode(
     _recipe_ownership=None,
 ):
     """Preview, enter, leave, or report the exclusive TP=2 operating mode."""
+    if action != "status":
+        try:
+            _guard_mode_replica_lifecycle(
+                serves, target_name, restore_group, active_config,
+            )
+        except ReplicaLifecycleUnsupported as exc:
+            print("mode transition refused: %s" % exc, file=sys.stderr)
+            return 2
     gpu_containers = [
         serve["container"] for serve in serves
         if reservations.is_gpu_inference(serve)
@@ -5439,6 +5588,7 @@ def cmd_profile(
     dry_run=False,
     drain_timeout=EVICTION_DRAIN_TIMEOUT,
     router_url=None,
+    active_config=None,
     _run=subprocess.run,
 ):
     """List, preview, or apply a named topology profile through ``cmd_mode``."""
@@ -5456,6 +5606,13 @@ def cmd_profile(
         return 0
 
     profile = select_serve_profile(profiles, profile_id)
+    try:
+        _guard_mode_replica_lifecycle(
+            serves, profile["exclusive_target"], profile["restore_group"], active_config,
+        )
+    except ReplicaLifecycleUnsupported as exc:
+        print("serving profile refused: %s" % exc, file=sys.stderr)
+        return 2
     states = docker_states(
         [serve["container"] for serve in serves if reservations.is_gpu_inference(serve)],
         _run=_run,
@@ -5485,6 +5642,7 @@ def cmd_profile(
             readiness_timeout=profile["startup_timeout"],
             readiness_poll=profile["poll_interval"],
             router_url=router_url,
+            active_config=active_config,
             _run=_run,
         )
         if result == 0 and action == "apply" and not dry_run:
@@ -5948,6 +6106,10 @@ def _build_action_parser(action):
     )
     if action == "mode":
         p.add_argument(
+            "--config", metavar="PATH",
+            help="active router config TOML (default: operator config home).",
+        )
+        p.add_argument(
             "mode_action",
             choices=("status", "preview", "enter", "leave"),
             help="mode operation to perform",
@@ -5960,6 +6122,10 @@ def _build_action_parser(action):
         )
         p.set_defaults(names=[])
     elif action == "profile":
+        p.add_argument(
+            "--config", metavar="PATH",
+            help="active router config TOML (default: operator config home).",
+        )
         p.add_argument(
             "profile_action",
             choices=("list", "preview", "apply"),
@@ -6468,6 +6634,18 @@ def main(argv=None):
         except (OSError, ValueError, tomllib.TOMLDecodeError) as exc:
             print("bad serve profiles %s: %s" % (profiles_path, exc), file=sys.stderr)
             return 2
+        active_config = None
+        if a.profile_action != "list":
+            try:
+                profile = select_serve_profile(profiles, a.profile_id)
+                _target, affected = _mode_affected_router_tiers(
+                    serves, profile["exclusive_target"], profile["restore_group"],
+                )
+                if affected:
+                    active_config = _load_active_router_config(a.config)
+            except (ReplicaLifecycleUnsupported, ServeProfileError, ValueError) as exc:
+                print("serving profile refused: %s" % exc, file=sys.stderr)
+                return 2
         if a.profile_action == "apply":
             try:
                 profile = select_serve_profile(profiles, a.profile_id)
@@ -6518,6 +6696,7 @@ def main(argv=None):
                 dry_run=a.dry_run,
                 drain_timeout=a.drain_timeout,
                 router_url=a.router_url,
+                active_config=active_config,
             )
         except ServeProfileError as exc:
             print("serving profile refused: %s" % exc, file=sys.stderr)
@@ -6569,6 +6748,17 @@ def main(argv=None):
                 file=sys.stderr,
             )
             return 2
+        active_config = None
+        if a.mode_action != "status":
+            try:
+                _target, affected = _mode_affected_router_tiers(
+                    serves, a.target, a.restore_group,
+                )
+                if affected:
+                    active_config = _load_active_router_config(a.config)
+            except (ReplicaLifecycleUnsupported, ValueError) as exc:
+                print("mode transition refused: %s" % exc, file=sys.stderr)
+                return 2
         if a.mode_action == "enter":
             # A first load: standalone `rollback-check` loads promotions itself
             # (mode's own dispatch never has), mirroring its per-file tolerance
@@ -6604,6 +6794,7 @@ def main(argv=None):
             drain_timeout=a.drain_timeout,
             preserve_on_failure=a.preserve_on_failure,
             router_url=a.router_url,
+            active_config=active_config,
         )
         return _finish_cache_reclaim(
             rc,

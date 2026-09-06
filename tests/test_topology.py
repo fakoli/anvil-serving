@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import os
 import urllib.parse
 from collections.abc import Mapping
+from dataclasses import asdict, replace
 from pathlib import Path
 from types import MappingProxyType
 
 import pytest
 
+from anvil_serving import cli, topology_cli
 import anvil_serving.topology as topology_module
+from anvil_serving.fleet_bootstrap import InstallAdapter, SupervisorAdapter
 from anvil_serving.targets import resolve_resource_target
 from anvil_serving.topology import (
     Resource,
@@ -115,6 +120,42 @@ def _topology() -> dict:
             },
         ],
     }
+
+
+def _host_bootstrap(platform: str = "linux") -> dict[str, object]:
+    if platform == "windows":
+        paths = {
+            "staging_root": "C:\\Anvil\\Staging",
+            "install_root": "D:\\Anvil\\Install",
+            "python_executable": "C:\\Python311\\python.exe",
+            "receiver_path": "D:\\Anvil\\Receiver\\bootstrap.py",
+        }
+        supervisor = "windows-scheduled-task"
+    else:
+        paths = {
+            "staging_root": "/var/tmp/anvil-staging",
+            "install_root": "/opt/anvil/install",
+            "python_executable": "/usr/bin/python3",
+            "receiver_path": "/opt/anvil-receiver/bootstrap.py",
+        }
+        supervisor = "linux-systemd-user"
+    return {
+        "enabled": True,
+        "bootstrap_authorized": True,
+        "execution_runtime": "operator-native",
+        **paths,
+        "receiver_sha256": "a" * 64,
+        "install_adapter": "python-wheel-venv",
+        "supervisor_adapter": supervisor,
+        "supervisor_id": "anvil-controller",
+    }
+
+
+def _topology_with_host_bootstrap(platform: str = "linux") -> dict:
+    data = _topology()
+    data["hosts"][0]["os"] = platform
+    data["hosts"][0]["bootstrap"] = _host_bootstrap(platform)
+    return data
 
 
 def _paths(result) -> set[str]:
@@ -2073,3 +2114,444 @@ def test_topology_drift_reports_metadata_only_differences(tmp_path):
     )
     assert report["in_sync"] is True
     assert report["differences"] == []
+
+
+_VALIDATION_CONFIG = """\
+[router]
+
+[[router.tiers]]
+id = "primary"
+model = "primary-model"
+dialect = "openai"
+context_limit = 8192
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_PRIMARY_KEY"
+health_path = "/health"
+model_identity = true
+replicas = [
+  { id = "member-a", base_url = "http://replica-a.example/v1", host_id = "host-a", resource_id = "resource-a", qualification_ref = "qualification:primary-a" },
+  { id = "member-b", base_url = "http://replica-b.example/v1", host_id = "host-a", resource_id = "resource-b", qualification_ref = "qualification:primary-b" },
+]
+replica_identity = { model_revision = "revision-1", engine_version = "engine-1", image_digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", config_fingerprint = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+
+[router.model_routes]
+llm.primary = "primary"
+"""
+
+
+_VALIDATION_DIRECT_CONFIG = """\
+[router]
+
+[[router.tiers]]
+id = "direct"
+base_url = "http://replica-a.example/v1"
+model = "direct-model"
+dialect = "openai"
+context_limit = 8192
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_DIRECT_KEY"
+
+[router.model_routes]
+llm.direct = "direct"
+"""
+
+
+_VALIDATION_TOPOLOGY = """\
+schema_version = 1
+id = "synthetic"
+
+[[capacity_policies]]
+id = "model-capable"
+allow_model_workloads = true
+
+[[hosts]]
+id = "host-a"
+roles = ["serve"]
+capacity_policy = "model-capable"
+
+[[runtimes]]
+id = "runtime-a"
+host = "host-a"
+role = "native"
+
+[[resources]]
+id = "resource-a"
+role = "model-serve-a"
+host = "host-a"
+runtime = "runtime-a"
+endpoint = "http://replica-a.example/v1"
+
+[[resources]]
+id = "resource-b"
+role = "model-serve-b"
+host = "host-a"
+runtime = "runtime-a"
+endpoint = "http://replica-b.example/v1"
+"""
+
+
+def _validation_paths(tmp_path):
+    config = tmp_path / "router.toml"
+    topology = tmp_path / "topology.toml"
+    config.write_text(_VALIDATION_CONFIG, encoding="utf-8")
+    topology.write_text(_VALIDATION_TOPOLOGY, encoding="utf-8")
+    return config, topology
+
+
+def test_root_router_config_validation_uses_snapshot_once_and_closed_envelope(
+    tmp_path, monkeypatch, capsys
+):
+    config, topology = _validation_paths(tmp_path)
+    overlay = tmp_path / "overlay.toml"
+    overlay.write_text('id = "synthetic"\n', encoding="utf-8")
+    calls = []
+    real_validator = topology_cli.load_validated_router_snapshot
+
+    def tracked_validator(*args):
+        calls.append(args)
+        return real_validator(*args)
+
+    monkeypatch.setattr(topology_cli, "load_validated_router_snapshot", tracked_validator)
+    monkeypatch.setattr(
+        cli, "_resolve_dispatch_plan", lambda *_args: pytest.fail("resolved a target")
+    )
+    monkeypatch.setattr(
+        cli, "execute_plan", lambda *_args, **_kwargs: pytest.fail("dispatched a transport")
+    )
+
+    assert cli.main(["--json", "topology", "validate-router-config", "--config", str(config), "--topology", str(topology), "--topology-overlay", str(overlay)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert payload["command"] == "topology validate-router-config"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert set(payload["data"]) == {
+        "schema_version", "valid", "error_code", "config_sha256", "tier_count",
+        "replica_tier_count", "replica_member_count", "deployment_identity_source",
+        "runtime_deployment_identity_verified",
+    }
+    assert payload["data"]["valid"] is True
+    assert payload["data"]["replica_member_count"] == 2
+    assert calls == [(str(config), str(topology), str(overlay))]
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ["--topology", "private-topology-marker"],
+        ["--config", "private-config-marker", "--unknown", "private-unknown-marker"],
+        ["--config", "private-first-marker", "--config", "private-second-marker"],
+        ["--config", "private-config-marker", "--topology"],
+    ),
+)
+def test_root_router_config_validation_refuses_safely_without_paths_or_dispatch(
+    tmp_path, monkeypatch, capsys, arguments
+):
+    config, topology = _validation_paths(tmp_path)
+    calls = []
+    monkeypatch.setattr(
+        topology_cli,
+        "load_validated_router_snapshot",
+        lambda *_args: calls.append(True) or pytest.fail("validator called"),
+    )
+    monkeypatch.setattr(
+        cli, "_resolve_dispatch_plan", lambda *_args: pytest.fail("resolved a target")
+    )
+
+    assert cli.main(["--json", "topology", "validate-router-config", *arguments]) == 2
+    rendered = capsys.readouterr()
+    for marker in ("private-topology-marker", "private-config-marker", "private-unknown-marker", "private-first-marker", "private-second-marker"):
+        assert marker not in rendered.out + rendered.err
+    payload = json.loads(rendered.out)
+    assert payload["command"] == "topology validate-router-config"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["data"] == {
+        "schema_version": "replica-topology-validation/v1",
+        "valid": False,
+        "error_code": "router_config_invalid",
+        "config_sha256": None,
+        "tier_count": None,
+        "replica_tier_count": None,
+        "replica_member_count": None,
+        "deployment_identity_source": None,
+        "runtime_deployment_identity_verified": False,
+    }
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ["--config="],
+        ["--config", "safe-config", "--topology="],
+        ["--config", "safe-config", "--topology-overlay="],
+    ),
+)
+def test_root_router_config_validation_refuses_empty_operands_before_validator(
+    monkeypatch, capsys, arguments
+):
+    calls = []
+    monkeypatch.setattr(
+        topology_cli,
+        "load_validated_router_snapshot",
+        lambda *_args: calls.append(True) or pytest.fail("validator called"),
+    )
+
+    assert cli.main(["--json", "topology", "validate-router-config", *arguments]) == 2
+    rendered = capsys.readouterr()
+    payload = json.loads(rendered.out)
+    assert rendered.err == ""
+    assert calls == []
+    assert payload["command"] == "topology validate-router-config"
+    assert payload["context"] is None and payload["warnings"] == []
+    assert payload["data"] == {
+        "schema_version": "replica-topology-validation/v1",
+        "valid": False,
+        "error_code": "router_config_invalid",
+        "config_sha256": None,
+        "tier_count": None,
+        "replica_tier_count": None,
+        "replica_member_count": None,
+        "deployment_identity_source": None,
+        "runtime_deployment_identity_verified": False,
+    }
+
+
+def test_root_router_config_validation_direct_snapshot_preserves_source_bytes(
+    tmp_path, capsys
+):
+    config, topology = _validation_paths(tmp_path)
+    config.write_text(_VALIDATION_DIRECT_CONFIG, encoding="utf-8")
+    config_before = config.read_bytes()
+    topology_before = topology.read_bytes()
+
+    assert cli.main([
+        "--json",
+        "topology",
+        "validate-router-config",
+        "--config",
+        str(config),
+        "--topology",
+        str(topology),
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert config.read_bytes() == config_before
+    assert topology.read_bytes() == topology_before
+    assert payload["data"]["config_sha256"] == hashlib.sha256(config_before).hexdigest()
+    assert payload["data"]["tier_count"] == 1
+    assert payload["data"]["replica_tier_count"] == 0
+    assert payload["data"]["replica_member_count"] == 0
+
+
+def test_root_router_config_validation_help_is_static_and_does_not_validate(monkeypatch, capsys):
+    monkeypatch.setattr(
+        topology_cli,
+        "load_validated_router_snapshot",
+        lambda *_args: pytest.fail("help invoked the validator"),
+    )
+
+    assert cli.main(["topology", "validate-router-config", "--help"]) == 0
+    help_text = capsys.readouterr().out
+    assert "--config PATH" in help_text
+    assert "--topology PATH" in help_text
+    assert "--topology-overlay PATH" in help_text
+
+
+def test_router_config_validation_human_and_module_paths_are_bounded(tmp_path, capsys):
+    config, topology = _validation_paths(tmp_path)
+    assert topology_cli.main(["validate-router-config", "--config", str(config), "--topology", str(topology)]) == 0
+    assert capsys.readouterr().out == "router config topology valid: tiers=1 replica_tiers=1 replica_members=2\n"
+
+    broken = topology.read_text(encoding="utf-8").replace('id = "resource-b"', 'id = "missing"')
+    topology.write_text(broken, encoding="utf-8")
+    assert cli.main(["topology", "validate-router-config", "--config", str(config), "--topology", str(topology)]) == 2
+    assert capsys.readouterr().err == "router config topology refused: replica_resource_missing\n"
+
+
+@pytest.mark.parametrize(
+    ("config_text", "topology_text", "code"),
+    (
+        (
+            _VALIDATION_CONFIG,
+            _VALIDATION_TOPOLOGY.replace('id = "resource-b"', 'id = "missing-resource"'),
+            "replica_resource_missing",
+        ),
+        (
+            _VALIDATION_CONFIG.replace('host_id = "host-a"', 'host_id = "host-b"'),
+            _VALIDATION_TOPOLOGY,
+            "replica_host_mismatch",
+        ),
+        (
+            _VALIDATION_CONFIG,
+            _VALIDATION_TOPOLOGY.replace("http://replica-b.example/v1", "http://other.example/v1"),
+            "replica_endpoint_mismatch",
+        ),
+    ),
+)
+def test_root_router_config_validation_returns_fixed_join_refusals(
+    tmp_path, capsys, config_text, topology_text, code
+):
+    config, topology = _validation_paths(tmp_path)
+    config.write_text(config_text, encoding="utf-8")
+    topology.write_text(topology_text, encoding="utf-8")
+
+    assert cli.main(["topology", "validate-router-config", "--json", "--config", str(config), "--topology", str(topology)]) == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["data"]["error_code"] == code
+    assert payload["data"]["config_sha256"] is None
+    assert payload["context"] is None and payload["warnings"] == []
+
+
+def test_host_bootstrap_parses_closed_linux_and_windows_declarations():
+    linux = parse_topology(_topology_with_host_bootstrap("linux")).host("operator").bootstrap
+    windows = parse_topology(_topology_with_host_bootstrap("windows")).host("operator").bootstrap
+
+    assert linux is not None and windows is not None
+    assert linux.install_adapter is InstallAdapter.PYTHON_WHEEL_VENV
+    assert linux.supervisor_adapter is SupervisorAdapter.LINUX_SYSTEMD_USER
+    assert windows.supervisor_adapter is SupervisorAdapter.WINDOWS_SCHEDULED_TASK
+    assert windows.python_executable == "C:\\Python311\\python.exe"
+
+
+def test_host_bootstrap_flags_default_false_without_relaxing_required_fields():
+    data = _topology_with_host_bootstrap()
+    data["hosts"][0]["bootstrap"].pop("enabled")
+    data["hosts"][0]["bootstrap"].pop("bootstrap_authorized")
+
+    bootstrap = parse_topology(data).host("operator").bootstrap
+
+    assert bootstrap is not None
+    assert not bootstrap.enabled and not bootstrap.bootstrap_authorized
+
+
+@pytest.mark.parametrize(
+    ("platform", "field", "value"),
+    (
+        ("linux", "staging_root", "/"),
+        ("linux", "staging_root", "relative/path"),
+        ("linux", "staging_root", "/var//stage"),
+        ("linux", "staging_root", "/var/../stage"),
+        ("linux", "staging_root", "/var\\stage"),
+        ("linux", "receiver_path", "/opt/anvil\x00receiver.py"),
+        ("windows", "staging_root", "C:\\"),
+        ("windows", "staging_root", "\\root-relative"),
+        ("windows", "staging_root", "\\\\server\\share\\stage"),
+        ("windows", "staging_root", "C:/Anvil/Stage"),
+        ("windows", "staging_root", "C:\\Anvil\\..\\Stage"),
+        ("windows", "staging_root", "C:\\Anvil\\NUL.txt"),
+        ("windows", "staging_root", "C:\\Anvil\\stage. "),
+        ("windows", "receiver_path", "C:\\Anvil\\receiver.py:stream"),
+    ),
+)
+def test_host_bootstrap_rejects_unsafe_paths_without_host_filesystem_access(
+    platform, field, value
+):
+    data = _topology_with_host_bootstrap(platform)
+    data["hosts"][0]["bootstrap"][field] = value
+
+    errors = validate_topology(data).errors
+
+    assert any(error.path == f"hosts[0].bootstrap.{field}" for error in errors)
+
+
+def test_host_bootstrap_path_validation_is_pure_and_cross_platform(monkeypatch):
+    class NoFilesystemOS:
+        def __getattr__(self, _name):
+            raise AssertionError("bootstrap topology attempted local OS access")
+
+    monkeypatch.setattr(topology_module, "os", NoFilesystemOS())
+
+    assert parse_topology(_topology_with_host_bootstrap("linux")).host("operator").bootstrap
+    assert parse_topology(_topology_with_host_bootstrap("windows")).host("operator").bootstrap
+
+
+@pytest.mark.parametrize(
+    ("mutation", "path"),
+    (
+        (lambda raw: raw.update(extra="value"), "hosts[0].bootstrap.extra"),
+        (lambda raw: raw.pop("receiver_path"), "hosts[0].bootstrap.receiver_path"),
+        (lambda raw: raw.update(receiver_sha256="A" * 64), "hosts[0].bootstrap.receiver_sha256"),
+        (lambda raw: raw.update(install_adapter="pip"), "hosts[0].bootstrap.install_adapter"),
+        (lambda raw: raw.update(supervisor_adapter="windows-scheduled-task"), "hosts[0].bootstrap.supervisor_adapter"),
+        (lambda raw: raw.update(supervisor_id="x" * 65), "hosts[0].bootstrap.supervisor_id"),
+        (lambda raw: raw.update(enabled=1), "hosts[0].bootstrap.enabled"),
+    ),
+)
+def test_host_bootstrap_rejects_unknown_missing_or_malformed_fields(mutation, path):
+    data = _topology_with_host_bootstrap()
+    mutation(data["hosts"][0]["bootstrap"])
+
+    assert any(error.path == path for error in validate_topology(data).errors)
+
+
+def test_host_bootstrap_rejects_nested_or_overlapping_roots():
+    data = _topology_with_host_bootstrap()
+    data["hosts"][0]["bootstrap"]["install_root"] = "/var/tmp/anvil-staging/install"
+    assert any(
+        error.path == "hosts[0].bootstrap.install_root"
+        for error in validate_topology(data).errors
+    )
+
+    data = _topology_with_host_bootstrap("windows")
+    data["hosts"][0]["bootstrap"]["install_root"] = "c:\\anvil\\staging\\installed"
+    assert any(
+        error.path == "hosts[0].bootstrap.install_root"
+        for error in validate_topology(data).errors
+    )
+
+
+@pytest.mark.parametrize(
+    "runtime_mutation",
+    (
+        lambda data: data["hosts"][0]["bootstrap"].update(execution_runtime="missing"),
+        lambda data: data["hosts"][0]["bootstrap"].update(execution_runtime="serve-native"),
+        lambda data: data["runtimes"][0].update(role="docker"),
+    ),
+)
+def test_host_bootstrap_requires_one_same_host_native_runtime(runtime_mutation):
+    data = _topology_with_host_bootstrap()
+    runtime_mutation(data)
+
+    assert any(
+        error.path == "hosts[0].bootstrap.execution_runtime"
+        for error in validate_topology(data).errors
+    )
+
+
+def test_absent_bootstrap_preserves_exact_legacy_snapshot_digest():
+    topology = parse_topology(_topology())
+    legacy = asdict(topology)
+    for host in legacy["hosts"]:
+        host.pop("bootstrap")
+    expected = hashlib.sha256(
+        json.dumps(legacy, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+    ).hexdigest()
+
+    assert topology_snapshot_identity(topology) == expected
+
+
+def test_every_declared_bootstrap_field_is_snapshot_identity():
+    topology = parse_topology(_topology_with_host_bootstrap())
+    host = topology.host("operator")
+    assert host.bootstrap is not None
+    alternatives = {
+        "enabled": False,
+        "bootstrap_authorized": False,
+        "execution_runtime": "alternate-native",
+        "staging_root": "/var/tmp/alternate-stage",
+        "install_root": "/opt/anvil/alternate-install",
+        "python_executable": "/usr/local/bin/python3",
+        "receiver_path": "/opt/alternate-receiver/bootstrap.py",
+        "receiver_sha256": "b" * 64,
+        "install_adapter": "alternate-install-adapter",
+        "supervisor_adapter": "alternate-supervisor-adapter",
+        "supervisor_id": "alternate-controller",
+    }
+    baseline = topology_snapshot_identity(topology)
+    for field, value in alternatives.items():
+        changed_bootstrap = replace(host.bootstrap, **{field: value})
+        changed_host = replace(host, bootstrap=changed_bootstrap)
+        changed_hosts = (changed_host,) + topology.hosts[1:]
+        assert topology_snapshot_identity(replace(topology, hosts=changed_hosts)) != baseline

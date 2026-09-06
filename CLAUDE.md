@@ -27,9 +27,16 @@ chat vocabulary: one normalized caller alias maps to exactly one local tier.
 Unknown or missing aliases return 404. A selected tier that cannot serve returns
 an error; it is not replaced by another tier.
 
+A tier is either direct or an explicit set of 2–16 qualified equivalent
+replicas on one host. Replica tiers require configured metadata. Round-robin
+or capacity-aware selection chooses one ready, admitted member inside that
+tier; it does not retry, substitute a model, or schedule across hosts. See
+[replica configuration](docs/CONFIGURATION.md#qualified-same-host-replicas)
+and [lifecycle limits](docs/cli/serves.md#replica-lifecycle-limits).
+
 "Meta-router" names the authority split, not a model-selection algorithm. The
 caller owns the requested capability alias; operator configuration owns the
-single alias-to-tier mapping, endpoint, and policy; and an opted-in inference
+single alias-to-tier mapping, endpoint or closed member set, and policy; and an opted-in inference
 service owns only its mutable served-model metadata. The router validates and
 projects those facts without changing the selected tier.
 
@@ -78,18 +85,22 @@ anvil_serving/
   controller.py           public authenticated-controller compatibility facade
   mcp.py                  public MCP compatibility and composition facade
   control_plane/
+    authorization.py      explicit scoped node/fleet read authority
     controller/           persistence, security, HTTP, server, and CLI internals
     mcp/                  validation, security, protocol, runtime, and catalog
       tools/              explicit ordered tool-family implementations
   router/
-    config.py             direct topology, aliases, purpose/audio routes
+    config.py             direct/replica topology, aliases, purpose/audio routes
     serve.py              deterministic chat relay backend
     front_door.py         auth, protocol endpoints, streaming
     availability.py       readiness cache/probes
     admission.py          concurrency controls
+    replica_scheduler.py  bounded member scores; admission owns atomic reservation
+    workloads.py          metadata-only in-flight request snapshots
     decision_log.py       metadata-only audit records
     discovery.py          configured alias advertisement
     dialects/             Anthropic/OpenAI translation
+  observability/          bounded workload projections, fleet reads, dashboard
   voice/                  owned STT/TTS, bridge, Realtime operations
   media/                  named workflows, durable jobs, qualification, artifacts
 ```

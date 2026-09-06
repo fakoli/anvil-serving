@@ -10,6 +10,97 @@ from .commands import COMMAND_TREE, CommandNode
 from .paths import default_topology_path, resolve_topology_path
 from .targets import CommandSpec, resolve_execution_plan
 from .topology import load_topology, load_topology_result
+from .router.topology_validation import (
+    DEPLOYMENT_IDENTITY_SOURCE,
+    ERROR_ROUTER_CONFIG_INVALID,
+    RUNTIME_DEPLOYMENT_IDENTITY_VERIFIED,
+    SCHEMA_VERSION as ROUTER_VALIDATION_SCHEMA_VERSION,
+    ReplicaTopologyValidationError,
+    load_validated_router_snapshot,
+)
+
+
+class _ValidationArgumentError(ValueError):
+    """A fixed parser failure for private router/topology path operands."""
+
+
+class _ValidationParser(argparse.ArgumentParser):
+    def error(self, _message: str) -> None:
+        raise _ValidationArgumentError("invalid validation arguments")
+
+
+class _SetOnce(argparse.Action):
+    def __call__(self, parser, namespace, values, _option_string=None) -> None:
+        if getattr(namespace, self.dest, None) is not None:
+            parser.error("repeated validation argument")
+        if type(values) is not str or not values:
+            parser.error("invalid validation argument")
+        setattr(namespace, self.dest, values)
+
+
+def _validation_result(*, valid: bool, error_code: str | None = None, **counts: object) -> dict:
+    return {
+        "schema_version": ROUTER_VALIDATION_SCHEMA_VERSION,
+        "valid": valid,
+        "error_code": error_code,
+        "config_sha256": counts.get("config_sha256"),
+        "tier_count": counts.get("tier_count"),
+        "replica_tier_count": counts.get("replica_tier_count"),
+        "replica_member_count": counts.get("replica_member_count"),
+        "deployment_identity_source": (
+            DEPLOYMENT_IDENTITY_SOURCE if valid else None
+        ),
+        "runtime_deployment_identity_verified": (
+            RUNTIME_DEPLOYMENT_IDENTITY_VERIFIED
+        ),
+    }
+
+
+def _validation_parser() -> argparse.ArgumentParser:
+    parser = _ValidationParser(
+        prog="anvil-serving topology validate-router-config",
+        description="Validate one router config against declared topology offline.",
+        allow_abbrev=False,
+    )
+    parser.add_argument("--config", required=True, action=_SetOnce, metavar="PATH")
+    parser.add_argument("--topology", action=_SetOnce, metavar="PATH")
+    parser.add_argument("--topology-overlay", action=_SetOnce, metavar="PATH")
+    return parser
+
+
+def validate_router_config(argv: list[str]) -> dict:
+    """Return the closed, input-free result for one exact snapshot validation."""
+    try:
+        args = _validation_parser().parse_args(argv)
+    except _ValidationArgumentError:
+        return _validation_result(valid=False, error_code=ERROR_ROUTER_CONFIG_INVALID)
+    topology_arg = (
+        default_topology_path() if args.topology is None else args.topology
+    )
+    try:
+        snapshot = load_validated_router_snapshot(
+            args.config,
+            resolve_topology_path(topology_arg),
+            (
+                resolve_topology_path(args.topology_overlay)
+                if args.topology_overlay is not None
+                else None
+            ),
+        )
+    except ReplicaTopologyValidationError as exc:
+        return _validation_result(valid=False, error_code=exc.code)
+    return snapshot.to_dict()
+
+
+def validation_human(result: dict) -> str:
+    """Render exactly one metadata-only line for the validation result."""
+    if result.get("valid") is True:
+        return (
+            "router config topology valid: "
+            f"tiers={result['tier_count']} replica_tiers={result['replica_tier_count']} "
+            f"replica_members={result['replica_member_count']}\n"
+        )
+    return f"router config topology refused: {result.get('error_code')}\n"
 
 
 def _command_node(command: str) -> tuple[tuple[CommandNode, ...], CommandNode]:
@@ -130,6 +221,8 @@ def _drift_report(installed, canonical) -> dict:
 
 
 def run(argv=None) -> dict:
+    if argv and argv[0] == "validate-router-config":
+        return validate_router_config(list(argv[1:]))
     args = _parser().parse_args(argv)
     topology_path = resolve_topology_path(args.topology)
     if args.action == "drift":
@@ -196,6 +289,9 @@ def run(argv=None) -> dict:
 
 def main(argv=None) -> int:
     result = run(argv)
+    if result.get("schema_version") == ROUTER_VALIDATION_SCHEMA_VERSION:
+        print(validation_human(result), end="")
+        return 0 if result["valid"] else 2
     print(json.dumps(result, indent=2, sort_keys=True))
     if not result.get("valid", True):
         return 2

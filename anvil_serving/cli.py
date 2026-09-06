@@ -5,18 +5,23 @@ from __future__ import annotations
 import contextlib
 import difflib
 import io
+import json
 import os
+import re
 import shutil
 import sys
 import textwrap
 import uuid
 from dataclasses import dataclass, replace
+from datetime import datetime, timezone
 from importlib import metadata as importlib_metadata
 from collections.abc import Mapping, Sequence
+from types import MappingProxyType
 
 from . import __version__
 from . import guard
 from .commands import COMMAND_TREE, CommandNode, CommandOption
+from .control_plane.mcp.errors import ToolError
 from .operator_output import (
     CommandResult,
     EXIT_CODES,
@@ -33,6 +38,18 @@ from .operator_output import (
     render_json,
     success_envelope,
 )
+from .observability.probes.controller_workloads import read_controller_fleet_workloads
+from .observability.probes.router_workloads import (
+    _declared_endpoint as _declared_router_workload_endpoint,
+    read_router_node_workloads,
+)
+from .observability.workloads import (
+    WorkloadError,
+    WorkloadQuery,
+    fleet_result_to_dict,
+    node_result_to_dict,
+    parse_workload_query,
+)
 from .paths import default_topology_path
 from .targets import CommandSpec, ExecutionPlan, TargetResolutionError, resolve_execution_plan
 from .topology import TopologyValidationError, load_topology
@@ -44,6 +61,8 @@ from .transports import (
     SSHRecoveryTransport,
     TransportError as AdapterTransportError,
     TransportResult,
+    _controller_endpoint,
+    _validate_controller_endpoint_host,
     execute_plan,
 )
 
@@ -67,10 +86,25 @@ _RESOLUTION_VALUE_OPTIONS = {
     "--target": "target",
     "--transport": "transport",
 }
+_REMOTE_INTEGER_RE = re.compile(r"-?[0-9]+")
+_DIAGNOSTIC_LEAVES = frozenset(("controller inspect", "controller logs"))
+_WORKLOAD_LEAVES = frozenset(("router workloads", "fleet workloads"))
+_WORKLOAD_INTEGER_RE = re.compile(r"[1-9][0-9]*\Z", re.ASCII)
+_ROUTER_WORKLOAD_AUTH_ENV_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,255}\Z", re.ASCII)
+_FLEET_WORKLOAD_AUTH_ENV_RE = re.compile(r"[A-Z][A-Z0-9_]{0,255}\Z", re.ASCII)
+_WORKLOAD_FILTER_OPTIONS = {
+    "--owner": "owner",
+    "--kind": "kind",
+    "--state": "state",
+    "--host": "host",
+    "--recent-seconds": "recent_seconds",
+    "--limit": "limit",
+}
 _HANDLER_PROGS = {
     "anvil_serving.benchmark": "anvil-serving eval benchmark run",
     "anvil_serving.benchmark_evidence": "anvil-serving eval benchmark evidence",
     "anvil_serving.controller": "anvil-serving controller",
+    "anvil_serving.controller_diagnostics": "anvil-serving controller",
     "anvil_serving.collectors": "anvil-serving collectors",
     "anvil_serving.observability.dashboard.app": "anvil-serving dashboard serve",
     "anvil_serving.doctor": "anvil-serving doctor",
@@ -635,6 +669,8 @@ def _remote_scalar(flag: str, value: str, schema: Mapping[str, object]) -> objec
     types = schema_type if isinstance(schema_type, list) else [schema_type]
     try:
         if "integer" in types:
+            if _REMOTE_INTEGER_RE.fullmatch(value) is None:
+                raise UsageError(f"{flag} requires a numeric value")
             return int(value)
         if "number" in types:
             return float(value)
@@ -744,7 +780,10 @@ def _remote_arguments(
             arguments["confirm"] = True
         if "dry_run" in properties and "dry_run" not in arguments:
             arguments["dry_run"] = False
-    return mcp.validate_tool_arguments(remote.tool, arguments)
+    try:
+        return mcp.validate_tool_arguments(remote.tool, arguments)
+    except ToolError:
+        raise UsageError(f"invalid arguments for remote {node.name}") from None
 
 
 def _reconcile_remote_mutation(
@@ -795,6 +834,7 @@ def _dispatch_remote_tool(
     allow_ssh_fallback: bool = False,
 ) -> int:
     node = path[-1]
+    diagnostic_leaf = _command_name(path) in _DIAGNOSTIC_LEAVES
     remote = node.remote_operation
     assert remote is not None and remote.mode == "tool" and remote.tool is not None
     arguments = _remote_arguments(node, rest, confirmed=confirmed)
@@ -831,7 +871,11 @@ def _dispatch_remote_tool(
         if remote.max_response_bytes is not None:
             controller_options["max_response_bytes"] = remote.max_response_bytes
         controller = ControllerTransport(plan.transport_endpoint, **controller_options)
-    ssh = _ssh_recovery_transport(plan) if plan.transport == "ssh" or allow_ssh_fallback else None
+    ssh = (
+        _ssh_recovery_transport(plan)
+        if not diagnostic_leaf and (plan.transport == "ssh" or allow_ssh_fallback)
+        else None
+    )
     operation = Operation(plan.command.name, arguments, tool_name=remote.tool)
     ssh_operation = Operation(plan.command.name, {})
     idempotency_key = (
@@ -848,6 +892,11 @@ def _dispatch_remote_tool(
             idempotency_key=idempotency_key,
         )
     except AdapterTransportError as exc:
+        if diagnostic_leaf:
+            raise TransportError(
+                "controller diagnostic transport failed",
+                code="controller_diagnostic_transport_failed",
+            ) from None
         if execution_meta is not None and exc.code.startswith("ssh_"):
             context = plan.as_dict()
             context["transport"] = "ssh"
@@ -862,6 +911,38 @@ def _dispatch_remote_tool(
             result = _reconcile_remote_mutation(controller, idempotency_key, exc)
         else:
             raise TransportError(str(exc), code=exc.code, details=exc.as_dict()) from None
+    if diagnostic_leaf:
+        from .controller_diagnostics import validate_public_result
+
+        try:
+            outer = result.data
+            if type(outer) is not MappingProxyType or any(
+                type(key) is not str for key in outer
+            ):
+                raise ValueError
+            if set(outer) != {"ok", "data"} or outer["ok"] is not True:
+                raise ValueError
+            data = validate_public_result(outer["data"], expected_kind=node.name)
+        except (KeyError, TypeError, ValueError):
+            raise TransportError(
+                "controller diagnostic response invalid",
+                code="controller_diagnostic_response_invalid",
+            ) from None
+        error = None
+        if data["state"] != "ok":
+            error = OperatorError(
+                "controller diagnostic returned a non-ok state",
+                code=data["error_code"],
+            )
+        if execution_meta is not None:
+            execution_meta["data"] = data
+            execution_meta["plan"] = None
+            execution_meta["warnings"] = ()
+            if error is not None:
+                execution_meta["error"] = error
+        if not output_options.json_mode:
+            print(json.dumps(data, sort_keys=True, ensure_ascii=True))
+        return 0 if error is None else error.exit_code
     data = result.as_dict()
     result_context: ExecutionPlan | Mapping[str, object] = plan
     if result.transport != plan.transport:
@@ -1075,6 +1156,175 @@ def _confirm(
     return forwarded, True
 
 
+def _invalid_workload_arguments() -> UsageError:
+    return UsageError("invalid workload arguments", code="invalid_workload_arguments")
+
+
+def _workload_source_error() -> TransportError:
+    return TransportError(
+        "workload snapshot unavailable", code="workload_source_unavailable"
+    )
+
+
+def _parse_workload_arguments(
+    argv: Sequence[str],
+) -> tuple[str, str, str, str, WorkloadQuery]:
+    if (
+        not isinstance(argv, Sequence)
+        or isinstance(argv, (str, bytes, bytearray))
+        or not argv
+        or len(argv) > 20
+        or any(type(token) is not str or len(token) > 4096 for token in argv)
+    ):
+        raise _invalid_workload_arguments()
+    surface = argv[0]
+    if surface not in {"router", "fleet"}:
+        raise _invalid_workload_arguments()
+    connection_flag = "--router-url" if surface == "router" else "--controller-url"
+    value_options = {
+        connection_flag: "endpoint",
+        "--auth-env": "auth_env",
+        "--expected-node": "expected_node",
+        **_WORKLOAD_FILTER_OPTIONS,
+    }
+    found: dict[str, object] = {}
+    index = 1
+    while index < len(argv):
+        token = argv[index]
+        if token == "--active-only":
+            if "active_only" in found:
+                raise _invalid_workload_arguments()
+            found["active_only"] = True
+            index += 1
+            continue
+        if token.startswith("--active-only="):
+            raise _invalid_workload_arguments()
+        option, separator, inline_value = token.partition("=")
+        field = value_options.get(option)
+        if field is None or field in found:
+            raise _invalid_workload_arguments()
+        if separator:
+            value = inline_value
+        else:
+            index += 1
+            if index >= len(argv) or argv[index].startswith("--"):
+                raise _invalid_workload_arguments()
+            value = argv[index]
+        if not value:
+            raise _invalid_workload_arguments()
+        found[field] = value
+        index += 1
+    if not {"endpoint", "auth_env", "expected_node"}.issubset(found):
+        raise _invalid_workload_arguments()
+    query_values: list[tuple[str, object]] = []
+    for field in _WORKLOAD_FILTER_OPTIONS.values():
+        if field not in found:
+            continue
+        value = found[field]
+        if field in {"recent_seconds", "limit"}:
+            if (
+                type(value) is not str
+                or len(value) > 10
+                or _WORKLOAD_INTEGER_RE.fullmatch(value) is None
+            ):
+                raise _invalid_workload_arguments()
+            value = int(value)
+        query_values.append((field, value))
+    if found.get("active_only") is True:
+        query_values.append(("active_only", True))
+    try:
+        query = parse_workload_query(tuple(query_values))
+        expected = parse_workload_query((("host", found["expected_node"]),)).host
+    except Exception:
+        raise _invalid_workload_arguments() from None
+    if expected is None:
+        raise _invalid_workload_arguments()
+    endpoint = found["endpoint"]
+    auth_env = found["auth_env"]
+    if type(endpoint) is not str or type(auth_env) is not str:
+        raise _invalid_workload_arguments()
+    try:
+        if surface == "router":
+            if (
+                _declared_router_workload_endpoint(endpoint) is None
+                or _ROUTER_WORKLOAD_AUTH_ENV_RE.fullmatch(auth_env) is None
+            ):
+                raise _invalid_workload_arguments()
+        else:
+            endpoint.encode("ascii")
+            if (
+                not endpoint
+                or len(endpoint) > 2048
+                or endpoint != endpoint.strip()
+                or any(ord(char) < 32 or ord(char) == 127 for char in endpoint)
+                or _FLEET_WORKLOAD_AUTH_ENV_RE.fullmatch(auth_env) is None
+            ):
+                raise _invalid_workload_arguments()
+            _controller_endpoint(endpoint)
+            _validate_controller_endpoint_host(endpoint)
+    except UsageError:
+        raise
+    except Exception:
+        raise _invalid_workload_arguments() from None
+    return surface, endpoint, auth_env, expected, query
+
+
+def _workload_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _workload_command(argv: Sequence[str]) -> CommandResult:
+    """Run one sealed canonical workload read without target resolution."""
+    surface, endpoint, auth_env, expected_node, query = _parse_workload_arguments(argv)
+    now = _workload_now()
+    try:
+        credential = os.environ.get(auth_env)
+    except Exception:
+        raise _workload_source_error() from None
+    environment = {auth_env: credential}
+    try:
+        if surface == "router":
+            result = read_router_node_workloads(
+                endpoint,
+                auth_env,
+                expected_node,
+                query,
+                now,
+                environment=environment,
+            )
+            data = node_result_to_dict(result)
+        else:
+            result = read_controller_fleet_workloads(
+                endpoint,
+                auth_env,
+                expected_node,
+                query,
+                now,
+                environment=environment,
+            )
+            data = fleet_result_to_dict(result)
+    except WorkloadError:
+        raise _workload_source_error() from None
+    except Exception:
+        raise _workload_source_error() from None
+    try:
+        human = json.dumps(data, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    except Exception:
+        raise _workload_source_error() from None
+    return CommandResult(data=data, human_stdout=human)
+
+
+def _workload_leaf_hint(argv: Sequence[str]) -> str | None:
+    """Recognize a workload leaf without retaining or interpreting operands."""
+    for index, token in enumerate(argv[:-1]):
+        if token == "--":
+            break
+        candidate = f"{token} {argv[index + 1]}"
+        if candidate in _WORKLOAD_LEAVES:
+            return candidate
+    return None
+
+
 def _dispatch(
     path: Sequence[CommandNode],
     rest: Sequence[str],
@@ -1083,6 +1333,9 @@ def _dispatch(
     execution_meta: dict[str, object] | None = None,
 ) -> int:
     node = path[-1]
+    command_name = _command_name(path)
+    diagnostic_leaf = command_name in _DIAGNOSTIC_LEAVES
+    workload_leaf = command_name in _WORKLOAD_LEAVES
     separator = rest.index("--") if "--" in rest else len(rest)
     help_requested = any(token in {"-h", "--help"} for token in rest[:separator])
     if help_requested and node.children:
@@ -1109,6 +1362,25 @@ def _dispatch(
     if node.handler is None:
         _print_focused_help(path)
         return 0
+    if workload_leaf:
+        try:
+            result = _workload_command([path[0].name, *rest])
+        except UsageError as exc:
+            result = CommandResult(error=exc, human_stderr=exc.message + "\n")
+        except Exception:
+            error = _workload_source_error()
+            result = CommandResult(error=error, human_stderr=error.message + "\n")
+        if execution_meta is not None:
+            execution_meta.update(
+                plan=None,
+                data=result.data,
+                warnings=(),
+                error=result.error,
+            )
+        if not output_options.json_mode:
+            sys.stdout.write(result.human_stdout)
+            sys.stderr.write(result.human_stderr)
+        return result.exit_code
     resolution_options = _ResolutionOptions()
     try:
         policy = command_policy(path, rest)
@@ -1118,8 +1390,11 @@ def _dispatch(
             from . import topology_cli
 
             data = topology_cli.run([*_handler_argv(path), *rest])
+            router_validation = node.name == "validate-router-config"
             if node.name == "resolve":
                 context: Mapping[str, object] = data
+            elif router_validation:
+                context = None
             else:
                 context = {
                     "command": f"topology-{node.name}",
@@ -1128,31 +1403,39 @@ def _dispatch(
                 }
             if data.get("valid") is False:
                 error = UsageError(
-                    "topology validation failed",
-                    code="invalid_topology",
-                    details={"errors": data.get("errors", [])},
+                    "router config topology validation refused" if router_validation else "topology validation failed",
+                    code=data.get("error_code") if router_validation else "invalid_topology",
+                    details=None if router_validation else {"errors": data.get("errors", [])},
                 )
                 if execution_meta is not None:
                     execution_meta["plan"] = context
                     execution_meta["error"] = error
+                    if router_validation:
+                        execution_meta["data"] = data
                 if not output_options.json_mode:
-                    rendered = render_human(
-                        error_envelope(_command_name(path), context, error),
-                        options=output_options,
-                    )
-                    if rendered.stderr:
-                        print(rendered.stderr, end="", file=sys.stderr)
+                    if router_validation:
+                        print(topology_cli.validation_human(data), end="", file=sys.stderr)
+                    else:
+                        rendered = render_human(
+                            error_envelope(_command_name(path), context, error),
+                            options=output_options,
+                        )
+                        if rendered.stderr:
+                            print(rendered.stderr, end="", file=sys.stderr)
                 return error.exit_code
             if execution_meta is not None:
                 execution_meta["plan"] = context
                 execution_meta["data"] = data
             if not output_options.json_mode:
-                rendered = render_human(
-                    success_envelope(_command_name(path), context, data),
-                    options=output_options,
-                )
-                if rendered.stdout:
-                    print(rendered.stdout, end="")
+                if router_validation:
+                    print(topology_cli.validation_human(data), end="")
+                else:
+                    rendered = render_human(
+                        success_envelope(_command_name(path), context, data),
+                        options=output_options,
+                    )
+                    if rendered.stdout:
+                        print(rendered.stdout, end="")
             return 0
         resolution_options, rest = _extract_resolution_options(rest)
         resolution_options = _effective_resolution_options(resolution_options)
@@ -1190,7 +1473,9 @@ def _dispatch(
                 confirmed=confirmed,
                 output_options=output_options,
                 execution_meta=execution_meta,
-                allow_ssh_fallback=resolution_options.allow_ssh_fallback,
+                allow_ssh_fallback=(
+                    False if diagnostic_leaf else resolution_options.allow_ssh_fallback
+                ),
             )
         elif plan is not None and plan.transport != "local":
             raise TransportError(
@@ -1200,17 +1485,60 @@ def _dispatch(
                 details={"transport": plan.transport},
             )
     except OperatorError as exc:
+        if diagnostic_leaf:
+            error = (
+                exc
+                if exc.code in {
+                    "controller_diagnostic_response_invalid",
+                    "controller_diagnostic_transport_failed",
+                }
+                else UsageError(
+                    "invalid diagnostic arguments", code="invalid_diagnostic_arguments"
+                )
+            )
+            if execution_meta is not None:
+                execution_meta.update(plan=None, data=None, warnings=(), error=error)
+            if not output_options.json_mode:
+                print(error.message, file=sys.stderr)
+            return error.exit_code
         if execution_meta is not None:
             execution_meta["error"] = exc
         print(f"anvil-serving: {exc}", file=sys.stderr)
         return exc.exit_code
     except _ResolutionOptionError as exc:
+        if diagnostic_leaf:
+            error = UsageError(
+                "invalid diagnostic arguments", code="invalid_diagnostic_arguments"
+            )
+            if execution_meta is not None:
+                execution_meta.update(plan=None, data=None, warnings=(), error=error)
+            if not output_options.json_mode:
+                print(error.message, file=sys.stderr)
+            return error.exit_code
         print(f"anvil-serving: {exc}", file=sys.stderr)
         return 2
     except TopologyValidationError as exc:
+        if diagnostic_leaf:
+            error = UsageError(
+                "invalid diagnostic arguments", code="invalid_diagnostic_arguments"
+            )
+            if execution_meta is not None:
+                execution_meta.update(plan=None, data=None, warnings=(), error=error)
+            if not output_options.json_mode:
+                print(error.message, file=sys.stderr)
+            return error.exit_code
         print(f"anvil-serving: invalid topology: {exc}", file=sys.stderr)
         return 2
     except TargetResolutionError as exc:
+        if diagnostic_leaf:
+            error = UsageError(
+                "invalid diagnostic arguments", code="invalid_diagnostic_arguments"
+            )
+            if execution_meta is not None:
+                execution_meta.update(plan=None, data=None, warnings=(), error=error)
+            if not output_options.json_mode:
+                print(error.message, file=sys.stderr)
+            return error.exit_code
         print(f"anvil-serving: {exc}", file=sys.stderr)
         return exc.exit_code
     if plan is not None:
@@ -1244,8 +1572,12 @@ def _dispatch(
             execution_meta["data"] = result.data
             if result.error is not None:
                 execution_meta["error"] = result.error
-            existing_warnings = tuple(execution_meta.get("warnings", ()))
-            execution_meta["warnings"] = (*existing_warnings, *result.warnings)
+            if diagnostic_leaf:
+                execution_meta["plan"] = None
+                execution_meta["warnings"] = ()
+            else:
+                existing_warnings = tuple(execution_meta.get("warnings", ()))
+                execution_meta["warnings"] = (*existing_warnings, *result.warnings)
         if not output_options.json_mode:
             if result.human_stdout:
                 sys.stdout.write(result.human_stdout)
@@ -1342,7 +1674,13 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
     protected_family = bool(path) and path[0].name in ("router", "edge")
     protected_leaf = canonical in {
         "router diagnose", "edge bundle validate", "edge bundle render",
+        "topology validate-router-config",
+        "controller inspect", "controller logs",
+        "router workloads", "fleet workloads",
     }
+    diagnostic_leaf = canonical in _DIAGNOSTIC_LEAVES
+    workload_leaf = canonical in _WORKLOAD_LEAVES
+    protected_family = protected_family or protected_leaf
     unresolved_sensitive = protected_family and (
         unknown is not None or bool(path[-1].children)
     )
@@ -1369,6 +1707,15 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
                 } if missing_action else None,
             )
             data = None
+        elif diagnostic_leaf or workload_leaf:
+            error = execution_meta.get("error")
+            if not isinstance(error, OperatorError):
+                error = (
+                    _workload_source_error()
+                    if workload_leaf
+                    else _error_for_exit(rc, "controller diagnostic command failed")
+                )
+            data = execution_meta.get("data")
         elif protected_leaf and "data" not in execution_meta:
             # argparse/resolution errors are not content-safe. Leaf-produced
             # JSON remains available (e.g. a typed unsupported bundle target).
@@ -1385,7 +1732,18 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
             data=data,
             warnings=warnings,
         )
-    print(render_json(envelope))
+    if canonical == "topology validate-router-config" or diagnostic_leaf or workload_leaf:
+        # This offline snapshot has no dispatch or target context. Preserve
+        # that distinction instead of expanding the generic empty context.
+        envelope["context"] = None
+        envelope["warnings"] = []
+    if canonical == "topology validate-router-config" or diagnostic_leaf or workload_leaf:
+        # `render_json` deliberately expands generic contexts. This exact
+        # offline leaf instead promises a literal null context and contains
+        # only the fixed command/error strings plus T006's safe projection.
+        print(json.dumps(envelope, sort_keys=True, separators=(",", ":"), allow_nan=False))
+    else:
+        print(render_json(envelope))
     return rc
 
 
@@ -1435,10 +1793,28 @@ def _move_leading_resolution_options(argv: Sequence[str]) -> tuple[str, ...]:
 def main(argv=None):
     argv = tuple(sys.argv[1:] if argv is None else argv)
     json_requested = "--json" in argv
+    workload_hint = _workload_leaf_hint(argv)
     try:
         options, forwarded = _extract_global_options(argv)
         forwarded = _move_leading_resolution_options(forwarded)
     except UsageError as exc:
+        if workload_hint is not None:
+            error = _invalid_workload_arguments()
+            if json_requested:
+                envelope = error_envelope(workload_hint, None, error)
+                envelope["context"] = None
+                envelope["warnings"] = []
+                print(
+                    json.dumps(
+                        envelope,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                        allow_nan=False,
+                    )
+                )
+            else:
+                print(error.message, file=sys.stderr)
+            return EXIT_CODES["usage"]
         if json_requested:
             # Global-option validation can fail before a command is resolved.
             print(render_json(error_envelope("anvil-serving", None, exc)))

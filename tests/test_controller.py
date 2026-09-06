@@ -17,7 +17,9 @@ import time
 
 import pytest
 
-from anvil_serving import cli, controller, mcp
+from anvil_serving import cli, controller, controller_diagnostics, mcp, transports
+from anvil_serving.control_plane.controller import cli as controller_cli
+from anvil_serving.control_plane.mcp import protocol as mcp_protocol
 
 
 TOKEN = "controller-secret-token"
@@ -1835,3 +1837,589 @@ def test_controller_health_asserts_node_identity_when_declared():
         status, _, body, _ = _request(host, port, "GET", "/health")
     assert status == 200
     assert "node" not in body
+
+
+def test_expected_node_transport_accepts_actual_loopback_controller_health():
+    calls = []
+    audits = []
+
+    def fake_call_tool(name, arguments=None):
+        calls.append((name, arguments))
+        return {"ok": True, "data": {"observed": True}}
+
+    with running_controller(
+        auth_token_env="ANVIL_CONTROLLER_TOKEN",
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        allow_unauthenticated_loopback=False,
+        node_id="fakoli-dark",
+        call_tool_func=fake_call_tool,
+        audit_logger=audits.append,
+    ) as (host, port):
+        transport = transports.ControllerTransport(
+            "http://%s:%s" % (host, port),
+            auth_env="ANVIL_CONTROLLER_TOKEN",
+            allowed_operations=("router-status",),
+            environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+            expected_node="fakoli-dark",
+        )
+        first = transport.execute(transports.Operation("router-status", {}))
+        second = transport.execute(transports.Operation("router-status", {}))
+
+    for result in (first, second):
+        assert result.data["ok"] is True
+        assert result.data["data"] == {"observed": True}
+        assert transports._REQUEST_ID_RE.fullmatch(result.data["request_id"])
+    assert calls == [("router_status", {}), ("router_status", {})]
+    assert [record["operation"] for record in audits].count("health") == 1
+    assert [record["operation"] for record in audits].count("tools/call") == 2
+
+
+def _scoped_tools():
+    return [
+        {"name": "workloads.read", "_meta": {"anvil/requiredScope": "workloads:read"}},
+        {"name": "nodes.bootstrap", "_meta": {"anvil/requiredScope": "node-admin:bootstrap"}},
+        {"name": "legacy.operation", "_meta": {"anvil/requiredScope": None}},
+    ]
+
+
+def _authorization_policy(tmp_path, clients):
+    path = tmp_path / "authorization-policy.json"
+    path.write_text(json.dumps({"schema_version": 1, "clients": clients}), encoding="utf-8")
+    return str(path)
+
+
+_DIAGNOSTIC_CONTAINER_ID = "a" * 64
+
+
+class _DiagnosticCaptureSpy:
+    def __init__(self, *stdout_values):
+        self._stdout_values = list(stdout_values)
+        self.calls = []
+
+    def __call__(self, argv, **kwargs):
+        self.calls.append((tuple(argv), dict(kwargs)))
+        return controller_diagnostics.ChildCapture(
+            "ok",
+            self._stdout_values.pop(0),
+            b"",
+            False,
+        )
+
+
+def _diagnostic_inspect_bytes():
+    return json.dumps(
+        {
+            "container_id": _DIAGNOSTIC_CONTAINER_ID,
+            "running": True,
+            "exit_code": 0,
+            "health": "healthy",
+            "compose_service": "controller",
+            "configured_bindings": {
+                "8765/tcp": [{"HostIp": "127.0.0.1", "HostPort": "18765"}],
+            },
+            "observed_bindings": {"8765/tcp": None},
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def _install_diagnostic_capture(monkeypatch, capture):
+    inspect_controller = controller_diagnostics.inspect_controller
+    controller_logs = controller_diagnostics.controller_logs
+
+    def inspect_with_capture(container, **kwargs):
+        kwargs["platform"] = "linux"
+        kwargs["_capture"] = capture
+        return inspect_controller(container, **kwargs)
+
+    monkeypatch.setattr(
+        controller_diagnostics,
+        "inspect_controller",
+        inspect_with_capture,
+    )
+    monkeypatch.setattr(
+        controller_diagnostics,
+        "controller_logs",
+        lambda container, tail: controller_logs(
+            container,
+            tail,
+            platform="linux",
+            _capture=capture,
+        ),
+    )
+
+
+def _call_diagnostic(host, port, name, token=None):
+    headers = {} if token is None else {"Authorization": "Bearer " + token}
+    arguments = {"container": "anvil-serving-controller"}
+    if name == "controller_logs":
+        arguments["tail"] = 17
+    return _request(
+        host,
+        port,
+        "POST",
+        "/tools/call",
+        {"name": name, "arguments": arguments},
+        headers,
+    )
+
+
+def test_controller_diagnostic_authorization_denials_start_no_child(tmp_path, monkeypatch):
+    workload_token = "scoped-workload-token"
+    bootstrap_token = "scoped-bootstrap-token"
+    capture = _DiagnosticCaptureSpy()
+    _install_diagnostic_capture(monkeypatch, capture)
+    policy = _authorization_policy(
+        tmp_path,
+        [
+            {"id": "workload", "scopes": ["workloads:read"], "credential_env": "WORKLOAD"},
+            {
+                "id": "bootstrap",
+                "scopes": ["node-admin:bootstrap"],
+                "credential_env": "BOOTSTRAP",
+            },
+        ],
+    )
+    tools = ("controller_inspect", "controller_logs")
+    with running_controller(
+        env={
+            "ANVIL_CONTROLLER_TOKEN": TOKEN,
+            "WORKLOAD": workload_token,
+            "BOOTSTRAP": bootstrap_token,
+        },
+        authorization_policy=policy,
+        allowed_operations=tools,
+    ) as (host, port):
+        for name in tools:
+            for token in (None, "wrong-controller-token"):
+                status, _, body, _ = _call_diagnostic(host, port, name, token)
+                assert status == 401
+                assert body["error"]["code"] == "authentication_error"
+            for token in (workload_token, bootstrap_token):
+                status, _, body, _ = _call_diagnostic(host, port, name, token)
+                assert status == 403
+                assert body["error"]["code"] == "authorization_scope_denied"
+
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        allowed_operations=("router_status",),
+    ) as (host, port):
+        for name in tools:
+            status, _, body, _ = _call_diagnostic(host, port, name, TOKEN)
+            assert status == 400
+            assert body["error"]["code"] == "unknown_tool"
+
+    assert capture.calls == []
+
+
+def test_controller_diagnostics_legacy_operator_runs_real_handlers(monkeypatch):
+    inspect_bytes = _diagnostic_inspect_bytes()
+    private_value = "credential-shaped-private-value"
+    capture = _DiagnosticCaptureSpy(
+        inspect_bytes,
+        inspect_bytes,
+        json.dumps(
+            {
+                "operation": "tools/call",
+                "status": 200,
+                "private_detail": private_value,
+            },
+            separators=(",", ":"),
+        ).encode("utf-8"),
+    )
+    _install_diagnostic_capture(monkeypatch, capture)
+
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        allowed_operations=("controller_inspect", "controller_logs"),
+    ) as (host, port):
+        status, _, inspected, inspected_raw = _call_diagnostic(
+            host, port, "controller_inspect", TOKEN
+        )
+        assert status == 200 and inspected["ok"] is True
+        assert inspected["data"] == {
+            "schema_version": "controller-diagnostics/v1",
+            "kind": "inspect",
+            "state": "ok",
+            "error_code": None,
+            "container_id": _DIAGNOSTIC_CONTAINER_ID,
+            "truncated": False,
+            "running": True,
+            "exit_code": 0,
+            "health": "healthy",
+            "configured_bindings": [
+                {"container_port": 8765, "host_port": 18765, "bind_class": "loopback"},
+            ],
+            "observed_bindings": [],
+        }
+        status, _, logged, logged_raw = _call_diagnostic(host, port, "controller_logs", TOKEN)
+        assert status == 200 and logged["ok"] is True
+        assert logged["data"] == {
+            "schema_version": "controller-diagnostics/v1",
+            "kind": "logs",
+            "state": "ok",
+            "error_code": None,
+            "container_id": _DIAGNOSTIC_CONTAINER_ID,
+            "truncated": False,
+            "events": [{"operation": "tools/call", "status": 200}],
+            "line_count": 1,
+            "returned_events": 1,
+            "rejected_lines": 0,
+            "unknown_fields": 1,
+            "unknown_codes": 0,
+            "counters_saturated": False,
+        }
+        assert private_value.encode() not in inspected_raw + logged_raw
+
+    assert len(capture.calls) == 3
+    assert capture.calls[0][0][-2:] == (
+        controller_diagnostics._INSPECT_TEMPLATE,
+        "anvil-serving-controller",
+    )
+    assert capture.calls[1][0][-2:] == (
+        controller_diagnostics._INSPECT_TEMPLATE,
+        "anvil-serving-controller",
+    )
+    assert capture.calls[2][0][-3:] == (
+        "--tail",
+        "17",
+        _DIAGNOSTIC_CONTAINER_ID,
+    )
+
+
+def test_scoped_controller_policy_keeps_legacy_and_new_operations_separate(tmp_path):
+    workload_token = "scoped-workload-token"
+    bootstrap_token = "scoped-bootstrap-token"
+    policy = _authorization_policy(
+        tmp_path,
+        [
+            {"id": "workload", "scopes": ["workloads:read"], "credential_env": "WORKLOAD"},
+            {"id": "bootstrap", "scopes": ["node-admin:bootstrap"], "credential_env": "BOOTSTRAP"},
+        ],
+    )
+    calls = []
+
+    def call_tool(name, arguments=None):
+        calls.append(name)
+        return {"ok": True, "name": name}
+
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN, "WORKLOAD": workload_token, "BOOTSTRAP": bootstrap_token},
+        authorization_policy=policy,
+        list_tools_func=_scoped_tools,
+        call_tool_func=call_tool,
+    ) as (host, port):
+        scoped_headers = {"Authorization": "Bearer " + workload_token}
+        legacy_headers = {"Authorization": "Bearer " + TOKEN}
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "workloads.read"}, scoped_headers)
+        assert status == 200 and body["ok"] is True
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "nodes.bootstrap"}, scoped_headers)
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "legacy.operation"}, scoped_headers)
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "workloads.read"}, legacy_headers)
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "legacy.operation"}, legacy_headers)
+        assert status == 200 and body["ok"] is True
+    assert calls == ["workloads.read", "legacy.operation"]
+
+
+def test_scoped_discovery_and_operations_are_principal_filtered(tmp_path):
+    scoped_token = "scoped-workload-token"
+    policy = _authorization_policy(
+        tmp_path,
+        [{"id": "workload", "scopes": ["workloads:read"], "credential_env": "WORKLOAD"}],
+    )
+
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN, "WORKLOAD": scoped_token},
+        authorization_policy=policy,
+        list_tools_func=_scoped_tools,
+    ) as (host, port):
+        scoped_headers = {"Authorization": "Bearer " + scoped_token}
+        legacy_headers = {"Authorization": "Bearer " + TOKEN}
+        status, _, body, _ = _request(host, port, "GET", "/tools/list", headers=scoped_headers)
+        assert status == 200
+        assert [tool["name"] for tool in body["tools"]] == ["workloads.read"]
+        status, _, body, _ = _request(host, port, "GET", "/tools/list", headers=legacy_headers)
+        assert status == 200
+        assert [tool["name"] for tool in body["tools"]] == ["legacy.operation"]
+        status, _, body, _ = _request(host, port, "GET", "/operations/not-a-real-key", headers=scoped_headers)
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+
+
+def test_scoped_policy_failure_disables_only_new_scopes(tmp_path):
+    policy = tmp_path / "authorization-policy.json"
+    policy.write_text("{malformed", encoding="utf-8")
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN, "WORKLOAD": "scoped-workload-token"},
+        authorization_policy=str(policy),
+        list_tools_func=_scoped_tools,
+        call_tool_func=lambda name, arguments=None: {"ok": True},
+    ) as (host, port):
+        status, _, body, _ = _request(
+            host, port, "POST", "/tools/call", {"name": "workloads.read"}, {"Authorization": "Bearer " + TOKEN}
+        )
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+        status, _, body, _ = _request(
+            host, port, "POST", "/tools/call", {"name": "legacy.operation"}, {"Authorization": "Bearer " + TOKEN}
+        )
+        assert status == 200 and body["ok"] is True
+
+
+def test_scoped_credential_is_redacted_from_response_and_persisted_result(tmp_path):
+    scoped_token = "scoped-workload-token"
+    policy = _authorization_policy(
+        tmp_path,
+        [{"id": "workload", "scopes": ["workloads:read"], "credential_env": "WORKLOAD"}],
+    )
+    audit = []
+    store = controller.OperationStore(str(tmp_path / "operations.sqlite3"))
+
+    def call_tool(name, arguments=None):
+        return {"ok": True, "echo": scoped_token}
+
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN, "WORKLOAD": scoped_token},
+        authorization_policy=policy,
+        list_tools_func=_scoped_tools,
+        call_tool_func=call_tool,
+        audit_logger=audit.append,
+        operation_store=store,
+    ) as (host, port):
+        status, _, body, raw = _request(
+            host,
+            port,
+            "POST",
+            "/tools/call",
+            {"name": "workloads.read"},
+            {"Authorization": "Bearer " + scoped_token, "Idempotency-Key": "scoped-redaction"},
+        )
+        assert status == 200 and body["ok"] is True
+        assert scoped_token.encode() not in raw
+    assert scoped_token not in json.dumps(store.lookup("scoped-redaction"))
+    assert scoped_token not in json.dumps(audit)
+
+
+def test_controller_cli_forwards_authorization_policy(monkeypatch):
+    seen = {}
+
+    def fake_serve(**kwargs):
+        seen.update(kwargs)
+        return 0
+
+    monkeypatch.setattr("anvil_serving.control_plane.controller.cli.serve", fake_serve)
+    assert controller_cli.main(["serve", "--authorization-policy", "policy.json"]) == 0
+    assert seen["authorization_policy"] == "policy.json"
+
+
+@pytest.mark.parametrize("content_length", [17, 2 * 1024 * 1024])
+def test_scoped_mcp_wrong_scope_closes_before_unread_body(tmp_path, content_length):
+    scoped_token = "scoped-workload-token"
+    policy = _authorization_policy(
+        tmp_path,
+        [{"id": "workload", "scopes": ["workloads:read"], "credential_env": "WORKLOAD"}],
+    )
+    calls = []
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN, "WORKLOAD": scoped_token},
+        authorization_policy=policy,
+        list_tools_func=_scoped_tools,
+        call_tool_func=lambda *args: calls.append(args) or {"ok": True},
+    ) as (host, port):
+        with socket.create_connection((host, port), timeout=2) as sock:
+            sock.settimeout(2)
+            sock.sendall(
+                (
+                    "POST /mcp HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                    "Authorization: Bearer %s\r\nContent-Type: application/json\r\n"
+                    "Content-Length: %s\r\nMcp-Method: tools/call\r\n"
+                    "Mcp-Name: nodes.bootstrap\r\nConnection: keep-alive\r\n\r\n"
+                ).encode() % (scoped_token.encode(), str(content_length).encode())
+            )
+            chunks = []
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            response = b"".join(chunks)
+            assert b" 403 " in response
+            assert b"Connection: close" in response
+    assert calls == []
+
+
+def test_mcp_identifying_header_failures_and_body_mismatch_never_dispatch(tmp_path):
+    tools = _scoped_tools() + [{"name": "legacy.other", "_meta": {"anvil/requiredScope": None}}]
+    calls = []
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        list_tools_func=lambda: tools,
+        call_tool_func=lambda *args: calls.append(args) or {"ok": True},
+    ) as (host, port):
+        payload = json.dumps(
+            {
+                "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                "params": {"name": "legacy.operation", "arguments": {}, "_meta": {
+                    "io.modelcontextprotocol/protocolVersion": mcp.PROTOCOL_VERSION,
+                    "io.modelcontextprotocol/clientCapabilities": {},
+                }},
+            }
+        ).encode()
+        with socket.create_connection((host, port), timeout=2) as sock:
+            sock.settimeout(2)
+            sock.sendall(
+                b"POST /mcp HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer "
+                + TOKEN.encode()
+                + b"\r\nContent-Type: application/json\r\nContent-Length: "
+                + str(len(payload)).encode()
+                + b"\r\nMcp-Method: tools/call\r\nMcp-Name: legacy.operation\r\n"
+                + b"Mcp-Name: legacy.other\r\n\r\n"
+            )
+            assert b" 400 " in sock.recv(4096)
+        headers = {
+            "Authorization": "Bearer " + TOKEN,
+            "Accept": "application/json, text/event-stream",
+            "MCP-Protocol-Version": mcp.PROTOCOL_VERSION,
+            "Mcp-Method": "tools/call",
+        }
+        status, _, body, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body=json.loads(payload),
+            headers=headers,
+            mcp_defaults=False,
+        )
+        assert status == 400 and body["error"]["code"] == mcp_protocol.HEADER_MISMATCH
+        headers["Mcp-Name"] = "legacy.other"
+        status, _, body, _ = _request(
+            host,
+            port,
+            "POST",
+            "/mcp",
+            body=json.loads(payload),
+            headers=headers,
+            mcp_defaults=False,
+        )
+        assert status == 400 and body["error"]["code"] == mcp_protocol.HEADER_MISMATCH
+    assert calls == []
+
+
+def test_legacy_new_scope_and_scoped_operation_status_skip_store_and_handler(tmp_path):
+    class SpyStore:
+        def __init__(self):
+            self.claims = 0
+            self.lookups = 0
+
+        def recover_interrupted(self):
+            return []
+
+        def claim(self, *args):
+            self.claims += 1
+            raise AssertionError("scope check must precede store claim")
+
+        def lookup(self, *args):
+            self.lookups += 1
+            raise AssertionError("scope check must precede store lookup")
+
+    scoped_token = "scoped-workload-token"
+    policy = _authorization_policy(
+        tmp_path,
+        [{"id": "workload", "scopes": ["workloads:read"], "credential_env": "WORKLOAD"}],
+    )
+    store = SpyStore()
+    calls = []
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN, "WORKLOAD": scoped_token},
+        authorization_policy=policy,
+        list_tools_func=_scoped_tools,
+        call_tool_func=lambda *args: calls.append(args) or {"ok": True},
+        operation_store=store,
+    ) as (host, port):
+        status, _, body, _ = _request(
+            host, port, "POST", "/tools/call", {"name": "workloads.read"}, {"Authorization": "Bearer " + TOKEN}
+        )
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+        status, _, body, _ = _request(
+            host, port, "GET", "/operations/blocked", headers={"Authorization": "Bearer " + scoped_token}
+        )
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+    assert store.claims == store.lookups == 0
+    assert calls == []
+
+
+def test_keepalive_resets_scoped_principal_between_requests(tmp_path):
+    scoped_token = "scoped-workload-token"
+    policy = _authorization_policy(
+        tmp_path,
+        [{"id": "workload", "scopes": ["workloads:read"], "credential_env": "WORKLOAD"}],
+    )
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN, "WORKLOAD": scoped_token},
+        authorization_policy=policy,
+        list_tools_func=_scoped_tools,
+        call_tool_func=lambda *args: {"ok": True},
+    ) as (host, port):
+        conn = http.client.HTTPConnection(host, port, timeout=2)
+        try:
+            conn.request("POST", "/tools/call", json.dumps({"name": "workloads.read"}), {
+                "Content-Type": "application/json", "Authorization": "Bearer " + scoped_token,
+            })
+            first = conn.getresponse()
+            assert first.status == 200
+            first.read()
+            conn.request("POST", "/tools/call", json.dumps({"name": "workloads.read"}), {
+                "Content-Type": "application/json", "Authorization": "Bearer " + TOKEN,
+            })
+            response = conn.getresponse()
+            assert response.status == 403
+            assert json.loads(response.read())["error"]["code"] == "authorization_scope_denied"
+        finally:
+            conn.close()
+
+
+@pytest.mark.parametrize(
+    "clients, environment",
+    [
+        (
+            [
+                {"id": "first", "scopes": ["workloads:read"], "credential_env": "DUP"},
+                {"id": "second", "scopes": ["node-admin:bootstrap"], "credential_env": "DUP"},
+            ],
+            {"DUP": "scoped-workload-token"},
+        ),
+        (
+            [{"id": "legacy", "scopes": ["workloads:read"], "credential_env": "LEGACY"}],
+            {"LEGACY": TOKEN},
+        ),
+    ],
+)
+def test_invalid_scoped_policy_never_grants_new_scope_but_legacy_remains(tmp_path, clients, environment):
+    policy = _authorization_policy(tmp_path, clients)
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN, **environment},
+        authorization_policy=policy,
+        list_tools_func=_scoped_tools,
+        call_tool_func=lambda *args: {"ok": True},
+    ) as (host, port):
+        headers = {"Authorization": "Bearer " + TOKEN}
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "workloads.read"}, headers)
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "legacy.operation"}, headers)
+        assert status == 200 and body["ok"] is True
+
+
+def test_malformed_catalog_scope_fails_closed_without_disabling_legacy_tool():
+    tools = _scoped_tools() + [{"name": "malformed.scope", "_meta": {"anvil/requiredScope": {}}}]
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        list_tools_func=lambda: tools,
+        call_tool_func=lambda *args: {"ok": True},
+    ) as (host, port):
+        headers = {"Authorization": "Bearer " + TOKEN}
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "malformed.scope"}, headers)
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "legacy.operation"}, headers)
+        assert status == 200 and body["ok"] is True

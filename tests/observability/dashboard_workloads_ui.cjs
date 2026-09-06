@@ -1,0 +1,654 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+let source = fs.readFileSync(process.argv[2], 'utf8');
+if (process.argv[3] === 'negative-generation-guard') {
+  const guard = 'if (generation !== request.generation) return;';
+  assert.ok(source.includes(guard));
+  source = source.split(guard).join('');
+}
+if (process.argv[3] === 'negative-host-bound') {
+  const bound = '{0,63}';
+  assert.ok(source.includes(bound));
+  source = source.replace(bound, '*');
+}
+if (process.argv[3] === 'negative-semantic-guard') {
+  const guard = 'validateSemantics(record);';
+  assert.ok(source.includes(guard));
+  source = source.replace(guard, '');
+}
+const TOKEN_A = 'fixture-workload-token-a';
+const TOKEN_B = 'fixture-workload-token-b';
+const TIME = '2026-09-05T12:00:00.000001Z';
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return {promise, resolve, reject};
+}
+
+class Element {
+  constructor(tag = 'div', id = '') {
+    this.tagName = tag.toUpperCase();
+    this.id = id;
+    this.children = [];
+    this.listeners = new Map();
+    this.className = '';
+    this.value = '';
+    this.hidden = false;
+    this.disabled = false;
+    this._text = '';
+  }
+  set textContent(value) {
+    this._text = String(value);
+    this.children = [];
+  }
+  get textContent() {
+    return this._text + this.children.map(child => child.textContent).join('');
+  }
+  set innerHTML(_value) { throw new Error('innerHTML is forbidden'); }
+  get innerHTML() { throw new Error('innerHTML is forbidden'); }
+  append(...children) {
+    for (const child of children) {
+      assert.ok(child instanceof Element, 'DOM append accepts only created elements');
+      this.children.push(child);
+    }
+  }
+  replaceChildren(...children) {
+    this.children = [];
+    this._text = '';
+    this.append(...children);
+  }
+  addEventListener(name, callback) {
+    const callbacks = this.listeners.get(name) || [];
+    callbacks.push(callback);
+    this.listeners.set(name, callbacks);
+  }
+  dispatch(name, values = {}) {
+    let prevented = false;
+    const event = {
+      type: name,
+      target: this,
+      preventDefault() { prevented = true; },
+      ...values,
+    };
+    for (const callback of this.listeners.get(name) || []) callback(event);
+    return prevented;
+  }
+}
+
+function harness({hidden = true} = {}) {
+  let now = 0;
+  let nextTimer = 1;
+  const timers = new Map();
+  const calls = [];
+  const logs = [];
+  const ids = [
+    'workloads', 'workload-results', 'workload-status', 'workload-token',
+    'workload-disconnect', 'workload-auth', 'workload-owner', 'workload-kind',
+    'workload-state', 'workload-host', 'workload-active', 'workload-recent',
+    'workload-limit',
+  ];
+  const elements = new Map(ids.map(id => [id, new Element('div', id)]));
+  elements.get('workloads').hidden = hidden;
+  elements.get('workload-active').value = 'false';
+  elements.get('workload-recent').value = '3600';
+  elements.get('workload-limit').value = '200';
+  const documentListeners = new Map();
+  const document = {
+    hidden: false,
+    getElementById(id) { return elements.get(id) || null; },
+    createElement(tag) { return new Element(tag); },
+    addEventListener(name, callback) {
+      const callbacks = documentListeners.get(name) || [];
+      callbacks.push(callback);
+      documentListeners.set(name, callbacks);
+    },
+    dispatch(name) {
+      for (const callback of documentListeners.get(name) || []) callback({type: name});
+    },
+  };
+  Object.defineProperty(document, 'cookie', {
+    get() { throw new Error('cookie read'); },
+    set() { throw new Error('cookie write'); },
+  });
+  const storage = new Proxy({}, {get() { throw new Error('storage access'); }});
+  class AbortController {
+    constructor() { this.signal = {aborted: false}; }
+    abort() { this.signal.aborted = true; }
+  }
+  const setTimeout = (callback, delay = 0) => {
+    assert.ok(Number.isFinite(Number(delay)) && Number(delay) >= 0);
+    const id = nextTimer++;
+    timers.set(id, {at: now + Number(delay), callback});
+    return id;
+  };
+  const clearTimeout = id => timers.delete(id);
+  const fetch = (url, options) => {
+    const pending = deferred();
+    calls.push({url, options, pending});
+    return pending.promise;
+  };
+  const window = {};
+  const context = vm.createContext({
+    window, document, fetch, AbortController, URLSearchParams, TextEncoder,
+    performance: {now: () => now}, setTimeout, clearTimeout,
+    sessionStorage: storage, localStorage: storage,
+    console: {
+      log: (...values) => logs.push(values.join(' ')),
+      warn: (...values) => logs.push(values.join(' ')),
+      error: (...values) => logs.push(values.join(' ')),
+    },
+  });
+  vm.runInContext(source, context, {filename: process.argv[2], timeout: 2000});
+
+  async function flush() {
+    for (let index = 0; index < 12; index += 1) await Promise.resolve();
+  }
+  async function advance(milliseconds) {
+    now += milliseconds;
+    while (true) {
+      const due = [...timers.entries()]
+        .filter(([, timer]) => timer.at <= now)
+        .sort((left, right) => left[1].at - right[1].at || left[0] - right[0]);
+      if (!due.length) break;
+      const [id, timer] = due[0];
+      timers.delete(id);
+      timer.callback();
+      await flush();
+    }
+  }
+  return {window, document, elements, calls, logs, timers, flush, advance};
+}
+
+function response(body, status = 200, textPromise = null) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => textPromise ? textPromise.promise : JSON.stringify(body),
+  };
+}
+
+function record({id = 'a'.repeat(64), owner = 'controller', label = undefined, state = 'terminal',
+  phase = 'completed', outcome = state === 'terminal' ? 'success' : undefined,
+  quality = 'recorded', progress = undefined} = {}) {
+  const kind = {router: 'router-request', controller: 'controller-operation', benchmark: 'benchmark-job', media: 'media-job', recipe: 'recipe-serve', manifest: 'recipe-serve'}[owner];
+  const value = {
+    schema: 'anvil-workloads/v1', id, kind, owner,
+    host: 'worker-a', label: label ?? kind.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' '), state, phase,
+    created_at: TIME, updated_at: TIME, source_timestamp: TIME,
+    source_authority: {router: 'router-memory', controller: 'controller-store', benchmark: 'benchmark-store', media: 'media-store', recipe: 'managed-status', manifest: 'managed-status'}[owner], observation_quality: quality,
+  };
+  if (outcome !== undefined) value.outcome = outcome;
+  if (progress !== undefined) value.progress = progress;
+  return value;
+}
+
+function snapshot({status = 'complete', records = [record()], omitted = 0,
+  error = null, nodes = undefined} = {}) {
+  const groups = records.length ? {} : {controller: []};
+  for (const row of records) (groups[row.owner] ??= []).push(row);
+  const sources = Object.entries(groups).map(([owner, rows]) => ({
+    schema: 'anvil-workloads/v1', owner, status,
+    collection_timestamp: TIME, records: rows,
+    truncation: {returned: rows.length, omitted}, error,
+  }));
+  const selectedNodes = nodes === undefined ? [{
+    schema: 'anvil-workloads/v1', host: 'worker-a', status,
+    collection_timestamp: TIME, sources,
+  }] : nodes;
+  return {ok: true, data: {
+    schema: 'anvil-workloads/v1', status, collection_timestamp: TIME,
+    nodes: selectedNodes,
+    truncation: {returned: selectedNodes.reduce(
+      (total, node) => total + node.sources.reduce(
+        (count, item) => count + item.records.length, 0), 0), omitted},
+  }};
+}
+
+function deepFreeze(value) {
+  if (value && typeof value === 'object') {
+    Object.freeze(value);
+    for (const item of Object.values(value)) deepFreeze(item);
+  }
+  return value;
+}
+
+function allText(h) {
+  return [...h.elements.values()].map(item => item.textContent).join('\n');
+}
+
+async function connect(h, token = TOKEN_A) {
+  h.elements.get('workload-token').value = token;
+  assert.equal(h.elements.get('workload-auth').dispatch('submit'), true);
+  await h.advance(0);
+}
+
+async function settle(h, index, body, status = 200, textPromise = null) {
+  h.calls[index].pending.resolve(response(body, status, textPromise));
+  await h.flush();
+}
+
+async function testHiddenAndCanonicalRendering() {
+  const h = harness({hidden: true});
+  assert.deepEqual(Object.getOwnPropertyNames(h.window), ['AnvilWorkloads']);
+  assert.ok(Object.isFrozen(h.window.AnvilWorkloads));
+  await connect(h);
+  assert.equal(h.calls.length, 0, 'hidden panel must not fetch');
+  h.window.AnvilWorkloads.setVisible(true);
+  await h.advance(0);
+  assert.equal(h.calls.length, 1);
+  const call = h.calls[0];
+  assert.equal(call.url, '/v1/workloads?active_only=false&recent_seconds=3600&limit=200');
+  assert.equal(call.options.headers.Authorization, 'Bearer ' + TOKEN_A);
+  assert.equal(call.options.cache, 'no-store');
+  assert.equal(call.options.credentials, 'omit');
+  assert.equal(call.options.redirect, 'error');
+  assert.equal(call.options.signal.aborted, false);
+  const body = deepFreeze(snapshot({records: [
+    record({progress: {completed: 2, total: 3, unit: 'steps'}}),
+    record({id: 'b'.repeat(64), state: 'running', phase: 'running', outcome: undefined}),
+    record({id: 'c'.repeat(64), owner: 'recipe', state: 'running', phase: 'running', quality: 'stale'}),
+  ]}));
+  const before = JSON.stringify(body);
+  await settle(h, 0, body);
+  const text = allText(h);
+  assert.match(text, /Controller Operation/);
+  assert.match(text, /Terminal/);
+  assert.match(text, /Active/);
+  assert.match(text, /Stale/);
+  assert.match(text, /2 \/ 3 steps/);
+  assert.match(text, /2026-09-05T12:00:00\.000001Z/);
+  assert.equal(JSON.stringify(body), before, 'renderer mutated the source fixture');
+  assert.equal(h.elements.get('workload-token').value, '');
+  assert.ok(!call.url.includes(TOKEN_A));
+  assert.ok(!allText(h).includes(TOKEN_A));
+  assert.ok(!h.logs.join('\n').includes(TOKEN_A));
+  assert.deepEqual(Object.getOwnPropertyNames(h.window), ['AnvilWorkloads']);
+}
+
+async function testStatusesAndOmissions() {
+  const cases = [
+    [snapshot({records: [], status: 'complete'}), 'No matching workloads.'],
+    [snapshot({records: [], status: 'partial', omitted: null, error: 'invalid-workload'}), 'Incomplete workload evidence'],
+    [snapshot({records: [], status: 'unavailable', omitted: null, error: 'workload-source-unavailable'}), 'Workload evidence unavailable.'],
+    [snapshot({status: 'partial', omitted: 9, error: 'invalid-workload'}), '9 omitted · truncated / incomplete'],
+    [snapshot({status: 'partial', omitted: null, error: 'invalid-workload'}), 'unknown omitted · truncated / incomplete'],
+  ];
+  for (const [body, expected] of cases) {
+    const h = harness({hidden: false});
+    await connect(h);
+    await settle(h, 0, body);
+    assert.ok(allText(h).includes(expected));
+    if (body.data.status !== 'complete') {
+      assert.ok(!allText(h).includes('No matching workloads.'));
+    }
+  }
+}
+
+async function testFiltersAndValidationFailures() {
+  const h = harness({hidden: false});
+  Object.assign(h.elements.get('workload-owner'), {value: 'controller'});
+  Object.assign(h.elements.get('workload-kind'), {value: 'controller-operation'});
+  Object.assign(h.elements.get('workload-state'), {value: 'running'});
+  Object.assign(h.elements.get('workload-host'), {value: 'worker-a'});
+  Object.assign(h.elements.get('workload-active'), {value: 'true'});
+  Object.assign(h.elements.get('workload-recent'), {value: '42'});
+  Object.assign(h.elements.get('workload-limit'), {value: '17'});
+  await connect(h);
+  assert.equal(h.calls[0].url,
+    '/v1/workloads?owner=controller&kind=controller-operation&state=running&host=worker-a&active_only=true&recent_seconds=42&limit=17');
+  h.calls[0].pending.reject(new Error('private-fetch-detail'));
+  await h.flush();
+  assert.equal(h.elements.get('workload-status').textContent,
+    'Workload evidence unavailable. Check the connection and configuration.');
+  assert.ok(!allText(h).includes('private-fetch-detail'));
+
+  h.elements.get('workload-limit').value = '0';
+  h.elements.get('workload-limit').dispatch('change');
+  await h.advance(5000);
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.elements.get('workload-status').textContent,
+    'Invalid workload filters. Check the selected values.');
+
+  h.elements.get('workload-token').value = 'short';
+  h.elements.get('workload-auth').dispatch('submit');
+  await h.advance(0);
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.elements.get('workload-status').textContent,
+    'Enter a valid workload read credential.');
+}
+
+async function testMalformedResponsesAreFixed() {
+  const invalid = [];
+  const extra = snapshot(); extra.private_marker = 'private-body-detail'; invalid.push(extra);
+  const schema = snapshot(); schema.data.schema = 'other'; invalid.push(schema);
+  const status = snapshot(); status.data.status = 'idle'; invalid.push(status);
+  const arrays = snapshot(); arrays.data.nodes = {}; invalid.push(arrays);
+  const times = snapshot(); times.data.nodes[0].sources[0].records[0].updated_at = 'bad-private-time'; invalid.push(times);
+  const count = snapshot(); count.data.truncation.returned = 99; invalid.push(count);
+  const duplicateNode = snapshot(); duplicateNode.data.nodes.push(duplicateNode.data.nodes[0]); invalid.push(duplicateNode);
+  const duplicateOwner = snapshot(); duplicateOwner.data.nodes[0].sources.push(duplicateOwner.data.nodes[0].sources[0]); invalid.push(duplicateOwner);
+  const duplicateId = snapshot({records: [record(), record()]}); invalid.push(duplicateId);
+  const overflow = snapshot({records: Array.from({length: 201}, (_, index) => record({id: index.toString(16).padStart(64, '0')}))}); invalid.push(overflow);
+  for (const body of invalid) {
+    const h = harness({hidden: false});
+    await connect(h);
+    await settle(h, 0, body);
+    assert.equal(h.elements.get('workload-status').textContent,
+      'Workload evidence unavailable. Check the connection and configuration.');
+    assert.equal(h.elements.get('workload-results').children.length, 0);
+    assert.ok(!allText(h).includes('private-body-detail'));
+    assert.ok(!allText(h).includes('bad-private-time'));
+  }
+}
+
+async function testCadenceTimeoutAndLateCompletion() {
+  const h = harness({hidden: false});
+  await connect(h);
+  assert.equal(h.calls.length, 1);
+  await h.advance(4000);
+  assert.equal(h.calls.length, 1, 'requests overlap');
+  await settle(h, 0, snapshot());
+  await h.advance(4999);
+  assert.equal(h.calls.length, 1);
+  await h.advance(1);
+  assert.equal(h.calls.length, 2, 'next poll was not five seconds after completion');
+
+  await h.advance(8000);
+  assert.equal(h.calls[1].options.signal.aborted, true);
+  assert.match(h.elements.get('workload-status').textContent, /timed out/);
+  assert.equal(h.calls.length, 2, 'timed out call was replaced before settlement');
+  await settle(h, 1, snapshot({records: [record({id: 'd'.repeat(64)})]}));
+  assert.ok(!allText(h).includes('d'.repeat(64)));
+  await h.advance(4999);
+  assert.equal(h.calls.length, 2);
+  await h.advance(1);
+  assert.equal(h.calls.length, 3);
+}
+
+async function testGenerationInvalidationAndReconnect() {
+  const h = harness({hidden: false});
+  await connect(h, TOKEN_A);
+  const textDone = deferred();
+  h.calls[0].pending.resolve(response(snapshot(), 200, textDone));
+  await h.flush();
+  h.elements.get('workload-disconnect').dispatch('click');
+  assert.equal(h.calls[0].options.signal.aborted, true);
+  await connect(h, TOKEN_B);
+  assert.equal(h.calls.length, 1, 'new credential overlapped the old text read');
+  textDone.resolve(JSON.stringify(snapshot({records: [record({id: 'e'.repeat(64)})]})));
+  await h.flush();
+  assert.ok(!allText(h).includes('e'.repeat(64)));
+  await h.advance(5000);
+  assert.equal(h.calls.length, 2);
+  assert.equal(h.calls[1].options.headers.Authorization, 'Bearer ' + TOKEN_B);
+  h.document.hidden = true;
+  h.document.dispatch('visibilitychange');
+  assert.equal(h.calls[1].options.signal.aborted, true);
+  await settle(h, 1, snapshot({records: [record({id: 'f'.repeat(64)})]}));
+  assert.ok(!allText(h).includes('f'.repeat(64)));
+  await h.advance(10000);
+  assert.equal(h.calls.length, 2);
+  h.document.hidden = false;
+  h.document.dispatch('visibilitychange');
+  await h.advance(0);
+  assert.equal(h.calls.length, 3);
+  h.window.AnvilWorkloads.setVisible(false);
+  assert.equal(h.calls[2].options.signal.aborted, true);
+}
+
+async function testFilterChangeInvalidatesOldGeneration() {
+  const h = harness({hidden: false});
+  await connect(h);
+  h.elements.get('workload-owner').value = 'controller';
+  h.elements.get('workload-owner').dispatch('change');
+  assert.equal(h.calls[0].options.signal.aborted, true);
+  await h.advance(5000);
+  assert.equal(h.calls.length, 1, 'filter change overlapped an unresolved read');
+  await settle(h, 0, snapshot({records: [record({id: '1'.repeat(64)})]}));
+  assert.ok(!allText(h).includes('1'.repeat(64)));
+  await h.advance(4999);
+  assert.equal(h.calls.length, 1);
+  await h.advance(1);
+  assert.equal(h.calls.length, 2);
+  assert.match(h.calls[1].url, /owner=controller/);
+}
+
+async function testAuthorizationAndRetryRelease() {
+  for (const denied of [401, 403]) {
+    const h = harness({hidden: false});
+    await connect(h);
+    await settle(h, 0, {private: 'private-denied-body'}, denied);
+    assert.match(h.elements.get('workload-status').textContent, /access denied/);
+    assert.equal(h.elements.get('workload-results').children.length, 0);
+    await h.advance(20000);
+    assert.equal(h.calls.length, 1, 'denial continued polling');
+    assert.ok(!allText(h).includes('private-denied-body'));
+  }
+
+  const h = harness({hidden: false});
+  await connect(h);
+  await settle(h, 0, {private: 'private-500-body'}, 500);
+  assert.equal(h.elements.get('workload-results').children.length, 0);
+  assert.ok(!allText(h).includes('private-500-body'));
+  await h.advance(5000);
+  assert.equal(h.calls.length, 2, 'failed response did not release in-flight state');
+}
+
+async function testNeutralGpuGrouping() {
+  const html = fs.readFileSync(path.join(path.dirname(process.argv[2]), 'index.html'), 'utf8');
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    .map(match => match[1])
+    .find(script => script.includes('async function refreshCurves'));
+  assert.ok(inline, 'packaged dashboard script is present');
+  const start = inline.indexOf('const esc=');
+  const end = inline.indexOf('async function refreshIndicators');
+  assert.ok(start >= 0 && end > start, 'GPU renderer boundaries are present');
+
+  class DashboardElement {
+    constructor() {
+      this._html = '';
+      this.textContent = '';
+      this.value = '';
+      this.style = {};
+      this.classList = {add() {}, remove() {}};
+    }
+    set innerHTML(value) { this._html = String(value); }
+    get innerHTML() { return this._html; }
+    addEventListener() {}
+  }
+
+  const elements = new Map([
+    'auth', 'error', 'freshness', 'summary', 'curves', 'probe-search',
+    'probe-category', 'probe-count', 'probe-list',
+  ].map(id => [id, new DashboardElement()]));
+  const document = {
+    getElementById(id) {
+      if (!elements.has(id)) elements.set(id, new DashboardElement());
+      return elements.get(id);
+    },
+    querySelectorAll() { return []; },
+  };
+  const signals = {
+    'gpu-utilization': [
+      {metric: 'gpu.utilization', host_id: 'host-a', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, unit: 'percent', points: [[0, 20]]},
+      {metric: 'gpu.utilization', host_id: 'host-b', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, unit: 'percent', points: [[0, 20]]},
+      {metric: 'gpu.utilization', host_id: 'host-c', labels: {gpu_uuid: 'card-c', gpu_index: '0'}, unit: 'percent', points: [[0, 20]]},
+    ],
+    'dedicated-vram': [
+      {metric: 'gpu.memory.used', host_id: 'host-a', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, unit: 'bytes', points: [[0, 4]]},
+      {metric: 'gpu.memory.used', host_id: 'host-b', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, unit: 'bytes', points: [[0, 4]]},
+      {metric: 'gpu.memory.used', host_id: 'host-c', labels: {gpu_uuid: 'card-c', gpu_index: '0'}, unit: 'bytes', points: [[0, 4]]},
+    ],
+    'shared-gpu-memory': [
+      {metric: 'gpu.shared_memory.used', host_id: 'host-a', labels: {}, unit: 'bytes', points: [[0, 1]]},
+    ],
+  };
+  const samples = [
+    {metric: 'gpu.identity', host_id: 'host-a', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 'Equal card'},
+    {metric: 'gpu.identity', host_id: 'host-b', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 'Equal card'},
+    {metric: 'gpu.memory.used', host_id: 'host-a', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 4, unit: 'bytes'},
+    {metric: 'gpu.memory.total', host_id: 'host-a', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 8, unit: 'bytes'},
+    {metric: 'gpu.memory.used', host_id: 'host-b', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 4, unit: 'bytes'},
+    {metric: 'gpu.memory.total', host_id: 'host-b', labels: {gpu_uuid: 'same-card-key', gpu_index: '0'}, value: 8, unit: 'bytes'},
+    {metric: 'gpu.memory.used', host_id: 'host-c', labels: {gpu_uuid: 'card-c', gpu_index: '0'}, value: 4, unit: 'bytes'},
+    {metric: 'gpu.memory.total', host_id: 'host-c', labels: {gpu_uuid: 'card-c', gpu_index: '0'}, value: 8, unit: 'bytes'},
+    {metric: 'container.gpu.assignment', host_id: 'host-a', labels: {container_name: 'misleading-heavy-private'}, value: 'same-card-key'},
+    {metric: 'container.gpu.assignment', host_id: 'host-b', labels: {container_name: 'misleading-fast-private'}, value: 'same-card-key'},
+  ];
+  const context = vm.createContext({
+    console: {log() {}, warn() {}, error() {}},
+    document,
+    fetch: async () => ({ok: true, status: 200, json: async () => ({ok: true, data: {signals}})}),
+    sessionStorage: {getItem() { return ''; }, removeItem() {}, setItem() {}},
+    window: {},
+    URLSearchParams,
+  });
+  vm.runInContext(
+    inline.slice(start, end) +
+      '\nglobalThis.__gpu={renderSummary,refreshCurves,setSamples:value=>{allSamples=value}};',
+    context,
+  );
+  context.__gpu.setSamples(samples);
+  context.__gpu.renderSummary(samples);
+  await context.__gpu.refreshCurves();
+
+  const summary = elements.get('summary').innerHTML;
+  const curves = elements.get('curves').innerHTML;
+  assert.doesNotMatch(curves, /Fast tier GPU|Heavy tier GPU|No tier assignment/);
+  assert.doesNotMatch(curves, /misleading-(?:fast|heavy)-private/);
+  assert.equal((curves.match(/<h3>Graphics card<\/h3>/g) || []).length, 3);
+  assert.equal((curves.match(/Equal card/g) || []).length, 2);
+  assert.match(curves, /host-a · Equal card/);
+  assert.match(curves, /host-b · Equal card/);
+  assert.match(curves, /host-c · Graphics card/);
+  assert.match(curves, /Shared graphics memory/);
+  assert.match(summary, /Aggregate GPU memory/);
+  assert.doesNotMatch(summary, /unified/i);
+}
+
+async function testHostIdentifierBoundaries() {
+  const html = fs.readFileSync(path.join(path.dirname(process.argv[2]), 'index.html'), 'utf8');
+  assert.match(html, /id="workload-host" maxlength="64"/);
+  const valid = 'n'.repeat(64);
+  const h = harness({hidden: false});
+  h.elements.get('workload-host').value = valid;
+  await connect(h);
+  assert.equal(new URLSearchParams(h.calls[0].url.split('?')[1]).get('host'), valid);
+  const body = snapshot();
+  body.data.nodes[0].host = valid;
+  body.data.nodes[0].sources[0].records[0].host = valid;
+  await settle(h, 0, body);
+  assert.match(allText(h), /Fleet complete/);
+  assert.ok(allText(h).includes(valid));
+
+  for (const bad of ['n'.repeat(65), 'node-a\n', 'node-a\r', 'node-a\r\n', 'node a', 'nödé', '9node', '<img-private-host>']) {
+    const invalidQuery = harness({hidden: false});
+    invalidQuery.elements.get('workload-host').value = bad;
+    await connect(invalidQuery);
+    assert.equal(invalidQuery.calls.length, 0, 'invalid host dispatched a request');
+    assert.match(allText(invalidQuery), /Invalid workload filters/);
+    for (const field of ['node', 'record']) {
+      const invalidResponse = harness({hidden: false});
+      await connect(invalidResponse);
+      const responseBody = snapshot();
+      if (field === 'node') responseBody.data.nodes[0].host = bad;
+      responseBody.data.nodes[0].sources[0].records[0].host = bad;
+      await settle(invalidResponse, 0, responseBody);
+      assert.equal(invalidResponse.elements.get('workload-results').children.length, 0);
+      assert.match(allText(invalidResponse), /Workload evidence unavailable/);
+      assert.ok(!allText(invalidResponse).includes(bad));
+    }
+  }
+}
+
+const tests = [
+  testHiddenAndCanonicalRendering,
+  testStatusesAndOmissions,
+  testFiltersAndValidationFailures,
+  testMalformedResponsesAreFixed,
+  testCadenceTimeoutAndLateCompletion,
+  testGenerationInvalidationAndReconnect,
+  testFilterChangeInvalidatesOldGeneration,
+  testAuthorizationAndRetryRelease,
+];
+
+async function testSemanticContract() {
+  const invalid = [
+    record({state: 'running', phase: 'failed', outcome: 'success'}),
+    record({label: '<img src=x onerror=private-marker>'}),
+    record({label: 'C:/private/operator-path'}),
+    record({owner: 'router', state: 'running', phase: 'running'}),
+    record({owner: 'controller', outcome: 'cancelled', phase: 'cancelled'}),
+    record({owner: 'benchmark', phase: 'failed', outcome: 'timeout'}),
+    record({owner: 'media', state: 'queued', phase: 'preparing'}),
+    record({owner: 'recipe', quality: 'healthy-identity'}),
+    record({owner: 'manifest', state: 'running', phase: 'running', quality: 'configured'}),
+    record({quality: 'stale'}),
+    {...record(), source_authority: 'router-memory'},
+    {...record(), updated_at: '2026-09-05T12:00:00.000002Z'},
+    {...record(), source_timestamp: '2026-02-30T12:00:00.000001Z'},
+    {...record(), source_timestamp: TIME + '\n'},
+    {...record(), id: 'a'.repeat(64) + '\n'},
+  ];
+  for (const row of invalid) {
+    const h = harness({hidden: false});
+    await connect(h);
+    await settle(h, 0, snapshot({records: [row]}));
+    assert.equal(h.elements.get('workload-results').children.length, 0, 'noncanonical record rendered');
+    assert.match(allText(h), /Workload evidence unavailable/);
+    assert.ok(!allText(h).includes('private-marker'));
+    assert.ok(!allText(h).includes('operator-path'));
+  }
+  for (const row of [
+    record({owner: 'router', state: 'streaming', phase: 'streaming'}),
+    record({owner: 'controller'}), record({owner: 'benchmark'}),
+    record({owner: 'media', state: 'running', phase: 'preparing'}),
+    record({owner: 'media', state: 'running', phase: 'submitting'}),
+    record({owner: 'media', state: 'queued', phase: 'awaiting-approval'}),
+    record({owner: 'recipe', state: 'running', phase: 'running', quality: 'stale'}),
+    record({owner: 'manifest', state: 'running', phase: 'running', quality: 'healthy-identity'}),
+    {...record(), progress: null},
+  ]) {
+    const h = harness({hidden: false});
+    await connect(h);
+    await settle(h, 0, snapshot({records: [row]}));
+    assert.match(allText(h), /Fleet complete/, 'canonical owner record was rejected');
+  }
+  for (const suffix of ['000001', '000002']) {
+    for (const target of ['node', 'source', 'record']) {
+      const h = harness({hidden: false});
+      await connect(h);
+      const body = snapshot();
+      const node = body.data.nodes[0];
+      const source = node.sources[0];
+      node.collection_timestamp = '2026-09-05T12:00:30.000001Z';
+      source.collection_timestamp = '2026-09-05T12:00:30.000001Z';
+      const ahead = '2026-09-05T12:00:30.' + suffix + 'Z';
+      if (target === 'node') node.collection_timestamp = ahead;
+      if (target === 'source') source.collection_timestamp = ahead;
+      if (target === 'record') {
+        for (const key of ['created_at', 'updated_at', 'source_timestamp']) source.records[0][key] = ahead;
+      }
+      await settle(h, 0, body);
+      assert.match(allText(h), suffix === '000001' ? /Fleet complete/ : /Workload evidence unavailable/);
+    }
+  }
+}
+
+(async () => {
+  await testSemanticContract();
+  await testNeutralGpuGrouping();
+  await testHostIdentifierBoundaries();
+  for (const test of tests) await test();
+  process.stdout.write(JSON.stringify({ok: true, scenarios: tests.map(test => test.name)}) + '\n');
+})().catch(error => {
+  process.stderr.write((error && error.stack ? error.stack : String(error)) + '\n');
+  process.exitCode = 1;
+});

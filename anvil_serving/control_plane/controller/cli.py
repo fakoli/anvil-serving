@@ -74,6 +74,51 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     serve_parser.add_argument(
+        "--authorization-policy",
+        default=None,
+        help="optional local scoped-authorization policy for new controller surfaces",
+    )
+    serve_parser.add_argument(
+        "--workload-benchmark-db",
+        default=None,
+        help="explicit existing benchmark workload database path",
+    )
+    serve_parser.add_argument(
+        "--workload-media-db",
+        default=None,
+        help="explicit existing media workload database path",
+    )
+    serve_parser.add_argument(
+        "--workload-recipe-registry",
+        default=None,
+        help="explicit existing recipe workload registry path",
+    )
+    serve_parser.add_argument(
+        "--workload-manifest",
+        default=None,
+        help="explicit existing manifest workload path",
+    )
+    serve_parser.add_argument(
+        "--workload-topology",
+        default=None,
+        help="explicit topology path for the workload router source",
+    )
+    serve_parser.add_argument(
+        "--workload-fleet-topology",
+        default=None,
+        help="explicit topology path enabling declared fleet workload aggregation",
+    )
+    serve_parser.add_argument(
+        "--workload-router-resource",
+        default=None,
+        help="explicit workload router resource id (used with workload topology and auth env)",
+    )
+    serve_parser.add_argument(
+        "--workload-router-auth-env",
+        default=None,
+        help="environment variable name for the workload router token (used with router topology and resource)",
+    )
+    serve_parser.add_argument(
         "--allow-unauthenticated-loopback",
         action="store_true",
         help=(
@@ -220,6 +265,15 @@ def main(argv: Optional[list[str]] = None) -> int:
                 drain_seconds=args.drain_seconds,
                 audit_log_path=args.audit_log,
                 node_id=args.node_id,
+                authorization_policy=args.authorization_policy,
+                workload_benchmark_db=args.workload_benchmark_db,
+                workload_media_db=args.workload_media_db,
+                workload_recipe_registry=args.workload_recipe_registry,
+                workload_manifest=args.workload_manifest,
+                workload_topology=args.workload_topology,
+                workload_fleet_topology=args.workload_fleet_topology,
+                workload_router_resource=args.workload_router_resource,
+                workload_router_auth_env=args.workload_router_auth_env,
             )
         except ControllerError as exc:
             print(
