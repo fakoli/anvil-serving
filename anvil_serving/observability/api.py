@@ -27,6 +27,7 @@ from .probes.wsl_docker import collect_wsl_docker_boundaries
 from .redaction import redact_record
 from .schema import SCHEMA_VERSION, CapabilityStatus, TelemetrySample
 from .status import prepare_sample
+from .workload_http import WorkloadHTTPService, workload_http_error
 
 
 Probe = Callable[[], Sequence[TelemetrySample]]
@@ -199,6 +200,7 @@ def create_server(
     json_routes: Mapping[str, JsonRoute] | None = None,
     metrics_provider: MetricsProvider | None = None,
     query_routes: Mapping[str, QueryRoute] | None = None,
+    workload_service: WorkloadHTTPService | None = None,
 ) -> ThreadingHTTPServer:
     """Create, but do not start, a bounded read-only telemetry server."""
 
@@ -215,6 +217,8 @@ def create_server(
             raise ValueError("configured API authentication environment is unset")
     if non_loopback and not token:
         raise ValueError("non-loopback telemetry API binds require authentication")
+    if workload_service is not None and type(workload_service) is not WorkloadHTTPService:
+        raise ValueError("workload_service must be an exact WorkloadHTTPService")
     assets = dict(static_routes or {})
     public_assets = frozenset(public_static_routes)
     routes = dict(json_routes or {})
@@ -237,7 +241,58 @@ def create_server(
     class Handler(BaseHTTPRequestHandler):
         server_version = "AnvilTelemetry/1"
 
+        def _workload_target(self):
+            raw_target = self.path
+            parsed = urllib.parse.urlsplit(raw_target)
+            if parsed.path != "/v1/workloads":
+                return None
+            if not raw_target.startswith("/") or parsed.fragment:
+                return False
+            return parsed
+
+        def _workload_error(self, code: str) -> None:
+            status, body = workload_http_error(code)
+            self._bytes(HTTPStatus(status), "application/json", body)
+
+        def _workload_framing_is_valid(self) -> bool:
+            if self.headers.get_all("Transfer-Encoding"):
+                return False
+            lengths = self.headers.get_all("Content-Length") or []
+            if lengths and (len(lengths) != 1 or lengths[0] != "0"):
+                return False
+            return not any(
+                self.headers.get_all(name)
+                for name in (
+                    "Idempotency-Key",
+                    "X-Idempotency-Key",
+                    "X-Anvil-Idempotency-Key",
+                )
+            )
+
         def do_GET(self) -> None:
+            workload_target = self._workload_target()
+            if workload_target is not None:
+                if workload_target is False:
+                    self.close_connection = True
+                    self._workload_error("invalid_workload_request")
+                    return
+                if not self._workload_framing_is_valid():
+                    self.close_connection = True
+                    self._workload_error("invalid_workload_request")
+                    return
+                if workload_service is None:
+                    self._workload_error("authorization_scope_denied")
+                    return
+                try:
+                    status, body = workload_service.read(workload_target.query, self.headers)
+                    if type(status) is not int or type(body) is not bytes:
+                        raise ValueError
+                    response_status = HTTPStatus(status)
+                except Exception:
+                    self._workload_error("workload_source_unavailable")
+                    return
+                self._bytes(response_status, "application/json", body)
+                return
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path in public_assets and not parsed.query:
                 content_type, body = assets[parsed.path]
@@ -299,6 +354,10 @@ def create_server(
             self._json(HTTPStatus.OK, {"ok": True, "data": payload})
 
         def do_POST(self) -> None:
+            if self._workload_target() is not None:
+                self.close_connection = True
+                self._workload_error("read_only_workload_api")
+                return
             self._json(HTTPStatus.METHOD_NOT_ALLOWED, {"ok": False, "error": "read-only-api"})
 
         def _json(self, status: HTTPStatus, payload: Mapping[str, Any]) -> None:
@@ -318,7 +377,7 @@ def create_server(
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header(
                 "Content-Security-Policy",
-                "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+                "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
             )
             self.end_headers()
             self.wfile.write(body)

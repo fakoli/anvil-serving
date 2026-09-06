@@ -133,6 +133,32 @@ port is worse than asking — the same "detection beats prevention" judgment
 `rollback-check` and `lint` already make (see
 [Strategy: make divergence loud](../STRATEGY-MAKE-DIVERGENCE-LOUD.md)).
 
+## Replica lifecycle limits
+
+Replica scheduling and member admission are available, but single-serve
+lifecycle shortcuts do not manage a replica set. `serves up-for` refuses a
+replica alias even in preview. Promotion, its resume/rollback/recovery paths,
+and mode/profile transactions refuse affected replica tiers with
+`replica_lifecycle_unsupported` before lifecycle mutation. They do not choose
+a member, silently operate a direct-tier replacement, or bypass the guard via
+`--skip-preflight-checks`.
+
+For local `mode preview|enter|leave` and `profile preview|apply`, pass
+`--config ./router.toml` to identify the active router config. Without it, only
+the selected operator home's default config is used; the current directory and
+target/rollback profiles are not guessed as the active config. Missing,
+unreadable, invalid or incomplete active ownership produces
+`replica_lifecycle_configuration_unavailable` before runtime probes or mutation.
+The guard covers the target, all GPU-inference serves and the restore group,
+including stopped entries, plus the target's declared router/rollback profiles.
+
+Library callers supply an already parsed `active_config` to `cmd_mode` or
+`cmd_profile`. Explicit local `--config` is refused on remote mode/profile
+dispatch; it is not forwarded as a path meaningful on another host. Status,
+profile listing and operations with no affected routed tier retain their
+existing behavior. Member quiesce/drain/readmit controls remain separate from
+serve installation and promotion; see [router tier transitions](router.md#tier-transitions).
+
 ## Split and exclusive TP=2 modes
 
 Ordinary split-mode entries reserve one `gpu_role`. An exclusive candidate
@@ -142,12 +168,12 @@ declares exactly two `gpu_roles`, `operating_mode = "dual-gpu-exclusive"`, and
 ```bash
 anvil-serving serves mode status --manifest ./serves.toml
 anvil-serving serves mode preview TP2_SERVE \
-  --restore-group split-stack --manifest ./serves.toml
+  --restore-group split-stack --manifest ./serves.toml --config ./router.toml
 anvil-serving serves mode enter TP2_SERVE \
-  --restore-group split-stack --manifest ./serves.toml \
+  --restore-group split-stack --manifest ./serves.toml --config ./router.toml \
   --preserve-on-failure --confirm
 anvil-serving serves mode leave TP2_SERVE \
-  --restore-group split-stack --manifest ./serves.toml --confirm
+  --restore-group split-stack --manifest ./serves.toml --config ./router.toml --confirm
 ```
 
 Preview reports both stable GPU roles, the TP size, active workloads to drain
@@ -201,9 +227,9 @@ Use the CLI from the same operator session:
 
 ```bash
 anvil-serving serves profile list
-anvil-serving serves profile preview qwen35-thinkingcap-split
-anvil-serving serves profile apply qwen35-thinkingcap-split --confirm
-anvil-serving serves profile apply deepseek-0731-tp2 --confirm
+anvil-serving serves profile preview qwen35-thinkingcap-split --config ./router.toml
+anvil-serving serves profile apply qwen35-thinkingcap-split --config ./router.toml --confirm
+anvil-serving serves profile apply deepseek-0731-tp2 --config ./router.toml --confirm
 ```
 
 `profile apply` delegates to the existing guarded mode transaction. Entering
@@ -326,12 +352,13 @@ anvil-serving serves mode enter TP2_SERVE --restore-group split-stack \
   --manifest ./serves.toml --confirm
 ```
 
-Pass `--skip-preflight-checks` to run the transaction anyway; doing so prints
+Pass `--skip-preflight-checks` to bypass this lint/rollback gate; doing so prints
 an unmistakable warning to stderr naming exactly what was skipped. `serves
-mode leave|preview|status` are not gated — `--skip-preflight-checks` is
+mode leave|preview|status` do not run this lint/rollback gate — `--skip-preflight-checks` is
 rejected (exit `2`) on anything but `mode enter`. The standalone `serves
 lint`/`serves rollback-check` commands are unchanged, still report over the
 whole manifest set with no scoping, and remain available on their own.
+The early replica lifecycle guard is separate and cannot be bypassed.
 
 ## Functional probes
 

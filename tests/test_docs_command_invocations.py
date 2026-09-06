@@ -36,6 +36,7 @@ DOC_PATHS = (
     Path("docs/MODEL-PROMOTION.md"),
     Path("docs/MODEL-LIFECYCLE.md"),
     Path("docs/PURPOSE-MODELS.md"),
+    Path("docs/WORKLOAD-VISIBILITY.md"),
     Path("docs/cli/media.md"),
 )
 
@@ -118,6 +119,72 @@ def _usage_line(command: str) -> str | None:
 def test_documented_invocations_are_discoverable():
     """Guard the extractor itself, so an empty sweep cannot pass silently."""
     assert len(_documented_invocations()) >= 12
+
+
+def test_workload_guide_uses_explicit_source_ownership_options():
+    paths = _command_paths()
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    declared_options = {
+        record["path"]: {
+            flag for option in record["options"] for flag in option["flags"]
+        }
+        for record in manifest["commands"]
+    }
+    workload_invocations: dict[str, list[list[str]]] = {
+        "router workloads": [],
+        "fleet workloads": [],
+        "dashboard serve": [],
+    }
+    for doc, invocation in _documented_invocations():
+        if doc != "docs/WORKLOAD-VISIBILITY.md":
+            continue
+        tokens = shlex.split(invocation)
+        resolved = _resolve(
+            [token for token in tokens if not token.startswith("-")], paths
+        )
+        if resolved in workload_invocations:
+            workload_invocations[resolved].append(tokens)
+
+    expected = {
+        "router workloads": {
+            "--router-url": "http://127.0.0.1:8000/v1",
+            "--auth-env": "ANVIL_WORKLOAD_TOKEN",
+            "--expected-node": "node-a",
+        },
+        "fleet workloads": {
+            "--controller-url": "http://127.0.0.1:8765",
+            "--auth-env": "ANVIL_WORKLOAD_TOKEN",
+            "--expected-node": "controller-a",
+        },
+        "dashboard serve": {
+            "--workload-controller-url": "http://127.0.0.1:8765",
+            "--workload-expected-node": "controller-a",
+            "--workload-authorization-policy": (
+                "/srv/anvil-serving/workload-authorization.json"
+            ),
+        },
+    }
+    resolution_flags = {
+        *GLOBAL_VALUED_OPTIONS,
+        "--allow-ssh-fallback",
+        "--experimental-model-workload",
+    }
+    for command, required_options in expected.items():
+        assert len(workload_invocations[command]) == 1, (
+            f"workload guide must contain exactly one {command!r} example"
+        )
+        tokens = workload_invocations[command][0]
+        if command == "dashboard serve":
+            usage = _usage_line(command)
+            assert usage is not None
+            assert all(option in usage for option in required_options)
+        else:
+            assert required_options.keys() <= declared_options[command]
+        for option, value in required_options.items():
+            assert tokens.count(option) == 1
+            assert tokens[tokens.index(option) + 1] == value
+        if command in {"router workloads", "fleet workloads"}:
+            assert resolution_flags.isdisjoint(tokens)
 
 
 @pytest.mark.parametrize("doc, invocation", _documented_invocations())

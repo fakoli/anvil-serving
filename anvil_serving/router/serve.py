@@ -13,24 +13,29 @@ import ipaddress
 import json
 import os
 import sys
+import tempfile
 import threading
 import time
 from dataclasses import replace
+from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
+from types import MappingProxyType
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
-from .admission import AdmissionLease, TierAdmission
+from .admission import AdmissionLease, TierAdmission, _member_id, _reason_code
 from .audio import AudioGateway
 from .availability import (
     AlwaysAvailable,
     AvailabilityResult,
     HttpHealthAvailability,
+    replica_identity_passed,
     resolve_runtime_tier,
     safe_check,
+    safe_check_member,
 )
 from .backends import RelayBackend
-from .backends.relay import _ClosingIterator, DiscoveryTransport, Transport, discover_single_model
+from .backends.relay import _ClosingIterator, DiscoveryTransport, Transport, discover_single_model, is_relay_timeout
 from .config import (
     ConfigError,
     CONTEXT_ADMISSION_UPSTREAM,
@@ -38,6 +43,7 @@ from .config import (
     PRIVACY_LOCAL,
     RouterConfig,
     Tier,
+    _REPLICA_ID_RE,
     load,
     load_server_config,
     normalize_model_alias,
@@ -48,15 +54,17 @@ from .decision_log import (
     DecisionLogWriter,
     DecisionRecord,
     request_correlation,
+    validated_replica_scheduler,
 )
 from .discovery import models_payload
 from .dialects.translate import has_tool_artifacts
-from .front_door import make_server
+from .front_door import OperatorRoute, make_server
 from .gateway import ProtocolGateway
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult, estimate_tokens
 from .media_admission import evaluate_media_admission
 from .model_capacity import (
     MetricsProvider,
+    ReplicaPressureCache,
     build_model_capacity,
     fetch_vllm_metrics,
 )
@@ -74,9 +82,15 @@ from .router_telemetry import (
     render_prometheus,
 )
 from .tier_health import build_tier_health
+from .workloads import RouterWorkloadRegistry, RouterWorkloadToken
+from ..observability.workloads import WorkloadOutcome, WorkloadState
 from .. import envfile
 from .. import mcp as mcp_facade
 from ..a2a.tasks import A2AMediaTasks
+from ..control_plane.authorization import (
+    AuthorizationError,
+    load_authorization_policy,
+)
 from ..control_plane.mcp.controller_client import remote_controller_request
 from ..control_plane.mcp.errors import ToolError
 from ..control_plane.mcp.protocol import (
@@ -162,6 +176,78 @@ class _AdmissionIterator:
                 self._lease.release()
 
 
+class RouterWorkloadStream:
+    """Separate backend cleanup from delivery-aware observational finalization.
+
+    The front door retains this object before start() so eager failures can
+    still be finalized after their error response is delivered. Ordinary
+    iterator callers may use it directly; close() is the fallback disconnect.
+    """
+
+    def __init__(self, factory, token: Optional[RouterWorkloadToken]) -> None:
+        self._factory = factory
+        self._token = token
+        self._inner = None
+        self._started = False
+        self._closed = False
+        self._finished = False
+        self.generation_failed = False
+
+    def start(self) -> "RouterWorkloadStream":
+        if not self._started and not self._closed:
+            self._started = True
+            try:
+                self._inner = self._factory()
+            except BaseException:
+                self.generation_failed = True
+                raise
+            finally:
+                self._factory = None
+        return self
+
+    def __iter__(self):
+        return self.start()
+
+    def __next__(self):
+        if self._closed:
+            raise StopIteration
+        self.start()
+        if self._inner is None:
+            raise StopIteration
+        try:
+            return next(self._inner)
+        except StopIteration:
+            raise
+        except BaseException:
+            self.generation_failed = True
+            raise
+
+    def close_upstream(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self._factory = None
+        closer = getattr(self._inner, "close", None)
+        if callable(closer):
+            closer()
+
+    def finish_delivery(self, outcome: Optional[WorkloadOutcome] = None) -> None:
+        if self._finished:
+            return
+        self._finished = True
+        try:
+            self.close_upstream()
+        finally:
+            if self._token is not None:
+                try:
+                    self._token.finish(outcome)
+                except Exception:
+                    pass  # observation never owns response or admission success
+
+    def close(self) -> None:
+        self.finish_delivery(None if self.generation_failed else WorkloadOutcome.DISCONNECTED)
+
+
 _WILDCARD_HOSTS = {"", "0.0.0.0", "::"}
 
 
@@ -208,6 +294,52 @@ def build_backend_for_tier(
     return RelayBackend(tier, env=env, transport=transport, timeout=timeout)
 
 
+class ReplicaRuntime:
+    """Existing relay adapters for one explicitly selected replica tier."""
+
+    def __init__(self, members: Mapping[str, Backend]) -> None:
+        copied = dict(members)
+        self._members: Mapping[str, Backend] = MappingProxyType(copied)
+        self._member_ids = tuple(copied)
+        self._thread_local = threading.local()
+
+    @property
+    def member_ids(self) -> tuple[str, ...]:
+        """Return the exact declared member IDs in configuration order."""
+        return self._member_ids
+
+    def member_backend(self, member_id: str) -> Backend:
+        """Return one declared adapter without exposing the rejected operand."""
+        if type(member_id) is not str or member_id not in self._members:
+            raise ValueError("replica member is not declared")
+        return self._members[member_id]
+
+    def generate(self, request: InternalRequest) -> Iterator[str]:
+        """Refuse implicit member selection; T008 owns that decision."""
+        self._thread_local.selected_backend = None
+        raise RuntimeError("replica member selection is required")
+
+    def generate_member(
+        self, member_id: str, request: InternalRequest
+    ) -> Iterator[str]:
+        """Invoke exactly one declared member and retain its side-channel owner."""
+        self._thread_local.selected_backend = None
+        backend = self.member_backend(member_id)
+        try:
+            iterator = iter(backend.generate(request))
+        except BaseException:
+            self._thread_local.selected_backend = None
+            raise
+        self._thread_local.selected_backend = backend
+        return iterator
+
+    def get_last_structured(self) -> Optional[StructuredResult]:
+        """Delegate to the member successfully invoked by this thread."""
+        backend = getattr(self._thread_local, "selected_backend", None)
+        fn = getattr(backend, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+
 def build_backends(
     config: RouterConfig,
     *,
@@ -223,13 +355,26 @@ def build_backends(
     backends: Dict[str, Backend] = {}
     for tier in config.tiers:
         timeout = tier.timeout if tier.timeout is not None else config.relay_timeout
-        backends[tier.id] = build_backend_for_tier(
-            tier,
-            env=env,
-            transport=transport,
-            timeout=timeout,
-            model_discovery_transport=model_discovery_transport,
-        )
+        if tier.replicas:
+            members = {
+                member.id: build_backend_for_tier(
+                    replace(tier, base_url=member.base_url, replicas=()),
+                    env=env,
+                    transport=transport,
+                    timeout=timeout,
+                    model_discovery_transport=model_discovery_transport,
+                )
+                for member in tier.replicas
+            }
+            backends[tier.id] = ReplicaRuntime(members)
+        else:
+            backends[tier.id] = build_backend_for_tier(
+                tier,
+                env=env,
+                transport=transport,
+                timeout=timeout,
+                model_discovery_transport=model_discovery_transport,
+            )
     return backends, []
 
 
@@ -241,9 +386,21 @@ class _ConcurrencyLimitedBackend:
         self._sem = threading.BoundedSemaphore(max_concurrency)
 
     def generate(self, request: InternalRequest) -> Iterator[str]:
+        return self._generate(self._inner.generate, request)
+
+    def generate_member(
+        self, member_id: str, request: InternalRequest
+    ) -> Iterator[str]:
+        """Apply this logical tier's one ceiling to any selected member."""
+        generate_member = getattr(self._inner, "generate_member", None)
+        if not callable(generate_member):
+            raise RuntimeError("replica member selection is required")
+        return self._generate(generate_member, member_id, request)
+
+    def _generate(self, generate: Callable[..., Iterator[str]], *args: object) -> Iterator[str]:
         self._sem.acquire()
         try:
-            inner = iter(self._inner.generate(request))
+            inner = iter(generate(*args))
         except BaseException:
             self._sem.release()
             raise
@@ -255,6 +412,38 @@ class _ConcurrencyLimitedBackend:
     def get_last_structured(self) -> Optional[StructuredResult]:
         fn = getattr(self._inner, "get_last_structured", None)
         return fn() if callable(fn) else None
+
+
+def _configured_replica_members(config: RouterConfig) -> dict[str, tuple[str, ...]]:
+    """Use the same declared membership for volatile and durable admission."""
+    return {
+        tier.id: tuple(member.id for member in tier.replicas)
+        for tier in config.tiers if tier.replicas
+    }
+
+
+def _configured_admission(
+    config: RouterConfig, *, on_state_change: Optional[Callable[[str], None]] = None,
+) -> TierAdmission:
+    """Share the exact replica reservation contract across both startup paths."""
+    replicas = tuple(tier for tier in config.tiers if tier.replicas)
+    return TierAdmission(
+        (tier.id for tier in config.tiers),
+        replica_members=_configured_replica_members(config),
+        tier_max_concurrency={
+            tier.id: tier.max_concurrency for tier in replicas
+            if tier.max_concurrency is not None
+        },
+        member_max_concurrency={
+            tier.id: {
+                member.id: member.max_concurrency for member in tier.replicas
+                if member.max_concurrency is not None
+            }
+            for tier in replicas
+        },
+        replica_strategies={tier.id: tier.replica_strategy for tier in replicas},
+        on_state_change=on_state_change,
+    )
 
 
 class RoutingBackend:
@@ -275,18 +464,28 @@ class RoutingBackend:
             tier_id: (
                 _ConcurrencyLimitedBackend(backend, config.tier(tier_id).max_concurrency)
                 if config.tier(tier_id).max_concurrency is not None
+                and not config.tier(tier_id).replicas
                 else backend
             )
             for tier_id, backend in backends.items()
         }
         self._availability = availability if availability is not None else AlwaysAvailable()
-        self._admission = admission or TierAdmission(tier.id for tier in config.tiers)
-        self._capacity_metrics = capacity_metrics or fetch_vllm_metrics
+        self._admission = admission if admission is not None else _configured_admission(config)
+        self._capacity_metrics = fetch_vllm_metrics if capacity_metrics is None else capacity_metrics
+        self._replica_pressure = ReplicaPressureCache(
+            tuple(tier for tier in config.tiers if tier.replicas and tier.replica_strategy == "capacity"),
+            metrics_provider=self._capacity_metrics,
+        )
         self._started_at = time.time()
         # `is None`, not truthiness: DecisionLog defines __len__, so an empty
         # (sink-enabled) log is falsy and `or` would silently replace it.
         self._decision_log = DecisionLog() if decision_log is None else decision_log
         self._thread_local: threading.local = threading.local()
+        self._workload_registry: Optional[RouterWorkloadRegistry] = None
+
+    def close(self) -> None:
+        """Stop this owner's bounded telemetry refreshes without waiting on I/O."""
+        self._replica_pressure.close()
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         return getattr(self._thread_local, "last_result", None)
@@ -318,16 +517,57 @@ class RoutingBackend:
         prompt_tokens: Optional[int] = None,
         prompt_tokens_source: str = "estimated",
         completion_tokens_source: str = "unknown",
+        replica_member_id: Optional[str] = None,
+        replica_selection: Optional[str] = None,
+        replica_scheduler: object = None,
+        workload_token: Optional[RouterWorkloadToken] = None,
+        workload_outcome: WorkloadOutcome = WorkloadOutcome.REJECTED,
     ) -> None:
         if prompt_tokens is None:
             prompt_tokens = self._prompt_tokens(request)
         output_limit = self._output_limit(request, tier)
-        self._decision_log.record(DecisionRecord(
+        attempts = (AttemptRecord(
+            tier.id, served, reason, prompt_tokens, completion_tokens, outcome,
+        ),)
+        if tier.replicas:
+            # The configured tier, not caller metadata, owns member identity.
+            if (
+                replica_selection == "identity_passed"
+                and type(replica_member_id) is str
+                and any(
+                    member.id == replica_member_id for member in tier.replicas
+                )
+            ):
+                if reason not in {
+                    "served", "served_output_clamped", "client_disconnected",
+                    "backend_error", "completion_error",
+                }:
+                    reason = "backend_error"
+                attempts = (AttemptRecord(
+                    tier.id, served, reason, prompt_tokens, completion_tokens, outcome,
+                ),)
+            else:
+                replica_member_id = None
+                replica_selection = (
+                    "not_admitted" if replica_selection == "not_admitted"
+                    else "request_rejected"
+                )
+                attempts = ()
+        else:
+            replica_member_id = replica_selection = None
+        scheduler = validated_replica_scheduler(
+            replica_scheduler,
+            selected_member_id=replica_member_id,
+            member_capacities={
+                member.id: member.max_concurrency
+                for member in tier.replicas
+                if type(member.max_concurrency) is int
+            } if tier.replica_strategy == "capacity" else {},
+        )
+        decision = DecisionRecord(
             kind="chat",
             requested_tier=tier.id,
-            attempts=(AttemptRecord(
-                tier.id, served, reason, prompt_tokens, completion_tokens, outcome,
-            ),),
+            attempts=attempts,
             served_tier=tier.id if served else None,
             total_prompt_tokens=prompt_tokens,
             total_completion_tokens=completion_tokens,
@@ -342,8 +582,19 @@ class RoutingBackend:
             output_limit_requested=output_limit["requested"],
             output_limit_applied=output_limit["applied"],
             output_limit_clamped=output_limit["clamped"],
+            replica_member_id=replica_member_id,
+            replica_selection=replica_selection,
+            replica_scheduler=scheduler,
             **request_correlation(request),
-        ))
+        )
+        if workload_token is not None:
+            try:
+                if workload_token.propose_terminal(decision, workload_outcome):
+                    return
+            except Exception:
+                pass
+        # Disabled observation retains the ordinary legacy decision path.
+        self._decision_log.record(decision)
 
     @staticmethod
     def _token_count(value: Any) -> Optional[int]:
@@ -421,6 +672,18 @@ class RoutingBackend:
         )
 
     def generate(self, request: InternalRequest) -> Iterator[str]:
+        return self._generate(request)
+
+    def generate_tracked(self, request: InternalRequest, *, gateway_request_id: str) -> RouterWorkloadStream:
+        token = None
+        if self._workload_registry is not None:
+            try:
+                token = self._workload_registry.begin(gateway_request_id)
+            except Exception:
+                pass
+        return RouterWorkloadStream(lambda: self._generate(request, workload_token=token), token)
+
+    def _generate(self, request: InternalRequest, *, workload_token=None) -> Iterator[str]:
         """Resolve once, check local constraints, then relay with no fallback."""
         # JSON/raw is caller input. Only this invocation may create this marker.
         request.raw.pop("_anvil_output_clamp", None)
@@ -431,6 +694,35 @@ class RoutingBackend:
         upstream_call_started: Optional[float] = None
         upstream_dispatched = False
         first_content_at: Optional[float] = None
+        replica_scheduler = None
+        replica_identity_verified = False
+
+        def record(*args, **kwargs):
+            if (
+                replica_identity_verified
+                and kwargs.get("replica_member_id") is not None
+            ):
+                kwargs.setdefault("replica_selection", "identity_passed")
+            return self._record(
+                *args,
+                workload_token=workload_token,
+                replica_scheduler=replica_scheduler,
+                **kwargs,
+            )
+
+        def advance(state: WorkloadState) -> None:
+            if workload_token is not None:
+                try:
+                    workload_token.advance(state)
+                except Exception:
+                    pass
+
+        def failure_outcome(error: BaseException) -> WorkloadOutcome:
+            if is_relay_timeout(error):
+                return WorkloadOutcome.TIMEOUT
+            if isinstance(error, (GeneratorExit, KeyboardInterrupt)):
+                return WorkloadOutcome.CANCELLED
+            return WorkloadOutcome.ERROR
 
         def _elapsed_ms() -> int:
             return max(0, int((time.monotonic() - started) * 1000))
@@ -453,13 +745,19 @@ class RoutingBackend:
         if configured_tier is None:
             raise NoAvailableTierError(request.model, (), kind="unknown_model")
 
+        if workload_token is not None:
+            try:
+                workload_token.activate()
+            except Exception:
+                pass
+
         tier = configured_tier
         readiness: Optional[AvailabilityResult] = None
         if tier.metadata_source == METADATA_UPSTREAM:
             readiness = _readiness_for(tier)
             effective_tier = resolve_runtime_tier(tier, readiness)
             if effective_tier is None:
-                self._record(
+                record(
                     request,
                     tier,
                     served=False,
@@ -479,7 +777,7 @@ class RoutingBackend:
             tier.context_admission != CONTEXT_ADMISSION_UPSTREAM
             and self._prompt_tokens(request) > tier.context_limit
         ):
-            self._record(
+            record(
                 request, tier, served=False, reason="over_context", outcome="skipped",
                 latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
             )
@@ -497,40 +795,102 @@ class RoutingBackend:
                 else "media_admission_%s" % media.reason
             )
             kind = "over_context" if media.reason == "context_limit" else "media_limit"
-            self._record(
+            record(
                 request, tier, served=False, reason=reason, outcome="skipped",
                 latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
             )
             raise NoAvailableTierError(request.model, (tier.id,), kind=kind)
         if has_tool_artifacts(request.raw) and not tier.tool_support:
-            self._record(
+            record(
                 request, tier, served=False, reason="tools_unsupported", outcome="skipped",
                 latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
             )
             raise NoAvailableTierError(request.model, (tier.id,), kind="unsupported_tools")
         backend = self._backends.get(tier.id)
         if backend is None:
-            self._record(
+            record(
                 request, tier, served=False, reason="backend_unbound",
                 latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
             )
             raise NoAvailableTierError(request.model, (tier.id,))
-        if readiness is None:
-            readiness = _readiness_for(tier)
-        if not readiness.available:
-            self._record(
-                request, tier, served=False, reason="unavailable", outcome="skipped",
-                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+        selected_member: Optional[str] = None
+        if tier.replicas:
+            # Check every declared member before the one compound admission.  The
+            # admission cursor then makes the selection atomically without a
+            # second provider read or an implicit retry/fallback path.
+            check_started = time.monotonic()
+            bound_members = backend.member_ids if isinstance(backend, ReplicaRuntime) else ()
+            member_readiness = {}
+            for member in tier.replicas:
+                result = (
+                    safe_check_member(self._availability, tier, member.id)
+                    if member.id in bound_members
+                    else AvailabilityResult(
+                        False, "unavailable", "replica_member_unbound"
+                    )
+                )
+                member_readiness[member.id] = (
+                    result
+                    if replica_identity_passed(tier, result)
+                    else AvailabilityResult(
+                        False, "unavailable", "identity_not_verified"
+                    )
+                )
+            readiness_check_ms = max(
+                0, int((time.monotonic() - check_started) * 1000)
             )
-            raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
-        lease = self._admission.acquire(tier.id)
-        if lease is None:
-            self._record(
-                request, tier, served=False, reason="quiesced", outcome="skipped",
-                latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+            # The cache returns only completed immutable observations and never
+            # waits for metrics. Admission then ranks and reserves under its one
+            # condition, with no callbacks or I/O inside that critical section.
+            if tier.replica_strategy == "capacity":
+                pressure = self._replica_pressure.snapshot(tier.id)
+                lease = self._admission.acquire_member(tier.id, member_readiness, pressure)
+            else:
+                lease = self._admission.acquire_member(tier.id, member_readiness)
+            if lease is None:
+                record(
+                    request, tier, served=False, reason="unavailable", outcome="skipped",
+                    replica_selection="not_admitted",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                )
+                raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
+            selected_member = lease.member_id
+            replica_identity_verified = replica_identity_passed(
+                tier, member_readiness.get(selected_member)
             )
-            raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
+            if not replica_identity_verified:
+                lease.release()
+                selected_member = None
+                record(
+                    request, tier, served=False, reason="unavailable", outcome="skipped",
+                    replica_selection="not_admitted",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                )
+                raise NoAvailableTierError(
+                    request.model, (tier.id,), kind="unavailable"
+                )
+            # This immutable ordering was made before the lease increments its
+            # selected member counter.  Preserve it verbatim for every later
+            # terminal record without a second admission or cache observation.
+            replica_scheduler = lease.selection
+        else:
+            if readiness is None:
+                readiness = _readiness_for(tier)
+            if not readiness.available:
+                record(
+                    request, tier, served=False, reason="unavailable", outcome="skipped",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                )
+                raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
+            lease = self._admission.acquire(tier.id)
+            if lease is None:
+                record(
+                    request, tier, served=False, reason="quiesced", outcome="skipped",
+                    latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
+                )
+                raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
 
+        advance(WorkloadState.ADMITTED)
         relay_request = request
         if configured_tier.metadata_source == METADATA_UPSTREAM:
             # Preserve the stable public alias on the original request and in
@@ -539,21 +899,33 @@ class RoutingBackend:
             relay_request = replace(request, model=tier.model)
         try:
             upstream_call_started = time.monotonic()
-            upstream = backend.generate(relay_request)
-        except BaseException as exc:
-            self._record(
-                request,
-                tier,
-                served=False,
-                reason=f"backend_error_{type(exc).__name__}",
-                latency_ms=_elapsed_ms(),
-                readiness_check_ms=readiness_check_ms,
-                upstream_duration_ms=(
-                    max(0, int((time.monotonic() - upstream_call_started) * 1000))
-                    if upstream_call_started is not None else None
-                ),
+            upstream = (
+                backend.generate_member(selected_member, relay_request)
+                if selected_member is not None
+                else backend.generate(relay_request)
             )
-            lease.release()
+            advance(WorkloadState.DISPATCHED)
+        except BaseException as exc:
+            try:
+                record(
+                    request,
+                    tier,
+                    served=False,
+                    reason="backend_error" if selected_member is not None else f"backend_error_{type(exc).__name__}",
+                    replica_member_id=selected_member,
+                    workload_outcome=failure_outcome(exc),
+                    latency_ms=_elapsed_ms(),
+                    readiness_check_ms=readiness_check_ms,
+                    upstream_duration_ms=(
+                        max(0, int((time.monotonic() - upstream_call_started) * 1000))
+                        if upstream_call_started is not None else None
+                    ),
+                )
+            finally:
+                # Failure reporting is not an admission owner.  Preserve the
+                # original eager-error handling while releasing even when a
+                # clock, metadata, or sink failure interrupts its projection.
+                lease.release()
             raise
 
         fragments: List[str] = []
@@ -579,10 +951,12 @@ class RoutingBackend:
             completion_tokens = (
                 upstream_completion if upstream_completion is not None else estimate_tokens([text])
             )
-            self._record(
+            record(
                 request,
                 tier,
                 served=True,
+                workload_outcome=WorkloadOutcome.SUCCESS,
+                replica_member_id=selected_member,
                 reason=(
                     "served_output_clamped"
                     if "_anvil_output_clamp" in request.raw
@@ -614,9 +988,11 @@ class RoutingBackend:
             except BaseException as exc:
                 self._thread_local.last_result = None
                 self._thread_local.last_served_tier = None
-                self._record(
+                record(
                     request, tier, served=False,
-                    reason=f"completion_error_{type(exc).__name__}",
+                    reason="completion_error" if selected_member is not None else f"completion_error_{type(exc).__name__}",
+                    workload_outcome=failure_outcome(exc),
+                    replica_member_id=selected_member,
                     completion_tokens=estimate_tokens(fragments),
                     completion_tokens_source="estimated" if any(fragments) else "unknown",
                     latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
@@ -629,8 +1005,10 @@ class RoutingBackend:
                 raise
 
         def on_cancel() -> None:
-            self._record(
+            record(
                 request, tier, served=False, reason="client_disconnected",
+                workload_outcome=WorkloadOutcome.DISCONNECTED,
+                replica_member_id=selected_member,
                 latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
                 upstream_duration_ms=_upstream_elapsed_ms(),
             )
@@ -643,6 +1021,7 @@ class RoutingBackend:
                 # began. Its duration starts before ``generate`` so eager setup
                 # is included; a close before first iteration stays unknown.
                 upstream_dispatched = True
+                advance(WorkloadState.STREAMING)
                 for delta in upstream:
                     if not isinstance(delta, str):
                         raise TypeError("backend must yield text fragments")
@@ -651,8 +1030,10 @@ class RoutingBackend:
                         first_content_at = time.monotonic()
                     yield delta
             except GeneratorExit:
-                self._record(
+                record(
                     request, tier, served=False, reason="client_disconnected",
+                    workload_outcome=WorkloadOutcome.DISCONNECTED,
+                    replica_member_id=selected_member,
                     completion_tokens=estimate_tokens(fragments),
                     completion_tokens_source="estimated" if any(fragments) else "unknown",
                     latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
@@ -664,9 +1045,11 @@ class RoutingBackend:
                 )
                 raise
             except BaseException as exc:
-                self._record(
+                record(
                     request, tier, served=False,
-                    reason=f"backend_error_{type(exc).__name__}",
+                    reason="backend_error" if selected_member is not None else f"backend_error_{type(exc).__name__}",
+                    workload_outcome=failure_outcome(exc),
+                    replica_member_id=selected_member,
                     completion_tokens=estimate_tokens(fragments),
                     completion_tokens_source="estimated" if any(fragments) else "unknown",
                     latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
@@ -691,6 +1074,8 @@ class RoutingBackend:
             self._availability,
             self._capacity_metrics,
             query,
+            admission=self._admission,
+            replica_pressure=self._replica_pressure,
         )
 
     def model_discovery(self) -> dict:
@@ -730,43 +1115,113 @@ class RoutingBackend:
             + render_process_prometheus(self._started_at, self._decision_log.capacity)
         )
 
-    def transition_status(self, tier_id: Optional[str] = None) -> dict:
+    def validate_transition_target(self, tier_id: str, member_id: Optional[str] = None) -> Tier:
+        """Validate the declared scope without readiness probes or mutation."""
+        if type(tier_id) is not str or not tier_id:
+            raise ValueError("transition tier is required")
+        tier = self._config.tier(tier_id)
+        if member_id is not None and (
+            type(member_id) is not str
+            or not _REPLICA_ID_RE.fullmatch(member_id)
+            or not any(member.id == member_id for member in tier.replicas)
+        ):
+            raise ValueError("transition member is not declared")
+        return tier
+
+    @staticmethod
+    def _transition_row(tier: Tier, admission: dict, readiness: AvailabilityResult) -> dict:
+        return {
+            **admission,
+            "ready": readiness.available,
+            "readiness_state": readiness.state,
+            "readiness_reason": readiness.reason,
+            "expected_model": readiness.expected_model,
+            "observed_model": readiness.observed_model,
+            "observed_context_limit": (
+                readiness.runtime_metadata.context_limit
+                if readiness.runtime_metadata is not None
+                else None
+            ),
+            "metadata_source": tier.metadata_source,
+        }
+
+    def transition_status(
+        self, tier_id: Optional[str] = None, *, member_id: Optional[str] = None,
+    ) -> dict:
+        if member_id is not None:
+            tier = self.validate_transition_target(tier_id, member_id)
+            readiness = safe_check_member(
+                self._availability, tier, member_id, include_exception_name=False,
+            )
+            return {"tiers": [self._transition_row(
+                tier, self._admission.member_snapshot(tier.id, member_id).as_dict(), readiness,
+            )]}
         tier_ids = (tier_id,) if tier_id is not None else tuple(tier.id for tier in self._config.tiers)
         rows = []
         for tid in tier_ids:
             tier = self._config.tier(tid)
             admission = self._admission.snapshot(tid).as_dict()
             readiness = self._availability_for(tier)
-            rows.append({
-                **admission,
-                "ready": readiness.available,
-                "readiness_state": readiness.state,
-                "readiness_reason": readiness.reason,
-                "expected_model": readiness.expected_model,
-                "observed_model": readiness.observed_model,
-                "observed_context_limit": (
-                    readiness.runtime_metadata.context_limit
-                    if readiness.runtime_metadata is not None
-                    else None
-                ),
-                "metadata_source": tier.metadata_source,
-            })
+            rows.append(self._transition_row(tier, admission, readiness))
         return {"tiers": rows}
 
-    def quiesce_tier(self, tier_id: str, reason: str = "promotion") -> dict:
-        self._config.tier(tier_id)
-        snapshot = self._admission.quiesce(tier_id, reason)
+    def quiesce_tier(
+        self, tier_id: str, reason: str = "promotion", *, member_id: Optional[str] = None,
+    ) -> dict:
+        self.validate_transition_target(tier_id, member_id)
+        snapshot = (
+            self._admission.quiesce_member(tier_id, member_id, reason)
+            if member_id is not None else self._admission.quiesce(tier_id, reason)
+        )
         invalidate = getattr(self._availability, "invalidate", None)
         if callable(invalidate):
             invalidate(tier_id)
         return snapshot.as_dict()
 
-    def drain_tier(self, tier_id: str, timeout: float) -> dict:
-        self._config.tier(tier_id)
+    def drain_tier(
+        self, tier_id: str, timeout: float, *, member_id: Optional[str] = None,
+    ) -> dict:
+        self.validate_transition_target(tier_id, member_id)
+        if member_id is not None:
+            return self._admission.wait_for_member_drain(tier_id, member_id, timeout)
         return self._admission.wait_for_drain(tier_id, timeout)
 
-    def readmit_tier(self, tier_id: str) -> dict:
-        tier = self._config.tier(tier_id)
+    def _readmit_member(self, tier: Tier, member_id: str) -> dict:
+        """A fresh member identity check cannot clear a separate tier intent."""
+        if not tier.model_identity or not tier.health_path or not tier.model:
+            readiness = AvailabilityResult(False, "unavailable", "identity_not_configured")
+            verified = False
+            reason = "identity_not_configured"
+        else:
+            invalidate = getattr(self._availability, "invalidate", None)
+            if callable(invalidate):
+                # The existing cache invalidates by tier, but the only probe
+                # below is for this member. Peer caches never imply readmission.
+                invalidate(tier.id)
+            readiness = safe_check_member(
+                self._availability, tier, member_id, include_exception_name=False,
+            )
+            verified = replica_identity_passed(tier, readiness)
+            reason = (
+                "readiness_passed" if verified else
+                readiness.reason if not readiness.available else "identity_not_verified"
+            )
+        snapshot = (
+            self._admission.readmit_member(tier.id, member_id) if verified
+            else self._admission.member_snapshot(tier.id, member_id)
+        )
+        # Reuse that exact readiness result, including on failure: status must
+        # not trigger a second probe (or aggregate peer check) during readmit.
+        return {
+            "readmitted": verified,
+            "reason": reason,
+            "status": {"tiers": [self._transition_row(tier, snapshot.as_dict(), readiness)]},
+        }
+
+    def readmit_tier(self, tier_id: str, *, member_id: Optional[str] = None) -> dict:
+        tier = self.validate_transition_target(tier_id, member_id)
+        if member_id is not None:
+            return self._readmit_member(tier, member_id)
         dynamic_metadata = tier.metadata_source == METADATA_UPSTREAM
         if not dynamic_metadata and (
             not tier.model_identity or not tier.health_path or not tier.model
@@ -814,7 +1269,21 @@ class RoutingBackend:
         }
 
 
-def _load_admission_intent(path: str, tier_ids: tuple[str, ...]) -> dict[str, str]:
+_MAX_ADMISSION_INTENT_BYTES = 1024 * 1024
+
+
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    value: dict[str, object] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("duplicate admission intent field")
+        value[key] = item
+    return value
+
+
+def _load_admission_intent(
+    path: str, tier_ids: tuple[str, ...]
+) -> tuple[dict[str, str], dict[str, dict[str, str]]]:
     """Read persisted quiesce intent: ``{tier_id: reason_code}`` (ADR-0033).
 
     A missing file means no intent. A corrupt file refuses to serve — silently
@@ -823,13 +1292,27 @@ def _load_admission_intent(path: str, tier_ids: tuple[str, ...]) -> dict[str, st
     a removed tier is meaningless after a topology change.
     """
     try:
-        with open(path, "r", encoding="utf-8") as handle:
-            raw = json.load(handle)
+        with open(path, "rb") as handle:
+            encoded = handle.read(_MAX_ADMISSION_INTENT_BYTES + 1)
     except FileNotFoundError:
-        return {}
-    except (OSError, ValueError) as exc:
+        return {}, {}
+    except OSError as exc:
         raise ConfigError(
-            f"admission intent file {path!r} is unreadable or corrupt ({exc}); "
+            f"admission intent file {path!r} is unreadable or corrupt; "
+            f"fix or delete it before starting the router"
+        ) from exc
+    if len(encoded) > _MAX_ADMISSION_INTENT_BYTES:
+        raise ConfigError(
+            f"admission intent file {path!r} is unreadable or corrupt; "
+            f"fix or delete it before starting the router"
+        )
+    try:
+        raw = json.loads(
+            encoded.decode("utf-8"), object_pairs_hook=_unique_json_object
+        )
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+        raise ConfigError(
+            f"admission intent file {path!r} is unreadable or corrupt; "
             f"fix or delete it before starting the router"
         ) from exc
     tiers = raw.get("tiers") if isinstance(raw, dict) else None
@@ -863,45 +1346,94 @@ def _load_admission_intent(path: str, tier_ids: tuple[str, ...]) -> dict[str, st
                 flush=True,
             )
             continue
+        # Keep the legacy tier fallback: older writers did not constrain the
+        # reason, and admission itself safely converts it to ``restored``.
         intent[tier_id] = reason if isinstance(reason, str) and reason else "restored"
-    return intent
+    members_raw = raw.get("members", {})
+    if type(members_raw) is not dict:
+        raise ConfigError("admission intent contains an invalid members object")
+    members: dict[str, dict[str, str]] = {}
+    for tier_id, entries in members_raw.items():
+        if type(tier_id) is not str or not tier_id or type(entries) is not dict:
+            raise ConfigError("admission intent contains invalid members")
+        parsed: dict[str, str] = {}
+        for member_id, reason in entries.items():
+            try:
+                validated_member = _member_id(member_id)
+                validated_reason = _reason_code(reason)
+            except ValueError:
+                raise ConfigError("admission intent contains invalid members")
+            parsed[validated_member] = validated_reason
+        if tier_id in tier_ids:
+            members[tier_id] = parsed
+    return intent, members
 
 
-def _write_admission_intent(path: str, admission: TierAdmission) -> None:
+def _write_admission_intent(
+    path: str, admission: TierAdmission, *, write_lock: Optional[threading.Lock] = None
+) -> None:
     """Atomically persist the quiesced side of the admission state (ADR-0033).
 
     Only quiesced tiers are recorded; reasons are the bounded content-free
     codes admission already enforces. The file never records "admit" — after a
     restart, readmission always re-passes the health+identity gate.
     """
-    payload = {
-        "version": 1,
-        "tiers": {
-            snapshot.tier_id: {"state": "quiesced", "reason": snapshot.reason}
-            for snapshot in admission.snapshots()
-            if snapshot.quiesced
-        },
-    }
-    tmp_path = path + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, sort_keys=True, separators=(",", ":"))
-        handle.flush()
-        os.fsync(handle.fileno())
-    os.replace(tmp_path, path)
+    lock = write_lock if write_lock is not None else threading.Lock()
+    with lock:
+        snapshots = admission.snapshots()
+        members = {
+            snapshot.tier_id: {
+                member.member_id: member.reason
+                for member in snapshot.members
+                if member.quiesced
+            }
+            for snapshot in snapshots
+            if any(member.quiesced for member in snapshot.members)
+        }
+        payload = {
+            "version": 1,
+            "tiers": {
+                snapshot.tier_id: {"state": "quiesced", "reason": snapshot.reason}
+                for snapshot in snapshots
+                if snapshot.quiesced
+            },
+        }
+        if members:
+            payload["members"] = members
+
+        target = Path(path)
+        descriptor, tmp_path = tempfile.mkstemp(
+            prefix=f".{target.name}.", suffix=".tmp", dir=str(target.parent)
+        )
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+                descriptor = -1
+                json.dump(payload, handle, sort_keys=True, separators=(",", ":"))
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(tmp_path, path)
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
+            try:
+                os.unlink(tmp_path)
+            except FileNotFoundError:
+                pass
 
 
 def _durable_admission(path: str, config: RouterConfig) -> TierAdmission:
     """Build a TierAdmission that restores and persists quiesce intent."""
     tier_ids = tuple(tier.id for tier in config.tiers)
-    intent = _load_admission_intent(path, tier_ids)
+    intent, member_intent = _load_admission_intent(path, tier_ids)
     holder: dict[str, TierAdmission] = {}
+    write_lock = threading.Lock()
 
     def _persist(_tier_id: str) -> None:
         admission = holder.get("admission")
         if admission is None:
             return
         try:
-            _write_admission_intent(path, admission)
+            _write_admission_intent(path, admission, write_lock=write_lock)
         except OSError as exc:
             print(
                 "[anvil] warning admission intent write failed: %s" % type(exc).__name__,
@@ -909,17 +1441,23 @@ def _durable_admission(path: str, config: RouterConfig) -> TierAdmission:
                 flush=True,
             )
 
-    admission = TierAdmission(tier_ids, on_state_change=_persist)
-    holder["admission"] = admission
+    admission = _configured_admission(config, on_state_change=_persist)
     for tier_id, reason in intent.items():
         try:
             admission.quiesce(tier_id, reason)
         except ValueError:
             admission.quiesce(tier_id, "restored")
+    for tier_id, entries in member_intent.items():
+        for member_id, reason in entries.items():
+            try:
+                admission.quiesce_member(tier_id, member_id, reason)
+            except (KeyError, ValueError):
+                continue
+    holder["admission"] = admission
     # Probe writability now: a configured intent path that cannot be written
     # is a boot error, not a silent downgrade.
     try:
-        _write_admission_intent(path, admission)
+        _write_admission_intent(path, admission, write_lock=write_lock)
     except OSError as exc:
         raise ConfigError(
             f"admission intent path {path!r} is not writable: {exc}"
@@ -1004,6 +1542,10 @@ def build_server(
     availability: Optional[object] = None,
     admission: Optional[TierAdmission] = None,
     capacity_metrics: Optional[MetricsProvider] = None,
+    authorization_policy: Optional[str] = None,
+    operator_routes: Sequence[OperatorRoute] | None = None,
+    workload_clock: Optional[Callable[[], datetime]] = None,
+    observe_workloads: bool = True,
 ) -> ThreadingHTTPServer:
     """Load configured capability routes and build an un-started authenticated front door."""
     config = load(config_path)
@@ -1027,6 +1569,18 @@ def build_server(
         raise ConfigError(
             "[[router.audio_routes]] require a resolved [server].auth_env"
         )
+    scoped_policy = None
+    if authorization_policy is not None:
+        try:
+            scoped_policy = load_authorization_policy(
+                authorization_policy,
+                env=environ,
+                legacy_token=auth_token,
+            )
+        except AuthorizationError:
+            # A malformed optional scoped policy disables only future scoped
+            # surfaces.  Existing legacy router authentication remains intact.
+            scoped_policy = None
 
     injected = backends is not None
     if backends is None:
@@ -1058,6 +1612,12 @@ def build_server(
         capacity_metrics=capacity_metrics,
         decision_log=decision_log,
     )
+    effective_workload_clock = workload_clock or (lambda: datetime.now(timezone.utc))
+    if observe_workloads:
+        routing._workload_registry = RouterWorkloadRegistry(
+            routing._decision_log,
+            clock=effective_workload_clock,
+        )
 
     purpose: Optional[PurposeRouter] = None
     if config.purpose_models:
@@ -1144,31 +1704,47 @@ def build_server(
         host, port, routing, timeout=timeout, model_routes=config.model_routes,
         exhaustion_status=config.exhaustion_status, auth_token=auth_token,
         purpose=purpose, audio=audio, gateway=gateway,
+        authorization_policy=scoped_policy,
+        operator_routes=operator_routes,
+        workload_host=server_config.workload_host,
+        workload_registry=routing._workload_registry,
+        workload_clock=effective_workload_clock,
     )
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]
+    httpd.anvil_workloads = routing._workload_registry  # type: ignore[attr-defined]
     httpd.anvil_availability = availability  # type: ignore[attr-defined]
     httpd.anvil_admission = routing._admission  # type: ignore[attr-defined]
     httpd.anvil_purpose = purpose  # type: ignore[attr-defined]
     httpd.anvil_audio = audio  # type: ignore[attr-defined]
     httpd.anvil_gateway = gateway  # type: ignore[attr-defined]
     httpd.anvil_media_worker = media_worker  # type: ignore[attr-defined]
+    original_server_close = httpd.server_close
+    close_lock = threading.Lock()
+    closed = False
+
+    def close_router_server() -> None:
+        nonlocal closed
+        with close_lock:
+            if closed:
+                return
+            closed = True
+        try:
+            if media_worker is not None:
+                media_worker.stop()
+        finally:
+            try:
+                routing.close()
+            finally:
+                original_server_close()
+
+    httpd.server_close = close_router_server  # type: ignore[method-assign]
     if media_worker is not None:
-        original_server_close = httpd.server_close
-        close_lock = threading.Lock()
-        closed = False
-
-        def close_media_server() -> None:
-            nonlocal closed
-            with close_lock:
-                if closed:
-                    return
-                closed = True
-            media_worker.stop()
-            original_server_close()
-
-        httpd.server_close = close_media_server  # type: ignore[method-assign]
-        media_worker.start()
+        try:
+            media_worker.start()
+        except BaseException:
+            httpd.server_close()
+            raise
     return httpd
 
 
@@ -1177,6 +1753,7 @@ def serve(
     *,
     host: str = "127.0.0.1",
     port: int = 8000,
+    authorization_policy: Optional[str] = None,
 ) -> None:
     """Run a configured thin capability gateway until interrupted."""
     try:
@@ -1184,7 +1761,10 @@ def serve(
     except ConfigError:
         authed = False
     _warn_if_public_bind(host, authed=authed)
-    httpd = build_server(config_path, host=host, port=port)
+    httpd = build_server(
+        config_path, host=host, port=port,
+        authorization_policy=authorization_policy,
+    )
     actual_host, actual_port = httpd.server_address[:2]
     routes = (
         "POST /v1/chat/completions, POST /v1/messages, GET /v1/models, "
@@ -1238,9 +1818,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     ap.add_argument("--host", default="127.0.0.1", help="bind host (default 127.0.0.1; never localhost)")
     ap.add_argument("--port", type=int, default=8000, help="bind port (default 8000)")
+    ap.add_argument(
+        "--authorization-policy", metavar="PATH",
+        help="optional scoped operator authorization policy",
+    )
     args = ap.parse_args(argv)
     try:
-        serve(resolve_config_path(args.config), host=args.host, port=args.port)
+        serve(
+            resolve_config_path(args.config), host=args.host, port=args.port,
+            authorization_policy=args.authorization_policy,
+        )
     except ConfigError as exc:
         print(f"anvil-serving router run: {exc}", file=sys.stderr)
         return 2

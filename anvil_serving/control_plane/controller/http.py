@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hmac
+import math
 import os
 import socket
 import sys
@@ -14,6 +15,26 @@ from http.server import BaseHTTPRequestHandler
 from typing import Any, Callable, Optional, Sequence
 
 from ... import mcp
+from ...observability.node_workload_collector import NodeWorkloadCollector
+from ...observability.fleet_workload_collector import FleetWorkloadCollector
+from ...observability.workload_tools import (
+    FLEET_WORKLOADS_TOOL_NAME,
+    NODE_WORKLOADS_TOOL_NAME,
+    fleet_workloads_declaration,
+    is_exact_fleet_workloads_declaration,
+    is_exact_node_workloads_declaration,
+    node_workloads_declaration,
+    parse_node_workload_query,
+    workload_failure,
+    workload_success,
+)
+from ..authorization import (
+    ALLOWED_SCOPES,
+    NODE_ADMIN_BOOTSTRAP,
+    WORKLOADS_READ,
+    AuthorizationPolicy,
+    check_scope,
+)
 from ..mcp import protocol as mcp_protocol
 from .catalog import (
     CallToolFunc,
@@ -44,6 +65,9 @@ from .store import (
 DEFAULT_MAX_BODY_BYTES = 1024 * 1024
 DEFAULT_READ_TIMEOUT_SECONDS = 30.0
 
+_LEGACY_TOOL_SCOPES = frozenset((None, "media:read", "media:submit", "media:cancel"))
+_UNDECLARED_SCOPE = object()
+
 _MAX_BODY_BYTES = int(
     os.environ.get("ANVIL_CONTROLLER_MAX_BODY_BYTES", str(DEFAULT_MAX_BODY_BYTES))
 )
@@ -53,6 +77,69 @@ _READ_TIMEOUT_SECONDS = float(
 
 AuditLogger = Callable[[dict[str, Any]], None]
 JsonLoadsFunc = Callable[[str], Any]
+WorkloadClock = Callable[[], Any]
+
+_SAFE_RPC_INTEGER = 2**53 - 1
+
+
+def _workload_rpc_id(value: object) -> str | int | None:
+    if type(value) is int:
+        return value if -_SAFE_RPC_INTEGER <= value <= _SAFE_RPC_INTEGER else None
+    if type(value) is str and _safe_request_id(value) == value:
+        return value
+    return None
+
+
+def _workload_protocol_error(
+    request_id: str | int | None,
+    *,
+    code: int = -32600,
+    error_code: str = "invalid_workload_request",
+) -> dict[str, Any]:
+    return {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "error": {
+            "code": code,
+            "message": "workload protocol request is invalid",
+            "data": {"code": error_code},
+        },
+    }
+
+
+_WORKLOAD_DECLARATIONS = {
+    NODE_WORKLOADS_TOOL_NAME: (node_workloads_declaration, is_exact_node_workloads_declaration),
+    FLEET_WORKLOADS_TOOL_NAME: (fleet_workloads_declaration, is_exact_fleet_workloads_declaration),
+}
+
+
+def _tools_with_workloads(
+    list_tools_func: ListToolsFunc, *, enabled: set[str]
+) -> ListToolsFunc:
+    def list_tools() -> list[dict]:
+        tools = list_tools_func()
+        if not isinstance(tools, list):
+            return tools
+        additions: list[dict] = []
+        for name, (declaration, exact) in _WORKLOAD_DECLARATIONS.items():
+            matches = [
+                item for item in tools
+                if isinstance(item, dict) and isinstance(item.get("name"), str)
+                and _mcp_tool_name(item["name"]) == name
+            ]
+            if len(matches) > 1 or (len(matches) == 1 and not exact(matches[0])):
+                raise ControllerError(
+                    "reserved_tool_conflict",
+                    "controller tool catalog conflicts with a reserved operation",
+                    status=500,
+                )
+            if not matches and name in enabled:
+                additions.append(declaration())
+        if additions:
+            return [*tools, *additions]
+        return tools
+
+    return list_tools
 
 
 def _default_audit_logger(record: dict[str, Any]) -> None:
@@ -269,14 +356,38 @@ def make_handler(
     allowed_operations: Optional[Sequence[str]] = None,
     json_loads_func: JsonLoadsFunc = _strict_json_loads,
     node_id: Optional[str] = None,
+    authorization_policy: Optional[AuthorizationPolicy] = None,
+    workload_collector: Optional[NodeWorkloadCollector] = None,
+    fleet_workload_collector: Optional[FleetWorkloadCollector] = None,
+    workload_clock: WorkloadClock = time.time,
 ):
     """Build a request handler class for controller tests or ``make_server``."""
 
     audit = audit_logger or _default_audit_logger
     allowlist_enabled = allowed_operations is not None
     declared_tools, declared_name_by_normalized = _validated_tool_catalog(
-        list_tools_func, allowed_operations
+        _tools_with_workloads(
+            list_tools_func,
+            enabled={
+                name for name, collector in (
+                    (NODE_WORKLOADS_TOOL_NAME, workload_collector),
+                    (FLEET_WORKLOADS_TOOL_NAME, fleet_workload_collector),
+                ) if collector is not None
+            },
+        ),
+        allowed_operations,
     )
+    workload_allowed = {
+        name: not allowlist_enabled or name in declared_name_by_normalized
+        for name in _WORKLOAD_DECLARATIONS
+    }
+    tool_scope_by_normalized: dict[str, str | None | object] = {}
+    for declaration in declared_tools:
+        name = declaration.get("name") if isinstance(declaration, dict) else None
+        metadata = declaration.get("_meta") if isinstance(declaration, dict) else None
+        scope = metadata.get("anvil/requiredScope") if isinstance(metadata, dict) else None
+        if isinstance(name, str):
+            tool_scope_by_normalized[_mcp_tool_name(name)] = scope
     store = operation_store or OperationStore()
 
     class ControllerHandler(BaseHTTPRequestHandler):
@@ -286,6 +397,9 @@ def make_handler(
 
         def setup(self) -> None:
             super().setup()
+            self._workload_request = False
+            self._workload_request_id: Optional[str] = None
+            self._workload_operation: Optional[str] = None
             if read_timeout_seconds > 0:
                 self.connection.settimeout(read_timeout_seconds)
 
@@ -298,13 +412,89 @@ def make_handler(
             except Exception:
                 return ""
 
+        def _begin_workload_request(self, operation: str = NODE_WORKLOADS_TOOL_NAME) -> str:
+            if not self._workload_request:
+                self._workload_request = True
+                self._workload_request_id = _safe_request_id(None)
+                self._workload_operation = operation
+            assert self._workload_request_id is not None
+            return self._workload_request_id
+
+        def _reset_workload_request(self) -> None:
+            self._workload_request = False
+            self._workload_request_id = None
+            self._workload_operation = None
+
         def _authenticated(self) -> bool:
+            self._principal_kind = None
+            self._presented_token = None
             if auth_token is None:
+                self._principal_kind = "legacy"
                 return True
             supplied = _extract_request_token(self.headers)
             if supplied is None:
                 return False
-            return hmac.compare_digest(supplied.encode("utf-8"), auth_token.encode("utf-8"))
+            try:
+                legacy_match = hmac.compare_digest(
+                    supplied.encode("utf-8"), auth_token.encode("utf-8")
+                )
+            except UnicodeEncodeError:
+                return False
+            if legacy_match:
+                self._principal_kind = "legacy"
+                return True
+            workload = check_scope(authorization_policy, supplied, WORKLOADS_READ)
+            bootstrap = check_scope(authorization_policy, supplied, NODE_ADMIN_BOOTSTRAP)
+            if workload.allowed or bootstrap.allowed:
+                self._principal_kind = "scoped"
+                self._presented_token = supplied
+                return True
+            return False
+
+        def _tool_scope(self, normalized_name: str) -> str | None | object:
+            return tool_scope_by_normalized.get(normalized_name, _UNDECLARED_SCOPE)
+
+        def _authorize_scope(self, scope: str | None | object) -> None:
+            if isinstance(scope, str) and scope in ALLOWED_SCOPES:
+                decision = check_scope(authorization_policy, self._presented_token, scope)
+                if decision.allowed:
+                    return
+            elif scope is None or (
+                isinstance(scope, str)
+                and scope in _LEGACY_TOOL_SCOPES
+                and self._principal_kind == "legacy"
+            ):
+                if self._principal_kind == "legacy":
+                    return
+            raise ControllerError(
+                "authorization_scope_denied",
+                "authorization scope is denied",
+                status=403,
+            )
+
+        def _authorize_tool(self, tool_name: str) -> None:
+            normalized_name = _mcp_tool_name(tool_name)
+            scope = self._tool_scope(normalized_name)
+            if scope is _UNDECLARED_SCOPE and self._principal_kind == "legacy":
+                return
+            self._authorize_scope(scope)
+
+        def _visible_tools(self) -> list[dict]:
+            visible: list[dict] = []
+            for declaration in declared_tools:
+                name = declaration.get("name") if isinstance(declaration, dict) else None
+                if not isinstance(name, str):
+                    continue
+                try:
+                    self._authorize_scope(self._tool_scope(_mcp_tool_name(name)))
+                except ControllerError:
+                    continue
+                visible.append(declaration)
+            return visible
+
+        def _sanitize_response(self, value: Any) -> Any:
+            value = _sanitize_persisted_value(value, auth_token)
+            return _sanitize_persisted_value(value, self._presented_token)
 
         def _send_json(
             self,
@@ -314,7 +504,9 @@ def make_handler(
             request_id: str,
             extra_headers: Optional[dict[str, str]] = None,
         ) -> None:
-            payload = _json_dumps(_redact_secret(obj, auth_token)).encode("utf-8")
+            payload = _json_dumps(
+                _redact_secret(_redact_secret(obj, auth_token), self._presented_token)
+            ).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(payload)))
@@ -388,6 +580,63 @@ def make_handler(
                 audit(record)
             except Exception:
                 pass
+
+        def _audit_workload(
+            self,
+            *,
+            status: int,
+            started: float,
+            ok: bool,
+            error_code: Optional[str],
+        ) -> None:
+            try:
+                elapsed = (time.perf_counter() - started) * 1000.0
+                if not math.isfinite(elapsed):
+                    elapsed = 0.0
+                elapsed = round(min(max(elapsed, 0.0), 3_600_000.0), 3)
+                audit(
+                    {
+                        "event": "workload_read",
+                        "operation": self._workload_operation or NODE_WORKLOADS_TOOL_NAME,
+                        "status": status,
+                        "ok": ok,
+                        "error_code": error_code,
+                        "elapsed_ms": elapsed,
+                    }
+                )
+            except Exception:
+                pass
+
+        def _dispatch_workloads(
+            self,
+            operation: str,
+            arguments: object,
+            *,
+            idempotency_present: bool,
+            valid_outer: bool,
+        ) -> dict[str, Any]:
+            self._authorize_scope(WORKLOADS_READ)
+            if operation not in _WORKLOAD_DECLARATIONS or not workload_allowed[operation] or not valid_outer:
+                return workload_failure("invalid_workload_request")
+            if idempotency_present:
+                return workload_failure("idempotency_not_supported")
+            try:
+                query = parse_node_workload_query(arguments)
+            except Exception:
+                return workload_failure("invalid_workload_query")
+            collector = (
+                workload_collector
+                if operation == NODE_WORKLOADS_TOOL_NAME
+                else fleet_workload_collector
+            )
+            if collector is None:
+                return workload_failure("workload_source_unavailable")
+            try:
+                now = workload_clock()
+                result = collector.collect(query, now)
+                return workload_success(result)
+            except Exception:
+                return workload_failure("workload_source_unavailable")
 
         def _read_json_body(self, *, request_id: str) -> dict[str, Any]:
             if self.headers.get_all("Transfer-Encoding"):
@@ -503,6 +752,17 @@ def make_handler(
             idempotency_key: Optional[str],
             idempotency_context: Any = None,
         ) -> tuple[dict[str, Any], int]:
+            if _mcp_tool_name(tool_name) in _WORKLOAD_DECLARATIONS:
+                return (
+                    self._dispatch_workloads(
+                        _mcp_tool_name(tool_name),
+                        arguments,
+                        idempotency_present=idempotency_key is not None,
+                        valid_outer=idempotency_context is None,
+                    ),
+                    200,
+                )
+            self._authorize_tool(tool_name)
             if (
                 arguments.get("confirm") is True
                 and arguments.get("dry_run") is not True
@@ -514,8 +774,8 @@ def make_handler(
                     status=409,
                 )
             if idempotency_key is None:
-                return _response_with_request_id(
-                    call_tool_func(tool_name, arguments), request_id, auth_token
+                return self._sanitize_response(
+                    _response_with_request_id(call_tool_func(tool_name, arguments), request_id, auth_token)
                 ), 200
 
             context = _idempotency_context(idempotency_context)
@@ -569,13 +829,13 @@ def make_handler(
                 try:
                     if is_confirmed_mutation(arguments):
                         with controller_operation_context(idempotency_key, context):
-                            envelope = _response_with_request_id(
+                            envelope = self._sanitize_response(_response_with_request_id(
                                 call_tool_func(tool_name, arguments), request_id, auth_token
-                            )
+                            ))
                     else:
-                        envelope = _response_with_request_id(
+                        envelope = self._sanitize_response(_response_with_request_id(
                             call_tool_func(tool_name, arguments), request_id, auth_token
-                        )
+                        ))
                     if not isinstance(envelope, dict):
                         raise TypeError("MCP tool result must be an object")
                 except Exception:
@@ -600,11 +860,20 @@ def make_handler(
             *,
             request_id: str,
             idempotency_key: Optional[str],
+            idempotency_present: bool = False,
         ) -> Optional[dict[str, Any]]:
             if "id" not in body:
                 return None
             req_id = body.get("id")
             if req_id is None:
+                params = body.get("params")
+                raw_name = params.get("name") if isinstance(params, dict) else None
+                if (
+                    body.get("method") == "tools/call"
+                    and isinstance(raw_name, str)
+                    and _mcp_tool_name(raw_name) in _WORKLOAD_DECLARATIONS
+                ):
+                    return _workload_protocol_error(None)
                 return {
                     "jsonrpc": "2.0",
                     "id": None,
@@ -626,7 +895,7 @@ def make_handler(
                 )
             elif method == "tools/list":
                 result = mcp_protocol.complete_result(
-                    {"tools": declared_tools},
+                    {"tools": self._visible_tools()},
                     server_info=mcp.SERVER_INFO,
                     cacheable=True,
                 )
@@ -636,6 +905,25 @@ def make_handler(
                 normalized_name = (
                     _mcp_tool_name(raw_tool_name) if isinstance(raw_tool_name, str) else None
                 )
+                if normalized_name in _WORKLOAD_DECLARATIONS:
+                    correlation_id = _workload_rpc_id(req_id)
+                    if correlation_id is None:
+                        return _workload_protocol_error(None)
+                    valid_outer = (
+                        set(params) in ({"name", "arguments"}, {"name", "arguments", "_meta"})
+                        and type(params.get("arguments")) is dict
+                    )
+                    envelope = self._dispatch_workloads(
+                        normalized_name,
+                        params.get("arguments"),
+                        idempotency_present=idempotency_present,
+                        valid_outer=valid_outer,
+                    )
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": correlation_id,
+                        "result": _tool_result(envelope),
+                    }
                 tool_name = (
                     declared_name_by_normalized.get(normalized_name)
                     if normalized_name is not None
@@ -703,7 +991,36 @@ def make_handler(
             )
             return False
 
+        def _authorize_mcp_headers_before_body(self) -> None:
+            methods = self.headers.get_all("Mcp-Method") or []
+            if len(methods) != 1:
+                if any(method == "tools/call" for method in methods):
+                    raise ControllerError("header_mismatch", "MCP request headers are invalid", status=400)
+                return
+            if not isinstance(methods[0], str):
+                raise ControllerError("header_mismatch", "MCP request headers are invalid", status=400)
+            if methods[0] != "tools/call":
+                return
+            names = self.headers.get_all("Mcp-Name") or []
+            if len(names) == 0:
+                return
+            if len(names) != 1 or not isinstance(names[0], str):
+                raise ControllerError("header_mismatch", "MCP request headers are invalid", status=400)
+            try:
+                raw_name = _decode_mcp_header(names[0])
+            except ControllerError:
+                raise ControllerError("header_mismatch", "MCP request headers are invalid", status=400) from None
+            normalized_name = _mcp_tool_name(raw_name)
+            if normalized_name in _WORKLOAD_DECLARATIONS:
+                self._begin_workload_request(normalized_name)
+                self._authorize_scope(WORKLOADS_READ)
+                return
+            if normalized_name not in declared_name_by_normalized and self._principal_kind == "legacy":
+                return
+            self._authorize_scope(self._tool_scope(normalized_name))
+
         def do_GET(self) -> None:
+            self._reset_workload_request()
             request_id = _safe_request_id(self.headers.get(_REQUEST_ID_HEADER))
             started = time.perf_counter()
             route = self.path.split("?", 1)[0].rstrip("/") or "/"
@@ -740,11 +1057,17 @@ def make_handler(
                     ok = True
                     self._send_json(
                         status,
-                        {"tools": declared_tools, "request_id": request_id},
+                        {"tools": self._visible_tools(), "request_id": request_id},
                         request_id=request_id,
                     )
                     return
                 if route.startswith("/operations/"):
+                    if self._principal_kind != "legacy":
+                        raise ControllerError(
+                            "authorization_scope_denied",
+                            "authorization scope is denied",
+                            status=403,
+                        )
                     key = _operation_status_key(route[len("/operations/") :])
                     record = store.lookup(key)
                     status = 200
@@ -820,6 +1143,7 @@ def make_handler(
                 )
 
         def do_POST(self) -> None:
+            self._reset_workload_request()
             request_id = _safe_request_id(self.headers.get(_REQUEST_ID_HEADER))
             started = time.perf_counter()
             route = self.path.split("?", 1)[0].rstrip("/") or "/"
@@ -841,23 +1165,51 @@ def make_handler(
                     ok = True
                     self._send_json(
                         status,
-                        {"tools": declared_tools, "request_id": request_id},
+                        {"tools": self._visible_tools(), "request_id": request_id},
                         request_id=request_id,
                     )
                     return
                 if route == "/mcp":
+                    try:
+                        self._authorize_mcp_headers_before_body()
+                    except ControllerError:
+                        # The declared body has deliberately not been read;
+                        # avoid parsing it as a second request on keepalive.
+                        self.close_connection = True
+                        if self._workload_request:
+                            request_id = self._begin_workload_request()
+                        raise
+                    if self._workload_request:
+                        request_id = self._begin_workload_request()
                     body = self._read_json_body(request_id=request_id)
+                    params = body.get("params")
+                    requested_name = (
+                        params.get("name") if isinstance(params, dict) else None
+                    )
+                    if (
+                        isinstance(requested_name, str)
+                        and _mcp_tool_name(requested_name) in _WORKLOAD_DECLARATIONS
+                    ):
+                        request_id = self._begin_workload_request(_mcp_tool_name(requested_name))
                     origin = self.headers.get("Origin")
                     if origin is not None and not _mcp_origin_allowed(origin):
                         status = 403
                         error_code = "origin_not_allowed"
-                        self._send_json(
-                            status,
-                            mcp_protocol.jsonrpc_error(
+                        response_error = (
+                            _workload_protocol_error(
+                                _workload_rpc_id(body.get("id")),
+                                error_code="origin_not_allowed",
+                            )
+                            if self._workload_request
+                            else mcp_protocol.jsonrpc_error(
                                 body.get("id"),
                                 -32600,
                                 "Origin is not allowed by this controller",
-                            ),
+                            )
+                        )
+                        self._send_json(
+                            status,
+                            response_error,
                             request_id=request_id,
                         )
                         return
@@ -879,6 +1231,12 @@ def make_handler(
                             if code == mcp_protocol.MISSING_REQUIRED_CLIENT_CAPABILITY
                             else "invalid_request"
                         )
+                        if self._workload_request:
+                            protocol_error = _workload_protocol_error(
+                                _workload_rpc_id(body.get("id")),
+                                code=code if type(code) is int else -32600,
+                                error_code=error_code or "invalid_workload_request",
+                            )
                         self._send_json(
                             status,
                             protocol_error,
@@ -903,15 +1261,17 @@ def make_handler(
                                     dry_run = raw_arguments["dry_run"]
                                 if isinstance(raw_arguments.get("confirm"), bool):
                                     confirm = raw_arguments["confirm"]
-                    idempotency_key = (
-                        _idempotency_key(self.headers)
-                        if body.get("method") == "tools/call"
-                        else None
+                    idempotency_present = bool(
+                        self.headers.get_all("X-Anvil-Idempotency-Key")
                     )
+                    idempotency_key = None
+                    if body.get("method") == "tools/call" and not self._workload_request:
+                        idempotency_key = _idempotency_key(self.headers)
                     response = self._jsonrpc_response(
                         body,
                         request_id=request_id,
                         idempotency_key=idempotency_key,
+                        idempotency_present=idempotency_present,
                     )
                     status = 200
                     ok = response is None
@@ -982,6 +1342,30 @@ def make_handler(
                         "tools/call requires a non-empty string 'name'",
                         status=400,
                     )
+                normalized_name = _mcp_tool_name(raw_name)
+                if normalized_name in _WORKLOAD_DECLARATIONS:
+                    request_id = self._begin_workload_request(normalized_name)
+                    raw_arguments = body.get("arguments")
+                    envelope = self._dispatch_workloads(
+                        normalized_name,
+                        raw_arguments,
+                        idempotency_present=bool(
+                            self.headers.get_all("X-Anvil-Idempotency-Key")
+                        ),
+                        valid_outer=(
+                            set(body) == {"name", "arguments"}
+                            and type(raw_arguments) is dict
+                        ),
+                    )
+                    status = 200
+                    ok = bool(envelope.get("ok"))
+                    if not ok:
+                        error = envelope.get("error")
+                        if isinstance(error, dict) and isinstance(error.get("code"), str):
+                            error_code = error["code"]
+                    tool = normalized_name
+                    self._send_json(status, envelope, request_id=request_id)
+                    return
                 raw_arguments = body.get("arguments", {})
                 if raw_arguments is None:
                     raw_arguments = {}
@@ -992,7 +1376,6 @@ def make_handler(
                         status=400,
                     )
 
-                normalized_name = _mcp_tool_name(raw_name)
                 tool = declared_name_by_normalized.get(normalized_name)
                 if tool is None and allowlist_enabled:
                     raise ControllerError(
@@ -1001,6 +1384,8 @@ def make_handler(
                         status=400,
                     )
                 if tool is None:
+                    if self._principal_kind == "scoped":
+                        self._authorize_scope(_UNDECLARED_SCOPE)
                     tool = normalized_name
                 if isinstance(raw_arguments.get("dry_run"), bool):
                     dry_run = raw_arguments["dry_run"]
@@ -1027,13 +1412,38 @@ def make_handler(
             except ControllerError as exc:
                 status = exc.status
                 error_code = exc.code
-                self._send_error_json(
-                    status,
-                    exc.code,
-                    exc.message,
-                    request_id=request_id,
-                    details=exc.details,
-                )
+                if self._workload_request:
+                    request_id = self._begin_workload_request()
+                    protocol_code = (
+                        exc.code
+                        if exc.code
+                        in {"authentication_error", "authorization_scope_denied"}
+                        else "invalid_workload_request"
+                    )
+                    protocol_message = (
+                        "workload request is not authorized"
+                        if protocol_code == "authorization_scope_denied"
+                        else "workload request is invalid"
+                    )
+                    self._send_json(
+                        status,
+                        {
+                            "ok": False,
+                            "error": {
+                                "code": protocol_code,
+                                "message": protocol_message,
+                            },
+                        },
+                        request_id=request_id,
+                    )
+                else:
+                    self._send_error_json(
+                        status,
+                        exc.code,
+                        exc.message,
+                        request_id=request_id,
+                        details=exc.details,
+                    )
             except Exception:
                 status = 500
                 error_code = "internal_error"
@@ -1044,17 +1454,25 @@ def make_handler(
                     request_id=request_id,
                 )
             finally:
-                self._audit(
-                    request_id=request_id,
-                    operation=operation,
-                    status=status,
-                    started=started,
-                    ok=ok,
-                    tool=tool,
-                    dry_run=dry_run,
-                    confirm=confirm,
-                    error_code=error_code,
-                )
+                if self._workload_request:
+                    self._audit_workload(
+                        status=status,
+                        started=started,
+                        ok=ok,
+                        error_code=error_code,
+                    )
+                else:
+                    self._audit(
+                        request_id=request_id,
+                        operation=operation,
+                        status=status,
+                        started=started,
+                        ok=ok,
+                        tool=tool,
+                        dry_run=dry_run,
+                        confirm=confirm,
+                        error_code=error_code,
+                    )
 
         def _method_not_allowed(self) -> None:
             request_id = _safe_request_id(self.headers.get(_REQUEST_ID_HEADER))

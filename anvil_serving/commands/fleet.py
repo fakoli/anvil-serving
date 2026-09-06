@@ -1,7 +1,7 @@
 """Command declarations for the fleet family."""
 
 from .family import command_family
-from .spec import CommandNode, _node, _option, _resource_node
+from .spec import CommandNode, _handler, _node, _option, _resource_node
 
 
 @command_family(category="Fleet tools")
@@ -10,6 +10,25 @@ def commands() -> CommandNode:
         "fleet",
         "Cross-host visibility across the declared operator topology.",
         children=(
+            _node(
+                "workloads",
+                "Read a bounded canonical workload snapshot from one fleet controller.",
+                handler=_handler(
+                    "anvil_serving.cli", attribute="_workload_command", argv_prefix=("fleet",)
+                ),
+                options=(
+                    _option("--controller-url", summary="Explicit controller URL (required).", value_name="URL"),
+                    _option("--auth-env", summary="Environment variable containing the controller credential (required).", value_name="NAME"),
+                    _option("--expected-node", summary="Expected controller node identity (required).", value_name="NODE"),
+                    _option("--owner", summary="Filter by workload owner.", value_name="OWNER"),
+                    _option("--kind", summary="Filter by workload kind.", value_name="KIND"),
+                    _option("--state", summary="Filter by workload state.", value_name="STATE"),
+                    _option("--host", summary="Filter records by observed host.", value_name="HOST"),
+                    _option("--active-only", summary="Return only active workloads."),
+                    _option("--recent-seconds", summary="Recent-workload window in seconds.", value_name="SECONDS"),
+                    _option("--limit", summary="Maximum returned workloads.", value_name="COUNT"),
+                ),
+            ),
             _resource_node(
                 "version",
                 "Report anvil-serving version skew across declared fleet hosts.",

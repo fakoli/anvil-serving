@@ -10,6 +10,7 @@ import textwrap
 import pytest
 
 from anvil_serving import guard, serves
+from anvil_serving.router import config as router_config
 from tests.conftest import proc
 
 
@@ -23,6 +24,33 @@ def _manifest(tmp_path, body):
     p = tmp_path / "serves.toml"
     p.write_text(textwrap.dedent(body), encoding="utf-8")
     return str(p)
+
+
+def _active_router_config(tmp_path, filename="active-router.toml"):
+    """Synthetic direct ownership for legacy routed mode transactions."""
+    path = tmp_path / filename
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(textwrap.dedent("""
+        [router]
+        [[router.tiers]]
+        id = "llm-a"
+        base_url = "http://127.0.0.1:30001/v1"
+        model = "split-a-local"
+        dialect = "openai"
+        context_limit = 4096
+        privacy = "local"
+        tool_support = true
+        auth_env = "ANVIL_PRIMARY_KEY"
+        health_path = "/health"
+        model_identity = true
+        [router.model_routes]
+        llm.primary = "llm-a"
+    """), encoding="utf-8")
+    return router_config.load(path)
+
+
+def _cmd_mode(tmp_path, *args, **kwargs):
+    return serves.cmd_mode(*args, active_config=_active_router_config(tmp_path), **kwargs)
 
 
 def _inspect_returning(state, op_rc=0, op_err=""):
@@ -357,7 +385,7 @@ def test_mode_preview_lists_roles_competitors_and_rollback_without_mutation(
 ):
     loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
     run = _mode_run({"split-a": "running", "split-b": "running", "tp2": "absent"})
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "preview",
         "tp2",
@@ -458,7 +486,7 @@ def test_ad_hoc_compose_cannot_bypass_active_or_unresolved_exclusive_owner(
 def test_mode_entry_refuses_unresolved_competitor_before_mutation(tmp_path, capsys):
     loaded = serves.load_manifest(_manifest(tmp_path, DUAL_MODE_MANIFEST))
     run = _mode_run({"split-a": "error", "split-b": "running", "tp2": "absent"})
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "enter",
         "tp2",
@@ -484,7 +512,7 @@ def test_mode_entry_accepts_dispatcher_confirmation_scope(
     monkeypatch.setattr(serves, "cmd_up", lambda *args, **kwargs: 0)
 
     with guard.confirmation_scope(True):
-        assert serves.cmd_mode(
+        assert _cmd_mode(tmp_path,
             loaded,
             "enter",
             "tp2",
@@ -504,6 +532,7 @@ def test_canonical_cli_enters_and_leaves_synthetic_exclusive_mode(
     from anvil_serving import cli
 
     path = _manifest(tmp_path, DUAL_MODE_MANIFEST)
+    _active_router_config(tmp_path / ".anvil-serving", "router.toml")
     states = {
         "split-a": "absent",
         "split-b": "absent",
@@ -553,7 +582,7 @@ def test_failed_mode_entry_restores_split_stack_in_transaction_order(
         transitions.append((action, tier, timeout))
         return 0
 
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "enter",
         "tp2",
@@ -596,7 +625,7 @@ def test_mode_entry_preserve_on_failure_keeps_stopped_target_and_restores_split(
 
     monkeypatch.setattr(serves, "cmd_up", fail_target)
 
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "enter",
         "tp2",
@@ -636,7 +665,7 @@ def test_mode_entry_preserve_on_failure_removes_restarting_target_before_restore
 
     monkeypatch.setattr(serves, "cmd_up", fail_target)
 
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "enter",
         "tp2",
@@ -673,7 +702,7 @@ def test_mode_entry_skips_transitions_when_managed_router_is_stopped(
     }
     run = _mode_run(states)
 
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "enter",
         "tp2",
@@ -718,7 +747,7 @@ def test_routed_mode_entry_installs_profile_then_guardedly_readmits_alias(
         events.append(("install", config_file, None))
         return 0
 
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "enter",
         "tp2",
@@ -763,7 +792,7 @@ def test_routed_mode_entry_router_failure_restores_profile_and_split_stack(
         installed.append(config_file)
         return 1 if config_file == str(target_config) else 0
 
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "enter",
         "tp2",
@@ -813,7 +842,7 @@ def test_routed_mode_entry_readmit_failure_restores_profile_and_split_stack(
             return 1
         return 0
 
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "enter",
         "tp2",
@@ -853,7 +882,7 @@ def test_routed_mode_leave_drains_target_and_restores_split_router_profile(
         events.append(("install", config_file, None))
         return 0
 
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "leave",
         "tp2",
@@ -892,7 +921,7 @@ def test_mode_leave_force_releases_exclusive_owner_before_split_restore(
     states = {"split-a": "absent", "split-b": "absent", "tp2": "running"}
     run = _mode_run(states)
 
-    assert serves.cmd_mode(
+    assert _cmd_mode(tmp_path,
         loaded,
         "leave",
         "tp2",
@@ -956,6 +985,7 @@ def test_split_restore_skips_readmit_when_default_router_is_stopped(
 
 def test_main_mode_enter_forwards_preserve_on_failure(tmp_path, monkeypatch):
     path = _manifest(tmp_path, DUAL_MODE_MANIFEST)
+    _active_router_config(tmp_path / ".anvil-serving", "router.toml")
     seen = {}
 
     def fake(serves_list, action, target, restore_group, **kwargs):

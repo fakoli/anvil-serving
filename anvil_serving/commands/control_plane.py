@@ -51,6 +51,49 @@ def commands() -> tuple[CommandNode, ...]:
                     role="controller",
                     remote_operation=_remote(mode="controller-status"),
                 ),
+                _resource_node(
+                    "inspect",
+                    "Read-only metadata inspection for one controller container.",
+                    "anvil_serving.controller_diagnostics",
+                    role="controller",
+                    handler_attribute="command",
+                    options=(
+                        _option(
+                            "--container",
+                            summary="Required local controller Docker name or immutable ID.",
+                            value_name="NAME",
+                        ),
+                    ),
+                    argv_prefix=("inspect",),
+                    remote_operation=_remote(
+                        "controller_inspect",
+                        allowed=("container",),
+                    ),
+                ),
+                _resource_node(
+                    "logs",
+                    "Read bounded metadata-only controller audit events.",
+                    "anvil_serving.controller_diagnostics",
+                    role="controller",
+                    handler_attribute="command",
+                    options=(
+                        _option(
+                            "--container",
+                            summary="Required local controller Docker name or immutable ID.",
+                            value_name="NAME",
+                        ),
+                        _option(
+                            "--tail",
+                            summary="Audit event tail in the fixed range 1..200.",
+                            value_name="N",
+                        ),
+                    ),
+                    argv_prefix=("logs",),
+                    remote_operation=_remote(
+                        "controller_logs",
+                        allowed=("container", "tail"),
+                    ),
+                ),
             ),
             docs_anchor="docs/cli/control-plane.md#controller",
         ),
@@ -77,6 +120,21 @@ def commands() -> tuple[CommandNode, ...]:
                     "drift",
                     "Compare the installed topology against a canonical fleet reference.",
                     handler=_handler("anvil_serving.topology_cli", argv_prefix=("drift",)),
+                ),
+                _node(
+                    "validate-router-config",
+                    "Validate a router config against declared topology offline.",
+                    options=(
+                        _option(
+                            "--config",
+                            summary="Required router configuration TOML.",
+                            value_name="PATH",
+                        ),
+                    ),
+                    handler=_handler(
+                        "anvil_serving.topology_cli",
+                        argv_prefix=("validate-router-config",),
+                    ),
                 ),
             ),
             docs_anchor="docs/cli/control-plane.md#topology",

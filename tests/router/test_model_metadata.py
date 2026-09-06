@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 
 from anvil_serving.router.availability import AvailabilityResult
-from anvil_serving.router.config import RouterConfig, Tier
+from anvil_serving.router.config import ReplicaIdentity, ReplicaMember, RouterConfig, Tier
 from anvil_serving.router.model_metadata import (
     build_model_capabilities,
     build_model_fingerprints,
@@ -191,3 +192,77 @@ def test_router_status_has_injected_clock_routes_counts_and_safe_stable_hash():
     assert "127.0.0.1" not in json.dumps(result)
     assert "ANVIL_TEST_KEY" not in json.dumps(result)
     assert build_router_status(config, started_at=1_700_000_000, now=1_700_000_042, package_version="test-version") == result
+
+
+def _replica_config():
+    tier = replace(
+        _config().tiers[0], base_url="", health_path="/health",
+        replicas=(
+            ReplicaMember("member-b", "http://127.0.0.1:30003/v1", "node-a", "resource-b", "qualification:b"),
+            ReplicaMember("member-a", "http://127.0.0.1:30002/v1", "node-a", "resource-a", "qualification:a"),
+        ),
+        replica_identity=ReplicaIdentity("revision-1", "engine-1", "sha256:" + "a" * 64, "sha256:" + "b" * 64),
+    )
+    return RouterConfig(tiers=(tier,), model_routes={"llm.primary": tier.id})
+
+
+class _MemberAvailability:
+    def __init__(self):
+        self.calls = []
+
+    def check(self, tier):
+        raise AssertionError("replica sentinel must not use direct readiness")
+
+    def check_member(self, tier, member):
+        self.calls.append((tier.id, member))
+        if member == "member-a":
+            return AvailabilityResult(True, "ready", "identity_passed", tier.model, tier.model)
+        return AvailabilityResult(False, "unavailable", "identity_mismatch", tier.model, "unexpected-private-model")
+
+
+@pytest.mark.parametrize("builder", [build_model_capabilities, build_model_fingerprints])
+def test_replica_metadata_has_one_alias_bounded_members_and_declared_provenance(builder):
+    config = _replica_config()
+    availability = _MemberAvailability()
+    (row,) = builder(config, availability, {})["data"]
+    assert row["aliases"] == ["llm.primary"]
+    assert row["id"] == "primary-local"
+    assert row["deployment_identity_source"] == "declared"
+    assert row["runtime_deployment_identity_verified"] is False
+    assert row["replica_identity"]["model_revision"] == "revision-1"
+    assert row["readiness"] == {"loaded": True, "state": "ready", "reason": "replicas_partial"}
+    assert [member["id"] for member in row["members"]] == ["member-a", "member-b"]
+    assert row["members"][1]["served_identity"] == {"expected": config.tiers[0].model, "observed": None}
+    assert availability.calls == [("primary-local", "member-a"), ("primary-local", "member-b")]
+    if builder is build_model_fingerprints:
+        assert row["fingerprint"] == row["replica_identity"]
+    payload = json.dumps(row)
+    for secret in ("unexpected-private-model", "127.0.0.1", "ANVIL_TEST_KEY", "node-a", "resource-a", "private_note", "never-emit-me"):
+        assert secret not in payload
+
+
+@pytest.mark.parametrize("builder", [build_model_capabilities, build_model_fingerprints])
+def test_replica_projection_never_adopts_unverified_or_arbitrary_readiness(builder):
+    config = _replica_config()
+
+    class Hostile:
+        def check_member(self, tier, member):
+            return AvailabilityResult(True, "secret_state", "secret_code", "secret_expected", "secret_observed")
+
+    (row,) = builder(config, Hostile(), {})["data"]
+    assert row["readiness"]["loaded"] is False
+    assert all(member["readiness"]["reason"] == "identity_mismatch" for member in row["members"])
+    assert "secret_" not in json.dumps(row)
+    assert build_model_capabilities(config, object(), {})["data"][0]["readiness"]["loaded"] is False
+
+
+def test_replica_public_config_hash_tracks_safe_membership_but_not_endpoints():
+    config = _replica_config()
+    def digest(value):
+        return build_router_status(value, started_at=0, now=1)["config_sha256"]
+    tier = config.tiers[0]
+    changed_url = replace(tier.replicas[0], base_url="http://127.0.0.1:30004/v1")
+    assert digest(replace(config, tiers=(replace(tier, replicas=(changed_url, tier.replicas[1])),))) == digest(config)
+    changed_ref = replace(tier.replicas[0], qualification_ref="qualification:new")
+    assert digest(replace(config, tiers=(replace(tier, replicas=(changed_ref, tier.replicas[1])),))) != digest(config)
+    assert digest(replace(config, tiers=(replace(tier, replicas=tuple(reversed(tier.replicas))),))) == digest(config)

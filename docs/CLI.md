@@ -161,13 +161,13 @@ required operands, choices, and defaults.
 | `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--skip-preflight-checks`<br>`--derive`<br>`--router-config`<br>`--rollback-router-config`<br>`--out` |
 | `serves mode` | Preview or transact split and exclusive TP=2 operating modes. | `read` / `bounded` | - |
 | `serves mode status` | Show the active split or exclusive TP=2 mode. | `read` / `bounded` | - |
-| `serves mode preview` | Preview exclusive entry without mutating GPU workloads. | `read` / `bounded` | `--restore-group` |
-| `serves mode enter` | Enter exclusive TP=2 mode transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--restore-group`<br>`--drain-timeout`<br>`--router-url`<br>`--skip-preflight-checks` |
-| `serves mode leave` | Leave exclusive TP=2 mode transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--restore-group`<br>`--drain-timeout`<br>`--router-url` |
+| `serves mode preview` | Preview exclusive entry without mutating GPU workloads. | `read` / `bounded` | `--config`<br>`--restore-group` |
+| `serves mode enter` | Enter exclusive TP=2 mode transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--restore-group`<br>`--drain-timeout`<br>`--router-url`<br>`--skip-preflight-checks` |
+| `serves mode leave` | Leave exclusive TP=2 mode transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--restore-group`<br>`--drain-timeout`<br>`--router-url` |
 | `serves profile` | List, preview, or apply a declared serving topology profile. | `read` / `bounded` | - |
 | `serves profile list` | List declared serving topology profiles. | `read` / `bounded` | - |
-| `serves profile preview` | Preview a declared serving profile without mutation. | `read` / `bounded` | - |
-| `serves profile apply` | Apply a declared serving profile transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `serves profile preview` | Preview a declared serving profile without mutation. | `read` / `bounded` | `--config` |
+| `serves profile apply` | Apply a declared serving profile transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
 | `serves status` | Show model serve status. | `read` / `bounded` | - |
 | `serves probe` | Run an engine-aware functional serve probe. | `read` / `bounded` | - |
 | `serves groups` | List serve groups across the manifest set and their members. | `read` / `bounded` | - |
@@ -176,6 +176,7 @@ required operands, choices, and defaults.
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
+| `router workloads` | Read a bounded canonical workload snapshot from one router. | `read` / `bounded` | `--router-url`<br>`--auth-env`<br>`--expected-node`<br>`--owner`<br>`--kind`<br>`--state`<br>`--host`<br>`--active-only`<br>`--recent-seconds`<br>`--limit` |
 | `router diagnose` | Explain one request from bounded router evidence without replaying it. | `read` / `bounded` | `--request-id`<br>`--router-url`<br>`--auth-env`<br>`--timeout` |
 | `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
 | `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate` |
@@ -186,10 +187,10 @@ required operands, choices, and defaults.
 | `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | - |
 | `router status` | Show router status. | `read` / `bounded` | - |
 | `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--live`<br>`--container`<br>`--installed-config`<br>`--probe-perspective`<br>`--timeout` |
-| `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--router-url` |
-| `router quiesce` | Quiesce one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
-| `router drain` | Wait for a quiesced tier to drain. | `read` / `bounded` | `--tier`<br>`--router-url`<br>`--timeout` |
-| `router readmit` | Safely readmit one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
+| `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--member`<br>`--router-url` |
+| `router quiesce` | Quiesce one router tier or declared member. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--member`<br>`--router-url` |
+| `router drain` | Wait for a quiesced tier or declared member to drain. | `read` / `bounded` | `--tier`<br>`--member`<br>`--router-url`<br>`--timeout` |
+| `router readmit` | Safely readmit one router tier or declared member. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--member`<br>`--router-url` |
 | `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
@@ -293,6 +294,7 @@ required operands, choices, and defaults.
 | `media artifact` | Inspect authenticated media artifacts. | `read` / `bounded` | - |
 | `media artifact inspect` | Inspect opaque artifact metadata. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal` |
 | `fleet` | Cross-host visibility across the declared operator topology. | `read` / `bounded` | - |
+| `fleet workloads` | Read a bounded canonical workload snapshot from one fleet controller. | `read` / `bounded` | `--controller-url`<br>`--auth-env`<br>`--expected-node`<br>`--owner`<br>`--kind`<br>`--state`<br>`--host`<br>`--active-only`<br>`--recent-seconds`<br>`--limit` |
 | `fleet version` | Report anvil-serving version skew across declared fleet hosts. | `read` / `bounded` | `--host`<br>`--timeout` |
 | `fleet drift` | Compare each host's live operator home against its repository snapshot. | `read` / `bounded` | `--repo`<br>`--host`<br>`--home`<br>`--timeout` |
 | `harness` | Manage harness integration. | `read` / `bounded` | - |
@@ -310,6 +312,8 @@ required operands, choices, and defaults.
 | `controller` | Manage the private controller service. | `read` / `bounded` | - |
 | `controller serve` | Run the private controller. | `process` / `foreground` | - |
 | `controller status` | Probe controller health. | `read` / `bounded` | - |
+| `controller inspect` | Read-only metadata inspection for one controller container. | `read` / `bounded` | `--container` |
+| `controller logs` | Read bounded metadata-only controller audit events. | `read` / `bounded` | `--container`<br>`--tail` |
 | `host` | Inspect and repair declared host operations. | `read` / `bounded` | - |
 | `host services` | Inspect, adopt, and operate declared portable supervised services. | `read` / `bounded` | - |
 | `host services status` | Show bounded declared-service status. | `read` / `bounded` | `--manifest`<br>`--tail`<br>`--timeout-seconds` |
@@ -351,13 +355,14 @@ required operands, choices, and defaults.
 | `topology validate` | Validate a topology offline. | `read` / `bounded` | - |
 | `topology resolve` | Resolve one canonical command against a topology. | `read` / `bounded` | - |
 | `topology drift` | Compare the installed topology against a canonical fleet reference. | `read` / `bounded` | - |
+| `topology validate-router-config` | Validate a router config against declared topology offline. | `read` / `bounded` | `--config` |
 | `collectors` | Configure and inspect optional read-only collector adapters. | `read` / `bounded` | - |
 | `collectors configure` | Validate and optionally write adapter configuration. | `mutate` / `bounded` | `--output`<br>`--confirm` |
 | `collectors validate` | Validate adapter configuration without network access. | `read` / `bounded` | - |
 | `collectors capabilities` | Report configured adapter capabilities offline. | `read` / `bounded` | - |
 | `collectors inspect` | Perform one bounded read-only adapter inspection. | `read` / `bounded` | - |
 | `dashboard` | Serve the read-only system observability dashboard. | `read` / `bounded` | - |
-| `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | - |
+| `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | `--host`<br>`--port`<br>`--auth-env`<br>`--workload-controller-url`<br>`--workload-expected-node`<br>`--workload-authorization-policy` |
 | `edge` | Own the Tailscale tailnet edge in front of the unchanged router. | `read` / `bounded` | - |
 | `edge bundle` | Plan a portable tailnet model endpoint offline. | `read` / `bounded` | - |
 | `edge bundle validate` | Validate a portable endpoint manifest offline. | `read` / `bounded` | `--manifest` |

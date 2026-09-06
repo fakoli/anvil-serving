@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.request
 from datetime import datetime, timezone
@@ -145,10 +146,15 @@ def test_supported_dashboard_serves_current_history_and_interpretation_read_only
     assert "Model loading transition" in html
     assert "series[0]" not in html
     assert "Object.entries(body.data.signals)" in html
-    assert html.lower().count("<button") == 3
+    # Navigation and connection controls are read-only; lifecycle actions are not.
+    buttons = re.findall(r"<button\b[^>]*>(.*?)</button>", html, re.IGNORECASE | re.DOTALL)
+    assert sorted(label.strip().lower() for label in buttons) == [
+        "connect", "connect", "disconnect", "overview", "probes", "workloads",
+    ]
     assert ">connect</button>" in html.lower()
     assert 'data-tab="overview"' in html.lower()
     assert 'data-tab="probes"' in html.lower()
+    assert 'data-tab="workloads"' in html.lower()
     assert 'id="probe-search"' in html.lower()
     assert not any(action in html.lower() for action in ("/start", "/stop", "/restart"))
 

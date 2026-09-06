@@ -5,7 +5,7 @@ callables, so CI never touches real docker, a real GPU, or the network. The writ
 is proven round-trip-safe by parsing its output back through `tomllib`.
 """
 import json
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import shlex
 import tomllib
 from types import SimpleNamespace
@@ -13,6 +13,14 @@ from types import SimpleNamespace
 import pytest
 
 from anvil_serving import serve_recipes as sr
+from anvil_serving.observability.workloads import (
+    ObservationQuality,
+    ResultStatus,
+    WorkloadErrorCode,
+    WorkloadQuery,
+    WorkloadState,
+    source_result_to_json,
+)
 
 # A recipe exercising every value kind: str, int, float, bool, arrays, nested tables.
 _RECIPE = {
@@ -54,6 +62,40 @@ _RECIPE = {
 }
 
 
+_WORKLOAD_NOW = datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc)
+
+
+def _recipe_snapshot(
+    configuration=(),
+    runtime=(),
+    *,
+    configuration_status=ResultStatus.COMPLETE,
+    runtime_status=ResultStatus.COMPLETE,
+    configuration_error=None,
+    runtime_error=None,
+):
+    return sr.RecipeWorkloadSnapshot(
+        sr.RecipeComponentResult(
+            configuration_status, _WORKLOAD_NOW, tuple(configuration),
+            0 if configuration_status is ResultStatus.COMPLETE else None,
+            configuration_error,
+        ),
+        sr.RecipeComponentResult(
+            runtime_status, _WORKLOAD_NOW, tuple(runtime),
+            0 if runtime_status is ResultStatus.COMPLETE else None,
+            runtime_error,
+        ),
+    )
+
+
+def _recipe_reader(snapshot):
+    def reader(_path, *, clock):
+        assert clock().tzinfo is timezone.utc
+        return snapshot
+
+    return reader
+
+
 # ---- WRITE: format_recipe round-trips through tomllib -------------------------------
 
 def test_format_recipe_round_trips_through_tomllib():
@@ -61,6 +103,103 @@ def test_format_recipe_round_trips_through_tomllib():
     parsed = tomllib.loads("schema='x'\n" + block)
     assert parsed["schema"] == "x"
     assert parsed["recipe"] == [_RECIPE]  # exact round-trip, types preserved
+
+
+def test_recipe_workload_projection_reconciles_digests_without_leaking_native_values():
+    digest, container_a, container_b = "a" * 64, "b" * 64, "c" * 64
+    configured = sr.RecipeConfiguredObservation(
+        digest, _WORKLOAD_NOW - timedelta(seconds=2), _WORKLOAD_NOW
+    )
+    runtime = (
+        sr.RecipeContainerObservation(
+            container_a, digest, WorkloadState.RUNNING,
+            _WORKLOAD_NOW - timedelta(seconds=3), _WORKLOAD_NOW - timedelta(seconds=1),
+            _WORKLOAD_NOW,
+        ),
+        sr.RecipeContainerObservation(
+            container_b, None, WorkloadState.ABSENT,
+            _WORKLOAD_NOW - timedelta(seconds=4), _WORKLOAD_NOW - timedelta(seconds=1),
+            _WORKLOAD_NOW,
+        ),
+    )
+    result = sr.list_recipe_workloads(
+        "not-read.toml", "node-a", WorkloadQuery(), _WORKLOAD_NOW,
+        snapshot_reader=_recipe_reader(_recipe_snapshot((configured,), runtime)),
+    )
+
+    assert result.status is ResultStatus.COMPLETE
+    assert len(result.records) == 2
+    assert {record.state for record in result.records} == {WorkloadState.RUNNING, WorkloadState.ABSENT}
+    assert all(record.observation_quality is not ObservationQuality.HEALTHY_IDENTITY for record in result.records)
+    payload = source_result_to_json(result)
+    for native in (digest, container_a, container_b, "not-read.toml"):
+        assert native not in payload
+
+
+def test_recipe_workload_projection_marks_stale_and_keeps_partial_component_results():
+    digest = "a" * 64
+    stale = sr.RecipeConfiguredObservation(
+        digest, _WORKLOAD_NOW - timedelta(seconds=100), _WORKLOAD_NOW - timedelta(seconds=100)
+    )
+    result = sr.list_recipe_workloads(
+        "registry.toml", "node-a", WorkloadQuery(), _WORKLOAD_NOW,
+        snapshot_reader=_recipe_reader(
+            _recipe_snapshot(
+                (stale,), (), runtime_status=ResultStatus.UNAVAILABLE,
+                runtime_error=WorkloadErrorCode.UNAVAILABLE,
+            )
+        ),
+    )
+
+    assert result.status is ResultStatus.PARTIAL
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
+    assert result.truncation.omitted is None
+    assert result.records[0].observation_quality is ObservationQuality.STALE
+    active = sr.list_recipe_workloads(
+        "registry.toml", "node-a", WorkloadQuery(active_only=True), _WORKLOAD_NOW,
+        snapshot_reader=_recipe_reader(_recipe_snapshot((stale,), ())),
+    )
+    assert active.records == ()
+
+
+def test_recipe_workload_projection_quarantines_bad_peer_and_unavailable_snapshot():
+    good = sr.RecipeConfiguredObservation(
+        "a" * 64, _WORKLOAD_NOW - timedelta(seconds=2), _WORKLOAD_NOW
+    )
+    duplicate = sr.RecipeContainerObservation(
+        "b" * 64, None, WorkloadState.RUNNING,
+        _WORKLOAD_NOW - timedelta(seconds=3), _WORKLOAD_NOW - timedelta(seconds=1), _WORKLOAD_NOW,
+    )
+    partial = sr.list_recipe_workloads(
+        "registry.toml", "node-a", WorkloadQuery(), _WORKLOAD_NOW,
+        snapshot_reader=_recipe_reader(_recipe_snapshot((good,), (duplicate, duplicate))),
+    )
+    assert partial.status is ResultStatus.PARTIAL
+    assert partial.error is WorkloadErrorCode.INVALID
+    assert len(partial.records) == 2
+
+    unavailable = sr.list_recipe_workloads(
+        "registry.toml", "node-a", WorkloadQuery(), _WORKLOAD_NOW,
+        snapshot_reader=_recipe_reader(
+            _recipe_snapshot(
+                (), (), configuration_status=ResultStatus.UNAVAILABLE,
+                runtime_status=ResultStatus.UNAVAILABLE,
+                configuration_error=WorkloadErrorCode.UNAVAILABLE,
+                runtime_error=WorkloadErrorCode.UNAVAILABLE,
+            )
+        ),
+    )
+    assert unavailable.status is ResultStatus.UNAVAILABLE
+    assert unavailable.records == ()
+
+
+def test_recipe_workload_projection_refuses_bad_snapshot_without_calling_other_owners():
+    result = sr.list_recipe_workloads(
+        "private-path", "node-a", WorkloadQuery(), _WORKLOAD_NOW,
+        snapshot_reader=lambda _path, *, clock: object(),
+    )
+    assert result.status is ResultStatus.UNAVAILABLE
+    assert result.error is WorkloadErrorCode.UNAVAILABLE
 
 
 def test_recipe_rejects_ignored_serve_args_with_flags_recovery():

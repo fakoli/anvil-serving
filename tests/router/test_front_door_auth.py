@@ -24,20 +24,55 @@ from __future__ import annotations
 
 import http.client
 import json
+import socket
 import threading
 from contextlib import contextmanager
-from typing import Dict, Optional, Tuple
+from datetime import datetime, timezone
+from typing import Dict, Optional, Sequence, Tuple
 
+import pytest
+
+from anvil_serving.control_plane.authorization import (
+    NODE_ADMIN_BOOTSTRAP,
+    WORKLOADS_READ,
+    load_authorization_policy,
+)
+import anvil_serving.router.front_door as front_door
 from tests.router.helpers import StaticBackend
-from anvil_serving.router.front_door import make_server
+from anvil_serving.router.front_door import (
+    TRANSITION_ENDPOINT,
+    WORKLOADS_ENDPOINT,
+    OperatorRoute,
+    make_server,
+)
+from anvil_serving.observability.workloads import (
+    ResultStatus,
+    SourceResult,
+    Truncation,
+    WorkloadOwner,
+)
 
 TOKEN = "s3cr3t-router-token"
 
 
 @contextmanager
-def running_server(backend, auth_token: Optional[str]):
+def running_server(
+    backend,
+    auth_token: Optional[str],
+    *,
+    authorization_policy=None,
+    operator_routes: Optional[Sequence[OperatorRoute]] = None,
+    workload_host=None,
+    workload_registry=None,
+    workload_clock=None,
+):
     """Start the front door on an ephemeral port with a fixed ``auth_token``."""
-    httpd = make_server("127.0.0.1", 0, backend, auth_token=auth_token)
+    httpd = make_server(
+        "127.0.0.1", 0, backend, auth_token=auth_token,
+        authorization_policy=authorization_policy, operator_routes=operator_routes,
+        workload_host=workload_host, workload_registry=workload_registry,
+        workload_clock=workload_clock,
+    )
     host, port = httpd.server_address[:2]
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -112,6 +147,47 @@ class _TransitionBackend(StaticBackend):
     def readmit_tier(self, tier_id):
         self.state = "admitting"
         return {"readmitted": True, "reason": "readiness_passed"}
+
+
+def _scoped_policy(tmp_path, clients):
+    policy_path = tmp_path / "operator-policy.json"
+    env = {client["credential_env"]: client["token"] for client in clients}
+    public_clients = [
+        {key: value for key, value in client.items() if key != "token"}
+        for client in clients
+    ]
+    policy_path.write_text(
+        json.dumps({"schema_version": 1, "clients": public_clients}), encoding="utf-8"
+    )
+    return load_authorization_policy(str(policy_path), env=env)
+
+
+def _operator_route(callback):
+    return OperatorRoute("GET", "/v1/operator/workloads", WORKLOADS_READ, callback)
+
+
+class _WorkloadRegistry:
+    def __init__(self):
+        self.calls = []
+
+    def source_result(self, host, query, now):
+        self.calls.append((host, query, now))
+        return SourceResult(
+            owner=WorkloadOwner.ROUTER,
+            status=ResultStatus.COMPLETE,
+            collection_timestamp=now,
+            records=(),
+            truncation=Truncation(0, 0),
+        )
+
+
+def _read_until_eof(sock: socket.socket) -> bytes:
+    chunks = []
+    while True:
+        chunk = sock.recv(65536)
+        if not chunk:
+            return b"".join(chunks)
+        chunks.append(chunk)
 
 
 # --------------------------------------------------------------------------- #
@@ -331,3 +407,658 @@ def test_transition_mutations_preview_then_apply_and_drain():
     assert json.loads(drain_raw)["result"]["drained"] is True
     assert readmit_status == 200
     assert backend.state == "admitting"
+
+
+@contextmanager
+def _member_transition_server(auth_token=TOKEN):
+    # Use real routing and compound admission, not the legacy tier-only double.
+    from tests.router.test_transition_integration import _TextBackend, _replica_stream_routing
+
+    tier, routing = _replica_stream_routing(_TextBackend("a"), _TextBackend("b"))
+    try:
+        with running_server(routing, auth_token) as (host, port):
+            yield tier, routing, host, port
+    finally:
+        routing.close()
+
+
+def test_member_transition_auth_denial_precedes_probes_and_mutation():
+    for configured, headers, expected in (
+        (None, {}, 404),
+        (TOKEN, {}, 401),
+        (TOKEN, {"Authorization": "Bearer incorrect"}, 401),
+    ):
+        with _member_transition_server(configured) as (tier, routing, host, port):
+            status, _, _ = _get(
+                host, port, TRANSITION_ENDPOINT + f"?tier_id={tier.id}&member_id=member-a", headers,
+            )
+            assert status == expected
+            status, _, _ = _post(host, port, TRANSITION_ENDPOINT, {
+                "action": "quiesce", "tier_id": tier.id, "member_id": "member-a",
+                "confirm": True, "dry_run": False,
+            }, headers)
+            assert status == expected
+            assert not routing._admission.member_snapshot(tier.id, "member-a").quiesced
+            assert routing._availability.calls == routing._availability.invalidated == []
+
+
+def test_member_transition_previews_are_validated_and_probe_free_then_apply_exact_scope():
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    with _member_transition_server() as (tier, routing, host, port):
+        target = {"tier_id": tier.id, "member_id": "member-a"}
+        for action in ("quiesce", "readmit"):
+            for approval in ({}, {"confirm": True}, {"dry_run": False}, {"confirm": 1, "dry_run": False}):
+                status, _, raw = _post(host, port, TRANSITION_ENDPOINT, {
+                    "action": action, **target, **approval,
+                }, headers)
+                assert status == 200
+                assert json.loads(raw) == {"applied": False, "dry_run": True, "action": action, **target}
+        assert routing._availability.calls == routing._availability.invalidated == []
+        assert not routing._admission.member_snapshot(tier.id, "member-a").quiesced
+        status, _, raw = _post(host, port, TRANSITION_ENDPOINT, {
+            "action": "quiesce", **target, "reason": "maintenance",
+            "confirm": True, "dry_run": False,
+        }, headers)
+        assert status == 200
+        result = json.loads(raw)["result"]
+        assert result["member_id"] == "member-a" and result["state"] == "quiesced"
+        assert not routing._admission.snapshot(tier.id).quiesced
+        assert not routing._admission.member_snapshot(tier.id, "member-b").quiesced
+        for method in ("GET", "POST"):
+            status, _, raw = (
+                _get(host, port, TRANSITION_ENDPOINT + f"?tier_id={tier.id}&member_id=member-a", headers)
+                if method == "GET" else
+                _post(host, port, TRANSITION_ENDPOINT, {"action": "status", **target}, headers)
+            )
+            assert status == 200 and json.loads(raw)["tiers"][0]["member_id"] == "member-a"
+        assert routing._availability.calls == [(tier.id, "member-a")] * 2
+        status, _, raw = _post(host, port, TRANSITION_ENDPOINT, {
+            "action": "drain", **target, "timeout": 1,
+        }, headers)
+        assert status == 200 and json.loads(raw)["result"]["drained"]
+        routing.quiesce_tier(tier.id)
+        routing._availability.calls.clear()
+        status, _, raw = _post(host, port, TRANSITION_ENDPOINT, {
+            "action": "readmit", **target, "confirm": True, "dry_run": False,
+        }, headers)
+        assert status == 200 and json.loads(raw)["result"]["readmitted"]
+        assert routing._availability.calls == [(tier.id, "member-a")]
+        assert routing._admission.snapshot(tier.id).quiesced
+
+
+def test_member_transition_malformed_or_unknown_scope_is_never_widened_to_tier():
+    headers = {"x-api-key": TOKEN}
+    with _member_transition_server() as (tier, routing, host, port):
+        bad_targets = [
+            {"tier_id": tier.id, "member_id": value}
+            for value in (None, "", "unknown", " member-a", "member/a", "a" * 65, 1, False, [], {})
+        ] + [
+            {"member_id": "member-a"},
+            {"tier_id": None, "member_id": "member-a"},
+            {"tier_id": "unknown-tier", "member_id": "member-a"},
+        ]
+        for target in bad_targets:
+            for action in ("status", "quiesce", "readmit", "drain"):
+                # Invalid targets refuse even a preview, before any scope mutation.
+                status, _, raw = _post(host, port, TRANSITION_ENDPOINT, {
+                    "action": action, **target, "timeout": 1,
+                }, headers)
+                assert status == 400
+                assert json.loads(raw)["error"]["type"] == "invalid_transition"
+        for query in (
+            "member_id=member-a", "member_id=&tier_id=" + tier.id,
+            "tier_id=&member_id=member-a",
+            f"tier_id={tier.id}&member_id=member-a&member_id=member-b",
+            f"tier_id={tier.id}&tier_id={tier.id}&member_id=member-a",
+            f"tier_id={tier.id}&member_id=member%2Fa",
+        ):
+            status, _, raw = _get(host, port, TRANSITION_ENDPOINT + "?" + query, headers)
+            assert status == 400
+            assert json.loads(raw)["error"]["type"] == "invalid_transition"
+        assert not routing._admission.snapshot(tier.id).quiesced
+        assert not routing._admission.member_snapshot(tier.id, "member-a").quiesced
+        assert routing._availability.calls == routing._availability.invalidated == []
+
+
+def test_member_drain_endpoint_preserves_scope_quiesce_and_timeout_requirements():
+    headers = {"x-api-key": TOKEN}
+    with _member_transition_server() as (tier, routing, host, port):
+        body = {"action": "drain", "tier_id": tier.id, "member_id": "member-a", "timeout": 1}
+        routing.quiesce_tier(tier.id)
+        status, _, _ = _post(host, port, TRANSITION_ENDPOINT, body, headers)
+        assert status == 400  # tier quiesce cannot stand in for member quiesce
+        routing.quiesce_tier(tier.id, member_id="member-a")
+        for timeout in (None, True, "1", 0, -1, float("nan"), float("inf")):
+            status, _, _ = _post(host, port, TRANSITION_ENDPOINT, {**body, "timeout": timeout}, headers)
+            assert status == 400
+        status, _, raw = _post(host, port, TRANSITION_ENDPOINT, body, headers)
+        assert status == 200 and json.loads(raw)["result"]["drained"]
+        assert routing._availability.calls == []
+
+
+def test_legacy_tier_only_backend_never_silently_accepts_member_preview():
+    backend = _TransitionBackend()
+    with running_server(backend, TOKEN) as (host, port):
+        for action in ("status", "quiesce", "readmit", "drain"):
+            status, _, _ = _post(host, port, TRANSITION_ENDPOINT, {
+                "action": action, "tier_id": "primary-local", "member_id": "member-a", "timeout": 1,
+            }, {"x-api-key": TOKEN})
+            assert status == 400
+    assert backend.state == "admitting"
+
+
+# --------------------------------------------------------------------------- #
+# Scoped operator routes: distinct from ordinary router bearer authentication
+# --------------------------------------------------------------------------- #
+def test_operator_route_requires_exact_workloads_scope_and_preserves_legacy_auth(tmp_path):
+    workloads_token = "workloads-token-12345"
+    bootstrap_token = "bootstrap-token-12345"
+    policy = _scoped_policy(tmp_path, [
+        {"id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ", "token": workloads_token},
+        {"id": "bootstrap", "scopes": [NODE_ADMIN_BOOTSTRAP], "credential_env": "BOOT", "token": bootstrap_token},
+    ])
+    calls = []
+    route = _operator_route(lambda query: calls.append(query) or b'{"ok":true}')
+    post_route = OperatorRoute(
+        "POST", "/v1/operator/workloads", WORKLOADS_READ,
+        lambda query: calls.append("post:" + query) or b'{"ok":true}',
+    )
+    with running_server(
+        _TransitionBackend(), TOKEN, authorization_policy=policy,
+        operator_routes=[route, post_route],
+    ) as (host, port):
+        missing, _, _ = _get(host, port, "/v1/operator/workloads")
+        legacy, _, _ = _get(
+            host, port, "/v1/operator/workloads", {"Authorization": f"Bearer {TOKEN}"}
+        )
+        bootstrap, _, _ = _get(
+            host, port, "/v1/operator/workloads", {"Authorization": f"Bearer {bootstrap_token}"}
+        )
+        accepted, headers, raw = _get(
+            host, port, "/v1/operator/workloads?raw=a%2Bb",
+            {"Authorization": f"Bearer {workloads_token}"},
+        )
+        connection = http.client.HTTPConnection(host, port, timeout=5)
+        connection.request(
+            "POST", "/v1/operator/workloads", headers={
+                "Authorization": f"Bearer {workloads_token}", "Content-Length": "0",
+            },
+        )
+        post_response = connection.getresponse()
+        post_status, post_raw = post_response.status, post_response.read()
+        connection.close()
+        chat, _, _ = _post(
+            host, port, "/v1/chat/completions", _CHAT_BODY,
+            {"Authorization": f"Bearer {workloads_token}"},
+        )
+        transition, _, _ = _get(
+            host, port, TRANSITION_ENDPOINT,
+            {"Authorization": f"Bearer {workloads_token}"},
+        )
+    assert (missing, legacy, bootstrap) == (403, 403, 403)
+    assert accepted == 200
+    assert headers["content-type"] == "application/json"
+    assert headers["cache-control"] == "no-store"
+    assert raw == b'{"ok":true}'
+    assert (post_status, post_raw) == (200, b'{"ok":true}')
+    assert calls == ["raw=a%2Bb", "post:"]
+    assert chat == 401
+    assert transition == 401
+
+
+def test_builtin_workload_route_is_scoped_strict_and_identity_bound(tmp_path):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ",
+        "token": token,
+    }])
+    registry = _WorkloadRegistry()
+    collected = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        workload_host="node-a", workload_registry=registry,
+        workload_clock=lambda: collected,
+    ) as (host, port):
+        missing, _, _ = _get(host, port, WORKLOADS_ENDPOINT)
+        legacy, _, _ = _get(
+            host, port, WORKLOADS_ENDPOINT,
+            {"Authorization": f"Bearer {TOKEN}"},
+        )
+        malformed, _, malformed_raw = _get(
+            host, port, WORKLOADS_ENDPOINT + "?limit=+1",
+            {"Authorization": f"Bearer {token}"},
+        )
+        accepted, headers, raw = _get(
+            host, port,
+            WORKLOADS_ENDPOINT + "?active_only=true&limit=2&recent_seconds=30",
+            {"Authorization": f"Bearer {token}"},
+        )
+    assert (missing, legacy, malformed, accepted) == (403, 403, 400, 200)
+    assert json.loads(malformed_raw)["error"]["type"] == "invalid_workload_query"
+    assert headers["cache-control"] == "no-store"
+    assert len(registry.calls) == 1
+    host, query, now = registry.calls[0]
+    assert host == "node-a"
+    assert query.active_only is True
+    assert query.limit == 2
+    assert query.recent_seconds == 30
+    assert now == collected
+    payload = json.loads(raw)
+    assert payload["host"] == "node-a"
+    assert payload["status"] == "complete"
+    assert payload["sources"][0]["owner"] == "router"
+
+
+def test_builtin_workload_route_unavailable_and_reserved(tmp_path):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ",
+        "token": token,
+    }])
+    registry = _WorkloadRegistry()
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        workload_registry=registry,
+    ) as (host, port):
+        status, _, raw = _get(
+            host, port, WORKLOADS_ENDPOINT,
+            {"Authorization": f"Bearer {token}"},
+        )
+    assert status == 503
+    assert json.loads(raw)["error"]["type"] == "workload_source_unavailable"
+    assert registry.calls == []
+    with pytest.raises(ValueError):
+        make_server(
+            "127.0.0.1", 0, StaticBackend(["ok"]),
+            operator_routes=[OperatorRoute(
+                "GET", WORKLOADS_ENDPOINT, WORKLOADS_READ, lambda _query: b"{}"
+            )],
+        )
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "limit=2&limit=3",
+        "unknown=value",
+        "active_only=1",
+        "recent_seconds=1_0",
+        "limit=%ZZ",
+        "a=1&b=2&c=3&d=4&e=5&f=6&g=7&h=8",
+    ],
+)
+def test_builtin_workload_query_refusals_do_not_read_registry(tmp_path, query):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ",
+        "token": token,
+    }])
+    registry = _WorkloadRegistry()
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        workload_host="node-a", workload_registry=registry,
+    ) as (host, port):
+        status, _, raw = _get(
+            host, port, WORKLOADS_ENDPOINT + "?" + query,
+            {"Authorization": f"Bearer {token}"},
+        )
+    assert status == 400
+    assert json.loads(raw)["error"]["type"] == "invalid_workload_query"
+    assert registry.calls == []
+
+
+def test_operator_route_denial_precedes_unread_body_and_closes_socket(tmp_path):
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ",
+        "token": "workloads-token-12345",
+    }])
+    calls = []
+    post_route = OperatorRoute(
+        "POST", "/v1/operator/workloads", WORKLOADS_READ, lambda query: b"{}"
+    )
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        operator_routes=[_operator_route(lambda query: calls.append(query) or b"{}"), post_route],
+    ) as (host, port):
+        for method in ("GET", "POST"):
+            with socket.create_connection((host, port), timeout=3) as raw_socket:
+                raw_socket.sendall(
+                    f"{method} /v1/operator/workloads HTTP/1.1\r\n".encode("ascii")
+                    + b"Host: 127.0.0.1\r\n"
+                    + b"Authorization: Bearer wrong-scoped-token\r\n"
+                    + b"Content-Length: 9999999\r\n\r\n"
+                )
+                response = _read_until_eof(raw_socket)
+            assert b"403" in response
+            assert b"authorization_scope_denied" in response
+            assert b"Connection: close" in response
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "credential_headers",
+    [
+        ("Authorization: Bearer {token}", "Authorization: Bearer {token}"),
+        ("x-api-key: {token}", "x-api-key: {token}"),
+        ("Authorization: Bearer {token}", "x-api-key: wrong-token"),
+        ("x-api-key: {token}", "Authorization: Bearer wrong-token"),
+    ],
+)
+def test_operator_route_rejects_ambiguous_credential_headers(
+    tmp_path, credential_headers,
+):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ",
+        "token": token,
+    }])
+    calls = []
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        operator_routes=[_operator_route(lambda query: calls.append(query) or b"{}")],
+    ) as (host, port):
+        with socket.create_connection((host, port), timeout=3) as raw_socket:
+            rendered = "\r\n".join(
+                header.format(token=token) for header in credential_headers
+            )
+            raw_socket.sendall(
+                b"GET /v1/operator/workloads HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                + rendered.encode("ascii")
+                + b"\r\nConnection: close\r\n\r\n"
+            )
+            response = _read_until_eof(raw_socket)
+    assert b"403" in response
+    assert b"authorization_scope_denied" in response
+    assert b"Connection: close" in response
+    assert calls == []
+
+
+def test_operator_route_reauthenticates_each_keepalive_request(tmp_path):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ", "token": token,
+    }])
+    calls = []
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        operator_routes=[_operator_route(lambda query: calls.append(query) or b"{}")],
+    ) as (host, port):
+        connection = http.client.HTTPConnection(host, port, timeout=5)
+        try:
+            connection.request(
+                "GET", "/v1/operator/workloads", headers={"Authorization": f"Bearer {token}"}
+            )
+            accepted = connection.getresponse()
+            assert accepted.status == 200
+            accepted.read()
+            connection.request(
+                "GET", "/v1/operator/workloads", headers={"Authorization": "Bearer wrong-token"}
+            )
+            rejected = connection.getresponse()
+            assert rejected.status == 403
+            assert rejected.getheader("Connection") == "close"
+            rejected.read()
+        finally:
+            connection.close()
+    assert calls == [""]
+
+
+def test_operator_route_requires_bodyless_framing_and_safe_callback_output(tmp_path):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ", "token": token,
+    }])
+    headers = {"Authorization": f"Bearer {token}", "Content-Length": "1"}
+    calls = []
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        operator_routes=[_operator_route(lambda query: calls.append(query) or b"{}")],
+    ) as (host, port):
+        framed, framed_headers, _ = _get(host, port, "/v1/operator/workloads", headers)
+    assert framed == 400
+    assert framed_headers["connection"] == "close"
+    assert framed_headers["cache-control"] == "no-store"
+    assert calls == []
+
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        operator_routes=[_operator_route(lambda query: calls.append(query) or b"{}")],
+    ) as (host, port):
+        with socket.create_connection((host, port), timeout=3) as raw_socket:
+            raw_socket.sendall(
+                b"GET /v1/operator/workloads HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                + f"Authorization: Bearer {token}\r\n".encode("ascii")
+                + b"Content-Length: 0\r\nContent-Length: 0\r\n\r\n"
+            )
+            duplicate = _read_until_eof(raw_socket)
+    assert b"400" in duplicate
+    assert calls == []
+
+    for callback in (
+        lambda query: (_ for _ in ()).throw(RuntimeError("private callback detail")),
+        lambda query: "not bytes",
+        lambda query: b"x" * (8 * 1024 * 1024 + 1),
+    ):
+        with running_server(
+            StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+            operator_routes=[_operator_route(callback)],
+        ) as (host, port):
+            status, _, raw = _get(
+                host, port, "/v1/operator/workloads", {"Authorization": f"Bearer {token}"}
+            )
+        assert status == 500
+        assert b"private callback detail" not in raw
+
+
+def test_operator_registry_is_copied_bounded_and_collision_free(tmp_path):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ", "token": token,
+    }])
+    routes = [_operator_route(lambda query: b"{}")]
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy, operator_routes=routes
+    ) as (host, port):
+        routes.append(OperatorRoute("GET", "/v1/operator/mutated", WORKLOADS_READ, lambda query: b"{}"))
+        status, _, _ = _get(
+            host, port, "/v1/operator/mutated", {"Authorization": f"Bearer {token}"}
+        )
+    assert status == 401
+
+    def callback(query):
+        return b"{}"
+    invalid = [
+        OperatorRoute("DELETE", "/v1/operator/delete", WORKLOADS_READ, callback),
+        OperatorRoute("GET", "/v1/chat/completions", WORKLOADS_READ, callback),
+        OperatorRoute("GET", "/artifacts", WORKLOADS_READ, callback),
+        OperatorRoute("GET", "/v1/requests/arbitrary", WORKLOADS_READ, callback),
+        OperatorRoute("GET", "/v1/operator/trailing/", WORKLOADS_READ, callback),
+        OperatorRoute("GET", "/v1/operator/bootstrap", NODE_ADMIN_BOOTSTRAP, callback),
+    ]
+    for route in invalid:
+        with pytest.raises(ValueError):
+            make_server("127.0.0.1", 0, StaticBackend(["ok"]), operator_routes=[route])
+    with pytest.raises(ValueError):
+        make_server(
+            "127.0.0.1", 0, StaticBackend(["ok"]),
+            operator_routes=[_operator_route(callback)] * 9,
+        )
+
+    class LyingRoutes(Sequence):
+        def __len__(self):
+            return 1
+
+        def __getitem__(self, index):
+            if index > 8:
+                raise IndexError
+            return OperatorRoute(
+                "GET", f"/v1/operator/{index}", WORKLOADS_READ, callback
+            )
+
+    with pytest.raises(ValueError):
+        make_server("127.0.0.1", 0, StaticBackend(["ok"]), operator_routes=LyingRoutes())
+    with pytest.raises(ValueError):
+        make_server(
+            "127.0.0.1", 0, StaticBackend(["ok"]),
+            operator_routes=[OperatorRoute([], "/v1/operator/bad", WORKLOADS_READ, callback)],
+        )
+
+
+def test_operator_route_requires_policy_even_when_legacy_auth_is_off():
+    calls = []
+    with running_server(
+        StaticBackend(["ok"]), None,
+        operator_routes=[_operator_route(lambda query: calls.append(query) or b"{}")],
+    ) as (host, port):
+        status, _, _ = _get(host, port, "/v1/operator/workloads")
+    assert status == 403
+    assert calls == []
+
+
+def test_operator_route_capacity_rejects_without_callback(tmp_path, monkeypatch):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ", "token": token,
+    }])
+    blocked = threading.BoundedSemaphore(0)
+    monkeypatch.setattr(front_door, "_OPERATOR_READ_LIMIT", blocked)
+    calls = []
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        operator_routes=[_operator_route(lambda query: calls.append(query) or b"{}")],
+    ) as (host, port):
+        status, headers, _ = _get(
+            host, port, "/v1/operator/workloads", {"Authorization": f"Bearer {token}"}
+        )
+    assert status == 503
+    assert headers["cache-control"] == "no-store"
+    assert calls == []
+
+
+def test_operator_route_capacity_covers_response_delivery(tmp_path):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ",
+        "token": token,
+    }])
+    calls = []
+    calls_lock = threading.Lock()
+    four_deliveries = threading.Event()
+    fifth_delivery = threading.Event()
+    release_deliveries = threading.Event()
+
+    def callback(query):
+        with calls_lock:
+            calls.append(query)
+        return b"{}"
+
+    server = make_server(
+        "127.0.0.1", 0, StaticBackend(["ok"]), auth_token=TOKEN,
+        authorization_policy=policy, operator_routes=[_operator_route(callback)],
+    )
+    handler = server.RequestHandlerClass
+    original_end_headers = handler.end_headers
+    delivery_count = 0
+    delivery_lock = threading.Lock()
+
+    def blocked_end_headers(self):
+        nonlocal delivery_count
+        with delivery_lock:
+            delivery_count += 1
+            if delivery_count == 4:
+                four_deliveries.set()
+            elif delivery_count == 5:
+                fifth_delivery.set()
+        assert release_deliveries.wait(5)
+        return original_end_headers(self)
+
+    handler.end_headers = blocked_end_headers
+    host, port = server.server_address[:2]
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    results = []
+
+    def request():
+        results.append(_get(
+            host, port, "/v1/operator/workloads",
+            {"Authorization": f"Bearer {token}"},
+        )[0])
+
+    clients = [threading.Thread(target=request) for _ in range(4)]
+    fifth = threading.Thread(target=request)
+    try:
+        for client in clients:
+            client.start()
+        assert four_deliveries.wait(5)
+        fifth.start()
+        assert fifth_delivery.wait(5)
+        with calls_lock:
+            assert len(calls) == 4
+    finally:
+        release_deliveries.set()
+        for client in clients:
+            client.join(timeout=5)
+        fifth.join(timeout=5)
+        server.shutdown()
+        server.server_close()
+        server_thread.join(timeout=5)
+    assert sorted(results) == [200, 200, 200, 200, 503]
+    assert all(not client.is_alive() for client in [*clients, fifth])
+
+
+def test_operator_route_write_failure_releases_capacity(tmp_path, monkeypatch):
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ",
+        "token": token,
+    }])
+    monkeypatch.setattr(front_door, "_OPERATOR_READ_LIMIT", threading.BoundedSemaphore(1))
+    calls = []
+    server = make_server(
+        "127.0.0.1", 0, StaticBackend(["ok"]), auth_token=TOKEN,
+        authorization_policy=policy,
+        operator_routes=[_operator_route(lambda query: calls.append(query) or b"{}")],
+    )
+    handler = server.RequestHandlerClass
+    original_end_headers = handler.end_headers
+    fail_once = True
+
+    class FailingWrite:
+        def __init__(self, wrapped):
+            self._wrapped = wrapped
+
+        def write(self, payload):
+            raise OSError("synthetic write failure")
+
+        def __getattr__(self, name):
+            return getattr(self._wrapped, name)
+
+    def arm_failure(self):
+        nonlocal fail_once
+        original_end_headers(self)
+        if fail_once:
+            fail_once = False
+            self.wfile = FailingWrite(self.wfile)
+
+    handler.end_headers = arm_failure
+    host, port = server.server_address[:2]
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    try:
+        with socket.create_connection((host, port), timeout=3) as raw_socket:
+            raw_socket.sendall(
+                b"GET /v1/operator/workloads HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                + f"Authorization: Bearer {token}\r\n".encode("ascii")
+                + b"Connection: close\r\n\r\n"
+            )
+            _read_until_eof(raw_socket)
+        status, _, _ = _get(
+            host, port, "/v1/operator/workloads",
+            {"Authorization": f"Bearer {token}"},
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        server_thread.join(timeout=5)
+    assert status == 200
+    assert calls == ["", ""]

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import re
 import threading
 import time
 from collections.abc import Mapping, Sequence
@@ -10,7 +12,9 @@ from datetime import datetime, timezone
 from importlib.resources import files
 
 from ..api import TelemetryRegistry, build_default_registry, create_server
+from ...control_plane.authorization import load_authorization_policy
 from ..retention import NORMAL_PROFILE, RetentionStore, SamplingProfile
+from ..workload_http import WorkloadHTTPService
 from .indicators import build_indicators
 from .history import BenchmarkHistory, bounded_history
 from .timeseries import retained_timeseries
@@ -28,6 +32,9 @@ def create_dashboard_server(
     environment: Mapping[str, str] | None = None,
     retention: RetentionStore | None = None,
     benchmark_history: BenchmarkHistory | None = None,
+    workload_controller_url: str | None = None,
+    workload_expected_node: str | None = None,
+    workload_authorization_policy: str | None = None,
 ):
     """Create a metrics server with the packaged single-page shell."""
 
@@ -37,6 +44,32 @@ def create_dashboard_server(
     history = retention or RetentionStore()
     telemetry = registry or build_default_registry()
     sessions = benchmark_history or BenchmarkHistory()
+    env = os.environ if environment is None else environment
+    workload_service = None
+    if all(
+        value is not None
+        for value in (
+            workload_controller_url,
+            workload_expected_node,
+            workload_authorization_policy,
+        )
+    ):
+        try:
+            legacy_token = None
+            if type(auth_env) is str and re.fullmatch(r"[A-Z][A-Z0-9_]*", auth_env):
+                legacy_token = (env.get(auth_env) or "").strip() or None
+            policy = load_authorization_policy(
+                workload_authorization_policy,
+                env=env,
+                legacy_token=legacy_token,
+            )
+            workload_service = WorkloadHTTPService(
+                workload_controller_url,
+                workload_expected_node,
+                policy,
+            )
+        except Exception:
+            workload_service = None
 
     def current(capabilities=None):
         return (
@@ -50,12 +83,18 @@ def create_dashboard_server(
         host=host,
         port=port,
         auth_env=auth_env,
-        environment=environment,
+        environment=env,
         static_routes={
             "/": ("text/html; charset=utf-8", document),
             "/index.html": ("text/html; charset=utf-8", document),
+            "/workloads.js": (
+                "text/javascript; charset=utf-8",
+                files("anvil_serving.observability.dashboard.static")
+                .joinpath("workloads.js")
+                .read_bytes(),
+            ),
         },
-        public_static_routes=("/", "/index.html"),
+        public_static_routes=("/", "/index.html", "/workloads.js"),
         json_routes={
             "/v1/timeseries": lambda: retained_timeseries(history),
             "/v1/indicators": lambda: build_indicators(current(), retention=history),
@@ -72,6 +111,7 @@ def create_dashboard_server(
                 metric=_one(query, "metric"),
             ),
         },
+        workload_service=workload_service,
     )
 
 
@@ -223,6 +263,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--auth-env",
         help="Bearer-token environment variable; required for non-loopback binds.",
     )
+    parser.add_argument(
+        "--workload-controller-url",
+        help="Explicit controller URL for scoped workload reads.",
+    )
+    parser.add_argument(
+        "--workload-expected-node",
+        help="Expected controller node identity for workload reads.",
+    )
+    parser.add_argument(
+        "--workload-authorization-policy",
+        help="Absolute LOCAL authorization-policy file for workload reads.",
+    )
     return parser
 
 
@@ -232,7 +284,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     retention = RetentionStore()
     sampler = DashboardSampler(registry, retention)
     server = create_dashboard_server(
-        registry, host=args.host, port=args.port, auth_env=args.auth_env, retention=retention
+        registry,
+        host=args.host,
+        port=args.port,
+        auth_env=args.auth_env,
+        retention=retention,
+        workload_controller_url=args.workload_controller_url,
+        workload_expected_node=args.workload_expected_node,
+        workload_authorization_policy=args.workload_authorization_policy,
     )
     print(f"Anvil dashboard: http://{args.host}:{server.server_address[1]}/")
     sampler.start()
