@@ -45,6 +45,29 @@ Repair request omission and identifier validation with independent producer/cons
 
 ## Tasks
 
+### T020: Make native Windows bootstrap fixtures establish exact permissions
+
+**Feature:** F001
+**Priority:** high
+**Type:** bugfix
+**Likely files:** tests/bootstrap_windows_fixtures.py, tests/test_bootstrap_opened_file.py, tests/test_bootstrap_permissions.py, .tickets/2026-09-05-bootstrap-windows-ci-fixtures.md
+
+PR #472 Windows CI at 52f2f9c4 failed six native bootstrap assertions: trusted file reads refused precondition under the hosted checkout, and the permission matrix returned untrusted-writable after an incremental icacls grant. Test fixtures must establish their required state rather than assume checkout ancestry or inherited/explicit ACLs. Add a test-only disposable directory under the current Windows user profile, set only this newly created subtree's owner to the process user and its exact protected DACL to that user with inheritable full control, and create the reader fixtures there. Use pointer-width-safe native security APIs and free allocated descriptors. Restrict all permission writes to the owned disposable subtree; never modify existing profile, repository, drive-root or operator ACLs. Replace the matrix's incremental icacls grants with exact owner/DACL replacement on its disposable file, retain one borrowed descriptor and offset throughout, restore full control for cleanup, and explicitly prove a seeded Everyone write grant disappears when replaced by owner-readonly. Preserve actual handle locks, no-follow/type/link checks and all platform gates; do not mock or relax production permissions or add CI skips. Record observed CI failures separately from any unproven underlying runner ACL identity. The final hosted Windows run is the integration proof.
+
+**Acceptance criteria:**
+
+- Both Windows fixtures use newly owned native files with explicit permissions; no existing ancestor ACL is changed.
+- A seeded Everyone-write file is untrusted, exact replacement becomes owner-readonly, owner-write becomes writable, and Everyone-write remains refused on the same held descriptor without offset drift.
+- Full native reader and permission suites execute on Windows and Linux; production source and guard semantics stay unchanged.
+- Independent review and final hosted Windows/Linux CI pass before merge.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_bootstrap_opened_file.py tests/test_bootstrap_permissions.py tests/test_bootstrap_package.py -x -q`
+- `python -m ruff check tests/bootstrap_windows_fixtures.py tests/test_bootstrap_opened_file.py tests/test_bootstrap_permissions.py`
+- `git diff --check`
+
+
 ### T019: Exercise the intended Linux read-only policy in the native test
 
 **Feature:** F001
