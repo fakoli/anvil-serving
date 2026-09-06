@@ -98,6 +98,45 @@ misleading, since that Docker daemon cannot run the models at all.
 proven pre-dispatch controller failure. SSH repairs a node whose controller is
 down; it is not a general transport.
 
+**2026-09-05 amendment — node bootstrap coupling (design pending implementation).**
+An absent node agent creates one explicit exception to controller-mediated
+installation, not an exception to typed operations. The
+[managed bootstrap PRD](../prds/fleet-node-enrollment.md) specifies a
+host-owned operation targeting exactly one declared `host:<id>`. A read-only
+plan binds the validated topology fingerprint, expected node, pinned software
+and receiver identities, platform adapters, and local authorization. Apply
+re-resolves and compares that plan immediately before staging; discovery,
+caller-supplied addresses, and arbitrary remote commands remain prohibited.
+
+| Boundary | Required observation and authority | Permitted next effect |
+| --- | --- | --- |
+| Normal operation | Reachable authenticated expected-node controller | Use typed controller operations; never choose SSH for convenience. |
+| Bootstrap plan | One declared bootstrap-capable host, bounded compatible artifacts, separately provisioned prerequisites and `node-admin:bootstrap` grant | Produce a deterministic plan; no target mutation. |
+| Staging and installation | Unchanged plan/topology, explicit confirmation and local `bootstrap_authorized` policy | Verify the bounded bundle and install one immutable generation. |
+| Activation and acceptance | Flushed prior/candidate journal and atomic current pointer | Restart only the declared preprovisioned supervisor; reconnect with a fresh authenticated transport and verify exact node, version, build, protocol, catalog and health. |
+| Rollback | Failed install, activation, restart or acceptance with a prior generation | Restore the prior pointer/supervisor state, then verify restored identity; an attempted restore alone is not success. |
+| Manual recovery | No usable prior generation, unsupported atomic replacement, uncertain ownership, or failed restored-identity check | Stop with a fixed failure and retained receipt; no broader cleanup or guessed repair. |
+
+The fixed SSH receiver is eligible only for a declared absent/unavailable
+controller with the explicit recovery choice and the same local scope/policy
+gates. Authentication/authorization rejection, wrong node/build identity, and
+ambiguous target selection are not permission to fall back. Recovery requires
+a dedicated preprovisioned forced-command principal, pinned receiver and known
+host identity, batch/no-PTY/no-forwarding operation, and bounded input/output
+and deadlines. Its closed `identity|stage|activate|status|rollback` protocol
+accepts no caller command, path or argv. Normal management returns to the
+controller only after fresh exact acceptance.
+
+v1 installation is deliberately narrower than the fleet's runtime vocabulary:
+`python-wheel-venv` with an existing Windows scheduled task or Linux systemd
+user supervisor, receiver and stable launcher. Docker and macOS installation,
+supervisor creation, elevation, and machine prerequisites are unsupported in
+this slice. Credential provisioning remains separate; no secret enters the
+bundle, journal, receipt or public output. Runtime enrollment neither changes
+operator topology nor deploys/promotes workloads, routes, GPU modes or client
+profiles. This amendment defines the coupling point, not a shipped command or
+a claim that any node has been enrolled.
+
 ### 5. No cross-host arbitration
 
 Voice ownership of `fakoli-mid-mod` is **sacred**. Mini may not reclaim mid-mod

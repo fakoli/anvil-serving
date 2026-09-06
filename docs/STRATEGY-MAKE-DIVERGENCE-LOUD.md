@@ -209,6 +209,21 @@ Install or upgrade the node agent on a declared host over its declared
 transport, read-only first, mutation gated. Turns the node-agent rollout from a
 manual SSH exercise into a managed operation.
 
+The [managed bootstrap PRD](prds/fleet-node-enrollment.md) now closes the design
+contract: one topology-fingerprinted target, a digest-pinned bundle, scoped
+authorization, explicit apply, immutable generations, exact post-restart
+identity acceptance, and verified rollback or manual recovery. Controller
+transport remains primary; a pinned forced-command SSH receiver is recovery
+only for a declared absent/unavailable controller. No discovery, arbitrary
+shell, credential provisioning, workload deployment or automatic convergence
+is included. v1 requires a preprovisioned Windows scheduled task or Linux
+systemd user supervisor; Docker/macOS installation is unsupported.
+
+Feature 10 remains **open**. Approved design, schema/auth prerequisites, or
+successful file transfer do not establish an implemented bootstrap workflow.
+Change its status only after implementation, independent negative controls,
+documented managed acceptance/rollback, and the owning PR have shipped.
+
 ## Execution rules
 
 1. Each feature ships complete: implementation, tests that fail against a broken

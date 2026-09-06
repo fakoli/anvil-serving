@@ -10,12 +10,13 @@ The term describes an authority boundary, not an automatic model chooser.
 Every accepted chat request still resolves through an exact, closed route:
 
 ```text
-caller alias -> configured tier -> that tier's configured endpoint
+caller alias -> configured tier -> direct endpoint or one qualified member
 ```
 
-The selected endpoint may supply bounded metadata about what it currently
-serves. It cannot make the router select a different endpoint, retry another
-model, or reinterpret the caller's intent.
+A direct endpoint may supply bounded metadata about what it currently serves.
+A replica tier instead declares configured metadata and a closed same-host
+set of equivalent members. Neither metadata nor member selection may choose
+another model, tier, or host, retry a failed request, or reinterpret intent.
 
 ## The three identities
 
@@ -39,9 +40,9 @@ Each plane has one job:
 | Plane | Owns | Does not own |
 | --- | --- | --- |
 | Caller | The requested capability alias and request payload | Tier selection, serve lifecycle, or metadata authority |
-| Operator configuration | Alias-to-tier mapping, endpoint, auth reference, dialect, capability policy, safety ceilings, readiness contract | Inference-engine runtime facts in upstream-owned mode |
+| Operator configuration | Alias-to-tier mapping, endpoint or closed equivalent member set, auth reference, dialect, capability policy, safety ceilings, readiness contract | Inference-engine runtime facts in upstream-owned mode |
 | Inference service | Its active single-model identity and allowlisted runtime configuration when `metadata_source = "upstream"` | Public alias, tier mapping, router policy, promotion, or fallback |
-| Router | Authentication, alias closure, metadata validation, admission, protocol translation, streaming relay, and metadata-only decisions | Intent classification, candidate ranking, lifecycle, or quality claims |
+| Router | Authentication, alias closure, metadata validation, atomic member selection/admission, protocol translation, streaming relay, and metadata-only decisions | Intent classification, model ranking, lifecycle, or quality claims |
 | Evaluation and promotion | Evidence that a concrete serve satisfies a capability and the guarded transaction that changes exposure | Per-request routing or silent config mutation |
 
 An authority may report facts only within its boundary. For example, an
@@ -57,17 +58,29 @@ For a chat request, the Capability Gateway performs these steps:
 2. Normalize the supplied `model` value and require an exact entry in
    `[router.model_routes]`.
 3. Resolve that alias to its one configured tier.
-4. Resolve the tier's effective served configuration from router config or
-   bounded metadata from that tier's one inference service.
+4. Resolve the tier's effective served configuration from router config or,
+   for an opted-in direct tier, bounded metadata from its one inference service.
 5. Fail closed if required metadata is missing, ambiguous, malformed, or
    internally inconsistent.
 6. Enforce router-owned context, tool, media, output, readiness, and
-   concurrency rules.
+   concurrency rules; atomically select/reserve one eligible member when
+   replicas are configured.
 7. Relay the request to the already-selected endpoint and return its ordinary
    or SSE response.
 
 The route is decided at step 3. Metadata resolution at step 4 cannot revisit
 that decision.
+
+## Explicit equivalent replicas
+
+A configured tier may declare 2–16 qualified equivalent members on one host
+instead of a direct endpoint. Selection is round-robin by default or explicitly
+capacity-aware. Readiness and capacity can select only within that closed set;
+they cannot discover an endpoint, change model identity, or replay a request.
+Replica tiers require configured metadata, not upstream-owned metadata. Member
+draining and lifecycle actions remain separate managed operations, never request
+side effects. See [configuration and scheduling semantics](CONFIGURATION.md#qualified-same-host-replicas)
+and [lifecycle limits](cli/serves.md#replica-lifecycle-limits).
 
 ## Two metadata-authority modes
 
@@ -149,7 +162,7 @@ workflow, model, host, or provider.
 The Capability Gateway's request path does not:
 
 - classify a prompt or infer a work class;
-- rank models, providers, or endpoints;
+- rank models or providers, or select undeclared/non-equivalent endpoints;
 - choose a model from runtime capacity or benchmark scores;
 - fall back, escalate to cloud, or retry on another tier;
 - verify a response and substitute a second answer;

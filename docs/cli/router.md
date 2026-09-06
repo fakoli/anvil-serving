@@ -19,6 +19,7 @@ owning documentation link.
 | `router run` | Run the router in the foreground. |
 | `router endpoint` | Show the listen address, port, and this node's Tailscale DNS name. |
 | `router diagnose` | Explain one request using bounded metadata, without replaying it. |
+| `router workloads` | Read bounded canonical workloads from one explicit router endpoint. |
 
 ### Deployment lifecycle
 
@@ -87,6 +88,21 @@ anvil-serving router token --reveal --confirm
 
 Only the second form prints the local token value. Avoid using it in automation or
 captured logs.
+
+## Workloads
+
+Read active and recent router work from one explicitly authenticated router:
+
+```bash
+anvil-serving router workloads --router-url http://127.0.0.1:8000/v1 --auth-env ANVIL_WORKLOAD_TOKEN --expected-node node-a --active-only
+anvil-serving router workloads --router-url http://127.0.0.1:8000/v1 --auth-env ANVIL_WORKLOAD_TOKEN --expected-node node-a --recent-seconds 3600 --limit 200 --json
+```
+
+The command does not discover a router, resolve topology, or borrow the normal
+data-plane bearer. The named credential must carry `workloads:read`, and the
+reported node must match `--expected-node`. `--host` is only a record filter;
+it does not select the endpoint. See [workload visibility](../WORKLOAD-VISIBILITY.md)
+for filters, canonical records, partiality, timestamps, and authorization.
 
 ## Diagnose
 

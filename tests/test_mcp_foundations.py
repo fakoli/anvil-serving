@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from copy import deepcopy
 import io
 import json
 from pathlib import Path
@@ -21,13 +22,15 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "d2145a64f57a847b97e0b72f36f59cf853fc11e76d5c9b89b98860b2c4654954"
+    "fb398ba54421b01b4cb7b80999f183b20a2004809a2b67a733396f3ad1b1759a"
 )
 HANDLER_MAP_SHA256 = (
-    "b689515910ebfd469872b642c88cb30ce0e00299421b3a8a734790fbe386edcb"
+    "039b5723817dae0c5ca60258e05fef61752db2bd6bbac6e0b4101fa26f55f33e"
 )
 TOOL_NAMES = [
     "operation_contracts",
+    "controller_inspect",
+    "controller_logs",
     "router_status",
     "router_fleet_status",
     "router_logs",
@@ -126,6 +129,74 @@ def _canonical_sha256(value) -> str:
 def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable():
     assert list(mcp.TOOLS) == TOOL_NAMES
     assert _canonical_sha256(mcp.list_tools()) == PUBLIC_CATALOG_SHA256
+
+
+def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
+    public_tools = deepcopy(mcp.list_tools())
+    transition = next(tool for tool in public_tools if tool["name"] == "router_transition")
+    schema = transition["inputSchema"]
+    assert transition["description"] == (
+        "Inspect, quiesce, drain, or safely readmit a router tier or declared member "
+        "through the authenticated router boundary."
+    )
+    assert schema["type"] == "object"
+    assert schema["additionalProperties"] is False
+    assert schema["maxProperties"] == 7
+    assert schema["required"] == ["action"]
+    assert set(schema["properties"]) == {
+        "action", "tier", "member", "router_url", "timeout", "dry_run", "confirm",
+    }
+    assert schema["properties"].pop("member") == {
+        "type": "string", "minLength": 1, "maxLength": 64,
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+    }
+
+    # Reconstruct upstream PR #471's catalog: only the two diagnostic tools
+    # and member transition are added here. All unrelated fields stay exact.
+    schema["maxProperties"] = 6
+    transition["description"] = (
+        "Inspect, quiesce, drain, or safely readmit a router tier "
+        "through the authenticated router boundary."
+    )
+    public_tools = [
+        tool for tool in public_tools
+        if tool["name"] not in {"controller_inspect", "controller_logs"}
+    ]
+    assert _canonical_sha256(public_tools) == (
+        "d2145a64f57a847b97e0b72f36f59cf853fc11e76d5c9b89b98860b2c4654954"
+    )
+    assert _canonical_sha256(mcp.list_tools()) == PUBLIC_CATALOG_SHA256
+
+
+def test_controller_diagnostic_tools_have_exact_bounded_public_contracts():
+    assert mcp.TOOLS["controller_inspect"]["description"] == (
+        "Read metadata-only diagnostics for one local controller container."
+    )
+    assert mcp.TOOLS["controller_inspect"]["inputSchema"] == {
+        "type": "object",
+        "additionalProperties": False,
+        "maxProperties": 1,
+        "properties": {
+            "container": {"type": "string", "minLength": 1, "maxLength": 128},
+        },
+        "required": ["container"],
+    }
+    assert mcp.TOOLS["controller_inspect"]["handler"].__name__ == "_controller_inspect"
+
+    assert mcp.TOOLS["controller_logs"]["description"] == (
+        "Read bounded metadata-only audit diagnostics for one local controller container."
+    )
+    assert mcp.TOOLS["controller_logs"]["inputSchema"] == {
+        "type": "object",
+        "additionalProperties": False,
+        "maxProperties": 2,
+        "properties": {
+            "container": {"type": "string", "minLength": 1, "maxLength": 128},
+            "tail": {"type": "integer", "minimum": 1, "maximum": 200, "default": 100},
+        },
+        "required": ["container"],
+    }
+    assert mcp.TOOLS["controller_logs"]["handler"].__name__ == "_controller_logs"
 
 
 def test_media_artifact_discovery_describes_bounded_native_image_content():

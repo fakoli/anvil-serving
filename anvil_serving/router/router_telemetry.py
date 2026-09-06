@@ -8,6 +8,7 @@ must not be presented as time-window statistics or monotonic counters.
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, Optional
 
@@ -18,6 +19,11 @@ MAX_STATS_LIMIT = 10_000
 _SCOPE = "current_decision_log_buffer"
 _MAX_MEASUREMENT = 1_000_000_000_000_000
 _FINISH_REASONS = ("stop", "length", "tool_calls", "content_filter", "unknown")
+_REPLICA_ID = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
+_PRESSURE_FRESHNESS = ("fresh", "stale", "failed", "unknown")
+_PRESSURE_SIGNAL = {"valid", "missing", "invalid"}
+_MAX_REPLICA_PRESSURE_PPM = 2_000_000_000_000_000
+_MAX_REPLICA_MEMBERS = 256
 
 
 def _query_values(query: Mapping[str, Sequence[str]], name: str) -> list[str]:
@@ -362,6 +368,160 @@ def render_process_prometheus(started_at: float, buffer_capacity: Optional[int])
     return "\n".join(lines) + "\n"
 
 
+def _bounded_int(value: object, lower: int, upper: int) -> bool:
+    return type(value) is int and lower <= value <= upper
+
+
+def _capacity_replica_group(row: object):
+    """Return one strict capacity group or None; never coerce hostile values."""
+    if type(row) is not dict:
+        return None
+    tier_id = row.get("id")
+    admission = row.get("admission")
+    metadata_members = row.get("members")
+    if (
+        type(tier_id) is not str
+        or _REPLICA_ID.fullmatch(tier_id) is None
+        or type(admission) is not dict
+        or set(admission) != {
+            "status", "state", "active_requests", "draining",
+            "member_active_requests", "max_concurrency", "members",
+        }
+        or type(admission.get("status")) is not str
+        or admission.get("status") != "available"
+        or type(admission.get("state")) is not str
+        or admission.get("state") not in {"admitting", "quiesced"}
+        or type(admission.get("draining")) is not bool
+        or type(admission.get("members")) is not list
+        or type(metadata_members) is not list
+        or not 2 <= len(admission["members"]) <= 16
+        or len(metadata_members) != len(admission["members"])
+        or not _bounded_int(admission.get("max_concurrency"), 1, (1 << 53) - 1)
+        or not _bounded_int(admission.get("active_requests"), 0, (1 << 53) - 1)
+        or admission["active_requests"] > admission["max_concurrency"]
+        or admission["draining"]
+        and (admission["state"] != "quiesced" or admission["active_requests"] == 0)
+    ):
+        return None
+    active_map = admission.get("member_active_requests")
+    if type(active_map) is not dict or len(active_map) != len(admission["members"]):
+        return None
+    projected = {}
+    for member in admission["members"]:
+        if type(member) is not dict or set(member) != {
+            "id", "state", "active_requests", "max_concurrency", "draining",
+        }:
+            return None
+        member_id = member.get("id")
+        active = member.get("active_requests")
+        ceiling = member.get("max_concurrency")
+        draining = member.get("draining")
+        if (
+            type(member_id) is not str
+            or _REPLICA_ID.fullmatch(member_id) is None
+            or member_id in projected
+            or type(member.get("state")) is not str
+            or member.get("state") not in {"admitting", "quiesced"}
+            or not _bounded_int(active, 0, 100_000)
+            or not _bounded_int(ceiling, 1, 100_000)
+            or active > ceiling
+            or type(draining) is not bool
+            or draining and (member["state"] != "quiesced" or active == 0)
+            or type(active_map.get(member_id)) is not int
+            or active_map[member_id] != active
+        ):
+            return None
+        projected[member_id] = [active, ceiling]
+    if set(active_map) != set(projected) or sum(row[0] for row in projected.values()) != admission["active_requests"]:
+        return None
+    telemetry = {}
+    for member in metadata_members:
+        if type(member) is not dict:
+            return None
+        member_id = member.get("id")
+        freshness = member.get("freshness")
+        pressure = member.get("pressure_ppm")
+        if (
+            type(member_id) is not str
+            or member_id not in projected
+            or member_id in telemetry
+            or type(freshness) is not str
+            or freshness not in _PRESSURE_FRESHNESS
+            or type(member.get("requests_state")) is not str
+            or member["requests_state"] not in _PRESSURE_SIGNAL
+            or type(member.get("kv_state")) is not str
+            or member["kv_state"] not in _PRESSURE_SIGNAL
+            or freshness == "fresh"
+            and not _bounded_int(pressure, 0, _MAX_REPLICA_PRESSURE_PPM)
+            or freshness == "fresh"
+            and (
+                "invalid" in (member["requests_state"], member["kv_state"])
+                or "valid" not in (member["requests_state"], member["kv_state"])
+            )
+            or freshness != "fresh" and pressure is not None
+        ):
+            return None
+        telemetry[member_id] = (freshness, pressure)
+    if set(telemetry) != set(projected):
+        return None
+    return tier_id, admission["active_requests"], admission["max_concurrency"], tuple(
+        (member_id, *projected[member_id], *telemetry[member_id])
+        for member_id in sorted(projected)
+    )
+
+
+def _replica_capacity_metric_lines(rows: object) -> list[str]:
+    if type(rows) is not list:
+        return []
+    groups = []
+    member_count = 0
+    tier_ids = set()
+    for row in rows:
+        group = _capacity_replica_group(row)
+        if group is None:
+            continue
+        if group[0] in tier_ids or member_count + len(group[3]) > _MAX_REPLICA_MEMBERS:
+            continue
+        groups.append(group)
+        tier_ids.add(group[0])
+        member_count += len(group[3])
+    if not groups:
+        return []
+    specs = (
+        ("anvil_router_replica_tier_active_requests", "Current active requests for a capacity replica tier"),
+        ("anvil_router_replica_tier_max_concurrency", "Configured maximum concurrency for a capacity replica tier"),
+        ("anvil_router_replica_member_active_requests", "Current active requests for a capacity replica member"),
+        ("anvil_router_replica_member_max_concurrency", "Configured maximum concurrency for a capacity replica member"),
+        ("anvil_router_replica_member_pressure_ppm", "Current fresh normalized pressure for a capacity replica member"),
+        ("anvil_router_replica_member_pressure_freshness", "Current pressure freshness class for a capacity replica member"),
+    )
+    lines = []
+    for name, help_text in specs:
+        lines.extend((f"# HELP {name} {help_text}", f"# TYPE {name} gauge"))
+        for tier_id, tier_active, tier_ceiling, members in groups:
+            tier_label = _prometheus_label(tier_id)
+            if name == specs[0][0]:
+                lines.append(f'{name}{{tier="{tier_label}"}} {tier_active}')
+            elif name == specs[1][0]:
+                lines.append(f'{name}{{tier="{tier_label}"}} {tier_ceiling}')
+            else:
+                for member_id, active, ceiling, freshness, pressure in members:
+                    labels = f'tier="{tier_label}",member="{_prometheus_label(member_id)}"'
+                    if name == specs[2][0]:
+                        lines.append(f"{name}{{{labels}}} {active}")
+                    elif name == specs[3][0]:
+                        lines.append(f"{name}{{{labels}}} {ceiling}")
+                    elif name == specs[4][0] and pressure is not None:
+                        lines.append(f"{name}{{{labels}}} {pressure}")
+                    elif name == specs[5][0]:
+                        for state in _PRESSURE_FRESHNESS:
+                            lines.append(
+                                f'{name}{{{labels},freshness="{state}"}} '
+                                f'{1 if freshness == state else 0}'
+                            )
+    return lines
+
+
 def render_capacity_prometheus(snapshot: Mapping[str, Any]) -> str:
     """Render safe per-alias model-capacity gauges from a capacity snapshot."""
     specs = (
@@ -398,6 +558,7 @@ def render_capacity_prometheus(snapshot: Mapping[str, Any]) -> str:
                     f'{name}{{model="{_prometheus_label(alias)}",'
                     f'tier="{_prometheus_label(tier_id)}"}} {value}'
                 )
+    lines.extend(_replica_capacity_metric_lines(rows))
     return "\n".join(lines) + ("\n" if lines else "")
 
 

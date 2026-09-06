@@ -220,6 +220,12 @@ def tool_router_transition(args: dict) -> dict:
 
     action = _str_arg(args, "action", required=True)
     tier_id = _str_arg(args, "tier", "")
+    member_scope = {}
+    if "member" in args:
+        member = args["member"]
+        if type(member) is not str or not member:
+            raise ToolError("bad_argument", "member must be a nonempty replica member ID")
+        member_scope["member_id"] = member
     router_url = _str_arg(args, "router_url", "")
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
@@ -230,6 +236,7 @@ def tool_router_transition(args: dict) -> dict:
         result = router_manage.transition_request(
             action,
             tier_id=tier_id or None,
+            **member_scope,
             timeout=timeout,
             router_url=router_url or None,
             confirm=confirm,
@@ -406,11 +413,12 @@ FAMILY = ToolFamily(
             "handler": tool_router_manage,
         },
         "router_transition": {
-            "description": "Inspect, quiesce, drain, or safely readmit a router tier through the authenticated router boundary.",
+            "description": "Inspect, quiesce, drain, or safely readmit a router tier or declared member through the authenticated router boundary.",
             "inputSchema": _schema(
                 {
                     "action": {"type": "string"},
                     "tier": {"type": "string"},
+                    "member": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"},
                     "router_url": {"type": "string"},
                     "timeout": _bounded_integer_schema(1, 3600, 60),
                     "dry_run": {"type": "boolean"},

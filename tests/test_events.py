@@ -13,6 +13,33 @@ import pytest
 from tests.conftest import proc
 
 
+def _direct_promotion_configs(tmp_path, tiers):
+    rows = "\n".join(
+        """[[router.tiers]]
+id = \"{tier}\"
+base_url = \"http://127.0.0.1:{port}/v1\"
+model = \"candidate-local\"
+dialect = \"openai\"
+context_limit = 4096
+privacy = \"local\"
+tool_support = true
+auth_env = \"ANVIL_PRIMARY_KEY\"
+health_path = \"/health\"
+model_identity = true""".format(tier=tier, port=30000 + index)
+        for index, tier in enumerate(tiers)
+    )
+    routes = "\n".join(
+        'llm.tier_%d = "%s"' % (index, tier)
+        for index, tier in enumerate(tiers)
+    )
+    contents = "[router]\n%s\n[router.model_routes]\n%s\n" % (rows, routes)
+    target = tmp_path / "target-router.toml"
+    rollback = tmp_path / "rollback-router.toml"
+    target.write_text(contents, encoding="utf-8")
+    rollback.write_text(contents, encoding="utf-8")
+    return str(target), str(rollback)
+
+
 def test_emit_disabled_by_default_never_spawns(tmp_path):
     from anvil_serving import events
 
@@ -286,7 +313,7 @@ root = %s
         )
 
 
-def test_successful_promotion_emits_once_before_lock_release(monkeypatch):
+def test_successful_promotion_emits_once_before_lock_release(tmp_path, monkeypatch):
     from anvil_serving import serves
 
     order = []
@@ -314,12 +341,15 @@ def test_successful_promotion_emits_once_before_lock_release(monkeypatch):
         raising=False,
     )
 
+    target_config, rollback_config = _direct_promotion_configs(tmp_path, ["primary-local"])
     promotions = [{
         "name": "candidate-promotion",
         "target": "candidate-serve",
         "rollback": "rollback-serve",
         "affected_tiers": ["primary-local"],
         "needle_ctx": 131072,
+        "router_config": target_config,
+        "rollback_router_config": rollback_config,
     }]
     managed = [
         {"name": "candidate-serve", "served_name": "candidate-local"},
@@ -342,7 +372,7 @@ def test_successful_promotion_emits_once_before_lock_release(monkeypatch):
     )]
 
 
-def test_successful_rollback_emits_restored_model(monkeypatch):
+def test_successful_rollback_emits_restored_model(tmp_path, monkeypatch):
     from anvil_serving import serves
 
     monkeypatch.setattr(serves, "_switch_role_lock", lambda _role: _NullLock())
@@ -353,12 +383,15 @@ def test_successful_rollback_emits_restored_model(monkeypatch):
         "emit_lifecycle_event",
         lambda kind, payload, **kwargs: recorded.append((kind, payload, kwargs)),
     )
+    target_config, rollback_config = _direct_promotion_configs(tmp_path, ["primary-local"])
     promotions = [{
         "name": "candidate-promotion",
         "target": "candidate-serve",
         "rollback": "rollback-serve",
         "affected_tiers": ["primary-local"],
         "needle_ctx": 131072,
+        "router_config": target_config,
+        "rollback_router_config": rollback_config,
     }]
     managed = [
         {"name": "candidate-serve", "served_name": "candidate-local"},
@@ -379,7 +412,7 @@ def test_successful_rollback_emits_restored_model(monkeypatch):
     )]
 
 
-def test_multi_tier_promotion_emits_one_record_per_declared_tier(monkeypatch):
+def test_multi_tier_promotion_emits_one_record_per_declared_tier(tmp_path, monkeypatch):
     from anvil_serving import serves
 
     monkeypatch.setattr(serves, "_switch_role_lock", lambda _role: _NullLock())
@@ -390,12 +423,17 @@ def test_multi_tier_promotion_emits_one_record_per_declared_tier(monkeypatch):
         "emit_lifecycle_event",
         lambda kind, payload, **_kwargs: recorded.append((kind, payload)),
     )
+    target_config, rollback_config = _direct_promotion_configs(
+        tmp_path, ["primary-local", "coding-local"],
+    )
     promotions = [{
         "name": "candidate-promotion",
         "target": "candidate-serve",
         "rollback": "rollback-serve",
         "affected_tiers": ["primary-local", "coding-local"],
         "needle_ctx": 131072,
+        "router_config": target_config,
+        "rollback_router_config": rollback_config,
     }]
     managed = [
         {"name": "candidate-serve", "model": "candidate-local"},
@@ -472,7 +510,7 @@ def test_non_promotion_lifecycle_reports_journal_failure_without_traceback(
     assert "Traceback" not in err
 
 
-def test_successful_promotion_reports_journal_failure_truthfully(monkeypatch, capsys):
+def test_successful_promotion_reports_journal_failure_truthfully(tmp_path, monkeypatch, capsys):
     from anvil_serving import events, serves
 
     monkeypatch.setattr(serves, "_switch_role_lock", lambda _role: _NullLock())
@@ -484,11 +522,14 @@ def test_successful_promotion_reports_journal_failure_truthfully(monkeypatch, ca
             events.LifecycleEventError("outbox fsync failed")
         ),
     )
+    target_config, rollback_config = _direct_promotion_configs(tmp_path, ["primary-local"])
     promotions = [{
         "name": "candidate-promotion",
         "target": "candidate-serve",
         "rollback": "rollback-serve",
         "affected_tiers": ["primary-local"],
+        "router_config": target_config,
+        "rollback_router_config": rollback_config,
     }]
     managed = [
         {"name": "candidate-serve", "model": "candidate-local"},

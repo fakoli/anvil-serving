@@ -12,6 +12,25 @@ def commands() -> CommandNode:
         "Manage the deployed router and its lifecycle.",
         children=(
             _node(
+                "workloads",
+                "Read a bounded canonical workload snapshot from one router.",
+                handler=_handler(
+                    "anvil_serving.cli", attribute="_workload_command", argv_prefix=("router",)
+                ),
+                options=(
+                    _option("--router-url", summary="Explicit loopback router /v1 URL (required).", value_name="URL"),
+                    _option("--auth-env", summary="Environment variable containing the router credential (required).", value_name="NAME"),
+                    _option("--expected-node", summary="Expected router node identity (required).", value_name="NODE"),
+                    _option("--owner", summary="Filter by workload owner.", value_name="OWNER"),
+                    _option("--kind", summary="Filter by workload kind.", value_name="KIND"),
+                    _option("--state", summary="Filter by workload state.", value_name="STATE"),
+                    _option("--host", summary="Filter records by observed host.", value_name="HOST"),
+                    _option("--active-only", summary="Return only active workloads."),
+                    _option("--recent-seconds", summary="Recent-workload window in seconds.", value_name="SECONDS"),
+                    _option("--limit", summary="Maximum returned workloads.", value_name="COUNT"),
+                ),
+            ),
+            _node(
                 "diagnose",
                 "Explain one request from bounded router evidence without replaying it.",
                 handler=_handler("anvil_serving.router_diagnostics", attribute="dispatch", argv_prefix=()),
@@ -118,9 +137,10 @@ def commands() -> CommandNode:
                 "Validate and atomically install a router config, including tier-set migrations.",
                 "anvil_serving.router_manage",
                 role="router",
+                forward_resolution_options=True,
                 options=CONFIRM_OPTIONS
                 + (
-                    _option("--config", summary="Complete direct router config.", value_name="PATH"),
+                    _option("--config", summary="Complete router config to validate and install.", value_name="PATH"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
                     _option(
                         "--drain-timeout",
@@ -185,62 +205,66 @@ def commands() -> CommandNode:
                 role="router",
                 options=(
                     _option("--tier", summary="Optional tier id.", value_name="ID"),
+                    _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
                 ),
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "status"),),
-                    allowed=("tier", "router_url"),
+                    allowed=("tier", "member", "router_url"),
                 ),
             ),
             _resource_node(
                 "quiesce",
-                "Quiesce one router tier.",
+                "Quiesce one router tier or declared member.",
                 "anvil_serving.router_manage",
                 role="router",
                 options=CONFIRM_OPTIONS
                 + (
                     _option("--tier", summary="Tier id.", value_name="ID"),
+                    _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
                 ),
                 mutation="mutate",
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "quiesce"),),
-                    allowed=("tier", "router_url", "timeout", "dry_run"),
+                    allowed=("tier", "member", "router_url", "timeout", "dry_run"),
                 ),
             ),
             _resource_node(
                 "drain",
-                "Wait for a quiesced tier to drain.",
+                "Wait for a quiesced tier or declared member to drain.",
                 "anvil_serving.router_manage",
                 role="router",
                 options=(
                     _option("--tier", summary="Tier id.", value_name="ID"),
+                    _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
                     _option("--timeout", summary="Positive drain timeout.", value_name="SECONDS"),
                 ),
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "drain"),),
-                    allowed=("tier", "router_url", "timeout", "dry_run"),
+                    allowed=("tier", "member", "router_url", "timeout", "dry_run"),
                 ),
             ),
             _resource_node(
                 "readmit",
-                "Safely readmit one router tier.",
+                "Safely readmit one router tier or declared member.",
                 "anvil_serving.router_manage",
                 role="router",
                 options=CONFIRM_OPTIONS
                 + (
                     _option("--tier", summary="Tier id.", value_name="ID"),
+                    _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
                 ),
                 mutation="mutate",
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "readmit"),),
-                    allowed=("tier", "router_url", "timeout", "dry_run"),
+                    allowed=("tier", "member", "router_url", "timeout", "dry_run"),
                 ),
             ),
             _resource_node(

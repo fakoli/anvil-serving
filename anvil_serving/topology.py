@@ -20,6 +20,14 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from .fleet_bootstrap import (
+    InstallAdapter,
+    SupervisorAdapter,
+    _valid_bootstrap_component as _valid_bootstrap_component,
+    _bootstrap_paths_overlap,
+    _valid_bootstrap_path,
+)
+
 
 SCHEMA_VERSION = 1
 _ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
@@ -83,6 +91,8 @@ _MODEL_WORKLOAD_MARKERS_BY_LENGTH = tuple(sorted(_MODEL_WORKLOAD_MARKERS, key=le
 _MODEL_WORKLOAD_VERSION_RE = re.compile(r"^v[0-9]+$")
 _MODEL_WORKLOAD_VERSION_PREFIX_RE = re.compile(r"^v[0-9]+")
 _GPU_UUID_RE = re.compile(r"^GPU-[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_SUPERVISOR_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
 _SSH_USERINFO_DELIMITERS = frozenset({":", ";", "@", "/", "\\", "?", "#"})
 _MAX_PERCENT_DECODE_PASSES = 4
 _MAX_NESTED_STRUCTURE_DEPTH = 64
@@ -106,7 +116,22 @@ _TOPOLOGY_FIELDS = frozenset(
     }
 )
 _CAPACITY_POLICY_FIELDS = frozenset({"id", "allow_model_workloads", "allow_experimental_model_workloads"})
-_HOST_FIELDS = frozenset({"id", "roles", "address", "capacity_policy", "os"})
+_HOST_FIELDS = frozenset({"id", "roles", "address", "capacity_policy", "os", "bootstrap"})
+_HOST_BOOTSTRAP_FIELDS = frozenset(
+    {
+        "enabled",
+        "bootstrap_authorized",
+        "execution_runtime",
+        "staging_root",
+        "install_root",
+        "python_executable",
+        "receiver_path",
+        "receiver_sha256",
+        "install_adapter",
+        "supervisor_adapter",
+        "supervisor_id",
+    }
+)
 _HOST_OSES = frozenset({"linux", "macos", "windows"})
 _RUNTIME_FIELDS = frozenset({"id", "host", "role"})
 _RESOURCE_FIELDS = frozenset(
@@ -159,12 +184,30 @@ class CapacityPolicy:
 
 
 @dataclass(frozen=True)
+class HostBootstrap:
+    """One host-owned, declaration-only bootstrap target."""
+
+    enabled: bool
+    bootstrap_authorized: bool
+    execution_runtime: str
+    staging_root: str
+    install_root: str
+    python_executable: str
+    receiver_path: str
+    receiver_sha256: str
+    install_adapter: InstallAdapter
+    supervisor_adapter: SupervisorAdapter
+    supervisor_id: str
+
+
+@dataclass(frozen=True)
 class Host:
     id: str
     roles: tuple[str, ...]
     address: str | None = None
     capacity_policy: str | None = None
     os: str | None = None
+    bootstrap: HostBootstrap | None = None
 
 
 @dataclass(frozen=True)
@@ -283,8 +326,12 @@ class Topology:
 
 def topology_snapshot_identity(topology: Topology) -> str:
     """Return a deterministic identity for all validated topology content."""
+    content = asdict(topology)
+    for host in content["hosts"]:
+        if host.get("bootstrap") is None:
+            host.pop("bootstrap")
     payload = json.dumps(
-        asdict(topology),
+        content,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=True,
@@ -345,6 +392,7 @@ def validate_topology(data: Mapping[str, Any]) -> TopologyValidationResult:
         command_runtime,
         errors,
     )
+    _validate_bootstrap_references(hosts, runtimes, errors)
 
     if errors:
         return TopologyValidationResult(None, tuple(errors))
@@ -518,9 +566,117 @@ def _parse_hosts(raw: object, errors: list[TopologyError]) -> list[tuple[int, Ho
         host_os = _optional_string(record, "os", path, errors)
         if host_os is not None and host_os not in _HOST_OSES:
             _error(errors, f"{path}.os", f"must be one of {sorted(_HOST_OSES)}", "value")
+        bootstrap = _parse_host_bootstrap(record.get("bootstrap"), host_os, path, errors)
         if host_id is not None and roles is not None:
-            parsed.append((index, Host(host_id, roles, address, policy, host_os)))
+            parsed.append((index, Host(host_id, roles, address, policy, host_os, bootstrap)))
     return parsed
+
+
+def _parse_host_bootstrap(
+    raw: object,
+    host_os: str | None,
+    host_path: str,
+    errors: list[TopologyError],
+) -> HostBootstrap | None:
+    if raw is None:
+        return None
+    path = f"{host_path}.bootstrap"
+    if type(raw) is not dict:
+        _error(errors, path, "must be a table", "type")
+        return None
+    before = len(errors)
+    _reject_unknown_keys(raw, path, _HOST_BOOTSTRAP_FIELDS, errors)
+    enabled = _optional_bool(raw, "enabled", path, errors, False)
+    authorized = _optional_bool(raw, "bootstrap_authorized", path, errors, False)
+    execution_runtime = _required_id(raw, "execution_runtime", path, errors)
+    staging_root = _required_bootstrap_path(raw, "staging_root", host_os, path, errors)
+    install_root = _required_bootstrap_path(raw, "install_root", host_os, path, errors)
+    python_executable = _required_bootstrap_path(
+        raw, "python_executable", host_os, path, errors
+    )
+    receiver_path = _required_bootstrap_path(raw, "receiver_path", host_os, path, errors)
+    receiver_sha256 = _required_string(raw, "receiver_sha256", path, errors)
+    if receiver_sha256 is not None and _SHA256_RE.fullmatch(receiver_sha256) is None:
+        _error(errors, f"{path}.receiver_sha256", "must be 64 lowercase hexadecimal characters", "value")
+    install_adapter = _bootstrap_enum(
+        raw, "install_adapter", InstallAdapter, path, errors
+    )
+    supervisor_adapter = _bootstrap_enum(
+        raw, "supervisor_adapter", SupervisorAdapter, path, errors
+    )
+    supervisor_id = _required_string(raw, "supervisor_id", path, errors)
+    if supervisor_id is not None and _SUPERVISOR_ID_RE.fullmatch(supervisor_id) is None:
+        _error(errors, f"{path}.supervisor_id", "must be a bounded supervisor identifier", "value")
+    if host_os not in {"windows", "linux"}:
+        _error(errors, f"{host_path}.os", "bootstrap requires a windows or linux host OS", "value")
+    expected_supervisor = {
+        "windows": SupervisorAdapter.WINDOWS_SCHEDULED_TASK,
+        "linux": SupervisorAdapter.LINUX_SYSTEMD_USER,
+    }.get(host_os)
+    if supervisor_adapter is not None and supervisor_adapter is not expected_supervisor:
+        _error(errors, f"{path}.supervisor_adapter", "does not match the host OS", "value")
+    if staging_root is not None and install_root is not None:
+        if _bootstrap_paths_overlap(staging_root, install_root, host_os):
+            _error(errors, f"{path}.install_root", "must be distinct from and not nested with staging_root", "value")
+    if len(errors) != before:
+        return None
+    assert None not in (
+        execution_runtime,
+        staging_root,
+        install_root,
+        python_executable,
+        receiver_path,
+        receiver_sha256,
+        install_adapter,
+        supervisor_adapter,
+        supervisor_id,
+    )
+    return HostBootstrap(
+        enabled=enabled,
+        bootstrap_authorized=authorized,
+        execution_runtime=execution_runtime,
+        staging_root=staging_root,
+        install_root=install_root,
+        python_executable=python_executable,
+        receiver_path=receiver_path,
+        receiver_sha256=receiver_sha256,
+        install_adapter=install_adapter,
+        supervisor_adapter=supervisor_adapter,
+        supervisor_id=supervisor_id,
+    )
+
+
+def _bootstrap_enum(
+    record: Mapping[str, Any],
+    key: str,
+    enum_type: type[InstallAdapter] | type[SupervisorAdapter],
+    path: str,
+    errors: list[TopologyError],
+) -> InstallAdapter | SupervisorAdapter | None:
+    value = _required_string(record, key, path, errors)
+    if value is None:
+        return None
+    try:
+        return enum_type(value)
+    except ValueError:
+        _error(errors, f"{path}.{key}", "has an unsupported adapter value", "value")
+        return None
+
+
+def _required_bootstrap_path(
+    record: Mapping[str, Any],
+    key: str,
+    host_os: str | None,
+    path: str,
+    errors: list[TopologyError],
+) -> str | None:
+    value = _required_string(record, key, path, errors)
+    if value is None or host_os not in {"windows", "linux"}:
+        return value
+    if not _valid_bootstrap_path(value, host_os):
+        _error(errors, f"{path}.{key}", "must be a canonical absolute path for the host OS", "value")
+        return None
+    return value
 
 
 def _parse_runtimes(raw: object, errors: list[TopologyError]) -> list[tuple[int, Runtime]]:
@@ -811,6 +967,8 @@ def _validate_references(
                 f"runtime {runtime.id!r} belongs to host {runtime.host!r}, not {transport.host!r}",
                 "reference",
             )
+
+
         allow_unauthenticated_loopback = _allows_unauthenticated_loopback(transport)
         if transport.allow_unauthenticated_loopback and not allow_unauthenticated_loopback:
             _error(
@@ -859,6 +1017,29 @@ def _validate_references(
                     f"role {role!r} has multiple owners on host {resource.host!r}",
                     "ambiguous_owner",
                 )
+
+
+def _validate_bootstrap_references(
+    hosts: list[tuple[int, Host]],
+    runtimes: list[tuple[int, Runtime]],
+    errors: list[TopologyError],
+) -> None:
+    runtime_by_id = {runtime.id: runtime for _, runtime in runtimes}
+    for index, host in hosts:
+        bootstrap = host.bootstrap
+        if bootstrap is None:
+            continue
+        runtime = runtime_by_id.get(bootstrap.execution_runtime)
+        path = f"hosts[{index}].bootstrap.execution_runtime"
+        if runtime is None:
+            _reference_error(errors, path, "runtime", bootstrap.execution_runtime)
+        elif runtime.host != host.id or runtime.role != "native":
+            _error(
+                errors,
+                path,
+                "must name a native runtime owned by this host",
+                "reference",
+            )
 
 
 def _allows_unauthenticated_loopback(transport: Transport) -> bool:

@@ -161,6 +161,24 @@ class RelayBackendError(RuntimeError):
     """
 
 
+class RelayTimeoutError(RelayBackendError):
+    """A fixed timeout classification with no retained transport exception."""
+
+
+def is_relay_timeout(error: BaseException) -> bool:
+    """Classify from exception types only, never provider prose or errno text."""
+    return isinstance(error, (TimeoutError, RelayTimeoutError)) or (
+        isinstance(error, urllib.error.URLError)
+        and isinstance(error.reason, TimeoutError)
+    )
+
+
+def _transport_failure(error: BaseException) -> RelayBackendError:
+    if is_relay_timeout(error):
+        return RelayTimeoutError("model upstream request timed out")
+    return RelayBackendError("model upstream request failed")
+
+
 _CALLER_REJECTION_STATUSES = frozenset((400, 413, 415, 422))
 
 
@@ -263,7 +281,7 @@ def _urlopen_transport(url: str, *, data: bytes, headers: Mapping[str, str],
         _raise_http_error(e, headers)
     except urllib.error.URLError as e:
         _log_transport_error(e, headers)
-        raise RelayBackendError("model upstream request failed") from None
+        raise _transport_failure(e) from None
 
 
 def _urlopen_stream_transport(url: str, *, data: bytes,
@@ -283,7 +301,7 @@ def _urlopen_stream_transport(url: str, *, data: bytes,
         _raise_http_error(e, headers)
     except urllib.error.URLError as e:
         _log_transport_error(e, headers)
-        raise RelayBackendError("model upstream request failed") from None
+        raise _transport_failure(e) from None
 
 
 # --------------------------------------------------------------------------- #
@@ -310,7 +328,7 @@ def _urlopen_get_transport(
         _raise_http_error(e, headers)
     except urllib.error.URLError as e:
         _log_transport_error(e, headers)
-        raise RelayBackendError("model upstream request failed") from None
+        raise _transport_failure(e) from None
 
 
 def _models_endpoint(base_url: str) -> str:
@@ -578,9 +596,7 @@ class RelayBackend:
             # _urlopen_transport already converts it, but this is the safety net).
             # Log the full reason server-side; raise a generic, client-safe message.
             _log_transport_error(exc, headers)
-            raise RelayBackendError(
-                f"model upstream request failed (tier={self._tier.id!r})"
-            ) from None
+            raise _transport_failure(exc) from None
         # Post-read cap for custom transports (or the default when they have
         # already returned the full body). Guards against a runaway response that
         # slipped past the read-cap in the transport layer.
@@ -643,9 +659,7 @@ class RelayBackend:
         except urllib.error.URLError as exc:
             # Safety net for injected transports (the default already converts).
             _log_transport_error(exc, headers)
-            raise RelayBackendError(
-                f"model upstream request failed (tier={self._tier.id!r})"
-            ) from None
+            raise _transport_failure(exc) from None
 
         def relay_response() -> Iterator[str]:
             resp_headers = getattr(resp, "headers", None)

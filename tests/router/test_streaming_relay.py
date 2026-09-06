@@ -14,10 +14,19 @@ from __future__ import annotations
 
 import io
 import json
+import socket
+import threading
+import urllib.error
+from dataclasses import replace
+from functools import partial
 
 import pytest
 
 from anvil_serving.router.backends.relay import RelayBackend, RelayBackendError
+from anvil_serving.router.availability import AvailabilityResult
+from anvil_serving.router.config import ReplicaIdentity, ReplicaMember, RouterConfig, Tier
+from anvil_serving.router.front_door import make_server
+from anvil_serving.router.serve import ReplicaRuntime, RoutingBackend
 from anvil_serving.router.backends.sse import (
     AnthropicStreamAssembler,
     OpenAIStreamAssembler,
@@ -25,6 +34,7 @@ from anvil_serving.router.backends.sse import (
 )
 from anvil_serving.router.internal import InternalRequest, Message
 from tests.router.helpers import make_tier as _tier
+from tests.router.test_backends import _CompletedPressure
 
 
 def _request(stream: bool = True) -> InternalRequest:
@@ -403,3 +413,465 @@ def test_openai_streaming_usage_flows_to_dialect_usage_chunk():
         "completion_tokens": 2,
         "total_tokens": 14,
     }
+
+
+# --------------------------------------------------------------------------- #
+# Qualified replica sets T009 — actual relay SSE terminal ownership
+# --------------------------------------------------------------------------- #
+class _ReplicaReadiness:
+    def __init__(self, results: dict[str, AvailabilityResult]) -> None:
+        self.results = results
+        self.calls: list[str] = []
+
+    def check_member(self, _tier, member_id: str) -> AvailabilityResult:
+        self.calls.append(member_id)
+        return self.results[member_id]
+
+
+def _replica_stream_tier(strategy="round_robin"):
+    return Tier(
+        id="replica-stream",
+        base_url="",
+        dialect="openai",
+        context_limit=200_000,
+        privacy="local",
+        tool_support=True,
+        auth_env="EXAMPLE_KEY",
+        model="concrete-model",
+        health_path="/health",
+        model_identity=True,
+        replica_strategy=strategy,
+        replicas=(
+            ReplicaMember(
+                "member-a", "http://127.0.0.1:32001/v1", "node-a",
+                "resource-a", "qualification:a", max_concurrency=2,
+            ),
+            ReplicaMember(
+                "member-b", "http://127.0.0.1:32002/v1", "node-a",
+                "resource-b", "qualification:b", max_concurrency=2,
+            ),
+        ),
+        replica_identity=ReplicaIdentity(
+            model_revision="revision-1",
+            engine_version="engine-1",
+            image_digest="sha256:" + "1" * 64,
+            config_fingerprint="sha256:" + "2" * 64,
+        ),
+    )
+
+
+class _ReplicaStreamTransport:
+    def __init__(self, responses: dict[str, object]) -> None:
+        self.responses = responses
+        self.calls: list[str] = []
+        self.opened: list[object] = []
+
+    def __call__(self, url, *, data, headers, timeout):
+        member_id = "member-a" if ":32001/" in url else "member-b"
+        self.calls.append(member_id)
+        result = self.responses[member_id]
+        if callable(result):
+            result = result()
+        if isinstance(result, BaseException):
+            raise result
+        self.opened.append(result)
+        return result
+
+
+class _BlockedSSEResponse(FakeStreamResponse):
+    def __init__(self, first: tuple[bytes, ...], final: tuple[bytes, ...]) -> None:
+        super().__init__(b"")
+        self.first = first
+        self.final = final
+        self.first_sent = threading.Event()
+        self.release = threading.Event()
+
+    def __iter__(self):
+        self.first_sent.set()
+        yield from self.first
+        assert self.release.wait(timeout=5)
+        yield from self.final
+
+
+class _TerminalSSEResponse(FakeStreamResponse):
+    """Yield one complete SSE delta, then model an in-flight terminal error."""
+
+    def __init__(self, error: BaseException) -> None:
+        super().__init__(b"")
+        self.error = error
+
+    def __iter__(self):
+        yield b'data: {"choices":[{"index":0,"delta":{"content":"one"}}]}\n'
+        yield b"\n"
+        raise self.error
+
+
+def _ready(model: str = "concrete-model") -> AvailabilityResult:
+    return AvailabilityResult(True, "ready", "identity_passed", model, model)
+
+
+def _unready() -> AvailabilityResult:
+    return AvailabilityResult(False, "unavailable", "member_unavailable")
+
+
+def _replica_stream_routing(
+    transport, readiness: _ReplicaReadiness, *, strategy="round_robin", buffered=False,
+):
+    tier = _replica_stream_tier(strategy)
+    members = {
+        member.id: RelayBackend(
+            replace(tier, base_url=member.base_url, replicas=()),
+            env={},
+            **({"transport": transport} if buffered else {"stream_transport": transport}),
+        )
+        for member in tier.replicas
+    }
+    return tier, RoutingBackend(
+        RouterConfig(tiers=(tier,), model_routes={"replica.stream": tier.id}),
+        {tier.id: ReplicaRuntime(members)},
+        availability=readiness,
+    )
+
+
+@pytest.fixture(params=("round_robin", "capacity"))
+def replica_routing(request, monkeypatch):
+    """Run the real terminal owner against both strategies, without metrics I/O."""
+    from anvil_serving.router import serve as serve_module
+
+    monkeypatch.setattr(serve_module, "ReplicaPressureCache", _CompletedPressure)
+    return partial(_replica_stream_routing, strategy=request.param)
+
+
+def _assert_replica_idle(routing, tier):
+    snapshot = routing._admission.snapshot(tier.id)
+    assert snapshot.active_requests == 0
+    assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
+    assert snapshot.active_requests == sum(count for _, count in snapshot.member_active_requests)
+
+
+def _replica_stream_request() -> InternalRequest:
+    request = _request(stream=True)
+    request.model = "replica.stream"
+    return request
+
+
+def _count_real_member_releases(monkeypatch, routing: RoutingBackend) -> list[str]:
+    """Count owner calls while retaining TierAdmission's real counters."""
+    calls: list[str] = []
+    acquire_member = routing._admission.acquire_member
+
+    def counted_acquire(tier_id, readiness, pressure=None):
+        lease = acquire_member(tier_id, readiness, pressure)
+        if lease is None:
+            return None
+        release = lease.release
+
+        def counted_release() -> None:
+            calls.append(lease.member_id)
+            release()
+
+        lease.release = counted_release
+        return lease
+
+    monkeypatch.setattr(routing._admission, "acquire_member", counted_acquire)
+    return calls
+
+
+def test_replica_actual_sse_normal_and_malformed_terminal_paths_release_once(
+    monkeypatch, replica_routing,
+):
+    normal: list[FakeStreamResponse] = []
+    malformed: list[FakeStreamResponse] = []
+
+    def normal_response() -> FakeStreamResponse:
+        response = FakeStreamResponse(_openai_sse(
+            {"choices": [{"index": 0, "delta": {"content": "ok"}}]},
+        ))
+        normal.append(response)
+        return response
+
+    def malformed_response() -> FakeStreamResponse:
+        response = FakeStreamResponse(b"data: not-json\n\ndata: [DONE]\n\n")
+        malformed.append(response)
+        return response
+
+    transport = _ReplicaStreamTransport({
+        "member-a": normal_response,
+        "member-b": malformed_response,
+    })
+    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
+    tier, routing = replica_routing(transport, readiness)
+    releases = _count_real_member_releases(monkeypatch, routing)
+
+    assert list(routing.generate(_replica_stream_request())) == ["ok"]
+    assert normal[0].closed
+    assert routing._admission.snapshot(tier.id).active_requests == 0
+    assert list(routing.generate(_replica_stream_request())) == []
+    assert malformed[0].closed
+    snapshot = routing._admission.snapshot(tier.id)
+    assert snapshot.active_requests == 0
+    assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
+    assert transport.calls == ["member-a", "member-b"]
+    assert releases == ["member-a", "member-b"]
+
+
+def test_replica_sse_terminal_iterator_errors_release_selected_member_without_retry(
+    monkeypatch, replica_routing,
+):
+    transport = _ReplicaStreamTransport({
+        "member-a": lambda: _TerminalSSEResponse(TimeoutError("synthetic timeout")),
+        "member-b": lambda: FakeStreamResponse(_openai_sse()),
+    })
+    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
+    tier, routing = replica_routing(transport, readiness)
+    releases = _count_real_member_releases(monkeypatch, routing)
+
+    stream = routing.generate(_replica_stream_request())
+    assert next(stream) == "one"
+    with pytest.raises(TimeoutError, match="synthetic timeout"):
+        next(stream)
+    snapshot = routing._admission.snapshot(tier.id)
+    assert snapshot.active_requests == 0
+    assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
+    assert transport.calls == ["member-a"]
+    assert transport.opened[0].closed
+    assert releases == ["member-a"]
+
+
+@pytest.mark.parametrize(
+    ("terminal", "expected"),
+    [
+        (lambda: _TerminalSSEResponse(GeneratorExit()), GeneratorExit),
+        (
+            lambda: FakeStreamResponse(
+                b'data: {"choices":[{"index":0,"delta":{"content":"one"}}]}\n\n'
+                b'data: {"error":{}}\n\n',
+            ),
+            RelayBackendError,
+        ),
+    ],
+)
+def test_replica_sse_generator_exit_and_provider_error_release_once(
+    monkeypatch, terminal, expected, replica_routing,
+):
+    transport = _ReplicaStreamTransport({
+        "member-a": terminal,
+        "member-b": lambda: FakeStreamResponse(_openai_sse()),
+    })
+    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
+    tier, routing = replica_routing(transport, readiness)
+    releases = _count_real_member_releases(monkeypatch, routing)
+
+    stream = routing.generate(_replica_stream_request())
+    assert next(stream) == "one"
+    with pytest.raises(expected):
+        next(stream)
+    assert transport.opened[0].closed
+    assert routing._admission.snapshot(tier.id).active_requests == 0
+    assert transport.calls == ["member-a"]
+    assert releases == ["member-a"]
+    _assert_replica_idle(routing, tier)
+
+
+def test_replica_sse_close_before_first_and_after_first_release_once(monkeypatch, replica_routing):
+    transport = _ReplicaStreamTransport({
+        "member-a": lambda: FakeStreamResponse(_openai_sse(
+            {"choices": [{"index": 0, "delta": {"content": "one"}}]},
+            {"choices": [{"index": 0, "delta": {"content": "two"}}]},
+        )),
+        "member-b": lambda: FakeStreamResponse(_openai_sse()),
+    })
+    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
+    tier, routing = replica_routing(transport, readiness)
+    releases = _count_real_member_releases(monkeypatch, routing)
+
+    unadvanced = routing.generate(_replica_stream_request())
+    assert routing._admission.snapshot(tier.id).active_requests == 1
+    unadvanced.close()
+    unadvanced.close()
+    assert transport.opened[0].closed
+    assert routing._admission.snapshot(tier.id).active_requests == 0
+
+    # The next request rotates to b. Make b unavailable to pin a as the
+    # selected member and model a client disconnect after its first delta.
+    readiness.results["member-b"] = _unready()
+    cancelling = routing.generate(_replica_stream_request())
+    assert next(cancelling) == "one"
+    cancelling.close()
+    cancelling.close()
+    assert routing._admission.snapshot(tier.id).active_requests == 0
+    assert transport.calls == ["member-a", "member-a"]
+    assert releases == ["member-a", "member-a"]
+    _assert_replica_idle(routing, tier)
+
+
+@pytest.mark.parametrize("path", ("/v1/chat/completions", "/v1/responses"))
+def test_replica_front_door_disconnect_closes_selected_stream_once(
+    monkeypatch, replica_routing, path,
+):
+    transport = _ReplicaStreamTransport({
+        "member-a": lambda: FakeStreamResponse(_openai_sse(
+            {"choices": [{"index": 0, "delta": {"content": "one"}}]},
+        )),
+        "member-b": lambda: FakeStreamResponse(_openai_sse()),
+    })
+    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
+    tier, routing = replica_routing(transport, readiness)
+    releases = _count_real_member_releases(monkeypatch, routing)
+    server = make_server(
+        "127.0.0.1", 0, routing, model_routes=("replica.stream",)
+    )
+    handler = server.RequestHandlerClass
+    original_end_headers = handler.end_headers
+
+    class _DisconnectedWFile:
+        def __init__(self, wrapped) -> None:
+            self._wrapped = wrapped
+
+        def write(self, _payload) -> None:
+            raise BrokenPipeError("synthetic client disconnect")
+
+        def __getattr__(self, name):
+            return getattr(self._wrapped, name)
+
+    def arm_disconnect(self) -> None:
+        original_end_headers(self)
+        self.wfile = _DisconnectedWFile(self.wfile)
+
+    handler.end_headers = arm_disconnect
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    try:
+        host, port = server.server_address[:2]
+        with socket.create_connection((host, port), timeout=5) as raw_socket:
+            request_body = {
+                "model": "replica.stream",
+                "stream": True,
+            }
+            if path == "/v1/responses":
+                request_body["input"] = "hi"
+            else:
+                request_body["messages"] = [{"role": "user", "content": "hi"}]
+            body = json.dumps(request_body).encode("utf-8")
+            raw_socket.sendall(
+                f"POST {path} HTTP/1.1\r\n".encode("ascii")
+                + b"Host: 127.0.0.1\r\nContent-Type: application/json\r\n"
+                + f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n".encode("ascii")
+                + body
+            )
+            while raw_socket.recv(4096):
+                pass
+    finally:
+        handler.end_headers = original_end_headers
+        server.shutdown()
+        server.server_close()
+        server_thread.join(timeout=5)
+
+    assert not server_thread.is_alive()
+    assert transport.calls == ["member-a"]
+    assert routing._admission.snapshot(tier.id).active_requests == 0
+    assert releases == ["member-a"]
+    _assert_replica_idle(routing, tier)
+
+
+def test_replica_readiness_loss_after_dispatch_keeps_stream_and_excludes_next_request(
+    replica_routing,
+):
+    blocked = _BlockedSSEResponse(
+        (
+            b'data: {"choices":[{"index":0,"delta":{"content":"one"}}]}\n',
+            b"\n",
+        ),
+        (
+            b'data: {"choices":[{"index":0,"delta":{"content":"two"}}]}\n',
+            b"\n",
+            b"data: [DONE]\n",
+            b"\n",
+        ),
+    )
+    next_member = FakeStreamResponse(_openai_sse(
+        {"choices": [{"index": 0, "delta": {"content": "b"}}]},
+    ))
+    transport = _ReplicaStreamTransport({"member-a": blocked, "member-b": next_member})
+    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
+    tier, routing = replica_routing(transport, readiness)
+
+    stream = routing.generate(_replica_stream_request())
+    assert next(stream) == "one"
+    assert blocked.first_sent.is_set()
+    readiness.results["member-a"] = _unready()
+    blocked.release.set()
+    assert list(stream) == ["two"]
+    assert routing._admission.snapshot(tier.id).active_requests == 0
+    assert list(routing.generate(_replica_stream_request())) == ["b"]
+    assert transport.calls == ["member-a", "member-b"]
+    _assert_replica_idle(routing, tier)
+
+
+@pytest.mark.parametrize("terminal", (
+    "success", "http-error", "timeout", "malformed", "cancel",
+    "close-before-first", "close-after-first",
+))
+def test_replica_real_buffered_terminal_paths_release_once(
+    monkeypatch, replica_routing, terminal,
+):
+    response = b'{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}'
+    expected_error = None
+    if terminal == "http-error":
+        response = urllib.error.HTTPError("http://127.0.0.1:32001/v1", 503, "synthetic", {}, None)
+        expected_error = RelayBackendError
+    elif terminal == "timeout":
+        response = urllib.error.URLError(TimeoutError())
+        expected_error = RelayBackendError
+    elif terminal == "malformed":
+        response = b"not-json"
+        expected_error = RelayBackendError
+    elif terminal == "cancel":
+        response = GeneratorExit()
+        expected_error = GeneratorExit
+    transport = _ReplicaStreamTransport({"member-a": response, "member-b": b"unused"})
+    tier, routing = replica_routing(
+        transport, _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()}), buffered=True,
+    )
+    releases = _count_real_member_releases(monkeypatch, routing)
+    request = _replica_stream_request()
+    request.stream = False
+    if expected_error is not None:
+        with pytest.raises(expected_error):
+            list(routing.generate(request))
+    else:
+        stream = routing.generate(request)
+        snapshot = routing._admission.snapshot(tier.id)
+        assert snapshot.active_requests == 1
+        assert snapshot.member_active_requests == (("member-a", 1), ("member-b", 0))
+        if terminal == "success":
+            assert list(stream) == ["ok"]
+        elif terminal == "close-after-first":
+            assert next(stream) == "ok"
+            assert routing._admission.snapshot(tier.id).active_requests == 1
+        stream.close()
+        stream.close()
+    _assert_replica_idle(routing, tier)
+    # Buffered relay I/O is lazy; cancelling before iteration releases the
+    # reservation without starting any transport. SSE opens eagerly instead.
+    assert transport.calls == ([] if terminal == "close-before-first" else ["member-a"])
+    assert releases == ["member-a"]
+
+
+@pytest.mark.parametrize("terminal", ("http-error", "timeout"))
+def test_replica_real_sse_open_failure_releases_once(monkeypatch, replica_routing, terminal):
+    error = (
+        urllib.error.HTTPError("http://127.0.0.1:32001/v1", 503, "synthetic", {}, None)
+        if terminal == "http-error" else urllib.error.URLError(TimeoutError())
+    )
+    transport = _ReplicaStreamTransport({"member-a": error, "member-b": b"unused"})
+    tier, routing = replica_routing(
+        transport, _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()}),
+    )
+    releases = _count_real_member_releases(monkeypatch, routing)
+    with pytest.raises(RelayBackendError):
+        list(routing.generate(_replica_stream_request()))
+    _assert_replica_idle(routing, tier)
+    assert transport.calls == ["member-a"]
+    assert transport.opened == []
+    assert releases == ["member-a"]

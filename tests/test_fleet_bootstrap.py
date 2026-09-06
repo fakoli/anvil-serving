@@ -1,0 +1,2570 @@
+from __future__ import annotations
+
+import hashlib
+import io
+import json
+import stat
+import struct
+import subprocess
+import sys
+import warnings
+import zipfile
+from dataclasses import replace
+
+import pytest
+
+from anvil_serving import fleet_bootstrap as bootstrap
+from anvil_serving.targets import CommandSpec, resolve_execution_plan
+from anvil_serving.topology import SCHEMA_VERSION, parse_topology
+
+
+SHA_A = "a" * 64
+SHA_B = "b" * 64
+SHA_D = "d" * 64
+COMMIT = "c" * 40
+OPERATION_ID = "12345678-1234-4234-9234-123456789abc"
+CREATED = "2026-09-05T12:00:00.000001Z"
+UPDATED = "2026-09-05T12:00:01.000002Z"
+
+
+def wheel_bytes(
+    entries: tuple[tuple[str, bytes], ...] = (("anvil_serving/__init__.py", b""),),
+    *,
+    compression: int = zipfile.ZIP_DEFLATED,
+) -> bytes:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", compression=compression) as archive:
+        for name, payload in entries:
+            info = zipfile.ZipInfo(name)
+            info.compress_type = compression
+            info.create_system = 3
+            info.external_attr = (stat.S_IFREG | 0o644) << 16
+            archive.writestr(info, payload)
+    return output.getvalue()
+
+
+def manifest(runtime: bytes | None = None, shim: bytes = b"print('fixed')\n") -> bootstrap.BootstrapManifest:
+    runtime = wheel_bytes() if runtime is None else runtime
+    return bootstrap.BootstrapManifest(
+        package_version="1.2.3rc4",
+        source_commit=COMMIT,
+        runtime_sha256=hashlib.sha256(runtime).hexdigest(),
+        shim_sha256=hashlib.sha256(shim).hexdigest(),
+        expected_node="Node_1",
+        platform=bootstrap.BootstrapPlatform.LINUX,
+        install_adapter=bootstrap.InstallAdapter.PYTHON_WHEEL_VENV,
+        supervisor_adapter=bootstrap.SupervisorAdapter.LINUX_SYSTEMD_USER,
+        install_root_class=bootstrap.InstallRootClass.USER,
+        controller_protocol_min="2025-11-25",
+        controller_protocol_max="2026-07-28",
+    )
+
+
+def receipt(
+    phase: bootstrap.BootstrapPhase,
+    *,
+    outcome: bootstrap.BootstrapOutcome,
+    acceptance: bootstrap.AcceptanceStatus,
+    rollback: bootstrap.RollbackStatus,
+    error: bootstrap.BootstrapErrorCode | None = None,
+    trigger: bootstrap.BootstrapErrorCode | None = None,
+    operation_id: str | None = OPERATION_ID,
+) -> bootstrap.BootstrapReceipt:
+    return bootstrap.BootstrapReceipt(
+        operation_id=operation_id,
+        host="Node_1",
+        topology_sha256=SHA_A,
+        plan_sha256=SHA_B,
+        manifest_sha256=SHA_A,
+        bundle_sha256=SHA_B,
+        platform=bootstrap.BootstrapPlatform.LINUX,
+        install_adapter=bootstrap.InstallAdapter.PYTHON_WHEEL_VENV,
+        supervisor_adapter=bootstrap.SupervisorAdapter.LINUX_SYSTEMD_USER,
+        phase=phase,
+        outcome=outcome,
+        created_at=CREATED,
+        updated_at=UPDATED,
+        acceptance=acceptance,
+        rollback=rollback,
+        error_code=error,
+        trigger_error_code=trigger,
+    )
+
+
+def bootstrap_execution(
+    *,
+    platform: str = "linux",
+    operations: tuple[str, ...] = ("z-operation", "controller-bootstrap"),
+    bootstrap_changes: dict | None = None,
+):
+    windows = platform == "windows"
+    declared = {
+        "enabled": True,
+        "bootstrap_authorized": True,
+        "execution_runtime": "target-native",
+        "staging_root": "C:\\private-stage" if windows else "/var/tmp/private-stage",
+        "install_root": "C:\\private-install" if windows else "/opt/private-install",
+        "python_executable": "C:\\private-python\\python.exe" if windows else "/usr/bin/private-python",
+        "receiver_path": "C:\\private-receiver\\bootstrap.py" if windows else "/opt/private-receiver/bootstrap.py",
+        "receiver_sha256": SHA_A,
+        "install_adapter": "python-wheel-venv",
+        "supervisor_adapter": "windows-scheduled-task" if windows else "linux-systemd-user",
+        "supervisor_id": "anvil-controller",
+    }
+    declared.update(bootstrap_changes or {})
+    topology = parse_topology(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "id": "synthetic-bootstrap-plan",
+            "command_host": "host:operator",
+            "command_runtime": "runtime:operator-native",
+            "capacity_policies": [],
+            "hosts": [
+                {"id": "operator", "roles": ["operator"], "address": "127.0.0.1"},
+                {
+                    "id": "Node_1",
+                    "roles": ["controller"],
+                    "address": "100.64.0.10",
+                    "os": platform,
+                    "bootstrap": declared,
+                },
+            ],
+            "runtimes": [
+                {"id": "operator-native", "host": "operator", "role": "native"},
+                {"id": "target-native", "host": "Node_1", "role": "native"},
+            ],
+            "gpu_roles": [],
+            "resources": [],
+            "transports": [
+                {
+                    "id": "bootstrap-controller",
+                    "kind": "controller",
+                    "host": "Node_1",
+                    "runtime": "target-native",
+                    "endpoint": "http://100.64.0.10:8766",
+                    "auth_env": "SYNTHETIC_BOOTSTRAP_TOKEN",
+                    "allowed_operations": list(operations),
+                    "expected_node": "Node_1",
+                }
+            ],
+        }
+    )
+    command = CommandSpec(
+        name="controller-bootstrap",
+        resource_role=None,
+        supported_transports=("controller", "ssh"),
+        execution_runtime_roles=("native",),
+        mutation_class="write",
+        recovery_capable=True,
+        gpu_role_required=False,
+        execution_host_os=("windows", "linux"),
+        execution_policy="host-bootstrap",
+    )
+    return resolve_execution_plan(topology, command, target="host:Node_1")
+
+
+def plan_manifest(*, platform: str = "linux") -> bootstrap.BootstrapManifest:
+    value = manifest()
+    return replace(
+        value,
+        platform=bootstrap.BootstrapPlatform(platform),
+        supervisor_adapter=(
+            bootstrap.SupervisorAdapter.WINDOWS_SCHEDULED_TASK
+            if platform == "windows"
+            else bootstrap.SupervisorAdapter.LINUX_SYSTEMD_USER
+        ),
+    )
+
+
+def target_config(
+    *, platform: str = "linux", changes: dict | None = None
+) -> bootstrap.BootstrapTargetConfig:
+    plan = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(platform=platform), plan_manifest(platform=platform)
+    )
+    values = {
+        "expected_node": plan.expected_node,
+        "platform": plan.platform,
+        "staging_root": plan.staging_root,
+        "install_root": plan.install_root,
+        "python_executable": plan.python_executable,
+        "receiver_path": plan.receiver_path,
+        "receiver_sha256": plan.receiver_sha256,
+        "install_adapter": plan.install_adapter,
+        "supervisor_adapter": plan.supervisor_adapter,
+        "install_root_class": plan.install_root_class,
+        "supervisor_id": plan.supervisor_id,
+        "bootstrap_enabled": plan.bootstrap_enabled,
+        "bootstrap_authorized": plan.bootstrap_authorized,
+    }
+    values.update(changes or {})
+    return bootstrap.BootstrapTargetConfig(**values)
+
+
+def rewrite_bundle(
+    raw: bytes,
+    *,
+    order: tuple[str, ...] = bootstrap.OUTER_BUNDLE_NAMES,
+    mutate_info=None,
+    mutate_payload=None,
+    archive_comment: bytes = b"",
+) -> bytes:
+    with zipfile.ZipFile(io.BytesIO(raw), "r") as source:
+        payloads = {info.filename: source.read(info) for info in source.infolist()}
+    output = io.BytesIO()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED) as target:
+            target.comment = archive_comment
+            for name in order:
+                info = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_STORED
+                info.create_system = 3
+                info.external_attr = (stat.S_IFREG | 0o600) << 16
+                if mutate_info is not None:
+                    mutate_info(name, info)
+                payload = payloads.get(name, b"x")
+                if mutate_payload is not None:
+                    payload = mutate_payload(name, payload)
+                target.writestr(info, payload)
+    return output.getvalue()
+
+
+def mark_first_entry_encrypted(raw: bytes) -> bytes:
+    changed = bytearray(raw)
+    local = changed.find(b"PK\x03\x04")
+    central = changed.find(b"PK\x01\x02")
+    assert local >= 0 and central >= 0
+    struct.pack_into("<H", changed, local + 6, struct.unpack_from("<H", changed, local + 6)[0] | 1)
+    struct.pack_into(
+        "<H", changed, central + 8, struct.unpack_from("<H", changed, central + 8)[0] | 1
+    )
+    return bytes(changed)
+
+
+def corrupt_first_compressed_byte(raw: bytes) -> bytes:
+    changed = bytearray(raw)
+    local = changed.find(b"PK\x03\x04")
+    assert local >= 0
+    name_bytes, extra_bytes = struct.unpack_from("<2H", changed, local + 26)
+    payload = local + 30 + name_bytes + extra_bytes
+    assert payload < len(changed)
+    changed[payload] = 7
+    return bytes(changed)
+
+
+def receiver_frame(
+    operation: bootstrap.ReceiverOperation,
+    payload: bytes = b"fixed-stage-payload",
+) -> bootstrap.BootstrapReceiverFrame:
+    values = {
+        "operation": operation,
+        "expected_node": "Node_1",
+    }
+    if operation is not bootstrap.ReceiverOperation.IDENTITY:
+        values.update(
+            operation_id=OPERATION_ID,
+            plan_sha256=SHA_B,
+            target_config_sha256=SHA_D,
+        )
+    if operation is bootstrap.ReceiverOperation.STAGE:
+        values.update(
+            bundle_sha256=hashlib.sha256(payload).hexdigest(),
+            bundle_length=len(payload),
+        )
+    if operation is bootstrap.ReceiverOperation.ROLLBACK:
+        values["trigger_error_code"] = bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED
+    return bootstrap.BootstrapReceiverFrame(**values)
+
+
+def receiver_identity_result(
+    *,
+    outcome: bootstrap.BootstrapOutcome = bootstrap.BootstrapOutcome.SUCCESS,
+    receiver_sha256: str | None = SHA_A,
+    target_config_sha256: str | None = SHA_D,
+    receiver_permission: bootstrap.BootstrapPermissionVerdict = (
+        bootstrap.BootstrapPermissionVerdict.OWNER_READONLY
+    ),
+    target_config_permission: bootstrap.BootstrapPermissionVerdict = (
+        bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE
+    ),
+    error_code: bootstrap.BootstrapErrorCode | None = None,
+) -> bootstrap.BootstrapReceiverIdentityResult:
+    return bootstrap.BootstrapReceiverIdentityResult(
+        expected_node="Node_1",
+        outcome=outcome,
+        receiver_sha256=receiver_sha256,
+        target_config_sha256=target_config_sha256,
+        receiver_permission=receiver_permission,
+        target_config_permission=target_config_permission,
+        error_code=error_code,
+    )
+
+
+def receiver_operation_result(
+    operation: bootstrap.ReceiverOperation = bootstrap.ReceiverOperation.STAGE,
+    phase: bootstrap.BootstrapPhase = bootstrap.BootstrapPhase.STAGED,
+    *,
+    bound: bool = True,
+    outcome: bootstrap.BootstrapOutcome = bootstrap.BootstrapOutcome.PENDING,
+    error_code: bootstrap.BootstrapErrorCode | None = None,
+    trigger_error_code: bootstrap.BootstrapErrorCode | None = None,
+) -> bootstrap.BootstrapReceiverOperationResult:
+    return bootstrap.BootstrapReceiverOperationResult(
+        operation=operation,
+        expected_node="Node_1",
+        operation_id=OPERATION_ID,
+        plan_sha256=SHA_B,
+        target_config_sha256=SHA_D,
+        bound=bound,
+        bundle_sha256=SHA_A if bound else None,
+        bundle_length=4096 if bound else None,
+        manifest_sha256=SHA_D if bound else None,
+        phase=phase,
+        outcome=outcome,
+        error_code=error_code,
+        trigger_error_code=trigger_error_code,
+    )
+
+
+def receiver_result_state(phase: bootstrap.BootstrapPhase) -> dict:
+    if phase in {
+        bootstrap.BootstrapPhase.STAGED,
+        bootstrap.BootstrapPhase.VERIFIED,
+        bootstrap.BootstrapPhase.INSTALLED,
+        bootstrap.BootstrapPhase.ACTIVATED,
+        bootstrap.BootstrapPhase.RESTARTED,
+    }:
+        return {
+            "outcome": bootstrap.BootstrapOutcome.PENDING,
+            "error_code": None,
+            "trigger_error_code": None,
+        }
+    if phase is bootstrap.BootstrapPhase.ROLLBACK_STARTED:
+        return {
+            "outcome": bootstrap.BootstrapOutcome.PENDING,
+            "error_code": bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED,
+            "trigger_error_code": None,
+        }
+    if phase in {
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+    }:
+        return {
+            "outcome": bootstrap.BootstrapOutcome.ERROR,
+            "error_code": bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED,
+            "trigger_error_code": None,
+        }
+    if phase is bootstrap.BootstrapPhase.CLEANUP_FAILED:
+        return {
+            "outcome": bootstrap.BootstrapOutcome.ERROR,
+            "error_code": bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+            "trigger_error_code": bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED,
+        }
+    return {
+        "outcome": bootstrap.BootstrapOutcome.PENDING,
+        "error_code": None,
+        "trigger_error_code": None,
+    }
+
+
+RECEIVER_RESULT_PHASES = {
+    bootstrap.ReceiverOperation.STAGE: (
+        bootstrap.BootstrapPhase.STAGED,
+        bootstrap.BootstrapPhase.VERIFIED,
+        bootstrap.BootstrapPhase.INSTALLED,
+        bootstrap.BootstrapPhase.ACTIVATED,
+        bootstrap.BootstrapPhase.RESTARTED,
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+    ),
+    bootstrap.ReceiverOperation.ACTIVATE: (
+        bootstrap.BootstrapPhase.INSTALLED,
+        bootstrap.BootstrapPhase.ACTIVATED,
+        bootstrap.BootstrapPhase.RESTARTED,
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+    ),
+    bootstrap.ReceiverOperation.STATUS: (
+        bootstrap.BootstrapPhase.STAGED,
+        bootstrap.BootstrapPhase.VERIFIED,
+        bootstrap.BootstrapPhase.INSTALLED,
+        bootstrap.BootstrapPhase.ACTIVATED,
+        bootstrap.BootstrapPhase.RESTARTED,
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+    ),
+    bootstrap.ReceiverOperation.ROLLBACK: (
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+    ),
+}
+
+
+@pytest.mark.parametrize("operation", tuple(bootstrap.ReceiverOperation))
+def test_receiver_frames_have_exact_fields_and_canonical_roundtrip(operation):
+    payload = b"fixed-stage-payload" if operation is bootstrap.ReceiverOperation.STAGE else b""
+    frame = receiver_frame(operation, payload)
+    encoded = bootstrap.encode_receiver_frame(frame, payload)
+    decoded, decoded_payload = bootstrap.decode_receiver_frame(encoded)
+
+    expected_fields = {"schema", "operation", "expected_node"}
+    if operation is not bootstrap.ReceiverOperation.IDENTITY:
+        expected_fields |= {"operation_id", "plan_sha256", "target_config_sha256"}
+    if operation is bootstrap.ReceiverOperation.STAGE:
+        expected_fields |= {"bundle_sha256", "bundle_length"}
+    if operation is bootstrap.ReceiverOperation.ROLLBACK:
+        expected_fields.add("trigger_error_code")
+    assert set(frame.to_dict()) == expected_fields
+    assert decoded == frame
+    assert decoded_payload == payload
+    assert encoded[4 : 4 + int.from_bytes(encoded[:4], "big")] == bootstrap.canonical_json_bytes(
+        frame.to_dict()
+    )
+
+
+def test_receiver_identity_has_literal_wire_bytes():
+    metadata = (
+        b'{"expected_node":"Node_1","operation":"identity",'
+        b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1"}'
+    )
+    expected = len(metadata).to_bytes(4, "big") + metadata
+    frame = bootstrap.BootstrapReceiverFrame(
+        operation=bootstrap.ReceiverOperation.IDENTITY,
+        expected_node="Node_1",
+    )
+    assert bootstrap.encode_receiver_frame(frame) == expected
+    assert bootstrap.decode_receiver_frame(expected) == (frame, b"")
+
+
+@pytest.mark.parametrize(
+    ("operation", "payload", "metadata"),
+    (
+        (
+            bootstrap.ReceiverOperation.STAGE,
+            b"fixed-stage-payload",
+            b'{"bundle_length":19,"bundle_sha256":"b0d47a728249cb5916ecaefda849de7b62e3090890d326530c1804d868169b53",'
+            b'"expected_node":"Node_1","operation":"stage","operation_id":"12345678-1234-4234-9234-123456789abc",'
+            b'"plan_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+            b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1",'
+            b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}',
+        ),
+        (
+            bootstrap.ReceiverOperation.ACTIVATE,
+            b"",
+            b'{"expected_node":"Node_1","operation":"activate","operation_id":"12345678-1234-4234-9234-123456789abc",'
+            b'"plan_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+            b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1",'
+            b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}',
+        ),
+        (
+            bootstrap.ReceiverOperation.STATUS,
+            b"",
+            b'{"expected_node":"Node_1","operation":"status","operation_id":"12345678-1234-4234-9234-123456789abc",'
+            b'"plan_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+            b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1",'
+            b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}',
+        ),
+    ),
+)
+def test_existing_operational_receiver_frames_retain_literal_wire_bytes(
+    operation, payload, metadata
+):
+    expected = len(metadata).to_bytes(4, "big") + metadata + payload
+    frame = receiver_frame(operation, payload)
+    assert bootstrap.encode_receiver_frame(frame, payload) == expected
+    assert bootstrap.decode_receiver_frame(expected) == (frame, payload)
+
+
+def test_receiver_rollback_has_literal_trigger_wire_bytes():
+    metadata = (
+        b'{"expected_node":"Node_1","operation":"rollback","operation_id":"12345678-1234-4234-9234-123456789abc",'
+        b'"plan_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+        b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1",'
+        b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",'
+        b'"trigger_error_code":"acceptance-failed"}'
+    )
+    expected = len(metadata).to_bytes(4, "big") + metadata
+    frame = receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b"")
+    assert bootstrap.encode_receiver_frame(frame) == expected
+    assert bootstrap.decode_receiver_frame(expected) == (frame, b"")
+
+
+@pytest.mark.parametrize(
+    "trigger",
+    tuple(
+        code
+        for code in bootstrap.BootstrapErrorCode
+        if code is not bootstrap.BootstrapErrorCode.CLEANUP_FAILED
+    ),
+)
+def test_receiver_rollback_roundtrips_every_noncleanup_error(trigger):
+    frame = replace(
+        receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b""),
+        trigger_error_code=trigger,
+    )
+    encoded = bootstrap.encode_receiver_frame(frame)
+    decoded, payload = bootstrap.decode_receiver_frame(encoded)
+    assert decoded == frame
+    assert payload == b""
+    assert decoded.to_dict()["trigger_error_code"] == trigger.value
+
+
+@pytest.mark.parametrize(
+    "trigger",
+    (
+        None,
+        bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+        bootstrap.BootstrapOutcome.ERROR,
+        "acceptance-failed",
+        True,
+        object(),
+    ),
+)
+def test_receiver_rollback_constructor_rejects_missing_cleanup_and_wrong_trigger_types(
+    trigger,
+):
+    values = receiver_frame(bootstrap.ReceiverOperation.ACTIVATE).to_dict()
+    values["operation"] = bootstrap.ReceiverOperation.ROLLBACK
+    values.pop("schema")
+    values["trigger_error_code"] = trigger
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapReceiverFrame(**values)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    ("omit", "wire_trigger"),
+    (
+        (True, None),
+        (False, None),
+        (False, "cleanup-failed"),
+        (False, "unknown"),
+        (False, bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED),
+    ),
+)
+def test_receiver_rollback_wire_rejects_missing_null_cleanup_and_unknown_trigger(
+    omit, wire_trigger,
+):
+    raw = receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b"").to_dict()
+    if omit:
+        raw.pop("trigger_error_code")
+    else:
+        raw["trigger_error_code"] = wire_trigger
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapReceiverFrame.from_dict(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "operation",
+    (
+        bootstrap.ReceiverOperation.IDENTITY,
+        bootstrap.ReceiverOperation.STAGE,
+        bootstrap.ReceiverOperation.ACTIVATE,
+        bootstrap.ReceiverOperation.STATUS,
+    ),
+)
+def test_receiver_trigger_field_is_forbidden_for_every_nonrollback_operation(operation):
+    payload = b"fixed-stage-payload" if operation is bootstrap.ReceiverOperation.STAGE else b""
+    raw = receiver_frame(operation, payload).to_dict()
+    raw["trigger_error_code"] = "acceptance-failed"
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapReceiverFrame.from_dict(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    (
+        ("schema", "other-schema"),
+        ("operation", "rollback"),
+        ("expected_node", "private.invalid"),
+        ("plan_sha256", "A" * 64),
+        ("target_config_sha256", "D" * 64),
+        ("trigger_error_code", bootstrap.BootstrapErrorCode.CLEANUP_FAILED),
+    ),
+)
+def test_receiver_frame_tampering_is_revalidated_before_dict_or_encoding(
+    field_name, value
+):
+    frame = receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b"")
+    object.__setattr__(frame, field_name, value)
+    for action in (frame.to_dict, lambda: bootstrap.encode_receiver_frame(frame)):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            action()
+        assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_frame_subclass_is_rejected_by_constructor_dict_and_encoder():
+    class ReceiverFrameSubclass(bootstrap.BootstrapReceiverFrame):
+        pass
+
+    with pytest.raises(bootstrap.BootstrapContractError):
+        ReceiverFrameSubclass(
+            operation=bootstrap.ReceiverOperation.IDENTITY,
+            expected_node="Node_1",
+        )
+
+    frame = object.__new__(ReceiverFrameSubclass)
+    for name, value in receiver_frame(
+        bootstrap.ReceiverOperation.IDENTITY, b""
+    ).__dict__.items():
+        object.__setattr__(frame, name, value)
+    for action in (frame.to_dict, lambda: bootstrap.encode_receiver_frame(frame)):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            action()
+        assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_frame_direct_constructor_is_exact_frozen_and_closed():
+    identity = receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b"")
+    with pytest.raises((AttributeError, TypeError)):
+        identity.expected_node = "other"  # type: ignore[misc]
+    for values in (
+        {"operation": "identity", "expected_node": "Node_1"},
+        {
+            "operation": bootstrap.ReceiverOperation.IDENTITY,
+            "expected_node": "Node_1",
+            "operation_id": OPERATION_ID,
+        },
+        {
+            "operation": bootstrap.ReceiverOperation.STAGE,
+            "expected_node": "Node_1",
+            "operation_id": OPERATION_ID,
+            "plan_sha256": SHA_B,
+            "target_config_sha256": SHA_D,
+            "bundle_sha256": SHA_A,
+            "bundle_length": True,
+        },
+        {
+            "operation": bootstrap.ReceiverOperation.ACTIVATE,
+            "expected_node": "Node_1",
+            "operation_id": OPERATION_ID,
+            "plan_sha256": SHA_B,
+            "target_config_sha256": SHA_D,
+            "bundle_sha256": SHA_A,
+            "bundle_length": 1,
+        },
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.BootstrapReceiverFrame(**values)
+        assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "change",
+    (
+        {"expected_node": "1node"},
+        {"operation_id": OPERATION_ID.upper()},
+        {"operation_id": "12345678-1234-1234-9234-123456789abc"},
+        {"plan_sha256": "A" * 64},
+        {"target_config_sha256": "sha256:" + SHA_D},
+    ),
+)
+def test_receiver_operational_frames_reject_identity_defects(change):
+    raw = receiver_frame(bootstrap.ReceiverOperation.ACTIVATE).to_dict()
+    raw.update(change)
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapReceiverFrame.from_dict(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "raw",
+    (
+        {"schema": bootstrap.RECEIVER_FRAME_SCHEMA, "operation": "unknown", "expected_node": "Node_1"},
+        {
+            "schema": bootstrap.RECEIVER_FRAME_SCHEMA,
+            "operation": "identity",
+            "expected_node": "Node_1",
+            "command": "private-command",
+        },
+        {
+            "schema": bootstrap.RECEIVER_FRAME_SCHEMA,
+            "operation": "activate",
+            "expected_node": "Node_1",
+            "operation_id": OPERATION_ID,
+            "plan_sha256": SHA_B,
+            "target_config_sha256": None,
+        },
+        {
+            "schema": bootstrap.RECEIVER_FRAME_SCHEMA,
+            "operation": "stage",
+            "expected_node": "Node_1",
+            "operation_id": OPERATION_ID,
+            "plan_sha256": SHA_B,
+            "target_config_sha256": SHA_D,
+            "bundle_sha256": SHA_A,
+            "bundle_length": False,
+        },
+    ),
+)
+def test_receiver_frame_from_dict_rejects_unknown_null_extra_and_bool(raw):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapReceiverFrame.from_dict(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "raw",
+    (
+        b"",
+        b"\x00\x00\x00",
+        b"\x00\x00\x00\x00x",
+        (4097).to_bytes(4, "big") + b"x",
+        (10).to_bytes(4, "big") + b"{}",
+        (1).to_bytes(4, "big") + b"\xff",
+    ),
+)
+def test_receiver_decode_rejects_header_metadata_and_utf8_bounds(raw):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_frame(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_decode_rejects_duplicate_noncanonical_and_unknown_json():
+    duplicate = (
+        b'{"expected_node":"Node_1","operation":"identity","operation":"identity",'
+        b'"schema":"anvil-serving.fleet-bootstrap-receiver-frame/v1"}'
+    )
+    noncanonical = json.dumps(
+        receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b"").to_dict()
+    ).encode()
+    unknown = bootstrap.canonical_json_bytes(
+        {
+            "schema": bootstrap.RECEIVER_FRAME_SCHEMA,
+            "operation": "identity",
+            "expected_node": "Node_1",
+            "path": "private-path",
+        }
+    )
+    for metadata in (duplicate, noncanonical, unknown):
+        raw = len(metadata).to_bytes(4, "big") + metadata
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.decode_receiver_frame(raw)
+        assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_payload_requires_exact_length_digest_and_eof():
+    payload = b"fixed-stage-payload"
+    stage = receiver_frame(bootstrap.ReceiverOperation.STAGE, payload)
+    metadata = bootstrap.canonical_json_bytes(stage.to_dict())
+    prefix = len(metadata).to_bytes(4, "big") + metadata
+    for bad in (prefix + payload[:-1], prefix + payload + b"x"):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.decode_receiver_frame(bad)
+        assert caught.value.code == "invalid-contract"
+
+    wrong = replace(stage, bundle_sha256=SHA_A)
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.encode_receiver_frame(wrong, payload)
+    assert caught.value.code == "digest-mismatch"
+    wrong_metadata = bootstrap.canonical_json_bytes(wrong.to_dict())
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_frame(
+            len(wrong_metadata).to_bytes(4, "big") + wrong_metadata + payload
+        )
+    assert caught.value.code == "digest-mismatch"
+
+    identity = receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b"")
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_frame(bootstrap.encode_receiver_frame(identity) + b"x")
+    assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_stage_accepts_maximum_payload_without_bundle_parsing(monkeypatch):
+    payload = b"x" * bootstrap.MAX_BUNDLE_BYTES
+    frame = receiver_frame(bootstrap.ReceiverOperation.STAGE, payload)
+
+    def unexpected(*_args, **_kwargs):
+        raise AssertionError("frame codec called bundle validation")
+
+    monkeypatch.setattr(bootstrap, "validate_bundle", unexpected)
+    encoded = bootstrap.encode_receiver_frame(frame, payload)
+    decoded, decoded_payload = bootstrap.decode_receiver_frame(encoded)
+    assert decoded == frame
+    assert decoded_payload == payload
+
+
+def test_receiver_codec_errors_do_not_echo_seeded_private_values():
+    seeded = "private-path-token-command.invalid"
+    raw = receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b"").to_dict()
+    raw["expected_node"] = seeded
+    metadata = bootstrap.canonical_json_bytes(raw)
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_frame(len(metadata).to_bytes(4, "big") + metadata)
+    rendered = str(caught.value) + repr(caught.value)
+    assert seeded not in rendered
+    assert caught.value.__cause__ is None
+
+
+@pytest.mark.parametrize(
+    ("result", "metadata"),
+    (
+        (
+            bootstrap.BootstrapReceiverProtocolError(),
+            b'{"error_code":"invalid-contract","expected_node":null,"operation":null,'
+            b'"outcome":"error","schema":"anvil-serving.fleet-bootstrap-receiver-result/v1"}',
+        ),
+        (
+            receiver_identity_result(),
+            b'{"error_code":null,"expected_node":"Node_1","operation":"identity","outcome":"success",'
+            b'"receiver_permission":"owner-readonly",'
+            b'"receiver_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",'
+            b'"schema":"anvil-serving.fleet-bootstrap-receiver-result/v1",'
+            b'"target_config_permission":"owner-writable",'
+            b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}',
+        ),
+        (
+            receiver_operation_result(),
+            b'{"bound":true,"bundle_length":4096,'
+            b'"bundle_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",'
+            b'"error_code":null,"expected_node":"Node_1",'
+            b'"manifest_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",'
+            b'"operation":"stage","operation_id":"12345678-1234-4234-9234-123456789abc",'
+            b'"outcome":"pending","phase":"staged",'
+            b'"plan_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+            b'"schema":"anvil-serving.fleet-bootstrap-receiver-result/v1",'
+            b'"target_config_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",'
+            b'"trigger_error_code":null}',
+        ),
+    ),
+)
+def test_receiver_results_have_literal_canonical_wire_bytes(result, metadata):
+    expected = len(metadata).to_bytes(4, "big") + metadata
+    assert bootstrap.encode_receiver_result(result) == expected
+    assert bootstrap.decode_receiver_result(expected) == result
+
+
+@pytest.mark.parametrize(
+    ("parser", "value"),
+    (
+        (
+            bootstrap.BootstrapReceiverProtocolError.from_dict,
+            bootstrap.BootstrapReceiverProtocolError(),
+        ),
+        (
+            bootstrap.BootstrapReceiverIdentityResult.from_dict,
+            receiver_identity_result(),
+        ),
+        (
+            bootstrap.BootstrapReceiverOperationResult.from_dict,
+            receiver_operation_result(),
+        ),
+    ),
+)
+def test_receiver_result_variants_require_their_exact_closed_field_sets(parser, value):
+    raw = value.to_dict()
+    missing = dict(raw)
+    missing.pop(next(iter(missing)))
+    extra = {**raw, "detail": "private"}
+    for malformed in (missing, extra, {"schema": bootstrap.RECEIVER_RESULT_SCHEMA}):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            parser(malformed)
+        assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"operation": "identity"},
+        {"expected_node": "Node_1"},
+        {"outcome": "error"},
+        {"error_code": "invalid-contract"},
+    ),
+)
+def test_receiver_protocol_error_constants_cannot_be_overridden_or_tampered(changes):
+    with pytest.raises(TypeError):
+        bootstrap.BootstrapReceiverProtocolError(**changes)
+    value = bootstrap.BootstrapReceiverProtocolError()
+    field_name, field_value = next(iter(changes.items()))
+    object.__setattr__(value, field_name, field_value)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        value.to_dict()
+
+
+@pytest.mark.parametrize(
+    ("operation", "phase"),
+    tuple(
+        (operation, phase)
+        for operation, phases in RECEIVER_RESULT_PHASES.items()
+        for phase in phases
+    ),
+)
+def test_receiver_operation_result_roundtrips_every_allowed_bound_phase(
+    operation, phase
+):
+    result = receiver_operation_result(operation, phase, **receiver_result_state(phase))
+    assert bootstrap.decode_receiver_result(
+        bootstrap.encode_receiver_result(result)
+    ) == result
+
+
+@pytest.mark.parametrize(
+    ("operation", "phase"),
+    tuple(
+        (operation, phase)
+        for operation, allowed in RECEIVER_RESULT_PHASES.items()
+        for phase in bootstrap.BootstrapPhase
+        if phase not in allowed and phase is not bootstrap.BootstrapPhase.REFUSED
+    ),
+)
+def test_receiver_operation_result_rejects_every_disallowed_bound_phase(
+    operation, phase
+):
+    with pytest.raises(bootstrap.BootstrapContractError, match="inconsistent"):
+        receiver_operation_result(operation, phase, **receiver_result_state(phase))
+
+
+@pytest.mark.parametrize(
+    "operation",
+    (
+        bootstrap.ReceiverOperation.STAGE,
+        bootstrap.ReceiverOperation.ACTIVATE,
+        bootstrap.ReceiverOperation.STATUS,
+        bootstrap.ReceiverOperation.ROLLBACK,
+    ),
+)
+def test_receiver_operation_result_allows_exact_unbound_refusal(operation):
+    result = receiver_operation_result(
+        operation,
+        bootstrap.BootstrapPhase.REFUSED,
+        bound=False,
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        error_code=bootstrap.BootstrapErrorCode.PRECONDITION_FAILED,
+    )
+    assert bootstrap.decode_receiver_result(
+        bootstrap.encode_receiver_result(result)
+    ) == result
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"operation": bootstrap.ReceiverOperation.IDENTITY},
+        {"bound": 1},
+        {"bundle_sha256": None},
+        {"bundle_length": 0},
+        {"bundle_length": bootstrap.MAX_BUNDLE_BYTES + 1},
+        {"manifest_sha256": None},
+        {"phase": bootstrap.BootstrapPhase.REFUSED},
+        {"phase": bootstrap.BootstrapPhase.ACCEPTED},
+        {"outcome": bootstrap.BootstrapOutcome.SUCCESS},
+        {"error_code": bootstrap.BootstrapErrorCode.INTERNAL_ERROR},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.TIMEOUT},
+    ),
+)
+def test_receiver_bound_operation_result_rejects_type_identity_and_state_defects(
+    changes,
+):
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(receiver_operation_result(), **changes)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"bundle_sha256": SHA_A},
+        {"bundle_length": 1},
+        {"manifest_sha256": SHA_D},
+        {"phase": bootstrap.BootstrapPhase.STAGED},
+        {"outcome": bootstrap.BootstrapOutcome.PENDING},
+        {"error_code": None},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.TIMEOUT},
+    ),
+)
+def test_receiver_unbound_result_rejects_binding_and_state_defects(changes):
+    value = receiver_operation_result(
+        bootstrap.ReceiverOperation.STATUS,
+        bootstrap.BootstrapPhase.REFUSED,
+        bound=False,
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        error_code=bootstrap.BootstrapErrorCode.INVALID_CONTRACT,
+    )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(value, **changes)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"outcome": bootstrap.BootstrapOutcome.ERROR},
+        {"error_code": bootstrap.BootstrapErrorCode.INTERNAL_ERROR},
+        {"receiver_sha256": None},
+        {"target_config_sha256": None},
+        {
+            "receiver_permission": bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE
+        },
+        {
+            "target_config_permission": bootstrap.BootstrapPermissionVerdict.UNTRUSTED_WRITABLE
+        },
+    ),
+)
+def test_receiver_identity_success_rejects_inconsistent_evidence(changes):
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(receiver_identity_result(), **changes)
+
+
+@pytest.mark.parametrize(
+    "target_permission",
+    (
+        bootstrap.BootstrapPermissionVerdict.OWNER_READONLY,
+        bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE,
+    ),
+)
+def test_receiver_identity_success_accepts_both_trusted_config_permissions(
+    target_permission,
+):
+    value = receiver_identity_result(target_config_permission=target_permission)
+    assert bootstrap.decode_receiver_result(
+        bootstrap.encode_receiver_result(value)
+    ) == value
+
+
+@pytest.mark.parametrize(
+    ("receiver_permission", "target_permission"),
+    tuple(
+        (receiver_permission, target_permission)
+        for receiver_permission in bootstrap.BootstrapPermissionVerdict
+        for target_permission in bootstrap.BootstrapPermissionVerdict
+    ),
+)
+def test_receiver_identity_success_permission_matrix(
+    receiver_permission, target_permission
+):
+    allowed = (
+        receiver_permission is bootstrap.BootstrapPermissionVerdict.OWNER_READONLY
+        and target_permission
+        in {
+            bootstrap.BootstrapPermissionVerdict.OWNER_READONLY,
+            bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE,
+        }
+    )
+    if allowed:
+        receiver_identity_result(
+            receiver_permission=receiver_permission,
+            target_config_permission=target_permission,
+        )
+    else:
+        with pytest.raises(bootstrap.BootstrapContractError):
+            receiver_identity_result(
+                receiver_permission=receiver_permission,
+                target_config_permission=target_permission,
+            )
+
+
+@pytest.mark.parametrize(
+    "error_code",
+    (
+        bootstrap.BootstrapErrorCode.RECEIVER_MISMATCH,
+        bootstrap.BootstrapErrorCode.PRECONDITION_FAILED,
+        bootstrap.BootstrapErrorCode.UNSUPPORTED_PLATFORM,
+        bootstrap.BootstrapErrorCode.INVALID_CONTRACT,
+        bootstrap.BootstrapErrorCode.INTERNAL_ERROR,
+    ),
+)
+def test_receiver_identity_error_accepts_only_closed_error_codes(error_code):
+    value = receiver_identity_result(
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        receiver_sha256=None,
+        target_config_sha256=None,
+        receiver_permission=bootstrap.BootstrapPermissionVerdict.INDETERMINATE,
+        target_config_permission=bootstrap.BootstrapPermissionVerdict.UNSUPPORTED,
+        error_code=error_code,
+    )
+    assert bootstrap.decode_receiver_result(
+        bootstrap.encode_receiver_result(value)
+    ) == value
+
+
+@pytest.mark.parametrize(
+    "error_code",
+    (
+        None,
+        bootstrap.BootstrapErrorCode.AUTHORIZATION_DENIED,
+        bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+    ),
+)
+def test_receiver_identity_error_rejects_other_error_codes(error_code):
+    with pytest.raises(bootstrap.BootstrapContractError):
+        receiver_identity_result(
+            outcome=bootstrap.BootstrapOutcome.ERROR,
+            error_code=error_code,
+        )
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"outcome": bootstrap.BootstrapOutcome.ERROR},
+        {"error_code": None},
+        {"error_code": bootstrap.BootstrapErrorCode.CLEANUP_FAILED},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.TIMEOUT},
+    ),
+)
+def test_receiver_rollback_started_requires_pending_original_noncleanup_error(changes):
+    value = receiver_operation_result(
+        bootstrap.ReceiverOperation.ROLLBACK,
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        **receiver_result_state(bootstrap.BootstrapPhase.ROLLBACK_STARTED),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(value, **changes)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"outcome": bootstrap.BootstrapOutcome.PENDING},
+        {"error_code": None},
+        {"error_code": bootstrap.BootstrapErrorCode.CLEANUP_FAILED},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.TIMEOUT},
+    ),
+)
+def test_receiver_completed_rollback_requires_error_original_and_no_trigger(changes):
+    value = receiver_operation_result(
+        bootstrap.ReceiverOperation.ROLLBACK,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        **receiver_result_state(bootstrap.BootstrapPhase.ROLLED_BACK),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(value, **changes)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"outcome": bootstrap.BootstrapOutcome.PENDING},
+        {"error_code": bootstrap.BootstrapErrorCode.TIMEOUT},
+        {"trigger_error_code": None},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.CLEANUP_FAILED},
+    ),
+)
+def test_receiver_cleanup_failure_requires_original_noncleanup_trigger(changes):
+    value = receiver_operation_result(
+        bootstrap.ReceiverOperation.ROLLBACK,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+        **receiver_result_state(bootstrap.BootstrapPhase.CLEANUP_FAILED),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(value, **changes)
+
+
+@pytest.mark.parametrize(
+    "original_error",
+    tuple(
+        error
+        for error in bootstrap.BootstrapErrorCode
+        if error is not bootstrap.BootstrapErrorCode.CLEANUP_FAILED
+    ),
+)
+def test_receiver_historical_and_cleanup_states_accept_every_noncleanup_cause(
+    original_error,
+):
+    historical = receiver_operation_result(
+        bootstrap.ReceiverOperation.STATUS,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        error_code=original_error,
+    )
+    cleanup = receiver_operation_result(
+        bootstrap.ReceiverOperation.STATUS,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        error_code=bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+        trigger_error_code=original_error,
+    )
+    for result in (historical, cleanup):
+        assert bootstrap.decode_receiver_result(
+            bootstrap.encode_receiver_result(result)
+        ) == result
+
+
+@pytest.mark.parametrize(
+    "raw",
+    (
+        b"",
+        b"\x00\x00\x00",
+        b"\x00\x00\x00\x00x",
+        (4097).to_bytes(4, "big") + b"x",
+        (10).to_bytes(4, "big") + b"{}",
+        (1).to_bytes(4, "big") + b"\xff",
+        b"x" * (5 + bootstrap.MAX_RECEIVER_RESULT_BYTES),
+    ),
+)
+def test_receiver_result_decode_rejects_header_length_truncation_and_utf8(raw):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_result(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_result_decode_rejects_trailing_duplicate_noncanonical_and_unknown():
+    valid = bootstrap.encode_receiver_result(bootstrap.BootstrapReceiverProtocolError())
+    duplicate = (
+        b'{"error_code":"invalid-contract","expected_node":null,"operation":null,'
+        b'"operation":null,"outcome":"error",'
+        b'"schema":"anvil-serving.fleet-bootstrap-receiver-result/v1"}'
+    )
+    noncanonical = json.dumps(
+        bootstrap.BootstrapReceiverProtocolError().to_dict()
+    ).encode()
+    unknown = bootstrap.canonical_json_bytes(
+        {
+            **bootstrap.BootstrapReceiverProtocolError().to_dict(),
+            "detail": "private",
+        }
+    )
+    for raw in (
+        valid + b"x",
+        len(duplicate).to_bytes(4, "big") + duplicate,
+        len(noncanonical).to_bytes(4, "big") + noncanonical,
+        len(unknown).to_bytes(4, "big") + unknown,
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.decode_receiver_result(raw)
+        assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_result_direct_and_wire_types_are_exact():
+    value = receiver_operation_result()
+    for change in (
+        {"operation": "stage"},
+        {"phase": "staged"},
+        {"outcome": "pending"},
+        {"bound": 1},
+        {"bundle_length": True},
+        {"error_code": "timeout"},
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError):
+            replace(value, **change)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.decode_receiver_result(bytearray(bootstrap.encode_receiver_result(value)))
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.encode_receiver_result(value.to_dict())
+
+    raw = value.to_dict()
+    raw["bundle_length"] = True
+    metadata = bootstrap.canonical_json_bytes(raw)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.decode_receiver_result(len(metadata).to_bytes(4, "big") + metadata)
+
+
+@pytest.mark.parametrize("bundle_length", (1, bootstrap.MAX_BUNDLE_BYTES))
+def test_receiver_operation_result_accepts_exact_bundle_length_bounds(bundle_length):
+    value = replace(receiver_operation_result(), bundle_length=bundle_length)
+    assert bootstrap.decode_receiver_result(
+        bootstrap.encode_receiver_result(value)
+    ) == value
+
+
+def test_receiver_result_matcher_accepts_exact_identity_and_advanced_stage_state():
+    identity = receiver_identity_result()
+    assert bootstrap.match_receiver_result(
+        receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b""), identity
+    ) is identity
+
+    frame = receiver_frame(bootstrap.ReceiverOperation.STAGE, b"fixed-stage-payload")
+    advanced = replace(
+        receiver_operation_result(
+            bootstrap.ReceiverOperation.STAGE,
+            bootstrap.BootstrapPhase.RESTARTED,
+        ),
+        bundle_sha256=frame.bundle_sha256,
+        bundle_length=frame.bundle_length,
+    )
+    assert bootstrap.match_receiver_result(frame, advanced) is advanced
+
+
+@pytest.mark.parametrize(
+    "change",
+    (
+        {"operation": bootstrap.ReceiverOperation.STATUS},
+        {"expected_node": "Other_Node"},
+        {"operation_id": "22345678-1234-4234-9234-123456789abc"},
+        {"plan_sha256": SHA_A},
+        {"target_config_sha256": SHA_A},
+        {"bundle_sha256": SHA_B},
+        {"bundle_length": 4095},
+    ),
+)
+def test_receiver_result_matcher_rejects_every_stage_binding_mismatch(change):
+    payload = b"fixed-stage-payload"
+    frame = receiver_frame(bootstrap.ReceiverOperation.STAGE, payload)
+    values = {
+        "bundle_sha256": frame.bundle_sha256,
+        "bundle_length": frame.bundle_length,
+        **change,
+    }
+    result = replace(receiver_operation_result(), **values)
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.match_receiver_result(frame, result)
+    assert caught.value.code == "receiver-mismatch"
+
+
+@pytest.mark.parametrize(
+    "phase",
+    (
+        bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+        bootstrap.BootstrapPhase.ROLLED_BACK,
+        bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+    ),
+)
+def test_receiver_result_matcher_binds_rollback_original_trigger(phase):
+    frame = receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b"")
+    result = receiver_operation_result(
+        bootstrap.ReceiverOperation.ROLLBACK,
+        phase,
+        **receiver_result_state(phase),
+    )
+    assert bootstrap.match_receiver_result(frame, result) is result
+    changed = replace(
+        frame,
+        trigger_error_code=bootstrap.BootstrapErrorCode.TIMEOUT,
+    )
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.match_receiver_result(changed, result)
+    assert caught.value.code == "receiver-mismatch"
+
+
+def test_receiver_protocol_error_match_is_always_invalid_contract():
+    for frame in (
+        receiver_frame(bootstrap.ReceiverOperation.IDENTITY, b""),
+        receiver_frame(bootstrap.ReceiverOperation.STATUS, b""),
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.match_receiver_result(
+                frame, bootstrap.BootstrapReceiverProtocolError()
+            )
+        assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    "factory",
+    (
+        bootstrap.BootstrapReceiverProtocolError,
+        receiver_identity_result,
+        receiver_operation_result,
+    ),
+)
+def test_receiver_result_is_frozen_and_revalidates_tampering(factory):
+    result = factory()
+    with pytest.raises((AttributeError, TypeError)):
+        result.schema = "other"  # type: ignore[misc]
+    object.__setattr__(result, "schema", "other")
+    for action in (
+        result.to_dict,
+        lambda: bootstrap.encode_receiver_result(result),
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            action()
+        assert caught.value.code == "invalid-contract"
+
+
+def test_receiver_result_subclasses_are_rejected():
+    class ProtocolSubclass(bootstrap.BootstrapReceiverProtocolError):
+        pass
+
+    with pytest.raises(bootstrap.BootstrapContractError):
+        ProtocolSubclass()
+
+    class IdentitySubclass(bootstrap.BootstrapReceiverIdentityResult):
+        pass
+
+    class OperationSubclass(bootstrap.BootstrapReceiverOperationResult):
+        pass
+
+    with pytest.raises(bootstrap.BootstrapContractError):
+        IdentitySubclass(
+            expected_node="Node_1",
+            outcome=bootstrap.BootstrapOutcome.SUCCESS,
+            receiver_sha256=SHA_A,
+            target_config_sha256=SHA_D,
+            receiver_permission=bootstrap.BootstrapPermissionVerdict.OWNER_READONLY,
+            target_config_permission=bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE,
+            error_code=None,
+        )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        OperationSubclass(
+            operation=bootstrap.ReceiverOperation.STAGE,
+            expected_node="Node_1",
+            operation_id=OPERATION_ID,
+            plan_sha256=SHA_B,
+            target_config_sha256=SHA_D,
+            bound=True,
+            bundle_sha256=SHA_A,
+            bundle_length=4096,
+            manifest_sha256=SHA_D,
+            phase=bootstrap.BootstrapPhase.STAGED,
+            outcome=bootstrap.BootstrapOutcome.PENDING,
+            error_code=None,
+            trigger_error_code=None,
+        )
+
+
+def test_receiver_result_errors_do_not_echo_private_data_or_call_io(monkeypatch):
+    seeded = "private-path-token-command.invalid"
+
+    def unexpected(*_args, **_kwargs):
+        raise AssertionError("result codec performed I/O")
+
+    monkeypatch.setattr(bootstrap.os, "stat", unexpected)
+    raw = receiver_identity_result().to_dict()
+    raw["expected_node"] = seeded
+    metadata = bootstrap.canonical_json_bytes(raw)
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.decode_receiver_result(len(metadata).to_bytes(4, "big") + metadata)
+    rendered = str(caught.value) + repr(caught.value)
+    assert seeded not in rendered
+    assert caught.value.__cause__ is None
+
+
+def test_manifest_canonical_roundtrip_and_digest_domains():
+    runtime = wheel_bytes()
+    shim = b"fixed shim\n"
+    value = manifest(runtime, shim)
+    canonical = value.to_json_bytes()
+
+    assert bootstrap.BootstrapManifest.from_json_bytes(canonical) == value
+    assert canonical == bootstrap.canonical_json_bytes(value.to_dict())
+    assert value.sha256 == hashlib.sha256(canonical).hexdigest()
+    assert b"manifest_sha256" not in canonical
+    assert b"bundle_sha256" not in canonical
+
+    bundle1 = bootstrap.build_bundle(value, runtime, shim)
+    bundle2 = bootstrap.build_bundle(value, runtime, shim)
+    assert bundle1 == bundle2
+    validated = bootstrap.validate_bundle(bundle1)
+    assert validated.manifest == value
+    assert validated.bundle_sha256 == hashlib.sha256(bundle1).hexdigest()
+    assert validated.manifest_sha256 == value.sha256
+
+
+def test_manifest_mutation_changes_manifest_and_bundle_identity():
+    runtime = wheel_bytes()
+    shim = b"fixed shim\n"
+    first = manifest(runtime, shim)
+    second = replace(first, package_version="1.2.4")
+    first_bundle = bootstrap.build_bundle(first, runtime, shim)
+    second_bundle = bootstrap.build_bundle(second, runtime, shim)
+
+    assert first.sha256 != second.sha256
+    assert hashlib.sha256(first_bundle).digest() != hashlib.sha256(second_bundle).digest()
+
+
+@pytest.mark.parametrize("platform", ("linux", "windows"))
+def test_bootstrap_plan_from_resolved_topology_has_canonical_private_identity(platform):
+    execution = bootstrap_execution(platform=platform)
+    artifact = plan_manifest(platform=platform)
+    first = bootstrap.build_bootstrap_plan(execution, artifact)
+    second = bootstrap.BootstrapPlan(execution, artifact)
+
+    assert first == second
+    private = {
+        "schema": bootstrap.PLAN_SCHEMA,
+        "host": first.host,
+        "execution_runtime": first.execution_runtime,
+        "topology_sha256": first.topology_sha256,
+        "manifest_sha256": first.manifest_sha256,
+        "expected_node": first.expected_node,
+        "platform": first.platform.value,
+        "staging_root": first.staging_root,
+        "install_root": first.install_root,
+        "python_executable": first.python_executable,
+        "receiver_path": first.receiver_path,
+        "receiver_sha256": first.receiver_sha256,
+        "install_adapter": first.install_adapter.value,
+        "supervisor_adapter": first.supervisor_adapter.value,
+        "install_root_class": first.install_root_class.value,
+        "supervisor_id": first.supervisor_id,
+        "bootstrap_enabled": True,
+        "bootstrap_authorized": True,
+        "expected_protocol_version": "2026-07-28",
+        "expected_catalog_sha256": first.expected_catalog_sha256,
+    }
+    expected = json.dumps(
+        private, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode()
+    assert first.plan_sha256 == hashlib.sha256(expected).hexdigest()
+
+
+def test_bootstrap_plan_public_projection_and_repr_are_private_value_free():
+    value = bootstrap.build_bootstrap_plan(bootstrap_execution(), plan_manifest())
+    payload = value.to_dict()
+    rendered = json.dumps(payload, sort_keys=True) + repr(value)
+
+    assert set(payload) == {
+        "schema",
+        "host",
+        "topology_sha256",
+        "plan_sha256",
+        "manifest_sha256",
+        "expected_node",
+        "platform",
+        "install_adapter",
+        "supervisor_adapter",
+        "expected_protocol_version",
+        "expected_catalog_sha256",
+    }
+    for prohibited in (
+        "private-stage",
+        "private-install",
+        "private-python",
+        "private-receiver",
+        "SYNTHETIC_BOOTSTRAP_TOKEN",
+        "100.64.0.10",
+        "bootstrap-controller",
+    ):
+        assert prohibited not in rendered
+
+
+def test_bootstrap_plan_is_frozen_and_accepts_no_field_overrides():
+    execution = bootstrap_execution()
+    artifact = plan_manifest()
+    value = bootstrap.BootstrapPlan(execution, artifact)
+    with pytest.raises((AttributeError, TypeError)):
+        value.host = "other"  # type: ignore[misc]
+    with pytest.raises(TypeError):
+        bootstrap.BootstrapPlan(execution, artifact, host="other")
+    with pytest.raises(TypeError):
+        bootstrap.build_bootstrap_plan(execution, artifact, host="other")
+    assert not hasattr(bootstrap.BootstrapPlan, "from_dict")
+
+
+def test_catalog_hash_is_sorted_canonical_json_and_accepts_256_operations():
+    operations = (
+        "z-operation",
+        "controller-bootstrap",
+        *(f"operation-{number:03d}" for number in range(254)),
+    )
+    envelope = {
+        "schema": bootstrap.CONTROLLER_OPERATION_CATALOG_SCHEMA,
+        "operations": sorted(operations),
+    }
+    expected = json.dumps(
+        envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode()
+
+    assert len(operations) == 256
+    assert bootstrap.controller_operation_catalog_sha256(operations) == hashlib.sha256(
+        expected
+    ).hexdigest()
+    assert bootstrap.controller_operation_catalog_sha256(tuple(reversed(operations))) == (
+        hashlib.sha256(expected).hexdigest()
+    )
+
+
+@pytest.mark.parametrize(
+    "operations",
+    (
+        (),
+        ("other",),
+        ("controller-bootstrap", "controller-bootstrap"),
+        ("controller-bootstrap", "bad.operation"),
+        ["controller-bootstrap"],
+        ("controller-bootstrap", *(f"operation-{number:03d}" for number in range(256))),
+    ),
+)
+def test_catalog_hash_rejects_invalid_shape_members_and_bounds(operations):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.controller_operation_catalog_sha256(operations)
+    assert caught.value.code == "invalid-contract"
+
+
+def test_bootstrap_plan_catalog_order_is_equivalent_but_membership_changes_identity():
+    artifact = plan_manifest()
+    first = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(operations=("z-operation", "controller-bootstrap")),
+        artifact,
+    )
+    reordered = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(operations=("controller-bootstrap", "z-operation")),
+        artifact,
+    )
+    changed = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(operations=("controller-bootstrap", "other-operation")),
+        artifact,
+    )
+    assert first.expected_catalog_sha256 == reordered.expected_catalog_sha256
+    assert first.topology_sha256 != reordered.topology_sha256
+    assert first.plan_sha256 != reordered.plan_sha256
+    assert first.plan_sha256 != changed.plan_sha256
+
+
+@pytest.mark.parametrize("platform", ("linux", "windows"))
+def test_target_config_has_exact_canonical_private_identity(platform):
+    plan = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(platform=platform), plan_manifest(platform=platform)
+    )
+    target = bootstrap.BootstrapTargetConfig.from_plan(plan)
+    expected = {
+        "schema": bootstrap.TARGET_CONFIG_SCHEMA,
+        "expected_node": plan.expected_node,
+        "platform": plan.platform.value,
+        "staging_root": plan.staging_root,
+        "install_root": plan.install_root,
+        "python_executable": plan.python_executable,
+        "receiver_path": plan.receiver_path,
+        "receiver_sha256": plan.receiver_sha256,
+        "install_adapter": plan.install_adapter.value,
+        "supervisor_adapter": plan.supervisor_adapter.value,
+        "install_root_class": plan.install_root_class.value,
+        "supervisor_id": plan.supervisor_id,
+        "bootstrap_enabled": True,
+        "bootstrap_authorized": True,
+    }
+    encoded = json.dumps(
+        expected, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode()
+
+    assert target.to_private_bytes() == encoded
+    assert bootstrap.BootstrapTargetConfig.from_bytes(encoded) == target
+    assert target.target_config_sha256 == hashlib.sha256(encoded).hexdigest()
+    assert bootstrap.bootstrap_target_config_sha256(plan) == target.target_config_sha256
+
+
+def test_target_config_false_policy_is_canonical_data_not_authority():
+    target = target_config(
+        changes={"bootstrap_enabled": False, "bootstrap_authorized": False}
+    )
+    payload = json.loads(target.to_private_bytes())
+
+    assert payload["bootstrap_enabled"] is False
+    assert payload["bootstrap_authorized"] is False
+    assert bootstrap.BootstrapTargetConfig.from_bytes(target.to_private_bytes()) == target
+
+
+@pytest.mark.parametrize(
+    "field",
+    (
+        "schema",
+        "expected_node",
+        "platform",
+        "staging_root",
+        "install_root",
+        "python_executable",
+        "receiver_path",
+        "receiver_sha256",
+        "install_adapter",
+        "supervisor_adapter",
+        "install_root_class",
+        "supervisor_id",
+        "bootstrap_enabled",
+        "bootstrap_authorized",
+    ),
+)
+def test_target_config_from_bytes_rejects_every_missing_and_null_field(field):
+    payload = json.loads(target_config().to_private_bytes())
+    for change in (lambda value: value.pop(field), lambda value: value.__setitem__(field, None)):
+        changed = dict(payload)
+        change(changed)
+        raw = json.dumps(changed, sort_keys=True, separators=(",", ":")).encode()
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.BootstrapTargetConfig.from_bytes(raw)
+        assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("schema", False),
+        ("expected_node", False),
+        ("platform", False),
+        ("staging_root", False),
+        ("install_root", False),
+        ("python_executable", False),
+        ("receiver_path", False),
+        ("receiver_sha256", False),
+        ("install_adapter", False),
+        ("supervisor_adapter", False),
+        ("install_root_class", False),
+        ("supervisor_id", False),
+        ("bootstrap_enabled", 1),
+        ("bootstrap_authorized", "false"),
+    ),
+)
+def test_target_config_from_bytes_rejects_every_wrong_primitive_type(field, value):
+    payload = json.loads(target_config().to_private_bytes())
+    payload[field] = value
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapTargetConfig.from_bytes(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+def test_target_config_rejects_unknown_field_and_direct_value_subclasses():
+    payload = json.loads(target_config().to_private_bytes())
+    payload["unknown"] = "value"
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.BootstrapTargetConfig.from_bytes(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        )
+
+    class Text(str):
+        pass
+
+    with pytest.raises(bootstrap.BootstrapContractError):
+        target_config(changes={"expected_node": Text("Node_1")})
+    with pytest.raises(bootstrap.BootstrapContractError):
+        target_config(changes={"platform": "linux"})
+
+
+@pytest.mark.parametrize(
+    "raw",
+    (
+        b"",
+        b"{} ",
+        b'{"schema":"x","schema":"x"}',
+        b"x" * (bootstrap.MAX_TARGET_CONFIG_BYTES + 1),
+    ),
+)
+def test_target_config_from_bytes_rejects_size_duplicate_and_noncanonical_json(raw):
+    if raw == b"{} ":
+        raw = target_config().to_private_bytes() + b" "
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapTargetConfig.from_bytes(raw)
+    assert caught.value.code == "invalid-contract"
+
+
+@pytest.mark.parametrize(
+    ("platform", "changes", "code"),
+    (
+        ("linux", {"staging_root": "relative"}, "invalid-contract"),
+        ("linux", {"install_root": "/var/tmp/private-stage/child"}, "invalid-contract"),
+        ("linux", {"python_executable": "C:\\Python\\python.exe"}, "invalid-contract"),
+        ("windows", {"receiver_path": "C:\\NUL\\bootstrap.py"}, "invalid-contract"),
+        ("windows", {"install_root": "c:\\PRIVATE-STAGE\\child"}, "invalid-contract"),
+        (
+            "linux",
+            {"supervisor_adapter": bootstrap.SupervisorAdapter.WINDOWS_SCHEDULED_TASK},
+            "unsupported-platform",
+        ),
+    ),
+)
+def test_target_config_rejects_cross_os_paths_overlap_and_adapter_pairs(
+    platform, changes, code
+):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        target_config(platform=platform, changes=changes)
+    assert caught.value.code == code
+
+
+@pytest.mark.parametrize(
+    "field",
+    (
+        "expected_node",
+        "platform",
+        "staging_root",
+        "install_root",
+        "python_executable",
+        "receiver_path",
+        "receiver_sha256",
+        "install_adapter",
+        "supervisor_adapter",
+        "install_root_class",
+        "supervisor_id",
+        "bootstrap_enabled",
+        "bootstrap_authorized",
+    ),
+)
+def test_target_config_revalidates_every_field_before_bytes_hash_and_repr(field):
+    target = target_config()
+    object.__setattr__(target, field, None)
+    for action in (
+        target.to_private_bytes,
+        lambda: target.target_config_sha256,
+        lambda: repr(target),
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError):
+            action()
+
+
+def test_target_config_digest_binds_target_fields_but_excludes_full_plan_fields():
+    base = target_config()
+    changed = (
+        target_config(changes={"receiver_sha256": SHA_B}),
+        target_config(changes={"bootstrap_enabled": False}),
+        target_config(changes={"supervisor_id": "other-controller"}),
+    )
+    assert all(item.target_config_sha256 != base.target_config_sha256 for item in changed)
+
+    execution = bootstrap_execution()
+    original_plan = bootstrap.build_bootstrap_plan(execution, plan_manifest())
+    artifact_changed = bootstrap.build_bootstrap_plan(
+        execution, replace(plan_manifest(), runtime_sha256=SHA_B)
+    )
+    catalog_changed = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(operations=("other-operation", "controller-bootstrap")),
+        plan_manifest(),
+    )
+    for changed_plan in (artifact_changed, catalog_changed):
+        assert original_plan.plan_sha256 != changed_plan.plan_sha256
+        assert (
+            bootstrap.bootstrap_target_config_sha256(original_plan)
+            == bootstrap.bootstrap_target_config_sha256(changed_plan)
+        )
+
+
+def test_target_config_is_frozen_closed_and_has_safe_repr_errors():
+    target = target_config()
+    with pytest.raises((AttributeError, TypeError)):
+        target.expected_node = "other"  # type: ignore[misc]
+    with pytest.raises(TypeError):
+        bootstrap.BootstrapTargetConfig.from_plan(
+            bootstrap.build_bootstrap_plan(bootstrap_execution(), plan_manifest()),
+            expected_node="other",
+        )
+    with pytest.raises(TypeError):
+        bootstrap.BootstrapTargetConfig(schema="other")
+    assert not hasattr(bootstrap.BootstrapTargetConfig, "to_dict")
+
+    rendered = repr(target)
+    assert "Node_1" in rendered
+    assert target.target_config_sha256 in rendered
+    for private in (
+        target.staging_root,
+        target.install_root,
+        target.python_executable,
+        target.receiver_path,
+        target.supervisor_id,
+    ):
+        assert private not in rendered
+
+    seeded = (
+        "C:\\private-token-path"
+        if target.platform is bootstrap.BootstrapPlatform.WINDOWS
+        else "/private/token/path"
+    )
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        target_config(changes={"receiver_path": seeded + "\x00"})
+    assert seeded not in str(caught.value)
+
+
+def test_target_config_decoder_imports_no_topology_targets_or_controller():
+    raw = target_config().to_private_bytes().hex()
+    code = (
+        "import sys; "
+        "from anvil_serving.fleet_bootstrap import BootstrapTargetConfig; "
+        f"BootstrapTargetConfig.from_bytes(bytes.fromhex('{raw}')); "
+        "blocked=('anvil_serving.topology','anvil_serving.targets','anvil_serving.control_plane'); "
+        "print(','.join(name for name in sys.modules if name.startswith(blocked)))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ""
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("staging_root", "/var/tmp/other-stage"),
+        ("install_root", "/opt/other-install"),
+        ("python_executable", "/usr/bin/other-python"),
+        ("receiver_path", "/opt/other-receiver/bootstrap.py"),
+        ("receiver_sha256", SHA_B),
+        ("supervisor_id", "other-controller"),
+    ),
+)
+def test_every_private_topology_value_changes_plan_identity(field, value):
+    artifact = plan_manifest()
+    original = bootstrap.build_bootstrap_plan(bootstrap_execution(), artifact)
+    changed = bootstrap.build_bootstrap_plan(
+        bootstrap_execution(bootstrap_changes={field: value}), artifact
+    )
+    assert original.plan_sha256 != changed.plan_sha256
+
+
+def test_manifest_artifact_identity_changes_plan_identity():
+    execution = bootstrap_execution()
+    first = bootstrap.build_bootstrap_plan(execution, plan_manifest())
+    changed = bootstrap.build_bootstrap_plan(
+        execution, replace(plan_manifest(), runtime_sha256=SHA_B)
+    )
+    assert first.plan_sha256 != changed.plan_sha256
+
+
+@pytest.mark.parametrize(
+    "artifact",
+    (
+        replace(plan_manifest(), expected_node="other-node"),
+        replace(
+            plan_manifest(),
+            controller_protocol_min="2025-11-25",
+            controller_protocol_max="2026-08-01",
+        ),
+        replace(
+            plan_manifest(),
+            platform=bootstrap.BootstrapPlatform.WINDOWS,
+            supervisor_adapter=bootstrap.SupervisorAdapter.WINDOWS_SCHEDULED_TASK,
+        ),
+    ),
+)
+def test_bootstrap_plan_refuses_manifest_target_protocol_and_platform_mismatch(artifact):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.build_bootstrap_plan(bootstrap_execution(), artifact)
+    assert caught.value.code == "precondition-failed"
+
+
+def test_bootstrap_plan_refuses_false_policy_and_unsafe_replaced_path():
+    execution = bootstrap_execution()
+    denied = replace(
+        execution,
+        host_bootstrap=replace(execution.host_bootstrap, bootstrap_authorized=False),
+        execution_host=replace(
+            execution.execution_host,
+            bootstrap=replace(execution.host_bootstrap, bootstrap_authorized=False),
+        ),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.build_bootstrap_plan(denied, plan_manifest())
+    assert caught.value.code == "authorization-denied"
+
+    unsafe_bootstrap = replace(execution.host_bootstrap, receiver_path="/opt/../private")
+    unsafe = replace(
+        execution,
+        host_bootstrap=unsafe_bootstrap,
+        execution_host=replace(execution.execution_host, bootstrap=unsafe_bootstrap),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.build_bootstrap_plan(unsafe, plan_manifest())
+    assert caught.value.code == "invalid-contract"
+
+
+def test_bootstrap_plan_refuses_forged_resource_and_runtime_boundaries():
+    execution = bootstrap_execution()
+    for changed in (
+        replace(execution, resource_endpoint="http://100.64.0.10:9999"),
+        replace(execution, selected_target="host:other-node"),
+        replace(execution, transport_auth_env=None),
+        replace(execution, transport="ssh"),
+        replace(execution, execution_runtime=replace(execution.execution_runtime, role="docker")),
+    ):
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            bootstrap.build_bootstrap_plan(changed, plan_manifest())
+        assert caught.value.code == "precondition-failed"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("schema", "wrong/v1"),
+        ("package_version", "1.2"),
+        ("package_version", "1.2.3.dev1"),
+        ("source_commit", "A" * 40),
+        ("runtime_sha256", "sha256:" + SHA_A),
+        ("expected_node", "1node"),
+        ("platform", "macos"),
+        ("install_adapter", "pip"),
+        ("supervisor_adapter", "docker"),
+        ("install_root_class", "system"),
+        ("controller_protocol_min", "2026-02-30"),
+        ("controller_protocol_max", "1"),
+    ],
+)
+def test_manifest_rejects_malformed_fields(field, value):
+    raw = manifest().to_dict()
+    raw[field] = value
+    with pytest.raises(bootstrap.BootstrapContractError, match="invalid"):
+        bootstrap.BootstrapManifest.from_dict(raw)
+
+
+def test_manifest_rejects_unknown_missing_types_pairing_and_reversed_protocol():
+    raw = manifest().to_dict()
+    for changed in ({**raw, "endpoint": "secret"}, {key: value for key, value in raw.items() if key != "schema"}):
+        with pytest.raises(bootstrap.BootstrapContractError):
+            bootstrap.BootstrapManifest.from_dict(changed)
+    raw["package_version"] = 123
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.BootstrapManifest.from_dict(raw)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(
+            manifest(),
+            platform=bootstrap.BootstrapPlatform.WINDOWS,
+            supervisor_adapter=bootstrap.SupervisorAdapter.LINUX_SYSTEMD_USER,
+        )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(
+            manifest(),
+            controller_protocol_min="2026-07-28",
+            controller_protocol_max="2025-11-25",
+        )
+
+
+def test_canonical_json_rejects_duplicate_noncanonical_and_nonfinite():
+    canonical = manifest().to_json_bytes()
+    duplicate = canonical[:-1] + b',"schema":"anvil-serving.fleet-bootstrap-manifest/v1"}'
+    for raw in (duplicate, b"{" + canonical[1:-1] + b" }", canonical + b"\n"):
+        with pytest.raises(bootstrap.BootstrapContractError):
+            bootstrap.BootstrapManifest.from_json_bytes(raw)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.canonical_json_bytes({"value": float("nan")})
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.BootstrapManifest.from_json_bytes(b'{"x":NaN}')
+
+
+@pytest.mark.parametrize(
+    "phase",
+    [
+        bootstrap.BootstrapPhase.STAGED,
+        bootstrap.BootstrapPhase.VERIFIED,
+        bootstrap.BootstrapPhase.INSTALLED,
+        bootstrap.BootstrapPhase.ACTIVATED,
+        bootstrap.BootstrapPhase.RESTARTED,
+    ],
+)
+def test_pending_receipt_phases_roundtrip(phase):
+    value = receipt(
+        phase,
+        outcome=bootstrap.BootstrapOutcome.PENDING,
+        acceptance=bootstrap.AcceptanceStatus.NOT_CHECKED,
+        rollback=bootstrap.RollbackStatus.NOT_REQUIRED,
+    )
+    assert bootstrap.BootstrapReceipt.from_json_bytes(value.to_json_bytes()) == value
+
+
+def test_terminal_and_recovery_receipt_matrix():
+    values = [
+        receipt(
+            bootstrap.BootstrapPhase.PLANNED,
+            outcome=bootstrap.BootstrapOutcome.SUCCESS,
+            acceptance=bootstrap.AcceptanceStatus.NOT_CHECKED,
+            rollback=bootstrap.RollbackStatus.NOT_REQUIRED,
+            operation_id=None,
+        ),
+        receipt(
+            bootstrap.BootstrapPhase.ACCEPTED,
+            outcome=bootstrap.BootstrapOutcome.SUCCESS,
+            acceptance=bootstrap.AcceptanceStatus.ACCEPTED,
+            rollback=bootstrap.RollbackStatus.NOT_REQUIRED,
+        ),
+        receipt(
+            bootstrap.BootstrapPhase.ROLLBACK_STARTED,
+            outcome=bootstrap.BootstrapOutcome.PENDING,
+            acceptance=bootstrap.AcceptanceStatus.REJECTED,
+            rollback=bootstrap.RollbackStatus.PENDING,
+            error=bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED,
+        ),
+        receipt(
+            bootstrap.BootstrapPhase.ROLLED_BACK,
+            outcome=bootstrap.BootstrapOutcome.ERROR,
+            acceptance=bootstrap.AcceptanceStatus.REJECTED,
+            rollback=bootstrap.RollbackStatus.VERIFIED,
+            error=bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED,
+        ),
+        receipt(
+            bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+            outcome=bootstrap.BootstrapOutcome.ERROR,
+            acceptance=bootstrap.AcceptanceStatus.NOT_CHECKED,
+            rollback=bootstrap.RollbackStatus.UNAVAILABLE,
+            error=bootstrap.BootstrapErrorCode.INSTALL_FAILED,
+        ),
+        receipt(
+            bootstrap.BootstrapPhase.REFUSED,
+            outcome=bootstrap.BootstrapOutcome.ERROR,
+            acceptance=bootstrap.AcceptanceStatus.NOT_CHECKED,
+            rollback=bootstrap.RollbackStatus.NOT_REQUIRED,
+            error=bootstrap.BootstrapErrorCode.PRECONDITION_FAILED,
+            operation_id=None,
+        ),
+        receipt(
+            bootstrap.BootstrapPhase.CLEANUP_FAILED,
+            outcome=bootstrap.BootstrapOutcome.ERROR,
+            acceptance=bootstrap.AcceptanceStatus.ACCEPTED,
+            rollback=bootstrap.RollbackStatus.NOT_REQUIRED,
+            error=bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+        ),
+        receipt(
+            bootstrap.BootstrapPhase.CLEANUP_FAILED,
+            outcome=bootstrap.BootstrapOutcome.ERROR,
+            acceptance=bootstrap.AcceptanceStatus.REJECTED,
+            rollback=bootstrap.RollbackStatus.VERIFIED,
+            error=bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+            trigger=bootstrap.BootstrapErrorCode.ACCEPTANCE_FAILED,
+        ),
+    ]
+    for value in values:
+        assert set(value.to_dict()) == set(bootstrap.BootstrapReceipt.from_dict(value.to_dict()).to_dict())
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"outcome": bootstrap.BootstrapOutcome.ERROR},
+        {"operation_id": None},
+        {"error_code": bootstrap.BootstrapErrorCode.INTERNAL_ERROR},
+        {"trigger_error_code": bootstrap.BootstrapErrorCode.INTERNAL_ERROR},
+        {"acceptance": bootstrap.AcceptanceStatus.ACCEPTED},
+        {"rollback": bootstrap.RollbackStatus.PENDING},
+    ],
+)
+def test_receipt_matrix_rejects_inconsistent_states(changes):
+    value = receipt(
+        bootstrap.BootstrapPhase.STAGED,
+        outcome=bootstrap.BootstrapOutcome.PENDING,
+        acceptance=bootstrap.AcceptanceStatus.NOT_CHECKED,
+        rollback=bootstrap.RollbackStatus.NOT_REQUIRED,
+    )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(value, **changes)
+
+
+def test_cleanup_receipt_requires_trigger_for_prior_failure_and_forbids_recursive_trigger():
+    base = receipt(
+        bootstrap.BootstrapPhase.CLEANUP_FAILED,
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        acceptance=bootstrap.AcceptanceStatus.REJECTED,
+        rollback=bootstrap.RollbackStatus.FAILED,
+        error=bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+        trigger=bootstrap.BootstrapErrorCode.ROLLBACK_FAILED,
+    )
+    for trigger in (None, bootstrap.BootstrapErrorCode.CLEANUP_FAILED):
+        with pytest.raises(bootstrap.BootstrapContractError):
+            replace(base, trigger_error_code=trigger)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(base, rollback=bootstrap.RollbackStatus.PENDING)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        receipt(
+            bootstrap.BootstrapPhase.MANUAL_RECOVERY,
+            outcome=bootstrap.BootstrapOutcome.ERROR,
+            acceptance=bootstrap.AcceptanceStatus.REJECTED,
+            rollback=bootstrap.RollbackStatus.FAILED,
+            error=bootstrap.BootstrapErrorCode.CLEANUP_FAILED,
+        )
+
+
+def test_receipt_early_refusal_allows_only_validated_values_and_safe_fields():
+    value = bootstrap.BootstrapReceipt(
+        operation_id=None,
+        host=None,
+        topology_sha256=None,
+        plan_sha256=None,
+        manifest_sha256=None,
+        bundle_sha256=None,
+        platform=None,
+        install_adapter=None,
+        supervisor_adapter=None,
+        phase=bootstrap.BootstrapPhase.REFUSED,
+        outcome=bootstrap.BootstrapOutcome.ERROR,
+        created_at=CREATED,
+        updated_at=CREATED,
+        acceptance=bootstrap.AcceptanceStatus.NOT_CHECKED,
+        rollback=bootstrap.RollbackStatus.NOT_REQUIRED,
+        error_code=bootstrap.BootstrapErrorCode.INVALID_CONTRACT,
+    )
+    payload = value.to_dict()
+    assert set(payload) == {
+        "schema", "operation_id", "host", "topology_sha256", "plan_sha256",
+        "manifest_sha256", "bundle_sha256", "platform", "install_adapter",
+        "supervisor_adapter", "phase", "outcome", "created_at", "updated_at",
+        "acceptance", "rollback", "error_code", "trigger_error_code",
+    }
+    assert not ({"endpoint", "path", "command", "message", "context"} & set(payload))
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.BootstrapReceipt.from_dict({**payload, "endpoint": "private"})
+    missing = dict(payload)
+    missing.pop("host")
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.BootstrapReceipt.from_dict(missing)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"operation_id": OPERATION_ID.upper()},
+        {"operation_id": "12345678-1234-1234-9234-123456789abc"},
+        {"created_at": "2026-09-05T12:00:00Z"},
+        {"updated_at": "2026-09-05T11:00:00.000000Z"},
+        {"host": "bad.host"},
+        {"topology_sha256": "A" * 64},
+    ],
+)
+def test_receipt_rejects_bad_uuid_timestamp_and_identity(change):
+    value = receipt(
+        bootstrap.BootstrapPhase.ACCEPTED,
+        outcome=bootstrap.BootstrapOutcome.SUCCESS,
+        acceptance=bootstrap.AcceptanceStatus.ACCEPTED,
+        rollback=bootstrap.RollbackStatus.NOT_REQUIRED,
+    )
+    with pytest.raises(bootstrap.BootstrapContractError):
+        replace(value, **change)
+
+
+def test_bundle_rejects_hash_mismatch_and_noncanonical_metadata():
+    runtime = wheel_bytes()
+    shim = b"fixed\n"
+    raw = bootstrap.build_bundle(manifest(runtime, shim), runtime, shim)
+    wrong_payload = rewrite_bundle(
+        raw,
+        mutate_payload=lambda name, payload: payload + b"x" if name == "bootstrap_shim.py" else payload,
+    )
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.validate_bundle(wrong_payload)
+    assert caught.value.code == "digest-mismatch"
+
+    mutations = [
+        lambda name, info: setattr(info, "date_time", (1981, 1, 1, 0, 0, 0)) if name == "runtime.whl" else None,
+        lambda name, info: setattr(info, "external_attr", (stat.S_IFREG | 0o644) << 16) if name == "runtime.whl" else None,
+        lambda name, info: setattr(info, "extra", b"\x01\x00\x00\x00") if name == "runtime.whl" else None,
+        lambda name, info: setattr(info, "comment", b"comment") if name == "runtime.whl" else None,
+        lambda name, info: setattr(info, "compress_type", zipfile.ZIP_DEFLATED) if name == "runtime.whl" else None,
+        lambda name, info: setattr(info, "external_attr", (stat.S_IFLNK | 0o777) << 16) if name == "runtime.whl" else None,
+    ]
+    for mutation in mutations:
+        with pytest.raises(bootstrap.BootstrapContractError):
+            bootstrap.validate_bundle(rewrite_bundle(raw, mutate_info=mutation))
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.validate_bundle(rewrite_bundle(raw, archive_comment=b"comment"))
+
+
+def test_bundle_rejects_order_missing_extra_and_duplicate_entries():
+    runtime = wheel_bytes()
+    shim = b"fixed\n"
+    raw = bootstrap.build_bundle(manifest(runtime, shim), runtime, shim)
+    bad_orders = [
+        ("runtime.whl", "manifest.json", "bootstrap_shim.py"),
+        ("manifest.json", "runtime.whl"),
+        (*bootstrap.OUTER_BUNDLE_NAMES, "extra"),
+        ("manifest.json", "runtime.whl", "runtime.whl"),
+    ]
+    for order in bad_orders:
+        with pytest.raises(bootstrap.BootstrapContractError):
+            bootstrap.validate_bundle(rewrite_bundle(raw, order=order))
+
+
+def test_bundle_and_wheel_reject_encryption_flags():
+    runtime = wheel_bytes()
+    shim = b"fixed\n"
+    raw = bootstrap.build_bundle(manifest(runtime, shim), runtime, shim)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.validate_bundle(mark_first_entry_encrypted(raw))
+
+    encrypted_wheel = mark_first_entry_encrypted(runtime)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.build_bundle(
+            manifest(encrypted_wheel, shim), encrypted_wheel, shim
+        )
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../escape.py", "a/../b", "a/./b", "/absolute", "C:/drive", "//server/share",
+        "a\\b", "file:stream", "CON", "con.txt", "a/NUL.py", "trailing.",
+        "trailing ", "a//b", "control\x00name", "e\u0301.py", "\ud800",
+        "pkg/a?.py", "pkg/a*.py", "pkg/a|.py", "pkg/a<.py", "pkg/a>.py", 'pkg/a".py',
+        "pkg/COM¹.txt", "pkg/COM².txt", "pkg/COM³.txt",
+        "pkg/LPT¹.txt", "pkg/LPT².txt", "pkg/LPT³.txt",
+        "CON .txt", "NUL .txt", "COM1 .txt", "LPT1 .txt",
+        "pkg/nUl  .txt", "pkg/cOm¹ .py", "pkg/lPt² .py",
+    ],
+)
+def test_archive_path_rejects_cross_platform_hazards_without_echo(name):
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.validate_archive_path(name)
+    assert name not in str(caught.value)
+    assert caught.value.__cause__ is None
+
+
+def test_archive_path_bounds_and_safe_unicode():
+    assert bootstrap.validate_archive_path("console .txt").as_posix() == "console .txt"
+    assert bootstrap.validate_archive_path("pkg/é.py").as_posix() == "pkg/é.py"
+    exact_name = "/".join(["a" * 204] * 5)
+    assert len(exact_name.encode()) == bootstrap.MAX_ARCHIVE_NAME_BYTES
+    assert bootstrap.validate_archive_path(exact_name).as_posix() == exact_name
+    too_long_name = "b" + exact_name
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.validate_archive_path(too_long_name)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.validate_archive_path("a" * 256)
+    components = ["a" * 255] * 5
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.validate_archive_path("/".join(components))
+
+
+def test_wheel_rejects_casefold_collision_traversal_link_and_unsupported_compression():
+    collision = wheel_bytes((("pkg/A.py", b"a"), ("pkg/a.py", b"b")))
+    traversal = wheel_bytes((("../escape.py", b"x"),))
+    for runtime in (collision, traversal):
+        with pytest.raises(bootstrap.BootstrapContractError):
+            bootstrap.build_bundle(manifest(runtime), runtime, b"print('fixed')\n")
+
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        info = zipfile.ZipInfo("pkg/link")
+        info.create_system = 3
+        info.external_attr = (stat.S_IFLNK | 0o777) << 16
+        archive.writestr(info, b"target")
+    linked = output.getvalue()
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.build_bundle(manifest(linked), linked, b"print('fixed')\n")
+
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        info = zipfile.ZipInfo("pkg/reparse")
+        info.create_system = 3
+        info.external_attr = ((stat.S_IFREG | 0o644) << 16) | 0x400
+        archive.writestr(info, b"target")
+    reparse = output.getvalue()
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.build_bundle(manifest(reparse), reparse, b"print('fixed')\n")
+
+    unsupported = wheel_bytes(compression=zipfile.ZIP_BZIP2)
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.build_bundle(manifest(unsupported), unsupported, b"print('fixed')\n")
+
+
+@pytest.mark.parametrize(
+    "entries",
+    [
+        (("pkg", b"file"), ("pkg/a.py", b"child")),
+        (("pkg/a.py", b"child"), ("pkg", b"file")),
+        (("PKG", b"file"), ("pkg/A.py", b"child")),
+    ],
+)
+def test_wheel_rejects_file_directory_prefix_collisions_in_any_order(entries):
+    runtime = wheel_bytes(entries)
+    with pytest.raises(bootstrap.BootstrapContractError, match="collide"):
+        bootstrap.build_bundle(manifest(runtime), runtime, b"print('fixed')\n")
+
+    valid = wheel_bytes((("pkg.py", b"file"), ("pkg/a.py", b"child")))
+    bootstrap.build_bundle(manifest(valid), valid, b"print('fixed')\n")
+
+
+def test_wheel_rejects_original_name_truncation_during_build_and_validation():
+    shim = b"print('fixed')\n"
+    valid = wheel_bytes((("pkg/aZ.py", b"data"),))
+    malformed = valid.replace(b"pkg/aZ.py", b"pkg/a\x00.py")
+    assert malformed != valid and b"pkg/a\x00.py" in malformed
+
+    with pytest.raises(bootstrap.BootstrapContractError, match="name"):
+        bootstrap.build_bundle(manifest(malformed, shim), malformed, shim)
+
+    valid_bundle = bootstrap.build_bundle(manifest(valid, shim), valid, shim)
+    malformed_manifest = manifest(malformed, shim)
+    malformed_bundle = rewrite_bundle(
+        valid_bundle,
+        mutate_payload=lambda name, payload: (
+            malformed_manifest.to_json_bytes()
+            if name == "manifest.json"
+            else malformed
+            if name == "runtime.whl"
+            else payload
+        ),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError, match="name"):
+        bootstrap.validate_bundle(malformed_bundle)
+
+
+def test_malformed_deflate_is_a_fixed_contract_error_without_decoder_details():
+    runtime = wheel_bytes((("pkg/data.bin", b"a" * 100),))
+    malformed = corrupt_first_compressed_byte(runtime)
+    with pytest.raises(bootstrap.BootstrapContractError, match="payload") as caught:
+        bootstrap.build_bundle(manifest(malformed), malformed, b"print('fixed')\n")
+    assert caught.value.code == "invalid-bundle"
+    assert caught.value.__cause__ is None
+
+    shim = b"print('fixed')\n"
+    valid_bundle = bootstrap.build_bundle(manifest(runtime, shim), runtime, shim)
+    malformed_manifest = manifest(malformed, shim)
+    malformed_bundle = rewrite_bundle(
+        valid_bundle,
+        mutate_payload=lambda name, payload: (
+            malformed_manifest.to_json_bytes()
+            if name == "manifest.json"
+            else malformed
+            if name == "runtime.whl"
+            else payload
+        ),
+    )
+    with pytest.raises(bootstrap.BootstrapContractError, match="payload") as caught:
+        bootstrap.validate_bundle(malformed_bundle)
+    assert caught.value.code == "invalid-bundle"
+    assert caught.value.__cause__ is None
+
+
+def test_wheel_declared_expansion_limit_checked_before_payload_reads(monkeypatch):
+    runtime = wheel_bytes((("pkg/huge.bin", b"x"),))
+    original = zipfile.ZipFile.infolist
+
+    def oversized(self):
+        infos = original(self)
+        if infos and infos[0].filename == "pkg/huge.bin":
+            infos[0].file_size = bootstrap.MAX_WHEEL_EXPANDED_BYTES + 1
+        return infos
+
+    monkeypatch.setattr(zipfile.ZipFile, "infolist", oversized)
+    with pytest.raises(bootstrap.BootstrapContractError, match="expansion"):
+        bootstrap.build_bundle(manifest(runtime), runtime, b"print('fixed')\n")
+
+
+def test_wheel_entry_count_limit_checked_before_payload_reads(monkeypatch):
+    runtime = wheel_bytes()
+    original = zipfile.ZipFile.infolist
+
+    def too_many(self):
+        infos = original(self)
+        if infos and infos[0].filename == "anvil_serving/__init__.py":
+            return infos * (bootstrap.MAX_WHEEL_ENTRIES + 1)
+        return infos
+
+    monkeypatch.setattr(zipfile.ZipFile, "infolist", too_many)
+    with pytest.raises(bootstrap.BootstrapContractError, match="count"):
+        bootstrap.build_bundle(manifest(runtime), runtime, b"print('fixed')\n")
+
+
+def test_real_wheel_expansion_and_entry_count_boundaries():
+    at_limit = wheel_bytes((("pkg/blob.bin", b"x" * bootstrap.MAX_WHEEL_EXPANDED_BYTES),))
+    bootstrap.build_bundle(manifest(at_limit), at_limit, b"print('fixed')\n")
+    above_limit = wheel_bytes(
+        (("pkg/blob.bin", b"x" * (bootstrap.MAX_WHEEL_EXPANDED_BYTES + 1)),)
+    )
+    with pytest.raises(bootstrap.BootstrapContractError, match="expansion"):
+        bootstrap.build_bundle(manifest(above_limit), above_limit, b"print('fixed')\n")
+
+    entries = tuple((f"pkg/item-{number}.txt", b"") for number in range(bootstrap.MAX_WHEEL_ENTRIES))
+    full = wheel_bytes(entries)
+    bootstrap.build_bundle(manifest(full), full, b"print('fixed')\n")
+    extra = wheel_bytes((*entries, ("pkg/extra.txt", b"")))
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.build_bundle(manifest(extra), extra, b"print('fixed')\n")
+
+
+def test_raw_directory_preflight_cannot_be_bypassed_by_forged_entry_count():
+    entries = tuple(
+        (f"pkg/item-{number}.txt", b"")
+        for number in range(bootstrap.MAX_WHEEL_ENTRIES + 1)
+    )
+    raw = bytearray(wheel_bytes(entries))
+    eocd = raw.rfind(b"PK\x05\x06")
+    assert eocd >= 0
+    struct.pack_into("<H", raw, eocd + 8, 1)
+    struct.pack_into("<H", raw, eocd + 10, 1)
+    forged = bytes(raw)
+    with pytest.raises(bootstrap.BootstrapContractError, match="directory"):
+        bootstrap.build_bundle(manifest(forged), forged, b"print('fixed')\n")
+
+
+def test_shim_size_boundary_and_outer_crc_failure():
+    runtime = wheel_bytes()
+    at_limit = b"x" * bootstrap.MAX_SHIM_BYTES
+    bootstrap.build_bundle(manifest(runtime, at_limit), runtime, at_limit)
+    above_limit = at_limit + b"x"
+    with pytest.raises(bootstrap.BootstrapContractError, match="shim"):
+        bootstrap.build_bundle(manifest(runtime, above_limit), runtime, above_limit)
+    with pytest.raises(bootstrap.BootstrapContractError, match="shim"):
+        bootstrap.build_bundle(manifest(runtime, b""), runtime, b"")
+
+    shim = b"unique-fixed-shim-payload"
+    raw = bootstrap.build_bundle(manifest(runtime, shim), runtime, shim)
+    damaged = bytearray(raw)
+    offset = damaged.find(shim)
+    assert offset >= 0
+    damaged[offset] ^= 1
+    with pytest.raises(bootstrap.BootstrapContractError, match="payload"):
+        bootstrap.validate_bundle(bytes(damaged))
+
+
+def test_nested_wheel_crc_failure_is_refused():
+    runtime = wheel_bytes((("pkg/unique.txt", b"unique-wheel-payload"),), compression=zipfile.ZIP_STORED)
+    damaged = bytearray(runtime)
+    offset = damaged.find(b"unique-wheel-payload")
+    assert offset >= 0
+    damaged[offset] ^= 1
+    corrupted = bytes(damaged)
+    with pytest.raises(bootstrap.BootstrapContractError, match="payload"):
+        bootstrap.build_bundle(manifest(corrupted), corrupted, b"print('fixed')\n")
+
+
+def test_preflight_containment_accepts_child_and_rejects_escape_and_link(tmp_path):
+    root = tmp_path / "root"
+    root.mkdir()
+    assert bootstrap.preflight_contained_path(root, "generation/file") == root / "generation/file"
+    with pytest.raises(bootstrap.BootstrapContractError):
+        bootstrap.preflight_contained_path(root, "../escape")
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    link = root / "link"
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("symlink creation is unavailable")
+    with pytest.raises(bootstrap.BootstrapContractError, match="unsafe"):
+        bootstrap.preflight_contained_path(root, "link/file")
+
+
+def test_preflight_rejects_regular_file_ancestor_and_link_root(tmp_path):
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "file").write_text("not a directory", encoding="utf-8")
+    with pytest.raises(bootstrap.BootstrapContractError, match="unsafe"):
+        bootstrap.preflight_contained_path(root, "file/child")
+
+    linked_root = tmp_path / "linked-root"
+    try:
+        linked_root.symlink_to(root, target_is_directory=True)
+    except OSError:
+        pytest.skip("symlink creation is unavailable")
+    with pytest.raises(bootstrap.BootstrapContractError, match="unsafe"):
+        bootstrap.preflight_contained_path(linked_root, "child")
+
+
+def test_error_output_never_echoes_prohibited_input():
+    seeded = "https://private.invalid/token-secret"
+    with pytest.raises(bootstrap.BootstrapContractError) as caught:
+        bootstrap.BootstrapManifest.from_dict({"endpoint": seeded})
+    rendered = repr(caught.value) + str(caught.value)
+    assert seeded not in rendered
+    assert "endpoint" not in rendered
+
+
+def test_direct_dicts_reject_hostile_schema_and_key_subclasses_without_invocation():
+    seeded = "seeded-sensitive-detail"
+
+    class HostileSchema(str):
+        def __ne__(self, other):
+            raise RuntimeError(seeded)
+
+    class HostileKey(str):
+        armed = False
+
+        def __hash__(self):
+            if self.armed:
+                raise RuntimeError(seeded)
+            return super().__hash__()
+
+    accepted = receipt(
+        bootstrap.BootstrapPhase.ACCEPTED,
+        outcome=bootstrap.BootstrapOutcome.SUCCESS,
+        acceptance=bootstrap.AcceptanceStatus.ACCEPTED,
+        rollback=bootstrap.RollbackStatus.NOT_REQUIRED,
+    )
+    for parser, payload in (
+        (bootstrap.BootstrapManifest.from_dict, manifest().to_dict()),
+        (bootstrap.BootstrapReceipt.from_dict, accepted.to_dict()),
+    ):
+        hostile_schema = dict(payload)
+        hostile_schema["schema"] = HostileSchema(hostile_schema["schema"])
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            parser(hostile_schema)
+        assert seeded not in str(caught.value)
+
+        hostile_key = HostileKey("schema")
+        hostile_fields = dict(payload)
+        schema = hostile_fields.pop("schema")
+        hostile_fields[hostile_key] = schema
+        hostile_key.armed = True
+        with pytest.raises(bootstrap.BootstrapContractError) as caught:
+            parser(hostile_fields)
+        assert seeded not in str(caught.value)

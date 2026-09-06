@@ -18,6 +18,7 @@ from .topology import (
     CommandIdentity,
     GpuRole,
     Host,
+    HostBootstrap,
     Resource,
     Runtime,
     Topology,
@@ -30,9 +31,10 @@ from .topology import (
 
 _TRANSPORTS = frozenset({"local", "controller", "ssh"})
 _REQUESTED_TRANSPORTS = _TRANSPORTS | {"auto"}
-_EXECUTION_POLICIES = frozenset({"resource-owner", "offline"})
+_EXECUTION_POLICIES = frozenset({"resource-owner", "host-bootstrap", "offline"})
 _EXIT_CODES = {"usage": 2, "safety": 3}
 _TARGET_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+_BOOTSTRAP_TARGET_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 
 
 class CommandSpecError(ValueError):
@@ -93,6 +95,20 @@ class CommandSpec:
                     "offline commands must not declare a resource role, transport, or runtime role"
                 )
             return
+        if self.execution_policy == "host-bootstrap":
+            expected = (
+                self.name == "controller-bootstrap"
+                and self.resource_role is None
+                and self.supported_transports == ("controller", "ssh")
+                and self.execution_runtime_roles == ("native",)
+                and self.mutation_class == "write"
+                and self.recovery_capable is True
+                and self.gpu_role_required is False
+                and self.execution_host_os == ("windows", "linux")
+            )
+            if not expected:
+                raise CommandSpecError("host-bootstrap command declaration is invalid")
+            return
         if not self.resource_role:
             raise CommandSpecError("resource-owner commands require a resource role")
         if not self.supported_transports:
@@ -142,6 +158,7 @@ class ExecutionPlan:
     # ADR-0033 controller-RPC groundwork: node identity the selected controller
     # must assert on /health before dispatch, when the transport declares it.
     transport_expected_node: str | None = None
+    host_bootstrap: HostBootstrap | None = None
 
     @property
     def endpoint(self) -> str | None:
@@ -150,6 +167,21 @@ class ExecutionPlan:
 
     def as_dict(self) -> dict[str, object]:
         """Return stable context suitable for bounded output envelopes."""
+        if self.command.execution_policy == "host-bootstrap":
+            return {
+                "command": self.command.name,
+                "topology": self.topology_id,
+                "topology_snapshot": self.topology_snapshot,
+                "command_host": _host_id(self.command_host),
+                "command_runtime": _runtime_id(self.command_runtime),
+                "execution_host": _host_id(self.execution_host),
+                "execution_runtime": _runtime_id(self.execution_runtime),
+                "target": self.selected_target,
+                "transport": self.transport,
+                "transport_id": self.transport_id,
+                "recovery_transport_id": self.recovery_transport_id,
+                "expected_node": self.transport_expected_node,
+            }
         controller_endpoint = self.transport_endpoint if self.transport == "controller" else None
         context = {
             "command": self.command.name,
@@ -205,11 +237,12 @@ class ExecutionPreflight:
     command_identity: CommandIdentity
     execution_host: Host
     execution_runtime: Runtime
-    resource: Resource
+    resource: Resource | None
     gpu_role: GpuRole | None
     selected_target: str | None
     overlay: str | None
-    capacity: CapacityDecision
+    capacity: CapacityDecision | None
+    host_bootstrap: HostBootstrap | None = None
 
 
 @dataclass(frozen=True)
@@ -286,6 +319,20 @@ def resolve_execution_plan(
             overlay=overlay,
         )
 
+    if command.execution_policy == "host-bootstrap":
+        preflight = preflight_execution_plan(
+            topology,
+            command,
+            target=target,
+            command_identity=command_identity,
+            command_host=command_host,
+            command_runtime=command_runtime,
+            environment=environment,
+            overlay=overlay,
+            experimental_model_workload=experimental_model_workload,
+        )
+        return finalize_execution_plan(topology, preflight, transport=transport)
+
     _validate_requested_transport(transport)
     preflight = preflight_execution_plan(
         topology,
@@ -317,6 +364,17 @@ def preflight_execution_plan(
     if command.execution_policy == "offline":
         raise TargetResolutionError(
             "offline commands do not have a resource-owner preflight", exit_class="usage"
+        )
+    if command.execution_policy == "host-bootstrap":
+        return _preflight_host_bootstrap(
+            topology,
+            command,
+            target=target,
+            command_identity=command_identity,
+            command_host=command_host,
+            command_runtime=command_runtime,
+            environment=environment,
+            overlay=overlay,
         )
     identity = command_identity or _command_identity(
         topology, command_host=command_host, command_runtime=command_runtime, environment=environment
@@ -374,13 +432,15 @@ def finalize_execution_plan(
     transport: str = "auto",
 ) -> ExecutionPlan:
     """Select transport and build a plan from an already validated preflight."""
-    _validate_requested_transport(transport)
     if (
         preflight.topology_id != topology.id
         or preflight.topology_snapshot != topology_snapshot_identity(topology)
     ):
         raise TargetResolutionError("execution preflight belongs to a stale or different topology")
     command = preflight.command
+    if command.execution_policy == "host-bootstrap":
+        return _finalize_host_bootstrap(topology, preflight, transport=transport)
+    _validate_requested_transport(transport)
     selected_transport, selected_transport_record = _select_transport(
         topology,
         command,
@@ -456,6 +516,210 @@ def finalize_execution_plan(
 
 
 resolve_target = resolve_execution_plan
+
+
+_BOOTSTRAP_MESSAGES = {
+    "bootstrap-target-required": "bootstrap requires one explicit host target",
+    "bootstrap-host-missing": "bootstrap target host is not declared",
+    "bootstrap-contract-missing": "bootstrap target has no bootstrap declaration",
+    "bootstrap-disabled": "bootstrap is disabled for the target host",
+    "bootstrap-authorization-denied": "bootstrap is not authorized for the target host",
+    "bootstrap-runtime-invalid": "bootstrap execution runtime is invalid",
+    "bootstrap-controller-missing": "bootstrap controller transport is missing",
+    "bootstrap-controller-ambiguous": "bootstrap controller transport is ambiguous",
+    "bootstrap-controller-identity-invalid": "bootstrap controller identity is invalid",
+    "bootstrap-recovery-ambiguous": "bootstrap recovery transport is ambiguous",
+    "bootstrap-transport-invalid": "bootstrap transport selection is invalid",
+    "bootstrap-command-identity-invalid": "bootstrap command identity is invalid",
+}
+
+
+def _bootstrap_refusal(reason_code: str) -> TargetResolutionError:
+    return TargetResolutionError(
+        _BOOTSTRAP_MESSAGES[reason_code],
+        details={"reason_code": reason_code},
+    )
+
+
+def _preflight_host_bootstrap(
+    topology: Topology,
+    command: CommandSpec,
+    *,
+    target: str | None,
+    command_identity: CommandIdentity | None,
+    command_host: str | None,
+    command_runtime: str | None,
+    environment: Mapping[str, str] | None,
+    overlay: str | None,
+) -> ExecutionPreflight:
+    host = _bootstrap_target_host(topology, target)
+    bootstrap = host.bootstrap
+    if bootstrap is None:
+        raise _bootstrap_refusal("bootstrap-contract-missing")
+    if not bootstrap.enabled:
+        raise _bootstrap_refusal("bootstrap-disabled")
+    if not bootstrap.bootstrap_authorized:
+        raise _bootstrap_refusal("bootstrap-authorization-denied")
+    try:
+        runtime = topology.runtime(bootstrap.execution_runtime)
+    except KeyError:
+        raise _bootstrap_refusal("bootstrap-runtime-invalid") from None
+    if runtime.host != host.id or runtime.role != "native" or host.os not in command.execution_host_os:
+        raise _bootstrap_refusal("bootstrap-runtime-invalid")
+    identity = _bootstrap_command_identity(
+        topology,
+        command_identity=command_identity,
+        command_host=command_host,
+        command_runtime=command_runtime,
+        environment=environment,
+    )
+    return ExecutionPreflight(
+        command=command,
+        topology_id=topology.id,
+        topology_snapshot=topology_snapshot_identity(topology),
+        command_identity=identity,
+        execution_host=host,
+        execution_runtime=runtime,
+        resource=None,
+        gpu_role=None,
+        selected_target=target,
+        overlay=overlay,
+        capacity=None,
+        host_bootstrap=bootstrap,
+    )
+
+
+def _bootstrap_target_host(topology: Topology, target: str | None) -> Host:
+    if type(target) is not str:
+        raise _bootstrap_refusal("bootstrap-target-required")
+    prefix, separator, value = target.partition(":")
+    if prefix != "host" or not separator or _BOOTSTRAP_TARGET_ID_RE.fullmatch(value) is None:
+        raise _bootstrap_refusal("bootstrap-target-required")
+    try:
+        return topology.host(value)
+    except KeyError:
+        raise _bootstrap_refusal("bootstrap-host-missing") from None
+
+
+def _bootstrap_command_identity(
+    topology: Topology,
+    *,
+    command_identity: CommandIdentity | None,
+    command_host: str | None,
+    command_runtime: str | None,
+    environment: Mapping[str, str] | None,
+) -> CommandIdentity:
+    try:
+        if command_identity is not None:
+            declared_host = topology.host(command_identity.host.id)
+            declared_runtime = topology.runtime(command_identity.runtime.id)
+            if (
+                declared_host != command_identity.host
+                or declared_runtime != command_identity.runtime
+                or declared_runtime.host != declared_host.id
+            ):
+                raise _bootstrap_refusal("bootstrap-command-identity-invalid")
+            return command_identity
+        return _command_identity(
+            topology,
+            command_host=command_host,
+            command_runtime=command_runtime,
+            environment=environment,
+        )
+    except Exception:
+        raise _bootstrap_refusal("bootstrap-command-identity-invalid") from None
+
+
+def _finalize_host_bootstrap(
+    topology: Topology,
+    preflight: ExecutionPreflight,
+    *,
+    transport: str,
+) -> ExecutionPlan:
+    if transport not in {"auto", "controller"}:
+        raise _bootstrap_refusal("bootstrap-transport-invalid")
+    host = preflight.execution_host
+    runtime = preflight.execution_runtime
+    bootstrap = preflight.host_bootstrap
+    if bootstrap is None or host is None or runtime is None:
+        raise _bootstrap_refusal("bootstrap-runtime-invalid")
+    controllers = _bootstrap_transports(topology, "controller", host.id, runtime.id)
+    if not controllers:
+        raise _bootstrap_refusal("bootstrap-controller-missing")
+    if len(controllers) != 1:
+        raise _bootstrap_refusal("bootstrap-controller-ambiguous")
+    controller = controllers[0]
+    if (
+        controller.expected_node != host.id
+        or not controller.auth_env
+        or controller.allow_unauthenticated_loopback
+    ):
+        raise _bootstrap_refusal("bootstrap-controller-identity-invalid")
+    try:
+        _validate_transport_owner(controller, preflight.command_identity.host, host)
+    except TargetResolutionError:
+        raise _bootstrap_refusal("bootstrap-transport-invalid") from None
+    recovery_matches = _bootstrap_transports(topology, "ssh", host.id, runtime.id)
+    if len(recovery_matches) > 1:
+        raise _bootstrap_refusal("bootstrap-recovery-ambiguous")
+    recovery = recovery_matches[0] if recovery_matches else None
+    if recovery is not None:
+        if (
+            not recovery.host_key_fingerprint
+            or not recovery.known_hosts_path
+            or recovery.allow_unauthenticated_loopback
+        ):
+            raise _bootstrap_refusal("bootstrap-transport-invalid")
+        try:
+            _validate_transport_owner(recovery, preflight.command_identity.host, host)
+        except TargetResolutionError:
+            raise _bootstrap_refusal("bootstrap-transport-invalid") from None
+    return ExecutionPlan(
+        command=preflight.command,
+        topology_id=topology.id,
+        topology_snapshot=preflight.topology_snapshot,
+        command_host=preflight.command_identity.host,
+        command_runtime=preflight.command_identity.runtime,
+        execution_host=host,
+        execution_runtime=runtime,
+        resource_host=None,
+        resource_runtime=None,
+        resource=None,
+        transport="controller",
+        transport_id=controller.id,
+        transport_endpoint=controller.endpoint,
+        transport_host_key_fingerprint=controller.host_key_fingerprint,
+        transport_known_hosts_path=controller.known_hosts_path,
+        recovery_transport_id=recovery.id if recovery else None,
+        recovery_transport_endpoint=recovery.endpoint if recovery else None,
+        recovery_host_key_fingerprint=recovery.host_key_fingerprint if recovery else None,
+        recovery_known_hosts_path=recovery.known_hosts_path if recovery else None,
+        resource_endpoint=None,
+        gpu_role=None,
+        selected_target=preflight.selected_target,
+        overlay=preflight.overlay,
+        capacity=None,
+        transport_auth_env=controller.auth_env,
+        transport_allowed_operations=controller.allowed_operations,
+        transport_expected_node=controller.expected_node,
+        host_bootstrap=bootstrap,
+    )
+
+
+def _bootstrap_transports(
+    topology: Topology,
+    kind: str,
+    host_id: str,
+    runtime_id: str,
+) -> tuple[Transport, ...]:
+    return tuple(
+        item
+        for item in topology.transports
+        if item.kind == kind
+        and item.host == host_id
+        and item.runtime == runtime_id
+        and "controller-bootstrap" in item.allowed_operations
+    )
 
 
 def _validate_requested_transport(transport: str) -> None:

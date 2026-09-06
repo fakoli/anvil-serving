@@ -84,7 +84,7 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
     "_media_workflows/*.json",
     "_hermes_skills/*/*.md",
 ]
-"anvil_serving.observability.dashboard.static" = ["*.html"]
+"anvil_serving.observability.dashboard.static" = ["*.html", "*.js"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

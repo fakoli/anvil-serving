@@ -109,11 +109,18 @@ and the mutable configuration behind it. It does not mean that Anvil Serving
 chooses among models. The complete request path is:
 
 1. The caller chooses a declared capability alias such as `llm.primary`.
-2. Operator configuration maps that alias to exactly one tier and endpoint.
-3. The selected tier supplies configured metadata, or its one inference
-   service supplies bounded live model metadata when explicitly enabled.
-4. The router validates readiness and admission, then relays to that same
-   endpoint or fails closed.
+2. Operator configuration maps that alias to exactly one tier: a direct
+   endpoint or an explicit set of 2–16 qualified equivalent replicas on one host.
+3. The tier supplies configured metadata. A direct tier may instead opt into
+   bounded live metadata from its one inference service; replica tiers may not.
+4. The router checks readiness and admission, selects one eligible member
+   when replicas are configured, and relays once or fails closed. Round-robin
+   and capacity-aware selection never choose a different model, tier, or host.
+
+See [qualified replica configuration](docs/CONFIGURATION.md#qualified-same-host-replicas)
+and [member lifecycle limits](docs/cli/serves.md#replica-lifecycle-limits).
+The [workload activity view](docs/WORKLOAD-VISIBILITY.md) adds bounded, read-only
+node and fleet visibility without acquiring scheduling or lifecycle authority.
 
 See [Capability meta-router](docs/META-ROUTER.md) for the authority model and
 the product decisions that keep dynamic metadata separate from dynamic route

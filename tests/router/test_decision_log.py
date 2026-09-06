@@ -2,8 +2,19 @@
 from __future__ import annotations
 
 import threading
+import dataclasses
+import json
+
+import pytest
 
 from anvil_serving.router.decision_log import AttemptRecord, DecisionLog, DecisionRecord, summarize_decisions
+from anvil_serving.router.decision_log import DecisionLogWriter, decision_line
+from anvil_serving.router.replica_scheduler import (
+    PressureFreshness,
+    ReplicaDecision,
+    ReplicaDecisionReason,
+    ReplicaScore,
+)
 
 
 def _record(*, reason="served", served=True):
@@ -128,3 +139,167 @@ def test_concurrent_reads_are_safe_while_writers_append():
 
     assert read_errors == []
     assert len(log) == writer_count * records_per_writer
+
+
+class _UnsafeValue:
+    def __str__(self):
+        raise AssertionError("optional metadata must not be stringified")
+
+
+class _StringSubclass(str):
+    pass
+
+
+@pytest.mark.parametrize("member,selection", [
+    ("lane-a", "identity_passed"),
+    ("A" + "x" * 63, "identity_passed"),
+    (None, "not_admitted"),
+    (None, "request_rejected"),
+])
+def test_replica_metadata_has_one_shared_safe_projection(tmp_path, member, selection):
+    record = dataclasses.replace(_record(), replica_member_id=member, replica_selection=selection)
+    log = DecisionLog(sink=DecisionLogWriter(str(tmp_path / "decisions.jsonl")))
+    log.record(record)
+    expected = {"replica_selection": selection}
+    if member is not None:
+        expected["replica_member_id"] = member
+    assert log.last.replica_member_id == member
+    assert log.last.replica_selection == selection
+    for projection in (log.summary()["records"][0], json.loads((tmp_path / "decisions.jsonl").read_text())):
+        assert {key: value for key, value in projection.items() if key.startswith("replica_")} == expected
+    assert all(f"{key}={value}" in decision_line(record).split() for key, value in expected.items())
+
+
+@pytest.mark.parametrize("member,selection", [
+    (None, "identity_passed"), ("lane-a", None), ("lane-a", "not_admitted"),
+    ("lane-a", "request_rejected"), ("lane-a", "provider-secret"),
+    ("9lane", "identity_passed"), ("a" * 65, "identity_passed"),
+    ("lane-a\nforged=value", "identity_passed"),
+    ("http://100.64.0.10/v1", "identity_passed"),
+    ({"secret": "private"}, "identity_passed"), (True, "identity_passed"),
+    (_UnsafeValue(), "identity_passed"), ("lane-a", _UnsafeValue()),
+    (_StringSubclass("lane-a"), "identity_passed"),
+    ("lane-a", _StringSubclass("identity_passed")),
+    ("lane-a", ["identity_passed"]), ("lane-a", "x" * 100000),
+], ids=[f"invalid-pair-{index}" for index in range(17)])
+def test_invalid_replica_pair_is_dropped_before_every_surface(tmp_path, member, selection):
+    record = dataclasses.replace(_record(), replica_member_id=member, replica_selection=selection)
+    log = DecisionLog()
+    log.record(record)
+    assert log.last.replica_member_id is None
+    assert log.last.replica_selection is None
+    # Summary also accepts untrusted JSON-like maps without conversion.
+    summary = summarize_decisions([{"replica_member_id": member, "replica_selection": selection}])
+    assert not any(key.startswith("replica_") for key in summary["records"][0])
+    assert "replica_" not in decision_line(record)
+    path = tmp_path / "raw-writer.jsonl"
+    DecisionLogWriter(str(path))(record)  # independent of DecisionLog sanitization
+    assert not any(key.startswith("replica_") for key in json.loads(path.read_text()))
+
+
+def test_writer_allowlist_preserves_legacy_fields_and_excludes_subclass_payload(tmp_path):
+    @dataclasses.dataclass(frozen=True)
+    class ExtendedAttempt(AttemptRecord):
+        private_payload: object = dataclasses.field(default_factory=_UnsafeValue)
+
+    @dataclasses.dataclass(frozen=True)
+    class ExtendedRecord(DecisionRecord):
+        private_payload: object = dataclasses.field(default_factory=_UnsafeValue)
+
+    original = dataclasses.replace(
+        _record(), unix_ts=1.25,
+        workload_created_at="2026-09-05T12:00:00.000000Z",
+        workload_updated_at="2026-09-05T12:00:01.000000Z", workload_outcome="success",
+    )
+    expected = dataclasses.asdict(original)
+    del expected["replica_member_id"], expected["replica_selection"], expected["replica_scheduler"]
+    expected["attempts"] = list(expected["attempts"])
+    record = ExtendedRecord(**{f.name: getattr(original, f.name) for f in dataclasses.fields(original)})
+    record = dataclasses.replace(record, attempts=(ExtendedAttempt(**dataclasses.asdict(original.attempts[0])),))
+    path = tmp_path / "allowlist.jsonl"
+    DecisionLogWriter(str(path))(record)
+    assert json.loads(path.read_text()) == expected
+
+
+def test_direct_record_retains_legacy_optional_omission_and_audit_shape(tmp_path):
+    path = tmp_path / "direct.jsonl"
+    DecisionLogWriter(str(path))(_record())
+    payload = json.loads(path.read_text())
+    assert not any(key.startswith(("replica_", "workload_")) for key in payload)
+    assert "replica_" not in repr(summarize_decisions([_record()]))
+    assert decision_line(_record()) == (
+        "route=llm.primary kind=chat served=primary-local outcome=served "
+        "tier=primary-local prompt=3 completion=2"
+    )
+
+
+def _scheduler_decision():
+    score = ReplicaScore(
+        "member-a", 0, 2, False, 100, 0, PressureFreshness.FRESH,
+    )
+    return ReplicaDecision(
+        "member-a", ("member-a",), (score,), ReplicaDecisionReason.SELECTED,
+    )
+
+
+def test_scheduler_projection_is_closed_and_shared_by_memory_summary_line_and_writer(tmp_path):
+    record = dataclasses.replace(_record(), replica_scheduler=_scheduler_decision())
+    path = tmp_path / "scheduler.jsonl"
+    log = DecisionLog(sink=DecisionLogWriter(str(path)))
+    log.record(record)
+    expected = _scheduler_decision().to_dict()
+    assert log.last.replica_scheduler == _scheduler_decision()
+    assert log.summary()["records"][0]["replica_scheduler"] == expected
+    assert json.loads(path.read_text())["replica_scheduler"] == expected
+    assert "replica_scheduler=capacity" in decision_line(log.last)
+    assert "replica_eligible_count=1" in decision_line(log.last)
+
+
+def test_scheduler_invalid_nested_shape_is_dropped_without_touching_valid_replica_pair():
+    @dataclasses.dataclass(frozen=True)
+    class UnsafeDecision(ReplicaDecision):
+        pass
+
+    record = dataclasses.replace(
+        _record(), replica_member_id="member-a", replica_selection="identity_passed",
+        replica_scheduler=UnsafeDecision(
+            "member-a", ("member-a",), _scheduler_decision().scores,
+            ReplicaDecisionReason.SELECTED,
+        ),
+    )
+    log = DecisionLog()
+    log.record(record)
+    assert log.last.replica_member_id == "member-a"
+    assert log.last.replica_scheduler is None
+    malformed = {"replica_scheduler": {"selected_member_id": "member-a"}}
+    assert "replica_scheduler" not in summarize_decisions([malformed])["records"][0]
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda payload: payload.update(extra="private-token"),
+    lambda payload: payload.update(selected_member_id="member-b"),
+    lambda payload: payload.update(eligible_member_ids=["member-a"] * 17),
+    lambda payload: payload["scores"][0].update(local_numerator=True),
+    lambda payload: payload["scores"][0].update(freshness="future-private"),
+    lambda payload: payload["scores"][0].update(local_numerator=-1),
+], ids=["extra", "mismatch", "oversize", "numeric-bool", "freshness", "numeric-range"])
+def test_captured_scheduler_json_requires_the_closed_canonical_shape(mutate):
+    payload = _scheduler_decision().to_dict()
+    mutate(payload)
+    summary = summarize_decisions([{"replica_scheduler": payload}])
+    assert "replica_scheduler" not in summary["records"][0]
+
+
+def test_invalid_scheduler_never_leaks_private_nested_values_to_any_audit_surface(tmp_path):
+    decision = _scheduler_decision()
+    object.__setattr__(decision, "selected_member_id", "private-token")
+    record = dataclasses.replace(
+        _record(), replica_member_id="member-a", replica_selection="identity_passed",
+        replica_scheduler=decision,
+    )
+    path = tmp_path / "private-scheduler.jsonl"
+    log = DecisionLog(sink=DecisionLogWriter(str(path)))
+    log.record(record)
+    combined = repr(log.last) + repr(log.summary()) + decision_line(log.last) + path.read_text()
+    assert "private-token" not in combined
+    assert log.last.replica_member_id == "member-a"
