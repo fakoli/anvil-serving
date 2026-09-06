@@ -46,7 +46,10 @@ The CSP candidate's postcommit gate at `781708d5` (`EV321129F4`) passed 27
 focused tests and Ruff. Its synthetic browser evidence above is not a live
 controller/fleet acceptance result.
 
-## Still pending
+## Source acceptance and deployment boundary
 
-Consolidated formal acceptance and deployment are pending.
+Consolidated source acceptance is complete; the integrated runtime checkpoint
+`f964a81e` passed 7185 tests with 21 skips. See
+`.tickets/2026-09-05-router-fleet-merge-checkpoint.md` for the final review and
+publication gates. Package release and live deployment remain deferred.
 This source repair does not claim that any deployed dashboard has changed.

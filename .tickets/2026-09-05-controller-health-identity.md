@@ -1,6 +1,7 @@
 # Controller health identity envelope
 
-Status: source-only repair verified; final integrated acceptance pending.
+Status: source-only repair verified and accepted in the consolidated batch;
+final PR CI and merge remain separate publication gates.
 
 Consolidated control-plane review reproduced two fail-open identity checks in
 `ControllerTransport._verify_node` at the predecessor revision. A health body
@@ -37,4 +38,9 @@ The focused post-repair identity selector passed 16 cases; its 65,537-byte
 case replaces the JSON loader with a failing spy, proving the refusal occurs
 before parsing. The required five-file suite passed 392 tests, the adjacent
 CLI/targets/diagnostics/fleet suite passed 492 tests, Ruff passed, and the diff
-check was clean. Final integrated full-suite and CI acceptance remain separate.
+check was clean. Claim-bound proof `EVFBC9D314` records commit `2ce5fec8`.
+The integrated runtime checkpoint `f964a81e` passed 7185 tests with 21 skips.
+Independent closure passed 21 critical transport/loopback/budget tests and
+confirmed that deliberately weakened duplicate/overflow guards dispatched.
+See `.tickets/2026-09-05-router-fleet-merge-checkpoint.md` for consolidated
+source acceptance; final PR CI and merge remain separate gates.

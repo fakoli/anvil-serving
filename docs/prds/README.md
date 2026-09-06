@@ -1,7 +1,8 @@
-# Proposed implementation PRDs
+# Implementation PRDs
 
 These PRDs turn source reviews and concrete Anvil Serving product gaps into
-bounded changes. They are proposed implementation contracts, not shipped features.
+bounded changes. The checkpoint below distinguishes accepted source from
+unfinished implementation and separate draft proposals; none proves deployment.
 Each includes requirements, source pointers, small tasks, negative tests, and
 completion evidence for an agent starting without the original conversation.
 
@@ -12,8 +13,21 @@ completion evidence for an agent starting without the original conversation.
 The 2026-09-05 implementation batch contains qualified replica sets,
 capacity-aware member scheduling and lifecycle controls, bounded workload
 visibility and dashboard, scoped read authorization, and controller diagnostics.
-The batch is undergoing consolidated acceptance and CI; these source changes
+Consolidated source acceptance is complete: 132 tasks are done and nine remain
+open. Final PR CI and merge are separate publication gates; these source changes
 are not package publication, model qualification, or live deployment evidence.
+
+| PRD partition | Accepted source tasks / total |
+| --- | --- |
+| controller-diagnostics | 11 / 11 |
+| qualified-replica-sets | 21 / 21 |
+| replica-capacity-scheduler | 16 / 16 |
+| workload-visibility | 50 / 50 |
+| workload-contract-repairs | 18 / 18 |
+| fleet-node-enrollment | 16 / 25 |
+
+Exact evidence, remaining task IDs and the stop boundary are recorded in
+`.tickets/2026-09-05-router-fleet-merge-checkpoint.md` in the repository.
 
 Fleet enrollment is only partially implemented: contracts, packaging, and
 trusted-file/permission primitives exist. Trusted configuration composition,
@@ -49,13 +63,13 @@ batch; do not combine all four contracts into an unbounded rewrite.
 The companion [workload contract repairs](workload-contract-repairs.md) records
 integration fixes for omitted query fields, canonical host bounds, dashboard
 regressions, and the same-origin script policy. These are repairs within the
-workload program, not a fifth deployed product. Source candidates await the
-same consolidated acceptance, CI, release, and deployment gates. The
+workload program, not a fifth deployed product. Their source is accepted;
+final PR CI and merge are separate, and release/deployment remain deferred. The
 [workload usage guide](../WORKLOAD-VISIBILITY.md) describes their intended
 operator interface without asserting availability on installed nodes.
 
-The four router/fleet PRDs above remain partial delivery programs; an accepted
-task or source checkpoint does not mark an entire PRD deployed. The separate
+Replica sets, scheduling and workload visibility are source-complete; fleet
+enrollment remains partial. Accepted source does not mark a PRD deployed. The separate
 [bounded controller diagnostics](controller-diagnostics.md) source contract is
 implemented and independently accepted through its local core, MCP/HTTP
 authorization, client ownership, protected CLI envelope, and Workbench skill
@@ -63,7 +77,10 @@ catalogs and exact public MCP catalog fixtures. Its generated command reference
 and documentation are synchronized here. A sanitized managed read confirmed
 the diagnostic surface works, but the observed controller still
 had no published binding. Endpoint identity/version parity, durable publication
-recovery, and deployment acceptance remain open operator gates.
+recovery, and deployment acceptance remain open operator gates. A pre-existing
+generic health HTTP-error detail/classification gap is separately deferred in
+`.tickets/2026-09-05-controller-health-http-error-boundary.md`; the repaired
+successful-health identity envelope does not resolve that distinct error path.
 
 ## Miles-informed delivery order
 
