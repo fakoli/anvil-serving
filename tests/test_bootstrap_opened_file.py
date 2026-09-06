@@ -325,9 +325,10 @@ def test_linux_require_readonly_refuses_owner_writable_file(
     path = trusted_tmp
     path.write_bytes(b"fixed")
     os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    assert _enter_and_read(path, max_bytes=64, require_readonly=False) == b"fixed"
     _refusal(
         BootstrapErrorCode.PRECONDITION_FAILED,
-        lambda: _enter_and_read(path, max_bytes=64),
+        lambda: _enter_and_read(path, max_bytes=64, require_readonly=True),
     )
     os.chmod(path, stat.S_IRUSR)
     with _trusted(path, require_readonly=True) as opened:
