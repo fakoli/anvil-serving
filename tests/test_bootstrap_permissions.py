@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import stat
 import struct
-import subprocess
 import sys
 from pathlib import Path
 
@@ -13,6 +12,7 @@ import pytest
 
 from anvil_serving.control_plane import bootstrap_shim as shim
 from anvil_serving.fleet_bootstrap import BootstrapPermissionVerdict as Verdict
+from tests.bootstrap_windows_fixtures import windows_fixture_tree
 
 
 def _sid(authority: int, *subauthorities: int) -> bytes:
@@ -278,53 +278,76 @@ def test_linux_native_pipe_and_closed_descriptor_are_indeterminate() -> None:
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows handle ACL semantics")
-def test_windows_native_temp_acl_matrix_uses_the_borrowed_descriptor(tmp_path: Path) -> None:
+def test_windows_native_temp_acl_matrix_uses_the_borrowed_descriptor() -> None:
     """Exercise read/write/Everyone DACLs only on a disposable temporary file."""
 
-    import ctypes
+    with windows_fixture_tree() as tree:
+        path = tree.file("receiver.pyz")
+        path.write_bytes(b"abcdef")
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_BINARY", 0))
+        try:
+            os.lseek(descriptor, 2, os.SEEK_SET)
+            tree.everyone_writable(path)
+            assert shim.inspect_opened_permissions(descriptor) is Verdict.UNTRUSTED_WRITABLE
+            tree.owner_readonly(path)
+            assert shim.inspect_opened_permissions(descriptor) is Verdict.OWNER_READONLY
+            tree.owner_writable(path)
+            assert shim.inspect_opened_permissions(descriptor) is Verdict.OWNER_WRITABLE
+            tree.owner_readonly_with_everyone_write(path)
+            assert shim.inspect_opened_permissions(descriptor) is Verdict.UNTRUSTED_WRITABLE
+            assert os.lseek(descriptor, 0, os.SEEK_CUR) == 2
+        finally:
+            try:
+                tree.restore_full_control(path)
+            finally:
+                os.close(descriptor)
 
-    path = tmp_path / "receiver.pyz"
-    path.write_bytes(b"abcdef")
-    current_sid = shim._windows_current_sid()
-    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
-    convert = advapi32.ConvertSidToStringSidW
-    convert.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_wchar_p)]
-    convert.restype = ctypes.c_int
-    rendered = ctypes.c_wchar_p()
-    sid_buffer = ctypes.create_string_buffer(current_sid)
-    assert convert(ctypes.cast(sid_buffer, ctypes.c_void_p), ctypes.byref(rendered))
-    try:
-        current = "*" + rendered.value
-    finally:
-        ctypes.WinDLL("kernel32", use_last_error=True).LocalFree(rendered)
 
-    def set_acl(*entries: str) -> None:
-        completed = subprocess.run(
-            ["icacls", str(path), "/inheritance:r", "/grant:r", *entries],
-            check=False,
-            capture_output=True,
-            text=False,
-        )
-        assert completed.returncode == 0
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows fixture containment")
+def test_windows_fixture_rejects_acl_writes_outside_its_disposable_root() -> None:
+    with windows_fixture_tree() as tree:
+        with pytest.raises(ValueError):
+            tree.restore_full_control(Path(shim.__file__))
 
-    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_BINARY", 0))
-    try:
-        os.lseek(descriptor, 2, os.SEEK_SET)
-        set_acl(f"{current}:R")
-        assert shim.inspect_opened_permissions(descriptor) is Verdict.OWNER_READONLY
-        set_acl(f"{current}:W")
-        assert shim.inspect_opened_permissions(descriptor) is Verdict.OWNER_WRITABLE
-        set_acl(f"{current}:R", "*S-1-1-0:W")
-        assert shim.inspect_opened_permissions(descriptor) is Verdict.UNTRUSTED_WRITABLE
-        assert os.lseek(descriptor, 0, os.SEEK_CUR) == 2
-    finally:
-        os.close(descriptor)
-        subprocess.run(
-            ["icacls", str(path), "/reset"],
-            check=False,
-            capture_output=True,
-            text=False,
-        )
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows fixture containment")
+def test_windows_fixture_rejects_reparse_and_hardlink_acl_targets() -> None:
+    with windows_fixture_tree() as tree:
+        original = tree.file("original.pyz")
+        linked = tree.root / "linked.pyz"
+        try:
+            os.symlink(original, linked)
+        except OSError as exc:
+            pytest.skip(f"Windows link privilege unavailable: {exc.__class__.__name__}")
+        try:
+            with pytest.raises(ValueError):
+                tree.restore_full_control(linked)
+        finally:
+            linked.unlink(missing_ok=True)
+
+        hard_link = tree.root / "hard-linked.pyz"
+        try:
+            os.link(original, hard_link)
+        except OSError as exc:
+            pytest.skip(f"hard links unavailable for test fixture: {exc.__class__.__name__}")
+        try:
+            with pytest.raises(ValueError):
+                tree.restore_full_control(hard_link)
+        finally:
+            hard_link.unlink(missing_ok=True)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows fixture containment")
+def test_windows_fixture_refuses_existing_or_nested_file_names() -> None:
+    with windows_fixture_tree() as tree:
+        tree.file("receiver.pyz")
+        with pytest.raises(FileExistsError):
+            tree.file("receiver.pyz")
+        for name in ("nested/receiver.pyz", "", "."):
+            with pytest.raises(ValueError):
+                tree.file(name)
+        with pytest.raises(ValueError):
+            tree.file(True)  # type: ignore[arg-type]
 
 
 def test_public_dispatch_validates_exact_types_before_platform(monkeypatch: pytest.MonkeyPatch) -> None:

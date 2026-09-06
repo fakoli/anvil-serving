@@ -14,6 +14,7 @@ import pytest
 
 from anvil_serving.control_plane import bootstrap_shim as shim
 from anvil_serving.fleet_bootstrap import BootstrapContractError, BootstrapErrorCode
+from tests.bootstrap_windows_fixtures import windows_fixture_tree
 
 
 @contextmanager
@@ -31,7 +32,11 @@ def _trusted(
 
 @pytest.fixture
 def trusted_tmp() -> Path:
-    """An owned disposable file under the worktree's already-trusted ancestry."""
+    """An owned disposable file under trusted native ancestry."""
+    if sys.platform == "win32":
+        with windows_fixture_tree() as tree:
+            yield tree.file("receiver.pyz")
+        return
     descriptor, name = mkstemp(prefix="anvil-opened-file-", suffix=".pyz", dir=Path.cwd())
     os.close(descriptor)
     path = Path(name)
@@ -226,9 +231,9 @@ def test_windows_leaf_and_ancestor_reparse_refuse(
     trusted_tmp: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     token = uuid.uuid4().hex
-    target = Path.cwd() / "anvil_serving"
     leaf = trusted_tmp.with_name(f"opened-leaf-{token}.pyz")
-    ancestor = Path.cwd() / f"opened-ancestor-{token}"
+    target = trusted_tmp.parent / f"opened-target-{token}"
+    ancestor = trusted_tmp.parent / f"opened-ancestor-{token}"
     try:
         trusted_tmp.unlink()
         os.symlink(Path(shim.__file__), leaf)
@@ -236,6 +241,8 @@ def test_windows_leaf_and_ancestor_reparse_refuse(
             BootstrapErrorCode.UNSAFE_PATH,
             lambda: _enter_and_read(leaf, max_bytes=64),
         )
+        target.mkdir()
+        (target / "__init__.py").write_bytes(b"fixed")
         os.symlink(target, ancestor, target_is_directory=True)
         monkeypatch.setattr(shim, "_permission_is_allowed", lambda *args, **kwargs: True)
         _refusal(
@@ -248,13 +255,18 @@ def test_windows_leaf_and_ancestor_reparse_refuse(
         leaf.unlink(missing_ok=True)
         if ancestor.exists() or ancestor.is_symlink():
             ancestor.unlink(missing_ok=True)
+        if target.exists():
+            (target / "__init__.py").unlink(missing_ok=True)
+            target.rmdir()
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows native failure semantics")
 def test_windows_injected_permission_and_partial_open_failures_release_handles(
     monkeypatch: pytest.MonkeyPatch,
+    trusted_tmp: Path,
 ) -> None:
-    path = Path(shim.__file__)
+    path = trusted_tmp
+    path.write_bytes(b"fixed")
     monkeypatch.setattr(shim, "_permission_is_allowed", lambda *args, **kwargs: False)
     _refusal(
         BootstrapErrorCode.PRECONDITION_FAILED,
