@@ -8,6 +8,17 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Explicit same-host qualified replica sets with round-robin or capacity-aware
+  member selection, atomic admission, per-member readiness and drain controls,
+  and metadata-only selection evidence. One request still uses one model,
+  tier, host, and member without replay or fallback.
+- Read-only workload activity across router requests, managed model lifecycle,
+  benchmark jobs, and media jobs, with bounded node/fleet queries, honest
+  partial results, scoped authorization, CLI/MCP projections, and a dashboard.
+- Bounded controller inspection and logs through managed CLI/MCP surfaces.
+- Inert fleet bootstrap contracts, receiver packaging, permission validation,
+  and anchored trusted-file reads. These are prerequisites, not a working
+  enrollment command or transactional installer.
 - Portable `host services` CLI and typed MCP tools for supervisor discovery,
   adoption, status, bounded logs, installation, and confirmed lifecycle actions.
   The platform contract supports Docker on Windows and Linux, and native MLX
@@ -20,6 +31,12 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- The generated command manifest advances to schema 7 with explicit
+  `global_options`; consumers must accept that schema. Replica configurations
+  require the new explicit member contract and reject incompatible direct-tier
+  shortcuts. Existing direct-tier routing remains supported.
+- New scoped workload/diagnostic endpoints require their declared read scopes;
+  legacy credentials do not silently acquire those permissions.
 - Recipe lifecycle receipts now bind to the live container identity, and
   serve status accepts declared alternate ports without reporting false drift.
 - Routed client acceptance now carries the expected context contract through
@@ -29,6 +46,9 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- Workload projections isolate malformed or unavailable owners, preserve
+  partial fleet evidence, and avoid leaking request content or credentials.
+  Dashboard polling is single-flight with explicit lifecycle cleanup.
 - Router, controller, and client orchestration now fail closed across missing
   credentials, evidence-root preparation, recursive fleet probes, unknown
   Hermes status failures, and unrunnable client checks while retaining bounded

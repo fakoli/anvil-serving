@@ -30,11 +30,24 @@ from dataclasses import dataclass, replace
 from typing import Callable, Dict, Mapping, Optional
 from urllib.parse import urlsplit, urlunsplit
 
-from .config import METADATA_UPSTREAM, PRIVACY_LOCAL, RouterConfig, Tier
+from .config import (
+    METADATA_CONFIGURED,
+    METADATA_UPSTREAM,
+    PRIVACY_LOCAL,
+    ReplicaIdentity,
+    RouterConfig,
+    Tier,
+    _parse_replica_identity,
+)
 
 
 _SAFE_METADATA_TEXT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/+ -]{0,255}")
 _CONTEXT_KEYS = ("max_model_len", "max_context_length", "context_length")
+
+
+def _http_code(value: object) -> int | str:
+    """Transport attributes are not trusted diagnostic text."""
+    return value if type(value) is int and 100 <= value <= 599 else "unknown"
 
 
 @dataclass(frozen=True)
@@ -88,10 +101,32 @@ class AvailabilityResult:
     runtime_metadata: Optional[RuntimeModelMetadata] = None
 
 
+def replica_identity_passed(tier: Tier, result: object) -> bool:
+    """Return whether one replica snapshot proves the tier's exact live identity."""
+    return (
+        type(result) is AvailabilityResult
+        and result.available is True
+        and type(result.state) is str
+        and result.state == "ready"
+        and type(result.reason) is str
+        and result.reason == "identity_passed"
+        and type(tier.model) is str
+        and bool(tier.model)
+        and type(result.expected_model) is str
+        and result.expected_model == tier.model
+        and type(result.observed_model) is str
+        and result.observed_model == tier.model
+    )
+
+
 class AlwaysAvailable:
     """Backwards-compatible availability implementation with no network I/O."""
 
     def check(self, tier: Tier) -> AvailabilityResult:
+        if tier.replicas:
+            return AvailabilityResult(
+                False, "unavailable", "member_selection_required"
+            )
         if tier.metadata_source == METADATA_UPSTREAM:
             return AvailabilityResult(
                 False, "unavailable", "upstream_metadata_not_configured"
@@ -100,6 +135,14 @@ class AlwaysAvailable:
             True, "ready", "availability_not_configured",
             expected_model=tier.model if tier.model_identity else None,
         )
+
+    def check_member(self, tier: Tier, member_id: str) -> AvailabilityResult:
+        del member_id
+        if tier.replicas:
+            return AvailabilityResult(
+                False, "unavailable", "member_readiness_not_configured"
+            )
+        return AvailabilityResult(False, "unavailable", "member_selection_required")
 
     def invalidate(self, tier_id: Optional[str] = None) -> None:
         return None
@@ -135,38 +178,76 @@ class HttpHealthAvailability:
         self._wall_clock = wall_clock
         self._env = os.environ if env is None else env
         self._lock = threading.Lock()
-        self._cache: Dict[str, tuple[float, AvailabilityResult]] = {}
-        self._probe_locks: Dict[str, threading.Lock] = {}
+        self._cache: Dict[tuple[str, Optional[str]], tuple[float, AvailabilityResult]] = {}
+        self._probe_locks: Dict[tuple[str, Optional[str]], threading.Lock] = {}
+        self._global_generation = 0
+        self._tier_generations: Dict[str, int] = {}
 
-    def _probe_lock(self, tier_id: str) -> threading.Lock:
+    @staticmethod
+    def _cache_key(tier: Tier, member_id: Optional[str] = None) -> tuple[str, Optional[str]]:
+        return (tier.id, member_id)
+
+    def _probe_lock(self, key: tuple[str, Optional[str]]) -> threading.Lock:
         with self._lock:
-            lock = self._probe_locks.get(tier_id)
+            lock = self._probe_locks.get(key)
             if lock is None:
-                lock = self._probe_locks[tier_id] = threading.Lock()
+                lock = self._probe_locks[key] = threading.Lock()
             return lock
 
-    def cached(self, tier_id: str) -> Optional[tuple[float, AvailabilityResult]]:
-        """The last cached ``(age_seconds, result)`` for ``tier_id``, if any."""
+    def cached(
+        self, tier_id: str, member_id: Optional[str] = None
+    ) -> Optional[tuple[float, AvailabilityResult]]:
+        """The last cached result for one direct tier or replica member."""
+        key = (tier_id, member_id)
         with self._lock:
-            entry = self._cache.get(tier_id)
+            entry = self._cache.get(key)
         if entry is None:
             return None
         return (max(0.0, self._clock() - entry[0]), entry[1])
 
     def probe_now(self, tier: Tier) -> AvailabilityResult:
-        """Probe ``tier`` unconditionally and cache the stamped result."""
+        """Probe one direct tier unconditionally and cache the stamped result."""
+        if tier.replicas:
+            return AvailabilityResult(False, "unavailable", "member_selection_required")
+        return self._probe_now(tier, self._cache_key(tier))
+
+    def probe_member_now(self, tier: Tier, member_id: str) -> AvailabilityResult:
+        """Probe exactly one declared replica member without selecting another."""
+        endpoint, failure = self._member_endpoint(tier, member_id)
+        if failure is not None:
+            return failure
+        assert endpoint is not None
+        return self._probe_now(endpoint, self._cache_key(tier, member_id), hide_observed=True)
+
+    def _epoch_locked(self, tier_id: str) -> tuple[int, int]:
+        return (self._global_generation, self._tier_generations.get(tier_id, 0))
+
+    def _epoch_current_locked(self, tier_id: str, epoch: tuple[int, int]) -> bool:
+        return epoch == self._epoch_locked(tier_id)
+
+    def _probe_now(
+        self,
+        tier: Tier,
+        key: tuple[str, Optional[str]],
+        *,
+        hide_observed: bool = False,
+    ) -> AvailabilityResult:
         url = self._health_url(tier)
         if url is None:
             return AvailabilityResult(True, "ready", "availability_not_configured")
+        with self._lock:
+            epoch = self._epoch_locked(key[0])
         started = self._clock()
-        result = self._probe(url, tier)
+        result = self._probe(url, tier, hide_observed=hide_observed)
         result = replace(
             result,
             latency_ms=max(0, int(round((self._clock() - started) * 1000))),
             checked_at=self._wall_clock(),
         )
         with self._lock:
-            self._cache[tier.id] = (self._clock(), result)
+            if not self._epoch_current_locked(key[0], epoch):
+                return AvailabilityResult(False, "unavailable", "probe_invalidated")
+            self._cache[key] = (self._clock(), result)
         return result
 
     @staticmethod
@@ -177,23 +258,41 @@ class HttpHealthAvailability:
         return urlunsplit((parsed.scheme, parsed.netloc, tier.health_path, "", ""))
 
     def check(self, tier: Tier) -> AvailabilityResult:
+        if tier.replicas:
+            return AvailabilityResult(False, "unavailable", "member_selection_required")
+        return self._check(tier, self._cache_key(tier))
+
+    def check_member(self, tier: Tier, member_id: str) -> AvailabilityResult:
+        endpoint, failure = self._member_endpoint(tier, member_id)
+        if failure is not None:
+            return failure
+        assert endpoint is not None
+        return self._check(endpoint, self._cache_key(tier, member_id), hide_observed=True)
+
+    def _check(
+        self,
+        tier: Tier,
+        key: tuple[str, Optional[str]],
+        *,
+        hide_observed: bool = False,
+    ) -> AvailabilityResult:
         url = self._health_url(tier)
         if url is None:
             return AvailabilityResult(True, "ready", "availability_not_configured")
 
         now = self._clock()
         with self._lock:
-            cached = self._cache.get(tier.id)
+            cached = self._cache.get(key)
             if cached is not None and now - cached[0] < self._probe_interval:
                 return cached[1]
 
-        probe_lock = self._probe_lock(tier.id)
+        probe_lock = self._probe_lock(key)
         if not probe_lock.acquire(blocking=False):
             # Another thread is probing this tier right now. Serve the
             # last-known result (even if just expired) rather than duplicating
             # the probe; with no prior result, fail closed.
             with self._lock:
-                cached = self._cache.get(tier.id)
+                cached = self._cache.get(key)
             if cached is not None:
                 return cached[1]
             return AvailabilityResult(False, "unavailable", "probe_pending")
@@ -202,16 +301,51 @@ class HttpHealthAvailability:
             # cache while this thread waited on the non-blocking acquire.
             now = self._clock()
             with self._lock:
-                cached = self._cache.get(tier.id)
+                cached = self._cache.get(key)
                 if cached is not None and now - cached[0] < self._probe_interval:
                     return cached[1]
             # Stamp freshness metadata so a readiness snapshot reports when
             # this serve was last probed and how long it took. Cached and
             # returned together, so a subsequent cache hit reflects the ACTUAL
             # last probe, not the read time.
-            return self.probe_now(tier)
+            return self._probe_now(tier, key, hide_observed=hide_observed)
         finally:
             probe_lock.release()
+
+    @staticmethod
+    def _member_endpoint(
+        tier: Tier, member_id: str
+    ) -> tuple[Optional[Tier], Optional[AvailabilityResult]]:
+        if not tier.replicas:
+            return None, AvailabilityResult(
+                False, "unavailable", "member_selection_required"
+            )
+        member = next((item for item in tier.replicas if item.id == member_id), None)
+        if member is None:
+            return None, AvailabilityResult(False, "unavailable", "replica_member_unknown")
+        identity = tier.replica_identity
+        identity_valid = isinstance(identity, ReplicaIdentity) and _parse_replica_identity(
+            {
+                "model_revision": identity.model_revision,
+                "engine_version": identity.engine_version,
+                "image_digest": identity.image_digest,
+                "config_fingerprint": identity.config_fingerprint,
+            },
+            tier.id,
+            [],
+        ) is not None
+        if (
+            tier.privacy != PRIVACY_LOCAL
+            or tier.metadata_source != METADATA_CONFIGURED
+            or not tier.health_path
+            or not tier.model_identity
+            or not tier.model
+            or not identity_valid
+        ):
+            return None, AvailabilityResult(
+                False, "unavailable", "replica_probe_not_configured"
+            )
+        return replace(tier, base_url=member.base_url, replicas=()), None
 
     @staticmethod
     def _models_url(tier: Tier) -> str:
@@ -239,7 +373,9 @@ class HttpHealthAvailability:
             headers["Authorization"] = f"Bearer {token}"
         return headers
 
-    def _probe(self, url: str, tier: Tier) -> AvailabilityResult:
+    def _probe(
+        self, url: str, tier: Tier, *, hide_observed: bool = False
+    ) -> AvailabilityResult:
         request = urllib.request.Request(
             url, headers=self._probe_headers(tier), method="GET"
         )
@@ -247,7 +383,7 @@ class HttpHealthAvailability:
             with self._opener(request, timeout=self._probe_timeout) as response:
                 status = getattr(response, "status", None) or response.getcode()
         except urllib.error.HTTPError as exc:
-            return AvailabilityResult(False, "unavailable", f"health_http_{exc.code}")
+            return AvailabilityResult(False, "unavailable", f"health_http_{_http_code(exc.code)}")
         except Exception as exc:  # noqa: BLE001 - all transport faults are readiness failures
             return AvailabilityResult(
                 False,
@@ -255,14 +391,16 @@ class HttpHealthAvailability:
                 f"health_transport_{type(exc).__name__}",
             )
 
-        if isinstance(status, int) and 200 <= status < 400:
+        if type(status) is int and 200 <= status < 400:
             if tier.model_identity or tier.metadata_source == METADATA_UPSTREAM:
-                return self._probe_identity(tier)
+                return self._probe_identity(tier, hide_observed=hide_observed)
             return AvailabilityResult(True, "ready", "health_passed")
-        code = status if isinstance(status, int) else "unknown"
+        code = _http_code(status)
         return AvailabilityResult(False, "unavailable", f"health_http_{code}")
 
-    def _probe_identity(self, tier: Tier) -> AvailabilityResult:
+    def _probe_identity(
+        self, tier: Tier, *, hide_observed: bool = False
+    ) -> AvailabilityResult:
         expected = tier.model
         headers = self._probe_headers(tier)
         request = urllib.request.Request(
@@ -271,15 +409,15 @@ class HttpHealthAvailability:
         try:
             with self._opener(request, timeout=self._probe_timeout) as response:
                 status = getattr(response, "status", None) or response.getcode()
-                if not isinstance(status, int) or not 200 <= status < 300:
-                    code = status if isinstance(status, int) else "unknown"
+                if type(status) is not int or not 200 <= status < 300:
+                    code = _http_code(status)
                     return AvailabilityResult(
                         False, "unavailable", f"identity_http_{code}", expected
                     )
                 payload = response.read(self._probe_max_bytes + 1)
         except urllib.error.HTTPError as exc:
             return AvailabilityResult(
-                False, "unavailable", f"identity_http_{exc.code}", expected
+                False, "unavailable", f"identity_http_{_http_code(exc.code)}", expected
             )
         except Exception as exc:  # noqa: BLE001 - stable transport code only
             return AvailabilityResult(
@@ -327,7 +465,11 @@ class HttpHealthAvailability:
                 True, "ready", "identity_passed", expected, expected
             )
         return AvailabilityResult(
-            False, "unavailable", "identity_mismatch", expected, observed
+            False,
+            "unavailable",
+            "identity_mismatch",
+            expected,
+            None if hide_observed else observed,
         )
 
     @staticmethod
@@ -476,9 +618,13 @@ class HttpHealthAvailability:
         """Expire cached state for tests and future lifecycle notifications."""
         with self._lock:
             if tier_id is None:
+                self._global_generation += 1
                 self._cache.clear()
             else:
-                self._cache.pop(tier_id, None)
+                self._tier_generations[tier_id] = self._tier_generations.get(tier_id, 0) + 1
+                for key in tuple(self._cache):
+                    if key[0] == tier_id:
+                        self._cache.pop(key, None)
 
 
 def safe_check(
@@ -504,6 +650,29 @@ def safe_check(
             raise TypeError("non-AvailabilityResult")
         return result
     except Exception as exc:  # noqa: BLE001 - a broken availability must never propagate
+        reason = (
+            f"{reason_prefix}_{type(exc).__name__}"
+            if include_exception_name
+            else f"{reason_prefix}_failed"
+        )
+        return AvailabilityResult(False, "unavailable", reason)
+
+
+def safe_check_member(
+    availability,
+    tier: Tier,
+    member_id: str,
+    *,
+    reason_prefix: str = "availability_member_check",
+    include_exception_name: bool = True,
+) -> AvailabilityResult:
+    """Safely check one selected member without inventing member readiness."""
+    try:
+        result = availability.check_member(tier, member_id)
+        if not isinstance(result, AvailabilityResult):
+            raise TypeError("non-AvailabilityResult")
+        return result
+    except Exception as exc:  # noqa: BLE001 - broken adapters must not escape routing
         reason = (
             f"{reason_prefix}_{type(exc).__name__}"
             if include_exception_name
@@ -540,6 +709,8 @@ __all__ = [
     "AvailabilityResult",
     "HttpHealthAvailability",
     "RuntimeModelMetadata",
+    "replica_identity_passed",
     "resolve_runtime_tier",
     "safe_check",
+    "safe_check_member",
 ]

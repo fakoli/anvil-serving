@@ -30,7 +30,7 @@ Replace simple round robin inside an already selected, qualified same-host repli
 - R004: Candidate snapshot, deterministic selection, rotating tie-break advancement, and member lease reservation must occur atomically under one bounded tier scheduler lock so concurrent requests cannot all observe the same stale local count.
 - R005: Local pressure must include active router reservations divided by the member concurrency ceiling, with the ceiling validated as a positive integer and never inferred from an engine name or metrics endpoint.
 - R006: When available, upstream pressure may include normalized running requests, waiting requests, scheduler capacity, and KV-cache utilization produced by the existing metrics adapter; raw vendor labels must not enter the scoring function.
-- R007: Every upstream pressure sample must carry observed time, success state, and freshness; missing, failed, non-finite, negative, or stale values must become an explicit unknown state that cannot rank ahead of a fresh low-pressure member solely because data is absent.
+- R007: Every upstream pressure sample must carry observed time, success state, and freshness; fresh, stale, failed, and unknown provenance must remain explicit, and every non-fresh class must rank as upstream unknown so absent or unusable data cannot beat a fresh low-pressure member at equal local load.
 - R008: The first scheduler must use a documented lexicographic score: eligibility, conservative local pressure, conservative normalized upstream pressure, then a rotating stable member-ID tie break; floating weights, adaptive learning, and prompt-derived costs are prohibited.
 - R009: Metrics collection must be time-bounded, cached per member, single-flight under concurrency, and outside the selection lock; request handling may use the latest bounded snapshot but must never wait indefinitely for metrics.
 - R010: Once a member lease is reserved and its backend is invoked, no readiness or pressure change may cause a second selection for that request; all terminal success, error, timeout, cancellation, disconnect, and streaming-close paths must release the same lease exactly once.
@@ -87,13 +87,23 @@ None. The first release uses lexicographic conservative scoring, cached normaliz
 
 - Add tier `replica_strategy`: `round_robin` by default, or explicit `capacity`; reject it on direct tiers. Add optional positive integer member `max_concurrency` (1-100000), mandatory for every member in capacity mode. A configured member ceiling is enforced in either mode.
 - Tier `max_concurrency` is the aggregate ceiling, never multiplied by member count. If absent, capacity mode is bounded by the sum of member ceilings. Compound admission replaces the independent blocking backend semaphore on replica paths; exhausted capacity returns the existing unavailable response without waiting or reserving another tier.
-- Under one tier-owned condition: recheck quiesce and ceilings, combine already-completed readiness/telemetry snapshots with current local counts, choose, advance the cursor, and increment tier/member counts. No I/O or user callback runs under that condition.
-- Filter ineligible members, then rank by `(local_ratio, upstream_unknown, upstream_pressure, rotating_rank)`. Compare local ratios exactly (integer cross-products or `fractions.Fraction`). Upstream unknown is 1, fresh is 0; therefore unknown loses to fresh only at equal local ratio. Local reservations remain authoritative.
-- Fresh upstream pressure is the maximum of valid available signals: `(running + waiting) / scheduler_capacity` when all three are valid, and KV utilization as a 0-1 fraction when valid. No valid signal means unknown. Missing optional signals are not zero. Negative, non-finite, failed, future, or stale samples are unknown. Capacity is positive; counts are nonnegative; no vendor label enters this function.
-- Sampling uses composite member identity, an injected monotonic clock, a 1-second refresh interval, 5-second stale boundary, 1-second transport timeout, and the existing bounded body reader. One refresh per member is in flight; other callers use the completed cache or unknown without waiting for it. No unbounded executor queue or thread-per-request creation is allowed.
-- Ties rotate over sorted safe member IDs and advance only after a successful reservation. Pressure evidence is a bounded list of at most 16 normalized candidate rows; it carries no raw metric text or URL.
+- Under one tier-owned condition: recheck quiesce and ceilings, combine already-completed immutable readiness/pressure snapshots with current local counts, call the fixed built-in pure rank function, and increment tier/member counts. `TierAdmission` remains the only lock, cursor, and reservation owner; no scheduler object, I/O, caller callback, mutable caller mapping, or clock access runs under that condition.
+- `PressureFreshness` is `fresh|stale|failed|unknown`; `PressureSignalState` is `valid|missing|invalid`. Frozen `ReplicaPressure`, `ReplicaCandidate`, `ReplicaScore`, and `ReplicaDecision` values accept only their closed exact field types and bounds. A candidate has safe member ID, exact Boolean eligibility, active reservations 0-1000000000, member capacity 1-100000, and validated immutable pressure. Each score copies freshness from its pressure; every non-fresh class ranks as upstream unknown. Ranking accepts an exact tuple of 2-16 unique candidates and an exact integer cursor from zero through `N-1`; invalid inputs raise fixed `ValueError`, while an empty eligible set is an ordinary decision with `selected_member_id=None` and reason `no-eligible-member`.
+- Filter members that are not eligible or whose active reservations meet their ceiling, then rank by `(local_ratio, upstream_unknown, upstream_pressure_ppm, rotating_rank)`. Compare local ratios exactly with integer cross-products, never rounded parts per million. Fresh upstream pressure is the maximum of valid request pressure and valid KV pressure: request pressure is `ceil((running + waiting) * 1000000 / scheduler_capacity)` in the range 0-2000000000000000 ppm without clamping at 1000000, and KV pressure is `ceil(kv_cache_usage_fraction * 1000000)` in the range 0-1000000 ppm. All serialized evidence remains below `2^53`.
+- `normalize_replica_pressure(*, observed_at, now_monotonic, successful, requests_running=None, requests_waiting=None, scheduler_capacity=None, kv_cache_usage_fraction=None)` is pure, never retains raw values or errors, and imports no metrics adapter. It accepts only exact built-in `int`/`float` numeric telemetry, never Boolean: integral request counts are 0-1000000000, scheduler capacity is an exact integer 1-100000, and KV utilization is finite and 0-1. `None` means missing; an incomplete request tuple is missing rather than zero; any supplied malformed optional signal makes the whole pressure unknown and wins over missing. Valid KV alone may produce fresh pressure when the request tuple is missing. Unknown pressure has `pressure_ppm=None` plus fixed request/KV signal states.
+- Pressure is fresh only when `successful is True`, both monotonic clock values are finite and nonnegative, age is from zero through 5 seconds inclusive, and at least one signal is valid. `successful is False` produces `failed`; a successful otherwise-valid sample older than 5 seconds produces `stale`; missing or invalid signals, future or invalid clocks, and malformed inputs produce `unknown`. All non-fresh states have `pressure_ppm=None` and rank identically as upstream unknown while retaining their freshness class for T011 evidence. T003 adds observation time to its composite-identity cache and passes the existing raw metrics fields `requests_running`, `requests_waiting`, and `kv_cache_usage_fraction` plus the configured member ceiling as `scheduler_capacity`; no engine-specific capacity series is invented.
+- Rank returns score rows in winning order and eligible IDs in sorted member-ID order, with reason `selected` or `no-eligible-member`. Rotating rank and the admission cursor always use the full sorted configured membership, independent of candidate input order; the cursor advances only after a successful reservation. `MemberAdmissionLease.selection` is the immutable `ReplicaDecision` for capacity selections and `None` for legacy round robin. Pressure evidence is capped at 16 rows and carries no raw metric text or URL.
+- T005 adds optional `DecisionRecord.replica_scheduler: ReplicaDecision | None`, omitted from durable and summary output when absent. The only production source is the already-acquired capacity lease's `selection`, captured once in the per-request record closure and preserved through every terminal record. Do not rerank, read metrics/admission again, or consume similarly named request/raw fields. `_record` accepts it only for capacity tiers with a matching selected configured member, selected reason, every score/member in configured membership, matching configured denominators and local numerators below their ceilings. Invalid evidence is discarded without changing the response or releasing/reserving anything.
+- Before memory or sink storage, validate and copy exact `ReplicaDecision`/`ReplicaScore` instances through their canonical constructors; reject subclasses and malformed instances. Serialize only the four decision fields and seven existing score fields returned by the canonical allowlist, under optional `replica_scheduler`. The selected member must agree with the existing valid `identity_passed` pair. Summary ingestion of captured JSON accepts only exact dictionaries with those closed key sets, exact lists of at most 16 items, exact primitive field types and valid enum strings; reconstitute and validate before projection. Reject unknown fields, oversized collections, invalid order/duplicates, inconsistent freshness or score values, and arbitrary objects before traversal or formatting. Never use recursive dataclass serialization, `__dict__`, or raw nested mappings.
+- Scheduler score numerators are pre-reservation counts at selection, not current terminal counts; denominators are the configured member ceilings. Eligibility excludes unavailable, unbound, quiesced and full members at that instant. Exhaustion has the existing `not_admitted` pair and empty attempts, with no scheduler payload: admission returned no lease, so do not invent an eligibility snapshot, score or rejection reason. Semantic refusal likewise has no scheduler payload. Existing attempts/outcomes remain the sole one-attempt accounting; no second dispatch counter is introduced.
+- The line formatter keeps legacy/direct/round-robin bytes unchanged and appends only `replica_scheduler=capacity replica_scheduler_reason=selected replica_eligible_count=N` for a valid scheduler payload. Full bounded score rows belong only in structured summaries/JSONL. All four surfaces (memory, line, summary and writer) discard malformed optional scheduler data consistently; a malformed scheduler field must not erase an otherwise-valid legacy replica pair. Retain the existing ring-buffer limit and wire error shapes.
+- `TierAdmission` accepts copied and validated replica strategy and capacity mappings only for configured replica tiers; capacity strategy requires ceilings for every member. `acquire_member` copies and validates the complete readiness and pressure mappings before entering the condition; absent pressure means unknown, while incomplete, duplicate, unknown-member, or malformed mappings refuse without changing the cursor or counts.
 - Existing router `transition-status|quiesce|drain|readmit` verbs gain optional `--member <id>` with required `--tier`; the authenticated transition endpoint uses optional `member_id`. Omission preserves tier behavior. Unknown members/direct tiers refuse before mutation. Member readmission verifies only that member's served-model readiness and never readmits the tier; tier readmission never clears member quiesce. Drain requires quiesce of its scope and cannot cancel in-flight leases.
 - Persist member quiesce intent in an optional `members` mapping of tier ID to member ID/reason alongside existing tier intent. Restore only configured IDs, reject malformed state, and retain member intent across restart. Extend `router_manage.py`, front-door transition handlers, command spec/manifest and focused endpoint tests in T004/T006.
+- `ReplicaPressureCache(tiers, *, metrics_provider=fetch_vllm_metrics, monotonic=time.monotonic)` owns only explicitly supplied capacity-mode tiers, at most 256 configured members total and 2-16 per tier. Copy their composite `(tier.id, member.id)` registration and member endpoint views once; reject duplicate identities, malformed ceilings, direct/round-robin tiers or overflow with a fixed error. `snapshot(tier_id)` returns a detached complete member-to-`ReplicaPressure` mapping for that configured tier; unknown IDs refuse before scheduling. No caller-supplied endpoint or arbitrary cache key is accepted.
+- Pressure snapshot reads never wait for collection. Start at most two lazy daemon workers for the entire cache, not per tier, member, refresh or request. A condition-protected FIFO queue holds at most one pending refresh per registered member; queued and running keys share the same single-flight marker. Refresh after 1 second since completion, retaining the last completed normalized sample while work is pending. Retain only immutable normalized pressure and its monotonic observation time, not raw metrics or errors; a valid cached sample older than 5 seconds is stale. Missing cache is unknown. Two stalled workers may leave other samples stale/unknown but must never create extra workers or unbounded queue growth.
+- Every collector uses the existing 1-second transport timeout and 1 MiB-plus-one body bound. A fetch exceeding 1 second of injected monotonic elapsed time is failed, even if it eventually returns valid data; discard its late values. A running overdue fetch projects failed without awaiting it. Transport/HTTP/provider exceptions are failed; parse/oversize/missing/invalid snapshot or series are unknown. Invalid/future clocks produce unknown, never fresh. Read clocks and perform collector/normalizer work outside cache and admission locks. A socket timeout is not a hard cancellation guarantee for a trickling body: the fixed worker bound and nonblocking snapshot contract are the request-latency guarantee.
+- `close()` is idempotent and nonblocking: prevent new refreshes, clear queued work, wake idle workers, and ignore late running completions. After close, snapshots return unknown for every registered member. T004 owns one cache per `RoutingBackend` and closes it with the backend/server lifecycle; no threads are started for direct or round-robin-only configurations. Tests use fake monotonic time and events/conditions, never sleeps, including two-worker bounds, blocked-peer progress, deadline expiry, late-result discard, and closed-owner behavior.
 - Require event/barrier tests for oversubscription, quiesce versus acquire, single-flight collection, stream close before iteration, collector failure and expiry. Include the decisive counterexample: unknown 0/2 local beats fresh 1/2 local; fresh wins when both local counts are 0/2.
 
 ## Code Map
@@ -161,22 +171,23 @@ First implement `replica_strategy` and member `max_concurrency` parsing under th
 **Feature:** F002
 **Priority:** high
 **Type:** feature
-**Likely files:** anvil_serving/router/replica_scheduler.py, tests/router/test_replica_scheduler.py
+**Likely files:** anvil_serving/router/replica_scheduler.py, tests/router/test_replica_scheduler.py, anvil_serving/router/admission.py, tests/router/test_admission.py
 **Dependencies:** T001
 
-Create immutable candidate, pressure, score, and decision value objects plus a pure ranking function. Put only lock/cursor orchestration in a small scheduler class. Define freshness classes and conservative unknown ordering as named constants or enums, not magic numbers. Executor guidance: start with table-driven tests covering every score dimension and permutation; member IDs are tie-break data only and must not influence eligibility or pressure.
+Create the closed immutable pressure, candidate, score, and decision values, pure normalizer, and pure fixed rank function. Do not add a scheduler class, lock, or cursor: extend `TierAdmission` to validate and copy replica strategies/capacities and completed pressure mappings outside its existing condition, then call the fixed rank function and reserve atomically under that condition. Preserve the direct API and legacy round robin; capacity selections attach the immutable decision to the compound lease. Executor guidance: start with table-driven tests covering every score dimension, exact ppm ceiling, signal state, freshness edge, and input permutation.
 
 **Acceptance criteria:**
 
-- Ranking exactly implements the documented lexicographic order.
-- Permuting candidate input does not change the chosen member for the same cursor state.
-- Equal candidates rotate fairly and deterministically.
-- NaN, infinity, negative values, absent data, and stale data normalize to explicit unknown without exceptions.
+- Ranking exactly implements the documented lexicographic order, exact local-ratio comparison, unbounded-at-one request ppm, and winning-order score rows.
+- Permuting candidate input does not change the decision for the same full-membership cursor, and eligible IDs remain sorted.
+- Equal candidates rotate fairly and deterministically, and the admission cursor advances only after a successful reservation.
+- Missing and invalid signals retain typed signal state; successful samples older than five seconds become stale, unsuccessful samples become failed, and future clocks or malformed telemetry become unknown without retaining raw values or exceptions.
+- Admission validates completed pressure outside its condition, enforces member and tier ceilings atomically, and refuses malformed mappings without changing counts or cursor.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/router/test_replica_scheduler.py -x -q`
-- `python -m ruff check anvil_serving/router/replica_scheduler.py tests/router/test_replica_scheduler.py`
+- `python scripts/run_tests.py tests/router/test_replica_scheduler.py tests/router/test_admission.py -x -q`
+- `python -m ruff check anvil_serving/router/replica_scheduler.py tests/router/test_replica_scheduler.py anvil_serving/router/admission.py tests/router/test_admission.py`
 
 ### T003: Add cached single-flight normalized member pressure
 
@@ -186,14 +197,15 @@ Create immutable candidate, pressure, score, and decision value objects plus a p
 **Likely files:** anvil_serving/router/model_capacity.py, tests/router/test_model_capacity.py, tests/router/test_replica_scheduler.py
 **Dependencies:** T002
 
-Wrap the existing bounded metrics fetch with a per-member cache and single-flight refresh using injected monotonic time. Produce only the normalized snapshot consumed by the scheduler. Do not hold the scheduler/admission lock while fetching and do not surface raw metrics. Executor guidance: follow existing bounded-body, finite-number, and timeout patterns; use fake clocks and blocking test collectors controlled by events.
+Implement the closed `ReplicaPressureCache` contract with a fixed two-worker owner, bounded registered-member FIFO and single-flight refresh. Normalize the existing `requests_running`, `requests_waiting`, and `kv_cache_usage_fraction` fields with the configured member ceiling as `scheduler_capacity`, retaining only immutable normalized results plus observation time. Snapshot calls never wait for I/O; overdue or late results fail conservatively. Implement idempotent nonblocking close without adding a thread per request, engine-specific capacity metric, or reverse scheduler import. Use fake clocks and blocking collectors controlled by events.
 
 **Acceptance criteria:**
 
 - Concurrent refreshes for one member cause one metrics request.
 - Fresh cache hits perform no I/O; expiry produces one new bounded refresh.
-- Timeout, parse failure, missing series, and non-finite values become typed unknown snapshots.
+- Timeout and collection failure become typed failed snapshots; parse failure, missing series, and non-finite values become typed unknown snapshots.
 - Members have independent caches and one slow member does not block another.
+- Snapshot calls remain nonblocking under two stalled collectors, queue size never exceeds registered membership, and close prevents refresh or late publication.
 
 **Verification:**
 
@@ -207,7 +219,7 @@ Wrap the existing bounded metrics fetch with a per-member cache and single-fligh
 **Likely files:** anvil_serving/router/serve.py, tests/router/test_model_routes.py, tests/router/test_backends.py
 **Dependencies:** T001, T002, T003
 
-Construct the candidate snapshot after all request-wide gates, combine the completed readiness and pressure snapshots with current local counts under the admission condition, acquire the selected compound lease, and invoke exactly that backend. Keep I/O outside the condition and never loop around backend invocation. Make backend fakes count calls and cover capacity exhaustion and unknown-versus-fresh counterexamples.
+Construct completed readiness and pressure snapshots after all request-wide gates, pass them once to admission, acquire the selected compound lease, and invoke exactly that backend. Pass replica strategies and member ceilings at both `RoutingBackend`'s fallback admission construction and `build_server`'s shared admission construction; replica members must not also receive `_ConcurrencyLimitedBackend`, because compound admission owns their ceilings. Keep I/O outside the condition and never loop around backend invocation. Make backend fakes count calls and cover capacity exhaustion and unknown-versus-fresh counterexamples.
 
 **Acceptance criteria:**
 
@@ -227,21 +239,44 @@ Construct the candidate snapshot after all request-wide gates, combine the compl
 **Feature:** F004
 **Priority:** medium
 **Type:** modify
-**Likely files:** anvil_serving/router/decision_log.py, tests/router/test_decision_log.py, tests/router/test_observability_hardening.py
+**Likely files:** anvil_serving/router/decision_log.py, anvil_serving/router/serve.py, tests/router/test_decision_log.py, tests/router/test_observability_hardening.py
 **Dependencies:** T004
 
-Add allowlisted member score, freshness, reservation, eligibility-set, and one-attempt fields to the existing decision record. Keep diagnostics and candidate rows bounded and preserve ring-buffer cardinality. Serialize from typed snapshots rather than object `__dict__`; add explicit negative assertions for URL, address, token, prompt, response, raw metric, and exception substrings.
+Wire the acquired capacity lease's immutable decision through the existing per-request record closure, then implement the closed optional scheduler evidence projection above. Validate configured membership/ceilings at the routing boundary and typed/closed JSON shape at every storage/serialization boundary. Keep existing attempts as the sole dispatch accounting and omit scheduler evidence on refusal, direct tiers and round robin. Add explicit negative assertions for URL, address, token, prompt, response, raw metric, and exception substrings.
 
 **Acceptance criteria:**
 
 - One decision record explains which eligible member won and why using normalized fields.
 - Exhaustion and upstream failure retain the one-selection/one-attempt boundary.
 - No sensitive or high-cardinality values enter decision logs or error bodies.
+- Success, eager/lazy upstream errors, cancellation and close-before-first-iteration preserve the same captured selection; preselection refusal has no fabricated score or attempt.
+- Typed storage and captured-JSON summary ingestion reject malformed, oversized, extra-key, mismatched and subclass payloads while preserving valid legacy pairs and byte-compatible absent-field output.
 
 **Verification:**
 
 - `python scripts/run_tests.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py -x -q`
-- `python -m ruff check anvil_serving/router/decision_log.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py`
+- `python -m ruff check anvil_serving/router/decision_log.py anvil_serving/router/serve.py tests/router/test_decision_log.py tests/router/test_observability_hardening.py`
+
+### T005.1: Synchronize legacy counting leases with scheduler evidence
+
+**Feature:** F004
+**Priority:** high
+**Type:** modify
+**Likely files:** tests/router/test_backends.py
+**Dependencies:** T005
+
+The integrated suite found five legacy failure-path tests whose _CountingLease predates MemberAdmissionLease.selection. Mirror the actual round-robin lease shape with selection=None; preserve release counters, injected failure paths and no-peer assertions. Do not weaken the production evidence boundary with getattr defaults or replace real admission coverage.
+
+**Acceptance criteria:**
+
+- The counting lease exposes the same absent scheduler decision as a real round-robin lease.
+- All five eager/lazy/error-metadata regressions reach their intended failure and prove exactly-once release without peer retry.
+- Existing capacity and ordinary routing tests pass without production changes.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_model_routes.py tests/router/test_backends.py -x -q`
+- `python -m ruff check tests/router/test_backends.py`
 
 ### T006: Document the capacity-scheduling contract
 
@@ -271,10 +306,10 @@ Document configuration, exact score order, freshness boundaries, aggregate and m
 **Feature:** F002
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/router/backends/relay.py, anvil_serving/router/backends/sse.py, tests/router/test_streaming_relay.py, tests/router/test_responses.py
+**Likely files:** tests/router/test_streaming_relay.py, tests/router/test_responses.py
 **Dependencies:** T004
 
-Attach the chosen compound lease to the complete ordinary-response and streaming lifecycle using the existing close-aware iterator idiom. Release exactly once on success, HTTP error, timeout, cancellation, disconnect, malformed SSE, normal stream end, explicit close, and close-before-first-iteration. A terminal failure must never trigger another selection.
+Exercise the compound lease already owned by RoutingBackend and its close-aware _AdmissionIterator through real RelayBackend ordinary/SSE parsing and the Responses front door. Do not introduce a second lease owner in relay.py or sse.py. Parameterize the existing qualified-replica terminal fixtures across round_robin and capacity, supplying explicit member ceilings and injected completed pressure so no collector/network service is needed. Count real lease release calls without replacing admission counters. Cover success, HTTP error, timeout, cancellation, disconnect, malformed SSE, normal stream end, explicit close and close-before-first-iteration; assert tier/member reconciliation and exactly one selected transport attempt. Exercise both chat-completion and Responses disconnect paths, plus Responses ordinary/streaming success. A terminal failure must never trigger another selection. Record any discovered production defect as a separate scoped fix before proceeding; this task is the terminal regression matrix, not a new ownership layer.
 
 **Acceptance criteria:**
 
@@ -315,10 +350,25 @@ Extend transition status, quiesce, drain, and readmit to accept an optional vali
 **Feature:** F001
 **Priority:** high
 **Type:** modify
-**Likely files:** anvil_serving/router_manage.py, anvil_serving/commands/router.py, tests/test_router_manage.py, tests/test_cli_contract.py
+**Likely files:** anvil_serving/router_manage.py, anvil_serving/commands/router.py, anvil_serving/control_plane/mcp/tools/router.py, tests/test_router_manage.py, tests/test_cli_contract.py, tests/test_router_transition_contract.py, docs/CLI-COMMAND-MANIFEST.json
 **Dependencies:** T008
 
 Add optional `--member <id>` to `transition-status`, `quiesce`, `drain`, and `readmit`, retaining required `--tier` and existing confirmation rules. Send the validated member ID through the authenticated transition request and render bounded structured results without endpoint or auth data. Update the command specification/manifest contract rather than creating an alternate CLI.
+
+The existing remote command adapter is part of this same boundary: extend
+`router_transition` in `control_plane/mcp/tools/router.py`, its closed input
+schema, and all four command declarations' allowed arguments with `member`.
+Missing/unsafe member scope must refuse before transport; explicit null or an
+empty member is not omission. A member requires a tier even for status.
+Omitted-member local preview and all-tier status remain unchanged. A member
+quiesce/readmit preview uses the authenticated endpoint with `dry_run=true`
+and cannot mutate, so it can reject unknown/direct-tier members without loading
+a separate possibly stale config. The new member preview never echoes the
+router endpoint or credential. Controller and CLI callers use one request
+function, preserve confirmation semantics, and treat fixed HTTP refusals as
+failures. Regenerate the command manifest after staging source changes; test
+the real ephemeral front door and controller adapter in
+`tests/test_router_transition_contract.py` rather than duplicating their logic.
 
 **Acceptance criteria:**
 
@@ -326,11 +376,43 @@ Add optional `--member <id>` to `transition-status`, `quiesce`, `drain`, and `re
 - Missing tier, unsafe member ID, unknown member, and direct-tier member use fail deterministically.
 - Confirmation and dry-run behavior remains unchanged for mutating verbs.
 - CLI help and machine-readable command contracts agree.
+- Local and controller-forwarded member requests preserve the same exact scope and fail before mutation on invalid targets.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/test_router_manage.py tests/test_cli_contract.py -x -q`
-- `python -m ruff check anvil_serving/router_manage.py anvil_serving/commands/router.py tests/test_router_manage.py tests/test_cli_contract.py`
+- `python scripts/run_tests.py tests/test_router_manage.py tests/test_cli_contract.py tests/test_router_transition_contract.py tests/test_command_tree.py -x -q`
+- `python -m ruff check anvil_serving/router_manage.py anvil_serving/commands/router.py anvil_serving/control_plane/mcp/tools/router.py tests/test_router_manage.py tests/test_cli_contract.py tests/test_router_transition_contract.py`
+
+### T009.1: Pin the member-aware MCP catalog compatibility delta
+
+**Feature:** F001
+**Priority:** high
+**Type:** modify
+**Likely files:** tests/test_mcp_foundations.py
+**Dependencies:** T009
+
+Correct the stale public catalog digest identified by the integrated suite.
+Characterize the exact router_transition member schema (bounded ASCII ID),
+unchanged required action and closed property set, and unchanged handler map.
+The only intentional public catalog changes from the previous snapshot are
+the member property, derived maxProperties increment from six to seven, and
+the description's declared-member wording. Restore those three fields in a
+deep copy and require the previous catalog digest, proving no unrelated schema,
+metadata, ordering or description change is silently accepted. Then pin the
+new digest. Keep runtime code untouched and preserve the existing exact catalog
+and handler compatibility tests. The source ticket is
+.tickets/2026-09-05-member-mcp-catalog-contract.md.
+
+**Acceptance criteria:**
+
+- The current catalog hash is pinned and the exact intentional delta reconstructs the previous catalog hash.
+- The member property is optional, bounded and safe; required fields and handler-map identity remain unchanged.
+- The foundation, transition and command-contract suites pass without runtime or transport changes.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_mcp_foundations.py tests/test_router_transition_contract.py tests/test_command_tree.py -x -q`
+- `python -m ruff check tests/test_mcp_foundations.py`
 
 ### T010: Persist and restore member quiesce intent
 
@@ -341,6 +423,35 @@ Add optional `--member <id>` to `transition-status`, `quiesce`, `drain`, and `re
 **Dependencies:** T008, T009
 
 Extend the admission-intent document with the optional closed `members` mapping of tier ID to member ID/reason. Atomically persist member quiesce changes, restore only configured member IDs, reject malformed state, and retain tier and member intent independently across restart. Preserve current handling of tier promotion-owned intent.
+
+The optional member document is exactly `members: {tier_id: {member_id:
+reason_code}}`; absence is the legacy form. Validate the entire new mapping
+before restoring anything, including entries for removed tiers/members: exact
+dictionaries, nonempty string tier IDs, the existing safe member-ID grammar,
+and exact nonempty string reasons accepted by admission's bounded reason-code
+validator. Reject null, lists, nested state objects, duplicate JSON keys and
+malformed reasons with fixed `ConfigError` text. Then ignore valid entries
+outside the configured replica membership. Restore every retained member
+reason, including `promotion`; the existing promotion exception remains
+tier-only. Keep legacy tier filtering and fallback behavior unchanged.
+
+Read the intent file once with a 1 MiB plus one sentinel bound. Return tier
+and member intent from that same parsed document; do not reread per scope.
+During restore, suppress persistence callbacks until all tier/member intent
+is applied, then perform the existing boot writability check. Build both
+serialized mappings from one `admission.snapshots()` result. Omit `members`
+when empty, so existing tier-only bytes retain their shape. Serialize writes
+with one owner-local lock outside admission conditions and use an exclusive
+same-directory temporary file, flush/fsync and atomic replacement, cleaning
+up only that operation's temporary file on failure. Keep current callback
+write-error reporting and startup failure behavior; do not add a new state
+owner or change active leases.
+
+Tests use literal legacy/new documents and the existing real replica routing
+fixture. Prove restart restoration, independent tier/member readmission,
+member promotion persistence, removed IDs, malformed/duplicate/oversized
+inputs, no partial rewrite during restore, exactly scoped cleanup on failed
+replace, and event-driven concurrent changes without sleeps or live services.
 
 **Acceptance criteria:**
 
@@ -364,6 +475,61 @@ Extend the admission-intent document with the optional closed `members` mapping 
 
 Project normalized freshness, bounded score components, tier/member reservation counts, ceilings, and aggregate reconciliation through the existing capacity and telemetry surfaces. Consume typed snapshots and exclude raw metric labels/text, endpoint identity, and unbounded member data.
 
+For capacity strategy only, enrich the existing admission projection with
+max_concurrency and members. Read one AdmissionSnapshot, not separate member
+queries. Require exact MemberAdmissionSnapshot values, exact configured IDs,
+matching member/tier ceilings, valid admitting/quiesced states and Boolean
+draining consistent with state and nonzero active count. Member counts must
+match the snapshot's existing member_active_requests and sum to tier active
+count; counts cannot exceed their ceilings. Tier effective ceiling equals
+configured tier max_concurrency or the sum of declared member ceilings.
+Valid members are sorted by ID and expose exactly id, state, active_requests,
+max_concurrency and draining, never reason. On malformed/absent owner preserve
+the existing unavailable fields and add max_concurrency=null, members=null.
+Direct and round-robin admission output remains byte-compatible.
+
+Add ReplicaPressureCache.peek(tier_id) using the same detached normalization,
+freshness/overdue/closed-owner logic as snapshot, but without scheduling,
+starting workers or notifying refresh. It must not call metrics or change
+cursor/reservations. Factor only this shared read path, keeping snapshot's
+existing scheduling semantics. build_model_capacity accepts optional
+replica_pressure=None; for capacity tiers read its peek once after the atomic
+admission read, with no cache/admission lock nesting. Accept only an exact
+dictionary covering configured member IDs (at most16) and copy each exact
+ReplicaPressure through its validator. A bad envelope produces all unknown;
+a malformed individual value produces unknown only for that member.
+Missing/failed provider produces unknown; no raw exception escapes.
+
+Add telemetry to each existing capacity-mode metadata member with exactly
+freshness, pressure_ppm, requests_state and kv_state from the detached value.
+These are current cached signals, not live identity or a new selection score.
+Non-fresh pressure is null. Do not rerank, expose rotating cursor, invent an
+eligible set or reinterpret the previous decision as current. Historical
+selection evidence remains the canonical optional replica_scheduler in
+find_request/summarize_decisions; test it without adding a second serializer.
+
+Extend render_capacity_prometheus only for capacity rows using fixed gauges:
+anvil_router_replica_tier_active_requests and
+anvil_router_replica_tier_max_concurrency (tier label);
+anvil_router_replica_member_active_requests and
+anvil_router_replica_member_max_concurrency (tier/member labels);
+anvil_router_replica_member_pressure_ppm (only fresh numeric values);
+anvil_router_replica_member_pressure_freshness (tier/member/freshness labels,
+one-hot fresh/stale/failed/unknown). No alias multiplication or raw labels.
+Only exact safe tier/member IDs using the existing member grammar are emitted.
+Validate exact types, finite bounded numbers, unique matching IDs, at most16
+members per row and at most256 total capacity members; reject malformed new
+metric groups instead of coercing values or printing arbitrary keys. Omit
+unavailable numeric series rather than emitting zero. Existing direct and
+round-robin metric bytes remain unchanged. Current counts are gauges, not
+historical throughput or monotonic counters. Use literal expected JSON/metric
+fixtures, fake monotonic clocks and event-controlled cache tests, with no
+network, subprocess, sleeps or lifecycle mutation.
+
+Runtime forwarding is deliberately T011.1 so this task's four-file projection
+scope stays independent of server wiring. Its default absent cache yields
+unknown, not a new cache or implicit probe.
+
 **Acceptance criteria:**
 
 - Capacity output reconciles tier active leases with the sum of member active leases.
@@ -376,13 +542,43 @@ Project normalized freshness, bounded score components, tier/member reservation 
 - `python scripts/run_tests.py tests/router/test_model_capacity.py tests/router/test_router_telemetry.py -x -q`
 - `python -m ruff check anvil_serving/router/model_capacity.py anvil_serving/router/router_telemetry.py tests/router/test_model_capacity.py tests/router/test_router_telemetry.py`
 
+### T011.1: Wire current capacity evidence to the existing runtime owner
+
+**Feature:** F004
+**Priority:** high
+**Type:** modify
+**Likely files:** anvil_serving/router/serve.py, tests/router/test_model_capacity.py
+**Dependencies:** T011
+
+Pass the existing RoutingBackend-owned ReplicaPressureCache into
+build_model_capacity from RoutingBackend.model_capacity. Create no cache or
+worker and perform no refresh in this read path. Add actual build_server HTTP
+capacity and metrics tests for a configured capacity tier, real admission
+leases/quiesce, and the exact injected cache owner. Seed or inject completed
+typed pressure through a bounded fake cache with peek; make snapshot/metrics
+fetch fail if called by visibility. Verify identity, explicit unavailable
+owner handling, fresh zero versus unknown pressure and no implicit dispatch,
+admission, cache refresh or lifecycle change. Preserve direct/round-robin
+HTTP response behavior and endpoint authentication.
+
+**Acceptance criteria:**
+
+- Capacity and Prometheus endpoints consume the exact existing runtime owners and show matching current counts, ceilings and cached pressure classes.
+- Read requests never schedule pressure collection, reserve/release capacity, change quiesce or rerank.
+- Auth failures occur before source reads; direct and round-robin paths remain compatible.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/router/test_model_capacity.py tests/router/test_router_telemetry.py tests/router/test_serve_cli.py -x -q`
+- `python -m ruff check anvil_serving/router/serve.py tests/router/test_model_capacity.py`
+
 ### T012: Prove the integrated scheduler with a synthetic workload
 
 **Feature:** F004
 **Priority:** high
 **Type:** modify
 **Likely files:** tests/router/test_transition_integration.py, tests/router/test_model_routes.py, tests/router/test_observability_hardening.py
-**Dependencies:** T005, T007, T010, T011
+**Dependencies:** T005, T007, T010, T011, T011.1
 
 Add one hermetic event-driven workload that exercises deterministic distribution, concurrent tier/member ceilings, member and tier drains, telemetry freshness, upstream errors, decision evidence, and the one-attempt boundary. Use injected clocks, barriers, and fake backends; use no hardware, network service, or sleeps.
 

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 
-MANIFEST_SCHEMA_VERSION = 6
+MANIFEST_SCHEMA_VERSION = 7
 MANIFEST_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "CLI-COMMAND-MANIFEST.json"
 CLI_DOC = "docs/CLI.md"
 _MUTATION_CLASSES = frozenset({"read", "mutate", "process"})
@@ -513,6 +513,7 @@ def manifest_data(tree: CommandTree | None = None) -> dict[str, object]:
     product = catalog_data()
     return {
         "schema_version": MANIFEST_SCHEMA_VERSION,
+        "global_options": [_option_data(option) for option in tree.global_options],
         "umbrella": product["umbrella"],
         "product_families": product["families"],
         "commands": records,
@@ -526,7 +527,15 @@ def _manifest_records(
 
     for node in nodes:
         path = parent + (node.name,)
-        options = inherited + node.options
+        # These sealed readers accept explicit connections, not dispatcher
+        # topology/transport resolution. Match their existing focused help.
+        visible_inherited = inherited
+        if path in {("router", "workloads"), ("fleet", "workloads")}:
+            output_flags = {"--json", "--quiet", "--verbose", "-h", "--help"}
+            visible_inherited = tuple(
+                option for option in inherited if set(option.flags) <= output_flags
+            )
+        options = visible_inherited + node.options
         yield {
             "path": " ".join(path),
             "product_family": family_id_for_command(path[0]),

@@ -295,6 +295,106 @@ def test_controller_transport_accepts_configured_response_above_default_bound():
     assert result.response_bytes == len(body)
 
 
+@pytest.mark.parametrize("method", ["constructor", "execute", "operation_status"])
+@pytest.mark.parametrize("limit", [1_048_577, 8_388_608])
+@pytest.mark.parametrize("overflow", [False, True])
+def test_controller_explicit_large_response_limit(method, limit, overflow):
+    status = method == "operation_status"
+    envelope = {"key": "probe-1", "status": "succeeded", "result": {}} if status else {
+        "ok": True, "data": {}
+    }
+    # Whitespace is valid JSON and lets the fixture set an exact wire-byte bound.
+    raw = json.dumps(envelope).encode("ascii")
+    raw += b" " * (limit + int(overflow) - len(raw))
+    reads = []
+
+    class MeasuredResponse(Response):
+        def read(self, amount=None):
+            reads.append(amount)
+            return super().read(amount)
+
+    transport = transports.ControllerTransport(
+        "http://127.0.0.1:8765", auth_env="TOKEN",
+        allowed_operations=["router-status"], environment={"TOKEN": TOKEN},
+        opener=lambda request, timeout: MeasuredResponse(raw),
+        **({"max_response_bytes": limit} if method == "constructor" else {}),
+    )
+
+    def run():
+        if status:
+            return transport.operation_status("probe-1", max_response_bytes=limit)
+        return transport.execute(
+            transports.Operation("router-status", {}),
+            **({"max_response_bytes": limit} if method == "execute" else {}),
+        )
+
+    if overflow:
+        with pytest.raises(transports.TransportError) as exc:
+            run()
+        assert exc.value.code == "response_too_large"
+        assert exc.value.execution_state == "partial_result"
+        assert exc.value.details["max_response_bytes"] == limit
+    else:
+        result = run()
+        assert result.data == envelope
+        assert result.response_bytes == limit
+    assert reads == [limit + 1]
+
+
+@pytest.mark.parametrize("method", ["constructor", "execute", "operation_status"])
+@pytest.mark.parametrize("limit", [8_388_609, True, False, 1.5, 0, -1])
+def test_controller_rejects_invalid_explicit_bounds_without_http(method, limit):
+    def run():
+        transport = transports.ControllerTransport(
+            "http://127.0.0.1:8765", auth_env="TOKEN",
+            allowed_operations=["router-status"], environment={"TOKEN": TOKEN},
+            opener=lambda *args, **kwargs: pytest.fail("invalid bound opened HTTP"),
+            **({"max_response_bytes": limit} if method == "constructor" else {}),
+        )
+        if method == "execute":
+            transport.execute(transports.Operation("router-status", {}), max_response_bytes=limit)
+        elif method == "operation_status":
+            transport.operation_status("probe-1", max_response_bytes=limit)
+
+    with pytest.raises(ValueError, match="max_response_bytes"):
+        run()
+
+
+def test_transport_defaults_and_non_controller_caps_remain_unchanged(tmp_path):
+    from anvil_serving.observability.workloads import MAX_JSON_BYTES
+
+    assert transports.DEFAULT_MAX_RESPONSE_BYTES == 65_536
+    assert transports.MAX_RESPONSE_BYTES == 1_048_576
+    assert transports.MAX_CONTROLLER_RESPONSE_BYTES == MAX_JSON_BYTES == 8_388_608
+    known_hosts, fingerprint = _known_host(tmp_path)
+    identity = _identity(tmp_path)
+
+    def local(**kwargs):
+        return transports.LocalTransport({"router-status": lambda args: {}}, **kwargs)
+
+    def ssh(**kwargs):
+        return transports.SSHRecoveryTransport(
+            "ssh://100.64.0.10", adapters={"controller-recovery": ["recover"]},
+            known_hosts_path=known_hosts, host_key_fingerprint=fingerprint,
+            identity_file=identity, **kwargs,
+        )
+
+    for factory in (local, ssh):
+        assert factory().max_response_bytes == 65_536
+        assert factory(max_response_bytes=1_048_576).max_response_bytes == 1_048_576
+        with pytest.raises(ValueError, match="between 1 and 1048576"):
+            factory(max_response_bytes=1_048_577)
+    controller = transports.ControllerTransport(
+        "http://127.0.0.1:8765", auth_env="TOKEN", allowed_operations=["router-status"],
+        environment={"TOKEN": TOKEN},
+        opener=lambda request, timeout: Response(b" " * 65_537),
+    )
+    assert controller.max_response_bytes == 65_536
+    with pytest.raises(transports.TransportError) as exc:
+        controller.execute(transports.Operation("router-status", {}))
+    assert exc.value.code == "response_too_large"
+
+
 @pytest.mark.parametrize("body", [b"{}", b'{"ok":"yes"}'])
 def test_controller_transport_rejects_missing_or_malformed_ok(body):
     transport = transports.ControllerTransport(
@@ -985,7 +1085,11 @@ def _node_opener(node=None, calls=None):
         if calls is not None:
             calls.append(request.full_url)
         if request.full_url.endswith("/health"):
-            payload = {"status": "ok", "service": "anvil-serving-controller"}
+            payload = {
+                "status": "ok",
+                "service": "anvil-serving-controller",
+                "request_id": "health-request-1",
+            }
             if node is not None:
                 payload["node"] = node
             return Response(json.dumps(payload).encode("utf-8"))
@@ -1026,6 +1130,7 @@ def test_expected_node_mismatch_fails_closed_before_dispatch():
 
     assert excinfo.value.code == "controller_node_mismatch"
     assert excinfo.value.execution_state == "not_started"
+    assert excinfo.value.details == {}
     assert not any(url.endswith("/tools/call") for url in calls)
 
 
@@ -1054,3 +1159,163 @@ def test_no_expected_node_skips_verification():
     )
     transport.execute(transports.Operation("router-status", {}))
     assert not any(url.endswith("/health") for url in calls)
+
+
+def _expected_node_transport(body, calls):
+    def opener(request, timeout):
+        calls.append(request.full_url)
+        if request.full_url.endswith("/health"):
+            return Response(body)
+        return Response(b'{"ok":true,"data":{}}')
+
+    return transports.ControllerTransport(
+        "http://100.64.0.10:8765",
+        auth_env="ANVIL_CONTROLLER_TOKEN",
+        allowed_operations=["router-status"],
+        environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        opener=opener,
+        expected_node="fakoli-dark",
+    )
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b'{"status":"ok","service":"anvil-serving-controller",'
+        b'"request_id":"request-1","node":"wrong","node":"fakoli-dark"}',
+        b'{"status":"ok","service":"anvil-serving-controller",'
+        b'"request_id":"request-1","node":"fakoli-dark","extra":"private-marker"}',
+        b'{"service":"anvil-serving-controller","request_id":"request-1",'
+        b'"node":"fakoli-dark"}',
+        b'{"status":"starting","service":"anvil-serving-controller",'
+        b'"request_id":"request-1","node":"fakoli-dark"}',
+        b'{"status":"ok","service":"other","request_id":"request-1",'
+        b'"node":"fakoli-dark"}',
+        b'{"status":"ok","service":"anvil-serving-controller",'
+        b'"request_id":"bad request","node":"fakoli-dark"}',
+        b'{"status":"ok","service":"anvil-serving-controller",'
+        b'"request_id":1,"node":"fakoli-dark"}',
+        b'{"status":"ok","service":"anvil-serving-controller",'
+        b'"request_id":"request-1","node":NaN}',
+        b'[]',
+        b'{not-json',
+        b'\xff',
+        b'[' * 1100 + b']' * 1100,
+    ],
+)
+def test_expected_node_rejects_noncanonical_health_without_dispatch_or_cache(body):
+    calls = []
+    transport = _expected_node_transport(body, calls)
+
+    with pytest.raises(transports.TransportError) as excinfo:
+        transport.execute(transports.Operation("router-status", {}))
+
+    assert excinfo.value.as_dict() == {
+        "code": "controller_node_mismatch",
+        "message": "controller did not assert the expected node identity",
+        "execution_state": "not_started",
+        "may_have_executed": False,
+        "details": {},
+    }
+    assert transport._node_verified is False
+    assert calls == ["http://100.64.0.10:8765/health"]
+    assert "private-marker" not in json.dumps(excinfo.value.as_dict())
+
+
+def test_expected_node_accepts_exact_65536_byte_health_and_caches():
+    body = json.dumps(
+        {
+            "status": "ok",
+            "service": "anvil-serving-controller",
+            "request_id": "r" * 96,
+            "node": "fakoli-dark",
+        },
+        separators=(",", ":"),
+    ).encode("ascii")
+    body += b" " * (65_536 - len(body))
+    calls = []
+    transport = _expected_node_transport(body, calls)
+
+    transport.execute(transports.Operation("router-status", {}))
+    transport.execute(transports.Operation("router-status", {}))
+
+    assert calls == [
+        "http://100.64.0.10:8765/health",
+        "http://100.64.0.10:8765/tools/call",
+        "http://100.64.0.10:8765/tools/call",
+    ]
+
+
+def test_expected_node_rejects_65537_bytes_before_parse_or_dispatch(monkeypatch):
+    body = json.dumps(
+        {
+            "status": "ok",
+            "service": "anvil-serving-controller",
+            "request_id": "request-1",
+            "node": "fakoli-dark",
+        },
+        separators=(",", ":"),
+    ).encode("ascii")
+    body += b" " * (65_537 - len(body))
+    calls = []
+    transport = _expected_node_transport(body, calls)
+    monkeypatch.setattr(
+        transports,
+        "_strict_json_loads",
+        lambda _value: pytest.fail("oversized health reached JSON parser"),
+    )
+
+    with pytest.raises(transports.TransportError) as excinfo:
+        transport.execute(transports.Operation("router-status", {}))
+
+    assert excinfo.value.code == "controller_node_mismatch"
+    assert excinfo.value.execution_state == "not_started"
+    assert excinfo.value.details == {}
+    assert transport._node_verified is False
+    assert calls == ["http://100.64.0.10:8765/health"]
+
+
+def test_expected_node_rejects_97_byte_request_id_before_dispatch():
+    body = json.dumps(
+        {
+            "status": "ok",
+            "service": "anvil-serving-controller",
+            "request_id": "r" * 97,
+            "node": "fakoli-dark",
+        },
+        separators=(",", ":"),
+    ).encode("ascii")
+    calls = []
+    transport = _expected_node_transport(body, calls)
+
+    with pytest.raises(transports.TransportError) as excinfo:
+        transport.execute(transports.Operation("router-status", {}))
+
+    assert excinfo.value.code == "controller_node_mismatch"
+    assert transport._node_verified is False
+    assert calls == ["http://100.64.0.10:8765/health"]
+
+
+def test_expected_node_connect_failure_is_fixed_and_input_free():
+    def unavailable(request, timeout):
+        raise urllib.error.URLError("private-controller-address-marker")
+
+    transport = transports.ControllerTransport(
+        "http://100.64.0.10:8765",
+        auth_env="ANVIL_CONTROLLER_TOKEN",
+        allowed_operations=["router-status"],
+        environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        opener=unavailable,
+        expected_node="fakoli-dark",
+    )
+
+    with pytest.raises(transports.TransportError) as excinfo:
+        transport.execute(transports.Operation("router-status", {}))
+
+    assert excinfo.value.as_dict() == {
+        "code": "controller_connect_failed",
+        "message": "controller connection failed before dispatch",
+        "execution_state": "not_started",
+        "may_have_executed": False,
+        "details": {},
+    }

@@ -56,6 +56,9 @@ jobs:
       - name: Install (editable + dev extras)
         run: python -m pip install -e ".[dev]"
 
+      - name: Check Node.js
+        run: node --version
+
       - name: Run tests
         run: python -m pytest tests/ -q
 

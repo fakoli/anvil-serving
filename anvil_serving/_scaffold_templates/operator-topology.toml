@@ -132,6 +132,14 @@ workload = "service"
 
 # Dark owns all model and audio operations, including the endpoints behind Mini's proxies.
 [[resources]]
+id = "anvil-controller"
+role = "controller"
+host = "fakoli-dark"
+runtime = "dark-docker"
+endpoint = "http://192.0.2.20:8766"
+workload = "service"
+
+[[resources]]
 id = "anvil-router"
 role = "router"
 host = "fakoli-dark"
@@ -260,6 +268,8 @@ allowed_operations = [
   "router-drain",
   "router-readmit",
   "router-logs",
+  "controller-inspect",
+  "controller-logs",
   "serves-up",
   "serves-down",
   "serves-rm",

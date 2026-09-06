@@ -43,8 +43,10 @@ import sys
 import threading
 import urllib.parse
 import uuid
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional, Sequence
 
 from .audio import (
     AudioGateway,
@@ -74,6 +76,11 @@ from .internal import (
 )
 from .purpose import PurposeError, PurposeRouter
 from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
+from ..control_plane.authorization import (
+    AuthorizationPolicy,
+    WORKLOADS_READ,
+    check_scope,
+)
 from ..a2a.http import version_not_supported
 from ..a2a.protocol import (
     A2A_LEGACY_DEFAULT_VERSION,
@@ -83,6 +90,12 @@ from ..a2a.protocol import (
     AGENT_CARD_PATH,
 )
 from ..media.errors import MediaError
+from ..observability.workloads import (
+    NodeResult,
+    WorkloadOutcome,
+    node_result_to_json,
+    parse_workload_query,
+)
 
 # Path -> dialect. Stateless, so module-level singletons are fine.
 _OPENAI_DIALECT = OpenAIDialect()
@@ -104,6 +117,7 @@ PROMETHEUS_ENDPOINT = "/metrics"
 REQUEST_TRACE_PREFIX = "/v1/requests/"
 REQUEST_TRACE_ROUTE = "/v1/requests/{request_id}"
 TRANSITION_ENDPOINT = "/v1/admin/transition"
+WORKLOADS_ENDPOINT = "/v1/workloads"
 # Purpose-model surfaces (gpu-reservations:T010 / ADR-0017 §7). POST-only,
 # routed by MODEL NAME via an injected PurposeRouter — active only when the
 # server is built with one (purpose_models configured); otherwise both paths
@@ -115,6 +129,115 @@ _PURPOSE_PATHS = {
 # Request/response voice gateway paths. They are active only when an
 # AudioGateway is injected from configured ``[[router.audio_routes]]``.
 _AUDIO_PATHS = (TRANSCRIPTIONS_PATH, SPEECH_PATH)
+
+
+@dataclass(frozen=True)
+class OperatorRoute:
+    """An injected, scoped, read-only operator route."""
+
+    method: str
+    path: str
+    scope: str
+    callback: Callable[[str], bytes]
+
+
+_MAX_OPERATOR_ROUTES = 8
+_MAX_OPERATOR_PATH_BYTES = 256
+_MAX_OPERATOR_QUERY_BYTES = 8192
+_MAX_OPERATOR_RESPONSE_BYTES = 8 * 1024 * 1024
+_OPERATOR_PATH_RE = re.compile(r"/[A-Za-z0-9][A-Za-z0-9._~-]*(?:/[A-Za-z0-9][A-Za-z0-9._~-]*)*")
+_PERCENT_ESCAPE_RE = re.compile(r"%(?:[0-9A-Fa-f]{2})")
+
+
+class _InvalidWorkloadQuery(ValueError):
+    """Fixed, input-free workload query refusal."""
+
+
+class _WorkloadSourceUnavailable(RuntimeError):
+    """Fixed, input-free workload source failure."""
+
+
+def _validated_operator_routes(
+    routes: Sequence[OperatorRoute] | None,
+) -> tuple[OperatorRoute, ...]:
+    """Return a copied, collision-free, bounded operator route registry."""
+    if routes is None:
+        return ()
+    if isinstance(routes, (str, bytes)) or not isinstance(routes, Sequence):
+        raise ValueError("operator routes must be a bounded sequence")
+    try:
+        declared_length = len(routes)
+    except Exception:
+        raise ValueError("operator routes must be a bounded sequence") from None
+    if declared_length > _MAX_OPERATOR_ROUTES:
+        raise ValueError("too many operator routes")
+
+    protected_paths = set(_ROUTES) | {
+        _HEALTHZ_PATH,
+        "/health",
+        "/v1/models",
+        DECISION_SUMMARY_ENDPOINT,
+        TIER_HEALTH_ENDPOINT,
+        MODEL_CAPACITY_ENDPOINT,
+        MODEL_CAPABILITIES_ENDPOINT,
+        MODEL_FINGERPRINTS_ENDPOINT,
+        ROUTER_STATUS_ENDPOINT,
+        ROUTER_STATS_ENDPOINT,
+        PROMETHEUS_ENDPOINT,
+        TRANSITION_ENDPOINT,
+        WORKLOADS_ENDPOINT,
+        MCP_PATH,
+        A2A_PATH,
+        AGENT_CARD_PATH,
+    } | set(_PURPOSE_PATHS) | set(_AUDIO_PATHS)
+    copied: list[OperatorRoute] = []
+    seen: set[tuple[str, str]] = set()
+    for index in range(_MAX_OPERATOR_ROUTES + 1):
+        try:
+            route = routes[index]
+        except IndexError:
+            break
+        except Exception:
+            raise ValueError("operator routes must be a bounded sequence") from None
+        if len(copied) >= _MAX_OPERATOR_ROUTES:
+            raise ValueError("too many operator routes")
+        if type(route) is not OperatorRoute:
+            raise ValueError("operator route is invalid")
+        method, path, scope, callback = (
+            route.method,
+            route.path,
+            route.scope,
+            route.callback,
+        )
+        if (
+            type(method) is not str
+            or method not in {"GET", "POST"}
+            or type(scope) is not str
+            or scope != WORKLOADS_READ
+            or type(path) is not str
+            or not path.isascii()
+            or len(path) > _MAX_OPERATOR_PATH_BYTES
+            or not _OPERATOR_PATH_RE.fullmatch(path)
+            or path in protected_paths
+            or path in {ARTIFACT_PREFIX.rstrip("/"), REQUEST_TRACE_PREFIX.rstrip("/")}
+            or path.startswith(
+                (ARTIFACT_PREFIX, REQUEST_TRACE_PREFIX, "/.well-known/", "/v1/audio/")
+            )
+            or not callable(callback)
+        ):
+            raise ValueError("operator route is invalid")
+        key = (method, path)
+        if key in seen:
+            raise ValueError("operator route is invalid")
+        seen.add(key)
+        copied.append(OperatorRoute(method, path, scope, callback))
+    try:
+        stable_length = len(routes)
+    except Exception:
+        raise ValueError("operator routes must be a bounded sequence") from None
+    if stable_length != declared_length or stable_length != len(copied):
+        raise ValueError("operator routes must be a bounded sequence")
+    return tuple(copied)
 
 # --------------------------------------------------------------------------- #
 # Resource caps (DoS protection)
@@ -147,6 +270,9 @@ _MANAGEMENT_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(4)
 # Mutations are serialized independently of status reads.  In particular, a
 # readmit cannot race a long drain and invalidate its zero-active barrier.
 _MANAGEMENT_MUTATION_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(1)
+# Injected operator callbacks are read-only management work, not data-plane
+# relay work; retain a separate bounded capacity before invoking one.
+_OPERATOR_READ_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(4)
 
 #: Maximum bytes to drain from the socket after sending a 413 (or a response
 #: to an oversized GET body) before closing, so the OS can push the response
@@ -182,6 +308,29 @@ def _extract_bearer_token(headers) -> Optional[str]:
     api_key = headers.get("x-api-key")
     if api_key and api_key.strip():
         return api_key.strip()
+    return None
+
+
+def _extract_operator_token(headers) -> Optional[str]:
+    """Return one unambiguous scoped credential, or fail closed."""
+    try:
+        authorization = headers.get_all("Authorization") or []
+        api_keys = headers.get_all("x-api-key") or []
+    except Exception:
+        return None
+    if len(authorization) + len(api_keys) != 1:
+        return None
+    if authorization:
+        header = authorization[0]
+        if type(header) is not str:
+            return None
+        scheme, separator, value = header.partition(" ")
+        if separator and scheme.strip().lower() == "bearer" and value.strip():
+            return value.strip()
+        return None
+    header = api_keys[0]
+    if type(header) is str and header.strip():
+        return header.strip()
     return None
 
 
@@ -237,7 +386,22 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   auth_token: Optional[str] = None,
                   purpose: Optional[PurposeRouter] = None,
                   audio: Optional[AudioGateway] = None,
-                  gateway: Optional[ProtocolGateway] = None):
+                  gateway: Optional[ProtocolGateway] = None,
+                  authorization_policy: Optional[AuthorizationPolicy] = None,
+                  operator_routes: Sequence[OperatorRoute] | None = None,
+                  workload_host: Optional[str] = None,
+                  workload_registry=None,
+                  workload_clock: Optional[Callable[[], datetime]] = None):
+    operator_route_map = {
+        (route.method, route.path): route
+        for route in _validated_operator_routes(operator_routes)
+    }
+    # This built-in route is intentionally outside the injected registry: a
+    # configuration supplied callback must never replace workload visibility.
+    operator_route_map[("GET", WORKLOADS_ENDPOINT)] = OperatorRoute(
+        "GET", WORKLOADS_ENDPOINT, WORKLOADS_READ, lambda _query: b""
+    )
+    collection_clock = workload_clock or (lambda: datetime.now(timezone.utc))
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -253,6 +417,25 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def _reset_request_correlation(self) -> None:
             """Clear per-request state on a reused HTTP/1.1 handler."""
             self._anvil_correlation = None
+            self._anvil_workload_stream = None
+            self._anvil_delivery_outcome = None
+
+        def _generate_deltas(self, request):
+            """Retain delivery ownership before eager routing can fail."""
+            tracked = getattr(backend, "generate_tracked", None)
+            if not callable(tracked):
+                return backend.generate(request)
+            stream = tracked(
+                request,
+                gateway_request_id=(self._anvil_correlation or {}).get("gateway_request_id"),
+            )
+            self._anvil_workload_stream = stream
+            return stream.start()
+
+        def _workload_render_error(self) -> None:
+            stream = self._anvil_workload_stream
+            if stream is not None and not stream.generation_failed:
+                self._anvil_delivery_outcome = WorkloadOutcome.ERROR
 
         def _start_request_correlation(self) -> None:
             """Stamp one authenticated inference request with trusted lineage."""
@@ -337,6 +520,150 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             return hmac.compare_digest(
                 supplied.encode("utf-8"), auth_token.encode("utf-8")
             )
+
+        def _operator_route(self, method: str) -> Optional[OperatorRoute]:
+            path, _, _query = self.path.partition("?")
+            return operator_route_map.get((method, path))
+
+        def _operator_error(self, status: int, etype: str, message: str) -> None:
+            """Reply before consuming an operator body and retire the socket."""
+            self.close_connection = True
+            self._json(
+                status,
+                {"error": {"type": etype, "message": message}},
+                extra_headers={"Cache-Control": "no-store"},
+            )
+            self._flush_closing_response()
+
+        def _operator_framing_is_bodyless(self) -> bool:
+            transfer_encoding = self.headers.get_all("Transfer-Encoding") or []
+            content_lengths = self.headers.get_all("Content-Length") or []
+            return not transfer_encoding and (
+                not content_lengths
+                or (len(content_lengths) == 1 and content_lengths[0] == "0")
+            )
+
+        @staticmethod
+        def _workload_query(query: str):
+            try:
+                raw = query.encode("ascii", "strict")
+            except UnicodeEncodeError:
+                raise _InvalidWorkloadQuery() from None
+            if len(raw) > _MAX_OPERATOR_QUERY_BYTES:
+                raise _InvalidWorkloadQuery()
+            for index, character in enumerate(query):
+                if character == "%" and _PERCENT_ESCAPE_RE.match(query, index) is None:
+                    raise _InvalidWorkloadQuery()
+            try:
+                pairs = urllib.parse.parse_qsl(
+                    query,
+                    keep_blank_values=True,
+                    strict_parsing=False,
+                    encoding="utf-8",
+                    errors="strict",
+                    max_num_fields=7,
+                )
+            except (UnicodeDecodeError, ValueError):
+                raise _InvalidWorkloadQuery() from None
+            if len(pairs) > 7:
+                raise _InvalidWorkloadQuery()
+            normalized_pairs = []
+            for key, value in pairs:
+                if key == "active_only" and value not in {"true", "false"}:
+                    raise _InvalidWorkloadQuery()
+                if key in {"limit", "recent_seconds"} and (
+                    not re.fullmatch(r"[0-9]{1,5}", value)
+                ):
+                    raise _InvalidWorkloadQuery()
+                if key == "active_only":
+                    value = value == "true"
+                elif key in {"limit", "recent_seconds"}:
+                    value = int(value)
+                normalized_pairs.append((key, value))
+            try:
+                return parse_workload_query(normalized_pairs)
+            except Exception:
+                raise _InvalidWorkloadQuery() from None
+
+        def _workload_payload(self, query: str) -> bytes:
+            parsed = self._workload_query(query)
+            if workload_host is None or workload_registry is None:
+                raise _WorkloadSourceUnavailable()
+            try:
+                collected_at = collection_clock()
+                source = workload_registry.source_result(
+                    workload_host, parsed, collected_at
+                )
+                return node_result_to_json(NodeResult(
+                    host=workload_host,
+                    status=source.status,
+                    collection_timestamp=collected_at,
+                    sources=(source,),
+                )).encode("utf-8")
+            except _InvalidWorkloadQuery:
+                raise
+            except Exception:
+                raise _WorkloadSourceUnavailable() from None
+
+        def _handle_operator_route(self, route: OperatorRoute) -> None:
+            """Run one already-identified scoped route without body handling."""
+            presented = _extract_operator_token(self.headers)
+            decision = check_scope(authorization_policy, presented, route.scope)
+            if not decision.allowed:
+                self._operator_error(
+                    403, "authorization_scope_denied", "authorization scope denied"
+                )
+                return
+            if not self._operator_framing_is_bodyless():
+                self._operator_error(
+                    400, "invalid_request", "operator route must not include a body"
+                )
+                return
+            _path, _separator, query = self.path.partition("?")
+            try:
+                query_bytes = query.encode("ascii", "strict")
+            except UnicodeEncodeError:
+                self._operator_error(400, "invalid_request", "invalid query")
+                return
+            if len(query_bytes) > _MAX_OPERATOR_QUERY_BYTES:
+                self._operator_error(400, "invalid_request", "invalid query")
+                return
+            if not _OPERATOR_READ_LIMIT.acquire(blocking=False):
+                self._operator_error(503, "server_busy", "operator route busy")
+                return
+            try:
+                try:
+                    payload = (
+                        self._workload_payload(query)
+                        if route.path == WORKLOADS_ENDPOINT
+                        else route.callback(query)
+                    )
+                except _InvalidWorkloadQuery:
+                    self._operator_error(
+                        400, "invalid_workload_query", "invalid workload query"
+                    )
+                    return
+                except _WorkloadSourceUnavailable:
+                    self._operator_error(
+                        503, "workload_source_unavailable",
+                        "workload source unavailable",
+                    )
+                    return
+                except Exception:  # noqa: BLE001 - callback details stay private
+                    self._operator_error(500, "internal_error", "operator route failed")
+                    return
+                if type(payload) is not bytes or len(payload) > _MAX_OPERATOR_RESPONSE_BYTES:
+                    self._operator_error(500, "internal_error", "operator route failed")
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(payload)
+                self.wfile.flush()
+            finally:
+                _OPERATOR_READ_LIMIT.release()
 
         def _protocol_json_error(self, status: int, code: str, message: str) -> None:
             self._json(status, {"error": {"type": code, "message": message}})
@@ -677,7 +1004,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # here, before the 200 is committed, so the client always sees a real
             # HTTP error status for pre-stream failures.
             try:
-                deltas = backend.generate(request)
+                deltas = self._generate_deltas(request)
             except NoAvailableTierError as e:
                 # The configured exhaustion status lets the caller apply its own
                 # transport retry policy.
@@ -748,6 +1075,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._log_inference_failure(
                         500, "stream error after headers", exc
                     )
+                    self._workload_render_error()
                     error_frame_fn = getattr(dialect, "stream_error", None)
                     try:
                         if callable(error_frame_fn):
@@ -756,6 +1084,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                             self.wfile.write(b"0\r\n\r\n")
                             self.wfile.flush()
                     except OSError:
+                        self._anvil_delivery_outcome = WorkloadOutcome.DISCONNECTED
                         pass  # client disconnected while we signalled failure
                     self.close_connection = True
                     return
@@ -767,7 +1096,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # so backends release resources (real backends hold upstream
                 # sockets); generator .close() is idempotent.
                 for gen in (frames, deltas):
-                    closer = getattr(gen, "close", None)
+                    closer = getattr(gen, "close_upstream", None) or getattr(gen, "close", None)
                     if closer is not None:
                         try:
                             closer()
@@ -842,13 +1171,26 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
             self._json(200, payload)
 
-        def _transition_status(self, tier_id: Optional[str]) -> None:
+        def _transition_member_kwargs(self, body: dict) -> dict:
+            """Validate an explicit member even for previews, without probing."""
+            if "member_id" not in body:
+                return {}
+            tier_id, member_id = body.get("tier_id"), body["member_id"]
+            if type(tier_id) is not str or not tier_id or type(member_id) is not str or not member_id:
+                raise ValueError("invalid transition scope")
+            validate = getattr(backend, "validate_transition_target", None)
+            if not callable(validate):
+                raise ValueError("member transition unavailable")
+            validate(tier_id, member_id)
+            return {"member_id": member_id}
+
+        def _transition_status(self, tier_id: Optional[str], **member_kwargs) -> None:
             status_fn = getattr(backend, "transition_status", None)
             if not callable(status_fn):
                 self._error(503, "service_unavailable", "transition management unavailable")
                 return
             try:
-                self._json(200, status_fn(tier_id))
+                self._json(200, status_fn(tier_id, **member_kwargs))
             except (KeyError, ValueError):
                 self._error(400, "invalid_transition", "invalid transition request")
             except Exception:  # noqa: BLE001 - management errors are content-free
@@ -857,8 +1199,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def _handle_transition(self, body: dict) -> None:
             action = body.get("action")
             tier_id = body.get("tier_id")
+            try:
+                member_kwargs = self._transition_member_kwargs(body)
+            except (KeyError, ValueError):
+                self._error(400, "invalid_transition", "invalid transition request")
+                return
+            except Exception:
+                self._error(503, "transition_failed", "transition operation failed")
+                return
             if action == "status":
-                self._transition_status(tier_id if isinstance(tier_id, str) else None)
+                self._transition_status(tier_id if isinstance(tier_id, str) else None, **member_kwargs)
                 return
             if not isinstance(tier_id, str) or not tier_id:
                 self._error(400, "invalid_transition", "tier_id is required")
@@ -870,6 +1220,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         "dry_run": True,
                         "action": action,
                         "tier_id": tier_id,
+                        **member_kwargs,
                     })
                     return
             if not _MANAGEMENT_MUTATION_LIMIT.acquire(blocking=False):
@@ -878,14 +1229,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             try:
                 if action == "quiesce":
                     fn = getattr(backend, "quiesce_tier")
-                    result = fn(tier_id, str(body.get("reason") or "promotion"))
+                    result = fn(tier_id, str(body.get("reason") or "promotion"), **member_kwargs)
                 elif action == "drain":
                     timeout_value = body.get("timeout")
                     if isinstance(timeout_value, bool) or not isinstance(timeout_value, (int, float)):
                         raise ValueError("bad timeout")
-                    result = getattr(backend, "drain_tier")(tier_id, float(timeout_value))
+                    result = getattr(backend, "drain_tier")(tier_id, float(timeout_value), **member_kwargs)
                 elif action == "readmit":
-                    result = getattr(backend, "readmit_tier")(tier_id)
+                    result = getattr(backend, "readmit_tier")(tier_id, **member_kwargs)
                 else:
                     self._error(400, "invalid_transition", "unsupported transition action")
                     return
@@ -903,6 +1254,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def do_GET(self) -> None:
             self._reset_request_correlation()
             route = self.path.split("?", 1)[0].rstrip("/")
+            operator_route = self._operator_route("GET")
+            if operator_route is not None:
+                self._handle_operator_route(operator_route)
+                return
             if gateway is not None and (
                 route in {AGENT_CARD_PATH, MCP_PATH, A2A_PATH}
                 or route.startswith(ARTIFACT_PREFIX)
@@ -934,9 +1289,24 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     elif not self._authenticated():
                         self._error(401, "authentication_error", "invalid or missing API key")
                     else:
-                        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-                        raw_tier = (query.get("tier_id") or [None])[0]
-                        self._transition_status(raw_tier)
+                        query = urllib.parse.parse_qs(
+                            urllib.parse.urlparse(self.path).query, keep_blank_values=True,
+                        )
+                        if "member_id" in query:
+                            if len(query["member_id"]) != 1 or len(query.get("tier_id", [])) != 1:
+                                self._error(400, "invalid_transition", "invalid transition request")
+                                return
+                            # Use the POST status path's scope validation so
+                            # blank/unknown/direct-tier members cannot widen
+                            # to an accidental tier-wide status operation.
+                            self._handle_transition({
+                                "action": "status", "tier_id": query["tier_id"][0],
+                                "member_id": query["member_id"][0],
+                            })
+                        else:
+                            # Preserve legacy omission/blank handling exactly.
+                            raw_tier = next((value for value in query.get("tier_id", []) if value), None)
+                            self._transition_status(raw_tier)
                 finally:
                     _MANAGEMENT_LIMIT.release()
                 return
@@ -1268,6 +1638,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def do_POST(self) -> None:
             self._reset_request_correlation()
             route = self.path.split("?", 1)[0].rstrip("/")
+            operator_route = self._operator_route("POST")
+            if operator_route is not None:
+                self._handle_operator_route(operator_route)
+                return
             if gateway is not None and route in {MCP_PATH, A2A_PATH}:
                 if not _PROTOCOL_CONCURRENCY_LIMIT.acquire(blocking=False):
                     self.close_connection = True
@@ -1303,8 +1677,25 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
             try:
                 self._post_inner()
+                if self._anvil_workload_stream is not None:
+                    # Commit only after buffered bytes and the last SSE trailer
+                    # have actually crossed the handler's final flush boundary.
+                    self.wfile.flush()
+            except (OSError, ConnectionError):
+                self._anvil_delivery_outcome = WorkloadOutcome.DISCONNECTED
+                raise
+            except BaseException:
+                # Preserve a typed generation cancellation/timeout proposal;
+                # only response rendering failures introduce a new error.
+                self._workload_render_error()
+                raise
             finally:
-                _CONCURRENCY_LIMIT.release()
+                try:
+                    stream = self._anvil_workload_stream
+                    if stream is not None:
+                        stream.finish_delivery(self._anvil_delivery_outcome)
+                finally:
+                    _CONCURRENCY_LIMIT.release()
 
         def _post_inner(self) -> None:
             """Core POST dispatch, called under the concurrency semaphore."""
@@ -1535,7 +1926,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # a traceback.
                 requested_model = request.model
                 try:
-                    text = "".join(backend.generate(request))
+                    text = "".join(self._generate_deltas(request))
                     # Read structured fields AFTER the generator is drained so the
                     # backend's thread-local is fully populated (#42 / #52).
                     # Falls through to dialect defaults (structured=None) when the
@@ -1561,6 +1952,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     # Unexpected backend fault: log bounded metadata only; send
                     # a generic message so internal state is not disclosed.
                     self._log_inference_failure(500, "backend error", e)
+                    self._workload_render_error()
                     self._error(500, "internal_error", "internal error",
                                 dialect=dialect)
                     return
@@ -1586,6 +1978,11 @@ def make_server(host: str, port: int,
                 purpose: Optional[PurposeRouter] = None,
                 audio: Optional[AudioGateway] = None,
                 gateway: Optional[ProtocolGateway] = None,
+                authorization_policy: Optional[AuthorizationPolicy] = None,
+                operator_routes: Sequence[OperatorRoute] | None = None,
+                workload_host: Optional[str] = None,
+                workload_registry=None,
+                workload_clock: Optional[Callable[[], datetime]] = None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -1619,11 +2016,13 @@ def make_server(host: str, port: int,
         raise ValueError("an AudioGateway requires a resolved front-door auth token")
     if gateway is not None and auth_token is None:
         raise ValueError("a ProtocolGateway requires a resolved front-door auth token")
+    validated_operator_routes = _validated_operator_routes(operator_routes)
     httpd = ThreadingHTTPServer(
         (host, port),
         _make_handler(
             backend, timeout, model_routes, exhaustion_status, auth_token,
-            purpose, audio, gateway,
+            purpose, audio, gateway, authorization_policy, validated_operator_routes,
+            workload_host, workload_registry, workload_clock,
         ),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown

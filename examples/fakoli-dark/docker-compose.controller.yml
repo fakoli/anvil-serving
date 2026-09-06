@@ -90,6 +90,10 @@ services:
       - --allow-operation
       - decision_summary
       - --allow-operation
+      - controller_inspect
+      - --allow-operation
+      - controller_logs
+      - --allow-operation
       - serves_status
       - --allow-operation
       - reservation_status

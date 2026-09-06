@@ -5,13 +5,16 @@ from typing import Iterable
 
 from .availability import resolve_runtime_tier, safe_check
 from .config import RouterConfig, Tier, normalize_model_alias
+from .model_capacity import replica_metadata
 
 OWNED_BY = "anvil-serving"
 # Fixed epoch keeps discovery byte-stable for tests and clients' HTTP caches.
 CREATED = 1_700_000_000
 
 
-def model_route_entry(alias: str, tier: Tier | None = None) -> dict:
+def model_route_entry(
+    alias: str, tier: Tier | None = None, replica: dict | None = None
+) -> dict:
     """Build one OpenAI-shaped model entry for a configured caller alias."""
     entry = {
         "id": alias,
@@ -27,6 +30,15 @@ def model_route_entry(alias: str, tier: Tier | None = None) -> dict:
         # remains authoritative for modalities, readiness, and fingerprints.
         entry["context_window"] = tier.context_limit if tier.context_limit > 0 else None
         entry["max_output_tokens"] = tier.max_output_tokens
+    if replica is not None and tier is not None:
+        entry["logical_tier"] = tier.id
+        for key in (
+            "members",
+            "replica_identity",
+            "deployment_identity_source",
+            "runtime_deployment_identity_verified",
+        ):
+            entry[key] = replica[key]
     return entry
 
 
@@ -43,6 +55,7 @@ def models_payload(
     aliases = config.model_routes if config is not None else model_routes
     entries = []
     seen: set[str] = set()
+    replica_cache: dict[str, dict] = {}
     for alias in aliases:
         normalized = normalize_model_alias(alias)
         if normalized and normalized not in seen:
@@ -51,11 +64,17 @@ def models_payload(
                 if config is not None
                 else None
             )
-            if tier is not None and availability is not None:
+            replica = None
+            if tier is not None and tier.replicas:
+                replica = replica_cache.get(tier.id)
+                if replica is None:
+                    replica, _readiness = replica_metadata(tier, availability)
+                    replica_cache[tier.id] = replica
+            elif tier is not None and availability is not None:
                 readiness = safe_check(
                     availability, tier, include_exception_name=False
                 )
                 tier = resolve_runtime_tier(tier, readiness) or tier
-            entries.append(model_route_entry(alias, tier))
+            entries.append(model_route_entry(alias, tier, replica))
             seen.add(normalized)
     return {"object": "list", "data": entries}

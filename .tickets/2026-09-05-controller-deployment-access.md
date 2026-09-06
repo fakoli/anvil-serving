@@ -1,0 +1,173 @@
+# Establish controller identity and access before coordinated deployment
+
+Status: open
+Priority: P1 deployment gate
+Date: 2026-09-05
+
+## Observation
+
+Read-only deployment preflight received HTTP 401 from the default loopback
+controller status target and HTTP 403 from both declared controller transports.
+The required credential is present in the current process environment; checking
+the user-local and selected operator-home credential files did not supply a
+replacement. This is not established to be a missing-credential problem.
+A retry with the existing no-proxy/no-redirect transport returned the same 403,
+so proxy interference is not an established root cause either.
+
+The local operation catalog exposes controller status but no controller log
+operation. Controller services are not members of the model-serve manifest,
+so `serves logs` is not an appropriate controller diagnostic surface. The
+connected MCP catalog is unavailable in this session; the checkout's CLI and
+local operation contracts were verified before fallback. A narrow read-only
+listener/container inspection is necessary to identify the owning component.
+The missing bounded controller-log surface is a confirmed product gap that
+must be implemented before this becomes a repeatable operational workflow.
+
+These observations do not establish the responding service's expected node
+identity, build version, authorization policy, or controller/router parity.
+CLI version agreement and router reachability alone do not prove those facts.
+Raw identities, endpoints, credentials, and private evidence remain outside the
+public repository.
+
+## Required fix-forward investigation
+
+1. Obtain the authoritative managed service status and bounded startup/request
+   logs through the product's existing operations surfaces.
+2. Distinguish the expected controller from another listener or intermediary;
+   distinguish invalid authentication from authorization or origin rejection.
+3. Record the root cause and implement any product defect through supported
+   CLI/controller surfaces with regression tests. Do not bypass a denial by
+   silently broadening authority or weakening authentication.
+4. Re-run the original status probe and verify exact node/build identity.
+5. Before coordinated deployment, establish manifest-derived mount closure,
+   same-selected-model recovery, endpoint version parity, and real-client
+   acceptance. Do not represent a merge or a successful health response as
+   deployment completion.
+
+## Closure evidence
+
+Bounded follow-up established that all three external status targets return
+`Microsoft-HTTPAPI/2.0` text responses, with no corresponding request in the
+controller's structured logs. The current process credential equals the
+controller container credential (comparison only; neither value was exposed).
+The default listener belongs to the Windows system process. Container
+configuration declares a loopback port binding, but its live network port
+inventory has no corresponding published mapping. Thus the observed 401/403
+responses come from another listener, not the owning controller; the precise
+forwarding/publication failure and its durable correction remain unresolved.
+
+The managed diagnostic source surface is now implemented and accepted. Pending:
+forwarding/publication root cause, durable correction, recovery regression
+results, and successful identity-checked status/deployment verification. Do not stop or reconfigure the unrelated
+Windows listener merely to reclaim a port. No live route, model serve,
+controller, or private configuration has been changed for this investigation.
+
+## Diagnostic implementation review
+
+The approved [bounded diagnostics PRD](../docs/prds/controller-diagnostics.md)
+has eleven tasks covering capture, projection, CLI/MCP, both server and client
+permissions, scaffold parity, protected envelopes, workbench skill catalogs,
+exact public catalog fixtures, documentation and actual local diagnostic proof.
+Its capture foundation is accepted in
+`b64687aae2c809633a1196534466c73e0abf75b4` after independent review and
+10 passing post-commit tests plus Ruff. Corrections cover child/reader cleanup,
+unsupported macOS classification, shared capture bounds, hostile post-spawn
+failures, deadline precedence, exact result types and truncation invariants.
+An independent negative control raised the byte cap by one and made the
+262145-byte overflow regression fail. A passing four-test happy-path gate had
+not established those lifecycle properties. Fixed inspection/log projections
+are accepted in `96b961d985ed7eb3228eea109760fd188a134846` after independent
+eight-angle review, privacy/boundary negative controls, 19 post-commit tests and
+Ruff. Configured versus observed bindings stay separate, log reads use only the
+verified immutable controller ID, and raw content is discarded. CLI/MCP wiring
+and actual local-daemon validation remained pending at that checkpoint; source
+acceptance did not resolve deployment access. No raw diagnostic output or
+credentials are added here.
+
+The local CLI slice is accepted at upstream-compatible checkpoint
+`cd28f53970c514019cf262fff11fa0647a98c4f0` (implementation `38af3615`). Independent
+review found permissive numeric spellings and a nonexistent command layer in
+help. Strict ASCII decimal validation now refuses malformed tails before any
+diagnostic call, and help names the actual `controller inspect/logs` commands.
+An unnecessary serializer fallback that hid invalid values as null was removed.
+All 24 post-commit tests and Ruff pass. An initial evidence submission omitted
+the exact required test flag; it was rejected, then the precise commands were
+rerun under a new claim with complete proofs. No evidence gate was weakened.
+MCP parity, permissions, managed live diagnosis and deployment remained pending
+at that checkpoint.
+
+## Diagnostic exposure and client ownership
+
+The MCP implementation is accepted at `1039f2343d8403f81070e91fe7cf7bbc291f614c`;
+strict remote integer validation at `3b1a59afc3945e9d058bfa6e42e1701faada8924`
+also closes local-versus-controller argument parity. Actual controller HTTP
+authorization and generic Compose exposure are accepted at
+`2a0e2942d9ea2c18c775c019d1c4a11ac90981b3` after 101 post-commit tests and
+Ruff. Missing/wrong/narrow-scope/excluded credentials start no child; an
+existing operator credential reaches the actual handlers with only the
+expected bounded inspect/log child sequence. These tests use synthetic
+capture, not a live daemon.
+
+Client topology review then reproduced another required correction: the
+generic template has neither diagnostic transport permissions nor a resource
+with role `controller`. The real target resolver consequently reports zero
+declared owners even after server tools exist. T007 adds one synthetic
+controller service resource on its declared Docker runtime and the two exact
+permissions on that runtime's controller transport, with a byte-identical
+packaged mirror. Other transports gain no diagnostic permission. Regression
+tests resolve actual command-tree specs and refuse a removed permission
+without choosing SSH or a different controller. This template correction
+does not mutate installed private topology or repair live publication.
+
+The client ownership correction is accepted at `4cb23683` and its integration
+at `a2791de5`. The protected root CLI envelope is accepted at `bef0fded` and
+integrated at `e46a8575`. Local and remote human/JSON paths now require the
+complete kind-specific schema, reject hostile scalar and mapping-key types
+before comparison, and suppress parser operands and transport details. The
+envelope review temporarily restored the obsolete six-key schema escape and
+the any-token help bypass; the dedicated regressions failed in both cases,
+including the human literal-separator operand leak, before the guards were
+restored. These are source acceptance checkpoints, not live publication or
+deployment evidence.
+
+Both public Workbench skill catalogs register the exact diagnostic MCP tools
+and their unreachable-controller local fallback at accepted checkpoint
+`c9c8a3f4`. The fallback stays on the verified owning host, grants no SSH or
+lifecycle authority, and does not turn diagnostic success into deployment
+proof.
+
+The full repository gate exposed stale frozen MCP catalog expectations. The
+separate fixture correction is accepted at `9566cb9c`, preserving exact tool
+order and catalog/handler hashes and adding readable closed-schema checks.
+Its tail-bound negative control failed before restoration. The full suite is
+rerun for this final documentation slice; focused fixture tests alone are not
+the final source gate.
+
+The earlier capture negative control raised the shared byte cap by one and made
+the 262145-byte overflow regression fail. The projection negative control
+disabled unknown-field redaction and made the credential-shaped-field privacy
+regression fail. Both controls were restored before their accepted gates.
+
+## Managed live refresh
+
+After workspace resolution, the local root `controller inspect --json` and
+`controller logs --tail 20 --json` commands were re-run from source revision
+`7e782797df75dbcc58396edc45576cf335bfe2da`. Both exited zero with structured
+bounded v1 data, an operand-free command, null context, and empty warnings.
+Inspection reported `state = ok`, running and healthy, with one configured
+loopback binding but no observed published binding. Logs reported `state = ok`,
+20 returned events from 20 lines, zero rejected lines and unknown codes, 120
+dropped unknown fields, no truncation, and no counter saturation. The retained
+allowlisted health and tool-list audit statuses were 200. No selector,
+container ID, literal port, raw event, credential, or private path is retained
+in this ticket.
+
+These commands now replace the raw Docker diagnostic fallback for this
+incident. They do not repair publication or establish external endpoint
+identity, remote node/build identity, or version parity. A source review confirms the controller has no
+managed container recovery operation yet; foreground serve/status and these
+read-only diagnostics cannot recreate its publication. That bounded recovery
+capability requires a separate implementation with selected-service-only
+mutation, explicit images/configuration, mount closure, plan freshness,
+rollback, and independent post-apply identity checks. No live service, route,
+private file or model was changed by this refresh.

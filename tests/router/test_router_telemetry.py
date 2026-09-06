@@ -1,6 +1,8 @@
 """Unit coverage for pure, metadata-only router telemetry helpers."""
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from anvil_serving.router.decision_log import AttemptRecord, DecisionRecord
@@ -9,6 +11,11 @@ from anvil_serving.router.router_telemetry import (
     find_request,
     render_capacity_prometheus,
     render_prometheus,
+)
+from anvil_serving.router.replica_scheduler import (
+    ReplicaCandidate,
+    ReplicaPressure,
+    rank_replica_candidates,
 )
 
 
@@ -137,3 +144,137 @@ def test_capacity_prometheus_renders_only_present_numeric_gauges():
     assert 'anvil_router_model_loaded{model="llm.primary",tier="primary-local"} 1' in payload
     assert "anvil_router_model_context_limit_tokens" in payload
     assert "anvil_router_model_kv_cache_usage_fraction" in payload
+
+
+def _replica_capacity_snapshot():
+    return {
+        "data": [{
+            "id": "primary-local",
+            "aliases": ["llm.primary"],
+            "loaded": True,
+            "capacity": {"context_limit_tokens": 262_144},
+            "multimodal": {},
+            "live": {},
+            "admission": {
+                "status": "available", "state": "admitting", "active_requests": 1,
+                "draining": False,
+                "member_active_requests": {"member-a": 1, "member-b": 0},
+                "max_concurrency": 7,
+                "members": [
+                    {"id": "member-a", "state": "admitting", "active_requests": 1,
+                     "max_concurrency": 4, "draining": False},
+                    {"id": "member-b", "state": "admitting", "active_requests": 0,
+                     "max_concurrency": 3, "draining": False},
+                ],
+            },
+            "members": [
+                {"id": "member-a", "freshness": "fresh", "pressure_ppm": 625_000,
+                 "requests_state": "valid", "kv_state": "missing"},
+                {"id": "member-b", "freshness": "stale", "pressure_ppm": None,
+                 "requests_state": "valid", "kv_state": "valid"},
+            ],
+        }],
+    }
+
+
+def test_capacity_prometheus_emits_strict_member_gauges_without_alias_multiplication():
+    payload = render_capacity_prometheus(_replica_capacity_snapshot())
+    assert 'anvil_router_replica_tier_active_requests{tier="primary-local"} 1' in payload
+    assert 'anvil_router_replica_tier_max_concurrency{tier="primary-local"} 7' in payload
+    assert (
+        'anvil_router_replica_member_active_requests{tier="primary-local",member="member-a"} 1'
+        in payload
+    )
+    assert (
+        'anvil_router_replica_member_max_concurrency{tier="primary-local",member="member-b"} 3'
+        in payload
+    )
+    assert (
+        'anvil_router_replica_member_pressure_ppm{tier="primary-local",member="member-a"} 625000'
+        in payload
+    )
+    assert 'anvil_router_replica_member_pressure_ppm{tier="primary-local",member="member-b"}' not in payload
+    assert (
+        'anvil_router_replica_member_pressure_freshness{tier="primary-local",member="member-b",freshness="stale"} 1'
+        in payload
+    )
+    assert 'anvil_router_replica_tier_active_requests{model=' not in payload
+    assert payload.count('anvil_router_replica_tier_active_requests{tier="primary-local"}') == 1
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda row: row["admission"].update(active_requests=True),
+        lambda row: row["admission"]["members"][0].update(max_concurrency=100_001),
+        lambda row: row["members"][0].update(pressure_ppm=2_000_000_000_000_001),
+        lambda row: row["members"][0].update(freshness="stale"),
+        lambda row: row["members"][1].update(id="private/value"),
+    ],
+)
+def test_capacity_prometheus_rejects_malformed_replica_groups(mutate):
+    snapshot = _replica_capacity_snapshot()
+    mutate(snapshot["data"][0])
+    payload = render_capacity_prometheus(snapshot)
+    assert "anvil_router_replica_" not in payload
+    assert "private/value" not in payload
+
+
+def test_find_request_preserves_canonical_replica_scheduler_evidence():
+    decision = rank_replica_candidates(
+        (
+            ReplicaCandidate("member-b", True, 0, 2, ReplicaPressure()),
+            ReplicaCandidate("member-a", True, 0, 2, ReplicaPressure()),
+        ),
+        cursor=0,
+    )
+    record = replace(_record(request_id="req_1"), replica_scheduler=decision)
+    result = find_request((record,), "req_1")
+    assert result["record"]["replica_scheduler"] == decision.to_dict()
+
+
+def test_capacity_prometheus_enforces_per_tier_and_total_member_bounds():
+    rows = []
+    for tier_index in range(17):
+        tier_id = f"tier-{tier_index}"
+        member_ids = [f"member-{index}" for index in range(16)]
+        rows.append({
+            "id": tier_id,
+            "aliases": [],
+            "admission": {
+                "status": "available", "state": "admitting", "active_requests": 0,
+                "draining": False, "member_active_requests": {
+                    member_id: 0 for member_id in member_ids
+                },
+                "max_concurrency": 16,
+                "members": [
+                    {"id": member_id, "state": "admitting", "active_requests": 0,
+                     "max_concurrency": 1, "draining": False}
+                    for member_id in member_ids
+                ],
+            },
+            "members": [
+                {"id": member_id, "freshness": "unknown", "pressure_ppm": None,
+                 "requests_state": "missing", "kv_state": "missing"}
+                for member_id in member_ids
+            ],
+        })
+    payload = render_capacity_prometheus({"data": rows})
+    assert payload.count("anvil_router_replica_member_active_requests{tier=") == 256
+    assert 'tier="tier-15"' in payload
+    assert 'tier="tier-16"' not in payload
+
+    oversized = rows[0].copy()
+    oversized["admission"] = rows[0]["admission"].copy()
+    oversized["admission"]["members"] = rows[0]["admission"]["members"] + [
+        {"id": "member-extra", "state": "admitting", "active_requests": 0,
+         "max_concurrency": 1, "draining": False}
+    ]
+    oversized["admission"]["member_active_requests"] = {
+        **rows[0]["admission"]["member_active_requests"], "member-extra": 0,
+    }
+    oversized["members"] = rows[0]["members"] + [
+        {"id": "member-extra", "freshness": "unknown", "pressure_ppm": None,
+         "requests_state": "missing", "kv_state": "missing"}
+    ]
+    assert "anvil_router_replica_" not in render_capacity_prometheus({"data": [oversized]})

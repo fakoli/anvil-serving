@@ -73,6 +73,10 @@ narration.
   `external_bench_sources`, `external_bench_list`, `external_bench_report`,
   and `external_bench_compare`.
 - Transport discovery: `operation_contracts`.
+- Controller diagnostics: `controller_inspect` and `controller_logs` return
+  bounded metadata for one explicitly selected Docker controller, never raw
+  log messages. The Docker log tail is 1..200 lines (default 100), and projection
+  returns at most 200 allowlisted events.
 
 `benchmark_probe` and `benchmark_artifact` are bounded capacity tools. The
 `benchmark_job_*` tools provide durable context, agentic, and SWE job control;
@@ -97,6 +101,16 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
 
 ## Playbook Selection
 
+- Controller diagnosis: use `controller_inspect` and `controller_logs` through
+  the declared controller when reachable. When that transport is unavailable,
+  use the verified local `anvil-serving controller inspect --container NAME`
+  and `anvil-serving controller logs --container NAME --tail 20` on its owning
+  host; this read-only fallback also applies when a remote MCP wrapper exists
+  but cannot be reached. Do not substitute SSH or another controller. Native
+  services and macOS-local diagnostics are unsupported in this version.
+  Configured bindings are not observed publication, and diagnostic `state=ok`
+  proves neither endpoint node/build identity nor deployment acceptance.
+  Diagnostics grant no repair, restart, route or promotion authority.
 - Readiness: inspect `operation_contracts`, `router_status`,
   `router_fleet_status`, `serves_status`,
   `reservation_status`, `doctor_summary`, `host_summary`, `gpu_inventory`,

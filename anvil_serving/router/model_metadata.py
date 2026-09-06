@@ -18,7 +18,7 @@ from anvil_serving import __version__
 
 from .availability import AvailabilityResult, resolve_runtime_tier, safe_check
 from .config import METADATA_UPSTREAM, RouterConfig, Tier, normalize_model_alias
-from .model_capacity import _nonnegative_int
+from .model_capacity import _nonnegative_int, replica_metadata
 
 
 CAPABILITIES_PARAMS_KEY = "capabilities"
@@ -167,10 +167,12 @@ def build_model_capabilities(
         if selected_alias is not None and selected_alias not in aliases:
             continue
         capabilities = _params_section(tier, CAPABILITIES_PARAMS_KEY)
-        readiness = _readiness(availability, tier)
+        replica, readiness = (
+            replica_metadata(tier, availability) if tier.replicas else ({}, _readiness(availability, tier))
+        )
         effective = resolve_runtime_tier(tier, readiness)
         reported = effective or tier
-        rows.append({
+        row = {
             "object": "model_capabilities",
             "id": tier.id,
             "aliases": aliases,
@@ -194,7 +196,9 @@ def build_model_capabilities(
                 "video_per_request": _nonnegative_int(capabilities.get("video_per_request")),
             },
             "readiness": _safe_readiness(availability, tier, readiness),
-        })
+        }
+        row.update(replica)
+        rows.append(row)
     return {"object": "list", "data": rows}
 
 
@@ -209,15 +213,17 @@ def build_model_fingerprints(
         aliases = aliases_by_tier.get(tier.id, [])
         if selected_alias is not None and selected_alias not in aliases:
             continue
-        readiness = _readiness(availability, tier)
+        replica, readiness = (
+            replica_metadata(tier, availability) if tier.replicas else ({}, _readiness(availability, tier))
+        )
         effective = resolve_runtime_tier(tier, readiness)
         reported = effective or tier
         fingerprint = (
             {}
             if tier.metadata_source == METADATA_UPSTREAM
-            else _params_section(tier, FINGERPRINT_PARAMS_KEY)
+            else replica["replica_identity"] if replica else _params_section(tier, FINGERPRINT_PARAMS_KEY)
         )
-        rows.append({
+        row = {
             "object": "model_fingerprint",
             "id": tier.id,
             "aliases": aliases,
@@ -269,7 +275,9 @@ def build_model_fingerprints(
                     else "unavailable"
                 ),
             },
-        })
+        }
+        row.update(replica)
+        rows.append(row)
     return {"object": "list", "data": rows}
 
 
@@ -305,6 +313,15 @@ def _canonical_public_config(config: RouterConfig) -> bytes:
             },
             "fingerprint": {key: _safe_text(fingerprint.get(key)) for key in _FINGERPRINT_KEYS},
         })
+        if tier.replicas:
+            # Hash declared public membership, never addresses or a probe result.
+            tiers[-1]["members"] = [
+                {"id": member.id, "qualification_ref": member.qualification_ref}
+                for member in sorted(tier.replicas, key=lambda item: item.id)
+            ]
+            tiers[-1]["replica_identity"] = {
+                key: getattr(tier.replica_identity, key) for key in _FINGERPRINT_KEYS
+            }
     payload = {"model_routes": sorted(config.model_routes.items()), "tiers": tiers}
     return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
 

@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
 
 from anvil_serving import cli, models, reservations, serve_recipes, serves
 from anvil_serving.control_plane.mcp.tools import models as models_tools
+from anvil_serving.controller_diagnostics import ChildCapture
+from anvil_serving.observability.workloads import (
+    ResultStatus,
+    WorkloadErrorCode,
+    WorkloadState,
+)
 
 
 def _completed(argv, *, stdout="", stderr="", returncode=0):
@@ -352,6 +360,488 @@ def test_recipe_containers_mcp_returns_the_same_typed_inventory(
 
     assert result["ok"] is True
     assert result["data"]["inventory"] == inventory
+
+
+def _recipe_snapshot_capture(rows: list[str], calls: list[tuple[str, ...]]):
+    def capture(argv):
+        calls.append(tuple(argv))
+        if tuple(argv) == serve_recipes._RECIPE_LIST_ARGV:
+            return ChildCapture("ok", ("\n".join(rows) + "\n").encode(), b"", False)
+        return ChildCapture("ok", b"", b"", False)
+
+    return capture
+
+
+def _write_snapshot_registry(path, text='[[recipe]]\nmodel = "org/model"\n') -> None:
+    path.write_text(text, encoding="utf-8")
+    timestamp_ns = int(datetime(2026, 9, 5, 12, tzinfo=timezone.utc).timestamp() * 1_000_000_000)
+    os.utime(path, ns=(timestamp_ns, timestamp_ns))
+
+
+def test_recipe_workload_snapshot_uses_fixed_metadata_only_docker_capture(tmp_path) -> None:
+    registry = tmp_path / "recipes.toml"
+    _write_snapshot_registry(registry)
+    container_id = "a" * 64
+    capture_calls: list[tuple[str, ...]] = []
+    capture = _recipe_snapshot_capture([container_id], capture_calls)
+    row = {
+        "id": container_id,
+        "managed_by": serve_recipes.RECIPE_MANAGED_VALUE,
+        "recipe_digest": "b" * 64,
+        "created_at": "2026-09-05T12:00:00.123456789Z",
+        "status": "running",
+        "running": True,
+        "started_at": "2026-09-05T12:00:01.987654321Z",
+        "finished_at": "0001-01-01T00:00:00Z",
+    }
+
+    def captured(argv):
+        result = capture(argv)
+        if tuple(argv) != serve_recipes._RECIPE_LIST_ARGV:
+            return ChildCapture("ok", (json.dumps(row) + "\n").encode(), b"", False)
+        return result
+
+    snapshot = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 2, tzinfo=timezone.utc),
+        _capture=captured,
+    )
+
+    assert snapshot.configuration.status is ResultStatus.COMPLETE
+    assert len(snapshot.configuration.records) == 1
+    assert snapshot.runtime.status is ResultStatus.COMPLETE
+    assert snapshot.runtime.records[0].state is WorkloadState.RUNNING
+    assert snapshot.runtime.records[0].updated_at.microsecond == 987654
+    assert capture_calls == [
+        serve_recipes._RECIPE_LIST_ARGV,
+        (
+            "docker",
+            "inspect",
+            "--type",
+            "container",
+            "--format",
+            serve_recipes._RECIPE_INSPECT_TEMPLATE,
+            container_id,
+        ),
+    ]
+    assert "org/model" not in repr(snapshot)
+
+
+def test_recipe_workload_snapshot_retains_valid_peer_after_invalid_metadata(tmp_path) -> None:
+    registry = tmp_path / "recipes.toml"
+    _write_snapshot_registry(registry)
+    valid_id, invalid_id = "a" * 64, "b" * 64
+    calls: list[tuple[str, ...]] = []
+    capture = _recipe_snapshot_capture([valid_id, invalid_id], calls)
+    rows = [
+        {
+            "id": valid_id,
+            "managed_by": serve_recipes.RECIPE_MANAGED_VALUE,
+            "recipe_digest": None,
+            "created_at": "2026-09-05T12:00:00Z",
+            "status": "exited",
+            "running": False,
+            "started_at": "2026-09-05T12:00:02Z",
+            "finished_at": "2026-09-05T12:00:03Z",
+        },
+        {
+            "id": invalid_id,
+            "managed_by": serve_recipes.RECIPE_MANAGED_VALUE,
+            "recipe_digest": "not-a-digest",
+            "created_at": "2026-09-05T12:00:00Z",
+            "status": "running",
+            "running": "not-bool",
+            "started_at": "2026-09-05T12:00:01Z",
+            "finished_at": "0001-01-01T00:00:00Z",
+        },
+    ]
+
+    def captured(argv):
+        listed = capture(argv)
+        if tuple(argv) == serve_recipes._RECIPE_LIST_ARGV:
+            return listed
+        return ChildCapture(
+            "ok", ("\n".join(json.dumps(row) for row in rows) + "\n").encode(), b"", False
+        )
+
+    snapshot = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 4, tzinfo=timezone.utc),
+        _capture=captured,
+    )
+
+    assert snapshot.runtime.status is ResultStatus.PARTIAL
+    assert snapshot.runtime.error is WorkloadErrorCode.INVALID
+    assert [(record.container_id, record.state, record.updated_at) for record in snapshot.runtime.records] == [
+        (valid_id, WorkloadState.ABSENT, datetime(2026, 9, 5, 12, 0, 3, tzinfo=timezone.utc))
+    ]
+
+
+def test_recipe_workload_snapshot_reports_bounded_source_failures_without_raw_output(tmp_path) -> None:
+    registry = tmp_path / "invalid.toml"
+    _write_snapshot_registry(registry, "not = [valid")
+
+    snapshot = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc),
+        _capture=lambda _argv: ChildCapture("output-limit", b"secret-token", b"secret-token", True),
+    )
+
+    assert snapshot.configuration.status is ResultStatus.PARTIAL
+    assert snapshot.configuration.error is WorkloadErrorCode.INVALID
+    assert snapshot.runtime.status is ResultStatus.UNAVAILABLE
+    assert snapshot.runtime.error is WorkloadErrorCode.UNAVAILABLE
+    assert "secret-token" not in repr(snapshot)
+
+
+def test_recipe_workload_configuration_retains_valid_recipe_when_peer_is_malformed(tmp_path) -> None:
+    registry = tmp_path / "mixed.toml"
+    _write_snapshot_registry(
+        registry,
+        '[[recipe]]\nmodel = "org/good"\n\n[[recipe]]\nmodel = ""\n',
+    )
+
+    snapshot = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=lambda _argv: ChildCapture("ok", b"", b"", False),
+    )
+
+    assert snapshot.configuration.status is ResultStatus.PARTIAL
+    assert len(snapshot.configuration.records) == 1
+    assert snapshot.configuration.error is WorkloadErrorCode.INVALID
+
+
+def test_recipe_workload_configuration_checks_stable_metadata_not_access_time(tmp_path, monkeypatch) -> None:
+    registry = tmp_path / "recipes.toml"
+    _write_snapshot_registry(registry)
+    original_fstat = serve_recipes.os.fstat
+    calls = 0
+
+    def access_time_only(fd):
+        nonlocal calls
+        calls += 1
+        value = original_fstat(fd)
+        if calls == 2:
+            return SimpleNamespace(
+                st_dev=value.st_dev,
+                st_ino=value.st_ino,
+                st_size=value.st_size,
+                st_mtime_ns=value.st_mtime_ns,
+                st_ctime_ns=value.st_ctime_ns,
+                st_atime_ns=value.st_atime_ns + 1,
+                st_mode=value.st_mode,
+            )
+        return value
+
+    monkeypatch.setattr(serve_recipes.os, "fstat", access_time_only)
+    snapshot = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=lambda _argv: ChildCapture("ok", b"", b"", False),
+    )
+
+    assert snapshot.configuration.status is ResultStatus.COMPLETE
+
+
+def test_recipe_workload_configuration_refuses_mutation_and_preparse_overflow(tmp_path, monkeypatch) -> None:
+    registry = tmp_path / "recipes.toml"
+    _write_snapshot_registry(registry)
+    original_fstat = serve_recipes.os.fstat
+    calls = 0
+
+    def changed_metadata(fd):
+        nonlocal calls
+        calls += 1
+        value = original_fstat(fd)
+        if calls == 2:
+            return SimpleNamespace(
+                st_dev=value.st_dev,
+                st_ino=value.st_ino,
+                st_size=value.st_size + 1,
+                st_mtime_ns=value.st_mtime_ns,
+                st_ctime_ns=value.st_ctime_ns,
+                st_mode=value.st_mode,
+            )
+        return value
+
+    monkeypatch.setattr(serve_recipes.os, "fstat", changed_metadata)
+    changed = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=lambda _argv: ChildCapture("ok", b"", b"", False),
+    )
+    assert changed.configuration.status is ResultStatus.PARTIAL
+
+    exact = tmp_path / "exact.toml"
+    exact.write_bytes(b"#" * serve_recipes.MAX_RECIPE_REGISTRY_BYTES)
+    timestamp_ns = int(datetime(2026, 9, 5, 12, tzinfo=timezone.utc).timestamp() * 1_000_000_000)
+    os.utime(exact, ns=(timestamp_ns, timestamp_ns))
+    exact_snapshot = serve_recipes.capture_recipe_workload_snapshot(
+        exact,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=lambda _argv: ChildCapture("ok", b"", b"", False),
+    )
+    assert exact_snapshot.configuration.status is ResultStatus.COMPLETE
+
+    oversized = tmp_path / "oversized.toml"
+    oversized.write_bytes(b"#" * (serve_recipes.MAX_RECIPE_REGISTRY_BYTES + 1))
+    monkeypatch.setattr(
+        serve_recipes.tomllib,
+        "loads",
+        lambda _value: pytest.fail("overflow must not reach the parser"),
+    )
+    overflow = serve_recipes.capture_recipe_workload_snapshot(
+        oversized,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=lambda _argv: ChildCapture("ok", b"", b"", False),
+    )
+    assert overflow.configuration.status is ResultStatus.PARTIAL
+
+
+def test_recipe_workload_runtime_empty_list_and_future_peer_are_distinct(tmp_path) -> None:
+    registry = tmp_path / "recipes.toml"
+    _write_snapshot_registry(registry)
+    calls: list[tuple[str, ...]] = []
+    empty = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=_recipe_snapshot_capture([], calls),
+    )
+    assert empty.runtime.status is ResultStatus.COMPLETE
+    assert empty.runtime.records == ()
+    assert calls == [serve_recipes._RECIPE_LIST_ARGV]
+
+    container_id = "a" * 64
+    calls.clear()
+    capture = _recipe_snapshot_capture([container_id], calls)
+    future_row = {
+        "id": container_id,
+        "managed_by": serve_recipes.RECIPE_MANAGED_VALUE,
+        "recipe_digest": None,
+        "created_at": "2026-09-05T12:01:00Z",
+        "status": "running",
+        "running": True,
+        "started_at": "2026-09-05T12:01:00Z",
+        "finished_at": "0001-01-01T00:00:00Z",
+    }
+
+    def captured(argv):
+        listed = capture(argv)
+        if tuple(argv) == serve_recipes._RECIPE_LIST_ARGV:
+            return listed
+        return ChildCapture("ok", (json.dumps(future_row) + "\n").encode(), b"", False)
+
+    future = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=captured,
+    )
+    assert future.runtime.status is ResultStatus.PARTIAL
+    assert future.runtime.error is WorkloadErrorCode.FUTURE
+
+
+def test_recipe_workload_runtime_caps_ids_and_rejects_inconsistent_known_state(tmp_path) -> None:
+    registry = tmp_path / "recipes.toml"
+    _write_snapshot_registry(registry)
+    identifiers = [format(index, "064x") for index in range(257)]
+    calls: list[tuple[str, ...]] = []
+    capture = _recipe_snapshot_capture(identifiers, calls)
+
+    def captured(argv):
+        listed = capture(argv)
+        if tuple(argv) == serve_recipes._RECIPE_LIST_ARGV:
+            return listed
+        return ChildCapture("ok", b"", b"", False)
+
+    capped = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 2, tzinfo=timezone.utc),
+        _capture=captured,
+    )
+    assert capped.runtime.status is ResultStatus.PARTIAL
+    assert len(calls[1]) == 6 + 256
+    assert identifiers[-1] not in calls[1]
+
+    container_id = "a" * 64
+    bad_pair = {
+        "id": container_id,
+        "managed_by": serve_recipes.RECIPE_MANAGED_VALUE,
+        "recipe_digest": None,
+        "created_at": "2026-09-05T12:00:00Z",
+        "status": "running",
+        "running": False,
+        "started_at": "malformed",
+        "finished_at": "0001-01-01T00:00:00Z",
+    }
+    capture = _recipe_snapshot_capture([container_id], [])
+
+    def invalid_pair(argv):
+        listed = capture(argv)
+        if tuple(argv) == serve_recipes._RECIPE_LIST_ARGV:
+            return listed
+        return ChildCapture("ok", (json.dumps(bad_pair) + "\n").encode(), b"", False)
+
+    malformed = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 2, tzinfo=timezone.utc),
+        _capture=invalid_pair,
+    )
+    assert malformed.runtime.status is ResultStatus.PARTIAL
+    assert malformed.runtime.error is WorkloadErrorCode.INVALID
+
+
+def test_recipe_workload_runtime_rejects_bad_json_peers_and_exactly_uses_unmerged_capture(tmp_path, monkeypatch) -> None:
+    registry = tmp_path / "recipes.toml"
+    _write_snapshot_registry(registry)
+    container_id = "a" * 64
+    raw = (
+        '{"id":"' + container_id + '","id":"' + container_id + '",'
+        '"managed_by":"models-recipes","recipe_digest":null,'
+        '"created_at":"2026-09-05T12:00:00Z","status":"running",'
+        '"running":true,"started_at":"2026-09-05T12:00:01Z",'
+        '"finished_at":"0001-01-01T00:00:00Z"}\n'
+    ).encode()
+    list_capture = _recipe_snapshot_capture([container_id], [])
+
+    def captured(argv):
+        if tuple(argv) == serve_recipes._RECIPE_LIST_ARGV:
+            return list_capture(argv)
+        return ChildCapture("ok", raw, b"forbidden-stderr", False)
+
+    snapshot = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 2, tzinfo=timezone.utc),
+        _capture=captured,
+    )
+    assert snapshot.runtime.status is ResultStatus.PARTIAL
+    assert "forbidden-stderr" not in repr(snapshot)
+
+    captured_args = []
+    monkeypatch.setattr(
+        "anvil_serving.controller_diagnostics._capture_fixed_child",
+        lambda argv, **kwargs: captured_args.append((argv, kwargs)) or ChildCapture("ok", b"", b"", False),
+    )
+    assert serve_recipes._recipe_capture(None, serve_recipes._RECIPE_LIST_ARGV).state == "ok"
+    assert captured_args == [(serve_recipes._RECIPE_LIST_ARGV, {"merged": False})]
+    assert serve_recipes._RECIPE_LIST_ARGV == (
+        "docker", "ps", "-a", "--no-trunc", "--filter",
+        "label=io.anvil-serving.managed-by=models-recipes", "--format", "{{.ID}}",
+    )
+    assert serve_recipes._RECIPE_INSPECT_TEMPLATE == (
+        '{"id":{{json .Id}},"managed_by":{{json (index .Config.Labels "io.anvil-serving.managed-by")}},'
+        '"recipe_digest":{{json (index .Config.Labels "io.anvil-serving.recipe.digest")}},'
+        '"created_at":{{json .Created}},"status":{{json .State.Status}},'
+        '"running":{{json .State.Running}},"started_at":{{json .State.StartedAt}},'
+        '"finished_at":{{json .State.FinishedAt}}}'
+    )
+
+
+def test_recipe_workload_snapshot_keeps_components_independent_on_missing_source_and_clock_failure(tmp_path) -> None:
+    missing = tmp_path / "missing.toml"
+    missing_config = serve_recipes.capture_recipe_workload_snapshot(
+        missing,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=lambda _argv: ChildCapture("ok", b"", b"", False),
+    )
+    assert missing_config.configuration.status is ResultStatus.UNAVAILABLE
+    assert missing_config.runtime.status is ResultStatus.COMPLETE
+
+    registry = tmp_path / "recipes.toml"
+    _write_snapshot_registry(registry)
+    failed_clock = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: (_ for _ in ()).throw(RuntimeError("must-not-leak")),
+        _capture=lambda _argv: ChildCapture("ok", b"", b"", False),
+    )
+    assert failed_clock.configuration.status is ResultStatus.UNAVAILABLE
+    assert failed_clock.runtime.status is ResultStatus.UNAVAILABLE
+    assert "must-not-leak" not in repr(failed_clock)
+
+
+def test_recipe_workload_configuration_marks_future_mtime_without_using_wall_clock(tmp_path) -> None:
+    registry = tmp_path / "future.toml"
+    _write_snapshot_registry(registry)
+    future_ns = int(datetime(2026, 9, 5, 13, tzinfo=timezone.utc).timestamp() * 1_000_000_000)
+    os.utime(registry, ns=(future_ns, future_ns))
+    snapshot = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=lambda _argv: ChildCapture("ok", b"", b"", False),
+    )
+    assert snapshot.configuration.status is ResultStatus.PARTIAL
+    assert snapshot.configuration.error is WorkloadErrorCode.FUTURE
+    assert snapshot.configuration.records == ()
+
+
+@pytest.mark.parametrize(
+    "created_at",
+    [
+        "2026-09-05T12:00:00+00:00",
+        "2026-09-05T12:00:00.1234567890Z",
+        "not-a-timestamp",
+    ],
+)
+def test_recipe_workload_runtime_rejects_noncanonical_timestamps(tmp_path, created_at) -> None:
+    registry = tmp_path / "recipes.toml"
+    _write_snapshot_registry(registry)
+    container_id = "a" * 64
+    capture = _recipe_snapshot_capture([container_id], [])
+    row = {
+        "id": container_id,
+        "managed_by": serve_recipes.RECIPE_MANAGED_VALUE,
+        "recipe_digest": None,
+        "created_at": created_at,
+        "status": "created",
+        "running": False,
+        "started_at": "0001-01-01T00:00:00Z",
+        "finished_at": "0001-01-01T00:00:00Z",
+    }
+
+    def captured(argv):
+        listed = capture(argv)
+        if tuple(argv) == serve_recipes._RECIPE_LIST_ARGV:
+            return listed
+        return ChildCapture("ok", (json.dumps(row) + "\n").encode(), b"", False)
+
+    snapshot = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=captured,
+    )
+    assert snapshot.runtime.status is ResultStatus.PARTIAL
+    assert snapshot.runtime.error is WorkloadErrorCode.INVALID
+
+
+def test_recipe_workload_runtime_quarantines_duplicate_and_unsolicited_ids(tmp_path) -> None:
+    registry = tmp_path / "recipes.toml"
+    _write_snapshot_registry(registry)
+    requested, unsolicited = "a" * 64, "b" * 64
+    capture = _recipe_snapshot_capture([requested, requested], [])
+    row = {
+        "id": unsolicited,
+        "managed_by": serve_recipes.RECIPE_MANAGED_VALUE,
+        "recipe_digest": None,
+        "created_at": "2026-09-05T12:00:00Z",
+        "status": "created",
+        "running": False,
+        "started_at": "0001-01-01T00:00:00Z",
+        "finished_at": "0001-01-01T00:00:00Z",
+    }
+
+    def captured(argv):
+        listed = capture(argv)
+        if tuple(argv) == serve_recipes._RECIPE_LIST_ARGV:
+            return listed
+        return ChildCapture("ok", (json.dumps(row) + "\n").encode(), b"", False)
+
+    snapshot = serve_recipes.capture_recipe_workload_snapshot(
+        registry,
+        clock=lambda: datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc),
+        _capture=captured,
+    )
+    assert snapshot.runtime.status is ResultStatus.PARTIAL
+    assert snapshot.runtime.records == ()
 
 
 def _mode_serves() -> list[dict]:
