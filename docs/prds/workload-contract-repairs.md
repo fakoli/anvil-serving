@@ -45,6 +45,28 @@ Repair request omission and identifier validation with independent producer/cons
 
 ## Tasks
 
+### T019: Exercise the intended Linux read-only policy in the native test
+
+**Feature:** F001
+**Priority:** medium
+**Type:** bugfix
+**Likely files:** tests/test_bootstrap_opened_file.py, .tickets/2026-09-05-bootstrap-readonly-ci-fixture.md
+
+PR #472 Linux CI at 52f2f9c4 reproduced a native test expecting owner-writable refusal while omitting require_readonly=True. The helper intentionally defaults to False, which permits a trusted owner-writable configuration file. Pass True explicitly for the refusal and retain the actual chmod-to-owner-readonly positive check. Also assert that the same owner-writable file succeeds with False, so the two supported policies remain distinct. Change no production code, helper default, permission classifier or platform skip. Record exact failing CI provenance, Linux native reproduction, corrected focused gates and a weakened-policy negative control in the ticket.
+
+**Acceptance criteria:**
+
+- The unchanged Linux test reproduces DID NOT RAISE before the fix.
+- Owner-writable files pass with False and refuse with True; an owner-readonly file passes with True on native Linux.
+- Removing the read-only policy guard makes the corrected test fail; Windows regressions and Linux/Windows final CI remain mandatory.
+
+**Verification:**
+
+- `python scripts/run_tests.py tests/test_bootstrap_opened_file.py tests/test_bootstrap_permissions.py tests/test_bootstrap_package.py -x -q`
+- `python -m ruff check tests/test_bootstrap_opened_file.py`
+- `git diff --check`
+
+
 ### T017: Require the exact controller health identity envelope
 
 **Feature:** F001
