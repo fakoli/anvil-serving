@@ -13,7 +13,7 @@ completion evidence for an agent starting without the original conversation.
 The 2026-09-05 implementation batch contains qualified replica sets,
 capacity-aware member scheduling and lifecycle controls, bounded workload
 visibility and dashboard, scoped read authorization, and controller diagnostics.
-Consolidated source acceptance is complete: 132 tasks are done and nine remain
+Consolidated source acceptance is complete: 134 tasks are done and nine remain
 open. Final PR CI and merge are separate publication gates; these source changes
 are not package publication, model qualification, or live deployment evidence.
 
@@ -23,7 +23,7 @@ are not package publication, model qualification, or live deployment evidence.
 | qualified-replica-sets | 21 / 21 |
 | replica-capacity-scheduler | 16 / 16 |
 | workload-visibility | 50 / 50 |
-| workload-contract-repairs | 18 / 18 |
+| workload-contract-repairs | 20 / 20 |
 | fleet-node-enrollment | 16 / 25 |
 
 Exact evidence, remaining task IDs and the stop boundary are recorded in

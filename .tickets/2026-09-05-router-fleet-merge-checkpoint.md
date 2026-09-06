@@ -9,10 +9,11 @@ with enrollment implementation, controller recovery or deployment in this run.
 
 ## Completed source and task acceptance
 
-The dedicated delivery State now contains 132 done tasks and nine unfinished
-fleet tasks. This batch applied 101 previously pending candidates with strict
-evidence gates, in dependency order, as `codex-user-delegated`; the other 31
-retain their earlier accepted history. This is delegated agent acceptance under
+The dedicated delivery State now contains 134 done tasks and nine unfinished
+fleet tasks. This batch applied 101 previously pending candidates plus two
+ticketed CI fixture repairs with strict evidence gates as
+`codex-user-delegated`; the other 31 retain their earlier accepted history.
+This is delegated agent acceptance under
 the operator's 2026-09-05 authorization, not an invented human review.
 
 | PRD partition | Done / total | Source outcome |
@@ -21,7 +22,7 @@ the operator's 2026-09-05 authorization, not an invented human review.
 | qualified-replica-sets | 21 / 21 | Closed same-host equivalent replica sets, exact identity, one-shot routing, lifecycle guards and bounded evidence |
 | replica-capacity-scheduler | 16 / 16 | Atomic tier/member admission, deterministic scheduling, cached pressure and independent member drain/readmission |
 | workload-visibility | 50 / 50 | Scoped canonical node/fleet reads, store/managed projections, CLI/controller MCP and dashboard |
-| workload-contract-repairs | 18 / 18 | Integration, timestamp, UI semantic, identity, command metadata and fixture repairs |
+| workload-contract-repairs | 20 / 20 | Integration, timestamp, UI semantic, identity, command metadata and fixture repairs |
 | fleet-node-enrollment | 16 / 25 | Authorization plus inert target/request/result, package, permission and anchored-file primitives only |
 
 No acceptance was applied to the unfinished nine tasks. Bootstrap primitives
@@ -30,12 +31,13 @@ are not an executable enrollment workflow and do not prove installed identity.
 ## Consolidated verification
 
 Runtime code checkpoint: `f964a81ef6c839d2a93f69d3b7938703c95b662f`.
-Subsequent checkpoint edits are documentation/evidence only.
+Subsequent edits are documentation/evidence and test fixtures only; production
+code remains unchanged.
 
 - `python scripts/run_tests.py tests/ -x -q`: 7185 passed, 21 skipped,
   295.68 seconds on Windows/Python 3.13.13.
 - `python -m ruff check .`: passed.
-- Full CLI-reference audit: 984 files, zero violations, inventory/generated/nav
+- Runtime-checkpoint CLI-reference audit: 984 files, zero violations, inventory/generated/nav
   current; canonical command and skill-related tests also passed.
 - Strict MkDocs, tracked Markdown links and artifact-derived recipe report:
   passed. No new model benchmark or recommendation was claimed.
@@ -64,6 +66,29 @@ Task proof records retain their exact ancestor commits. In particular,
 Historical task branches may lag current main; the combined tested source,
 not a claim that every old branch is current, is the acceptance basis.
 CI must pass for the final PR head before merge.
+
+### Ticketed CI fixture closure
+
+The first PR #472 CI run, `34000241193`, correctly blocked merge. Both Linux
+jobs failed one read-only test that omitted its required True policy flag.
+Both Windows jobs failed six native fixture assertions: the hosted checkout's
+drive-root trust check refused before the leaf, and incremental ACL edits did
+not establish the matrix's assumed permissions. Exact runner owner/DACL values
+were not established and are not inferred.
+
+- T019 / `bf7cc9b0` / `EVD3E6AA2F` explicitly tests both False and True policies.
+  Native Linux and Windows gates each passed 84 tests with six skips;
+  independent closure returned SHIP and a weakened policy failed the test.
+- T020 / `62ed491d` / `EV82DBD9D0` uses a new disposable Windows profile subtree
+  with exact owner/protected DACLs; it never changes an existing ancestor or
+  production permission policy. Native Windows passed 87 tests with six skips;
+  native Linux passed 84 with nine skips. Root independently reviewed the Terra
+  implementation and reproduced failure when the untrusted mutation mask was
+  deliberately removed in memory. New containment and exclusive-creation tests
+  protect the test helper itself.
+
+Ruff and diff checks passed for both repairs. These local gates do not replace
+the required green final-head hosted Linux/Windows CI before merge.
 
 Upstream PR #471 (`b85b5d27`) is retained. Its portable host services and
 workload navigation coexist; a literal compatibility regression reconstructs
