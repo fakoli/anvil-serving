@@ -35,6 +35,7 @@ def create_dashboard_server(
     workload_controller_url: str | None = None,
     workload_expected_node: str | None = None,
     workload_authorization_policy: str | None = None,
+    observatory_config: str | None = None,
 ):
     """Create a metrics server with the packaged single-page shell."""
 
@@ -78,7 +79,7 @@ def create_dashboard_server(
             else telemetry.snapshot(capabilities)
         )
 
-    return create_server(
+    server = create_server(
         telemetry,
         host=host,
         port=port,
@@ -113,6 +114,17 @@ def create_dashboard_server(
         },
         workload_service=workload_service,
     )
+    server.observatory_legacy_authenticated = bool(auth_env)
+    if observatory_config is not None:
+        from .console import Console, attach_console, load_config
+
+        try:
+            console = Console(load_config(observatory_config), environment=env)
+            attach_console(server, console)
+        except Exception:
+            server.server_close()
+            raise
+    return server
 
 
 def _one(query: Mapping[str, list[str]], field: str) -> str:
@@ -275,6 +287,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--workload-authorization-policy",
         help="Absolute LOCAL authorization-policy file for workload reads.",
     )
+    parser.add_argument(
+        "--observatory-config",
+        help="Absolute private Observatory integration/session policy; control remains explicitly opt-in.",
+    )
     return parser
 
 
@@ -292,15 +308,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         workload_controller_url=args.workload_controller_url,
         workload_expected_node=args.workload_expected_node,
         workload_authorization_policy=args.workload_authorization_policy,
+        observatory_config=args.observatory_config,
     )
     print(f"Anvil dashboard: http://{args.host}:{server.server_address[1]}/")
-    sampler.start()
+    if args.observatory_config is None:
+        sampler.start()
     try:
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:
         pass
     finally:
         sampler.stop()
+        if hasattr(server, "observatory"):
+            server.observatory.close()
         server.server_close()
     return 0
 

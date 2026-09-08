@@ -6051,11 +6051,30 @@
       "path": "serves profile preview",
       "product_family": "model-serving",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "manifest",
+          "profiles",
+          "config",
+          "dry_run"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "preview"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "profile"
+        ],
+        "tool": "serves_profile"
+      },
       "resource_role": "model-serve",
       "summary": "Preview a declared serving profile without mutation.",
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
@@ -6213,11 +6232,32 @@
       "path": "serves profile apply",
       "product_family": "model-serving",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "manifest",
+          "profiles",
+          "config",
+          "dry_run"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "human_approved": true
+        },
+        "fixed_arguments": {
+          "action": "apply"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "profile"
+        ],
+        "tool": "serves_profile"
+      },
       "resource_role": "model-serve",
       "summary": "Apply a declared serving profile transactionally.",
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
@@ -6495,11 +6535,23 @@
       "path": "serves probe",
       "product_family": "model-serving",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_probe"
+      },
       "resource_role": "model-serve",
       "summary": "Run an engine-aware functional serve probe.",
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
@@ -37856,6 +37908,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Absolute LOCAL authorization-policy file for workload reads.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--observatory-config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Absolute private Observatory integration/session policy; control remains explicitly opt-in.",
           "value_name": "PATH"
         }
       ],

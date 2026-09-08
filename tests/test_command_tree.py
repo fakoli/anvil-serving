@@ -111,6 +111,7 @@ def test_dashboard_serve_declaration_matches_parser_without_starting_server():
         "--host": "IP",
         "--port": "PORT",
         "--auth-env": "ENV",
+        "--observatory-config": "PATH",
         "--workload-controller-url": "URL",
         "--workload-expected-node": "NODE",
         "--workload-authorization-policy": "PATH",

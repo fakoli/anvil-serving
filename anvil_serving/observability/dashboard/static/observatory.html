@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Anvil Observatory</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./observatory.css" />
+    <script type="module" src="./observatory.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div id="app" class="app-shell">
+      <aside
+        id="navigation"
+        class="sidebar"
+        aria-label="Application navigation"
+      >
+        <a class="brand" href="#/overview"
+          ><span class="brand-mark" aria-hidden="true">A</span
+          ><span>Anvil<span class="brand-sub">Observatory</span></span></a
+        >
+        <nav id="primary-navigation" aria-label="Main"></nav>
+        <div class="sidebar-foot">
+          <span class="eyebrow">CONTROL PLANE &amp; FLEET</span>
+          <p>Observe precisely.<br />Change deliberately.</p>
+          <span id="build-label" class="meta"></span>
+        </div>
+      </aside>
+      <div class="workspace">
+        <header class="topbar">
+          <button
+            id="menu-toggle"
+            class="icon-button"
+            aria-label="Open navigation"
+            aria-controls="navigation"
+            aria-expanded="false"
+          >
+            ☰
+          </button>
+          <div id="breadcrumb" class="breadcrumb">Observatory</div>
+          <div class="topbar-end">
+            <span id="fixture-label" class="badge warning" hidden
+              >Isolated fixture</span
+            ><span id="access-mode" class="badge">Signed out</span
+            ><button id="account-button" class="quiet-button">Sign in</button>
+          </div>
+        </header>
+        <div id="scope-bar" class="scope-bar" hidden></div>
+        <main id="main" tabindex="-1">
+          <p class="loading" role="status">Connecting to Observatory…</p>
+        </main>
+        <footer class="workspace-foot">
+          <span>Current owner state is separate from historical telemetry.</span
+          ><span id="connection-status" role="status">Connecting</span>
+        </footer>
+      </div>
+    </div>
+    <div
+      id="announcer"
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+    <dialog id="operation-dialog" aria-labelledby="dialog-title"></dialog>
+    <noscript
+      >This application requires JavaScript. The independently authorized legacy
+      dashboard remains available at its configured address.</noscript
+    >
+  </body>
+</html>
