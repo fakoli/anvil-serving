@@ -22,10 +22,10 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "fb398ba54421b01b4cb7b80999f183b20a2004809a2b67a733396f3ad1b1759a"
+    "061659c9052a6e576da0b090feb81df7fa65cf5f786726fe1a96c21d4f558912"
 )
 HANDLER_MAP_SHA256 = (
-    "039b5723817dae0c5ca60258e05fef61752db2bd6bbac6e0b4101fa26f55f33e"
+    "e0a91809acc6495a5683819e3e441f7250ce7188003b3f7f4a8a53434f414f16"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -36,13 +36,17 @@ TOOL_NAMES = [
     "router_logs",
     "router_manage",
     "router_transition",
+    "router_configuration",
     "decision_summary",
+    "runtime_experiment",
     "serves_status",
     "reservation_status",
     "serves_manage",
     "serves_promote",
     "serves_mode",
     "serves_logs",
+    "serves_probe",
+    "serves_profile",
     "media_worker_prepare",
     "media_worker_status",
     "media_worker_logs",
@@ -73,6 +77,7 @@ TOOL_NAMES = [
     "models_inventory",
     "model_cache_inventory",
     "recipe_containers",
+    "recipe_settings",
     "cache_prune_plan",
     "openclaw_sync",
     "openclaw_gateway_restart",
@@ -160,7 +165,10 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     )
     public_tools = [
         tool for tool in public_tools
-        if tool["name"] not in {"controller_inspect", "controller_logs"}
+        if tool["name"] not in {
+            "controller_inspect", "controller_logs", "router_configuration",
+            "serves_probe", "serves_profile", "recipe_settings", "runtime_experiment",
+        }
     ]
     assert _canonical_sha256(public_tools) == (
         "d2145a64f57a847b97e0b72f36f59cf853fc11e76d5c9b89b98860b2c4654954"
@@ -232,6 +240,7 @@ def test_explicit_ordered_families_compose_the_public_catalog():
     assert [family.name for family in TOOL_FAMILIES] == [
         "operations",
         "router",
+        "runtime-experiments",
         "serves",
         "media-worker",
         "media",

@@ -28,6 +28,20 @@ from ..security import safe_probe_url as _safe_probe_url
 _MANIFEST_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 
 
+def _open_safe_probe_request(request, *args, **kwargs):
+    """Validate the final URL while preserving a bounded probe request body."""
+    if isinstance(request, urllib.request.Request):
+        request = urllib.request.Request(
+            _safe_probe_url(request.full_url),
+            data=request.data,
+            headers=dict(request.header_items()),
+            method=request.get_method(),
+        )
+    else:
+        request = _safe_probe_url(request)
+    return urllib.request.urlopen(request, *args, **kwargs)
+
+
 def _manifest_path(args: dict) -> str:
     from .... import serves as serves_mod
     from ....paths import config_path
@@ -642,6 +656,102 @@ def tool_serves_logs(args: dict) -> dict:
     )
 
 
+def tool_serves_probe(args: dict) -> dict:
+    """Run one manifest-owned, engine-aware, bounded functional probe."""
+    from .... import serves as serves_mod
+
+    manifest = _manifest_path(args)
+    name = _str_arg(args, "name", "")
+    names = _str_list_arg(args, "names")
+    if name and names:
+        raise ToolError("bad_argument", "use name or names, not both")
+    if names:
+        if len(names) != 1:
+            raise ToolError("bad_argument", "probe requires exactly one serve name")
+        name = names[0]
+    if not name:
+        raise ToolError("missing_argument", "probe requires one serve name")
+    timeout = _bounded_int_arg(args, "timeout_seconds", 60, min_value=1, max_value=300)
+    max_tokens = _bounded_int_arg(args, "max_tokens", 256, min_value=1, max_value=4096)
+    selected = [item for item in _load_serves_for_tool(manifest) if item.get("name") == name]
+    if len(selected) != 1:
+        raise ToolError("serve_not_found", "probe requires one exact manifest serve")
+    serve = selected[0]
+    # Share the serving authority lock with lifecycle/profile/config mutations.
+    # The lock covers both the running-state check and the one request, so a
+    # managed transition cannot race the experiment after its precondition.
+    with serves_mod._switch_role_lock("promotion"):
+        if serves_mod.docker_state(serve["container"]) != "running":
+            raise ToolError("serve_not_running", "the declared serve is not running")
+        try:
+            evidence = serves_mod.probe_serve(
+                serve,
+                text="Reply with the single word READY.",
+                image_path=None,
+                timeout=timeout,
+                max_tokens=max_tokens,
+                _open=_open_safe_probe_request,
+            )
+        except (OSError, ValueError) as exc:
+            raise ToolError("serve_probe_failed", str(exc)) from exc
+    # Endpoint and local input paths are controller-private binding details.
+    public = {key: value for key, value in evidence.items() if key not in {"endpoint", "image"}}
+    expected = None
+    passed = True
+    if serve.get("engine") in {"vllm", "sglang", "q36"}:
+        expected = "READY"
+        observed = str(public.get("recognized_excerpt", "")).strip().strip(".!,:;").upper()
+        passed = observed == expected and public.get("incomplete") is not True
+    incomplete = public.get("incomplete") is True
+    return _ok({
+        "probe": public, "passed": passed, "bounded": True,
+        "parameters": {
+            "request_kind": "chat_completion" if expected else "engine_functional",
+            "prompt": "Reply with the single word READY.", "expected": expected,
+            "timeout_seconds": timeout, "max_tokens": max_tokens,
+        },
+        "verification": {
+            "status": "passed" if passed else "failed",
+            "message": ("The bounded response matched the declared expectation."
+                        if passed else "The response reached its output limit before completing."
+                        if incomplete else "The bounded response did not match the declared expectation."),
+        },
+    })
+
+
+def tool_serves_profile(args: dict) -> dict:
+    """Preview/apply one declared profile through the canonical serves CLI."""
+    action = _str_arg(args, "action", required=True)
+    if action not in {"status", "preview", "apply"}:
+        raise ToolError("bad_action", "action must be one of: status, preview, apply")
+    manifest = _manifest_path(args)
+    profile = _str_arg(args, "profile", required=True)
+    profiles = _str_arg(args, "profiles", "")
+    active_config = _str_arg(args, "config", "")
+    drain_timeout = _bounded_int_arg(args, "drain_timeout", 120, min_value=1, max_value=3600)
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 7200, min_value=1, max_value=14400)
+    _dry_run, _confirm, apply_requested = _apply_gate(
+        args,
+        eligible=action == "apply",
+        requires_human=True,
+        human_message="profile apply requires confirm=true, dry_run=false, and human_approved=true",
+    )
+    argv = [sys.executable, "-m", "anvil_serving.cli", "serves", "profile"]
+    argv += ["preview" if action in {"status", "preview"} or not apply_requested else "apply", profile]
+    argv += ["--manifest", manifest, "--drain-timeout", str(drain_timeout)]
+    if profiles:
+        argv += ["--profiles", profiles]
+    if active_config:
+        argv += ["--config", active_config]
+    if apply_requested:
+        argv.append("--confirm")
+    else:
+        argv.append("--dry-run")
+    result = _run_argv_spooled(argv, timeout=timeout_seconds, max_output_bytes=65536)
+    return _ok({"applied": apply_requested, "dry_run": not apply_requested,
+                "human_gate_required": action == "apply", "profile": profile, **result})
+
+
 FAMILY = ToolFamily(
     name="serves",
     tools={
@@ -737,6 +847,35 @@ FAMILY = ToolFamily(
                 required=["names"],
             ),
             "handler": tool_serves_logs,
+        },
+        "serves_probe": {
+            "description": "Run one bounded functional probe for an exact manifest serve.",
+            "inputSchema": _schema(
+                {
+                    "manifest": {"type": "string"},
+                    "manifest_from_operator_home": {"type": "boolean"},
+                    "name": {"type": "string"},
+                    "names": {"type": "array", "items": {"type": "string"}, "maxItems": 1},
+                    "timeout_seconds": _bounded_integer_schema(1, 300, 60),
+                    "max_tokens": _bounded_integer_schema(1, 4096, 256),
+                },
+            ),
+            "handler": tool_serves_probe,
+        },
+        "serves_profile": {
+            "description": "Preview, inspect, or apply one declared serving topology profile.",
+            "inputSchema": _schema(
+                {
+                    "action": {"type": "string", "enum": ["status", "preview", "apply"]},
+                    "manifest": {"type": "string"}, "profiles": {"type": "string"},
+                    "profile": {"type": "string"}, "config": {"type": "string"},
+                    "drain_timeout": _bounded_integer_schema(1, 3600, 120),
+                    "dry_run": {"type": "boolean"}, "confirm": {"type": "boolean"},
+                    "human_approved": {"type": "boolean"},
+                    "timeout_seconds": _bounded_integer_schema(1, 14400, 7200),
+                }, required=["action", "profile"],
+            ),
+            "handler": tool_serves_profile,
         },
     },
 )

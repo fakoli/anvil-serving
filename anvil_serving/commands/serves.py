@@ -296,6 +296,12 @@ def commands() -> CommandNode:
                             ),
                         ),
                         argv_prefix=("profile", "preview"),
+                        remote_operation=_remote(
+                            "serves_profile",
+                            fixed=(("action", "preview"),),
+                            allowed=("manifest", "profiles", "config", "dry_run"),
+                            positionals=("profile",),
+                        ),
                         docs_anchor="docs/cli/serves.md#serving-profiles",
                     ),
                     _resource_node(
@@ -315,6 +321,13 @@ def commands() -> CommandNode:
                         gpu=True,
                         argv_prefix=("profile", "apply"),
                         forward_confirm_flag=True,
+                        remote_operation=_remote(
+                            "serves_profile",
+                            fixed=(("action", "apply"),),
+                            confirmed=(("human_approved", True),),
+                            allowed=("manifest", "profiles", "config", "dry_run"),
+                            positionals=("profile",),
+                        ),
                         docs_anchor="docs/cli/serves.md#serving-profiles",
                     ),
                 ),
@@ -335,6 +348,8 @@ def commands() -> CommandNode:
                 "anvil_serving.serves",
                 role="model-serve",
                 gpu=True,
+                remote_operation=_remote("serves_probe", positionals=("names",)),
+                forward_resolution_options=True,
                 docs_anchor="docs/cli/serves.md#functional-probes",
             ),
             _resource_node(

@@ -604,6 +604,78 @@ class ControllerTransport:
             "operation-status", "controller", redact(response_data, token), len(raw)
         )
 
+    def tool_catalog(
+        self,
+        *,
+        timeout_seconds: Optional[float] = None,
+        max_response_bytes: Optional[int] = None,
+    ) -> tuple[dict[str, object], ...]:
+        """Read the exact controller-enabled tool catalog after identity verification."""
+
+        _validate_controller_endpoint_host(self.endpoint)
+        token = self._token()
+        timeout = (
+            self.timeout_seconds if timeout_seconds is None else _bounded_timeout(timeout_seconds)
+        )
+        limit = (
+            self.max_response_bytes
+            if max_response_bytes is None
+            else _bounded_response_bytes(max_response_bytes, maximum=MAX_CONTROLLER_RESPONSE_BYTES)
+        )
+        if self.expected_node and not self._node_verified:
+            self._verify_node(token, timeout)
+        request = urllib.request.Request(
+            self.endpoint + "/tools/list",
+            headers={"Accept": "application/json", "Authorization": "Bearer " + token},
+            method="GET",
+        )
+        try:
+            with self._opener(request, timeout=timeout) as response:
+                raw = _read_bounded(response, limit)
+        except urllib.error.HTTPError as exc:
+            raise _http_error(exc, token, limit) from None
+        except Exception as exc:
+            raise TransportError(
+                "controller_catalog_unavailable",
+                "controller tool catalog request failed",
+                details={"endpoint": self.endpoint, "error": redact(str(exc), token)},
+            ) from None
+        try:
+            parsed = _strict_json_loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError, RecursionError):
+            raise TransportError(
+                "bad_controller_response",
+                "controller tool catalog was not valid JSON",
+            ) from None
+        tools = parsed.get("tools") if isinstance(parsed, Mapping) else None
+        if not isinstance(tools, list) or len(tools) > 256:
+            raise TransportError(
+                "bad_controller_response",
+                "controller tool catalog is missing or exceeds 256 tools",
+            )
+        result: list[dict[str, object]] = []
+        names: set[str] = set()
+        for item in tools:
+            if not isinstance(item, Mapping):
+                raise TransportError("bad_controller_response", "controller tool declaration is invalid")
+            name = item.get("name")
+            schema = item.get("inputSchema")
+            if (
+                not isinstance(name, str)
+                or not _OPERATION_RE.fullmatch(name.replace("_", "-"))
+                or name in names
+                or not isinstance(schema, Mapping)
+                or schema.get("type") != "object"
+            ):
+                raise TransportError("bad_controller_response", "controller tool declaration is invalid")
+            names.add(name)
+            result.append(redact(dict(item), token))
+        return tuple(result)
+
+    def reset_identity_verification(self) -> None:
+        """Require the next catalog or dispatch to recheck the declared node."""
+        self._node_verified = False
+
     def _verify_node(self, token: str, timeout: float) -> None:
         """Assert the controller's declared node identity before dispatch.
 
