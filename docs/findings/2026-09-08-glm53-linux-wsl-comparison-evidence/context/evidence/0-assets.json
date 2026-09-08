@@ -1,0 +1,16 @@
+{
+  "architecture": "x86_64",
+  "assets": {},
+  "cache_identity": "8ea9f826df399b6f5788c7400e4365e89ec365a861784a639c3c85e617f03145",
+  "command_logs": [],
+  "created_at": "2026-09-08T05:40:28.263407Z",
+  "offline": false,
+  "ownership_id": "glm53-linux-20260908",
+  "platform": "linux",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "python_environment": null,
+  "run_id": "glm53-linux-context-20260908",
+  "schema": "anvil-serving.benchmark-harness-assets/v1",
+  "suite": "context"
+}

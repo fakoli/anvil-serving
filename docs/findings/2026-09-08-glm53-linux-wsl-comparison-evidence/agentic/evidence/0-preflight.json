@@ -1,0 +1,91 @@
+{
+  "checks": [
+    {
+      "code": null,
+      "detail": "co-resident benchmark client explicitly declared",
+      "name": "worker_isolation",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "platform=linux architecture=x86_64",
+      "name": "worker_compatibility",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "free_bytes=3490091909120",
+      "name": "free_disk",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "available",
+      "name": "container_capability",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "writable",
+      "name": "owned_output",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "all locked assets present",
+      "name": "harness_assets",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "requested model is served",
+      "name": "endpoint_identity",
+      "passed": true
+    }
+  ],
+  "created_at": "2026-09-08T05:39:20.361044Z",
+  "observed": {
+    "endpoint": {
+      "authentication": "configured",
+      "base_url": "http://127.0.0.1:8000/v1",
+      "configured_context": null,
+      "requested_model": "llm.primary",
+      "served_models": [
+        "llm.primary",
+        "llm.auxiliary",
+        "llm.secondary",
+        "llm.voice",
+        "vision.ocr",
+        "vision.general"
+      ]
+    },
+    "worker": {
+      "architecture": "x86_64",
+      "container_capable": true,
+      "free_disk_bytes": 3490091909120,
+      "harness_assets": [],
+      "id": "linux-benchmark-client",
+      "owned_output_writable": true,
+      "platform": "linux"
+    }
+  },
+  "passed": true,
+  "requirements": {
+    "architectures": [],
+    "container_required": false,
+    "harness_assets": [],
+    "harness_locks": {},
+    "min_free_disk_bytes": 10737418240,
+    "model_host_id": "linux-benchmark-client",
+    "platforms": []
+  },
+  "run_id": "glm53-linux-agentic-20260908",
+  "schema": "anvil-serving.benchmark-preflight/v1",
+  "side_effects": {
+    "model_lifecycle": false,
+    "route_mutation": false
+  },
+  "unsupported_telemetry": [
+    "configured_context"
+  ]
+}

@@ -1,0 +1,14 @@
+BENCH http://127.0.0.1:8001/v1 model=glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp  n=3 concurrency=1 mixed max_tokens=256 cache=shared canaries=False response_words=0 max_model_len=393216(ctx<=391936) thinking=disabled
+------------------------------------------------------------
+completed:        3/3 in 141.2s
+TTFT  mean/p50/p95/p99 (descriptive only; N<100): 46.70s / 39.59s / 60.98s / 60.98s
+E2E   mean/p50/p95/p99 (descriptive only; N<100): 47.07s / 39.97s / 61.38s / 61.38s
+GEN   p50/p95:    0.38s / 0.40s
+prefill mean/p50/p95/p99: 4822 / 5458 / 5465 / 5465 effective input tok/s
+decode mean/p50/p95/p99: 130.0 / 124.5 / 148.7 / 148.7 tok/s per request
+completion tokens mean/p50/p95/p99: 48.7 / 48 / 57 / 57
+throughput:       1 output tok/s (aggregate)
+prefix-cache hit: endpoint did not return prompt_tokens_details.cached_tokens
+------------------------------------------------------------
+Tip: run once cold, then immediately again -- TTFT should drop sharply on the 2nd run if prefix cache works.
+wrote JSON summary: docs/findings/2026-09-08-glm53-linux-wsl-comparison-evidence/linux-legacy-capacity-262k-r3.json

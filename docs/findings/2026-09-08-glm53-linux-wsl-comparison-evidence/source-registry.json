@@ -1,0 +1,54 @@
+{
+  "sources": [
+    {
+      "id": "windows-baseline",
+      "url": "https://github.com/fakoli/anvil-serving/blob/8abcc5dc75a1b2389210b553120abb76e5864d3a/docs/findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md",
+      "published_or_observed": "2026-09-02",
+      "observed_at": "2026-09-08",
+      "age_class": "recent",
+      "evidence_type": "local historical Windows/WSL benchmark",
+      "hardware_runtime_relevance": "Same physical GPU pair, model and image pins; historical OS/runtime",
+      "decision_impact": "Baseline only; retained raw request metrics determine comparisons."
+    },
+    {
+      "id": "nccl-gpu-guidance",
+      "url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting/gpu_troubleshooting.html",
+      "published_or_observed": "2026-09-08 observed; publication date not stated",
+      "observed_at": "2026-09-08",
+      "age_class": "current-observed",
+      "evidence_type": "official documentation, follow-up planning only",
+      "hardware_runtime_relevance": "Linux multi-GPU guidance; exact installed-version applicability still requires verification",
+      "decision_impact": "P2P correctness/bandwidth and platform checks before changing the existing workaround"
+    },
+    {
+      "id": "nccl-environment",
+      "url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html",
+      "published_or_observed": "2026-09-08 observed; publication date not stated",
+      "observed_at": "2026-09-08",
+      "age_class": "current-observed",
+      "evidence_type": "official documentation, follow-up planning only",
+      "hardware_runtime_relevance": "Linux multi-GPU guidance; exact installed-version applicability still requires verification",
+      "decision_impact": "Separate P2P and cuMem controls; verify installed version"
+    },
+    {
+      "id": "sglang-server-controls",
+      "url": "https://docs.sglang.io/docs/advanced_features/server_arguments",
+      "published_or_observed": "2026-09-08 observed; publication date not stated",
+      "observed_at": "2026-09-08",
+      "age_class": "current-observed",
+      "evidence_type": "official documentation, follow-up planning only",
+      "hardware_runtime_relevance": "Linux multi-GPU guidance; exact installed-version applicability still requires verification",
+      "decision_impact": "Custom all-reduce and prefill candidates; no unconditional enabling"
+    },
+    {
+      "id": "linux-iommu-domain-abi",
+      "url": "https://raw.githubusercontent.com/torvalds/linux/v7.0/Documentation/ABI/testing/sysfs-kernel-iommu_groups",
+      "published_or_observed": "Kernel v7.0 retained source; observed2026-09-08",
+      "observed_at": "2026-09-08",
+      "age_class": "version-pinned",
+      "evidence_type": "official kernel ABI definition",
+      "hardware_runtime_relevance": "Explains live DMA-FQ sysfs values on the native Linux GPU groups",
+      "decision_impact": "Translated DMA is a platform prerequisite to review before P2P qualification; not proof of hang cause"
+    }
+  ]
+}

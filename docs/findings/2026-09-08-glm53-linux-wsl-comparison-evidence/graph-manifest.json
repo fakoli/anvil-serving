@@ -1,0 +1,207 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "GLM-5.3-Flash: historical Windows / WSL2 versus native Linux",
+  "subtitle": "Same model/image, TP2, C1; n=3 per point; variable output and shared-prefix prompts; whole-stack comparison",
+  "charts": [
+    {
+      "title": "Decode median",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "Nominal context; actual prompt sizes match",
+      "y_label": "tokens / second",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "x": "4k",
+              "artifact": "windows-capacity-4k-r3.json"
+            },
+            {
+              "x": "120k",
+              "artifact": "windows-capacity-120k-r3.json"
+            },
+            {
+              "x": "262k",
+              "artifact": "windows-capacity-262k-r3.json"
+            },
+            {
+              "x": "380k",
+              "artifact": "windows-capacity-380k-r3.json"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "x": "4k",
+              "artifact": "linux-legacy-capacity-4k-r3.json"
+            },
+            {
+              "x": "120k",
+              "artifact": "linux-legacy-capacity-120k-r3.json"
+            },
+            {
+              "x": "262k",
+              "artifact": "linux-legacy-capacity-262k-r3.json"
+            },
+            {
+              "x": "380k",
+              "artifact": "linux-legacy-capacity-380k-r3.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Effective prefill median",
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "x_label": "Nominal context; actual prompt sizes match",
+      "y_label": "tokens / second",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "x": "4k",
+              "artifact": "windows-capacity-4k-r3.json"
+            },
+            {
+              "x": "120k",
+              "artifact": "windows-capacity-120k-r3.json"
+            },
+            {
+              "x": "262k",
+              "artifact": "windows-capacity-262k-r3.json"
+            },
+            {
+              "x": "380k",
+              "artifact": "windows-capacity-380k-r3.json"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "x": "4k",
+              "artifact": "linux-legacy-capacity-4k-r3.json"
+            },
+            {
+              "x": "120k",
+              "artifact": "linux-legacy-capacity-120k-r3.json"
+            },
+            {
+              "x": "262k",
+              "artifact": "linux-legacy-capacity-262k-r3.json"
+            },
+            {
+              "x": "380k",
+              "artifact": "linux-legacy-capacity-380k-r3.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Time to first visible token median",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Nominal context; actual prompt sizes match",
+      "y_label": "milliseconds",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "x": "4k",
+              "artifact": "windows-capacity-4k-r3.json"
+            },
+            {
+              "x": "120k",
+              "artifact": "windows-capacity-120k-r3.json"
+            },
+            {
+              "x": "262k",
+              "artifact": "windows-capacity-262k-r3.json"
+            },
+            {
+              "x": "380k",
+              "artifact": "windows-capacity-380k-r3.json"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "x": "4k",
+              "artifact": "linux-legacy-capacity-4k-r3.json"
+            },
+            {
+              "x": "120k",
+              "artifact": "linux-legacy-capacity-120k-r3.json"
+            },
+            {
+              "x": "262k",
+              "artifact": "linux-legacy-capacity-262k-r3.json"
+            },
+            {
+              "x": "380k",
+              "artifact": "linux-legacy-capacity-380k-r3.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "End-to-end median",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "Nominal context; actual prompt sizes match",
+      "y_label": "milliseconds",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "x": "4k",
+              "artifact": "windows-capacity-4k-r3.json"
+            },
+            {
+              "x": "120k",
+              "artifact": "windows-capacity-120k-r3.json"
+            },
+            {
+              "x": "262k",
+              "artifact": "windows-capacity-262k-r3.json"
+            },
+            {
+              "x": "380k",
+              "artifact": "windows-capacity-380k-r3.json"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "x": "4k",
+              "artifact": "linux-legacy-capacity-4k-r3.json"
+            },
+            {
+              "x": "120k",
+              "artifact": "linux-legacy-capacity-120k-r3.json"
+            },
+            {
+              "x": "262k",
+              "artifact": "linux-legacy-capacity-262k-r3.json"
+            },
+            {
+              "x": "380k",
+              "artifact": "linux-legacy-capacity-380k-r3.json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
