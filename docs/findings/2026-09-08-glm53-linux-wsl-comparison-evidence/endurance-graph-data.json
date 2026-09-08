@@ -1,0 +1,68 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "artifact": "windows-endurance-4k-r60.json",
+              "artifact_sha256": "655fbecec5d87e187b7253c9ae05ab64508270110a8bda8ded2f2a68d5a145cb",
+              "value": 102.19275206464441,
+              "x": "60 requests"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "artifact": "endurance-4k-r60.json",
+              "artifact_sha256": "9effa5ad700996bf0c82264edc1a555b3791258170b8e4490729287f20c45ca6",
+              "value": 142.6429205479183,
+              "x": "60 requests"
+            }
+          ]
+        }
+      ],
+      "title": "Decode median: higher is faster",
+      "x_label": "4K nominal prompt target",
+      "y_label": "tokens / second"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "artifact": "windows-endurance-4k-r60.json",
+              "artifact_sha256": "655fbecec5d87e187b7253c9ae05ab64508270110a8bda8ded2f2a68d5a145cb",
+              "value": 183.42089996440336,
+              "x": "60 requests"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "artifact": "endurance-4k-r60.json",
+              "artifact_sha256": "9effa5ad700996bf0c82264edc1a555b3791258170b8e4490729287f20c45ca6",
+              "value": 123.24624299799325,
+              "x": "60 requests"
+            }
+          ]
+        }
+      ],
+      "title": "First visible token median: lower is faster",
+      "x_label": "4K nominal prompt target",
+      "y_label": "milliseconds"
+    }
+  ],
+  "metric_semantics": {},
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Warm direct, TP2/C1, 4K target; n=60 per platform; variable short outputs and shared prefixes",
+  "title": "GLM-5.3-Flash: 60-request endurance comparison"
+}

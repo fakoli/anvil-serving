@@ -1,0 +1,105 @@
+{
+  "completeness": "completed",
+  "created_at": "2026-09-08T05:39:40.992245Z",
+  "evidence_kind": "measured",
+  "failure": null,
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": 393216,
+      "max_output_tokens": 4096
+    },
+    "dataset": {
+      "name": "deterministic-native",
+      "profile_sha256": "6cc9e66696ae5fafed7af738cae898b59b7370574c829a9740300762dfbb92a7"
+    },
+    "hardware": {
+      "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+      "platform": "native Linux"
+    },
+    "harnesses": {
+      "native": {
+        "schema": "anvil-serving.agentic/v1"
+      }
+    },
+    "image": {
+      "status": "not-applicable"
+    },
+    "model": {
+      "repository": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO",
+      "revision": "c3cbb9891b67c741bcbf6b176dd7af9265b069db"
+    },
+    "runtime": {
+      "build_revision": "a547c90c74f1363920287eb80adc88a16d1e7005",
+      "image_digest": "sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+      "reported_version": "0.0.0.dev1+g033446bb05"
+    },
+    "served_model": {
+      "configured_context": null,
+      "id": "llm.primary"
+    },
+    "topology": {
+      "kind": "co-resident-benchmark-client",
+      "tensor_parallel_size": 2
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+  },
+  "run": {
+    "ownership_id": "glm53-linux-20260908",
+    "profile": "deep",
+    "run_id": "glm53-linux-agentic-20260908",
+    "spec_sha256": "d30d77297ecfea6264dcdb444c73271813458c64e1a12b08e09f2edbec11d473",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 551,
+          "path": "evidence/0-assets.json",
+          "sha256": "383eb0112dc4273d74da4c369bd2eaa7fd9fa4e0d3b5ecde9e179c41d9d2f735"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 2124,
+          "path": "evidence/0-preflight.json",
+          "sha256": "de1b0ca1d14e5cb3865a6e9f422d536fbef566e5fd6aec41227e751262cf859f"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 73325,
+          "path": "evidence/0-agentic.json",
+          "sha256": "1d896e4d79a0e575744cf3b345d43dc56fcc728e15ed34570f46a1f5c5381815"
+        }
+      ],
+      "name": "agentic",
+      "sequence": 2,
+      "status": "completed"
+    }
+  ],
+  "summary": {
+    "attempted": 30,
+    "pass_rate": 1.0,
+    "passed": 30,
+    "required_pass_rate": 0.7
+  }
+}

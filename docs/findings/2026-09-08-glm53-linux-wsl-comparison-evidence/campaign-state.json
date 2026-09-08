@@ -1,0 +1,94 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-08-glm53-linux-wsl-comparison",
+  "updated_at": "2026-09-08T07:13:50.406765+00:00",
+  "status": "completed-with-failures",
+  "current_stage": "completed",
+  "launcher": {
+    "version": "1.0.0",
+    "revision": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+    "module": "anvil_serving/cli.py",
+    "branch": "codex/glm53-linux-benchmark-20260908",
+    "initial_tracked_dirty": false,
+    "verified": true,
+    "invocation": "python3 -m anvil_serving.cli",
+    "module_source": "anvil_serving/cli.py"
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "completed",
+      "evidence": [],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "completed",
+      "evidence": [],
+      "failures": []
+    },
+    {
+      "id": "scout",
+      "status": "completed-with-failures",
+      "evidence": [
+        "controlled-scout-4k-r3.json",
+        "linux-unique-natural-4k-r10.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "finalist",
+      "status": "not-run",
+      "evidence": [],
+      "failures": [
+        "Strict scout and unique canary gates failed"
+      ]
+    },
+    {
+      "id": "quality",
+      "status": "completed-with-failures",
+      "evidence": [
+        "context-summary.json",
+        "summary.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "restoration",
+      "status": "completed",
+      "evidence": [
+        "restoration.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "completed",
+      "evidence": [
+        "publication-summary.md"
+      ],
+      "failures": []
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [
+    "direct-smoke",
+    "direct-preflight-disabled (image phrase failure)",
+    "direct-preflight-thinking-enabled",
+    "historical capacity four contexts x3",
+    "strict controlled-output scout failed 3/3",
+    "unique natural 4K: 1/10 canary compliant; dependent cells stopped",
+    "coding quality 15/15",
+    "image corpus 12/12",
+    "endurance60 passed",
+    "routed disabled 9/10: nominal380k needle HTTP413",
+    "routed260k needle passed",
+    "routed enabled answers pass; required reasoning evidence fails",
+    "agentic deep 30/30",
+    "SWE official smoke resolved 1/1",
+    "context quality128/150",
+    "post-workload routed smoke/json pass; unchanged serving state"
+  ],
+  "next_actions": [],
+  "promotion_authorized": false
+}

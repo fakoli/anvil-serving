@@ -232,7 +232,7 @@ def _svg(data: dict[str, Any]) -> str:
         plot_x = px + 62
         plot_y = py + 58
         plot_w = panel_w - 88
-        plot_h = panel_h - 116
+        plot_h = panel_h - 144
         all_points = [p for s in chart["series"] for p in s["points"]]
         categories: list[str] = []
         for point in all_points:
@@ -257,7 +257,7 @@ def _svg(data: dict[str, Any]) -> str:
 
         denominator = max(1, len(categories) - 1)
         x_positions = {
-            category: plot_x + (position / denominator) * plot_w
+            category: plot_x + (0.5 if len(categories) == 1 else position / denominator) * plot_w
             for position, category in enumerate(categories)
         }
         for category, x in x_positions.items():
@@ -276,7 +276,11 @@ def _svg(data: dict[str, Any]) -> str:
                 parts.append(f'<polyline points="{points_attr}" class="line" stroke="{color}"/>')
             for x, y, value in coords:
                 parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" class="dot" fill="{color}"/>')
-                parts.append(f'<text x="{x:.1f}" y="{y - 9:.1f}" text-anchor="middle" class="value" fill="{color}">{html.escape(_fmt(value))}</text>')
+                # Separate close control/candidate labels without covering x ticks.
+                label_y = y - 9
+                if len(chart["series"]) > 1 and series_index % 2 == 0:
+                    label_y = y + 18 if y < plot_y + plot_h - 24 else y - 27
+                parts.append(f'<text x="{x:.1f}" y="{label_y:.1f}" text-anchor="middle" class="value" fill="{color}">{html.escape(_fmt(value))}</text>')
             legend_x = px + 20 + series_index * 215
             legend_y = py + panel_h - 17
             parts.append(f'<circle cx="{legend_x}" cy="{legend_y - 4}" r="5" fill="{color}"/>')

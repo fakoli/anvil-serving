@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.swe-os-comparison/v1",
+  "linux": {
+    "summary": {
+      "attempted": 1,
+      "graded": 1,
+      "resolve_rate": 1.0,
+      "resolved": 1
+    },
+    "model_request_count": 22,
+    "stage_durations_seconds": {
+      "agent": 115.694648,
+      "official_grader": 53.50309
+    },
+    "prediction_sha256": "e754832b486e044c733c1398de02f9bc0d2d872d5308f2956d16390e061ffd3b"
+  },
+  "windows": {
+    "state": "completed",
+    "instance_id": "django__django-11099",
+    "attempted": 1,
+    "graded": 1,
+    "resolved": 1,
+    "resolve_rate": 1.0,
+    "model_request_count": 11,
+    "agent_duration_seconds": 34.215576,
+    "grader_duration_seconds": 29.07622,
+    "official_grader_report_sha256": "2ebbcc2889dc004393f68a0c56d3a4de6f9facaac9b3f4fa3e79f9dc9eb6851b",
+    "prediction_sha256": "e754832b486e044c733c1398de02f9bc0d2d872d5308f2956d16390e061ffd3b",
+    "token_counts": null
+  },
+  "interpretation": "Same instance and graded resolution; different generated trajectories/request counts and harness stage costs. Do not attribute end-to-end agent duration to OS-only inference speed."
+}

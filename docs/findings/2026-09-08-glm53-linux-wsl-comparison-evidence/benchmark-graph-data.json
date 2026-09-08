@@ -1,0 +1,272 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "artifact": "windows-capacity-4k-r3.json",
+              "artifact_sha256": "611251f8afd54d22a6c19daf6ebb1fe0698846f156f9a1f19b65f56720e65ecd",
+              "value": 112.06564058179691,
+              "x": "4k"
+            },
+            {
+              "artifact": "windows-capacity-120k-r3.json",
+              "artifact_sha256": "7d476406ea4faeaa386082018ec02a554aeec4e7fc8a4b87dc604b19bf2734b0",
+              "value": 96.16500114296164,
+              "x": "120k"
+            },
+            {
+              "artifact": "windows-capacity-262k-r3.json",
+              "artifact_sha256": "4712126d7ac95694b689f2698a19966f144fa3a3a7a62bc411873a7acf67f6d2",
+              "value": 102.41880883554646,
+              "x": "262k"
+            },
+            {
+              "artifact": "windows-capacity-380k-r3.json",
+              "artifact_sha256": "117f121d2a2f21e1af0ac09570966276e40a8b8101120c1d300eed852a2aa2eb",
+              "value": 99.79115138353907,
+              "x": "380k"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "artifact": "linux-legacy-capacity-4k-r3.json",
+              "artifact_sha256": "5c0598d0d6cba510638f85898703239ca8a9e621ef35f77e3bb4a973809a529e",
+              "value": 149.01900227284116,
+              "x": "4k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-120k-r3.json",
+              "artifact_sha256": "1ebc6dd146fb2b459d00596670efab733ce827f667eb108e74c323cff1c909eb",
+              "value": 125.02757587394592,
+              "x": "120k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-262k-r3.json",
+              "artifact_sha256": "538794fbf4f3f00179cc060e14198cf9e4a32ffef93c4d3f11f4d6eaa88d81d5",
+              "value": 124.46274256962307,
+              "x": "262k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-380k-r3.json",
+              "artifact_sha256": "ccd2ce76f269af9942eec9eeba65a2a4b546e2e8a5444aef11e208f1a7c64a7d",
+              "value": 120.28614187074675,
+              "x": "380k"
+            }
+          ]
+        }
+      ],
+      "title": "Decode median",
+      "x_label": "Nominal context; actual prompt sizes match",
+      "y_label": "tokens / second"
+    },
+    {
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "artifact": "windows-capacity-4k-r3.json",
+              "artifact_sha256": "611251f8afd54d22a6c19daf6ebb1fe0698846f156f9a1f19b65f56720e65ecd",
+              "value": 16729.465552552232,
+              "x": "4k"
+            },
+            {
+              "artifact": "windows-capacity-120k-r3.json",
+              "artifact_sha256": "7d476406ea4faeaa386082018ec02a554aeec4e7fc8a4b87dc604b19bf2734b0",
+              "value": 5748.638371968673,
+              "x": "120k"
+            },
+            {
+              "artifact": "windows-capacity-262k-r3.json",
+              "artifact_sha256": "4712126d7ac95694b689f2698a19966f144fa3a3a7a62bc411873a7acf67f6d2",
+              "value": 5578.783369064824,
+              "x": "262k"
+            },
+            {
+              "artifact": "windows-capacity-380k-r3.json",
+              "artifact_sha256": "117f121d2a2f21e1af0ac09570966276e40a8b8101120c1d300eed852a2aa2eb",
+              "value": 5456.732792727141,
+              "x": "380k"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "artifact": "linux-legacy-capacity-4k-r3.json",
+              "artifact_sha256": "5c0598d0d6cba510638f85898703239ca8a9e621ef35f77e3bb4a973809a529e",
+              "value": 23143.00551077051,
+              "x": "4k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-120k-r3.json",
+              "artifact_sha256": "1ebc6dd146fb2b459d00596670efab733ce827f667eb108e74c323cff1c909eb",
+              "value": 5879.3029344226425,
+              "x": "120k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-262k-r3.json",
+              "artifact_sha256": "538794fbf4f3f00179cc060e14198cf9e4a32ffef93c4d3f11f4d6eaa88d81d5",
+              "value": 5458.399114754668,
+              "x": "262k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-380k-r3.json",
+              "artifact_sha256": "ccd2ce76f269af9942eec9eeba65a2a4b546e2e8a5444aef11e208f1a7c64a7d",
+              "value": 5425.364604799794,
+              "x": "380k"
+            }
+          ]
+        }
+      ],
+      "title": "Effective prefill median",
+      "x_label": "Nominal context; actual prompt sizes match",
+      "y_label": "tokens / second"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "artifact": "windows-capacity-4k-r3.json",
+              "artifact_sha256": "611251f8afd54d22a6c19daf6ebb1fe0698846f156f9a1f19b65f56720e65ecd",
+              "value": 177.4718000087887,
+              "x": "4k"
+            },
+            {
+              "artifact": "windows-capacity-120k-r3.json",
+              "artifact_sha256": "7d476406ea4faeaa386082018ec02a554aeec4e7fc8a4b87dc604b19bf2734b0",
+              "value": 16747.966599999927,
+              "x": "120k"
+            },
+            {
+              "artifact": "windows-capacity-262k-r3.json",
+              "artifact_sha256": "4712126d7ac95694b689f2698a19966f144fa3a3a7a62bc411873a7acf67f6d2",
+              "value": 38736.223999992944,
+              "x": "262k"
+            },
+            {
+              "artifact": "windows-capacity-380k-r3.json",
+              "artifact_sha256": "117f121d2a2f21e1af0ac09570966276e40a8b8101120c1d300eed852a2aa2eb",
+              "value": 55801.15680000745,
+              "x": "380k"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "artifact": "linux-legacy-capacity-4k-r3.json",
+              "artifact_sha256": "5c0598d0d6cba510638f85898703239ca8a9e621ef35f77e3bb4a973809a529e",
+              "value": 128.2897810015129,
+              "x": "4k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-120k-r3.json",
+              "artifact_sha256": "1ebc6dd146fb2b459d00596670efab733ce827f667eb108e74c323cff1c909eb",
+              "value": 16376.091381996957,
+              "x": "120k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-262k-r3.json",
+              "artifact_sha256": "538794fbf4f3f00179cc060e14198cf9e4a32ffef93c4d3f11f4d6eaa88d81d5",
+              "value": 39590.5463229974,
+              "x": "262k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-380k-r3.json",
+              "artifact_sha256": "ccd2ce76f269af9942eec9eeba65a2a4b546e2e8a5444aef11e208f1a7c64a7d",
+              "value": 56123.41785300305,
+              "x": "380k"
+            }
+          ]
+        }
+      ],
+      "title": "Time to first visible token median",
+      "x_label": "Nominal context; actual prompt sizes match",
+      "y_label": "milliseconds"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "artifact": "windows-capacity-4k-r3.json",
+              "artifact_sha256": "611251f8afd54d22a6c19daf6ebb1fe0698846f156f9a1f19b65f56720e65ecd",
+              "value": 500.499099958688,
+              "x": "4k"
+            },
+            {
+              "artifact": "windows-capacity-120k-r3.json",
+              "artifact_sha256": "7d476406ea4faeaa386082018ec02a554aeec4e7fc8a4b87dc604b19bf2734b0",
+              "value": 17233.929299982265,
+              "x": "120k"
+            },
+            {
+              "artifact": "windows-capacity-262k-r3.json",
+              "artifact_sha256": "4712126d7ac95694b689f2698a19966f144fa3a3a7a62bc411873a7acf67f6d2",
+              "value": 39107.24919999484,
+              "x": "262k"
+            },
+            {
+              "artifact": "windows-capacity-380k-r3.json",
+              "artifact_sha256": "117f121d2a2f21e1af0ac09570966276e40a8b8101120c1d300eed852a2aa2eb",
+              "value": 56362.32839996228,
+              "x": "380k"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "artifact": "linux-legacy-capacity-4k-r3.json",
+              "artifact_sha256": "5c0598d0d6cba510638f85898703239ca8a9e621ef35f77e3bb4a973809a529e",
+              "value": 611.2129540015303,
+              "x": "4k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-120k-r3.json",
+              "artifact_sha256": "1ebc6dd146fb2b459d00596670efab733ce827f667eb108e74c323cff1c909eb",
+              "value": 16738.361063999037,
+              "x": "120k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-262k-r3.json",
+              "artifact_sha256": "538794fbf4f3f00179cc060e14198cf9e4a32ffef93c4d3f11f4d6eaa88d81d5",
+              "value": 39967.26827999737,
+              "x": "262k"
+            },
+            {
+              "artifact": "linux-legacy-capacity-380k-r3.json",
+              "artifact_sha256": "ccd2ce76f269af9942eec9eeba65a2a4b546e2e8a5444aef11e208f1a7c64a7d",
+              "value": 56462.859640003444,
+              "x": "380k"
+            }
+          ]
+        }
+      ],
+      "title": "End-to-end median",
+      "x_label": "Nominal context; actual prompt sizes match",
+      "y_label": "milliseconds"
+    }
+  ],
+  "metric_semantics": {},
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Same model/image, TP2, C1; n=3 per point; variable output and shared-prefix prompts; whole-stack comparison",
+  "title": "GLM-5.3-Flash: historical Windows / WSL2 versus native Linux"
+}

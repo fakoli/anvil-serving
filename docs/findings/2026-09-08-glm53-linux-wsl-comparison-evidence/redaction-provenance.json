@@ -1,0 +1,9 @@
+{
+  "schema": "anvil-serving.public-evidence-redaction/v1",
+  "scope": "2026-09-08 native Linux campaign",
+  "policy": "Private network identities, host paths, GPU UUIDs, and unrelated stdout/stderr are omitted or replaced with generic role labels; numeric measurements, request IDs, model/runtime pins and failures retained. No credential fields are published.",
+  "native_job_artifacts": "Native benchmark-evidence/v1 retained; stage hashes and byte sizes recomputed after sanitization. Raw originals remain operator-private.",
+  "image_corpus": "Only corpus.path made repository-relative; corpus and image content digests retained.",
+  "historical_copies": "Windows capacity/endurance raw copies retained unchanged for local graph provenance.",
+  "mutation": "Publication sanitization only; no serving configuration changes."
+}

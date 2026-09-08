@@ -1,0 +1,16 @@
+{
+  "architecture": "x86_64",
+  "assets": {},
+  "cache_identity": "bd58def21bef672b4de1a0b182e815a16e86b2d00783c3405b676c7857a96f84",
+  "command_logs": [],
+  "created_at": "2026-09-08T05:39:20.326863Z",
+  "offline": false,
+  "ownership_id": "glm53-linux-20260908",
+  "platform": "linux",
+  "profile": "deep",
+  "profile_sha256": "6cc9e66696ae5fafed7af738cae898b59b7370574c829a9740300762dfbb92a7",
+  "python_environment": null,
+  "run_id": "glm53-linux-agentic-20260908",
+  "schema": "anvil-serving.benchmark-harness-assets/v1",
+  "suite": "agentic"
+}

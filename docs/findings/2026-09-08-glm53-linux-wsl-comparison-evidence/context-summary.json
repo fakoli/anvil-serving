@@ -1,0 +1,97 @@
+{
+  "schema": "anvil-serving.context-campaign-summary/v1",
+  "native_artifact": "context/artifact.json",
+  "native_stage": "context/evidence/0-context.json",
+  "attempts": 150,
+  "passed": 128,
+  "visible_completed": 141,
+  "empty_length_terminated": 9,
+  "incorrect_visible_answers": 13,
+  "buckets": [
+    {
+      "requested_tokens": 8192,
+      "actual_prompt_min": 8192,
+      "actual_prompt_max": 8196,
+      "attempts": 30,
+      "passed": 27,
+      "visible_completed": 30,
+      "meets_native_policy": true
+    },
+    {
+      "requested_tokens": 32768,
+      "actual_prompt_min": 31851,
+      "actual_prompt_max": 31856,
+      "attempts": 30,
+      "passed": 18,
+      "visible_completed": 23,
+      "meets_native_policy": false
+    },
+    {
+      "requested_tokens": 131072,
+      "actual_prompt_min": 129909,
+      "actual_prompt_max": 129928,
+      "attempts": 30,
+      "passed": 24,
+      "visible_completed": 29,
+      "meets_native_policy": true
+    },
+    {
+      "requested_tokens": 262144,
+      "actual_prompt_min": 259804,
+      "actual_prompt_max": 259808,
+      "attempts": 30,
+      "passed": 30,
+      "visible_completed": 30,
+      "meets_native_policy": true
+    },
+    {
+      "requested_tokens": 380000,
+      "actual_prompt_min": 376480,
+      "actual_prompt_max": 376484,
+      "attempts": 30,
+      "passed": 29,
+      "visible_completed": 29,
+      "meets_native_policy": true
+    }
+  ],
+  "case_families": {
+    "native-distractor": {
+      "passed": 45,
+      "attempts": 50
+    },
+    "native-needle": {
+      "passed": 45,
+      "attempts": 50
+    },
+    "native-order": {
+      "passed": 38,
+      "attempts": 50
+    }
+  },
+  "native_policy": {
+    "baseline_bucket": 8192,
+    "baseline_pass_rate": 0.9,
+    "max_relative_drop": 0.25,
+    "pass_rate_floor": 0.75
+  },
+  "native_effective_context": 8192,
+  "first_material_degradation": {
+    "pass_rate": 0.6,
+    "reasons": [
+      "pass_rate_below_floor",
+      "relative_drop_exceeded"
+    ],
+    "relative_drop": 0.33333333333333337,
+    "requested_tokens": 32768
+  },
+  "output_headroom_tokens": 4096,
+  "all_observed_prompt_plus_output_within_configured_context": true,
+  "all_passing_finish_reasons_stop": true,
+  "limits": [
+    "Non-monotonic quality curve; native effective_context8192 is a threshold-derived field, not a physical context limit or general model capability",
+    "Default thinking; per-request reasoning channels/token splits are not retained by this adapter",
+    "No direct endpoint request IDs were returned in the retained native request_ids list;150 unique case IDs and usage/finish observations retained",
+    "No matched Windows run for this new suite; failures do not establish an OS-caused regression",
+    "No per-request engine telemetry; co-resident repository verification overlapped earlier context cells; latency is diagnostic only"
+  ]
+}

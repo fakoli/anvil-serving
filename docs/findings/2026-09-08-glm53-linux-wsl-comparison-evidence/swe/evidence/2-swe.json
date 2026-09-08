@@ -1,0 +1,172 @@
+{
+  "created_at": "2026-09-08T05:35:56.928386Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "endpoint": {
+    "auth_env": "ANVIL_ROUTER_TOKEN",
+    "base_url": "https://primary.example.ts.net/v1",
+    "model": "llm.primary"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "python_environment": {
+      "architecture": "arm64",
+      "platform": "darwin",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.14.6"
+      },
+      "resolved_packages_sha256": "b4ad822012fce20c5c4ee851a71d68920361f61fd6586edc56a85c338d355b52",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "2ebbcc2889dc004393f68a0c56d3a4de6f9facaac9b3f4fa3e79f9dc9eb6851b",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-11099",
+      "prediction_sha256": "e754832b486e044c733c1398de02f9bc0d2d872d5308f2956d16390e061ffd3b",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-04328421026c4c59baf8d274",
+        "chatcmpl-262f369dff9445c198a6be5c",
+        "chatcmpl-336035d38ff048df81fb72a2",
+        "chatcmpl-4a15a6a4b5104c41bcdb93f4",
+        "chatcmpl-4c9f37d72f16443e973ff8e0",
+        "chatcmpl-5624328fa5ba4ac192d5bd47",
+        "chatcmpl-59f1891c64f74249b7b0caa7",
+        "chatcmpl-7c39f5adc8914583b1da4411",
+        "chatcmpl-830205146f1a42b49566fcd7",
+        "chatcmpl-8f46d08cceac42efb6495a90",
+        "chatcmpl-9e0a96419c8e4166ab32af72",
+        "chatcmpl-a56157751b294f139dbbdaa2",
+        "chatcmpl-a78d5ef406cc4d85947ade70",
+        "chatcmpl-b50da72a8a8c449189fafa7a",
+        "chatcmpl-c7b38def108a49d1865c383d",
+        "chatcmpl-df20ccf23b2143a9966e9cab",
+        "chatcmpl-e0e056ff2be847f48fe2ba96",
+        "chatcmpl-e86f320233be465a9b077013",
+        "chatcmpl-f1564724d944485fa9630bf5",
+        "chatcmpl-f3a782562b684e6d9c67adff",
+        "chatcmpl-f8ea79f20d1842838fbb2668",
+        "chatcmpl-fed8a83c02e54369b118a82d"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "WORKER_HOME/.anvil-serving/benchmark-runs/glm53-linux-20260908/glm53-linux-swe-smoke-20260908/work/mini-output/django__django-11099/django__django-11099.traj.json",
+        "sha256": "d72d8e494a4e067799879f8549b6cf2e5c23d65a23608ca5236703bd5e9498af"
+      }
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "glm53-linux-20260908",
+  "plan_sha256": "aab6b05adf4336811e9eb6ce1529d15f3d3d04f98f07eea278ac2c9af4e00122",
+  "profile": "smoke",
+  "profile_sha256": "090745451099214af7c222f736769737911453fe9e9c5d14ffc04f5a4a3e4586",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": null,
+    "thinking_mode": "enabled"
+  },
+  "run_id": "glm53-linux-swe-smoke-20260908",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "django__django-11099"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "291988eda9e172a3e260bd2fb65775edbb5267dc46221d0ba0703786ddd71c95"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [
+        "WORKER_HOME/.anvil-serving/benchmark-harness-cache/swe-python-environments/f814385986b9b579b7cb75a0764a74a25bb1e14dcc84287b61fa97cac60ff7f3/bin/python",
+        "WORKER_HOME/.anvil-serving/benchmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/run/benchmarks/swebench.py",
+        "--output",
+        "WORKER_HOME/.anvil-serving/benchmark-runs/glm53-linux-20260908/glm53-linux-swe-smoke-20260908/work/mini-output",
+        "--model",
+        "openai/llm.primary",
+        "--subset",
+        "verified",
+        "--split",
+        "test",
+        "--filter",
+        "^(?:django__django\\-11099)$",
+        "--workers",
+        "1",
+        "--environment-class",
+        "docker",
+        "--config",
+        "WORKER_HOME/.anvil-serving/benchmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/config/benchmarks/swebench.yaml",
+        "--config",
+        "WORKER_HOME/.anvil-serving/benchmark-runs/glm53-linux-20260908/glm53-linux-swe-smoke-20260908/work/anvil-swe-config.yaml"
+      ],
+      "duration_s": 115.694648,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed"
+    },
+    {
+      "command": [
+        "WORKER_HOME/.anvil-serving/benchmark-harness-cache/swe-python-environments/f814385986b9b579b7cb75a0764a74a25bb1e14dcc84287b61fa97cac60ff7f3/bin/python",
+        "-m",
+        "swebench.harness.run_evaluation",
+        "--dataset_name",
+        "princeton-nlp/SWE-bench_Verified",
+        "--split",
+        "test",
+        "--predictions_path",
+        "WORKER_HOME/.anvil-serving/benchmark-runs/glm53-linux-20260908/glm53-linux-swe-smoke-20260908/work/predictions.jsonl",
+        "--max_workers",
+        "1",
+        "--run_id",
+        "glm53-linux-swe-smoke-20260908",
+        "--timeout",
+        "1800",
+        "--report_dir",
+        "WORKER_HOME/.anvil-serving/benchmark-runs/glm53-linux-20260908/glm53-linux-swe-smoke-20260908/work/official-grader",
+        "--instance_ids",
+        "django__django-11099"
+      ],
+      "duration_s": 53.50309,
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 1,
+    "graded": 1,
+    "resolve_rate": 1.0,
+    "resolved": 1
+  }
+}

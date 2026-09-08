@@ -1,0 +1,23 @@
+BENCH http://127.0.0.1:8001/v1 model=glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp  n=10 concurrency=1 mixed max_tokens=256 cache=unique canaries=True response_words=0 max_model_len=393216(ctx<=391936) thinking=disabled
+  req error: ValueError: request canary validation failed
+  req error: ValueError: request canary validation failed
+  req error: ValueError: request canary validation failed
+  req error: ValueError: request canary validation failed
+  req error: ValueError: request canary validation failed
+  req error: ValueError: request canary validation failed
+  req error: ValueError: request canary validation failed
+  req error: ValueError: request canary validation failed
+  req error: ValueError: request canary validation failed
+------------------------------------------------------------
+completed:        1/10 in 8.1s
+TTFT  mean/p50/p95/p99 (descriptive only; N<100): 0.55s / 0.55s / 0.55s / 0.55s
+E2E   mean/p50/p95/p99 (descriptive only; N<100): 0.77s / 0.77s / 0.77s / 0.77s
+GEN   p50/p95:    0.22s / 0.22s
+prefill mean/p50/p95/p99: 5403 / 5403 / 5403 / 5403 effective input tok/s
+decode mean/p50/p95/p99: 156.9 / 156.9 / 156.9 / 156.9 tok/s per request
+completion tokens mean/p50/p95/p99: 36.0 / 36 / 36 / 36
+throughput:       withheld (incomplete request population)
+prefix-cache hit: endpoint did not return prompt_tokens_details.cached_tokens
+------------------------------------------------------------
+Tip: run once cold, then immediately again -- TTFT should drop sharply on the 2nd run if prefix cache works.
+wrote JSON summary: docs/findings/2026-09-08-glm53-linux-wsl-comparison-evidence/linux-unique-natural-4k-r10.json
