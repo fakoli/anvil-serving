@@ -1161,6 +1161,34 @@ def test_no_expected_node_skips_verification():
     assert not any(url.endswith("/health") for url in calls)
 
 
+def test_controller_tool_catalog_verifies_identity_and_rejects_duplicate_tools():
+    calls = []
+    bodies = [
+        b'{"status":"ok","service":"anvil-serving-controller","request_id":"req-1","node":"fakoli-dark"}',
+        b'{"tools":[{"name":"serves_status","inputSchema":{"type":"object"}}]}',
+    ]
+
+    def opener(request, timeout):
+        calls.append(request.full_url)
+        return Response(bodies.pop(0))
+
+    transport = transports.ControllerTransport(
+        "http://127.0.0.1:8765", auth_env="TOKEN", allowed_operations=["serves-status"],
+        environment={"TOKEN": TOKEN}, expected_node="fakoli-dark", opener=opener,
+    )
+    assert transport.tool_catalog()[0]["name"] == "serves_status"
+    assert calls == ["http://127.0.0.1:8765/health", "http://127.0.0.1:8765/tools/list"]
+
+    duplicate = b'{"tools":[{"name":"x","inputSchema":{"type":"object"}},{"name":"x","inputSchema":{"type":"object"}}]}'
+    invalid = transports.ControllerTransport(
+        "http://127.0.0.1:8765", auth_env="TOKEN", allowed_operations=["serves-status"],
+        environment={"TOKEN": TOKEN}, opener=lambda request, timeout: Response(duplicate),
+    )
+    with pytest.raises(transports.TransportError) as excinfo:
+        invalid.tool_catalog()
+    assert excinfo.value.code == "bad_controller_response"
+
+
 def _expected_node_transport(body, calls):
     def opener(request, timeout):
         calls.append(request.full_url)

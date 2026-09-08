@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
+import re
 import sys
+import tempfile
+import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -247,6 +251,258 @@ def tool_router_transition(args: dict) -> dict:
     return _ok(result)
 
 
+_TIER_SETTING_LIMITS = {
+    "max_concurrency": (1, 4096),
+    "max_output_tokens": (1, 1048576),
+}
+
+
+def _tier_candidate(raw: bytes, tier_id: str, values: dict) -> tuple[bytes, dict]:
+    """Edit only two scalar fields in one canonical [[router.tiers]] block."""
+    try:
+        text = raw.decode("utf-8")
+        parsed = tomllib.loads(text)
+        tiers = parsed["router"]["tiers"]
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError, KeyError, TypeError):
+        raise ToolError("bad_config", "router config is not canonical UTF-8 TOML") from None
+    matches = [index for index, row in enumerate(tiers) if isinstance(row, dict) and row.get("id") == tier_id]
+    if len(matches) != 1:
+        raise ToolError("tier_not_found", "configuration requires one exact router tier")
+    current = {key: tiers[matches[0]].get(key) for key in _TIER_SETTING_LIMITS}
+    if not values:
+        return raw, current
+    if set(values) - set(_TIER_SETTING_LIMITS):
+        raise ToolError("bad_argument", "unsupported router tier setting")
+    for key, value in values.items():
+        low, high = _TIER_SETTING_LIMITS[key]
+        if type(value) is not int or value < low or value > high:
+            raise ToolError("bad_argument", "%s is outside its supported range" % key)
+    lines = text.splitlines(keepends=True)
+    starts = [i for i, line in enumerate(lines) if re.match(r"^\s*\[\[\s*router\.tiers\s*\]\]\s*(?:#.*)?$", line)]
+    if len(starts) != len(tiers):
+        raise ToolError("unsupported_config_layout", "router tier table layout is not safely editable")
+    start = starts[matches[0]] + 1
+    end = next((i for i in range(start, len(lines)) if re.match(r"^\s*\[", lines[i])), len(lines))
+    for key, value in values.items():
+        positions = [i for i in range(start, end) if re.match(r"^\s*" + re.escape(key) + r"\s*=", lines[i])]
+        replacement = "%s = %d\n" % (key, value)
+        if len(positions) > 1:
+            raise ToolError("unsupported_config_layout", "router tier setting is duplicated")
+        if positions:
+            lines[positions[0]] = replacement
+        else:
+            lines.insert(end, replacement)
+            end += 1
+    candidate = "".join(lines).encode("utf-8")
+    try:
+        checked = tomllib.loads(candidate.decode("utf-8"))["router"]["tiers"][matches[0]]
+    except (tomllib.TOMLDecodeError, KeyError, TypeError, IndexError):
+        raise ToolError("bad_candidate", "typed router candidate did not validate") from None
+    return candidate, {key: checked.get(key) for key in _TIER_SETTING_LIMITS}
+
+
+def _tool_router_configuration(args: dict) -> dict:
+    """Read/preview/apply two bounded tier settings with drift protection."""
+    from .... import router_manage
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"status", "preview", "apply"}:
+        raise ToolError("bad_action", "action must be one of: status, preview, apply")
+    config = _str_arg(args, "config", required=True)
+    tier = _str_arg(args, "tier", required=True)
+    expected = _str_arg(args, "expected_baseline_sha256", "")
+    values = args.get("values", {})
+    if not isinstance(values, dict):
+        raise ToolError("bad_argument", "values must be an object")
+    source = os.path.abspath(os.path.expanduser(config))
+    container = _str_arg(args, "container", router_manage.DEFAULT_CONTAINER)
+    installed_config = _str_arg(args, "installed_config", router_manage.DEFAULT_INSTALLED_CONFIG)
+    try:
+        inspected = _run_argv(
+            ["docker", "inspect", "--format", "{{json .Mounts}}", container],
+            confirm=True,
+            timeout=30,
+        )
+        mounts = json.loads(inspected.get("stdout", "[]"))
+    except (ToolError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise ToolError("mount_unavailable", "router configuration mount could not be verified") from exc
+    bound = [row for row in mounts if isinstance(row, dict) and row.get("Destination") == installed_config]
+    if (len(bound) != 1 or bound[0].get("Type") != "bind" or bound[0].get("RW") is not False or
+            os.path.realpath(str(bound[0].get("Source", ""))) != os.path.realpath(source)):
+        raise ToolError("mount_mismatch", "declared config is not the installed router bind source")
+    try:
+        with open(source, "rb") as handle:
+            raw = handle.read(router_manage.MAX_ROUTER_CONFIG_BYTES + 1)
+    except OSError as exc:
+        raise ToolError("config_unavailable", "configured router source is unavailable") from exc
+    if len(raw) > router_manage.MAX_ROUTER_CONFIG_BYTES:
+        raise ToolError("config_too_large", "router config exceeds the 1 MiB limit")
+    baseline = hashlib.sha256(raw).hexdigest()
+    try:
+        installed = router_manage.installed_fleet_status(
+            container=container, installed_config=installed_config, timeout=4
+        )
+    except ValueError as exc:
+        raise ToolError("installed_config_unavailable", str(exc)) from exc
+    if installed.get("config_sha256") != baseline:
+        raise ToolError("config_drift", "configured source does not match the installed router config")
+    if expected and expected != baseline:
+        raise ToolError("config_conflict", "installed router config changed after preview")
+    candidate, configured = _tier_candidate(raw, tier, values)
+    candidate_digest = hashlib.sha256(candidate).hexdigest()
+    if action in {"status", "preview"}:
+        return _ok({"applied": False, "dry_run": True, "tier": tier,
+                    "configured": configured, "baseline_sha256": baseline,
+                    "candidate_sha256": candidate_digest})
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    human = _arg_bool(args.get("human_approved"), False, name="human_approved")
+    if dry_run or not confirm or not human:
+        raise ToolError("human_approval_required", "configuration apply requires the confirmed human gate")
+    topology = _str_arg(args, "topology", "")
+    overlay = _str_arg(args, "topology_overlay", "")
+    router_url = _str_arg(args, "router_url", "")
+    compose = _str_arg(args, "compose", required=True)
+    service = _str_arg(args, "service", required=True)
+    env_file = _str_arg(args, "env_file", required=True)
+    drain_timeout = _bounded_int_arg(args, "drain_timeout", 120, min_value=1, max_value=3600)
+    original_mode = os.stat(source).st_mode
+    initial_status = router_manage.transition_request("status", router_url=router_url or None)
+    original_admissions = {row["tier_id"]: row["state"] for row in initial_status.get("tiers", [])
+                           if isinstance(row, dict) and isinstance(row.get("tier_id"), str)
+                           and row.get("state") in {"admitting", "quiesced"}}
+    if not original_admissions:
+        raise ToolError("admission_unavailable", "current router admission state could not be captured")
+
+    def replace_source(content: bytes) -> None:
+        directory = os.path.dirname(source)
+        fd, candidate_path = tempfile.mkstemp(prefix=".anvil-router-", suffix=".toml", dir=directory)
+        try:
+            with os.fdopen(fd, "wb") as output:
+                output.write(content)
+                output.flush()
+                os.fsync(output.fileno())
+            os.chmod(candidate_path, original_mode)
+            os.replace(candidate_path, source)
+        finally:
+            if os.path.exists(candidate_path):
+                os.unlink(candidate_path)
+
+    changed = False
+    with tempfile.NamedTemporaryFile(prefix="anvil-router-candidate-", suffix=".toml") as handle:
+        handle.write(candidate)
+        handle.flush()
+
+        def install_bound(_snapshot):
+            nonlocal changed
+            try:
+                with open(source, "rb") as current_handle:
+                    current = current_handle.read(router_manage.MAX_ROUTER_CONFIG_BYTES + 1)
+                current_installed = router_manage.installed_fleet_status(
+                    container=container, installed_config=installed_config, timeout=4
+                )
+            except (OSError, ValueError):
+                return 1
+            if (hashlib.sha256(current).hexdigest() != baseline or
+                    current_installed.get("config_sha256") != baseline):
+                return 1
+            replace_source(candidate)
+            changed = True
+            return router_manage.cmd_up(
+                compose, service, env_file=env_file, recreate=True, container=container
+            )
+
+        try:
+            result = router_manage.install_config(
+                handle.name, topology_path=topology or None,
+                topology_overlay_path=overlay or None, router_url=router_url or None,
+                drain_timeout=drain_timeout, confirm=True, dry_run=False,
+                _install=install_bound,
+            )
+            observed = router_manage.installed_fleet_status(
+                container=container, installed_config=installed_config, timeout=4
+            )
+            if observed.get("config_sha256") != candidate_digest:
+                raise ValueError("recreated router did not load the candidate digest")
+            # A recreated router may start with admitting defaults. Preserve
+            # intentional maintenance even when installation itself succeeds.
+            for tier_id, admission in original_admissions.items():
+                if admission == "quiesced":
+                    router_manage.transition_request(
+                        "quiesce", tier_id=tier_id, router_url=router_url or None,
+                        confirm=True, dry_run=False,
+                    )
+            final_admission = router_manage.transition_request("status", router_url=router_url or None)
+            final_states = {row.get("tier_id"): row.get("state")
+                            for row in final_admission.get("tiers", []) if isinstance(row, dict)}
+            if any(final_states.get(tier_id) != admission for tier_id, admission in original_admissions.items()):
+                raise ValueError("installed router did not preserve prior admission intent")
+            result["tier_status"] = final_admission.get("tiers", [])
+        except (OSError, ValueError) as exc:
+            recovery = "failed"
+            try:
+                if changed:
+                    replace_source(raw)
+                    if router_manage.cmd_up(
+                        compose,
+                        service,
+                        env_file=env_file,
+                        recreate=True,
+                        container=container,
+                    ) != 0:
+                        raise ValueError("previous router could not be recreated")
+                    restored = router_manage.installed_fleet_status(
+                        container=container,
+                        installed_config=installed_config,
+                        timeout=4,
+                    )
+                    if restored.get("config_sha256") != baseline:
+                        raise ValueError("previous installed configuration could not be verified")
+                # install_config may already have quiesced tiers before its
+                # installer rejects a stale baseline. Its best-effort
+                # compensation deliberately swallows readmission failures, so
+                # verify and restore the captured intent even when this owner
+                # never replaced the bind source.
+                for tier_id, admission in original_admissions.items():
+                    router_manage.transition_request(
+                        "readmit" if admission == "admitting" else "quiesce",
+                        tier_id=tier_id,
+                        router_url=router_url or None,
+                        confirm=True,
+                        dry_run=False,
+                    )
+                final = router_manage.transition_request(
+                    "status", router_url=router_url or None
+                )
+                states = {
+                    row.get("tier_id"): row.get("state")
+                    for row in final.get("tiers", [])
+                    if isinstance(row, dict)
+                }
+                if any(
+                    states.get(tier_id) != admission
+                    for tier_id, admission in original_admissions.items()
+                ):
+                    raise ValueError("previous admissions could not be verified")
+                recovery = "restored"
+            except (OSError, ValueError):
+                recovery = "failed"
+            raise ToolError("configuration_apply_failed", "router configuration apply failed",
+                            {"recovery": recovery}) from exc
+    return _ok({"tier": tier, "configured": configured,
+                "baseline_sha256": baseline, "candidate_sha256": candidate_digest, **result})
+
+
+def tool_router_configuration(args: dict) -> dict:
+    """Serialize live config changes with every serve/profile/mode transaction."""
+    if args.get("action") != "apply":
+        return _tool_router_configuration(args)
+    from .... import serves as serves_mod
+
+    with serves_mod._switch_role_lock("promotion"):
+        return _tool_router_configuration(args)
+
+
 def _decision_records_from_path(path: str, *, max_input_bytes: int) -> list[dict]:
     if not os.path.isfile(path):
         raise ToolError(
@@ -427,6 +683,30 @@ FAMILY = ToolFamily(
                 required=["action"],
             ),
             "handler": tool_router_transition,
+        },
+        "router_configuration": {
+            "description": "Read, preview, or transactionally apply bounded router tier settings.",
+            "inputSchema": _schema(
+                {
+                    "action": {"type": "string", "enum": ["status", "preview", "apply"]},
+                    "config": {"type": "string"}, "tier": {"type": "string"},
+                    "values": {"type": "object", "additionalProperties": False,
+                               "properties": {
+                                   "max_concurrency": _bounded_integer_schema(1, 4096, 1),
+                                   "max_output_tokens": _bounded_integer_schema(1, 1048576, 1),
+                               }},
+                    "expected_baseline_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                    "topology": {"type": "string"}, "topology_overlay": {"type": "string"},
+                    "router_url": {"type": "string"},
+                    "container": {"type": "string"}, "installed_config": {"type": "string"},
+                    "compose": {"type": "string"}, "service": {"type": "string"},
+                    "env_file": {"type": "string"},
+                    "drain_timeout": _bounded_integer_schema(1, 3600, 120),
+                    "dry_run": {"type": "boolean"}, "confirm": {"type": "boolean"},
+                    "human_approved": {"type": "boolean"},
+                }, required=["action", "config", "tier"],
+            ),
+            "handler": tool_router_configuration,
         },
         "decision_summary": {
             "description": "Summarize recent router decisions without prompts or secrets; defaults to GET /v1/decisions.",

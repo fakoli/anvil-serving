@@ -419,7 +419,7 @@ def test_install_config_captures_exact_replica_snapshot_before_transition(tmp_pa
     )
 
     assert result["config_sha256"] == hashlib.sha256(raw).hexdigest()
-    assert transitions == ["status", "quiesce", "drain", "status"]
+    assert transitions == ["status", "quiesce", "drain", "status", "readmit"]
     assert len(installed) == 1
     assert installed[0].config_bytes == raw
     assert installed[0].replica_tier_count == 1
