@@ -1,0 +1,80 @@
+{
+  "campaign_id": "2026-09-08-glm53-linux-wsl-comparison",
+  "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+  "baseline": "2026-09-02 safe393k artifacts",
+  "scope": "Existing deployment, no restart, tuning, promotion or client configuration changes",
+  "stages": [
+    "identity and smoke",
+    "direct full preflight thinking disabled/enabled",
+    "historical shared-cache capacity 4096/120000/262144/380000 x3 max256 short-summary",
+    "strict controlled-output scout then unique-cache capacity 4096/120000/262144/380000 x10 response128 max512 canaries",
+    "coding-agent-v2 quality x3",
+    "image corpus x2 per case",
+    "context depth and agentic native suites",
+    "historical endurance 4096 x60",
+    "routed protocol acceptance",
+    "post-state and publication"
+  ],
+  "limitations": [
+    "Historical n=3 output-uncontrolled cache-reusing baseline is descriptive only, not an exact controlled-output comparison.",
+    "OS migration also changes driver and NCCL transport; no causal OS-only claim.",
+    "No speculation A/B because speculation is unchanged and not the target comparison.",
+    "C1 is the deployed engine ceiling; higher client concurrency measures queueing, not increased engine capacity.",
+    "No video qualification: existing contract explicitly excludes video."
+  ],
+  "created_at": "2026-09-08T05:13:27.921324+00:00",
+  "native_context": {
+    "profile": "scout",
+    "token_buckets": [
+      8192,
+      32768,
+      131072,
+      262144,
+      380000
+    ],
+    "positions": [
+      0.1,
+      0.25,
+      0.5,
+      0.75,
+      0.9
+    ],
+    "repetitions": 2,
+    "cases": [
+      "native-needle",
+      "native-order",
+      "native-distractor"
+    ],
+    "attempts": 150,
+    "output_headroom_tokens": 4096,
+    "client_topology": "co-resident",
+    "reasoning": "native context adapter ignores thinking controls; effective reasoning is default",
+    "measurement_path": "direct endpoint after retained routed 413 boundary",
+    "nominal_total_prompt_tokens": 24425280,
+    "runtime_budget_note": "24.4 million nominal prompt tokens; roughly75 minutes of uncached prefill at5.4K tokens/s before generation and overhead. This is a planning estimate, not measured suite duration or actual aggregate token usage."
+  },
+  "native_agentic": {
+    "profile": "deep",
+    "cases": 10,
+    "repetitions": 3,
+    "client_topology": "co-resident",
+    "thinking": "disabled",
+    "router_output_clamp": 4096
+  },
+  "swe": {
+    "profile": "smoke",
+    "instance": "django__django-11099",
+    "worker": "isolated macOS arm64 worker",
+    "purpose": "Same pinned historical smoke, not full SWE-bench score"
+  },
+  "controlled_output_disposition": "Strict 128-word scout failed 3/3; no finalist. Separate unique natural-answer 4K diagnostic failed canary compliance 9/10; dependent 120K/262K/380K cells stopped. No performance claims from either population.",
+  "evidence_boundaries": {
+    "direct_output_budget": "historical thinking-enabled diagnostic uses 10240 completion cap; routed contract caps output at 4096",
+    "no_speculation_speedup_claim": true,
+    "co_resident_clients": "Capacity/native context/agentic are endpoint-only clients on the model host, not isolated repository execution",
+    "swe": "Isolated MacBook worker using prior pinned profile and retained assets; credential only in transient worker environment",
+    "no_deployment_changes": true,
+    "model_benchmark_scopes_run_sequentially": true,
+    "context_background_work": "Repository tests and documentation verification ran on the co-resident client during context quality. Context latency is diagnostic, not an isolated performance comparison."
+  }
+}

@@ -1,0 +1,14 @@
+PRE-FLIGHT  http://127.0.0.1:8000/v1  model=llm.primary  thinking=disabled visible=1024 reasoning_headroom=0 max_tokens=1024
+------------------------------------------------------------
+[PASS] smoke (short coding)                   0.5s got="```python\nsum(xs)\n```\n\nThat's it — the built-in `s" finish='stop' visible=218 reasoning_chars=0 reasoning_tokens=None
+[PASS] structured JSON                        parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=0 reasoning_tokens=None
+[FAIL] needle @ ~380000 ctx                   error: HTTP 413: {"error": {"type": "payload_too_large", "message": "request exceeds the context window of every available tier; send a smaller request"}}
+[PASS] shared-prefix tool batch x20           20/20 clean (sample: 0.9s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=0 reasoning_tokens=None)
+[PASS] tool call after >=100K prompt (target 160000) 22.5s measured_prompt=135169 valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=0 reasoning_tokens=None
+[PASS] streaming tool call                    0.2s done=True events=5 valid tool_call get_weather(city='Oakland') finish='tool_calls'
+[PASS] tool-result continuation               0.3s tool result retained finish='stop' visible=11 reasoning_chars=0 reasoning_tokens=None
+[PASS] Responses API subset                   0.1s status='completed' output='READY' reasoning_chars=0
+[PASS] general image understanding            1.3s all expected text present finish='stop' visible=882 reasoning_chars=0 reasoning_tokens=None
+[PASS] verbatim image OCR                     0.2s all expected text present finish='stop' visible=41 reasoning_chars=0 reasoning_tokens=None
+------------------------------------------------------------
+RESULT: FAILURES PRESENT

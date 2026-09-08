@@ -1,0 +1,61 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "GLM-5.3-Flash: 60-request endurance comparison",
+  "subtitle": "Warm direct, TP2/C1, 4K target; n=60 per platform; variable short outputs and shared prefixes",
+  "output": "endurance-matrix.svg",
+  "data_output": "endurance-graph-data.json",
+  "charts": [
+    {
+      "title": "Decode median: higher is faster",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "4K nominal prompt target",
+      "y_label": "tokens / second",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "x": "60 requests",
+              "artifact": "windows-endurance-4k-r60.json"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "x": "60 requests",
+              "artifact": "endurance-4k-r60.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "First visible token median: lower is faster",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "4K nominal prompt target",
+      "y_label": "milliseconds",
+      "series": [
+        {
+          "label": "Windows / WSL2",
+          "points": [
+            {
+              "x": "60 requests",
+              "artifact": "windows-endurance-4k-r60.json"
+            }
+          ]
+        },
+        {
+          "label": "Native Linux",
+          "points": [
+            {
+              "x": "60 requests",
+              "artifact": "endurance-4k-r60.json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

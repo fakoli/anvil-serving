@@ -1,0 +1,13 @@
+{
+  "platform": "Linux-7.0.0-31-generic-x86_64-with-glibc2.43",
+  "python": "3.14.4",
+  "gpu_driver": [
+    "595.91.07",
+    "595.91.07"
+  ],
+  "gpu_measurement": [
+    "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 97887 MiB, 95457 MiB, 98 %, 85, 289.68 W",
+    "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 97887 MiB, 95457 MiB, 99 %, 84, 295.37 W"
+  ],
+  "measurement_phase": "during legacy sweep; not idle baseline"
+}
