@@ -1,0 +1,23 @@
+{
+  "observed_at": "2026-09-08T06:42:47.272198+00:00",
+  "read_only": true,
+  "selected_kernel_iommu_arguments": [],
+  "gpu_iommu_domains": [
+    {
+      "gpu_index": 0,
+      "iommu_group_present": true,
+      "iommu_domain_type": "DMA-FQ"
+    },
+    {
+      "gpu_index": 1,
+      "iommu_group_present": true,
+      "iommu_domain_type": "DMA-FQ"
+    }
+  ],
+  "limitation": "No ACS or data-transfer test; no boot/firmware change",
+  "interpretation": "DMA-FQ is translated DMA with batched invalidation. Both GPU paths currently use translation. NVIDIA documents a bare-metal PCIe P2P incompatibility for translated IOMMU; this is a prerequisite to review, not a proven cause of the prior hang.",
+  "sources": [
+    "https://raw.githubusercontent.com/torvalds/linux/v7.0/Documentation/ABI/testing/sysfs-kernel-iommu_groups",
+    "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting/gpu_troubleshooting.html"
+  ]
+}

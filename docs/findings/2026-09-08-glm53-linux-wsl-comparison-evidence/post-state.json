@@ -1,0 +1,36 @@
+{
+  "schema": "anvil-serving.benchmark-post-state/v1",
+  "checks": {
+    "configuration_unchanged": true,
+    "router_catalog_unchanged": true,
+    "direct_catalog_unchanged": true,
+    "container_identity_image_restart_state_unchanged": true,
+    "managed_status_ok": true,
+    "gpu_inventory_ok": true,
+    "routed_smoke_and_json_passed": true
+  },
+  "configuration_sha256": {
+    "router.toml": "59b153251dab1569516c68050a3c61a5486f8ebb24946990af6d693d9ffb2f93",
+    "operator-topology.toml": "eb697a11d429a4ddb23ba3c0b90727ea6530c27dc5dada1544f09006d376d84c",
+    "serves.toml": "5be9e9b6f78032d9e9271cfa31eae0ef994f7db349c0396098dc8b8ca688c408",
+    "serve-recipes.glm53-sglang-sm120-393k.toml": "99cf7c4f1342187d8a9a4bb3ac3a2c2cda7649280f5f7c08728e7e57cdd034b9"
+  },
+  "container_restarts": 0,
+  "container_oom_killed": false,
+  "direct_health_http": 200,
+  "direct_models_http": 200,
+  "router_models_http": 200,
+  "catalog_comparison_note": "Direct catalog dynamic created timestamp excluded; every other field matches. Router catalog matches exactly.",
+  "bounded_owner_log_review": {
+    "tail": 5000,
+    "since": "2026-09-08T05:13:00Z",
+    "patterns": [
+      "CUDA error",
+      "OutOfMemory",
+      "Traceback"
+    ],
+    "matched_output_bytes": 0,
+    "limitation": "Bounded filtered review only"
+  },
+  "private_raw_retained": true
+}

@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0",
+  "revision": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+  "module": "anvil_serving/cli.py",
+  "branch": "codex/glm53-linux-benchmark-20260908",
+  "initial_tracked_dirty": false
+}

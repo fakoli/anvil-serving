@@ -1,0 +1,12 @@
+{
+  "schema": "anvil-serving.cache-observation/v1",
+  "operation": "read-only models cache inventory",
+  "volume": "vllm-hfcache",
+  "observed_at": "2026-09-08T05:13:49.097107Z",
+  "repositories": [
+    {
+      "logical_bytes": 178061085084,
+      "repo_id": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO"
+    }
+  ]
+}

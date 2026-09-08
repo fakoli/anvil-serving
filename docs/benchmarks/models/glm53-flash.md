@@ -13,8 +13,8 @@
       W4A16/NVFP4 target on digest-pinned SGLang rc14, TP=2, 393,216
       configured tokens, C1, adaptive EAGLE, and image/OCR support.
     - **Measured hardware:** two NVIDIA RTX PRO 6000 Blackwell Max-Q cards in
-      exclusive TP=2 over PCIe without NVLink under Windows 11, Docker
-      Desktop, and WSL2.
+      exclusive TP=2 over PCIe without NVLink; retained Windows 11/Docker
+      Desktop/WSL2 qualification and a separate native Linux comparison.
     - **Evidence:** complete thinking-off/on, tool, Responses, capacity,
       coding 15/15, media 12/12, endurance 60/60, managed/routed promotion,
       real Pi/OpenClaw/Hermes gates, and a fixed SWE-bench
@@ -28,8 +28,14 @@
       DFlash2 in the rollback is noncommercial without separate permission.
     - **Conservative fallback:** the same SGLang profile at 245,760/C1 remains
       independently verified with 3,487 MiB free per card after workload.
-    - **Review dates:** retained evidence through 2026-09-02; cross-run
-      concurrency review 2026-09-03.
+    - **Latest bounded comparison:** native Linux historical-style C1/n3
+      decode 149.02 versus retained WSL 112.07 tok/s at 4K (+33.0%);
+      380K-target decode +20.5%. Shared prefixes and variable short outputs;
+      strict output/canary and routed failures prevent new qualification.
+      Extended context passed 128/150 through 376,484 actual tokens, with
+      9 empty length-terminated and 13 incorrect visible answers.
+    - **Review dates:** evidence cutoff and dossier review 2026-09-08;
+      historical promotion 2026-09-02 and concurrency review 2026-09-03.
 
 ### Review narrative
 
@@ -95,6 +101,18 @@ its reported pool was 565,898 tokens, or 1.08 complete windows. Thus maxseq16
 is not evidence for sixteen full 524K conversations. See the
 [cross-run interpretation](../../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md).
 
+#### 2026-09-08 — native Linux comparison
+
+The existing pinned SGLang profile on the same physical GPU pair showed
+20.5–33.0% higher historical-style decode than retained WSL cells. The
+comparison preserves variable short outputs and shared-prefix cache history;
+it does not establish strict controlled performance or an OS-only speedup.
+Coding, images, agentic and the identical official SWE smoke passed bounded
+checks, but the SWE agent trajectory became slower. Failed strict-output,
+canary, routed context/reasoning and literal image checks remain visible.
+No new promotion occurred. See the
+[native Linux comparison](../../findings/2026-09-08-glm53-linux-wsl-comparison.md).
+
 ## Immutable identity
 
 - Target: `wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1`
@@ -131,6 +149,16 @@ CC-BY-NC-ND-4.0, so the combined recipe is evaluation/noncommercial unless
 separate permission is obtained.
 
 ## Tested hardware and topology
+
+The 2026-09-08 native Linux comparison measures the same physical dual-PRO
+pair at TP2/393,216/C1. It preserves the exact SGLang image and checkpoint,
+adds `NCCL_P2P_DISABLE=1`, and retains the existing compatibility patches.
+OS, driver/container stack and cache history differ from the historical
+baseline. The reconstruction boundary is recorded in the
+[comparison configuration](../../findings/2026-09-08-glm53-linux-wsl-comparison.md#exact-configuration-and-comparison-boundaries).
+
+The following topology describes the retained EXL3/WSL qualification lane.
+
 
 Two RTX PRO 6000 Blackwell Max-Q cards, 96 GB each, under Windows 11,
 Docker Desktop, and WSL2. They are assigned exclusively to one TP=2/DCP=2
@@ -184,6 +212,30 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
 
+### Native Linux comparison, 2026-09-08
+
+**Status:** `functional`, `capacity`, bounded `quality`; `no-promotion`.
+**Measured:** warm direct C1/n3 shared-prefix, variable-short-output decode
+149.02/125.03/124.46/120.29 tok/s at 4K/120K/262K/380K targets, versus WSL
+112.07/96.17/102.42/99.79; long prefill approximately ±2.3%; endurance
+60/60 at 142.64 versus 102.19 tok/s. Coding 15/15, image corpus 12/12,
+agentic 30/30, official SWE smoke 1/1.
+**Limits:** strict output 0/3 and unique canaries 1/10 excluded; no finalist
+performance qualification. SWE agent time 115.69 versus 34.22 seconds,
+22 versus 11 requests. Routed 380K admission and reasoning evidence failed;
+direct image phrase sensitivity also failed. No OS-only causal claim.
+The extended default-thinking context suite passed 128/150 through 376,484
+actual prompt tokens. Nominal 8K/32K/131K/262K/380K buckets passed
+27/18/24/30/29 of 30; failures were 9 empty length-terminated responses and
+13 incorrect visible answers. The non-monotonic curve means the native
+threshold-derived `effective_context=8192` is not a physical cap. No matched
+Windows suite exists, so this is not a Linux-caused quality regression.
+**Evidence:** [context summary](../../findings/2026-09-08-glm53-linux-wsl-comparison-evidence/context-summary.json);
+[dated finding and native artifacts](../../findings/2026-09-08-glm53-linux-wsl-comparison.md).
+
+### Retained EXL3 and SGLang qualification history
+
+
 - `functional`: both matched arms passed 28/28 direct observations, including
   strict JSON, 206,296-actual-token retrieval, tools 20/20, a structured tool
   after the long prompt, streaming tools, tool-result continuation, and
@@ -231,6 +283,12 @@ model-intelligence ranking.
 
 ## Decision and promotion state
 
+The 2026-09-08 migrated-stack measurement is `no-promotion`. It does not
+replace the historical human gate or establish a new all-gates qualification;
+strict performance and routed failures remain open. The selections below
+refer to their recorded historical qualification and promotion decisions.
+
+
 The 393K/C1 SGLang adaptive-MTP profile is the selected published
 text/image/OCR default. It combines the complete direct qualification with
 managed, routed, and real-client promotion acceptance. The corrected 524K K5
@@ -247,6 +305,15 @@ The 524K EXL3/DFlash2 profile is the immediate same-model rollback, and the
 245,760/C1 SGLang lane is the conservative same-engine fallback.
 
 ## Failures and gotchas
+
+- **Native comparison limits (2026-09-08):** strict controlled output passed
+  0/3; unique natural canaries 1/10. Both populations are excluded. Routed
+  380K text fails secondary media admission with HTTP 413; routed reasoning
+  checks lack the required dedicated channel despite correct answers.
+  Corresponding direct gates pass. One direct general-image literal phrase
+  check fails on table formatting despite the separate 12/12 image corpus.
+  These are retained failures, not relaxed validators or new qualifications.
+
 
 - DFlash2's published license is noncommercial/no-derivatives. Obtain separate
   permission before commercial use.
@@ -284,6 +351,7 @@ The 524K EXL3/DFlash2 profile is the immediate same-model rollback, and the
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-09-08 | Native Linux versus retained WSL on the same dual-card GLM image/model | C1/n3 historical-style decode +20.5–33.0%; bounded quality and SWE smoke pass, extended context 128/150 (9 empty, 13 incorrect), strict-output/canary and routed failures retained; whole-stack comparison, `no-promotion`; [finding](../../findings/2026-09-08-glm53-linux-wsl-comparison.md) |
 | 2026-09-03 | Cross-run scheduler, KV-capacity, and measured-concurrency reconciliation | Current SGLang remains qualified at 393K/C1; corrected 524K rollback retains measured C2 at 206,630 prompt tokens/request; historical BrandonMusic C16 is short-request evidence, not full-window concurrency; [interpretation and artifact links](../../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md) |
 | 2026-09-02 | Isolated-worker SWE-bench Verified smoke and harness fix-forward | Fixed `django__django-11099` attempted 1/1, officially graded 1/1, and resolved 1/1 through 11 routed requests; one-instance smoke only; [finding and sanitized evidence](../../findings/2026-09-02-glm53-sglang-sm120-swe-smoke.md) |
 | 2026-09-02 | Human-approved 393K/C1 reserve reclassification, managed promotion fix-forward, routed gates, and real-client acceptance | Published `current` text/tools/image/OCR profile; 304,491 actual prompt tokens, 112.07/96.17/102.42/99.79 tok/s at 4K/120K/262K/380K targets, direct and routed gates, Pi/OpenClaw/Hermes pass, 2,543 MiB/card after client work, exact 524K rollback retained; [promotion finding](../../findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md) |
