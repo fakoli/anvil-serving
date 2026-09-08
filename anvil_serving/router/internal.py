@@ -2,9 +2,9 @@
 
 The front door (``front_door.py``) translates each wire dialect (Anthropic
 Messages / OpenAI Chat Completions) into a single ``InternalRequest`` and hands
-it to one injectable :class:`Backend`. The backend is dialect-agnostic: it just
-yields plain text deltas; the dialect layer re-frames those deltas into the
-caller's native SSE on the way out.
+it to one injectable :class:`Backend`. The backend is dialect-agnostic: it
+yields answer text and, when reported, distinct reasoning deltas; the dialect
+layer re-frames those deltas into the caller's native SSE on the way out.
 
 Stdlib-only by design (no third-party deps). This module defines:
 
@@ -17,7 +17,7 @@ Stdlib-only by design (no third-party deps). This module defines:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Union
 
 from typing import Protocol, runtime_checkable
 
@@ -108,6 +108,22 @@ class InternalRequest:
     raw: Dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class ModelDelta:
+    """One ordered model-output delta.
+
+    ``text`` is user-visible answer text. ``reasoning`` is provider-reported
+    reasoning that must remain a distinct structured field and must never be
+    concatenated into ``text``.
+    """
+
+    text: Optional[str] = None
+    reasoning: Optional[str] = None
+
+
+BackendDelta = Union[str, ModelDelta]
+
+
 @dataclass
 class StructuredResult:
     """Structured fields from a backend response, carried as a per-thread side channel.
@@ -115,7 +131,7 @@ class StructuredResult:
     A relay backend populates a ``threading.local`` during each ``generate()``
     call. After the generator is fully drained, the dialect layer reads
     ``get_last_structured()`` to preserve upstream ``finish_reason``,
-    ``tool_calls``, and token usage in the direct response.
+    ``tool_calls``, token usage, and reasoning in the direct response.
 
     ``finish_reason``: raw upstream stop reason, passed through verbatim.
       Anthropic: ``"end_turn"`` / ``"tool_use"`` / ``"max_tokens"`` / ``"stop_sequence"``.
@@ -128,32 +144,39 @@ class StructuredResult:
 
     ``usage``: the upstream's REAL token accounting, normalized to
     ``{"input_tokens": int, "output_tokens": int}`` (Anthropic wire names;
-    OpenAI's ``prompt_tokens``/``completion_tokens`` are mapped in).  When the
-    upstream also reports prompt-cache accounting (OpenAI-compatible engines
-    such as vLLM with ``--enable-prompt-tokens-details`` emit
+    OpenAI's ``prompt_tokens``/``completion_tokens`` are mapped in). When the
+    upstream reports reasoning-token accounting, the optional
+    ``reasoning_tokens`` key carries it. When it reports prompt-cache
+    accounting (OpenAI-compatible engines such as vLLM with
+    ``--enable-prompt-tokens-details`` emit
     ``prompt_tokens_details.cached_tokens``; Anthropic emits
     ``cache_read_input_tokens``), the optional ``cache_read_input_tokens`` key
-    carries it — absent, never zero-filled, when the upstream omits it.
-    ``None`` when the upstream reported no usage at all. Harnesses use these
-    numbers for context management and cache-hit visibility, so passing the
-    real counts through matters.
+    carries it. Optional counters are absent, never zero-filled, when the
+    upstream omits them. ``None`` means the upstream reported no usage at all.
+    Harnesses use these numbers for context management and cache-hit
+    visibility, so passing the real counts through matters.
+
+    ``reasoning``: provider-reported reasoning, kept distinct from visible
+    answer text and rendered only by compatible dialects.
     """
 
     finish_reason: Optional[str] = None
     tool_calls: Optional[List[Dict[str, Any]]] = None
     usage: Optional[Dict[str, int]] = None
+    reasoning: Optional[str] = None
 
 
 @runtime_checkable
 class Backend(Protocol):
-    """The inference seam: turn an :class:`InternalRequest` into text deltas.
+    """The inference seam: turn an :class:`InternalRequest` into model deltas.
 
-    Implementations yield the completion as a sequence of short text pieces
-    ("tokens"); streaming vs. non-streaming framing is the dialect's job, not
-    the backend's. Trusted/in-process only — no plugin loading here (M0).
+    Implementations yield short answer strings or :class:`ModelDelta` values
+    when reasoning must remain separate from answer text. Streaming vs.
+    non-streaming framing is the dialect's job, not the backend's.
+    Trusted/in-process only — no plugin loading here (M0).
     """
 
-    def generate(self, request: InternalRequest) -> Iterator[str]:
+    def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         ...
 
 

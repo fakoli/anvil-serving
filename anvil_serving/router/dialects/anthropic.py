@@ -19,8 +19,10 @@ import json
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional
 
 from ..internal import (
+    BackendDelta,
     DialectError,
     InternalRequest,
+    ModelDelta,
     estimate_tokens,
     flatten_content,
     normalize_messages,
@@ -119,7 +121,7 @@ class AnthropicDialect:
     def stream(
         self,
         request: InternalRequest,
-        deltas: Iterable[str],
+        deltas: Iterable[BackendDelta],
         *,
         get_structured: Optional[Callable[[], Any]] = None,
         response_model: Optional[str] = None,
@@ -165,7 +167,10 @@ class AnthropicDialect:
         yield _event("ping", {"type": "ping"})
 
         pieces: List[str] = []
-        for piece in deltas:
+        for model_delta in deltas:
+            piece = model_delta.text if isinstance(model_delta, ModelDelta) else model_delta
+            if not piece:
+                continue
             pieces.append(piece)
             yield _event("content_block_delta", {
                 "type": "content_block_delta",
