@@ -36,7 +36,13 @@ from ..dialects.translate import (
     openai_tools_to_anthropic,
 )
 from ..decision_log import request_correlation, safe_gateway_request_id
-from ..internal import BackendClientError, InternalRequest, StructuredResult
+from ..internal import (
+    BackendClientError,
+    BackendDelta,
+    InternalRequest,
+    ModelDelta,
+    StructuredResult,
+)
 from .sse import (
     AnthropicStreamAssembler,
     OpenAIStreamAssembler,
@@ -73,7 +79,7 @@ _DEFAULT_MAX_TOKENS = 1024
 class _ClosingIterator:
     """Close an eagerly opened upstream response even before first iteration."""
 
-    def __init__(self, inner: Iterator[str], close: Callable[[], None]) -> None:
+    def __init__(self, inner: Iterator[BackendDelta], close: Callable[[], None]) -> None:
         self._inner = inner
         self._close = close
         self._closed = False
@@ -81,7 +87,7 @@ class _ClosingIterator:
     def __iter__(self) -> "_ClosingIterator":
         return self
 
-    def __next__(self) -> str:
+    def __next__(self) -> BackendDelta:
         if self._closed:
             raise StopIteration
         try:
@@ -448,7 +454,7 @@ class RelayBackend:
         self._stream_transport: Optional[StreamTransport] = stream_transport
         # Per-thread structured-result store: populated during generate() so the
         # response_view_factory (T012) and the dialect layer (#42) can read
-        # finish_reason + tool_calls after the stream is drained.
+        # finish_reason, tool calls, usage, and reasoning after the stream is drained.
         self._thread_local: threading.local = threading.local()
 
     # ------------------------------------------------------------------ #
@@ -465,7 +471,7 @@ class RelayBackend:
         return getattr(self._thread_local, "last_result", None)
 
     def _extract_structured(self, raw: bytes) -> StructuredResult:
-        """Extract ``finish_reason`` and normalized ``tool_calls`` from the upstream response.
+        """Extract structured fields from the upstream response.
 
         Called inside ``generate()`` after the raw body is received, before text
         extraction. Never raises — parse failures return an empty
@@ -483,8 +489,14 @@ class RelayBackend:
         def _count(v: Any) -> Optional[int]:
             return v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else None
 
-        def _usage_from(raw_usage: Any, in_key: str, out_key: str,
-                        cached: Any = None) -> Optional[Dict[str, int]]:
+        def _usage_from(
+            raw_usage: Any,
+            in_key: str,
+            out_key: str,
+            *,
+            cached: Any = None,
+            reasoning: Any = None,
+        ) -> Optional[Dict[str, int]]:
             if not isinstance(raw_usage, Mapping):
                 return None
             i, o = _count(raw_usage.get(in_key)), _count(raw_usage.get(out_key))
@@ -493,6 +505,9 @@ class RelayBackend:
                 usage["input_tokens"] = i
             if o is not None:
                 usage["output_tokens"] = o
+            r = _count(reasoning)
+            if r is not None:
+                usage["reasoning_tokens"] = r
             c = _count(cached)
             if c is not None:
                 usage["cache_read_input_tokens"] = c
@@ -502,8 +517,9 @@ class RelayBackend:
             raw_usage = data.get("usage")
             cached = (raw_usage.get("cache_read_input_tokens")
                       if isinstance(raw_usage, Mapping) else None)
-            usage = _usage_from(raw_usage, "input_tokens", "output_tokens",
-                                cached=cached)
+            usage = _usage_from(
+                raw_usage, "input_tokens", "output_tokens", cached=cached
+            )
             finish_reason = data.get("stop_reason")
             blocks = data.get("content") or []
             tool_calls: Optional[List[Dict[str, Any]]] = None
@@ -525,11 +541,37 @@ class RelayBackend:
         # openai-compatible. vLLM (--enable-prompt-tokens-details) and other
         # engines report prefix-cache hits under prompt_tokens_details.
         raw_usage = data.get("usage")
-        details = (raw_usage.get("prompt_tokens_details")
-                   if isinstance(raw_usage, Mapping) else None)
-        cached = details.get("cached_tokens") if isinstance(details, Mapping) else None
-        usage = _usage_from(raw_usage, "prompt_tokens", "completion_tokens",
-                            cached=cached)
+        prompt_details = (
+            raw_usage.get("prompt_tokens_details")
+            if isinstance(raw_usage, Mapping)
+            else None
+        )
+        completion_details = (
+            raw_usage.get("completion_tokens_details")
+            if isinstance(raw_usage, Mapping)
+            else None
+        )
+        cached = (
+            prompt_details.get("cached_tokens")
+            if isinstance(prompt_details, Mapping)
+            else None
+        )
+        reasoning_tokens = (
+            completion_details.get("reasoning_tokens")
+            if isinstance(completion_details, Mapping)
+            else None
+        )
+        if reasoning_tokens is None and isinstance(raw_usage, Mapping):
+            # SGLang reports this extension at usage.reasoning_tokens rather
+            # than in OpenAI's completion_tokens_details object.
+            reasoning_tokens = raw_usage.get("reasoning_tokens")
+        usage = _usage_from(
+            raw_usage,
+            "prompt_tokens",
+            "completion_tokens",
+            cached=cached,
+            reasoning=reasoning_tokens,
+        )
         choices = data.get("choices") or []
         if not choices or not isinstance(choices[0], Mapping):
             return StructuredResult(usage=usage)
@@ -537,6 +579,13 @@ class RelayBackend:
         finish_reason = first.get("finish_reason")
         message = first.get("message") or {}
         raw_tc = message.get("tool_calls") if isinstance(message, Mapping) else None
+        reasoning = (
+            message.get("reasoning_content")
+            if isinstance(message, Mapping)
+            and isinstance(message.get("reasoning_content"), str)
+            and message.get("reasoning_content")
+            else None
+        )
         tool_calls = None
         if isinstance(raw_tc, list):
             tc_list = []
@@ -552,13 +601,16 @@ class RelayBackend:
             if tc_list:
                 tool_calls = tc_list
         return StructuredResult(
-            finish_reason=finish_reason, tool_calls=tool_calls, usage=usage,
+            finish_reason=finish_reason,
+            tool_calls=tool_calls,
+            usage=usage,
+            reasoning=reasoning,
         )
 
     # ------------------------------------------------------------------ #
     # Backend protocol
     # ------------------------------------------------------------------ #
-    def generate(self, request: InternalRequest) -> Iterator[str]:
+    def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         """Dispatch: true streaming upstream for a streaming request, else buffered.
 
         Streaming engages when the caller asked to stream (``request.stream``)
@@ -575,7 +627,7 @@ class RelayBackend:
             return self._generate_streaming(request)
         return self._generate_buffered(request)
 
-    def _generate_buffered(self, request: InternalRequest) -> Iterator[str]:
+    def _generate_buffered(self, request: InternalRequest) -> Iterator[BackendDelta]:
         url = self._endpoint()
         headers = self._headers(request)
         data = json.dumps(self._build_body(request)).encode("utf-8")
@@ -614,12 +666,12 @@ class RelayBackend:
         for delta in split_into_deltas(text):
             yield delta
 
-    def _generate_streaming(self, request: InternalRequest) -> Iterator[str]:
+    def _generate_streaming(self, request: InternalRequest) -> Iterator[BackendDelta]:
         """True streaming relay: ``stream: true`` upstream, SSE parsed
         incrementally, REAL model deltas yielded as they arrive.
 
         The per-dialect assembler (:mod:`.sse`) accumulates ``finish_reason``,
-        tool calls, and usage alongside the text; the thread-local structured
+        tool calls, usage, and reasoning alongside answer text; the thread-local structured
         result is populated once the stream ends, exactly like the buffered
         path, so the dialect renderers and the verify chain see identical
         shapes. If the upstream ignores ``stream: true`` (or a proxy buffered
@@ -661,7 +713,7 @@ class RelayBackend:
             _log_transport_error(exc, headers)
             raise _transport_failure(exc) from None
 
-        def relay_response() -> Iterator[str]:
+        def relay_response() -> Iterator[BackendDelta]:
             resp_headers = getattr(resp, "headers", None)
             ctype = ""
             if resp_headers is not None:
@@ -682,7 +734,10 @@ class RelayBackend:
                         f"cloud response body exceeded max_response_bytes="
                         f"{self._max_response_bytes} (tier={self._tier.id!r})"
                     )
-                self._thread_local.last_result = self._extract_structured(raw)
+                structured = self._extract_structured(raw)
+                self._thread_local.last_result = structured
+                if structured.reasoning:
+                    yield ModelDelta(reasoning=structured.reasoning)
                 text = self._extract_text(raw)
                 yield from split_into_deltas(text)
                 return
@@ -770,6 +825,18 @@ class RelayBackend:
         preserve_tools = (
             request.dialect in _SUPPORTED_DIALECTS and has_tool_artifacts(raw)
         )
+        raw_messages = raw.get("messages")
+        preserve_reasoning = (
+            request.dialect == DIALECT_OPENAI
+            and self._tier.dialect == DIALECT_OPENAI
+            and isinstance(raw_messages, list)
+            and any(
+                isinstance(message, Mapping)
+                and message.get("role") == "assistant"
+                and isinstance(message.get("reasoning_content"), str)
+                for message in raw_messages
+            )
+        )
         # Wire fidelity for image/video requests:
         # the flattened request.messages keep only text, so an OCR/vision
         # request relayed from the flattened form silently loses the image the
@@ -852,7 +919,9 @@ class RelayBackend:
         # openai-compatible: the system prompt rides as a role=system message.
         # preserve_media implies same-dialect (see above), so it always takes
         # this verbatim branch.
-        if preserve_media or (preserve_tools and request.dialect == DIALECT_OPENAI):
+        if preserve_media or preserve_reasoning or (
+            preserve_tools and request.dialect == DIALECT_OPENAI
+        ):
             msgs = [
                 dict(m) for m in raw.get("messages") or ()
                 if isinstance(m, Mapping)

@@ -46,6 +46,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- OpenAI-compatible relay responses preserve provider-reported
+  `reasoning_content` as a distinct structured field in buffered and streaming
+  paths, replay reasoning-bearing assistant history on same-dialect requests,
+  and relay reported reasoning-token usage without folding reasoning into
+  visible answer text.
 - Workload projections isolate malformed or unavailable owners, preserve
   partial fleet evidence, and avoid leaking request content or credentials.
   Dashboard polling is single-flight with explicit lifecycle cleanup.

@@ -7,10 +7,11 @@ generation time. This module is the read side of the real streaming path:
 * :func:`iter_sse_events` — parse a binary file-like (a live ``urllib``
   response) into ``(event_name, data)`` SSE events, incrementally.
 * :class:`OpenAIStreamAssembler` / :class:`AnthropicStreamAssembler` — feed
-  events in, get text deltas out as they arrive, and read the assembled
-  :class:`~anvil_serving.router.internal.StructuredResult` (finish_reason,
-  tool_calls, usage) once the stream ends. The assembled shapes mirror the
-  buffered path's ``RelayBackend._extract_structured`` exactly (OpenAI
+  events in, get answer and distinct reasoning deltas out as they arrive, and
+  read the assembled :class:`~anvil_serving.router.internal.StructuredResult`
+  (finish_reason, tool_calls, usage, reasoning) once the stream ends. The
+  assembled shapes mirror the buffered path's ``RelayBackend._extract_structured``
+  exactly (OpenAI
   ``arguments`` stays a JSON string; Anthropic ``arguments`` is a parsed dict),
   so the verify chain and the dialect renderers see identical data either way.
 
@@ -24,7 +25,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple
 
-from ..internal import StructuredResult
+from ..internal import BackendDelta, ModelDelta, StructuredResult
 
 #: OpenAI's stream terminator payload.
 DONE_SENTINEL = "[DONE]"
@@ -74,10 +75,11 @@ def _loads(data: str) -> Optional[Mapping[str, Any]]:
 class OpenAIStreamAssembler:
     """Assemble an OpenAI ``chat.completion.chunk`` stream.
 
-    ``feed`` returns the chunk's text delta (or ``None``); tool-call fragments
-    are merged by index (``id``/``name`` announced once, ``arguments`` appended
-    across chunks); the final chunk's ``finish_reason`` and — when the server
-    honours ``stream_options.include_usage`` — the trailing ``usage`` block are
+    ``feed`` returns the chunk's answer string, a :class:`ModelDelta` carrying
+    distinct reasoning, or ``None``. Tool-call fragments are merged by index
+    (``id``/``name`` announced once, ``arguments`` appended across chunks); the
+    final chunk's ``finish_reason`` and — when the server honours
+    ``stream_options.include_usage`` — the trailing ``usage`` block are
     captured for :meth:`result`.
     """
 
@@ -86,8 +88,9 @@ class OpenAIStreamAssembler:
         self._finish_reason: Optional[str] = None
         self._usage: Optional[Dict[str, int]] = None
         self._tool_calls: Dict[int, Dict[str, str]] = {}
+        self._reasoning_parts: List[str] = []
 
-    def feed(self, event: Optional[str], data: str) -> Optional[str]:
+    def feed(self, event: Optional[str], data: str) -> Optional[BackendDelta]:
         if data == DONE_SENTINEL:
             self.done = True
             return None
@@ -107,12 +110,30 @@ class OpenAIStreamAssembler:
             # vLLM --enable-prompt-tokens-details: prefix-cache hits ride
             # in the trailing usage chunk. Absent (not zero-filled) when
             # the engine does not report them.
-            details = usage.get("prompt_tokens_details")
-            cached = (details.get("cached_tokens")
-                      if isinstance(details, Mapping) else None)
+            prompt_details = usage.get("prompt_tokens_details")
+            cached = (
+                prompt_details.get("cached_tokens")
+                if isinstance(prompt_details, Mapping)
+                else None
+            )
             if (isinstance(cached, int) and not isinstance(cached, bool)
                     and cached >= 0):
                 partial["cache_read_input_tokens"] = cached
+            completion_details = usage.get("completion_tokens_details")
+            reasoning_tokens = (
+                completion_details.get("reasoning_tokens")
+                if isinstance(completion_details, Mapping)
+                else None
+            )
+            if reasoning_tokens is None:
+                # SGLang emits this extension directly under usage.
+                reasoning_tokens = usage.get("reasoning_tokens")
+            if (
+                isinstance(reasoning_tokens, int)
+                and not isinstance(reasoning_tokens, bool)
+                and reasoning_tokens >= 0
+            ):
+                partial["reasoning_tokens"] = reasoning_tokens
             if partial:
                 if self._usage is None:
                     self._usage = {}
@@ -147,7 +168,17 @@ class OpenAIStreamAssembler:
                     if isinstance(args, str):
                         slot["arguments"] += args
         content = delta.get("content")
-        return content if isinstance(content, str) and content else None
+        text = content if isinstance(content, str) and content else None
+        raw_reasoning = delta.get("reasoning_content")
+        reasoning = (
+            raw_reasoning
+            if isinstance(raw_reasoning, str) and raw_reasoning
+            else None
+        )
+        if reasoning is not None:
+            self._reasoning_parts.append(reasoning)
+            return ModelDelta(text=text, reasoning=reasoning)
+        return text
 
     def result(self) -> StructuredResult:
         tool_calls: Optional[List[Dict[str, Any]]] = None
@@ -161,6 +192,7 @@ class OpenAIStreamAssembler:
             finish_reason=self._finish_reason,
             tool_calls=tool_calls,
             usage=self._usage,
+            reasoning="".join(self._reasoning_parts) or None,
         )
 
 

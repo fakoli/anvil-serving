@@ -60,7 +60,15 @@ from .discovery import models_payload
 from .dialects.translate import has_tool_artifacts
 from .front_door import OperatorRoute, make_server
 from .gateway import ProtocolGateway
-from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult, estimate_tokens
+from .internal import (
+    Backend,
+    BackendDelta,
+    InternalRequest,
+    ModelDelta,
+    NoAvailableTierError,
+    StructuredResult,
+    estimate_tokens,
+)
 from .media_admission import evaluate_media_admission
 from .model_capacity import (
     MetricsProvider,
@@ -116,7 +124,7 @@ class _AdmissionIterator:
 
     def __init__(
         self,
-        factory: Callable[[], Iterator[str]],
+        factory: Callable[[], Iterator[BackendDelta]],
         lease: AdmissionLease,
         on_complete: Callable[[], None],
         *,
@@ -128,14 +136,14 @@ class _AdmissionIterator:
         self._on_complete = on_complete
         self._on_cancel = on_cancel
         self._resources = resources
-        self._inner: Optional[Iterator[str]] = None
+        self._inner: Optional[Iterator[BackendDelta]] = None
         self._closed = False
         self._completed = False
 
     def __iter__(self) -> "_AdmissionIterator":
         return self
 
-    def __next__(self) -> str:
+    def __next__(self) -> BackendDelta:
         if self._closed:
             raise StopIteration
         try:
@@ -314,14 +322,14 @@ class ReplicaRuntime:
             raise ValueError("replica member is not declared")
         return self._members[member_id]
 
-    def generate(self, request: InternalRequest) -> Iterator[str]:
+    def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         """Refuse implicit member selection; T008 owns that decision."""
         self._thread_local.selected_backend = None
         raise RuntimeError("replica member selection is required")
 
     def generate_member(
         self, member_id: str, request: InternalRequest
-    ) -> Iterator[str]:
+    ) -> Iterator[BackendDelta]:
         """Invoke exactly one declared member and retain its side-channel owner."""
         self._thread_local.selected_backend = None
         backend = self.member_backend(member_id)
@@ -385,19 +393,23 @@ class _ConcurrencyLimitedBackend:
         self._inner = inner
         self._sem = threading.BoundedSemaphore(max_concurrency)
 
-    def generate(self, request: InternalRequest) -> Iterator[str]:
+    def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         return self._generate(self._inner.generate, request)
 
     def generate_member(
         self, member_id: str, request: InternalRequest
-    ) -> Iterator[str]:
+    ) -> Iterator[BackendDelta]:
         """Apply this logical tier's one ceiling to any selected member."""
         generate_member = getattr(self._inner, "generate_member", None)
         if not callable(generate_member):
             raise RuntimeError("replica member selection is required")
         return self._generate(generate_member, member_id, request)
 
-    def _generate(self, generate: Callable[..., Iterator[str]], *args: object) -> Iterator[str]:
+    def _generate(
+        self,
+        generate: Callable[..., Iterator[BackendDelta]],
+        *args: object,
+    ) -> Iterator[BackendDelta]:
         self._sem.acquire()
         try:
             inner = iter(generate(*args))
@@ -671,7 +683,7 @@ class RoutingBackend:
             flush=True,
         )
 
-    def generate(self, request: InternalRequest) -> Iterator[str]:
+    def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         return self._generate(request)
 
     def generate_tracked(self, request: InternalRequest, *, gateway_request_id: str) -> RouterWorkloadStream:
@@ -683,7 +695,9 @@ class RoutingBackend:
                 pass
         return RouterWorkloadStream(lambda: self._generate(request, workload_token=token), token)
 
-    def _generate(self, request: InternalRequest, *, workload_token=None) -> Iterator[str]:
+    def _generate(
+        self, request: InternalRequest, *, workload_token=None
+    ) -> Iterator[BackendDelta]:
         """Resolve once, check local constraints, then relay with no fallback."""
         # JSON/raw is caller input. Only this invocation may create this marker.
         request.raw.pop("_anvil_output_clamp", None)
@@ -1013,7 +1027,7 @@ class RoutingBackend:
                 upstream_duration_ms=_upstream_elapsed_ms(),
             )
 
-        def relay() -> Iterator[str]:
+        def relay() -> Iterator[BackendDelta]:
             nonlocal first_content_at, upstream_dispatched
             try:
                 # Backend ``generate`` commonly returns a lazy iterator; only
@@ -1023,11 +1037,20 @@ class RoutingBackend:
                 upstream_dispatched = True
                 advance(WorkloadState.STREAMING)
                 for delta in upstream:
-                    if not isinstance(delta, str):
-                        raise TypeError("backend must yield text fragments")
-                    fragments.append(delta)
-                    if first_content_at is None and isinstance(delta, str) and delta:
-                        first_content_at = time.monotonic()
+                    if isinstance(delta, ModelDelta):
+                        if delta.text is not None and not isinstance(delta.text, str):
+                            raise TypeError("backend model delta text must be a string")
+                        if delta.reasoning is not None and not isinstance(delta.reasoning, str):
+                            raise TypeError("backend model delta reasoning must be a string")
+                        visible = delta.text
+                    elif isinstance(delta, str):
+                        visible = delta
+                    else:
+                        raise TypeError("backend must yield text fragments or structured model deltas")
+                    if visible:
+                        fragments.append(visible)
+                        if first_content_at is None:
+                            first_content_at = time.monotonic()
                     yield delta
             except GeneratorExit:
                 record(
