@@ -59,6 +59,7 @@ import argparse
 import base64
 from contextlib import contextmanager, nullcontext
 import copy
+import functools
 import hashlib
 import json
 import math
@@ -70,6 +71,7 @@ import shlex
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 from . import envfile
 from .events import LifecycleEventError, emit_lifecycle_event
@@ -209,7 +211,7 @@ _ENGINE_ALIASES = {
 # it exposes an OpenAI-compatible chat surface but is not vLLM/llama.cpp.
 _ENGINES = {
     "vllm", "sglang", "llamacpp", "q36",
-    "audio", "embedding", "reranker", "image", "mlx-lm", "mlx-vlm",
+    "audio", "embedding", "reranker", "image", "mlx-lm", "mlx-vlm", "none",
 }
 # ADR-0017 GPU residency reservations: the residency vocabulary for a serve's
 # declared VRAM reservation. "resident" is never evicted, "evictable" may be
@@ -601,6 +603,22 @@ def _normalize_reservation(s, raw):
         raise ValueError(
             f"serve entry native_kv_offload must be a boolean: {raw!r}"
         )
+    if s.get("engine") == "none":
+        if s.get("gpu_inference") is not False:
+            raise ValueError(
+                "serve entry engine='none' requires gpu_inference=false: %r" % raw
+            )
+        forbidden = [
+            key for key in (
+                "gpu_role", "gpu_roles", "vram_mib", "residency",
+                "operating_mode", "tensor_parallel_size", "native_kv_offload",
+            ) if key in s
+        ]
+        if forbidden:
+            raise ValueError(
+                "serve entry engine='none' cannot declare GPU/model reservation fields %s: %r"
+                % (", ".join(forbidden), raw)
+            )
     if "gpu_role" in s and "gpu_roles" in s:
         raise ValueError(
             "serve entry must declare either gpu_role or gpu_roles, not both: "
@@ -2293,9 +2311,16 @@ def _running_container_matches_recipe(serve, recipe, deployment, *, _run=subproc
     return True
 
 
+_SERVING_AUTHORITY_LOCAL = threading.local()
+
+
 @contextmanager
 def _switch_role_lock(role):
     """Hold one non-blocking, cross-platform lock for a deployment role."""
+    held = getattr(_SERVING_AUTHORITY_LOCAL, "roles", set())
+    if role in held:
+        yield
+        return
     lock_dir = config_path("locks")
     os.makedirs(lock_dir, exist_ok=True)
     path = os.path.join(lock_dir, "serves-switch-%s.lock" % role)
@@ -2320,8 +2345,21 @@ def _switch_role_lock(role):
             except OSError as exc:
                 raise RuntimeError("another switch is already active for role %r" % role) from exc
         locked = True
+        if role == "promotion":
+            # Import here to keep the serving core independent until a live
+            # mutation has acquired the one cross-process authority lock. A
+            # durable experiment marker survives process failure and fences
+            # every unrelated lifecycle/configuration operation. The typed
+            # restore context is the only path whose helper permits entry.
+            from .control_plane.mcp.tools.runtime_experiment import (
+                assert_no_pending_runtime_experiment,
+            )
+
+            assert_no_pending_runtime_experiment()
+        _SERVING_AUTHORITY_LOCAL.roles = {*held, role}
         yield
     finally:
+        _SERVING_AUTHORITY_LOCAL.roles = held
         if locked:
             if os.name == "nt":
                 import msvcrt
@@ -2331,6 +2369,19 @@ def _switch_role_lock(role):
                 import fcntl
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
         handle.close()
+
+
+def _serving_authority_mutation(function):
+    """Serialize live serve mutations across CLI and controller callers."""
+
+    @functools.wraps(function)
+    def wrapped(*args, **kwargs):
+        if kwargs.get("dry_run", False):
+            return function(*args, **kwargs)
+        with _switch_role_lock("promotion"):
+            return function(*args, **kwargs)
+
+    return wrapped
 
 
 def _write_switch_journal(path, document):
@@ -3963,6 +4014,7 @@ def _docker_rm_f(container, _run, *, timeout=None, action="remove", label="remov
     )
 
 
+@_serving_authority_mutation
 def cmd_down(
     serves,
     names,
@@ -4642,6 +4694,7 @@ def _storage_write_check(s, _run):
     return True
 
 
+@_serving_authority_mutation
 def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
            evict=False, drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None,
            _transition=None, wait_for_readiness=False,
@@ -5185,6 +5238,7 @@ def _restore_split_stack(
     return 0
 
 
+@_serving_authority_mutation
 def cmd_mode(
     serves,
     action,
@@ -5578,6 +5632,7 @@ def _defer_first_profile_interrupt(enabled):
             signal.signal(signal.SIGINT, previous)
 
 
+@_serving_authority_mutation
 def cmd_profile(
     serves,
     profiles,
@@ -5659,6 +5714,7 @@ def cmd_profile(
         return result
 
 
+@_serving_authority_mutation
 def cmd_rm(serves, names, dry_run=False, assume_yes=False, _run=subprocess.run,
            _input=input):
     """Force-remove serve container(s) — `docker rm -f <container>`.
@@ -5719,6 +5775,7 @@ def cmd_rm(serves, names, dry_run=False, assume_yes=False, _run=subprocess.run,
     return rc
 
 
+@_serving_authority_mutation
 def cmd_adopt(serves, names, dry_run=False, assume_yes=False, _run=subprocess.run,
               _input=input):
     """Bring externally-started (non-compose-managed) manifest serve(s) under compose
@@ -5902,6 +5959,7 @@ def probe_serve(
     text="Anvil Serving release readiness probe.",
     image_path=None,
     timeout=60,
+    max_tokens=256,
     _open=urllib.request.urlopen,
 ):
     """Functionally probe one declared serve and return bounded evidence.
@@ -5910,6 +5968,8 @@ def probe_serve(
     not prove that an embedding, reranker, OCR, or ComfyUI workload can process
     its defining request.
     """
+    if type(max_tokens) is not int or not 1 <= max_tokens <= 4096:
+        raise ValueError("probe max_tokens must be between 1 and 4096")
     engine = serve.get("engine")
     model = serve.get("served_name") or serve.get("model")
     base = "http://127.0.0.1:%s" % serve["port"]
@@ -5968,6 +6028,35 @@ def probe_serve(
             "model": model,
             "endpoint": endpoint,
             "devices": len(devices) if isinstance(devices, list) else 0,
+        }
+    if not image_path and engine in {"vllm", "sglang", "q36"}:
+        endpoint = base + "/v1/chat/completions"
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": text}],
+            "max_tokens": max_tokens,
+            "temperature": 0,
+        }
+        response = _probe_json(endpoint, payload, timeout=timeout, _open=_open)
+        choices = response.get("choices")
+        message = choices[0].get("message") if isinstance(choices, list) and choices and isinstance(choices[0], dict) else None
+        content = message.get("content") if isinstance(message, dict) else None
+        finish_reason = choices[0].get("finish_reason") if isinstance(choices, list) and choices and isinstance(choices[0], dict) else None
+        incomplete = finish_reason in {"length", "max_tokens"}
+        if (not isinstance(content, str) or not content.strip()) and not incomplete:
+            raise ValueError("chat response did not contain recognized text")
+        content = content if isinstance(content, str) else ""
+        return {
+            "serve": serve["name"],
+            "stack": serve.get("stack", DEFAULT_STACK),
+            "engine": engine,
+            "model": model,
+            "endpoint": endpoint,
+            "recognized_characters": len(content),
+            "recognized_excerpt": content[:200],
+            "request": {"max_tokens": max_tokens, "temperature": 0},
+            "finish_reason": finish_reason,
+            "incomplete": incomplete,
         }
     if image_path and engine in {"vllm", "sglang", "q36"}:
         resolved = os.path.abspath(os.path.expanduser(image_path))

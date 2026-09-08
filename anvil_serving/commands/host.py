@@ -376,6 +376,11 @@ def commands() -> tuple[CommandNode, ...]:
                             ),
                             value_name="PATH",
                         ),
+                        _option(
+                            "--observatory-config",
+                            summary="Absolute private Observatory integration/session policy; control remains explicitly opt-in.",
+                            value_name="PATH",
+                        ),
                     ),
                     mutation="process",
                     argv_prefix=(),

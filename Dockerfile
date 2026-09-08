@@ -54,6 +54,14 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # in-container bind address (CLAUDE.md gotcha #1 is about the HOST side).
 ENTRYPOINT ["sh", "-c", "exec anvil-serving router run --config \"${ANVIL_CONFIG:-/etc/anvil/config.toml}\" --host 0.0.0.0 --port 8000"]
 
+FROM runtime AS dashboard
+
+# The Observatory composition uses the packaged dashboard command. It needs no
+# Docker socket, GPU devices, model mounts, Node runtime or controller binaries.
+EXPOSE 8768
+ENTRYPOINT ["anvil-serving", "dashboard", "serve"]
+CMD ["--host", "127.0.0.1", "--port", "8768"]
+
 FROM runtime AS controller
 
 # The controller is a separate image target. It gets only the pinned Docker CLI
