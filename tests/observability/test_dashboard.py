@@ -162,9 +162,10 @@ def test_dashboard_static_assets_are_present_in_package() -> None:
     assert asset.read_bytes().startswith(b"<!doctype html>")
     assert workload_asset.is_file() and workload_asset.read_bytes().startswith(b"/* Canonical")
     root = Path(__file__).parents[2]
-    assert '"anvil_serving.observability.dashboard.static" = ["*.html", "*.js"]' in (
-        root / "pyproject.toml"
-    ).read_text(encoding="utf-8")
+    import tomllib
+    metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    packaged = metadata["tool"]["setuptools"]["package-data"]["anvil_serving.observability.dashboard.static"]
+    assert {"*.html", "*.js", "*.css", "views/*.js"} <= set(packaged)
     workflow = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert workflow.index("run: node --version") < workflow.index("- name: Run tests")
 

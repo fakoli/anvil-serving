@@ -465,6 +465,20 @@ bearer-token environment variable:
 anvil-serving dashboard serve --host 100.64.0.10 --auth-env ANVIL_DASHBOARD_TOKEN
 ```
 
+The same application supports an explicitly configured Observatory mode:
+
+```bash
+anvil-serving dashboard serve --host 127.0.0.1 --port 8768 \
+  --observatory-config /absolute/private/observatory.json
+```
+
+This mode reuses configured Prometheus data and the existing Grafana login
+provider. It adds fleet, configuration and operation views; mutations require
+both `operate: true` and explicit resource/action grants. Legacy telemetry and
+canonical workload credentials do not grant control. The default invocation
+above remains read-only. See [Observatory](../observatory/README.md) for
+configuration, publication, verification and recovery.
+
 ## Related references
 
 - [Getting started](../GETTING-STARTED.md)

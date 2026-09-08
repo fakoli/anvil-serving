@@ -15,7 +15,7 @@ import urllib.request
 
 from . import envfile, guard
 from .paths import config_path, resolve_topology_path, runtime_url
-from .serves import docker_state
+from .serves import docker_state, _serving_authority_mutation
 from .transports import _is_safe_controller_ip
 
 
@@ -122,6 +122,17 @@ def _safe_router_url(value):
 
 def transition_request(action, *, tier_id=None, member_id=None, timeout=None, router_url=None,
                        confirm=False, dry_run=True, reason="operator", env=None, _open=None):
+    if action != "status" and confirm and not dry_run:
+        from .serves import _switch_role_lock
+        with _switch_role_lock("promotion"):
+            return _transition_request(action, tier_id=tier_id, member_id=member_id, timeout=timeout,
+                router_url=router_url, confirm=confirm, dry_run=dry_run, reason=reason, env=env, _open=_open)
+    return _transition_request(action, tier_id=tier_id, member_id=member_id, timeout=timeout,
+        router_url=router_url, confirm=confirm, dry_run=dry_run, reason=reason, env=env, _open=_open)
+
+
+def _transition_request(action, *, tier_id=None, member_id=None, timeout=None, router_url=None,
+                        confirm=False, dry_run=True, reason="operator", env=None, _open=None):
     if action not in ("status", "quiesce", "drain", "readmit"):
         raise ValueError("unsupported transition action")
     if action != "status" and not tier_id:
@@ -293,6 +304,7 @@ def _container_compose_project(container, _run=subprocess.run):
     return state, (result.stdout or "").strip() or None
 
 
+@_serving_authority_mutation
 def cmd_up(
     compose,
     service,
@@ -341,6 +353,7 @@ def cmd_up(
     )
 
 
+@_serving_authority_mutation
 def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
     return _run_argv(
         [*_compose_argv(compose), "stop", service],
@@ -349,10 +362,12 @@ def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
     )
 
 
+@_serving_authority_mutation
 def cmd_restart(container, dry_run=False, verify=True, _run=subprocess.run, _sleep=None):
     return _run_argv(["docker", "restart", container], _run, dry_run=dry_run)
 
 
+@_serving_authority_mutation
 def cmd_reload(container, dry_run=False, verify=True, _run=subprocess.run, _sleep=None):
     print("router reload restarts the container because configuration is startup-read")
     return cmd_restart(container, dry_run=dry_run, verify=verify, _run=_run, _sleep=_sleep)
@@ -457,6 +472,7 @@ def cmd_token(container, *, reveal=False, _run=subprocess.run):
     return 0
 
 
+@_serving_authority_mutation
 def install_config(
     config_file,
     *,
@@ -501,6 +517,11 @@ def install_config(
         row.get("tier_id") for row in rows
         if isinstance(row, dict) and isinstance(row.get("tier_id"), str)
     ]
+    restore_admission = [
+        row.get("tier_id") for row in rows
+        if isinstance(row, dict) and row.get("state", "admitting") == "admitting"
+        and isinstance(row.get("tier_id"), str)
+    ]
     plan = {
         "config_sha256": snapshot.config_sha256,
         "current_tiers": current,
@@ -512,7 +533,7 @@ def install_config(
 
     quiesced = []
     try:
-        for tier_id in current:
+        for tier_id in restore_admission:
             _transition(
                 "quiesce", tier_id=tier_id, router_url=router_url,
                 confirm=True, dry_run=False,
@@ -539,6 +560,14 @@ def install_config(
 
     installer = _install or _install_router_config
     if installer(snapshot) != 0:
+        for tier_id in reversed(quiesced):
+            try:
+                _transition(
+                    "readmit", tier_id=tier_id, router_url=router_url,
+                    confirm=True, dry_run=False,
+                )
+            except Exception:
+                pass
         raise ValueError("router config install failed or was rolled back")
 
     deadline = time.monotonic() + 60
@@ -559,16 +588,36 @@ def install_config(
                     tier_id for tier_id, row in zip(tier_ids, post_rows)
                     if row.get("ready") is not True
                 ]
+                restored = []
+                for tier_id in restore_admission:
+                    if tier_id not in desired:
+                        continue
+                    _transition(
+                        "readmit", tier_id=tier_id, router_url=router_url,
+                        confirm=True, dry_run=False,
+                    )
+                    restored.append(tier_id)
                 return {
                     "applied": True,
                     "dry_run": False,
                     "tier_status": post_rows,
                     "unavailable_tiers": unavailable,
+                    "readmitted_tiers": restored,
                     **plan,
                 }
         except ValueError:
             pass
         if time.monotonic() >= deadline:
+            for tier_id in reversed(restore_admission):
+                if tier_id not in desired:
+                    continue
+                try:
+                    _transition(
+                        "readmit", tier_id=tier_id, router_url=router_url,
+                        confirm=True, dry_run=False,
+                    )
+                except Exception:
+                    pass
             raise ValueError("installed router config did not expose the desired tier set")
         _sleep(1)
 
