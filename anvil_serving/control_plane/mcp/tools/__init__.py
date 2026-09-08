@@ -12,6 +12,7 @@ from .models import FAMILY as MODELS
 from .openclaw import FAMILY as OPENCLAW
 from .operations import build_family as build_operations_family
 from .router import FAMILY as ROUTER
+from .runtime_experiment import FAMILY as RUNTIME_EXPERIMENTS
 from .services import FAMILY as SERVICES
 from .serves import FAMILY as SERVES
 from .voice import FAMILY as VOICE
@@ -23,6 +24,7 @@ OPERATIONS = build_operations_family(lambda: TOOLS)
 TOOL_FAMILIES = (
     OPERATIONS,
     ROUTER,
+    RUNTIME_EXPERIMENTS,
     SERVES,
     MEDIA_WORKER,
     MEDIA,

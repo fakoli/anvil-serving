@@ -46,9 +46,10 @@ narration.
 ## MCP Tool Map
 
 - Gateway: `router_status`, `router_fleet_status`, `router_logs`, `router_manage`,
-  `router_transition`, and `decision_summary`.
+  `router_transition`, `router_configuration`, `runtime_experiment`, and `decision_summary`.
 - Serves and residency: `serves_status`, `reservation_status`,
-  `serves_manage`, `serves_mode`, `serves_logs`, and `serves_promote`.
+  `serves_manage`, `serves_mode`, `serves_logs`, `serves_probe`, `serves_profile`,
+  and `serves_promote`.
 - Managed media worker: `media_worker_prepare`, `media_worker_status`,
   `media_worker_logs`, and `media_worker_teardown`. Lifecycle mutations retain
   the managed-serve dry-run, confirmation, and human-approval gates.
@@ -61,7 +62,7 @@ narration.
   `operator_config_export`, `observability_collect`, `host_manage`,
   `host_services_status`, `host_services_discover`, `host_services_capabilities`,
   `host_services_logs`, `host_services_manage`,
-  `models_inventory`, `recipe_containers`, `model_cache_inventory`, and
+  `models_inventory`, `recipe_containers`, `recipe_settings`, `model_cache_inventory`, and
   `cache_prune_plan`.
 - Harness: `openclaw_sync`, `client_catalog_sync`, `routed_eval`, `hermes_media_sync`,
   `openclaw_gateway_status`, and `openclaw_gateway_restart`.
