@@ -72,6 +72,7 @@ from .internal import (
     Backend,
     BackendClientError,
     DialectError,
+    ModelDelta,
     NoAvailableTierError,
 )
 from .purpose import PurposeError, PurposeRouter
@@ -1926,7 +1927,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # a traceback.
                 requested_model = request.model
                 try:
-                    text = "".join(self._generate_deltas(request))
+                    text_parts = []
+                    for delta in self._generate_deltas(request):
+                        if isinstance(delta, ModelDelta):
+                            if delta.text:
+                                text_parts.append(delta.text)
+                        elif isinstance(delta, str):
+                            text_parts.append(delta)
+                        else:
+                            raise TypeError("backend must yield text fragments or structured model deltas")
+                    text = "".join(text_parts)
                     # Read structured fields AFTER the generator is drained so the
                     # backend's thread-local is fully populated (#42 / #52).
                     # Falls through to dialect defaults (structured=None) when the
