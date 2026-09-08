@@ -1,0 +1,43 @@
+{
+  "schema": "anvil-serving.benchmark-publication-validation/v1",
+  "repository_tests": {
+    "command": "PATH=VALIDATION_VENV/bin:$PATH python scripts/run_tests.py tests/ -x -q",
+    "passed": 7212,
+    "skipped": 30,
+    "failed": 0,
+    "duration_s": 222.11,
+    "notes": [
+      "Prepared dev/docs virtual environment; isolated worktree root0755 for native trusted-file test ancestry",
+      "No application source changes; prior environment and documentation failures retained in friction log"
+    ]
+  },
+  "focused_tests": {
+    "bootstrap_opened_file": "16 passed,5 skipped",
+    "checkout_mcp_contract": "6 passed",
+    "benchmark_docs_graphs_and_manifest": "44 passed"
+  },
+  "ruff": "passed",
+  "markdown_links": "601 tracked Markdown files; relative links ok",
+  "mkdocs_strict": "passed",
+  "cli_reference_audit": "scope full,985 files,0 violations,inventory/generated/nav ok",
+  "graph_determinism": {
+    "svg_sha256": "c5132ec5157f37a814230542fd0016d991bcdae72654fdb2ba2ad2534e8506dc",
+    "graph_data_sha256": "db819c26a09ba58e36cc034cf4d1ca39e2df90dc40a9c99bf21b26a150b88976",
+    "byte_identical_repeated_render": true
+  },
+  "final_artifact_validation": {
+    "native_stage_references_verified": 9,
+    "privacy_scan": "No operator home/data paths, GPU UUIDs, real tailnet or LAN identities in public evidence",
+    "focused_tests_after_final_context": "44 passed",
+    "markdown_links_after_final_context": "601 tracked Markdown files; relative links ok",
+    "mkdocs_strict_after_final_context": "passed",
+    "manifest": "Exact hashes and sizes verified; repeated finalization byte-identical"
+  },
+  "independent_publication_review": "Native historical metric calculations, quality counts, SWE trajectory counts, failed populations and attribution boundaries independently reconciled; no discrepancies.",
+  "endurance_graph_determinism": {
+    "svg_sha256": "bb591cca20308279f2c1b7ebaff73adf7862a0867dc3e0f574e00d5d053bcb64",
+    "graph_data_sha256": "fbae2b883f0142b4dd8631c65930b7fa0f0a6068abefea94fdd6942773a85fac",
+    "byte_identical_repeated_render": true,
+    "all_four_points_verified_against_native_values_and_hashes": true
+  }
+}

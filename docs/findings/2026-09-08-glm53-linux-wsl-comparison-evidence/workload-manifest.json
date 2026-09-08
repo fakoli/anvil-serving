@@ -1,0 +1,25 @@
+{
+  "schema": "anvil-serving.llm-qualification-workload/v1",
+  "files": [
+    {
+      "path": "tests/fixtures/eval-data/agents-a1-v1/image-corpus.json",
+      "sha256": "a514ae146b5aab3bcb55ae9fb27f55a41791a20863304d1bb95947e93931cd12"
+    },
+    {
+      "path": "tests/fixtures/eval-data/agents-a1-v1/ui.png",
+      "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+    },
+    {
+      "path": "docs/findings/2026-08-01-deepseek-v4-flash-0731-nvfp4-evidence/coding-agent-suite-v2.json",
+      "sha256": "2e8c4e7f9a20b37ef722d922c8729f4c1387e0d507fd176e9801829b5b8e510c"
+    }
+  ],
+  "legacy_prompt_equivalence": "prompt-equivalence.json",
+  "license": "Repository fixtures; synthetic image corpus CC0-1.0",
+  "selection": "Same safe393k Windows workloads plus modern controlled-output and native context/agentic diagnostics",
+  "sampling": {
+    "capacity_and_native_context": "temperature0.0 in native request builder",
+    "functional_and_coding": "per-native-artifact control and budget fields",
+    "swe": "retained pinned worker configuration; do not inherit capacity sampling assumptions"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "anvil-serving.hardware-support-observation/v1",
+  "observed_at": "2026-09-08T06:41:05.459134+00:00",
+  "commands": [
+    "nvidia-smi topo -p2p r",
+    "nvidia-smi topo -p2p w"
+  ],
+  "matrices": {
+    "r": " \tGPU0\tGPU1\t\n GPU0\tX\tOK\t\n GPU1\tOK\tX\t\n\nLegend:\n\n  X    = Self\n  OK   = Status Ok\n  CNS  = Chipset not supported\n  GNS  = GPU not supported\n  TNS  = Topology not supported\n  NS   = Not supported\n  U    = Unknown\n",
+    "w": " \tGPU0\tGPU1\t\n GPU0\tX\tOK\t\n GPU1\tOK\tX\t\n\nLegend:\n\n  X    = Self\n  OK   = Status Ok\n  CNS  = Chipset not supported\n  GNS  = GPU not supported\n  TNS  = Topology not supported\n  NS   = Not supported\n  U    = Unknown\n"
+  },
+  "interpretation": "Driver reports both directions supported for reads and writes; this is not a data-correctness, bandwidth or NCCL performance test.",
+  "serving_change": false
+}

@@ -1,0 +1,5 @@
+PRE-FLIGHT  http://127.0.0.1:8000/v1  model=llm.primary  thinking=disabled visible=1024 reasoning_headroom=0 max_tokens=1024
+------------------------------------------------------------
+[PASS] needle @ ~260000 ctx                   36.1s ctx~260000 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=0 reasoning_tokens=None
+------------------------------------------------------------
+RESULT: ALL PASS

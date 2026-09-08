@@ -1,0 +1,524 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": "2026-09-08-glm53-linux-wsl-comparison",
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark-campaign-state/v1",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark-graph-data/v1",
+    "anvil-serving.benchmark-graph-manifest/v1",
+    "anvil-serving.benchmark-harness-assets/v1",
+    "anvil-serving.benchmark-post-state/v1",
+    "anvil-serving.benchmark-preflight/v1",
+    "anvil-serving.benchmark-publication-validation/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.cache-comparison/v1",
+    "anvil-serving.cache-observation/v1",
+    "anvil-serving.context-campaign-summary/v1",
+    "anvil-serving.context-suite-run/v1",
+    "anvil-serving.control-evidence/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.followup-candidate-plan/v1",
+    "anvil-serving.gpu-operating-observation/v1",
+    "anvil-serving.hardware-support-observation/v1",
+    "anvil-serving.llm-qualification-configuration/v1",
+    "anvil-serving.llm-qualification-workload/v1",
+    "anvil-serving.os-comparison/v1",
+    "anvil-serving.public-evidence-redaction/v1",
+    "anvil-serving.swe-os-comparison/v1",
+    "anvil-serving.swe-run/v1",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "03fa6e7a26863b1210aa33438f405b4abe88511c92073809ecf461dddb82f654",
+          "bytes": 4916
+        },
+        {
+          "path": "redaction-provenance.json",
+          "sha256": "6afaf31605f49e49196a889d8361371c0fd38d37f20f001f1d106e03cb682e43",
+          "bytes": 831
+        }
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "49efa6f4140e79a91c311e2ef9e14d518181a5b9c8223f70c5d6d45b31cfc8b0",
+          "bytes": 3021
+        }
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "39af3bad16465ddb04119a8ea965b1647839a58ac2ef2a9970876b4c0f3b6236",
+          "bytes": 1128
+        },
+        {
+          "path": "prompt-equivalence.json",
+          "sha256": "721b79b13a198b610226d6926ccca79caebefbf1c5ae45265027270d3192ab13",
+          "bytes": 1845
+        }
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "baafa9d419ef30d4ec10f2deb575901c0a8b25b5ba49514b62d15d7ef1023083",
+          "bytes": 3691
+        },
+        {
+          "path": "reproduction.md",
+          "sha256": "29473f26bbc71cc48e6a1839d3db73d61aee4723550ca4b9936169125fe0eed3",
+          "bytes": 4238
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "41cf4b693a3a2e5da081fdba228828ecf7a74df92e5e536fbadf8d71a7bf7e67",
+          "bytes": 2483
+        },
+        {
+          "path": "dispatch-packet.md",
+          "sha256": "f52a8df4696b08afb0ce99727c9440b13486af30d476b1284d14c103ad3d7b0a",
+          "bytes": 738
+        },
+        {
+          "path": "linux-feature-followup.json",
+          "sha256": "11937d322f90b44f04a99869e214fb702169758bbfde92e900f37ce24dbac530",
+          "bytes": 3497
+        }
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration-and-identity.json",
+          "sha256": "d8c5a6c32d7c14e94511eaef3fc0938f992a65dfe411ed8af0774869b04383a7",
+          "bytes": 2616
+        },
+        {
+          "path": "native-server-contract.json",
+          "sha256": "6f0db77fd8c1605c5ffed11fac926fe53adf6f2b71c2db0ec3e03ea7570b039c",
+          "bytes": 666
+        },
+        {
+          "path": "hardware-observation.json",
+          "sha256": "b3ea0b00adf75f0ed1189e8dc2cb6d8531addff2df28060f03d3c3660dd3f892",
+          "bytes": 445
+        },
+        {
+          "path": "launcher-identity.json",
+          "sha256": "10a58263280ca95fa6c2623e3c82b9d9fc374b3e1842e5a3019b34a8f41813c9",
+          "bytes": 205
+        },
+        {
+          "path": "gpu-interconnect.txt",
+          "sha256": "9b314940830ed8604f0eac0291216a2bcc626510de9513c630bf888c007088b2",
+          "bytes": 642
+        },
+        {
+          "path": "p2p-support-observation.json",
+          "sha256": "177dc321cd61bfa5042d929d36a500f6a051bd2403260ea2f88c862f7466fe12",
+          "bytes": 888
+        },
+        {
+          "path": "iommu-observation.json",
+          "sha256": "cd6f920419091a6258da21c7d719f5b145d97a7acd381e1a29c92ec0ba66c3ca",
+          "bytes": 936
+        },
+        {
+          "path": "sustained-gpu-observation.json",
+          "sha256": "e4f72d2a935532cd66a393ba7fccfaa9d76f6f729ffa101d6267f3076444f4c1",
+          "bytes": 1070
+        }
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "agentic/artifact.json",
+          "sha256": "0bbbb948ac5530e91385d8420ab29a10b0965d8255d9216efd3e8c860c02823f",
+          "bytes": 2784
+        },
+        {
+          "path": "agentic/evidence/0-agentic.json",
+          "sha256": "1d896e4d79a0e575744cf3b345d43dc56fcc728e15ed34570f46a1f5c5381815",
+          "bytes": 73325
+        },
+        {
+          "path": "agentic/evidence/0-assets.json",
+          "sha256": "383eb0112dc4273d74da4c369bd2eaa7fd9fa4e0d3b5ecde9e179c41d9d2f735",
+          "bytes": 551
+        },
+        {
+          "path": "agentic/evidence/0-preflight.json",
+          "sha256": "de1b0ca1d14e5cb3865a6e9f422d536fbef566e5fd6aec41227e751262cf859f",
+          "bytes": 2124
+        },
+        {
+          "path": "benchmark-graph-data.json",
+          "sha256": "db819c26a09ba58e36cc034cf4d1ca39e2df90dc40a9c99bf21b26a150b88976",
+          "bytes": 10186
+        },
+        {
+          "path": "benchmark-matrix.svg",
+          "sha256": "c5132ec5157f37a814230542fd0016d991bcdae72654fdb2ba2ad2534e8506dc",
+          "bytes": 12793
+        },
+        {
+          "path": "coding-quality-invalid-control.log",
+          "sha256": "3d804ce09a3974c6a3fcf6752df5297740a836414157c8ba377cbae835df662a",
+          "bytes": 2763
+        },
+        {
+          "path": "coding-quality.json",
+          "sha256": "42cf615a7a3fd9544a14594f3b4dd4c6197f4bc51ae349f8f75b51cb875b4990",
+          "bytes": 53588
+        },
+        {
+          "path": "coding-quality.log",
+          "sha256": "632fa19c08c6a9169ff030ad826eaad1a94e6654a2e49b555b182497b2ff650d",
+          "bytes": 105
+        },
+        {
+          "path": "context/artifact.json",
+          "sha256": "4aa0f540e2eee07ba69afb031a8661407bb65f71cfb58ec939015702272ca8d3",
+          "bytes": 138961
+        },
+        {
+          "path": "context/evidence/0-assets.json",
+          "sha256": "cf8fe2473d7cbe5531b7191023cc46f25b6ef416143adbcc3ab7aeae4f993162",
+          "bytes": 552
+        },
+        {
+          "path": "context/evidence/0-context.json",
+          "sha256": "4bbc2979564cb22c4a3e1acb9525efb4ed3b8f0bc232e5ee39efbdc07d176144",
+          "bytes": 241284
+        },
+        {
+          "path": "context/evidence/0-preflight.json",
+          "sha256": "07cd8c8c16b94b1348b0e559c2983c24718ce20f987518b5d7622d6456d9ea96",
+          "bytes": 2064
+        },
+        {
+          "path": "controlled-scout-4k-r3.json",
+          "sha256": "b2f67cf6d6955fc4ef800a6f8b5145db5f4552d2bc309f6db3beddaddd3be3a7",
+          "bytes": 17675
+        },
+        {
+          "path": "direct-preflight-disabled.json",
+          "sha256": "f3a2e3d47661c3b3df10f4dce9692c846338a84ee0e51374cfd6c244ec356464",
+          "bytes": 24544
+        },
+        {
+          "path": "direct-preflight-thinking-enabled.json",
+          "sha256": "c0802a8e342b48ed665426498a3992edb59cd05e05920a6a9126c933c0bc7d8d",
+          "bytes": 10108
+        },
+        {
+          "path": "direct-smoke.json",
+          "sha256": "51d005b0ef0c38fae66d063d548293925c1171ea874fe67ac63035a013fdf2b3",
+          "bytes": 2810
+        },
+        {
+          "path": "endurance-4k-r60.json",
+          "sha256": "9effa5ad700996bf0c82264edc1a555b3791258170b8e4490729287f20c45ca6",
+          "bytes": 59165
+        },
+        {
+          "path": "endurance-4k-r60.log",
+          "sha256": "9a4f5d6d2a9b442dedfc089a053392c5b18db403287e9bc5925555934e6a027e",
+          "bytes": 1107
+        },
+        {
+          "path": "graph-manifest.json",
+          "sha256": "0f86c6574e61d84e103af5fcd70090f45790d8db36e3c5a8d932ea53f9e32e7f",
+          "bytes": 5576
+        },
+        {
+          "path": "historical-comparison.json",
+          "sha256": "faeb3bfcbc786cd8b09922bd190d0a8dfde2d9dbfa65aa137f04bcbfeaec37b0",
+          "bytes": 5931
+        },
+        {
+          "path": "image-corpus-retry.log",
+          "sha256": "30ed2e94ff1c634b44894d4cec2e979780a539d33b52770ff390c0b7e4cb1139",
+          "bytes": 113
+        },
+        {
+          "path": "image-corpus.json",
+          "sha256": "40003dbc4237459a2b4bb30482af351e81cc4ed19b585e67a528020f49bd2141",
+          "bytes": 25791
+        },
+        {
+          "path": "image-corpus.log",
+          "sha256": "4457ed4ac42b0fa01783da30e70b1ca706b266aa91abbf634b35096d2e696315",
+          "bytes": 1583
+        },
+        {
+          "path": "linux-legacy-capacity-120k-r3.json",
+          "sha256": "1ebc6dd146fb2b459d00596670efab733ce827f667eb108e74c323cff1c909eb",
+          "bytes": 13837
+        },
+        {
+          "path": "linux-legacy-capacity-120k.log",
+          "sha256": "b3d38b74ffb1c2325ba7b626c075225a31e63cd17d919cb6fc29bdf1f9ead4d6",
+          "bytes": 1116
+        },
+        {
+          "path": "linux-legacy-capacity-262k-r3.json",
+          "sha256": "538794fbf4f3f00179cc060e14198cf9e4a32ffef93c4d3f11f4d6eaa88d81d5",
+          "bytes": 13887
+        },
+        {
+          "path": "linux-legacy-capacity-262k.log",
+          "sha256": "fa8afd8568705508bf2df6052f82e18276e0110324e82d734908083cdcb2d430",
+          "bytes": 1137
+        },
+        {
+          "path": "linux-legacy-capacity-380k-r3.json",
+          "sha256": "ccd2ce76f269af9942eec9eeba65a2a4b546e2e8a5444aef11e208f1a7c64a7d",
+          "bytes": 13864
+        },
+        {
+          "path": "linux-legacy-capacity-380k.log",
+          "sha256": "02917e8756a0cb9aebe4427c6bd20c52edd3b82cd24b03c543bca96954447c39",
+          "bytes": 1137
+        },
+        {
+          "path": "linux-legacy-capacity-4k-r3.json",
+          "sha256": "5c0598d0d6cba510638f85898703239ca8a9e621ef35f77e3bb4a973809a529e",
+          "bytes": 13821
+        },
+        {
+          "path": "linux-legacy-capacity-4k.log",
+          "sha256": "a6edca150a37331521befc765b9d806d2a7380f5e20cd05957eeb37cc8cad8b4",
+          "bytes": 1114
+        },
+        {
+          "path": "linux-unique-natural-4k-r10.json",
+          "sha256": "47ba0ffd1e7f4dae3e43a24bb12f65b70e5366c73b53f45f3393357b1ba7f16f",
+          "bytes": 31016
+        },
+        {
+          "path": "linux-unique-natural-4k.log",
+          "sha256": "048651f20d303fe5cab05b97a62f67df5310572bc33a733bed4953c91e76154e",
+          "bytes": 1662
+        },
+        {
+          "path": "routed-needle-260k.json",
+          "sha256": "59eb37e27f371d465b8d604f28faa87a9143a3975a627c20329d74bad0a3a7e5",
+          "bytes": 1442
+        },
+        {
+          "path": "routed-needle-260k.log",
+          "sha256": "60e45b17ecf3e2b7a6f8050c058e4a9363fe724e4312889eba96d38858297735",
+          "bytes": 417
+        },
+        {
+          "path": "routed-preflight-disabled.json",
+          "sha256": "ac00e1dc1ac8b15a1abd0165972e3bdc77d1f7102f359372cda4cc5c4083ea4a",
+          "bytes": 22492
+        },
+        {
+          "path": "routed-preflight-disabled.log",
+          "sha256": "a90860fa86631b06e5abaf26e8b259e73500b65384dca14ac76d7f050bca7e33",
+          "bytes": 1837
+        },
+        {
+          "path": "routed-thinking-enabled.json",
+          "sha256": "43fa5446ba5953126ef0b44c9deccaf8d7fe3e2dd17bf678b8e4ab713b4d4b1e",
+          "bytes": 7941
+        },
+        {
+          "path": "routed-thinking-enabled.log",
+          "sha256": "d1a19374cbb06a247322f8820f66503fd01ff9ea809da19de6681166d59c9f3c",
+          "bytes": 1114
+        },
+        {
+          "path": "swe-comparison.json",
+          "sha256": "622b5c8f372f94cd8543175c8ff3d8ba0ce6c8724ab38a6553544582e0722bfa",
+          "bytes": 1117
+        },
+        {
+          "path": "swe/artifact.json",
+          "sha256": "a5b0cd143584efc56034d64428fb0677ef3f2ec5c8747d31c8f7c0140a75f00e",
+          "bytes": 3767
+        },
+        {
+          "path": "swe/evidence/0-assets.json",
+          "sha256": "01f104a2417819b143aeb3bfa89615227441f06baf9184a6a386aefd70d3425c",
+          "bytes": 6779
+        },
+        {
+          "path": "swe/evidence/0-preflight.json",
+          "sha256": "4905883a47ae83e2d5dbb596bc1f7bdced6f96fca390edba9f7f7e1f118b9a29",
+          "bytes": 2095
+        },
+        {
+          "path": "swe/evidence/2-swe.json",
+          "sha256": "450f3a867b5e361c97fd367ab116a71e1bd2740475b6b22d25faa93195659c49",
+          "bytes": 6125
+        },
+        {
+          "path": "thinking-control.json",
+          "sha256": "7bd3866f8df2891a19442f79de79c5089def28551e2f03ff751905e211bc218e",
+          "bytes": 701
+        },
+        {
+          "path": "windows-capacity-120k-r3.json",
+          "sha256": "7d476406ea4faeaa386082018ec02a554aeec4e7fc8a4b87dc604b19bf2734b0",
+          "bytes": 4610
+        },
+        {
+          "path": "windows-capacity-262k-r3.json",
+          "sha256": "4712126d7ac95694b689f2698a19966f144fa3a3a7a62bc411873a7acf67f6d2",
+          "bytes": 4594
+        },
+        {
+          "path": "windows-capacity-380k-r3.json",
+          "sha256": "117f121d2a2f21e1af0ac09570966276e40a8b8101120c1d300eed852a2aa2eb",
+          "bytes": 4585
+        },
+        {
+          "path": "windows-capacity-4k-r3.json",
+          "sha256": "611251f8afd54d22a6c19daf6ebb1fe0698846f156f9a1f19b65f56720e65ecd",
+          "bytes": 4586
+        },
+        {
+          "path": "windows-endurance-4k-r60.json",
+          "sha256": "655fbecec5d87e187b7253c9ae05ab64508270110a8bda8ded2f2a68d5a145cb",
+          "bytes": 38576
+        },
+        {
+          "path": "endurance-graph-manifest.json",
+          "sha256": "bde0360b3f0c6b3e793eb6c3bccee7e8fa64372ac0b130adbefbe5839a3e87e5",
+          "bytes": 1590
+        },
+        {
+          "path": "endurance-graph-data.json",
+          "sha256": "fbae2b883f0142b4dd8631c65930b7fa0f0a6068abefea94fdd6942773a85fac",
+          "bytes": 2105
+        },
+        {
+          "path": "endurance-matrix.svg",
+          "sha256": "bb591cca20308279f2c1b7ebaff73adf7862a0867dc3e0f574e00d5d053bcb64",
+          "bytes": 4304
+        }
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "549b7e465b85c962d899b168c6582f093af8d4e259e500b8a087887221d8515b",
+          "bytes": 8285
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "6a27d499826f4d2b4111abee9264070d47b7f46e6947a8699fb8fa536d2098fd",
+          "bytes": 1974
+        }
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "39ff2a0537e7bec6a217ee0adf623a4629bd6b012393669cb35a60757a330d9f",
+          "bytes": 993
+        },
+        {
+          "path": "post-state.json",
+          "sha256": "0e57347278d2357a90cb25e52a43e86107a250cfb8cc601b6067b038d1ef6fe7",
+          "bytes": 1351
+        },
+        {
+          "path": "post-routed-smoke.json",
+          "sha256": "f0294d24a0fadeec4357a70ef8c04cd7b8d77c73b16571aa3a6f1ecbb9fa448f",
+          "bytes": 2759
+        },
+        {
+          "path": "cache-before-summary.json",
+          "sha256": "6c146db7cec5dfc8bb90325e488d5be4cc35f726b0592f1517119519ea5038eb",
+          "bytes": 326
+        },
+        {
+          "path": "cache-after-summary.json",
+          "sha256": "7b40cbe68fb57b66edd07be59d99ee990e3874fc5fac81bdb221379b627434ef",
+          "bytes": 683
+        }
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "96a2bea71aad54969e202f007cee7669f801c0c009119b719b7e721b7f903a7b",
+          "bytes": 13494
+        },
+        {
+          "path": "context-summary.json",
+          "sha256": "6f2356fee526e57bedd3510724d3570ba6e582583d74ae4286915b79a7556657",
+          "bytes": 2868
+        },
+        {
+          "path": "validation.json",
+          "sha256": "a13c2e735dda9a244437978dd040e52c88c2d0d9bef41636de640b7796a81b06",
+          "bytes": 2162
+        }
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "8da4306f414a8c457805d82d714b3e392d58c84678008d4f181531bf5b64f827",
+          "bytes": 8831
+        }
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

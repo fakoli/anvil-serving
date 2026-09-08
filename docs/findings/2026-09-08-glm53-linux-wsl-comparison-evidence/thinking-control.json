@@ -1,0 +1,17 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "direct-smoke.json passes with reasoning forbidden; direct-preflight-thinking-enabled.json passes with reasoning required. General-image phrase failure in separate full preflight is not a reasoning failure.",
+  "observed_at": "2026-09-08T05:27:43.780484+00:00",
+  "artifacts": [
+    {
+      "path": "direct-smoke.json",
+      "sha256": "51d005b0ef0c38fae66d063d548293925c1171ea874fe67ac63035a013fdf2b3"
+    },
+    {
+      "path": "direct-preflight-thinking-enabled.json",
+      "sha256": "c0802a8e342b48ed665426498a3992edb59cd05e05920a6a9126c933c0bc7d8d"
+    }
+  ]
+}
