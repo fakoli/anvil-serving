@@ -360,3 +360,67 @@ def test_journal_restart_preserves_ambiguous_intent_and_never_prunes_it(tmp_path
     same, created = restored.accept(preview, "fixture-actor", "fixture-key")
     assert not created and same["id"] == item["id"]
     restored.close()
+
+
+@pytest.mark.parametrize("restoration_verified", [True, False])
+def test_runtime_recovery_is_bound_to_original_intent_and_keeps_failure(tmp_path, restoration_verified):
+    class RecoveryOwner(FakeOwner):
+        def controls(self, resource):
+            data = super().controls(resource)
+            data["actions"] += [{"id": action, "supported": True} for action in ("experiment.start", "operation.recover")]
+            return data
+
+        def preview(self, resource_id, action_id, values=None, parameters=None):
+            result = super().preview(resource_id, action_id, values)
+            result["candidate_digest"] = digest(parameters or {})
+            return result
+
+        def execute(self, preview, intent_key):
+            self.mutations += 1
+            if preview["action_id"] == "experiment.start":
+                return {"ok": False, "execution_outcome": "failed", "recovery": {"status": "failed"}, "evidence": {"kind": "failed_candidate"}}
+            assert preview["private_parameters"] == {"run_id": "runtime-original-intent"}
+            return {"ok": True, "execution_outcome": "succeeded", "recovery": {"status": "succeeded"}, "evidence": {"kind": "restoration"}}
+
+        def verify(self, preview, result):
+            return {"status": "passed" if restoration_verified else "failed"}
+
+    owner = RecoveryOwner()
+    actions = frozenset({"experiment.start", "operation.recover", "tier.quiesce"})
+    config = {"origin": "https://console.example.test", "base_path": "/observatory/", "operate": True,
+              "users": [{"id": "operator", "username": "operator", "role": "operator", "resources": ["*"], "actions": sorted(actions)}],
+              "authentication": {}, "state_path": str(tmp_path / "journal.sqlite")}
+    console = Console(config, adapter=owner, metrics=FakeMetrics(), authenticate=lambda *_: True)
+    session = Session("key", "csrf", Principal("operator", "operator", "operator", frozenset({"*"}), actions), time.time() + 100)
+
+    def settled(key):
+        for _ in range(100):
+            result = console.store.get(key)
+            if result["status"] in {"succeeded", "failed", "manual_recovery_required"}:
+                return result
+            time.sleep(.01)
+        pytest.fail("bounded owner fixture did not settle")
+
+    try:
+        original_preview = console.create_preview(session, {"resource_id": "runtime-a", "action_id": "experiment.start"})
+        original = console.apply(session, {"preview_id": original_preview["id"], "intent_key": "runtime-original-intent"})
+        assert settled(original["id"])["status"] == "manual_recovery_required"
+        with pytest.raises(ObservatoryError, match="retained operation"):
+            console.create_preview(session, {"resource_id": "runtime-a", "action_id": "operation.recover", "parameters": {"run_id": "forged"}})
+        with pytest.raises(ObservatoryError, match="selected recovery"):
+            console.create_preview(session, {"resource_id": "runtime-b", "action_id": "operation.recover", "operation_id": original["id"]})
+        blocked = console.create_preview(session, {"resource_id": "runtime-a", "action_id": "tier.quiesce"})
+        with pytest.raises(ObservatoryError, match="requires attention"):
+            console.apply(session, {"preview_id": blocked["id"], "intent_key": "conflicting-intent"})
+        recovery = console.create_preview(session, {"resource_id": "runtime-a", "action_id": "operation.recover", "operation_id": original["id"]})
+        assert "private_recovery_of" not in recovery and "private_parameters" not in recovery
+        accepted = console.apply(session, {"preview_id": recovery["id"], "intent_key": "recovery-intent"})
+        assert console.apply(session, {"preview_id": recovery["id"], "intent_key": "recovery-intent"})["id"] == accepted["id"]
+        assert settled(accepted["id"])["status"] == ("succeeded" if restoration_verified else "failed")
+        prior = console.store.get(original["id"])
+        assert prior["execution_outcome"] == "failed" and prior["evidence_id"]
+        assert prior["status"] == ("failed" if restoration_verified else "manual_recovery_required")
+        assert prior["recovery"]["status"] == ("succeeded" if restoration_verified else "failed")
+        assert owner.mutations == 2
+    finally:
+        console.close()

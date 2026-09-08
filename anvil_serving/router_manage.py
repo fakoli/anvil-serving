@@ -37,15 +37,24 @@ _CREDENTIAL_ENV_NAME_RE = re.compile(
 
 
 _RUNTIME_INSTALLED_PROBE_CODE = """
+import hashlib
 import json
 import sys
 
 from anvil_serving import router_manage
 
+with open(sys.argv[1], "rb") as source:
+    raw = source.read(1048577)
+if len(raw) > 1048576:
+    raise ValueError("installed router config exceeds its bound")
 report = router_manage.runtime_fleet_status(
     sys.argv[1],
     timeout=float(sys.argv[2]),
 )
+with open(sys.argv[1], "rb") as source:
+    if source.read(1048577) != raw:
+        raise ValueError("installed router config changed during observation")
+report["config_sha256"] = hashlib.sha256(raw).hexdigest()
 print(json.dumps(report, indent=2, sort_keys=True))
 raise SystemExit(1 if report["unreachable_aliases"] else 0)
 """

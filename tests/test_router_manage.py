@@ -1,5 +1,6 @@
 import hashlib
 import json
+import sys
 import types
 
 import pytest
@@ -500,3 +501,26 @@ def test_install_config_cli_forwards_topology_and_scrubs_validation_operands(
     node = next(node for node in router.children if node.name == "install-config")
     assert node.handler is not None
     assert node.handler.forward_resolution_options is True
+
+
+@pytest.mark.parametrize("change", ["none", "during-probe", "oversize"])
+def test_installed_probe_hashes_exact_bytes_with_older_runtime_report(tmp_path, monkeypatch, capsys, change):
+    config = tmp_path / "router.toml"
+    raw = b'[router]\r\n# exact installed bytes\r\n'
+    config.write_bytes(raw if change != "oversize" else b"x" * (1048576 + 1))
+    monkeypatch.setattr(sys, "argv", ["probe", str(config), "4"])
+
+    def legacy_report(*_args, **_kwargs):
+        if change == "during-probe":
+            config.write_bytes(raw + b"# changed\n")
+        return {"rows": [], "unreachable_aliases": []}
+
+    monkeypatch.setattr(router_manage, "runtime_fleet_status", legacy_report)
+    if change == "none":
+        with pytest.raises(SystemExit) as ended:
+            exec(compile(router_manage._RUNTIME_INSTALLED_PROBE_CODE, "installed-probe", "exec"), {})
+        assert ended.value.code == 0
+        assert json.loads(capsys.readouterr().out)["config_sha256"] == hashlib.sha256(raw).hexdigest()
+    else:
+        with pytest.raises(ValueError, match="changed|exceeds"):
+            exec(compile(router_manage._RUNTIME_INSTALLED_PROBE_CODE, "installed-probe", "exec"), {})
