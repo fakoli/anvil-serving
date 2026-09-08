@@ -26,6 +26,14 @@ from anvil_serving.router.replica_scheduler import (
 from anvil_serving.router.serve import ReplicaRuntime, RoutingBackend
 
 
+@pytest.fixture(autouse=True)
+def _isolated_operator_home(monkeypatch, tmp_path):
+    """Keep every transition's owner locks, recovery fences and policy local."""
+    home = tmp_path / ".anvil-serving"
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    return home
+
+
 class _TextBackend:
     def __init__(self, text):
         self.text = text
@@ -1250,7 +1258,9 @@ def _admission_transition(routing, journal, drain_started=None):
     return transition
 
 
-def test_eviction_drains_the_in_flight_admission_lease_before_container_stop(tmp_path):
+def test_eviction_drains_the_in_flight_admission_lease_before_container_stop(
+    tmp_path, _isolated_operator_home,
+):
     from anvil_serving import serves as serves_mod
 
     victim_backend = _BlockingBackend()
@@ -1282,6 +1292,7 @@ def test_eviction_drains_the_in_flight_admission_lease_before_container_stop(tmp
     worker.join(1)
     releaser.join(1)
 
+    assert (_isolated_operator_home / "locks" / "serves-switch-promotion.lock").is_file()
     assert rc == 0
     assert result == ["HEAVY"]              # the in-flight generation FINISHED
     # Drain genuinely waited on the victim's AdmissionLease (the generation
@@ -1298,7 +1309,9 @@ def test_eviction_drains_the_in_flight_admission_lease_before_container_stop(tmp
     assert snapshot.quiesced is True
 
 
-def test_eviction_drain_timeout_aborts_without_operating_containers(tmp_path):
+def test_eviction_drain_timeout_aborts_without_operating_containers(
+    tmp_path, _isolated_operator_home,
+):
     from anvil_serving import serves as serves_mod
 
     victim_backend = _BlockingBackend()   # never released: drain must time out
@@ -1315,6 +1328,7 @@ def test_eviction_drain_timeout_aborts_without_operating_containers(tmp_path):
         _transition=_admission_transition(routing, journal),
         _run=_docker_run(states, journal))
 
+    assert (_isolated_operator_home / "locks" / "serves-switch-promotion.lock").is_file()
     assert rc == 2
     assert states["vllm-exp"] == "running"  # bounded abort: NO container op
     assert journal == [
