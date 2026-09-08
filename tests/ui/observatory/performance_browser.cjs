@@ -175,7 +175,7 @@ const measureBytes = (body) => ({
         ).data,
       site.href,
     );
-    assert.equal(session.operate, false);
+    assert.equal(session.operate, process.env.OBSERVATORY_EXPECT_OPERATE === "true");
     report.build = session.build;
     report.operate = session.operate;
     await page

@@ -257,6 +257,12 @@ _TIER_SETTING_LIMITS = {
 }
 
 
+def _toml_known_key_pattern(key: str) -> str:
+    """Match bare or simply quoted spellings of a fixed, known TOML key."""
+    escaped = re.escape(key)
+    return r"(?:" + escaped + '|"' + escaped + '"|\'' + escaped + "')"
+
+
 def _tier_candidate(raw: bytes, tier_id: str, values: dict) -> tuple[bytes, dict]:
     """Edit only two scalar fields in one canonical [[router.tiers]] block."""
     try:
@@ -278,27 +284,39 @@ def _tier_candidate(raw: bytes, tier_id: str, values: dict) -> tuple[bytes, dict
         if type(value) is not int or value < low or value > high:
             raise ToolError("bad_argument", "%s is outside its supported range" % key)
     lines = text.splitlines(keepends=True)
-    starts = [i for i, line in enumerate(lines) if re.match(r"^\s*\[\[\s*router\.tiers\s*\]\]\s*(?:#.*)?$", line)]
+    header = (r"^\s*\[\[\s*" + _toml_known_key_pattern("router") + r"\s*\.\s*" +
+              _toml_known_key_pattern("tiers") + r"\s*\]\]\s*(?:#.*)?$")
+    starts = [i for i, line in enumerate(lines) if re.match(header, line)]
     if len(starts) != len(tiers):
         raise ToolError("unsupported_config_layout", "router tier table layout is not safely editable")
     start = starts[matches[0]] + 1
     end = next((i for i in range(start, len(lines)) if re.match(r"^\s*\[", lines[i])), len(lines))
     for key, value in values.items():
-        positions = [i for i in range(start, end) if re.match(r"^\s*" + re.escape(key) + r"\s*=", lines[i])]
-        replacement = "%s = %d\n" % (key, value)
+        assignment = r"^(\s*" + _toml_known_key_pattern(key) + r"\s*=\s*)"
+        positions = [i for i in range(start, end) if re.match(assignment, lines[i])]
+        replacement = "%s = %d%s" % (key, value, "\r\n" if "\r\n" in text else "\n")
         if len(positions) > 1:
             raise ToolError("unsupported_config_layout", "router tier setting is duplicated")
         if positions:
-            lines[positions[0]] = replacement
+            original = lines[positions[0]]
+            prefix = re.match(assignment, original).group(1)
+            suffix = re.search(r"[ \t]*(?:#[^\r\n]*)?(?:\r?\n)?$", original[len(prefix):]).group()
+            lines[positions[0]] = prefix + str(value) + suffix
         else:
             lines.insert(end, replacement)
             end += 1
     candidate = "".join(lines).encode("utf-8")
     try:
-        checked = tomllib.loads(candidate.decode("utf-8"))["router"]["tiers"][matches[0]]
+        checked = tomllib.loads(candidate.decode("utf-8"))
     except (tomllib.TOMLDecodeError, KeyError, TypeError, IndexError):
         raise ToolError("bad_candidate", "typed router candidate did not validate") from None
-    return candidate, {key: checked.get(key) for key in _TIER_SETTING_LIMITS}
+    # Text resembling a table or key can occur inside a multiline value.
+    # Require the entire parsed document to differ only in the intended fields.
+    tiers[matches[0]].update(values)
+    if checked != parsed:
+        raise ToolError("bad_candidate", "typed router candidate changed outside its requested settings")
+    configured = checked["router"]["tiers"][matches[0]]
+    return candidate, {key: configured.get(key) for key in _TIER_SETTING_LIMITS}
 
 
 def _tool_router_configuration(args: dict) -> dict:
