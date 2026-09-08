@@ -116,8 +116,8 @@ fs.mkdirSync(output, { recursive: true });
     assert.equal(session.authenticated, true);
     assert.equal(
       session.operate,
-      false,
-      "Expected this deployment to remain in read-only mode.",
+      process.env.OBSERVATORY_EXPECT_OPERATE === "true",
+      "Deployment operate policy differs from the explicit expected mode.",
     );
     report.session = {
       authenticated: session.authenticated,

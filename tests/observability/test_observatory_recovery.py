@@ -8,9 +8,10 @@ import sys
 
 import pytest
 
-from anvil_serving import router_manage
+from anvil_serving import router_manage, serves
 from anvil_serving.control_plane.mcp.errors import ToolError
 from anvil_serving.control_plane.mcp.tools import router as owner
+from anvil_serving.control_plane.mcp.tools import runtime_experiment
 
 
 @pytest.mark.parametrize("rollback_fails", [False, True])
@@ -77,6 +78,28 @@ def test_second_process_admission_client_cannot_race_owner_transaction(tmp_path,
     finally:
         child.communicate("\n", timeout=5)
         assert child.returncode == 0
+
+
+def test_pending_runtime_experiment_fences_lifecycle_but_allows_typed_restore(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
+    marker = runtime_experiment._marker_path()
+    marker.parent.mkdir(parents=True)
+    marker.write_text('{"run_id":"interrupted-run"}')
+
+    with pytest.raises(RuntimeError, match="runtime experiment recovery is required"):
+        with serves._switch_role_lock("promotion"):
+            pytest.fail("ordinary lifecycle passed the durable recovery fence")
+
+    # The refusal released the OS lock, and only the runtime experiment's
+    # same-thread recovery context may cross the still-present marker.
+    with runtime_experiment._authority():
+        assert marker.exists()
+
+    marker.unlink()
+    with serves._switch_role_lock("promotion"):
+        pass
 
 
 def test_prewrite_failure_reports_failed_admission_recovery(tmp_path, monkeypatch):

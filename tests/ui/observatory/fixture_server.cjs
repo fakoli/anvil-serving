@@ -255,6 +255,8 @@ async function createFixture(base = BASE) {
     slowMetrics: 0,
     slowHost: null,
     serveProbeOnly: false,
+    runtimeCandidate: false,
+    recoveryPermitted: false,
   };
   const session = () => ({
     authenticated: state.authenticated,
@@ -370,13 +372,25 @@ async function createFixture(base = BASE) {
       return;
     }
     if (route === "fleet") {
+      const declaredResources = state.runtimeCandidate
+        ? [
+            ...resources,
+            {
+              id: "runtime-a",
+              host_id: "host-fixture-a",
+              kind: "experiment",
+              experiment_class: "runtime_candidate",
+              label: "Bounded policy candidate",
+            },
+          ]
+        : resources;
       respond(res, {
         hosts,
         serves,
         coverage: { status: "partial", sources: ["controller", "host"] },
         control_resources: state.serveProbeOnly
-          ? resources.filter((r) => r.kind !== "experiment")
-          : resources,
+          ? declaredResources.filter((r) => r.kind !== "experiment")
+          : declaredResources,
         observed_at: TIME,
       });
       return;
@@ -420,16 +434,18 @@ async function createFixture(base = BASE) {
         respond(res, { resources });
         return;
       }
-      const experiment = resource === "experiment-a";
+      const runtime = resource === "runtime-a";
+      const experiment = resource === "experiment-a" || runtime;
       respond(res, {
         resource_id: resource,
         baseline_digest: "baseline-v1",
+        experiment_class: runtime ? "runtime_candidate" : "request_only",
         settings: experiment ? [] : [setting],
         experiment_settings: experiment
           ? [
               {
                 ...setting,
-                configured: 16,
+                configured: runtime ? 64 : 16,
                 help: "Fixed managed fixture probe; one request, concurrency one.",
               },
             ]
@@ -443,6 +459,13 @@ async function createFixture(base = BASE) {
                 supported: true,
                 permitted: state.operate,
                 effect: "Next test request",
+              },
+              {
+                id: "operation.recover",
+                label: "Restore exact baseline",
+                supported: runtime,
+                permitted: runtime && state.recoveryPermitted,
+                effect: "Restore retained baseline only",
               },
             ]
           : [
@@ -612,6 +635,36 @@ async function createFixture(base = BASE) {
           "Verify independent observed result",
         ],
       };
+      if (body.resource_id === "runtime-a") {
+        state.preview.label =
+          body.action_id === "operation.recover"
+            ? "Restore retained baseline"
+            : "Compare temporary candidate";
+        state.preview.effect =
+          body.action_id === "operation.recover"
+            ? "Restore only; no probe replay"
+            : "Temporary policy install, bounded comparison, exact restore";
+        state.preview.diff = [
+          {
+            field: "max_output_tokens",
+            before: 32,
+            after: body.parameters?.max_output_tokens ?? 64,
+          },
+        ];
+        state.preview.affected_aliases = ["llm.fixture"];
+        state.preview.planned_steps =
+          body.action_id === "operation.recover"
+            ? ["restore_exact_baseline", "verify_restore"]
+            : [
+                "baseline_probe",
+                "install_candidate",
+                "candidate_probe",
+                "restore_exact_baseline",
+                "verify_restore",
+              ];
+        state.preview.recovery =
+          "If restoration cannot be verified, explicit manual recovery is required.";
+      }
       respond(res, state.preview);
       return;
     }

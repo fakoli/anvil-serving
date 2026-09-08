@@ -2345,6 +2345,17 @@ def _switch_role_lock(role):
             except OSError as exc:
                 raise RuntimeError("another switch is already active for role %r" % role) from exc
         locked = True
+        if role == "promotion":
+            # Import here to keep the serving core independent until a live
+            # mutation has acquired the one cross-process authority lock. A
+            # durable experiment marker survives process failure and fences
+            # every unrelated lifecycle/configuration operation. The typed
+            # restore context is the only path whose helper permits entry.
+            from .control_plane.mcp.tools.runtime_experiment import (
+                assert_no_pending_runtime_experiment,
+            )
+
+            assert_no_pending_runtime_experiment()
         _SERVING_AUTHORITY_LOCAL.roles = {*held, role}
         yield
     finally:

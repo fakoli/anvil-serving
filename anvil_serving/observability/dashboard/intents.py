@@ -114,7 +114,14 @@ class IntentStore:
                     raise ObservatoryError("operation_limit", "Resolve current operations before submitting more.", 429)
                 # This facade fence limits accidental dispatch while an outcome
                 # is unresolved. The controller still owns cross-client locking.
-                if any(i["resource_id"] == preview["resource_id"] for i in active):
+                conflicts = [i for i in active if i["resource_id"] == preview["resource_id"]]
+                recovery_of = preview.get("private_recovery_of")
+                permitted_recovery = (preview["action_id"] == "operation.recover" and recovery_of
+                    and len(conflicts) == 1 and conflicts[0]["id"] == recovery_of
+                    and conflicts[0]["action_id"] == "experiment.start"
+                    and conflicts[0]["intent_key"] == preview.get("private_parameters", {}).get("run_id")
+                    and conflicts[0]["status"] in {"manual_recovery_required", "outcome_unknown"})
+                if conflicts and not permitted_recovery:
                     raise ObservatoryError("operation_conflict", "An operation on this resource still requires attention.", 409)
                 now = timestamp()
                 item = {"id": str(uuid.uuid4()), "resource_id": preview["resource_id"], "host_id": preview["host_id"],

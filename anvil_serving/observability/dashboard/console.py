@@ -82,7 +82,8 @@ class Console:
 
     def resources(self, session):
         resources = self.config.get("controller", {}).get("resources", [])
-        return [{"id": item["id"], "host_id": item["host_id"], "kind": item["kind"], "label": item.get("label", item["id"])}
+        return [{"id": item["id"], "host_id": item["host_id"], "kind": item["kind"], "label": item.get("label", item["id"]),
+                 **({"experiment_class": "runtime_candidate"} if item.get("experiment_class") == "runtime_candidate" else {})}
                 for item in resources if session.principal.can_read(item["id"])]
 
     def fleet(self, session):
@@ -151,9 +152,22 @@ class Console:
             "baseline_digest": catalog["baseline_digest"], "candidate_digest": digest(values), "errors": []}, previous=body.get("draft_id"))
 
     def create_preview(self, session, body):
-        fields(body, required=("resource_id", "action_id"), optional=("draft_id", "parameters"))
+        fields(body, required=("resource_id", "action_id"), optional=("draft_id", "parameters", "operation_id"))
         resource, action = identifier(body["resource_id"]), identifier(body["action_id"])
         self._permitted_action(session, resource, action)
+        recovery_of = None
+        recovery_parameters = None
+        if action == "operation.recover":
+            if not body.get("operation_id") or "parameters" in body or "draft_id" in body:
+                raise ObservatoryError("invalid_recovery", "Review recovery from the retained operation.")
+            original = self.store.get(identifier(body["operation_id"]))
+            if (original["resource_id"] != resource or original["action_id"] != "experiment.start"
+                    or original["status"] not in {"manual_recovery_required", "outcome_unknown"}):
+                raise ObservatoryError("invalid_recovery", "This operation does not require the selected recovery.", 409)
+            recovery_of = original["id"]
+            recovery_parameters = {"run_id": original["intent_key"]}
+        elif "operation_id" in body:
+            raise ObservatoryError("invalid_recovery", "Operation references are only accepted for recovery.")
         values = {}
         if body.get("draft_id"):
             draft = self.store.draft(identifier(body["draft_id"]), session.principal.identity)
@@ -165,13 +179,15 @@ class Console:
             values = draft["values"]
         if action == "configuration.apply" and not body.get("draft_id"):
             raise ObservatoryError("draft_required", "Validate a configuration draft before reviewing it.")
-        parameters = body.get("parameters", {})
+        parameters = recovery_parameters if recovery_parameters is not None else body.get("parameters", {})
         if type(parameters) is not dict or len(canonical(parameters)) > 16384:
             raise ObservatoryError("invalid_parameters", "Use the bounded experiment fields.")
         preview = self.adapter.preview(resource, action, values=values, parameters=parameters)
         preview.update({"resource_id": resource, "action_id": action, "policy_digest": self.policy_digest,
                         "expires_at_epoch_seconds": time.time() + 120, "actor": session.principal.identity,
                         "private_values": values, "private_parameters": parameters})
+        if recovery_of:
+            preview["private_recovery_of"] = recovery_of
         # Enforce the digest/identity contract before storing any review.
         if not preview_is_current(preview, preview, now_epoch_seconds=time.time()):
             raise ObservatoryError("invalid_owner_preview", "The owner did not provide a valid current preview.", 503)
@@ -228,7 +244,13 @@ class Console:
         passed = verification.get("status") == "passed"
         self.store.update(item["id"], status="succeeded" if passed else "failed", native_state=result.get("native_state"),
             verification=verification, evidence_id=evidence_id,
+            **({"recovery": result["recovery"]} if isinstance(result.get("recovery"), dict) else {}),
             event=("facade", "succeeded" if passed else "verification_failed", "Resulting state verified." if passed else "Execution returned, but resulting state could not be verified."))
+        original_id = item["private_preview"].get("private_recovery_of")
+        if passed and item["action_id"] == "operation.recover" and original_id:
+            self.store.update(original_id, status="failed",
+                recovery={"status": "succeeded", "message": "Previous state restored and verified by the linked recovery operation.", "operation_id": item["id"]},
+                event=("owner", "recovered", "Recovery verified; the original failed or interrupted test is retained."))
         self.store.prune()
 
     def operation(self, session, operation_id):

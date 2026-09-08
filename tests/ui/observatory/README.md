@@ -18,6 +18,14 @@ node tests/ui/observatory/facade_browser.cjs /absolute/path/to/facade-evidence
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright \
 CHROMIUM_EXECUTABLE=/absolute/path/to/chromium \
 node tests/ui/observatory/security_browser.cjs /absolute/path/to/security-evidence
+
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright \
+CHROMIUM_EXECUTABLE=/absolute/path/to/chromium \
+node tests/ui/observatory/runtime_browser.cjs /absolute/path/to/runtime-evidence
+
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright \
+CHROMIUM_EXECUTABLE=/absolute/path/to/chromium \
+node tests/ui/observatory/announcements_browser.cjs /absolute/path/to/announcement-evidence
 ```
 
 The Python environment must have the product and its existing development test
@@ -40,6 +48,17 @@ description and visible linked text. Expiring the synthetic session with a previ
 open accepts no operation, closes the modal, clears the private draft, and requires
 authentication, validation and a new preview before another confirmation.
 
+The runtime harness checks separate typed request-only and temporary runtime
+candidate forms, owner-declared bounds, baseline/candidate/restore preview steps,
+mobile confirmation, and recovery bound to the original operation ID. A restore
+preview sends no browser-selected run ID or private path and requires fresh owner
+catalog permission. Previewing never applies a candidate or replays a probe.
+
+The announcement harness observes a stable, polite, atomic live region through
+actual browser polls. Unchanged polls and timestamp/message-only updates stay
+quiet; native phase, verification and recovery changes each announce once.
+The generic live region avoids an observed Orca status-bar classification issue.
+
 The first harness covers all eight screens, a root deployment and a nested base
 path, canonical workload omissions and invalid evidence, current versus historical
 sources, missing TTFT, null chart gaps, data alternatives, proposed versus observed
@@ -60,6 +79,21 @@ checks reflow equivalent to 200% zoom of a 1440×900 viewport; this is not a cla
 that native browser zoom or a screen-reader pairing was tested. Real deployment
 and owner acceptance evidence must be recorded separately.
 
+Separate device harnesses require the existing Linux graphical session. Run
+`native_zoom_browser.cjs` with the same Playwright/Chromium environment and an
+evidence directory to set Chrome's actual Page zoom preference to 200% in a
+disposable profile. It verifies doubled device pixel ratio, halved content
+viewport, eight usable screens, reachable primary controls, and captioned bounded
+tables. Captures use the native viewport rather than full-page emulation.
+
+`orca_browser.cjs` uses the same arguments and requires installed Orca, AT-SPI,
+Speech Dispatcher and `dbus-run-session`. It creates private DBus/XDG state and a
+disposable Chrome profile, observes actual speech generation for the labeled
+Close button and exactly one changed outcome, and checks that unchanged polling
+does not repeat speech. Run it alone with its test window active. It never
+replaces an existing Orca process or changes user settings. Speech dispatch is
+automatically verified; human listening and braille usability remain separate.
+
 Validation used Playwright 1.62.1 and Chrome 152.0.7977.82. These remain development
 tools, outside the Python runtime and wheel dependencies. The new source files
 are formatted with Prettier 3.6.2; the legacy shell and workload script are intact.
@@ -71,6 +105,8 @@ in-process credentials supplied through `OBSERVATORY_USERNAME` and
 eight screens, enumerating the approved historical chart catalog, and capturing
 desktop/mobile screenshots and accessibility snapshots. It records the installed
 build and asset hashes, but never credentials or a cookie value.
+Set `OBSERVATORY_EXPECT_OPERATE=true` only when the deployed policy intentionally
+enables controls; the walkthrough still sends no operational mutations.
 
 `performance_browser.cjs` uses the same arguments and credentials for one bounded
 idle browser. It samples 25-second open and closed windows, and a hidden window
@@ -80,3 +116,13 @@ Optional `OBSERVATORY_WEB_CONTAINER` names the exact container for read-only
 Docker CPU/memory samples. It also records per-file raw/gzip asset sizes for the
 installed build and current source. Run this harness by itself, without other
 browser tests, after the deployment is stable. It never sends model requests.
+
+`operate_browser.cjs` is a separately authorized live harness. It receives its
+exact HTTPS URL, username/password, declared resource, and evidence directory
+through JSON on stdin. The `configuration` scenario also requires an exact
+setting, baseline and candidate; it reviews/applies the candidate and then
+reviews/restores the baseline through the actual browser form. The `runtime`
+scenario confirms one declared managed experiment, whose owner restores the
+baseline. Each accepted operation is saved before polling, and refresh never
+resubmits it. A failure retains the operation ID for inspection and recovery;
+the harness does not blindly retry mutations.

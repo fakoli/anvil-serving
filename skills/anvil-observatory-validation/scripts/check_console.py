@@ -80,6 +80,10 @@ def main():
                 receipt["counts"]["gpus"] = sum(len(host.get("gpus", [])) for host in data.get("hosts", []))
             elif route in ("operations", "evidence"):
                 receipt[route + "_count"] = len(data.get("items", []))
+            elif route == "settings" and data.get("workloads", {}).get("configured"):
+                status, _, raw = request(prefix + "workloads")
+                assert status == 200 and json.loads(raw).get("ok") is True, "separately scoped workload read failed"
+                receipt["workload_read"] = "passed"
         status, _, _ = request(prefix + "operations", body={"preview_id": "invalid", "intent_key": "invalid"})
         assert status == 403, "missing-CSRF operation was not refused"
         status, _, _ = request(prefix + "metrics?chart=arbitrary-query")

@@ -10,22 +10,25 @@ from __future__ import annotations
 from collections.abc import Mapping
 import copy
 import json
+import math
 import re
 import time
 from typing import Any
 
 from ...transports import ControllerTransport, Operation, TransportError
 from .contracts import ObservatoryError, digest, identifier, validate_values
+from . import runtime_candidates
 
 
 _KINDS = frozenset({"serve", "profile", "configuration", "recipe", "experiment"})
 _SAFE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}\Z")
+_FIXED_PROBE_PROMPT = "Reply with the single word READY."
 _TOOLS = frozenset(
     {
         "serves_status", "serves_manage", "serves_probe", "serves_profile", "serves_logs",
         "router_transition", "router_configuration", "recipe_settings",
         "recipe_containers", "benchmark_job_preflight", "benchmark_job_submit",
-        "benchmark_job_status",
+        "benchmark_job_status", "runtime_experiment",
     }
 )
 
@@ -140,6 +143,9 @@ class ControllerAdapter:
             if type(item.get("model")) is not str or not item["model"] or len(item["model"]) > 512:
                 raise ValueError("recipe model selector is invalid")
         elif kind == "experiment":
+            if runtime_candidates.is_runtime(item):
+                runtime_candidates.validate(item)
+                return
             if item.get("suite") not in {"context", "agentic", "swe"}:
                 raise ValueError("experiment suite is invalid")
             if not isinstance(item.get("spec"), Mapping):
@@ -287,10 +293,11 @@ class ControllerAdapter:
             return {"resources": [self._summary(r, tools) for r in self._resources.values()]}
         resource = self._resource(resource_id)
         settings = self._settings(resource)
+        settings_unavailable = resource["kind"] in {"configuration", "recipe"} and not settings
         specs = self._action_specs(resource)
         actions = []
         for action_id, spec in specs.items():
-            supported = self._supported(spec, tools)
+            supported = self._supported(spec, tools) and not settings_unavailable
             actions.append({
                 "id": action_id,
                 "label": spec["label"],
@@ -299,6 +306,8 @@ class ControllerAdapter:
                 "reason": (
                     None
                     if supported
+                    else "The owner could not verify the installed configuration."
+                    if settings_unavailable
                     else "Declare the profile mode, members, GPU owners, and admission postconditions."
                     if spec.get("postcondition_supported") is False
                     else "The owner does not declare this operation."
@@ -310,7 +319,9 @@ class ControllerAdapter:
         result = {"resource_id": resource["id"], "actions": actions, "settings": settings,
                   "baseline_digest": digest(baseline)}
         if resource["kind"] == "experiment":
-            result["experiment_settings"] = copy.deepcopy(resource.get("experiment_settings", []))
+            result["experiment_class"] = "runtime_candidate" if runtime_candidates.is_runtime(resource) else "request_only"
+            result["experiment_settings"] = (runtime_candidates.settings(resource) if runtime_candidates.is_runtime(resource)
+                else copy.deepcopy(resource.get("experiment_settings", [])))
             result["experiment_limit"] = int(resource.get("experiment_limit", 1))
         return result
 
@@ -337,7 +348,9 @@ class ControllerAdapter:
         candidate_values = validate_values(values, settings) if settings else {}
         arguments = self._arguments(resource, action_id, candidate_values, parameters)
         preview_args = dict(arguments)
-        if resource["kind"] in {"configuration", "recipe"}:
+        if runtime_candidates.is_runtime(resource):
+            preview_args["action"] = "status" if action_id == "operation.recover" else "preview"
+        elif resource["kind"] in {"configuration", "recipe"}:
             preview_args["action"] = "preview"
         if spec.get("gated", True):
             preview_args.update({"dry_run": True, "confirm": False})
@@ -349,14 +362,18 @@ class ControllerAdapter:
                 preview_args.pop("confirm", None)
                 preview_args.pop("detach", None)
             owner_preview = self._call(preview_tool, preview_args)
-        if resource["kind"] in {"configuration", "recipe"} and owner_preview.get("baseline_sha256"):
+        if (resource["kind"] in {"configuration", "recipe"} or runtime_candidates.is_runtime(resource)) and owner_preview.get("baseline_sha256"):
             arguments["expected_baseline_sha256"] = owner_preview["baseline_sha256"]
-        baseline_state = self._baseline(resource)
+        baseline_state = ({"baseline_sha256": owner_preview.get("baseline_sha256"), "state": owner_preview.get("state")}
+            if runtime_candidates.is_runtime(resource) else self._baseline(resource))
         baseline_digest = digest(baseline_state)
         candidate_digest = digest({"baseline": baseline_digest, "action": action_id,
                                    "values": candidate_values, "parameters": parameters,
                                    "arguments": arguments})
         before = {s["setting_id"]: s.get("configured") for s in settings}
+        if runtime_candidates.is_runtime(resource) and action_id == "experiment.start":
+            before = owner_preview.get("configured", {})
+            candidate_values = arguments["values"]
         result = {
             "host_id": resource["host_id"], "resource_id": resource["id"],
             "action_id": action_id, "label": spec["label"],
@@ -386,6 +403,8 @@ class ControllerAdapter:
             arguments.update({"dry_run": False, "confirm": True})
         if spec.get("human_gate"):
             arguments["human_approved"] = True
+        if binding["tool"] == "runtime_experiment" and action_id == "experiment.start":
+            arguments["run_id"] = intent_key
         try:
             result = self._transport.execute(
                 Operation(binding["tool"], arguments, tool_name=binding["tool"]),
@@ -400,6 +419,8 @@ class ControllerAdapter:
             response.update(self._failure_evidence(error, preview))
             return response
         payload = self._payload(result)
+        if binding["tool"] == "runtime_experiment" and payload.get("kind") == "runtime_experiment":
+            return runtime_candidates.result(payload, intent_key, recovering=action_id == "operation.recover")
         if not payload:
             return {"ok": False, "owner_operation_id": intent_key,
                     "native_state": "unknown", "execution_outcome": "unknown",
@@ -420,13 +441,24 @@ class ControllerAdapter:
         return response
 
     def reconcile(self, preview: Mapping[str, Any], intent_key: str) -> dict[str, Any]:
-        self._binding(preview)
+        binding = self._binding(preview)
         try:
             record = self._transport.operation_status(intent_key).data
         except TransportError:
             return {"ok": False, "owner_operation_id": intent_key, "native_state": "unknown",
                     "execution_outcome": "unknown"}
         status = record.get("status", "unknown")
+        if binding["tool"] == "runtime_experiment":
+            arguments = dict(binding["arguments"], action="status")
+            arguments["run_id"] = arguments.get("run_id", intent_key)
+            try:
+                retained = self._call("runtime_experiment", arguments)
+            except ObservatoryError:
+                return {"ok": False, "owner_operation_id": intent_key, "native_state": "unknown", "execution_outcome": "unknown"}
+            result = runtime_candidates.result(retained, intent_key, recovering=preview.get("action_id") == "operation.recover")
+            if retained.get("state") == "running" and status in {"failed", "expired"}:
+                result.update(ok=False, execution_outcome="failed", recovery={"status": "failed", "message": "The interrupted experiment requires owner restoration; probes will not replay."})
+            return result
         if status != "succeeded":
             response = {"ok": False, "owner_operation_id": intent_key, "native_state": status,
                     "execution_outcome": {"running": "pending", "failed": "failed",
@@ -459,6 +491,20 @@ class ControllerAdapter:
 
     def verify(self, preview: Mapping[str, Any], result: Mapping[str, Any]) -> dict[str, str]:
         binding = self._binding(preview)
+        if binding["tool"] == "runtime_experiment":
+            retained = result.get("evidence", {})
+            arguments = dict(binding["arguments"], action="status", run_id=retained.get("run_id"))
+            try:
+                observed = self._call("runtime_experiment", arguments)
+            except ObservatoryError:
+                return {"status": "failed", "message": "The retained runtime restoration could not be verified."}
+            recovery = observed.get("recovery", {})
+            passed = (observed.get("baseline_sha256") == binding["arguments"].get("expected_baseline_sha256")
+                and observed.get("candidate_sha256") == binding.get("owner_candidate_sha256")
+                and recovery.get("status") == "succeeded" and recovery.get("runtime_verified") is True
+                and recovery.get("admissions_verified") is True and
+                (preview.get("action_id") == "operation.recover" or observed.get("correctness") == "passed"))
+            return {"status": "passed" if passed else "failed", "message": "Exact runtime baseline and admissions restored; experiment correctness remains separate."}
         if result.get("execution_outcome") == "failed":
             return {"status": "failed", "message": "The owner reported a failed operation."}
         if preview.get("action_id") == "serve.probe":
@@ -597,22 +643,30 @@ class ControllerAdapter:
     @staticmethod
     def _action_specs(resource: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
         kind = resource["kind"]
+        if runtime_candidates.is_runtime(resource):
+            return runtime_candidates.actions(resource)
         if kind == "serve":
             result = {
-                "serve.start": {"label": "Start", "tool": "serves_manage", "effect": "Starts the declared serve.", "verify_tool": "serves_status"},
+                "serve.start": {"label": "Start", "tool": "serves_manage", "effect": "Starts the declared serve.", "verify_tool": "serves_status",
+                    "workload_impact": "Starts the declared serve and reserves its declared resources until stopped."},
                 "serve.stop": {
                     "label": "Stop and remove", "tool": "serves_manage",
                     "effect": "Stops and removes the declared container; its container logs are not retained.",
                     "stop_semantics": "stop_remove", "verify_tool": "serves_status",
                     "recovery": "Start the declared serve again; removed container logs cannot be recovered.",
+                    "workload_impact": "Interrupts the declared serve and removes its container and container logs.",
                 },
-                "serve.restart": {"label": "Restart", "tool": "serves_manage", "effect": "Recreates the declared serve.", "verify_tool": "serves_status"},
+                "serve.restart": {"label": "Restart", "tool": "serves_manage", "effect": "Recreates the declared serve.", "verify_tool": "serves_status",
+                    "workload_impact": "Interrupts the declared serve while its container is recreated and readiness is checked."},
                 "serve.probe": {"label": "Probe", "tool": "serves_probe", "effect": "Runs the declared bounded readiness probe.", "gated": False, "preview_tool": None},
             }
             if resource.get("tier"):
                 for action in ("quiesce", "drain", "readmit"):
+                    impact = {"quiesce": "New requests paused; existing requests continue.",
+                              "drain": "Waits up to the declared bound for active requests.",
+                              "readmit": "Resumes new requests after owner readiness checks."}[action]
                     result["tier." + action] = {"label": action.title(), "tool": "router_transition",
-                                      "effect": f"Requests owner-managed tier {action}.", "verify_tool": "router_transition",
+                                      "effect": impact, "workload_impact": impact, "verify_tool": "router_transition",
                                       "stop_semantics": "drain" if action == "drain" else None}
             return result
         if kind == "profile":
@@ -692,6 +746,8 @@ class ControllerAdapter:
     @staticmethod
     def _arguments(resource: Mapping[str, Any], action: str, values: Mapping[str, Any], parameters: Mapping[str, Any]) -> dict[str, Any]:
         kind = resource["kind"]
+        if runtime_candidates.is_runtime(resource):
+            return runtime_candidates.arguments(resource, action, parameters)
         if kind == "serve":
             if action in {"serve.start", "serve.stop", "serve.restart"}:
                 result = {"action": "down" if action == "serve.stop" else "up", "manifest": resource["manifest"], "names": [resource["serve"]]}
@@ -846,6 +902,8 @@ class ControllerAdapter:
 
     @staticmethod
     def _verify_arguments(resource: Mapping[str, Any], action: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
+        if runtime_candidates.is_runtime(resource):
+            return dict(arguments, action="status")
         if resource["kind"] == "serve":
             if action in {"serve.start", "serve.stop", "serve.restart"}:
                 return {"manifest": resource["manifest"], "names": [resource["serve"]]}
@@ -874,7 +932,22 @@ class ControllerAdapter:
     @staticmethod
     def _planned_steps(payload: Mapping[str, Any]) -> list[Any]:
         plan = payload.get("plan", [])
-        return copy.deepcopy(plan if isinstance(plan, list) else [plan])[:64]
+        plan = plan if isinstance(plan, list) else [plan]
+        projected = []
+        for step in plan[:64]:
+            if type(step) is str and _SAFE.fullmatch(step):
+                projected.append(step)
+                continue
+            if not isinstance(step, Mapping):
+                continue
+            item = {
+                key: step[key]
+                for key in ("kind", "action", "target")
+                if type(step.get(key)) is str and _SAFE.fullmatch(step[key])
+            }
+            if "kind" in item:
+                projected.append(item)
+        return projected
 
     @staticmethod
     def _native_state(payload: Mapping[str, Any]) -> str:
@@ -887,13 +960,43 @@ class ControllerAdapter:
 
     @staticmethod
     def _evidence(payload: Mapping[str, Any]) -> Any:
+        if payload.get("kind") == "runtime_experiment":
+            return runtime_candidates.evidence(payload)
         if isinstance(payload.get("probe"), Mapping) and type(payload.get("passed")) is bool:
+            probe = payload["probe"]
+            result = {
+                key: copy.deepcopy(probe[key])
+                for key in (
+                    "serve", "stack", "engine", "model", "vectors", "dimensions",
+                    "documents", "top_index", "top_score", "devices",
+                    "recognized_characters", "finish_reason", "incomplete", "elapsed_seconds",
+                )
+                if key in probe and type(probe[key]) in (str, int, float, bool, type(None))
+            }
+            raw_parameters = payload.get("parameters", {})
+            parameters = {
+                key: copy.deepcopy(raw_parameters[key])
+                for key in ("request_kind", "expected", "timeout_seconds", "max_tokens", "temperature")
+                if isinstance(raw_parameters, Mapping)
+                and key in raw_parameters
+                and type(raw_parameters[key]) in (str, int, float, bool, type(None))
+            }
+            if (isinstance(raw_parameters, Mapping)
+                    and raw_parameters.get("prompt") == _FIXED_PROBE_PROMPT):
+                parameters["prompt"] = _FIXED_PROBE_PROMPT
+            verification = payload.get("verification", {})
+            verification_status = (
+                verification.get("status")
+                if isinstance(verification, Mapping)
+                and verification.get("status") in {"passed", "failed", "unavailable"}
+                else "unavailable"
+            )
             return {
                 "kind": "serve_probe", "passed": payload["passed"],
                 "bounded": payload.get("bounded") is True,
-                "parameters": copy.deepcopy(payload.get("parameters", {})),
-                "result": copy.deepcopy(dict(payload["probe"])),
-                "verification": copy.deepcopy(payload.get("verification", {})),
+                "parameters": parameters,
+                "result": result,
+                "verification": {"status": verification_status},
             }
         job = payload.get("job")
         if not isinstance(job, Mapping) and isinstance(payload.get("spec"), Mapping):
@@ -903,14 +1006,58 @@ class ControllerAdapter:
                       "spec_sha256": job.get("spec_sha256"), "state": job.get("state"),
                       "revision": job.get("revision")}
             if isinstance(job.get("failure"), Mapping):
-                result["failure"] = copy.deepcopy(dict(job["failure"]))
+                result["failure"] = ControllerAdapter._failure_taxonomy(job["failure"])
             artifact = job.get("artifact")
             if isinstance(artifact, Mapping):
-                result["artifact"] = {
-                    key: copy.deepcopy(artifact[key]) for key in
-                    ("schema", "completeness", "results", "failure") if key in artifact
+                safe_artifact = {
+                    key: artifact[key]
+                    for key in ("schema", "completeness")
+                    if type(artifact.get(key)) is str and len(artifact[key]) <= 128
                 }
+                numeric_results = ControllerAdapter._numeric_evidence(artifact.get("results"))
+                if numeric_results not in ({}, []):
+                    safe_artifact["results"] = numeric_results
+                if isinstance(artifact.get("failure"), Mapping):
+                    safe_artifact["failure"] = ControllerAdapter._failure_taxonomy(artifact["failure"])
+                result["artifact"] = safe_artifact
             return result
+        return None
+
+    @staticmethod
+    def _failure_taxonomy(value: Mapping[str, Any]) -> dict[str, str]:
+        """Retain bounded failure classes/codes, never raw exception messages."""
+        return {
+            key: value[key]
+            for key in ("class", "code")
+            if type(value.get(key)) is str
+            and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", value[key])
+        }
+
+    @staticmethod
+    def _numeric_evidence(value: Any, depth: int = 0) -> Any:
+        """Keep bounded counts/timings while discarding text and references."""
+        if depth > 5:
+            return None
+        if type(value) in (int, bool) or value is None:
+            return copy.deepcopy(value)
+        if type(value) is float:
+            return value if math.isfinite(value) else None
+        if isinstance(value, Mapping):
+            result = {}
+            for key, item in list(value.items())[:64]:
+                if type(key) is not str or not _SAFE.fullmatch(key):
+                    continue
+                projected = ControllerAdapter._numeric_evidence(item, depth + 1)
+                if projected not in (None, {}, []):
+                    result[key] = projected
+            return result
+        if isinstance(value, list):
+            return [
+                projected
+                for item in value[:64]
+                if (projected := ControllerAdapter._numeric_evidence(item, depth + 1))
+                not in (None, {}, [])
+            ]
         return None
 
     @staticmethod

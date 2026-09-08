@@ -22,10 +22,10 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "d9de92475a3546f46de81389fb12cdfd2b36c083cbaee02f7b6e7375c9aaa474"
+    "061659c9052a6e576da0b090feb81df7fa65cf5f786726fe1a96c21d4f558912"
 )
 HANDLER_MAP_SHA256 = (
-    "8e63963800a7c902c5deb65f45ee485f13d3e29056a642c0415e5eac4ce968b7"
+    "e0a91809acc6495a5683819e3e441f7250ce7188003b3f7f4a8a53434f414f16"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -38,6 +38,7 @@ TOOL_NAMES = [
     "router_transition",
     "router_configuration",
     "decision_summary",
+    "runtime_experiment",
     "serves_status",
     "reservation_status",
     "serves_manage",
@@ -166,7 +167,7 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
         tool for tool in public_tools
         if tool["name"] not in {
             "controller_inspect", "controller_logs", "router_configuration",
-            "serves_probe", "serves_profile", "recipe_settings",
+            "serves_probe", "serves_profile", "recipe_settings", "runtime_experiment",
         }
     ]
     assert _canonical_sha256(public_tools) == (
@@ -239,6 +240,7 @@ def test_explicit_ordered_families_compose_the_public_catalog():
     assert [family.name for family in TOOL_FAMILIES] == [
         "operations",
         "router",
+        "runtime-experiments",
         "serves",
         "media-worker",
         "media",

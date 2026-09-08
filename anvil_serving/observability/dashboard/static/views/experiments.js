@@ -16,42 +16,91 @@ import {
 import { request, query, getSession } from "./api.js";
 import { previewAction, evidenceDialog } from "./operations.js";
 import { settingInput, inputValue } from "./configuration.js";
-export async function experimentsView(ctx, id) {
-  const declared = list(ctx.fleet.control_resources)
-    .filter((r) => r.kind === "experiment")
-    .map((r) => ({ ...r, display_name: r.label || r.id }));
-  const serves = (declared.length ? declared : list(ctx.fleet.serves)).filter(
-    (s) => !ctx.host || s.host_id === ctx.host,
+
+const selections = { request: null, runtime: null };
+
+async function experimentPanel(
+  ctx,
+  resources,
+  id,
+  { runtime = false, serveFallback = false } = {},
+) {
+  const kind = runtime ? "runtime" : "request";
+  const title = runtime ? "Runtime candidate" : "Request-only experiment";
+  const selected =
+    resources.find((item) => item.id === id) ||
+    resources.find((item) => item.id === selections[kind]) ||
+    resources[0];
+  const panel = el(
+    "section",
+    { class: "panel stack", "aria-label": title },
+    el("h2", { text: title }),
   );
-  const selected = serves.find((s) => s.id === id) || serves[0];
-  if (!selected)
-    return el(
-      "div",
-      {},
-      heading(
-        "Experiments",
-        "Bounded tests on one declared serve, dispatched by its resource owner.",
+  if (!selected) {
+    panel.append(
+      empty(
+        runtime
+          ? "No owner-managed runtime candidate test is declared for this scope."
+          : "No declared request-only test or serve is available for this scope.",
       ),
-      empty("No declared serves are available for managed experiments."),
     );
-  const controls = await request(query("controls", { resource: selected.id }), {
-    signal: ctx.signal,
-  });
+    return panel;
+  }
+  selections[kind] = selected.id;
+  panel.append(
+    field(
+      runtime
+        ? "Runtime candidate test"
+        : serveFallback
+          ? "Declared serve"
+          : "Declared managed test",
+      select(
+        resources.map((item) => [
+          item.id,
+          item.display_name || item.label || item.id,
+        ]),
+        selected.id,
+        (event) => {
+          selections[kind] = event.target.value;
+          location.hash = route("experiments", event.target.value);
+        },
+      ),
+    ),
+  );
+  let controls;
+  try {
+    controls = await request(query("controls", { resource: selected.id }), {
+      signal: ctx.signal,
+    });
+  } catch (error) {
+    if (error.name === "AbortError") throw error;
+    panel.append(notice(error.message, "warning"));
+    return panel;
+  }
   const catalog = list(controls.actions);
   const action =
-    catalog.find((a) => a.id === "experiment.start") ||
-    (!declared.length &&
-      catalog.find((a) => a.id === "serve.probe" && a.supported));
+    catalog.find((item) => item.id === "experiment.start") ||
+    (serveFallback &&
+      catalog.find((item) => item.id === "serve.probe" && item.supported));
+  const classMatches = runtime
+    ? controls.experiment_class === "runtime_candidate"
+    : controls.experiment_class !== "runtime_candidate";
+  const supported =
+    classMatches &&
+    !!action?.supported &&
+    !!action?.permitted &&
+    !!getSession()?.operate;
+  const descriptors = list(controls.experiment_settings);
   const inputs = new Map();
   const fields = el("div", { class: "grid two" });
-  const descriptors = list(controls.experiment_settings);
   for (const setting of descriptors) {
     const input = settingInput(
       setting,
       setting.configured ?? setting.default,
       () => {},
     );
-    input.id = `experiment-${setting.setting_id}`;
+    input.id = `${runtime ? "runtime-candidate" : "experiment"}-${setting.setting_id}`;
+    input.disabled = !supported;
     inputs.set(setting.setting_id, input);
     fields.append(
       field(
@@ -61,13 +110,16 @@ export async function experimentsView(ctx, id) {
       ),
     );
   }
-  const error = el("div", { role: "alert" });
-  const supported =
-    !!action?.supported && !!action?.permitted && !!getSession()?.operate;
+  const why = !getSession()?.operate
+    ? "Operate access is required."
+    : !classMatches
+      ? "The owner test class does not match this catalog entry. Refresh the declared resources."
+      : action?.reason ||
+        "This owner does not expose an authorized operation for this test.";
+  const helpId = `experiment-help-${crypto.randomUUID()}`;
   const review = button(
-    "Review experiment",
+    runtime ? "Review runtime candidate" : "Review experiment",
     () => {
-      error.replaceChildren();
       for (const input of inputs.values()) if (!input.reportValidity()) return;
       const parameters = Object.fromEntries(
         [...inputs.entries()].map(([key, input]) => [key, inputValue(input)]),
@@ -77,13 +129,69 @@ export async function experimentsView(ctx, id) {
     "primary",
     !supported,
   );
-  const choices = select(
-    serves.map((s) => [s.id, s.display_name || s.id]),
-    selected.id,
-    (event) => {
-      location.hash = route("experiments", event.target.value);
-    },
+  if (!supported) review.setAttribute("aria-describedby", helpId);
+  panel.append(
+    ...[
+      notice(
+        runtime
+          ? "The owner checks the baseline, installs this temporary candidate, runs its fixed check, then restores and verifies the exact baseline. A successful comparison does not promote the candidate."
+          : "Parameters apply to this test only. No prompt, model, endpoint, or fallback can be supplied by this browser.",
+      ),
+      kv([
+        ["Target", selected.display_name || selected.label || selected.id],
+        ["Model", selected.model],
+        ["Engine", selected.engine],
+        ["GPU ownership", list(selected.gpu_ids).join(", ")],
+        [
+          "Conflict limit",
+          controls.experiment_limit ??
+            "No conflict policy reported; review the owner's exact impact.",
+        ],
+      ]),
+      fields,
+      !descriptors.length
+        ? notice(
+            "This declared test uses fixed owner parameters. No request fields are editable here; review its exact impact before dispatch.",
+          )
+        : null,
+      runtime
+        ? notice(
+            "Review the baseline and candidate digests, fixed alias, field changes, and restore steps before confirmation. Failed restoration requires explicit recovery; completion alone does not prove restoration.",
+            "warning",
+          )
+        : null,
+      !supported
+        ? el("div", { id: helpId, class: "notice warning" }, why)
+        : null,
+      review,
+    ].filter((node) => node !== null),
   );
+  return panel;
+}
+
+export async function experimentsView(ctx, id) {
+  const declared = list(ctx.fleet.control_resources).filter(
+    (item) => item.kind === "experiment",
+  );
+  const scoped = (items) =>
+    items.filter((item) => !ctx.host || item.host_id === ctx.host);
+  const runtimeResources = scoped(
+    declared.filter((item) => item.experiment_class === "runtime_candidate"),
+  );
+  const requestResources = scoped(
+    declared.filter(
+      (item) =>
+        !item.experiment_class || item.experiment_class === "request_only",
+    ),
+  );
+  const serveFallback = requestResources.length === 0;
+  const requestTargets = serveFallback
+    ? scoped(list(ctx.fleet.serves))
+    : requestResources;
+  const [requestPanel, runtimePanel] = await Promise.all([
+    experimentPanel(ctx, requestTargets, id, { serveFallback }),
+    experimentPanel(ctx, runtimeResources, id, { runtime: true }),
+  ]);
   let evidence;
   try {
     evidence = await request("evidence", { signal: ctx.signal });
@@ -99,67 +207,7 @@ export async function experimentsView(ctx, id) {
       "Experiments",
       "Managed, bounded checks. A successful test does not establish general model quality or promote a candidate.",
     ),
-    el(
-      "div",
-      { class: "filters" },
-      field(
-        declared.length ? "Declared managed test" : "Declared serve",
-        choices,
-      ),
-    ),
-    el(
-      "div",
-      { class: "grid two" },
-      el(
-        "section",
-        { class: "panel stack" },
-        el("h2", { text: "Request-only experiment" }),
-        notice(
-          "Parameters apply to this test only. No prompt, model, endpoint, or fallback can be supplied by this browser.",
-        ),
-        kv([
-          ["Target", selected.display_name || selected.id],
-          ["Model", selected.model],
-          ["Engine", selected.engine],
-          ["GPU ownership", list(selected.gpu_ids).join(", ")],
-          [
-            "Conflict limit",
-            controls.experiment_limit ??
-              "No conflict policy reported; review the owner's exact impact.",
-          ],
-        ]),
-        fields,
-        descriptors.length
-          ? null
-          : notice(
-              "This declared test uses fixed owner parameters. No request fields are editable here; review its exact impact before dispatch.",
-            ),
-        error,
-        !supported
-          ? notice(
-              !getSession()?.operate
-                ? "Operate access is required."
-                : action?.reason ||
-                    "This owner does not expose an authorized managed experiment operation.",
-              "warning",
-            )
-          : null,
-        review,
-      ),
-      el(
-        "section",
-        { class: "panel stack" },
-        el("h2", { text: "Runtime candidate" }),
-        el("p", {
-          class: "muted",
-          text: "An explicit recipe revision must be reviewed and installed through Configuration before a supported comparison. Preserve the prior revision and recovery plan.",
-        }),
-        el("a", {
-          href: route("configuration", selected.id),
-          text: "Open configuration →",
-        }),
-      ),
-    ),
+    el("div", { class: "grid two" }, requestPanel, runtimePanel),
     el(
       "div",
       { class: "section-heading" },
@@ -176,22 +224,32 @@ export async function experimentsView(ctx, id) {
           el(
             "div",
             { class: "grid two" },
-            retained.map((e) =>
+            retained.map((item) =>
               el(
                 "div",
                 { class: "panel" },
-                el("h3", { text: e.label || e.id }),
+                el("h3", { text: item.label || item.id }),
+                item.kind === "runtime_experiment"
+                  ? kv([
+                      ["Comparison state", badge(item.state || "unknown")],
+                      ["Correctness", badge(item.correctness || "unknown")],
+                      [
+                        "Baseline restore",
+                        badge(item.recovery?.status || "unknown"),
+                      ],
+                    ])
+                  : null,
                 el("p", {
                   class: "meta",
                   text:
-                    e.comparable === true
+                    item.comparable === true
                       ? "Comparison dimensions match."
                       : "Not directly comparable.",
                 }),
-                el("p", { class: "meta", text: show(e.limitations) }),
+                el("p", { class: "meta", text: show(item.limitations) }),
                 button(
                   "View evidence",
-                  () => evidenceDialog(e.id, ctx),
+                  () => evidenceDialog(item.id, ctx),
                   "quiet-button",
                 ),
               ),
