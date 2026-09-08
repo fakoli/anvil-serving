@@ -1164,7 +1164,7 @@ def test_no_expected_node_skips_verification():
 def test_controller_tool_catalog_verifies_identity_and_rejects_duplicate_tools():
     calls = []
     bodies = [
-        b'{"status":"ok","service":"anvil-serving-controller","request_id":"req-1","node":"fakoli-dark"}',
+        b'{"status":"ok","service":"anvil-serving-controller","request_id":"req-1","node":"node-a"}',
         b'{"tools":[{"name":"serves_status","inputSchema":{"type":"object"}}]}',
     ]
 
@@ -1174,7 +1174,7 @@ def test_controller_tool_catalog_verifies_identity_and_rejects_duplicate_tools()
 
     transport = transports.ControllerTransport(
         "http://127.0.0.1:8765", auth_env="TOKEN", allowed_operations=["serves-status"],
-        environment={"TOKEN": TOKEN}, expected_node="fakoli-dark", opener=opener,
+        environment={"TOKEN": TOKEN}, expected_node="node-a", opener=opener,
     )
     assert transport.tool_catalog()[0]["name"] == "serves_status"
     assert calls == ["http://127.0.0.1:8765/health", "http://127.0.0.1:8765/tools/list"]

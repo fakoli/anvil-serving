@@ -13,6 +13,7 @@ fs.mkdirSync(output, { recursive: true });
   const profile = fs.mkdtempSync(path.join(output, "chrome-profile-"));
   const fixture = await createFixture();
   fixture.state.authenticated = true;
+  fixture.state.runtimeCandidate = true;
   const context = await chromium.launchPersistentContext(profile, {
     executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
     headless: false,
@@ -94,16 +95,14 @@ fs.mkdirSync(output, { recursive: true });
           }),
         );
       }
-      const tables = await page
-        .locator(".table-wrap")
-        .evaluateAll((nodes) =>
-          nodes.map((node) => ({
-            caption: node.querySelector("caption")?.textContent,
-            overflow_x: getComputedStyle(node).overflowX,
-            bounded: node.getBoundingClientRect().width <= innerWidth,
-            scrolls: node.scrollWidth > node.clientWidth,
-          })),
-        );
+      const tables = await page.locator(".table-wrap").evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          caption: node.querySelector("caption")?.textContent,
+          overflow_x: getComputedStyle(node).overflowX,
+          bounded: node.getBoundingClientRect().width <= innerWidth,
+          scrolls: node.scrollWidth > node.clientWidth,
+        })),
+      );
       for (const table of tables) {
         assert.ok(table.caption);
         assert.ok(table.bounded);
@@ -121,7 +120,10 @@ fs.mkdirSync(output, { recursive: true });
         fromSurface: true,
         captureBeyondViewport: false,
       });
-      fs.writeFileSync(path.join(output, route.split("/")[0] + "-native-200.png"), Buffer.from(capture.data, "base64"));
+      fs.writeFileSync(
+        path.join(output, route.split("/")[0] + "-native-200.png"),
+        Buffer.from(capture.data, "base64"),
+      );
       await cdp.detach();
     }
     report.status = "passed";

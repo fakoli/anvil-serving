@@ -93,6 +93,12 @@ promote a model merely because the console has been deployed.
 
 ## Verification
 
+The [bounded runtime candidate workflow](runtime-candidates.md) records a matched
+functional request before and after a router revision, restores the exact prior
+revision, and retains failed or interrupted outcomes. Recovery from the operation
+drawer derives the run identity from the saved operation; the browser cannot
+choose an arbitrary owner run.
+
 Run the existing observability/workload security regressions and focused
 Observatory suites with `python scripts/run_tests.py`. Browser journeys live
 under `tests/ui/observatory/`; use their pinned development harness. Exercise

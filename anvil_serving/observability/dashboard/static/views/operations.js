@@ -13,7 +13,7 @@ import {
   route,
   jsonDetails,
 } from "./common.js";
-import { request, getSession } from "./api.js";
+import { request, query, getSession } from "./api.js";
 const dialog = document.getElementById("operation-dialog");
 let dialogAbort = null,
   returnFocus = null,
@@ -45,10 +45,11 @@ function shell(title, subtitle) {
   });
   const body = el("div", { class: "dialog-body" }),
     foot = el("div", { class: "dialog-foot" }),
+    // Orca treats role=status as browser UI text; the generic polite region
+    // preserves live announcements without repeating unchanged owner polls.
     status = el("div", {
       id: "operation-status-announcement",
       class: "sr-only",
-      role: "status",
       "aria-live": "polite",
       "aria-atomic": "true",
     });
@@ -392,6 +393,7 @@ export async function openOperation(id, ctx) {
   body.append(el("p", { text: "Reading owner progress…" }));
   foot.append(button("Close", closeDialog));
   let announcedState = null;
+  let restoreButton = null;
   async function update() {
     if (signal.aborted || document.hidden) return;
     try {
@@ -481,6 +483,41 @@ export async function openOperation(id, ctx) {
       if (fingerprint !== announcedState) {
         announcedState = fingerprint;
         status.textContent = `Operation ${currentState[0]}. Owner ${currentState[1]}. Execution ${currentState[2]}. Verification ${currentState[3]}. Recovery ${currentState[4]}.`;
+      }
+      let restoreAction = null;
+      if (
+        ["manual_recovery_required", "outcome_unknown"].includes(op.status) &&
+        getSession()?.operate
+      ) {
+        try {
+          const controls = await request(
+            query("controls", { resource: op.resource_id }),
+            { signal },
+          );
+          restoreAction = list(controls.actions).find(
+            (action) =>
+              action.id === "operation.recover" &&
+              action.supported &&
+              action.permitted,
+          );
+        } catch (error) {
+          if (error.name === "AbortError") return;
+        }
+      }
+      if (signal.aborted) return;
+      if (restoreAction && !restoreButton) {
+        restoreButton = button(
+          "Review restore",
+          () =>
+            previewAction(op.resource_id, restoreAction, ctx, {
+              operation_id: op.id,
+            }),
+          "primary",
+        );
+        foot.append(restoreButton);
+      } else if (!restoreAction && restoreButton) {
+        restoreButton.remove();
+        restoreButton = null;
       }
       if (
         !["succeeded", "failed", "cancelled", "completed", "rejected"].includes(

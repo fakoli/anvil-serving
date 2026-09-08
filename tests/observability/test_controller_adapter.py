@@ -149,6 +149,82 @@ def test_owner_configuration_failure_projects_recovery_without_private_error_tex
     assert "private" not in repr(result) and "canary" not in repr(result)
 
 
+def test_evidence_projection_excludes_model_output_and_raw_owner_failures():
+    probe = ControllerAdapter._evidence({
+        "passed": False,
+        "bounded": True,
+        "parameters": {
+            "prompt": "Reply with the single word READY.",
+            "request_kind": "chat_completion",
+            "expected": "READY",
+            "timeout_seconds": 10,
+            "max_tokens": 32,
+        },
+        "probe": {
+            "serve": "chat",
+            "recognized_excerpt": "secret generated text",
+            "recognized_characters": 21,
+            "finish_reason": "stop",
+            "incomplete": False,
+            "endpoint": "http://private.invalid/v1",
+        },
+        "verification": {"status": "failed", "message": "secret owner message"},
+    })
+    assert probe == {
+        "kind": "serve_probe",
+        "passed": False,
+        "bounded": True,
+        "parameters": {
+            "request_kind": "chat_completion",
+            "expected": "READY",
+            "timeout_seconds": 10,
+            "max_tokens": 32,
+            "prompt": "Reply with the single word READY.",
+        },
+        "result": {
+            "serve": "chat",
+            "recognized_characters": 21,
+            "finish_reason": "stop",
+            "incomplete": False,
+        },
+        "verification": {"status": "failed"},
+    }
+
+    job = ControllerAdapter._evidence({
+        "spec": {"run_id": "run-a", "suite": "context"},
+        "spec_sha256": "a" * 64,
+        "state": "failed",
+        "revision": 4,
+        "failure": {"class": "worker_runtime", "code": "OSError", "message": "/private/token=value"},
+        "artifact": {
+            "schema": "artifact/v1",
+            "completeness": "failed",
+            "results": {"count": 2, "timing_seconds": 1.25, "invalid": float("nan"),
+                        "output": "secret model text"},
+            "failure": {"class": "worker_runtime", "code": "OSError", "message": "/private/token=value"},
+        },
+    })
+    assert job["failure"] == {"class": "worker_runtime", "code": "OSError"}
+    assert job["artifact"] == {
+        "schema": "artifact/v1",
+        "completeness": "failed",
+        "results": {"count": 2, "timing_seconds": 1.25},
+        "failure": {"class": "worker_runtime", "code": "OSError"},
+    }
+    assert "secret" not in repr(job) and "/private" not in repr(job)
+
+    assert ControllerAdapter._planned_steps({"plan": [
+        {"kind": "docker_start", "target": "chat", "command": "cat /private/token"},
+        {"kind": "unsafe", "target": "https://private.invalid", "detail": "secret"},
+        "verify_restore",
+        "private command --token secret",
+    ]}) == [
+        {"kind": "docker_start", "target": "chat"},
+        {"kind": "unsafe"},
+        "verify_restore",
+    ]
+
+
 def test_unknown_action_and_parameter_fail_closed():
     value = adapter()
     with pytest.raises(ObservatoryError):
@@ -166,7 +242,9 @@ def test_probe_preview_does_not_run_probe_and_start_verification_checks_health()
     result = value.execute(preview, "intent.probe")
     assert [call[0].name for call in FakeTransport.instances[-1].calls].count("serves_probe") == 1
     assert result["evidence"]["parameters"]["expected"] == "READY"
-    assert value.verify(preview, result) == {"status": "passed", "message": "Matched READY."}
+    assert value.verify(preview, result) == {
+        "status": "passed", "message": "The bounded probe completed."
+    }
     assert [call[0].name for call in FakeTransport.instances[-1].calls].count("serves_probe") == 1
 
     start = value.preview("serve.chat", "serve.start")

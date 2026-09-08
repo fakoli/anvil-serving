@@ -56,7 +56,7 @@ fs.mkdirSync(output, { recursive: true });
         window.__announcements.push(node.textContent),
       ).observe(node, { subtree: true, childList: true, characterData: true });
     });
-    assert.equal(await status.getAttribute("role"), "status");
+    assert.equal(await status.getAttribute("role"), null);
     assert.equal(await status.getAttribute("aria-live"), "polite");
     assert.equal(await status.getAttribute("aria-atomic"), "true");
     assert.equal(
@@ -106,12 +106,10 @@ fs.mkdirSync(output, { recursive: true });
     );
     const cdp = await page.context().newCDPSession(page);
     const tree = await cdp.send("Accessibility.getFullAXTree");
-    const region = tree.nodes.find(
-      (node) =>
-        node.role?.value === "status" &&
-        node.properties?.some(
-          (item) => item.name === "live" && item.value.value === "polite",
-        ),
+    const region = tree.nodes.find((node) =>
+      node.properties?.some(
+        (item) => item.name === "live" && item.value.value === "polite",
+      ),
     );
     assert.ok(region);
     report.status = "passed";
