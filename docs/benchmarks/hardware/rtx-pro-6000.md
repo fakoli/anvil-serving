@@ -1,9 +1,10 @@
 # RTX PRO 6000 benchmark view
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
-96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node, Windows 11 with
-Docker Desktop/WSL2. **Last locally measured:** 2026-09-04. **Evidence
-interpretation reviewed:** 2026-09-04.
+96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
+measurements on 2026-09-08, with retained Windows 11/Docker Desktop/WSL2
+history. **Last locally measured:** 2026-09-08. **Evidence
+interpretation reviewed:** 2026-09-08.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -38,6 +39,29 @@ Earlier findings also retain the r16
 650K promotion, 262K retune, and r27 image-upgrade history. Active assignments
 remain private operator state;
 Companion Node is model-free in the reference topology and reaches Dark remotely.
+
+## Native Linux migration comparison (2026-09-08)
+
+The same physical pair, exact GLM-5.3-Flash model/image and TP2/393,216/C1
+profile measured warm direct median decode of 149.02/125.03/124.46/120.29
+versus retained WSL 112.07/96.17/102.42/99.79 tok/s at nominal
+4K/120K/262K/380K. These n3 shared-prefix, variable-short-output cells show
+20.5–33.0% higher decode with long effective prefill within approximately
+±2.3%. Endurance completed 60/60 at 142.64 versus 102.19 tok/s (+39.6%).
+Coding 15/15, image corpus 12/12, agentic 30/30 and official SWE smoke 1/1
+are bounded quality evidence; SWE agent time increased to 115.69 from
+34.22 seconds. The extended direct context suite passed 128/150 through 376,484 actual
+prompt tokens, with 9 empty length-terminated and 13 incorrect visible
+answers; nominal 8K/32K/131K/262K/380K buckets passed 27/18/24/30/29 of 30.
+This non-monotonic default-thinking curve has no matched Windows arm; its
+threshold-derived 8,192 effective-context field is not a physical cap or
+Linux-caused regression. Strict output 0/3 and unique canaries 1/10 are
+excluded failed populations. Routed 380K admission and reasoning evidence remain failures;
+the direct image phrase-sensitive miss is retained. The native stack adds
+`NCCL_P2P_DISABLE=1` and changes OS/driver/cache history, so this is not an
+OS-only causal experiment or strict finalist qualification. `no-promotion`;
+prior promotion decisions remain dated history. See the
+[finding and artifacts](../../findings/2026-09-08-glm53-linux-wsl-comparison.md).
 
 ## Recorded promotion, rollback, and challenger state
 
@@ -198,6 +222,10 @@ subsequently human-promoted as the single-service Primary/general-vision/OCR
 profile and then qualified for one video; Inferact NVFP4 remains no-promotion.
 
 ## Recent changes
+
+- 2026-09-08: native Linux / retained WSL GLM comparison added above; same
+  measured dual-card pair, faster historical-style decode with explicit failed
+  strict-output and routed gates; no new promotion.
 
 - 2026-09-04: the current-runtime Qwen3.8 27B campaign optimized SGLang through
   draft depth, chunking, compile, Mamba allocation, topology, and target

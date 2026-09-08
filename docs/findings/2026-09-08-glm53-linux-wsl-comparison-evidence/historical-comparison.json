@@ -1,0 +1,185 @@
+{
+  "schema": "anvil-serving.os-comparison/v1",
+  "rows": [
+    {
+      "context_target": 4096,
+      "actual_prompt_tokens": 2969.0,
+      "sample_count_per_os": 3,
+      "metrics": {
+        "decode_tok_s_p50": {
+          "windows": 112.06564058179691,
+          "linux": 149.01900227284116,
+          "change_percent": 32.974747209937135
+        },
+        "effective_prefill_tok_s_p50": {
+          "windows": 16729.465552552232,
+          "linux": 23143.00551077051,
+          "change_percent": 38.33678928995931
+        },
+        "ttft_p50_ms": {
+          "windows": 177.4718000087887,
+          "linux": 128.2897810015129,
+          "change_percent": -27.712582508793083
+        },
+        "e2e_p50_ms": {
+          "windows": 500.499099958688,
+          "linux": 611.2129540015303,
+          "change_percent": 22.120689937700334
+        },
+        "throughput_tok_s": {
+          "windows": 56.996474897490415,
+          "linux": 106.75009323273754,
+          "change_percent": 87.29244821671911
+        }
+      },
+      "windows_source": "windows-capacity-4k-r3.json",
+      "linux_source": "linux-legacy-capacity-4k-r3.json",
+      "limitations": [
+        "Historical variable-output, shared-prefix workload; descriptive medians only",
+        "Whole migrated stack comparison, not isolated OS causality"
+      ],
+      "median_output_tokens": {
+        "windows": 36,
+        "linux": 74
+      }
+    },
+    {
+      "context_target": 120000,
+      "actual_prompt_tokens": 96278.0,
+      "sample_count_per_os": 3,
+      "metrics": {
+        "decode_tok_s_p50": {
+          "windows": 96.16500114296164,
+          "linux": 125.02757587394592,
+          "change_percent": 30.01359578634679
+        },
+        "effective_prefill_tok_s_p50": {
+          "windows": 5748.638371968673,
+          "linux": 5879.3029344226425,
+          "change_percent": 2.272965422405271
+        },
+        "ttft_p50_ms": {
+          "windows": 16747.966599999927,
+          "linux": 16376.091381996957,
+          "change_percent": -2.2204201076145624
+        },
+        "e2e_p50_ms": {
+          "windows": 17233.929299982265,
+          "linux": 16738.361063999037,
+          "change_percent": -2.875538290526336
+        },
+        "throughput_tok_s": {
+          "windows": 2.715436165889082,
+          "linux": 2.6245311985354314,
+          "change_percent": -3.3477114467128977
+        }
+      },
+      "windows_source": "windows-capacity-120k-r3.json",
+      "linux_source": "linux-legacy-capacity-120k-r3.json",
+      "limitations": [
+        "Historical variable-output, shared-prefix workload; descriptive medians only",
+        "Whole migrated stack comparison, not isolated OS causality"
+      ],
+      "median_output_tokens": {
+        "windows": 48,
+        "linux": 46
+      }
+    },
+    {
+      "context_target": 262144,
+      "actual_prompt_tokens": 216101.0,
+      "sample_count_per_os": 3,
+      "metrics": {
+        "decode_tok_s_p50": {
+          "windows": 102.41880883554646,
+          "linux": 124.46274256962307,
+          "change_percent": 21.52332563198669
+        },
+        "effective_prefill_tok_s_p50": {
+          "windows": 5578.783369064824,
+          "linux": 5458.399114754668,
+          "change_percent": -2.1578944071874995
+        },
+        "ttft_p50_ms": {
+          "windows": 38736.223999992944,
+          "linux": 39590.5463229974,
+          "change_percent": 2.2054868409595363
+        },
+        "e2e_p50_ms": {
+          "windows": 39107.24919999484,
+          "linux": 39967.26827999737,
+          "change_percent": 2.1991295670129807
+        },
+        "throughput_tok_s": {
+          "windows": 1.2242969681044664,
+          "linux": 1.0338363102010584,
+          "change_percent": -15.556736875554888
+        }
+      },
+      "windows_source": "windows-capacity-262k-r3.json",
+      "linux_source": "linux-legacy-capacity-262k-r3.json",
+      "limitations": [
+        "Historical variable-output, shared-prefix workload; descriptive medians only",
+        "Whole migrated stack comparison, not isolated OS causality"
+      ],
+      "median_output_tokens": {
+        "windows": 39,
+        "linux": 48
+      }
+    },
+    {
+      "context_target": 380000,
+      "actual_prompt_tokens": 304491.0,
+      "sample_count_per_os": 3,
+      "metrics": {
+        "decode_tok_s_p50": {
+          "windows": 99.79115138353907,
+          "linux": 120.28614187074675,
+          "change_percent": 20.53788357290003
+        },
+        "effective_prefill_tok_s_p50": {
+          "windows": 5456.732792727141,
+          "linux": 5425.364604799794,
+          "change_percent": -0.5748529224145926
+        },
+        "ttft_p50_ms": {
+          "windows": 55801.15680000745,
+          "linux": 56123.41785300305,
+          "change_percent": 0.5775167962029704
+        },
+        "e2e_p50_ms": {
+          "windows": 56362.32839996228,
+          "linux": 56462.859640003444,
+          "change_percent": 0.1783660166197576
+        },
+        "throughput_tok_s": {
+          "windows": 0.8353306078293593,
+          "linux": 0.7631981612491053,
+          "change_percent": -8.635197358288249
+        }
+      },
+      "windows_source": "windows-capacity-380k-r3.json",
+      "linux_source": "linux-legacy-capacity-380k-r3.json",
+      "limitations": [
+        "Historical variable-output, shared-prefix workload; descriptive medians only",
+        "Whole migrated stack comparison, not isolated OS causality"
+      ],
+      "median_output_tokens": {
+        "windows": 51,
+        "linux": 48
+      }
+    }
+  ],
+  "endurance": {
+    "sample_count_per_os": 60,
+    "windows_source": "windows-endurance-4k-r60.json",
+    "linux_source": "endurance-4k-r60.json",
+    "decode_windows": 102.19275206464441,
+    "decode_linux": 142.6429205479183,
+    "decode_change_percent": 39.58222835381338,
+    "limitations": [
+      "Variable-output shared-prefix historical workload",
+      "n60 p99 is descriptive only"
+    ]
+  }
+}

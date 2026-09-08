@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.gpu-operating-observation/v1",
+  "observed_at": "2026-09-08T06:53:20.217296+00:00",
+  "phase": "during deepest native context sweep, not idle",
+  "gpus": [
+    {
+      "index": "0",
+      "temperature.gpu": "85",
+      "power.draw": "292.50",
+      "power.limit": "300.00",
+      "clocks.sm": "1957",
+      "clocks_event_reasons.sw_thermal_slowdown": "Not Active",
+      "clocks_event_reasons.hw_thermal_slowdown": "Not Active",
+      "clocks_event_reasons.sw_power_cap": "Active"
+    },
+    {
+      "index": "1",
+      "temperature.gpu": "84",
+      "power.draw": "296.10",
+      "power.limit": "300.00",
+      "clocks.sm": "1972",
+      "clocks_event_reasons.sw_thermal_slowdown": "Not Active",
+      "clocks_event_reasons.hw_thermal_slowdown": "Not Active",
+      "clocks_event_reasons.sw_power_cap": "Active"
+    }
+  ],
+  "limitations": [
+    "One instantaneous observation, not continuous power/thermal telemetry",
+    "Power/thermal operating states were not matched to the historical Windows capture"
+  ],
+  "serving_change": false
+}

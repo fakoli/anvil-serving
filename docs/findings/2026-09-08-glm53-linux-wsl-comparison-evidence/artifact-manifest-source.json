@@ -1,0 +1,191 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": "2026-09-08-glm53-linux-wsl-comparison",
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark-campaign-state/v1",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark-graph-data/v1",
+    "anvil-serving.benchmark-graph-manifest/v1",
+    "anvil-serving.benchmark-harness-assets/v1",
+    "anvil-serving.benchmark-post-state/v1",
+    "anvil-serving.benchmark-preflight/v1",
+    "anvil-serving.benchmark-publication-validation/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.cache-comparison/v1",
+    "anvil-serving.cache-observation/v1",
+    "anvil-serving.context-campaign-summary/v1",
+    "anvil-serving.context-suite-run/v1",
+    "anvil-serving.control-evidence/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.followup-candidate-plan/v1",
+    "anvil-serving.gpu-operating-observation/v1",
+    "anvil-serving.hardware-support-observation/v1",
+    "anvil-serving.llm-qualification-configuration/v1",
+    "anvil-serving.llm-qualification-workload/v1",
+    "anvil-serving.os-comparison/v1",
+    "anvil-serving.public-evidence-redaction/v1",
+    "anvil-serving.swe-os-comparison/v1",
+    "anvil-serving.swe-run/v1",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "redaction-provenance.json"
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json",
+        "prompt-equivalence.json"
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json",
+        "reproduction.md",
+        "campaign-state.json",
+        "dispatch-packet.md",
+        "linux-feature-followup.json"
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration-and-identity.json",
+        "native-server-contract.json",
+        "hardware-observation.json",
+        "launcher-identity.json",
+        "gpu-interconnect.txt",
+        "p2p-support-observation.json",
+        "iommu-observation.json",
+        "sustained-gpu-observation.json"
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "agentic/artifact.json",
+        "agentic/evidence/0-agentic.json",
+        "agentic/evidence/0-assets.json",
+        "agentic/evidence/0-preflight.json",
+        "benchmark-graph-data.json",
+        "benchmark-matrix.svg",
+        "coding-quality-invalid-control.log",
+        "coding-quality.json",
+        "coding-quality.log",
+        "context/artifact.json",
+        "context/evidence/0-assets.json",
+        "context/evidence/0-context.json",
+        "context/evidence/0-preflight.json",
+        "controlled-scout-4k-r3.json",
+        "direct-preflight-disabled.json",
+        "direct-preflight-thinking-enabled.json",
+        "direct-smoke.json",
+        "endurance-4k-r60.json",
+        "endurance-4k-r60.log",
+        "graph-manifest.json",
+        "historical-comparison.json",
+        "image-corpus-retry.log",
+        "image-corpus.json",
+        "image-corpus.log",
+        "linux-legacy-capacity-120k-r3.json",
+        "linux-legacy-capacity-120k.log",
+        "linux-legacy-capacity-262k-r3.json",
+        "linux-legacy-capacity-262k.log",
+        "linux-legacy-capacity-380k-r3.json",
+        "linux-legacy-capacity-380k.log",
+        "linux-legacy-capacity-4k-r3.json",
+        "linux-legacy-capacity-4k.log",
+        "linux-unique-natural-4k-r10.json",
+        "linux-unique-natural-4k.log",
+        "routed-needle-260k.json",
+        "routed-needle-260k.log",
+        "routed-preflight-disabled.json",
+        "routed-preflight-disabled.log",
+        "routed-thinking-enabled.json",
+        "routed-thinking-enabled.log",
+        "swe-comparison.json",
+        "swe/artifact.json",
+        "swe/evidence/0-assets.json",
+        "swe/evidence/0-preflight.json",
+        "swe/evidence/2-swe.json",
+        "thinking-control.json",
+        "windows-capacity-120k-r3.json",
+        "windows-capacity-262k-r3.json",
+        "windows-capacity-380k-r3.json",
+        "windows-capacity-4k-r3.json",
+        "windows-endurance-4k-r60.json",
+        "endurance-graph-manifest.json",
+        "endurance-graph-data.json",
+        "endurance-matrix.svg"
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "post-state.json",
+        "post-routed-smoke.json",
+        "cache-before-summary.json",
+        "cache-after-summary.json"
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "context-summary.json",
+        "validation.json"
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Retained completed campaign evidence, including failed gates and explicit limitations."
+    }
+  ]
+}

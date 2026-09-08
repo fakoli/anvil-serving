@@ -1,0 +1,21 @@
+{
+  "schema": "anvil-serving.cache-comparison/v1",
+  "repositories": [
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-09-07T22:04:06.617134Z",
+      "logical_bytes": 178061085084,
+      "refs": {},
+      "repo_id": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO",
+      "snapshots": [
+        "c3cbb9891b67c741bcbf6b176dd7af9265b069db"
+      ]
+    }
+  ],
+  "model_repository_state_unchanged": true,
+  "cache_logical_bytes_before": 178068277238,
+  "cache_logical_bytes_after": 178068277238,
+  "note": "No cache reset; whole-volume state is not a controlled cold-cache experiment."
+}

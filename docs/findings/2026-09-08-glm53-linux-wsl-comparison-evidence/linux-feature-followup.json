@@ -1,0 +1,56 @@
+{
+  "schema": "anvil-serving.followup-candidate-plan/v1",
+  "status": "proposed-not-executed",
+  "trigger": "User asked whether to enable NCCL or other Linux features after baseline",
+  "current_state": "NCCL, CUDA graphs, FlashInfer kernels and adaptive EAGLE are already in use. P2P and custom all-reduce are disabled; NCCL_CUMEM_ENABLE=0 is retained.",
+  "support_observation": "p2p-support-observation.json",
+  "ordered_candidates": [
+    {
+      "id": "p2p",
+      "prerequisites": [
+        "Resolve the observed translated DMA-FQ GPU IOMMU domains through a separately planned host configuration change before enabling bare-metal PCIe P2P",
+        "Inspect exact installed NCCL/CUDA versions and active IOMMU/ACS state",
+        "Independent peer-copy data correctness and bandwidth/collective tests with bounded resources",
+        "Investigate prior restoration hang from owner logs"
+      ],
+      "change": "Managed cloned recipe removes NCCL_P2P_DISABLE override; retain exact original restore recipe",
+      "gate": "No corruption/hang; clean lifecycle; matched end-to-end model, tools, image, long-context and endurance gates"
+    },
+    {
+      "id": "cumem",
+      "change": "Separately remove NCCL_CUMEM_ENABLE=0 and let version-supported autodetection choose",
+      "gate": "Exact runtime feature support; initialization, reserve, correctness, measured latency/throughput"
+    },
+    {
+      "id": "custom-all-reduce",
+      "change": "Separately remove --disable-custom-all-reduce only after peer-path correctness",
+      "gate": "Pinned SGLang SM120/TP2 support; correct collectives and full model gates"
+    },
+    {
+      "id": "scheduler-and-speculation",
+      "change": "Only after transport is stable, compare prefill chunk size and adaptive/fixed MTP controls one at a time",
+      "gate": "Reproducible output/cache contract, appropriate no-spec control for speculative-speedup claims, quality and reserve"
+    }
+  ],
+  "limitations": [
+    "Driver P2P status OK is support evidence, not proof of correct or fast transfer",
+    "No feature was enabled, no BIOS/kernel setting changed, no candidate loaded, and no optimization result claimed",
+    "Current official documentation may describe a newer build; verify each control against the pinned installed image",
+    "Strict controlled-output benchmark qualification remains unresolved; fix/version the workload contract before a new finalist performance claim",
+    "Promotion remains a separate human gate",
+    "No IOMMU/ACS/firmware/kernel/driver unbind or reboot change was authorized or performed by this benchmark; future host changes belong in repeatable infrastructure configuration."
+  ],
+  "sources": [
+    "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting/gpu_troubleshooting.html",
+    "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html",
+    "https://docs.sglang.io/docs/advanced_features/server_arguments",
+    "https://raw.githubusercontent.com/torvalds/linux/v7.0/Documentation/ABI/testing/sysfs-kernel-iommu_groups"
+  ],
+  "platform_observation": "iommu-observation.json",
+  "comparison_controls": [
+    "Preserve300W per-card power limits and record temperature/clocks/limiting state",
+    "Hold model/image/TP2/context393216/C1 fixed while comparing one transport or allocation control",
+    "Use bracketed baseline/candidate measurements after resolving strict output-contract qualification",
+    "Record exact restoration and benchmark failures"
+  ]
+}

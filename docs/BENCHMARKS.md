@@ -50,7 +50,35 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-04**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-08**.
+
+## GLM-5.3-Flash native Linux versus Windows/WSL (2026-09-08)
+
+On the same physical two RTX PRO 6000 Blackwell Max-Q cards, exact ormandj
+W4A16/NVFP4 model revision and SGLang rc14 image, the native Linux stack
+measured 149.02/125.03/124.46/120.29 tok/s median decode versus the retained
+WSL baseline's 112.07/96.17/102.42/99.79 at nominal 4K/120K/262K/380K.
+Each warm direct online cell used C1, three requests, shared prefixes and
+variable short output; the deepest actual prompt was 304,491 tokens.
+Decode rose 20.5–33.0%, while long-context effective prefill stayed within
+approximately ±2.3%. Endurance completed 60/60 at 142.64 versus 102.19 tok/s
+median decode (+39.6%) under the same short-output limitation.
+
+Coding passed 15/15, the image corpus 12/12, deep agentic 30/30, and the
+identical official SWE-bench smoke instance resolved 1/1. Its agent stage
+nevertheless took 115.69 versus 34.22 seconds and 22 versus 11 requests.
+Strict output control passed 0/3 and unique natural canaries passed only 1/10;
+those populations are excluded from performance claims. Routed 380K admission
+and reasoning-channel evidence failed despite the corresponding direct passes;
+a literal image-phrase miss is also retained. The new direct context suite passed 128/150 through 376,484 actual prompt
+tokens: 9 empty length-terminated responses and 13 incorrect visible answers.
+Nominal 8K/32K/131K/262K/380K buckets passed 27/18/24/30/29 of 30 each.
+The non-monotonic curve makes the native threshold-derived `effective_context`
+of 8,192 a policy result, not a physical cap. This default-thinking suite has
+no matched Windows arm and does not establish a Linux-caused regression.
+There is no new finalist performance qualification or promotion. OS, driver, host stack, cache history,
+and an added `NCCL_P2P_DISABLE=1` differ: this measures the migrated stack,
+not OS-only causality. See the [finding and raw evidence](findings/2026-09-08-glm53-linux-wsl-comparison.md).
 
 ## Qwen3.8 27B comprehensive optimization on RTX PRO 6000 (2026-09-04)
 

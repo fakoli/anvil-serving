@@ -1,0 +1,23 @@
+{
+  "version": "0.0.0.dev1+g033446bb05",
+  "tp_size": 2,
+  "context_length": 393216,
+  "max_total_tokens": 393216,
+  "max_running_requests": 1,
+  "quantization": "modelopt_mixed",
+  "kv_cache_dtype": "fp8_e4m3",
+  "mamba_ssm_dtype": "bfloat16",
+  "mem_fraction_static": 0.99,
+  "chunked_prefill_size": 4096,
+  "max_prefill_tokens": 4096,
+  "speculative_algorithm": "EAGLE",
+  "speculative_num_steps": 5,
+  "speculative_adaptive": true,
+  "disable_custom_all_reduce": true,
+  "reasoning_parser": "glm45",
+  "tool_call_parser": "glm47",
+  "attention_backend": "dsa",
+  "linear_attn_backend": "triton",
+  "max_total_num_tokens": 393216,
+  "max_req_input_len": 393210
+}

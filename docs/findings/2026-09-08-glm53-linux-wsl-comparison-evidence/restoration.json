@@ -1,0 +1,33 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-08-glm53-linux-wsl-comparison",
+  "status": "not-applicable",
+  "mutation_required": false,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "configuration-and-identity.json",
+      "cache-before-summary.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "post-state.json",
+      "post-routed-smoke.json",
+      "cache-after-summary.json"
+    ]
+  },
+  "differences": [],
+  "post_run_checks": {
+    "configuration_unchanged": true,
+    "router_catalog_unchanged": true,
+    "direct_catalog_unchanged": true,
+    "container_identity_image_restart_state_unchanged": true,
+    "managed_status_ok": true,
+    "gpu_inventory_ok": true,
+    "routed_smoke_and_json_passed": true
+  },
+  "verified": true,
+  "not_applicable_reason": "No serving, routing, model, image, GPU assignment or lifecycle mutation; before/after fingerprints and post-workload smoke verified."
+}

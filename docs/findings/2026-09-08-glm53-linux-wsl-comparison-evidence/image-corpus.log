@@ -1,0 +1,19 @@
+usage: anvil-serving eval benchmark multimodal [-h] --base-url BASE_URL
+                                               --model MODEL
+                                               --model-revision MODEL_REVISION
+                                               --runtime-image RUNTIME_IMAGE
+                                               (--engine-revision ENGINE_REVISION |
+                                               --engine-build-ref ENGINE_BUILD_REF)
+                                               --hardware HARDWARE
+                                               --corpus CORPUS --output OUTPUT
+                                               [--api-key-env API_KEY_ENV]
+                                               [--concurrency CONCURRENCY]
+                                               [--max-images-per-request MAX_IMAGES_PER_REQUEST]
+                                               [--max-videos-per-request MAX_VIDEOS_PER_REQUEST]
+                                               [--max-tokens MAX_TOKENS]
+                                               [--timeout-seconds TIMEOUT_SECONDS]
+                                               [--thinking-mode {default,enabled,disabled,unsupported}]
+                                               [--reasoning-effort {none,minimal,low,medium,high,max,xhigh}]
+                                               [--allowed-finish-reasons ALLOWED_FINISH_REASONS]
+                                               [--dry-run]
+anvil-serving eval benchmark multimodal: error: --engine-build-ref must be an exact 40-character lowercase ref
