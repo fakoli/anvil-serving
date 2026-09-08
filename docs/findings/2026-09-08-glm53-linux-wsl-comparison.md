@@ -14,7 +14,7 @@ its model, image, routes, GPU ownership, or client settings.
 ## Result card
 
 > Historical-style decode medians increased 20.5–33.0% after migration to
-> native Linux. Long-context effective prefill changed by approximately ±2%.
+> native Linux. Long-context effective prefill changed by approximately ±2.3%.
 > These are local whole-stack measurements; strict output-control and routed
 > compatibility failures prevent an all-gates qualification claim.
 
