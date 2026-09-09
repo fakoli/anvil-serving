@@ -89,7 +89,7 @@
       "path": "campaign-state.json",
       "source_role": "sources/publication-inputs/campaign-state.json",
       "original_sha256": "9e4a704b88e513fbefa64a770648c61713c70ce95135eca7ef569256593a0680",
-      "public_sha256": "e1bd539c3acccaf32a6c7b04e83a07d264d2380bc6574f99a4a88b3490c9ca92",
+      "public_sha256": "f096b8c039864cdd48b4199c368354ff4c6d47945377d8054c9594eac6465d0f",
       "transformation": "Retained pre-decision source snapshot; public decision metadata reconciled with human-decision.json. Native measurements and failed gates are preserved."
     },
     {

@@ -39,7 +39,7 @@
         },
         {
           "path": "redaction-provenance.json",
-          "sha256": "49805bafd61abb08374b80083e8d81f2fec9628e82cb7c48295992cad888aa1e",
+          "sha256": "e9221fc1c2099a597ddbbda00de4e3591efb3dacd5572a71e308400492bf4c4c",
           "bytes": 14507
         }
       ],
@@ -80,7 +80,7 @@
         },
         {
           "path": "campaign-state.json",
-          "sha256": "e1bd539c3acccaf32a6c7b04e83a07d264d2380bc6574f99a4a88b3490c9ca92",
+          "sha256": "f096b8c039864cdd48b4199c368354ff4c6d47945377d8054c9594eac6465d0f",
           "bytes": 2184
         },
         {
