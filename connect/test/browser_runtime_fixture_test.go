@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base32"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -208,7 +209,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	oidcPath := filepath.Join(secrets, "oidc-rs256.pem")
+	oidcPath := filepath.Join(secrets, "oidc.pem")
 	edgeWrite(t, oidcPath, string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: oidcDER})))
 	authListen, caddyListen := edgeReserve(t), edgeReserve(t)
 	authConfig := filepath.Join(directory, "authelia.yml")
@@ -293,7 +294,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	tunnelRequest.Header.Set("Connection", "Upgrade")
 	tunnelRequest.Header.Set("Upgrade", "websocket")
 	tunnelRequest.Header.Set("Sec-WebSocket-Version", "13")
-	tunnelRequest.Header.Set("Sec-WebSocket-Key", "MDEyMzQ1Njc4OWFiY2RlZg==")
+	tunnelRequest.Header.Set("Sec-WebSocket-Key", runtimeWebSocketKey(t))
 	tunnelRequest.Header.Set("Sec-WebSocket-Protocol", "v1")
 	tunnelRequest.Header.Set("Authorization", "Bearer invalid")
 	tunnelResponse, err := (&http.Client{Transport: tunnelTransport, Timeout: 5 * time.Second}).Do(tunnelRequest)
@@ -416,6 +417,15 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			return
 		}
 	}
+}
+
+func runtimeWebSocketKey(t *testing.T) string {
+	t.Helper()
+	nonce := make([]byte, 16)
+	if _, err := rand.Read(nonce); err != nil {
+		t.Fatal(err)
+	}
+	return base64.StdEncoding.EncodeToString(nonce)
 }
 
 func jsonString(value string) string {
