@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from .connect import commands as connect_commands
 from .control_plane import commands as control_plane_commands
 from .eval import commands as eval_commands
 from .family import CommandFamily
@@ -50,6 +51,7 @@ ROOT_ORDER = (
     "collectors",
     "dashboard",
     "edge",
+    "connect",
     "workbench",
 )
 
@@ -102,5 +104,6 @@ FAMILIES = (
     media_commands,
     harness_commands,
     control_plane_commands,
+    connect_commands,
 )
 COMMAND_TREE = build_command_tree(FAMILIES)

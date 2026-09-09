@@ -1,0 +1,434 @@
+package browserfixture
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/base32"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"encoding/pem"
+	"io"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	stdruntime "runtime"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/fakoli/anvil-serving/connect/internal/admin"
+	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/privatefiles"
+	connectruntime "github.com/fakoli/anvil-serving/connect/internal/runtime"
+)
+
+const (
+	edgeControlHost = "control.example.test"
+	edgeTunnelHost  = "tunnel.example.test"
+)
+
+// runtimeCaddyConfig is the same public split used by the managed renderer:
+// only the tunnel upgrade takes HTTP/1.1, while browser and control use h2c
+// over the gateway's same-UID ingress socket.
+func runtimeCaddyConfig(listen, authListen, socket, certificate, key string) map[string]any {
+	headers := []string{"Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP", "X-Anvil-Connect-User", "X-Anvil-Connect-Groups", "X-Auth-Request-User", "X-Auth-Request-Email", "X-Authenticated-User", "X-Authenticated-Groups", "Remote-User", "Remote-Groups", "Remote-Email", "Remote-Name", "Cf-Access-Jwt-Assertion", "X-Goog-Authenticated-User", "X-Goog-Authenticated-User-Email", "X-Amzn-Oidc-Data", "X-Amzn-Oidc-Identity", "X-Amzn-Oidc-Accesstoken", "Tailscale-User-Login"}
+	clean := map[string]any{"handler": "headers", "request": map[string]any{"delete": headers}}
+	proxy := func(destination string, versions []string) map[string]any {
+		return map[string]any{"handler": "reverse_proxy", "upstreams": []any{map[string]any{"dial": destination}}, "transport": map[string]any{"protocol": "http", "versions": versions}}
+	}
+	route := func(match map[string]any, versions []string) map[string]any {
+		return map[string]any{"match": []any{match}, "handle": []any{clean, proxy("unix/"+socket, versions)}}
+	}
+	upgrade := map[string]any{"Connection": map[string]any{"pattern": `(?i)(^|,)[\t ]*upgrade[\t ]*(,|$)`}, "Upgrade": map[string]any{"pattern": `(?i)^websocket$`}}
+	tunnelMatch := map[string]any{"host": []string{edgeTunnelHost}, "method": []string{"GET"}, "path": []string{"/acv1/events"}, "header_regexp": upgrade}
+	browserUpgrade := map[string]any{"host": []string{dashHost}, "path": []string{"/", "/*"}, "header_regexp": upgrade}
+	return map[string]any{
+		"admin": map[string]any{"disabled": true},
+		"apps": map[string]any{
+			"http": map[string]any{"servers": map[string]any{"anvil_connect": map[string]any{
+				"listen": []string{listen}, "tls_connection_policies": []any{map[string]any{}},
+				"automatic_https": map[string]any{"disable_redirects": true, "disable_certificates": true},
+				"routes": []any{
+					map[string]any{"match": []any{map[string]any{"host": []string{edgeAuthHost}}}, "handle": []any{clean, proxy(authListen, []string{"1.1"})}},
+					route(tunnelMatch, []string{"1.1"}),
+					route(browserUpgrade, []string{"1.1"}),
+					route(map[string]any{"host": []string{dashHost}, "path": []string{"/", "/*"}, "method": []string{"GET", "POST"}}, []string{"h2c"}),
+					route(map[string]any{"host": []string{edgeControlHost}}, []string{"h2c"}),
+					map[string]any{"handle": []any{map[string]any{"handler": "static_response", "status_code": 404}}},
+				},
+			}}},
+			"tls": map[string]any{"certificates": map[string]any{"load_files": []any{map[string]any{"certificate": certificate, "key": key}}}, "disable_storage_clean": true},
+		},
+	}
+}
+
+type runtimeProxyObserver struct {
+	mu     sync.Mutex
+	counts map[string]int
+}
+
+func (o *runtimeProxyObserver) observe(host string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.counts[host]++
+}
+
+func (o *runtimeProxyObserver) seen(host string) bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.counts[host] > 0
+}
+
+func runtimeConnectProxy(target string, allowed map[string]bool, observer *runtimeProxyObserver) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if observer != nil {
+			observer.observe(r.Host)
+		}
+		if r.Method != http.MethodConnect || !allowed[r.Host] {
+			http.Error(w, "denied", http.StatusForbidden)
+			return
+		}
+		upstream, err := net.DialTimeout("tcp4", target, time.Second)
+		if err != nil {
+			http.Error(w, "upstream", http.StatusBadGateway)
+			return
+		}
+		defer upstream.Close()
+		downstream, buffered, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			return
+		}
+		defer downstream.Close()
+		if _, err := buffered.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil || buffered.Flush() != nil {
+			return
+		}
+		done := make(chan struct{})
+		go func() { _, _ = io.Copy(upstream, buffered); _ = upstream.Close(); close(done) }()
+		_, _ = io.Copy(downstream, upstream)
+		<-done
+	})
+}
+
+func runtimeTunnelBinary(t *testing.T) string {
+	t.Helper()
+	_, source, _, ok := stdruntime.Caller(0)
+	if !ok {
+		t.Fatal("transport lock source unavailable")
+	}
+	file, err := os.Open(filepath.Join(filepath.Dir(source), "..", "transport.lock.json"))
+	if err != nil {
+		t.Fatal("transport lock unavailable")
+	}
+	defer file.Close()
+	var lock struct {
+		Schema    string `json:"schema"`
+		Name      string `json:"name"`
+		Version   string `json:"version"`
+		Artifacts map[string]struct {
+			BinarySHA256 string `json:"binary_sha256"`
+		} `json:"artifacts"`
+	}
+	if err := json.NewDecoder(io.LimitReader(file, 64*1024)).Decode(&lock); err != nil || lock.Schema != "anvil-connect.transport-lock/v1" || lock.Name != "wstunnel" || lock.Version != "10.7.1" {
+		t.Fatal("invalid transport lock")
+	}
+	expected := lock.Artifacts[stdruntime.GOOS+"/"+stdruntime.GOARCH].BinarySHA256
+	if len(expected) != 64 {
+		t.Fatal("transport digest unavailable")
+	}
+	if _, err := hex.DecodeString(expected); err != nil {
+		t.Fatal("transport digest invalid")
+	}
+	path := os.Getenv("ANVIL_CONNECT_WSTUNNEL")
+	if path == "" {
+		path = "/data/cache/anvil-connect/tools/wstunnel/10.7.1/linux-amd64/wstunnel"
+	}
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&0111 == 0 || info.Size() < 1 || info.Size() > 32*1024*1024 {
+		t.Fatal("pinned wstunnel binary is unavailable")
+	}
+	binary, err := os.Open(path)
+	if err != nil {
+		t.Fatal("pinned wstunnel binary is unavailable")
+	}
+	defer binary.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, io.LimitReader(binary, 32*1024*1024+1)); err != nil || hex.EncodeToString(hash.Sum(nil)) != expected {
+		t.Fatal("pinned wstunnel binary digest mismatch")
+	}
+	return path
+}
+
+// TestBrowserRuntimeEdgeFixture composes the public Caddy/Authelia edge with
+// the actual gateway and connector lifecycle. It is isolated in one Go test
+// process because it temporarily supplies the gateway's strict OIDC transport.
+func TestBrowserRuntimeEdgeFixture(t *testing.T) {
+	if os.Getenv("ANVIL_CONNECT_BROWSER_RUNTIME_EDGE_FIXTURE") != "1" {
+		t.Skip("launched only by the runtime-edge Playwright test")
+	}
+	caddy, authelia := edgeTool(t, "caddy"), edgeTool(t, "authelia")
+	binary := runtimeTunnelBinary(t)
+	directory := t.TempDir()
+	secrets, state, childHome := filepath.Join(directory, "secrets"), filepath.Join(directory, "state"), filepath.Join(directory, "child-home")
+	for _, path := range []string{secrets, state, childHome} {
+		if err := os.Mkdir(path, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	certificate, key, root, roots := edgeCertificate(t, edgeAuthHost, dashHost, edgeControlHost, edgeTunnelHost)
+	certificatePath, keyPath, rootPath := filepath.Join(secrets, "edge.pem"), filepath.Join(secrets, "edge.key"), filepath.Join(secrets, "edge-root.pem")
+	edgeWrite(t, certificatePath, certificate)
+	edgeWrite(t, keyPath, key)
+	edgeWrite(t, rootPath, root)
+	edgePrepareHome(t, childHome)
+	allowedPassword, allowedDigest := edgeHash(t, childHome, authelia)
+	clientSecret, clientDigest := edgeHash(t, childHome, authelia)
+	users := filepath.Join(secrets, "users.yml")
+	edgeWrite(t, users, "users:\n  fixture-allowed:\n    displayname: Fixture Allowed\n    password: "+jsonString(allowedDigest)+"\n    email: fixture-allowed@example.test\n    groups: []\n")
+	clientSecretPath := filepath.Join(secrets, "client-secret")
+	edgeWrite(t, clientSecretPath, clientDigest+"\n")
+	secretPaths := map[string]string{}
+	for _, name := range []string{"session", "storage", "validation", "hmac"} {
+		path := filepath.Join(secrets, name)
+		edgeWrite(t, path, edgeRandom(t, 48)+"\n")
+		secretPaths[name] = path
+	}
+	// The OIDC signing key is intentionally distinct from the TLS fixture CA.
+	oidcKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oidcDER, err := x509.MarshalPKCS8PrivateKey(oidcKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oidcPath := filepath.Join(secrets, "oidc.pem")
+	edgeWrite(t, oidcPath, string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: oidcDER})))
+	authListen, caddyListen := edgeReserve(t), edgeReserve(t)
+	authConfig := filepath.Join(directory, "authelia.yml")
+	edgeWrite(t, authConfig, edgeConfig(authListen, state, users, clientSecretPath, secretPaths["session"], secretPaths["storage"], secretPaths["validation"], secretPaths["hmac"], oidcPath))
+	edgeRun(t, childHome, authelia, "storage", "migrate", "up", "--config", authConfig, "--config.experimental.filters", "template")
+	allowedTOTP := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(edgeRandom(t, 20)))
+	edgeRun(t, childHome, authelia, "storage", "user", "totp", "generate", "fixture-allowed", "--secret", allowedTOTP, "--issuer", "Anvil Connect Fixture", "--algorithm", "SHA1", "--digits", "6", "--period", "30", "--config", authConfig, "--config.experimental.filters", "template")
+	startEdgeChild(t, childHome, authelia, "--config", authConfig, "--config.experimental.filters", "template")
+
+	gatewayCfg := connectruntime.GatewayConfig{Schema: "anvil-connect.gateway-runtime/v1", Gateway: config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: edgeReserve(t), MaxConcurrent: 4, Resources: []config.Resource{{Rule: config.Rule{ID: "dash", Host: dashHost, PathPrefix: "/", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 5, DurationSeconds: 20}}, Connector: "connector-a", TunnelAddress: edgeReserve(t)}}}, ControlHost: edgeControlHost, TunnelHost: edgeTunnelHost, StateDirectory: filepath.Join(directory, "gateway"), TunnelBinary: binary, TunnelListen: edgeReserve(t), OIDC: connectruntime.OIDC{Issuer: "https://" + edgeAuthHost, ClientID: "connect-browser", ClientSecretEnv: "OIDC_CLIENT_SECRET"}}
+	caddyConfig, err := json.Marshal(runtimeCaddyConfig(caddyListen, authListen, filepath.Join(gatewayCfg.StateDirectory, "ingress.sock"), certificatePath, keyPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	caddyConfigPath := filepath.Join(directory, "caddy.json")
+	edgeWrite(t, caddyConfigPath, string(caddyConfig))
+	startEdgeChild(t, childHome, caddy, "run", "--config", caddyConfigPath)
+
+	probeTransport := &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots, ServerName: edgeAuthHost}, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+		if network != "tcp" || address != edgeAuthHost+":443" {
+			return nil, &net.AddrError{Err: "fixture issuer destination denied", Addr: address}
+		}
+		return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "tcp4", caddyListen)
+	}}
+	defer probeTransport.CloseIdleConnections()
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		response, probeErr := (&http.Client{Transport: probeTransport, Timeout: 2 * time.Second}).Get("https://" + edgeAuthHost + "/api/health")
+		if probeErr == nil && response.StatusCode == http.StatusOK {
+			response.Body.Close()
+			break
+		}
+		if response != nil {
+			response.Body.Close()
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("pinned Authelia and Caddy edge did not become healthy")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if err := connectruntime.InitializeGateway(gatewayCfg); err != nil {
+		t.Fatal(err)
+	}
+	// session.New clones DefaultTransport when runtime wiring supplies no custom
+	// client. This clone preserves TLS 1.3 and fixture-root verification while
+	// mapping only the declared issuer hostname to this fixture Caddy listener.
+	originalDefault := http.DefaultTransport
+	base, ok := originalDefault.(*http.Transport)
+	if !ok {
+		t.Fatal("default HTTP transport is not cloneable")
+	}
+	issuerTransport := base.Clone()
+	issuerTransport.Proxy = nil
+	issuerTransport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots.Clone(), ServerName: edgeAuthHost}
+	issuerTransport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+		if network != "tcp" || address != edgeAuthHost+":443" {
+			return nil, &net.AddrError{Err: "fixture issuer destination denied", Addr: address}
+		}
+		return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "tcp4", caddyListen)
+	}
+	http.DefaultTransport = issuerTransport
+	t.Cleanup(func() { http.DefaultTransport = originalDefault; issuerTransport.CloseIdleConnections() })
+	gateway, err := connectruntime.StartGateway(context.Background(), gatewayCfg, func(name string) (string, bool) { return clientSecret, name == "OIDC_CLIENT_SECRET" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gateway.Close()
+
+	// Prove the rendered narrow tunnel route reaches the real gate over h1.
+	// Its deliberately invalid bearer must be rejected by the gate, not Caddy.
+	tunnelTransport := &http.Transport{ForceAttemptHTTP2: false, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots.Clone(), ServerName: edgeTunnelHost}, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+		if network != "tcp" || address != edgeTunnelHost+":443" {
+			return nil, &net.AddrError{Err: "fixture tunnel destination denied", Addr: address}
+		}
+		return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "tcp4", caddyListen)
+	}}
+	tunnelRequest, err := http.NewRequest(http.MethodGet, "https://"+edgeTunnelHost+"/acv1/events", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tunnelRequest.Header.Set("Connection", "Upgrade")
+	tunnelRequest.Header.Set("Upgrade", "websocket")
+	tunnelRequest.Header.Set("Sec-WebSocket-Version", "13")
+	tunnelRequest.Header.Set("Sec-WebSocket-Key", runtimeWebSocketKey(t))
+	tunnelRequest.Header.Set("Sec-WebSocket-Protocol", "v1")
+	tunnelRequest.Header.Set("Authorization", "Bearer invalid")
+	tunnelResponse, err := (&http.Client{Transport: tunnelTransport, Timeout: 5 * time.Second}).Do(tunnelRequest)
+	tunnelTransport.CloseIdleConnections()
+	if err != nil {
+		t.Fatal("public tunnel route unavailable")
+	}
+	io.Copy(io.Discard, tunnelResponse.Body)
+	tunnelResponse.Body.Close()
+	if tunnelResponse.StatusCode != http.StatusUnauthorized {
+		t.Fatal("public tunnel route did not reach gate")
+	}
+
+	gatewayDirectory, err := privatefiles.Open(gatewayCfg.StateDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gatewayDirectory.Close()
+	adminPin, err := gatewayDirectory.PinPath("admin.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer adminPin.Close()
+	nativeFixture := &edgeFixture{}
+	native := httptest.NewServer(http.HandlerFunc(nativeFixture.nativeDashboard))
+	defer native.Close()
+	proxyObserver := &runtimeProxyObserver{counts: map[string]int{}}
+	proxyServer := httptest.NewServer(runtimeConnectProxy(caddyListen, map[string]bool{edgeControlHost + ":443": true, edgeTunnelHost + ":443": true}, proxyObserver))
+	defer proxyServer.Close()
+	connectorCfg := connectruntime.ConnectorConfig{Schema: "anvil-connect.connector-runtime/v1", ID: "connector-a", ControlHost: edgeControlHost, TunnelHost: edgeTunnelHost, StateDirectory: filepath.Join(directory, "connector"), TunnelBinary: binary, PublicTrustFile: rootPath, HTTPProxyURL: proxyServer.URL, Resources: []connectruntime.ConnectorResource{{Envelope: config.Envelope{Rule: gatewayCfg.Gateway.Resources[0].Rule, Listen: edgeReserve(t), OriginURL: native.URL}, ReverseAddress: gatewayCfg.Gateway.Resources[0].TunnelAddress}}}
+	invite, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "invite", Installation: "connector-a", Role: "connector", Resources: []string{"dash"}, LifetimeSeconds: 60})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := connectruntime.InitializeConnector(context.Background(), connectorCfg, invite); err != nil {
+		t.Fatal(err)
+	}
+	identity, err := connectruntime.ConnectorIdentity(connectorCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "approve", Installation: "connector-a", Fingerprint: identity.Fingerprint}); err != nil {
+		t.Fatal(err)
+	}
+	connector, err := connectruntime.StartConnector(context.Background(), connectorCfg, func(string) (string, bool) { return "", false })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connector.Close()
+	// StartConnector reports process ownership, not reverse-tunnel readiness.
+	// Observe the exact CONNECT authority and then the gateway-side reverse
+	// listener, with each retry driven by the actual declared resource binding.
+	deadline = time.Now().Add(10 * time.Second)
+	for !proxyObserver.seen(edgeTunnelHost+":443") && time.Now().Before(deadline) {
+		select {
+		case <-connector.Done():
+			t.Fatal("connector tunnel child exited before public CONNECT")
+		default:
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if !proxyObserver.seen(edgeTunnelHost + ":443") {
+		t.Fatal("connector did not CONNECT to declared tunnel host")
+	}
+	for {
+		connection, dialErr := net.DialTimeout("tcp4", gatewayCfg.Gateway.Resources[0].TunnelAddress, 200*time.Millisecond)
+		if dialErr == nil {
+			connection.Close()
+			break
+		}
+		select {
+		case <-connector.Done():
+			t.Fatal("connector tunnel child exited before reverse listener")
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("connector reverse listener did not become ready")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	ready := map[string]string{"url": "https://" + dashHost, "resolver": caddyListen, "ca": rootPath, "allowed_user": "fixture-allowed", "allowed_password": allowedPassword}
+	if err := json.NewEncoder(os.Stdout).Encode(ready); err != nil {
+		t.Fatal(err)
+	}
+	commands := make(chan string)
+	go func() {
+		defer close(commands)
+		buffer := make([]byte, 256)
+		for {
+			n, readErr := os.Stdin.Read(buffer)
+			if n > 0 {
+				for _, line := range strings.Split(string(buffer[:n]), "\n") {
+					if strings.TrimSpace(line) != "" {
+						commands <- strings.TrimSpace(line)
+					}
+				}
+			}
+			if readErr != nil {
+				return
+			}
+		}
+	}()
+	for command := range commands {
+		response := map[string]string{"ack": command}
+		switch command {
+		case "grant allowed":
+			subject, grantErr := edgeGrantedSubject(childHome, authelia, authConfig, filepath.Join(directory, "identifiers.yml"))
+			if grantErr != nil {
+				response["error"] = "fixture subject export failed"
+			} else if _, grantErr = admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "human-set", Issuer: "https://" + edgeAuthHost, Subject: subject, Resources: []string{"dash"}}); grantErr != nil {
+				response["error"] = "fixture Connect grant failed"
+			}
+		case "totp allowed":
+			response["code"] = edgeStableTOTP(allowedTOTP)
+		default:
+			response["error"] = "unknown fixture command"
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(response); err != nil {
+			return
+		}
+	}
+}
+
+func runtimeWebSocketKey(t *testing.T) string {
+	t.Helper()
+	nonce := make([]byte, 16)
+	if _, err := rand.Read(nonce); err != nil {
+		t.Fatal(err)
+	}
+	return base64.StdEncoding.EncodeToString(nonce)
+}
+
+func jsonString(value string) string {
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}

@@ -1,0 +1,193 @@
+{
+  "authelia": {
+    "client_secret_file": "/etc/anvil-connect/secrets/oidc-client-secret-hash",
+    "host": "auth.example.test",
+    "identity_validation_secret_file": "/etc/anvil-connect/secrets/authelia-identity-validation",
+    "listen": "127.0.0.1:19091",
+    "oidc_hmac_secret_file": "/etc/anvil-connect/secrets/oidc-hmac",
+    "oidc_rsa_private_key_file": "/etc/anvil-connect/secrets/oidc-rs256-private-key",
+    "service_name": "anvil-connect-authelia",
+    "session_secret_file": "/etc/anvil-connect/secrets/authelia-session",
+    "state_directory": "/var/lib/anvil-connect/authelia",
+    "storage_encryption_key_file": "/etc/anvil-connect/secrets/authelia-storage",
+    "users_file": "/etc/anvil-connect/users.yml"
+  },
+  "binary": "/usr/local/bin/anvil-connect",
+  "caddy": {
+    "service_name": "anvil-connect-caddy",
+    "tls": {
+      "certificate_file": "/etc/anvil-connect/tls/service.pem",
+      "key_file": "/etc/anvil-connect/tls/service-key.pem",
+      "mode": "provided"
+    }
+  },
+  "clients": [
+    {
+      "listen": "127.0.0.1:18181",
+      "local_key_env": "ANVIL_CONNECT_DASHBOARD_LOCAL_KEY",
+      "remote_key_env": "ANVIL_CONNECT_DASHBOARD_REMOTE_KEY",
+      "rule": {
+        "access": "api",
+        "host": "api.example.test",
+        "id": "dashboard-api",
+        "limits": {
+          "buffer_bytes": 65536,
+          "concurrent": 8,
+          "duration_seconds": 300,
+          "idle_seconds": 30,
+          "request_bytes": 1048576
+        },
+        "methods": [
+          "GET"
+        ],
+        "native_auth": "delegate-bearer",
+        "path_prefix": "/v1"
+      },
+      "schema": "anvil-connect.client-runtime/v1"
+    }
+  ],
+  "components": {
+    "authelia": "/opt/anvil-connect/components/authelia/4.39.20/authelia",
+    "caddy": "/opt/anvil-connect/components/caddy/2.11.3/caddy"
+  },
+  "config_root": "/etc/anvil-connect/rendered",
+  "connectors": [
+    {
+      "control_host": "control.example.test",
+      "http_proxy_url": "",
+      "id": "dashboard",
+      "public_trust_file": "/etc/anvil-connect/trust/public.pem",
+      "resources": [
+        {
+          "envelope": {
+            "listen": "127.0.0.1:18081",
+            "origin_url": "http://127.0.0.1:18080",
+            "rule": {
+              "access": "browser",
+              "host": "dash.example.test",
+              "id": "dashboard",
+              "limits": {
+                "buffer_bytes": 65536,
+                "concurrent": 8,
+                "duration_seconds": 300,
+                "idle_seconds": 30,
+                "request_bytes": 1048576
+              },
+              "methods": [
+                "GET",
+                "POST"
+              ],
+              "native_auth": "passthrough",
+              "path_prefix": "/"
+            },
+            "token_env": ""
+          },
+          "reverse_address": "127.0.0.1:17001"
+        },
+        {
+          "envelope": {
+            "listen": "127.0.0.1:18082",
+            "origin_url": "http://127.0.0.1:18080",
+            "rule": {
+              "access": "api",
+              "host": "api.example.test",
+              "id": "dashboard-api",
+              "limits": {
+                "buffer_bytes": 65536,
+                "concurrent": 8,
+                "duration_seconds": 300,
+                "idle_seconds": 30,
+                "request_bytes": 1048576
+              },
+              "methods": [
+                "GET"
+              ],
+              "native_auth": "delegate-bearer",
+              "path_prefix": "/v1"
+            },
+            "token_env": "ANVIL_CONNECT_DASHBOARD_API_TOKEN"
+          },
+          "reverse_address": "127.0.0.1:17002"
+        }
+      ],
+      "schema": "anvil-connect.connector-runtime/v1",
+      "state_directory": "/var/lib/anvil-connect/connectors/dashboard",
+      "tunnel_binary": "/usr/local/bin/wstunnel",
+      "tunnel_host": "tunnel.example.test"
+    }
+  ],
+  "environment_files": {
+    "clients": {
+      "dashboard-api": "/etc/anvil-connect/secrets/clients/dashboard-api.env"
+    },
+    "connectors": {
+      "dashboard": "/etc/anvil-connect/secrets/connectors/dashboard.env"
+    },
+    "gateway": "/etc/anvil-connect/secrets/gateway.env"
+  },
+  "gateway": {
+    "control_host": "control.example.test",
+    "gateway": {
+      "listen": "127.0.0.1:17080",
+      "max_concurrent": 64,
+      "resources": [
+        {
+          "connector": "dashboard",
+          "rule": {
+            "access": "browser",
+            "host": "dash.example.test",
+            "id": "dashboard",
+            "limits": {
+              "buffer_bytes": 65536,
+              "concurrent": 8,
+              "duration_seconds": 300,
+              "idle_seconds": 30,
+              "request_bytes": 1048576
+            },
+            "methods": [
+              "GET",
+              "POST"
+            ],
+            "native_auth": "passthrough",
+            "path_prefix": "/"
+          },
+          "tunnel_address": "127.0.0.1:17001"
+        },
+        {
+          "connector": "dashboard",
+          "rule": {
+            "access": "api",
+            "host": "api.example.test",
+            "id": "dashboard-api",
+            "limits": {
+              "buffer_bytes": 65536,
+              "concurrent": 8,
+              "duration_seconds": 300,
+              "idle_seconds": 30,
+              "request_bytes": 1048576
+            },
+            "methods": [
+              "GET"
+            ],
+            "native_auth": "delegate-bearer",
+            "path_prefix": "/v1"
+          },
+          "tunnel_address": "127.0.0.1:17002"
+        }
+      ],
+      "schema": "anvil-connect.gateway/v1"
+    },
+    "oidc": {
+      "client_id": "anvil-connect",
+      "client_secret_env": "ANVIL_CONNECT_OIDC_CLIENT_SECRET",
+      "issuer": "https://auth.example.test"
+    },
+    "schema": "anvil-connect.gateway-runtime/v1",
+    "state_directory": "/var/lib/anvil-connect/gateway",
+    "tunnel_binary": "/usr/local/bin/wstunnel",
+    "tunnel_host": "tunnel.example.test",
+    "tunnel_listen": "127.0.0.1:17081"
+  },
+  "schema": "anvil-connect.deployment/v1",
+  "service_user": "anvil-connect"
+}

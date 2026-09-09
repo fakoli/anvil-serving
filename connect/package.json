@@ -1,0 +1,10 @@
+{
+  "name": "anvil-connect-browser-tests",
+  "private": true,
+  "scripts": {
+    "test:browser": "playwright test --config test/playwright.config.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
