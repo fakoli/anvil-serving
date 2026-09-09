@@ -22,13 +22,13 @@ This directory contains the sanitized public evidence for
   words and is not performance-eligible. Matched 380K target retrieval and
   long-tool assertions are separate correctness gates.
 
-## Finalization rules
+## Finalization and validation
 
-The final artifact manifest must retain all ten required roles without a
-`pending` status. Native request artifacts remain authoritative. Public files
-must redact GPU UUIDs, addresses, hostnames, personal paths, credentials, and
-other private identifiers while preserving native schemas and a redaction
-record. The generated graph and canonical manifest helpers will each run twice
-and retain byte-identical results.
+The artifact manifest retains all ten required roles. Native request artifacts
+remain authoritative. Public files redact private identifiers while preserving
+native schemas and a redaction record. The graph and manifest helpers each
+produced byte-identical results across two runs. The 19 focused publication
+tests, tracked Markdown link check and strict MkDocs build passed. The strict
+build used the repository's docs requirements in an isolated tool environment.
 
 The authorized native GLM recipe retains P2P enabled. See the [decision summary](summary.json), [publication summary](publication-summary.md), [comparison](comparison.json), and [chart](benchmark-matrix.svg). The two 380K strict-output failures and the raw diagnostic marker failure remain retained limitations.
