@@ -50,6 +50,7 @@ def test_manifest_text_parsing_is_portable_while_native_file_reads_fail_closed_w
         (" " * (connect_config._MAX_MANIFEST_BYTES + 1), "bounded manifest read"),
         ("\ud800", "not UTF-8"),
     ],
+    ids=["non-string", "oversized", "invalid-unicode"],
 )
 def test_manifest_text_parsing_rejects_non_utf8_and_oversized_input(value, message: str) -> None:
     with pytest.raises(ManifestError, match=message):
