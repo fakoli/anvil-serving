@@ -82,9 +82,17 @@ func fullAPI(t *testing.T, native http.HandlerFunc, mutate ...func(*config.Gatew
 		change(&g)
 	}
 	ca := testpki.New(t)
+	binding := access.LeaseBinding{Installation: "origin-a", Resource: g.Resources[0].Rule.ID, Epoch: strings.Repeat("a", 64), Generation: 1}
+	lease, err := access.NewLease(binding, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := lease.Renew(binding, 1, time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	adapter, err := origin.NewAPI(config.Envelope{Rule: g.Resources[0].Rule, Listen: "127.0.0.1:" + loopbackPort(t), OriginURL: app.URL, TokenEnv: "ANVIL_CONNECT_ROUTER_TOKEN"}, transport.GatewayPeer, func(name string) (string, bool) {
 		return "synthetic-native-token", name == "ANVIL_CONNECT_ROUTER_TOKEN"
-	})
+	}, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,6 +167,7 @@ func fullAPI(t *testing.T, native http.HandlerFunc, mutate ...func(*config.Gatew
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(edge.Close)
 	gateway := httptest.NewServer(edge)
 	t.Cleanup(func() { gateway.CloseClientConnections(); gateway.Close() })
 	return apiFixture{gateway, connector, key, keys}
@@ -293,6 +302,97 @@ func TestAPIKeyThroughManagedTunnelStreamsAndCancels(t *testing.T) {
 		t.Fatal("unexpected origin dispatch count")
 	}
 	t.Log("one scoped key -> gateway -> pinned reverse tunnel -> inner mTLS -> native bearer -> first SSE event; cancellation reached origin")
+}
+
+func TestAPIRevocationClosesSSEWithinFiveSeconds(t *testing.T) {
+	stopped := make(chan struct{})
+	f := fullAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		defer close(stopped)
+		w.Header().Set("Content-Type", "text/event-stream")
+		io.WriteString(w, "data: admitted\n\n")
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	})
+	client := &http.Client{Timeout: 7 * time.Second}
+	response, err := client.Do(f.request(t, "POST", "/v1/chat/completions"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	reader := bufio.NewReader(response.Body)
+	if _, err := reader.ReadString('\n'); err != nil {
+		t.Fatal(err)
+	}
+	admitted, err := f.keys.Authenticate(f.key, "router", "POST")
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	if err := f.keys.Revoke(admitted.KeyID); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-stopped:
+	case <-time.After(5 * time.Second):
+		t.Fatal("revoked key retained native SSE access")
+	}
+	if _, err := io.Copy(io.Discard, reader); err == nil {
+		t.Fatal("revoked SSE ended as a successful complete response")
+	}
+	denied, err := client.Do(f.request(t, "POST", "/v1/chat/completions"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	denied.Body.Close()
+	if denied.StatusCode != 401 {
+		t.Fatal("revoked key authorized a new request")
+	}
+	t.Logf("active SSE access closed after %s; origin cancellation is not proof of engine compute termination", time.Since(start))
+}
+
+func TestAPIRevocationClosesWebSocketWithinFiveSeconds(t *testing.T) {
+	stopped := make(chan struct{})
+	f := fullAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		defer close(stopped)
+		conn, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.CloseNow()
+		conn.Read(r.Context())
+	})
+	client := &http.Client{Transport: apiRoundTripper(func(r *http.Request) (*http.Response, error) {
+		r = r.Clone(r.Context())
+		r.Host = "api.example.test"
+		return http.DefaultTransport.RoundTrip(r)
+	})}
+	ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+	defer cancel()
+	conn, _, err := websocket.Dial(ctx, strings.Replace(f.gateway.URL, "http://", "ws://", 1)+"/v1/events", &websocket.DialOptions{HTTPClient: client, HTTPHeader: http.Header{"Authorization": []string{"Bearer " + f.key}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.CloseNow()
+	admitted, err := f.keys.Authenticate(f.key, "router", "GET")
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	if err := f.keys.Revoke(admitted.KeyID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := conn.Read(ctx); err == nil {
+		t.Fatal("revoked WebSocket remained usable")
+	}
+	select {
+	case <-stopped:
+	case <-time.After(5 * time.Second):
+		t.Fatal("revoked WebSocket origin stayed connected")
+	}
+	if time.Since(start) >= 5*time.Second {
+		t.Fatal("WebSocket revocation exceeded target")
+	}
+	t.Logf("active WebSocket access closed after %s", time.Since(start))
 }
 
 func TestAPIConnectorFailureDoesNotReplayPost(t *testing.T) {
