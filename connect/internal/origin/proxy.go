@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/httpedge"
 	"github.com/fakoli/anvil-serving/connect/internal/relay"
@@ -27,6 +28,8 @@ var ErrConfiguration = errors.New("invalid origin proxy configuration")
 type SecretSource func(name string) (string, bool)
 
 type Proxy struct {
+	lease       *access.Lease
+	active      *access.Active
 	envelope    config.Envelope
 	gatewayPeer string
 	secrets     SecretSource
@@ -39,15 +42,20 @@ type Proxy struct {
 // tunnel's identity alone does not authorize access through a loopback listener.
 // TLS servers must require and verify client certificates under the deployment
 // CA; the handler additionally checks the gateway's declared certificate name.
-func NewAPI(envelope config.Envelope, gatewayPeer string, secrets SecretSource) (*Proxy, error) {
+func NewAPI(envelope config.Envelope, gatewayPeer string, secrets SecretSource, lease *access.Lease) (*Proxy, error) {
 	declaration := config.Connector{Schema: "anvil-connect.connector/v1", ID: "local", Resources: []config.Envelope{envelope}}
-	if declaration.Validate() != nil || envelope.Rule.Access != "api" || !config.ValidHost(gatewayPeer) || secrets == nil {
+	if declaration.Validate() != nil || envelope.Rule.Access != "api" || !config.ValidHost(gatewayPeer) || secrets == nil || lease == nil || lease.Binding().Resource != envelope.Rule.ID {
 		return nil, ErrConfiguration
 	}
 	envelope.Rule.Methods = append([]string(nil), envelope.Rule.Methods...)
 	u, _ := url.Parse(envelope.OriginURL)
 	idle := time.Duration(envelope.Rule.Limits.IdleSeconds) * time.Second
-	p := &Proxy{envelope: envelope, gatewayPeer: gatewayPeer, secrets: secrets, slots: make(chan struct{}, envelope.Rule.Limits.Concurrent)}
+	p := &Proxy{envelope: envelope, gatewayPeer: gatewayPeer, secrets: secrets, slots: make(chan struct{}, envelope.Rule.Limits.Concurrent), lease: lease}
+	var err error
+	p.active, err = access.NewActive(envelope.Rule.Limits.Concurrent, 250*time.Millisecond)
+	if err != nil {
+		return nil, ErrConfiguration
+	}
 	p.transport = &http.Transport{
 		Proxy: nil, DisableKeepAlives: true, DisableCompression: true,
 		MaxConnsPerHost: envelope.Rule.Limits.Concurrent, MaxResponseHeaderBytes: 65536,
@@ -86,7 +94,7 @@ func NewAPI(envelope config.Envelope, gatewayPeer string, secrets SecretSource) 
 	return p, nil
 }
 
-func (p *Proxy) Close() { p.transport.CloseIdleConnections() }
+func (p *Proxy) Close() { p.active.Close(); p.transport.CloseIdleConnections() }
 
 type nativeTokenKey struct{}
 
@@ -116,6 +124,12 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if ctx.Err() != nil {
 		return
 	}
+	ctx, release, err := p.active.Watch(ctx, p.lease.Check)
+	if err != nil {
+		http.Error(w, "connector control lease unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	defer release()
 	token, ok := p.secrets(p.envelope.TokenEnv)
 	if !ok || token == "" || len(token) > 4096 || strings.TrimSpace(token) != token || strings.ContainsAny(token, "\r\n\x00\t ") {
 		http.Error(w, "native credential unavailable", http.StatusServiceUnavailable)

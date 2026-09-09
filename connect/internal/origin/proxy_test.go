@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/testpki"
 )
@@ -51,7 +52,15 @@ func proxyFixture(t *testing.T, handler http.HandlerFunc, source SecretSource, m
 	if source == nil {
 		source = func(name string) (string, bool) { return "synthetic-native-token", name == envelope.TokenEnv }
 	}
-	p, err := NewAPI(envelope, gatewayName, source)
+	binding := access.LeaseBinding{Installation: "origin-a", Resource: envelope.Rule.ID, Epoch: strings.Repeat("a", 64), Generation: 1}
+	lease, err := access.NewLease(binding, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := lease.Renew(binding, 1, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	p, err := NewAPI(envelope, gatewayName, source, lease)
 	if err != nil {
 		t.Fatal(err)
 	}

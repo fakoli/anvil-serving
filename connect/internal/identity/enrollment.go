@@ -38,16 +38,20 @@ type Invitation struct {
 }
 
 type Installation struct {
-	ID                string          `json:"id"`
-	Role              string          `json:"role"`
-	Resources         []string        `json:"resources"`
-	PublicKey         json.RawMessage `json:"public_key"`
-	Fingerprint       string          `json:"fingerprint"`
-	Generation        uint64          `json:"generation"`
-	Epoch             string          `json:"epoch"`
-	Status            string          `json:"status"`
-	RequestedAt       time.Time       `json:"requested_at"`
-	ApprovalExpiresAt time.Time       `json:"approval_expires_at"`
+	ID                  string          `json:"id"`
+	Role                string          `json:"role"`
+	Resources           []string        `json:"resources"`
+	PublicKey           json.RawMessage `json:"public_key"`
+	Fingerprint         string          `json:"fingerprint"`
+	Generation          uint64          `json:"generation"`
+	Epoch               string          `json:"epoch"`
+	Status              string          `json:"status"`
+	RequestedAt         time.Time       `json:"requested_at"`
+	ApprovalExpiresAt   time.Time       `json:"approval_expires_at"`
+	PreviousPublicKey   json.RawMessage `json:"previous_public_key,omitempty"`
+	PreviousFingerprint string          `json:"previous_fingerprint,omitempty"`
+	PreviousGeneration  uint64          `json:"previous_generation,omitempty"`
+	PreviousUntil       time.Time       `json:"previous_until,omitempty"`
 }
 
 type Manager struct {
@@ -124,7 +128,7 @@ func (m *Manager) Invite(installation, role string, resources []string, lifetime
 		} else {
 			staleEpoch := existing.Epoch != tx.Epoch()
 			expiredPending := (existing.Status == "invited" || existing.Status == "pending") && !tx.Now().Before(existing.ApprovalExpiresAt)
-			if !staleEpoch && !expiredPending {
+			if !staleEpoch && !expiredPending && existing.Status != "revoked" {
 				return ErrDenied
 			}
 		}

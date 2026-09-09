@@ -55,6 +55,7 @@ func gatewayFixture(t *testing.T, dispatch Dispatch) (*Gateway, string, *access.
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(gateway.Close)
 	return gateway, raw, keys
 }
 

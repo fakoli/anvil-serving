@@ -3,7 +3,7 @@ package identity
 import (
 	"crypto/ed25519"
 	"encoding/hex"
-	"errors"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -18,11 +18,23 @@ const proofType = "anvil-connect-installation+jwt"
 
 type Assertion struct {
 	jwt.Claims
-	Role       string `json:"role"`
-	Resource   string `json:"resource"`
-	Epoch      string `json:"epoch"`
-	Generation uint64 `json:"generation"`
-	Nonce      string `json:"nonce"`
+	Role        string `json:"role"`
+	Resource    string `json:"resource"`
+	Epoch       string `json:"epoch"`
+	Generation  uint64 `json:"generation"`
+	Nonce       string `json:"nonce"`
+	Fingerprint string `json:"fingerprint,omitempty"`
+}
+
+// NewRotationAssertion binds both possession proofs to the same server-issued
+// challenge and exact proposed public-key fingerprint.
+func NewRotationAssertion(id, audience, role, epoch, challenge, fingerprint string, generation uint64, now time.Time) (Assertion, error) {
+	claims, err := NewAssertion(id, audience, role, "", epoch, challenge, generation, now)
+	if err != nil || fingerprint == "" || len(fingerprint) > 256 {
+		return Assertion{}, ErrDenied
+	}
+	claims.Fingerprint = fingerprint
+	return claims, nil
 }
 
 func validNonce(value string) bool {
@@ -113,16 +125,7 @@ func (m *Manager) Verify(proof, expectedRole, resource, expectedNonce string) (I
 	var result Installation
 	err = m.state.Update(func(tx *store.Tx) error {
 		var installation Installation
-		if tx.Get("installations", id, &installation) != nil || installation.Status != "active" || installation.Epoch != tx.Epoch() || installation.Role != expectedRole {
-			return ErrDenied
-		}
-		assigned := false
-		for _, allowed := range installation.Resources {
-			if allowed == resource {
-				assigned = true
-			}
-		}
-		if !assigned {
+		if tx.Get("installations", id, &installation) != nil || !activeForResource(installation, tx, resource) || installation.Role != expectedRole {
 			return ErrDenied
 		}
 		key, _, err := parsePublic(installation.PublicKey)
@@ -130,37 +133,28 @@ func (m *Manager) Verify(proof, expectedRole, resource, expectedNonce string) (I
 			return ErrDenied
 		}
 		claims, err := verify(proof, key, id, m.audience+"/"+expectedRole, tx.Now())
-		if err != nil || claims.Role != expectedRole || claims.Resource != resource || claims.Nonce != expectedNonce || claims.Epoch != tx.Epoch() || claims.Generation != installation.Generation {
-			return ErrDenied
-		}
-		var window replayWindow
-		if err := tx.Get("replay", id, &window); err != nil && !errors.Is(err, store.ErrMissing) {
-			return ErrDenied
-		}
-		if window.Entries == nil {
-			window.Entries = map[string]time.Time{}
-		}
-		for marker, expiry := range window.Entries {
-			if !tx.Now().Before(expiry) {
-				delete(window.Entries, marker)
+		result = installation
+		if err != nil || claims.Role != expectedRole || claims.Resource != resource || claims.Nonce != expectedNonce || claims.Epoch != tx.Epoch() {
+			if installation.PreviousUntil.IsZero() || !tx.Now().Before(installation.PreviousUntil) {
+				return ErrDenied
 			}
-		}
-		jti, nonce := "jti:"+claims.ID, "nonce:"+claims.Nonce
-		if _, exists := window.Entries[jti]; exists {
+			key, _, err = parsePublic(installation.PreviousPublicKey)
+			if err != nil {
+				return ErrDenied
+			}
+			claims, err = verify(proof, key, id, m.audience+"/"+expectedRole, tx.Now())
+			if err != nil || claims.Role != expectedRole || claims.Resource != resource || claims.Nonce != expectedNonce || claims.Epoch != tx.Epoch() || claims.Generation != installation.PreviousGeneration {
+				return ErrDenied
+			}
+			result.PublicKey = append(json.RawMessage(nil), installation.PreviousPublicKey...)
+			result.Fingerprint = installation.PreviousFingerprint
+			result.Generation = installation.PreviousGeneration
+		} else if claims.Generation != installation.Generation {
 			return ErrDenied
 		}
-		if _, exists := window.Entries[nonce]; exists {
-			return ErrDenied
-		}
-		if len(window.Entries) >= 512 {
-			return ErrDenied
-		}
-		window.Entries[jti] = claims.Expiry.Time()
-		window.Entries[nonce] = claims.Expiry.Time()
-		if err := tx.Put("replay", id, window); err != nil {
+		if err := m.consumeReplay(tx, id, map[string]time.Time{"jti:" + claims.ID: claims.Expiry.Time(), "nonce:" + claims.Nonce: claims.Expiry.Time()}); err != nil {
 			return err
 		}
-		result = installation
 		return nil
 	})
 	if err != nil {

@@ -22,6 +22,7 @@ type gatewayResource struct {
 }
 
 type Gateway struct {
+	active    *access.Active
 	keys      *access.Keys
 	resources map[string]gatewayResource
 	slots     chan struct{}
@@ -33,12 +34,19 @@ func NewGateway(declaration config.Gateway, keys *access.Keys, dispatch Dispatch
 		return nil, errors.New("invalid gateway dependencies")
 	}
 	g := &Gateway{keys: keys, resources: map[string]gatewayResource{}, slots: make(chan struct{}, declaration.MaxConcurrent), dispatch: dispatch}
+	var err error
+	g.active, err = access.NewActive(declaration.MaxConcurrent, 250*time.Millisecond)
+	if err != nil {
+		return nil, err
+	}
 	for _, resource := range declaration.Resources {
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
 		g.resources[resource.Rule.Host] = gatewayResource{declaration: resource, slots: make(chan struct{}, resource.Rule.Limits.Concurrent)}
 	}
 	return g, nil
 }
+
+func (g *Gateway) Close() { g.active.Close() }
 
 func fail(w http.ResponseWriter, status int) {
 	w.Header().Set("Cache-Control", "no-store")
@@ -106,6 +114,16 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusRequestTimeout)
 		return
 	}
+	ctx, release, err := g.active.Watch(ctx, func() error { return g.keys.Check(admitted) })
+	if err != nil {
+		status := http.StatusUnauthorized
+		if errors.Is(err, access.ErrCapacity) {
+			status = http.StatusTooManyRequests
+		}
+		fail(w, status)
+		return
+	}
+	defer release()
 	clean := r.Clone(ctx)
 	CleanAPIHeaders(clean.Header)
 	clean.Body = relay.Body(w, http.MaxBytesReader(w, r.Body, resource.declaration.Rule.Limits.RequestBytes), ctx, time.Duration(resource.declaration.Rule.Limits.IdleSeconds)*time.Second)
