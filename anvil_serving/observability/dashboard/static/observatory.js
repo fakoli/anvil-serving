@@ -14,6 +14,7 @@ import {
   workstationsView,
   servesView,
 } from "./views/resources.js";
+import { logsView } from "./views/logs.js";
 import { workloadsView } from "./views/workload_view.js";
 import {
   configurationView,
@@ -44,12 +45,13 @@ const titles = {
   workstations: "Workstations",
   serves: "Serves",
   workloads: "Workloads",
+  logs: "Logs",
   configuration: "Configuration",
   experiments: "Experiments",
   operations: "Operations",
   settings: "Settings",
 };
-const symbols = ["◫", "▦", "◈", "≋", "⚙", "⌁", "⇄", "⋯"];
+const symbols = ["◫", "▦", "◈", "≋", "▤", "⚙", "⌁", "⇄", "⋯"];
 const navigation = document.getElementById("primary-navigation");
 pages.forEach((name, index) =>
   navigation.append(
@@ -333,10 +335,10 @@ function updateScope(session, page) {
   scope.replaceChildren(
     ...[
       field("Workstation", hostControl),
-      ["overview", "serves"].includes(page)
+      ["overview", "serves", "logs"].includes(page)
         ? field("Serve", serveControl)
         : null,
-      ["overview", "workstations", "serves"].includes(page)
+      ["overview", "workstations", "serves", "logs"].includes(page)
         ? field("Historical range", rangeControl)
         : null,
       el("span", {
@@ -426,6 +428,9 @@ async function refresh({ quiet = false } = {}) {
       case "serves":
         content = await servesView(ctx, target.id, target.tab);
         break;
+      case "logs":
+        content = await logsView(ctx);
+        break;
       case "workloads":
         content = await workloadsView(ctx);
         break;
@@ -469,7 +474,7 @@ async function refresh({ quiet = false } = {}) {
       (!quiet || navigationChanged)
     )
       await openOperation(target.id, ctx);
-    if (!["configuration", "experiments", "settings"].includes(target.page))
+    if (!["configuration", "experiments", "settings", "logs"].includes(target.page))
       refreshTimer = setTimeout(() => {
         if (
           !document.hidden &&
@@ -505,7 +510,7 @@ function scheduleResume() {
     if (
       !document.hidden &&
       !document.querySelector("dialog[open]") &&
-      !["configuration", "experiments", "settings"].includes(page) &&
+      !["configuration", "experiments", "settings", "logs"].includes(page) &&
       (!main.contains(document.activeElement) ||
         document.activeElement === main)
     )
