@@ -8,6 +8,16 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Router tiers accept `max_concurrency = "auto"`: the dispatch ceiling is
+  derived from the serving engine's declared scheduler concurrency (bounded
+  read-only `GET /get_server_info` / `GET /server_info`, allowlisted keys
+  only), re-evaluated on the availability-probe interval; unresolved reports
+  keep the last known ceiling and effective changes are logged. Direct tiers
+  only — replica members and aggregate replica ceilings remain explicit
+  integers (flexibility:T023).
+
+### Added
+
 - Explicit same-host qualified replica sets with round-robin or capacity-aware
   member selection, atomic admission, per-member readiness and drain controls,
   and metadata-only selection evidence. One request still uses one model,

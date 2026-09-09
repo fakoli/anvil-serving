@@ -14,6 +14,7 @@ from __future__ import annotations
 import math
 import os
 import re
+import json
 import urllib.error
 import urllib.request
 from collections import deque
@@ -961,10 +962,69 @@ def build_model_capacity(
     return {"object": "list", "data": rows}
 
 
+def engine_declared_concurrency(
+    base_url: str,
+    *,
+    timeout: float = 1.0,
+    max_bytes: int = _MAX_METRICS_BYTES,
+    opener: Optional[Callable[..., object]] = None,
+) -> Optional[int]:
+    """Read one engine's declared scheduler concurrency, bounded and read-only.
+
+    Serves ``max_concurrency = "auto"`` (flexibility:T023): the tier ceiling
+    tracks what the engine itself declares instead of a hand-maintained
+    router integer. Engine-agnostic by allowlist, not by branching: try the
+    two common OpenAI-compatible runtime-info endpoints on the engine ROOT
+    (the tier ``base_url`` with a trailing ``/v1`` stripped) and accept a
+    positive integer from the allowlisted scheduler-capacity keys only:
+
+    - SGLang: ``GET /get_server_info`` → ``max_running_requests``
+    - vLLM:   ``GET /server_info``       → ``max_running_requests`` or
+      ``max_num_seqs``
+
+    Any transport, status, size, parse, or shape fault returns ``None``; the
+    caller keeps its last known ceiling. No secrets are sent beyond the
+    router's own authority, and responses are never echoed into errors.
+    """
+    parsed = urlsplit(base_url)
+    path = parsed.path or ""
+    root = path[: -len("/v1")] if path.endswith("/v1") else path
+    paths = [f"{root}/get_server_info", f"{root}/server_info"]
+    transport = opener if opener is not None else urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), _NoRedirect()
+    ).open
+    for candidate in paths:
+        url = urlunsplit((parsed.scheme, parsed.netloc, candidate, "", ""))
+        request = urllib.request.Request(url, headers={"Accept": "application/json"}, method="GET")
+        try:
+            with transport(request, timeout=timeout) as response:
+                status = getattr(response, "status", None) or response.getcode()
+                if not isinstance(status, int) or not 200 <= status < 300:
+                    continue
+                payload = response.read(max_bytes + 1)
+        except Exception:  # noqa: BLE001 - transport details stay private
+            continue
+        if len(payload) > max_bytes:
+            continue
+        try:
+            body = json.loads(payload.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            continue
+        if not isinstance(body, dict):
+            continue
+        for key in ("max_running_requests", "max_num_seqs"):
+            value = body.get(key)
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                continue
+            return value
+    return None
+
+
 __all__ = [
     "MetricsSnapshot",
     "ReplicaPressureCache",
     "build_model_capacity",
+    "engine_declared_concurrency",
     "fetch_vllm_metrics",
     "replica_metadata",
 ]
