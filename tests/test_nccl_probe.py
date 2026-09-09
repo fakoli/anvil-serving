@@ -1,5 +1,6 @@
 import json
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
@@ -9,6 +10,23 @@ from anvil_serving import cli, nccl_probe as probe
 GPUS = ['GPU-00000000-0000-0000-0000-000000000001',
         'GPU-00000000-0000-0000-0000-000000000002']
 IMAGE = 'registry.example/runtime@sha256:' + '1' * 64
+
+
+@pytest.fixture(autouse=True)
+def native_owner(monkeypatch):
+    """Model the resource owner independently of the machine running pytest."""
+    host = {'system': 'Linux', 'release': '6.8.0', 'container': False}
+    real_path = probe.Path
+
+    def host_path(value):
+        if value == '/.dockerenv':
+            return SimpleNamespace(exists=lambda: host['container'])
+        return real_path(value)
+
+    monkeypatch.setattr(probe, 'platform', SimpleNamespace(
+        system=lambda: host['system'], release=lambda: host['release']))
+    monkeypatch.setattr(probe, 'Path', host_path)
+    return host
 
 
 class Runtime:
@@ -72,6 +90,21 @@ class Runtime:
 def run(runtime, **changes):
     return probe.probe(image=IMAGE, gpu_uuids=GPUS, _runner=runtime,
                        _domains=lambda _: dict.fromkeys(GPUS, 'none'), **changes)
+
+
+@pytest.mark.parametrize('host', [
+    {'system': 'Windows'},
+    {'system': 'Darwin'},
+    {'release': '5.15.0-microsoft-standard-WSL2'},
+    {'release': '6.6.0-wsl'},
+    {'container': True},
+])
+def test_non_native_owner_is_rejected_before_external_io(native_owner, host):
+    native_owner.update(host)
+    runtime = Runtime()
+    with pytest.raises(ValueError, match='native Linux resource owner'):
+        run(runtime, dry_run=False)
+    assert not runtime.calls
 
 
 def test_preview_performs_no_container_mutation_and_reports_busy_devices():
