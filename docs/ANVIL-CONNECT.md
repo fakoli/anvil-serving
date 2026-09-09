@@ -73,6 +73,9 @@ to terminate work already running inside a model engine.
 
 ## Declarations and operation
 
+For a separate installation without the Anvil Serving package, use the
+[standalone Connect bundle and installer](ANVIL-CONNECT-INSTALL.md).
+
 Start from the generic [deployment manifest](https://github.com/fakoli/anvil-serving/blob/main/connect/examples/deployment.json).
 It declares resources, matching origin envelopes, private state locations,
 versioned binary paths, a dedicated non-root service user/group, and secret-file

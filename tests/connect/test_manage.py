@@ -28,6 +28,11 @@ pytestmark = pytest.mark.skipif(not _LINUX_AMD64, reason="Connect lifecycle test
 ROOT = Path(__file__).parents[2]
 
 
+@pytest.fixture(autouse=True)
+def no_stability_delay(monkeypatch):
+    monkeypatch.setattr(manage.time, "sleep", lambda _: None)
+
+
 class SyntheticRunner:
     def __init__(self, *, fail_daemon_reload: bool = False, fail_start: str | None = None, active: bool = False) -> None:
         self.calls: list[tuple[str, ...]] = []
@@ -47,6 +52,8 @@ class SyntheticRunner:
             return manage.RunResult(0, f"LoadState=loaded\nFragmentPath={self.unit_root / argv[-1]}\nDropInPaths=\n".encode())
         if argv[:3] == ("/usr/bin/systemctl", "show", "--property=ActiveState,UnitFileState"):
             return manage.RunResult(0, b"ActiveState=active\nUnitFileState=enabled\n" if self.active else b"ActiveState=inactive\nUnitFileState=disabled\n")
+        if argv[:3] == ("/usr/bin/systemctl", "show", "--property=ActiveState,SubState,MainPID,FragmentPath,DropInPaths"):
+            return manage.RunResult(0, f"ActiveState=active\nSubState=running\nMainPID=123\nFragmentPath={self.unit_root / argv[-1]}\nDropInPaths=\n".encode())
         if argv[:3] == ("/usr/bin/systemctl", "show", "--property=Id,ActiveState,SubState,UnitFileState"):
             return manage.RunResult(0, b"Id=managed.service\nActiveState=active\nSubState=running\nUnitFileState=enabled\n")
         if argv[0] == "/usr/bin/journalctl":
@@ -426,16 +433,17 @@ def test_environment_file_requires_exact_owner_only_mode_before_activation(tmp_p
     assert runner.calls == []
 
 
-def test_identity_uses_closed_native_public_status_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_identity_before_activation_uses_closed_native_public_status_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manifest, value, native = deployment(tmp_path, monkeypatch)
     units = tmp_path / "units"
     units.mkdir(); units.chmod(0o755)
-    runner = SyntheticRunner(); runner.unit_root = units
-    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
 
     class IdentityRunner(SyntheticRunner):
         def __call__(self, argv, timeout, identity):  # type: ignore[no-untyped-def]
             if argv[:2] == (str(native), "identity"):
+                declaration = json.loads(Path(argv[-1]).read_text())
+                assert declaration["id"] == "dashboard"
+                assert not Path(value["config_root"]).exists()
                 return manage.RunResult(0, json.dumps({"id": "dashboard", "status": "pending", "fingerprint": "A" * 43, "epoch": "a" * 64, "generation": 1, "resources": ["dashboard", "dashboard-api"]}).encode())
             return super().__call__(argv, timeout, identity)
 
@@ -443,6 +451,8 @@ def test_identity_uses_closed_native_public_status_shape(tmp_path: Path, monkeyp
     result = manage.identity(manifest, manage.Target("connector", "dashboard"), runner=observed)
     assert result["identity"]["fingerprint"] == "A" * 43
     assert result["native_sha256"] == hashlib.sha256(b"native-v1").hexdigest()
+    assert not Path(value["config_root"]).exists()
+    assert list(units.iterdir()) == []
 
     class InvalidIdentityRunner(IdentityRunner):
         def __call__(self, argv, timeout, identity):  # type: ignore[no-untyped-def]
@@ -610,3 +620,22 @@ def test_restore_preserves_enabled_runtime_and_partial_failure() -> None:
     with pytest.raises(manage.ManageError) as caught:
         manage._restore_running(failing, ("anvil-connect-gateway.service",), {"anvil-connect-gateway.service": (False, "enabled-runtime")})
     assert caught.value.may_have_executed is True
+
+
+def test_post_exec_unit_failure_does_not_commit_activation(tmp_path: Path, monkeypatch) -> None:
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / 'units'
+    units.mkdir(mode=0o755)
+
+    class DiesAfterExec(SyntheticRunner):
+        def __call__(self, argv, timeout, identity):
+            if 'MainPID' in ' '.join(argv):
+                return manage.RunResult(0, f'ActiveState=failed\nSubState=failed\nMainPID=0\nFragmentPath={units / argv[-1]}\nDropInPaths=\n'.encode())
+            return super().__call__(argv, timeout, identity)
+
+    runner = DiesAfterExec()
+    runner.unit_root = units
+    with pytest.raises(manage.ManageError, match='startup'):
+        manage.up(manifest, manage.Target('gateway'), apply=True, runner=runner, unit_root=units)
+    assert not Path(value['config_root']).exists()
+    assert list(units.iterdir()) == []

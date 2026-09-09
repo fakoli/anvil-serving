@@ -997,6 +997,32 @@ def _restore_running(runner: Runner | None, units: tuple[str, ...], prior: dict[
         raise ManageError("managed unit restoration failed", may_have_executed=failure.may_have_executed) from failure
 
 
+def _started_units(runner: Runner | None, unit_root: Path, units: tuple[str, ...]) -> None:
+    """Require stable supervised processes before discarding activation rollback.
+
+    This is a bounded process check, not origin or application readiness.
+    """
+    previous: dict[str, str] = {}
+    for attempt in range(6):
+        observed: dict[str, str] = {}
+        for unit in units:
+            result = _run(runner, (_SYSTEMCTL, "show", "--property=ActiveState,SubState,MainPID,FragmentPath,DropInPaths", unit), _VALIDATE_TIMEOUT)
+            _fail(result, "managed unit status failed after startup")
+            fields = dict(line.split("=", 1) for line in result.stdout.decode("utf-8").splitlines() if "=" in line)
+            if (set(fields) != {"ActiveState", "SubState", "MainPID", "FragmentPath", "DropInPaths"}
+                    or fields["FragmentPath"] != str(unit_root / unit) or fields["DropInPaths"]
+                    or fields["ActiveState"] in {"failed", "inactive"}):
+                raise ManageError("managed unit failed after startup")
+            if fields["ActiveState"] == "active" and fields["SubState"] == "running" and fields["MainPID"].isdigit() and int(fields["MainPID"]) > 0:
+                observed[unit] = fields["MainPID"]
+        if len(observed) == len(units) and observed == previous:
+            return
+        previous = observed
+        if attempt < 5:
+            time.sleep(1)
+    raise ManageError("managed units did not stabilize after startup")
+
+
 def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bool, upgrade: bool, runner: Runner | None, unit_root: str | Path, action: str) -> dict[str, Any]:
     """Activate one closed role set in a single reversible transaction."""
     _require_supported_platform()
@@ -1043,6 +1069,7 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                     _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
                 else:
                     _action(runner, (_SYSTEMCTL, "enable", "--now", unit), _SYSTEMD_TIMEOUT, "managed unit failed to start")
+            _started_units(runner, system_root, units)
             if transaction.pending_record is not None:
                 # Do not bless newly supplied artifact bytes until the complete
                 # selected start/restart sequence has succeeded.
@@ -1243,10 +1270,12 @@ def identity(manifest_path: str | Path, target: Target, *, runner: Runner | None
         raise ManageError("identity is defined only for a connector")
     data = read_manifest(manifest_path)
     _targets(data, target)
-    _current(data)
     native_digest = _native_verified(data)
-    _bound_active(data, target, {"native": native_digest})
-    result = _run(runner, (data["binary"], "identity", "--config", str(_config_path(data, target))), _VALIDATE_TIMEOUT, _service_identity(data))
+    # Enrollment deliberately precedes activation. Read the declared persisted
+    # identity using a temporary public declaration, without creating an active
+    # generation or requiring approval of the identity we are trying to inspect.
+    with _temporary_declaration(data, target) as config:
+        result = _run(runner, (data["binary"], "identity", "--config", str(config)), _VALIDATE_TIMEOUT, _service_identity(data))
     _fail(result, "native identity read failed")
     observed = _closed_identity(result.stdout)
     connector = next(item for item in data["connectors"] if item["id"] == target.name)
