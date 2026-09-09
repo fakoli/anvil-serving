@@ -88,7 +88,7 @@
       "path": "campaign-state.json",
       "source_role": "campaign-state.json",
       "original_sha256": "76899680302978ff8e5c05fdd1d60f1ad9454456936c7609c9fb37d97a6f68f9",
-      "public_sha256": "d9c5cd5ca89cb111ec703bd17efc0e771c032818520f30d7da3f2d1707263208"
+      "public_sha256": "e1bd539c3acccaf32a6c7b04e83a07d264d2380bc6574f99a4a88b3490c9ca92"
     },
     {
       "path": "candidate/capacity-120k.json",
@@ -196,19 +196,19 @@
       "path": "comparison.json",
       "source_role": "comparison.json",
       "original_sha256": "78de1fd59435394b40f2af3fa99321e5e45258574069e5d9a4657235061d1048",
-      "public_sha256": "78de1fd59435394b40f2af3fa99321e5e45258574069e5d9a4657235061d1048"
+      "public_sha256": "814671e972a64e7ce56482ded1fe3a4e5eb9666734b143de3e744a18ca8a02c0"
     },
     {
       "path": "coverage-and-gaps.md",
       "source_role": "coverage-and-gaps.md",
       "original_sha256": "adef50b32930b00574c299aabb50f842bf8823c7512871509d8d7d584b68ff54",
-      "public_sha256": "adef50b32930b00574c299aabb50f842bf8823c7512871509d8d7d584b68ff54"
+      "public_sha256": "eeed5c50eb164517b3eb3f735d8c3de6285b41c1c68ceac1ad54280ba6b68fa4"
     },
     {
       "path": "friction-log.md",
       "source_role": "friction-log.md",
       "original_sha256": "b1ff8f892c5f86972448cab28e1316ba924b24a22854614e5dcd957c7328683a",
-      "public_sha256": "98ffefc7905f59ee300a80241a134923436d168ed0ea89166ef291b3c05bc260"
+      "public_sha256": "dcea6e29d11be7bf67e2058604bdfa365fb325ca2f851194e7b063b47e09fa50"
     },
     {
       "path": "independent-review-ledger.json",
@@ -274,7 +274,7 @@
       "path": "summary.json",
       "source_role": "summary.json",
       "original_sha256": "d100d899db50d2659a3ff70bd3d5b2cd66c338261ebd47f05ac39525fcab500b",
-      "public_sha256": "5e592aee6720600572e266cacf89afcec96579b466a6973514fc1cef509f54e7"
+      "public_sha256": "82ed61783720ceaf87b168deb4db1bfffcfa02e2082c2d2809a7a385ac6f0f76"
     },
     {
       "path": "workload-manifest.json",

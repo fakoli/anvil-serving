@@ -6,7 +6,7 @@ This is the sanitized evidence bundle for the dated
 The retained plan fixes the model revision, TP=2, 393,216-token/C1 contract,
 adaptive MTP, P2P-enabled transport, disabled cuMem, and disabled HiCache. The
 candidate is a pinned source state separate from the release tag. The artifact
-set is complete; the decision remains held pending an explicit user exception.
+set is complete; the decision remains concluded with baseline retained after the user declined an exception.
 
 ## Retained direct artifacts
 
@@ -22,3 +22,5 @@ paths while retaining native schemas and a redaction record. Baseline needle and
 candidate turnover failures remain visible.
 
 `repository/` identifies files at the recorded qualification commit. `private-campaign/` and `private-only:` identify retained private inputs or logs, not downloadable public paths. Unique path names and original hashes are preserved in the workload and redaction manifests. Full operator files remain private; the restoration hash receipt records their verified equality.
+
+The dated human decision is recorded in [human-decision.json](human-decision.json).

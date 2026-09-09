@@ -1,7 +1,7 @@
 {
   "schema": "anvil-serving.benchmark-decision-summary/v1",
   "campaign_id": "2026-09-09-glm53-ormandj-v042",
-  "complete": false,
+  "complete": true,
   "identity": {
     "model": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO",
     "model_revision": "c3cbb9891b67c741bcbf6b176dd7af9265b069db",
@@ -164,12 +164,12 @@
       "partial-qualification"
     ],
     "decision_labels": [
-      "held-for-strict-turnover",
+      "retain-baseline",
       "no-promotion"
     ],
     "promotion_authorized": false,
-    "user_authorization": "User authorized promotion and PR/merge if better or on par; no exception to failed frozen strict gate recorded",
-    "next_gate": "User decision on accepting comparative residual; absent exception, keep exact restored baseline. Candidate routed acceptance remains required after any exception."
+    "user_authorization": "User declined the comparative exception; retain baseline/no-promotion.",
+    "next_gate": "None; campaign concluded with baseline retained."
   },
   "evidence": [
     "run-plan.json",

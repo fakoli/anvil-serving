@@ -87,6 +87,6 @@
   ],
   "metric_semantics": {},
   "schema": "anvil-serving.benchmark-graph-data/v1",
-  "subtitle": "Direct C1 strict capacity; candidate held for turnover",
-  "title": "GLM v0.4.2 held runtime comparison"
+  "subtitle": "Direct C1 strict capacity; baseline retained after turnover failure",
+  "title": "GLM v0.4.2 retained-baseline runtime comparison"
 }

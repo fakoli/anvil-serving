@@ -55,8 +55,8 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 ## GLM-5.3-Flash ormandj v0.4.2 runtime qualification (2026-09-09)
 
 The candidate showed bounded direct and matched capacity gains but failed the
-strict 60-request turnover gate at 58/60 and again at 57/60. It is held with
-no promotion, and the exact baseline was restored. See the
+strict 60-request turnover gate at 58/60 and again at 57/60. The user selected
+`retain-baseline/no-promotion`, and the exact baseline was restored. See the
 [finding](findings/2026-09-09-glm53-ormandj-v042.md).
 
 ## GLM-5.3-Flash native NCCL P2P transport A/B (2026-09-09)

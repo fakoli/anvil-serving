@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-serving.human-decision/v1",
+  "campaign_id": "2026-09-09-glm53-ormandj-v042",
+  "date": "2026-09-09",
+  "decision": "retain-baseline/no-promotion",
+  "basis": "User declined the comparative exception and asked to note errors while keeping retained evidence.",
+  "reported_other_reports": "User mentioned other reports; this is user-reported and unverified, with no external corroboration claimed.",
+  "candidate_status": "not promoted; candidate routed acceptance not attempted after failed strict turnover",
+  "baseline_status": "exact baseline restored and verified"
+}
