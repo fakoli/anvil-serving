@@ -40,6 +40,18 @@ func New(t *testing.T) Authority {
 }
 
 func (ca Authority) Leaf(t *testing.T, name string, client bool, additionalNames ...string) tls.Certificate {
+	return ca.leaf(t, name, "", client, additionalNames...)
+}
+
+func (ca Authority) LeafWithCommonName(t *testing.T, name, commonName string, client bool) tls.Certificate {
+	return ca.leaf(t, name, commonName, client)
+}
+
+func (ca Authority) PEM() []byte {
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.certificate.Raw})
+}
+
+func (ca Authority) leaf(t *testing.T, name, commonName string, client bool, additionalNames ...string) tls.Certificate {
 	t.Helper()
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -54,6 +66,7 @@ func (ca Authority) Leaf(t *testing.T, name string, client bool, additionalNames
 		usage = x509.ExtKeyUsageClientAuth
 	}
 	template := &x509.Certificate{SerialNumber: serial, DNSNames: []string{name}, NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{usage}}
+	template.Subject.CommonName = commonName
 	template.DNSNames = append(template.DNSNames, additionalNames...)
 	der, err := x509.CreateCertificate(rand.Reader, template, ca.certificate, public, ca.private)
 	if err != nil {
