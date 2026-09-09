@@ -19,7 +19,7 @@ from anvil_serving.connect.cli import dispatch
 
 
 ROOT = Path(__file__).parents[2]
-LEAVES = {"validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen"}
+LEAVES = {"validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration"}
 
 
 def test_connect_registry_help_has_no_runtime_discovery(capsys, monkeypatch):
@@ -52,7 +52,7 @@ def fake_manager(monkeypatch):
         if value != "gateway" and not value.startswith(("connector:", "client:")):
             raise ValueError("private operand")
         return value
-    value = SimpleNamespace(Target=SimpleNamespace(parse=target), **{name: invoke(name) for name in LEAVES | {"native_init"}})
+    value = SimpleNamespace(Target=SimpleNamespace(parse=target), **{name: invoke(name) for name in LEAVES | {"native_init", "up_many"}})
     package = importlib.import_module("anvil_serving.connect")
     monkeypatch.setattr(package, "manage", value, raising=False)
     return calls
@@ -64,6 +64,19 @@ def test_root_dispatch_preserves_preview_and_conditional_confirmation(fake_manag
     result = json.loads(capsys.readouterr().out)
     assert result["ok"] is True
     assert fake_manager == [("up", ("/private/deployment.json",), {"target": "gateway", "apply": applied})]
+
+
+def test_explicit_coordinated_upgrade_is_one_previewed_operation(fake_manager):
+    result = dispatch(["up", "--manifest", "/deployment.json", "--services", "gateway,connector:origin", "--upgrade"])
+    assert result.error is None
+    assert fake_manager == [("up_many", ("/deployment.json", ("gateway", "connector:origin")), {"upgrade": True, "apply": False})]
+
+
+def test_coordinated_selection_is_unique_and_exclusive(fake_manager):
+    for operands in (["--service", "gateway", "--services", "gateway"], ["--services", "gateway,gateway"], ["--services", "gateway,"]):
+        result = dispatch(["up", "--manifest", "/deployment.json", *operands])
+        assert result.error is not None
+    assert fake_manager == []
 
 
 def test_cli_rejects_unknown_duplicate_or_credential_like_operands_before_manager(fake_manager):
