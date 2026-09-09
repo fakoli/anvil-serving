@@ -48,13 +48,19 @@ func (l *Lease) Binding() LeaseBinding { return l.binding }
 // disconnected grace beyond 45 seconds from the request that authorized it.
 // The control client owns increasing sequence numbers and response authentication.
 func (l *Lease) Renew(binding LeaseBinding, sequence uint64, requestedAt time.Time) error {
+	return l.RenewFor(binding, sequence, requestedAt, ConnectorLeaseLifetime)
+}
+
+// RenewFor applies a shorter authenticated permission window, such as the
+// remaining old-key rotation overlap. It never accepts a duration over 45s.
+func (l *Lease) RenewFor(binding LeaseBinding, sequence uint64, requestedAt time.Time, lifetime time.Duration) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := l.now()
-	if l.invalid || binding != l.binding || sequence <= l.sequence || requestedAt.IsZero() || now.Before(requestedAt) || !now.Before(requestedAt.Add(ConnectorLeaseLifetime)) || (!l.requestedAt.IsZero() && !requestedAt.After(l.requestedAt)) {
+	if lifetime <= 0 || lifetime > ConnectorLeaseLifetime || l.invalid || binding != l.binding || sequence <= l.sequence || requestedAt.IsZero() || now.Before(requestedAt) || !now.Before(requestedAt.Add(lifetime)) || (!l.requestedAt.IsZero() && !requestedAt.After(l.requestedAt)) {
 		return ErrDenied
 	}
-	l.sequence, l.requestedAt, l.expiresAt = sequence, requestedAt, requestedAt.Add(ConnectorLeaseLifetime)
+	l.sequence, l.requestedAt, l.expiresAt = sequence, requestedAt, requestedAt.Add(lifetime)
 	return nil
 }
 

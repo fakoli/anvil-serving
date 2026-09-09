@@ -117,6 +117,26 @@ func (m *Manager) Verify(proof, expectedRole, resource, expectedNonce string) (I
 	if !validRole(expectedRole) || !m.resources[resource] || !validNonce(expectedNonce) {
 		return Installation{}, ErrDenied
 	}
+	return m.verifyControl(proof, expectedRole, resource, expectedNonce, m.audience+"/"+expectedRole, "")
+}
+
+// AuthorizeChallenge admits only a challenge-allocation request. It consumes
+// a short-lived, replay-protected possession proof under a separate audience;
+// its caller-generated nonce cannot authorize renewal or tunnel access. The
+// payload digest and resource bind the requested challenge before allocation.
+// No installation snapshot is returned as data-plane authority.
+func (m *Manager) AuthorizeChallenge(proof, id, resource, digest string) error {
+	if !config.ValidID(id) || !m.resources[resource] || len(digest) != 64 || !validNonce(digest) {
+		return ErrDenied
+	}
+	snapshot, err := m.verifyControl(proof, "connector", resource, "", m.audience+"/challenge", digest)
+	if err != nil || snapshot.ID != id {
+		return ErrDenied
+	}
+	return nil
+}
+
+func (m *Manager) verifyControl(proof, expectedRole, resource, expectedNonce, audience, fingerprint string) (Installation, error) {
 	token, err := parse(proof)
 	if err != nil {
 		return Installation{}, ErrDenied
@@ -132,9 +152,12 @@ func (m *Manager) Verify(proof, expectedRole, resource, expectedNonce string) (I
 		if err != nil {
 			return ErrDenied
 		}
-		claims, err := verify(proof, key, id, m.audience+"/"+expectedRole, tx.Now())
+		claims, err := verify(proof, key, id, audience, tx.Now())
 		result = installation
-		if err != nil || claims.Role != expectedRole || claims.Resource != resource || claims.Nonce != expectedNonce || claims.Epoch != tx.Epoch() {
+		matches := func(claims Assertion) bool {
+			return claims.Role == expectedRole && claims.Resource == resource && (expectedNonce == "" || claims.Nonce == expectedNonce) && claims.Epoch == tx.Epoch() && (fingerprint == "" || claims.Fingerprint == fingerprint)
+		}
+		if err != nil || !matches(claims) {
 			if installation.PreviousUntil.IsZero() || !tx.Now().Before(installation.PreviousUntil) {
 				return ErrDenied
 			}
@@ -142,8 +165,8 @@ func (m *Manager) Verify(proof, expectedRole, resource, expectedNonce string) (I
 			if err != nil {
 				return ErrDenied
 			}
-			claims, err = verify(proof, key, id, m.audience+"/"+expectedRole, tx.Now())
-			if err != nil || claims.Role != expectedRole || claims.Resource != resource || claims.Nonce != expectedNonce || claims.Epoch != tx.Epoch() || claims.Generation != installation.PreviousGeneration {
+			claims, err = verify(proof, key, id, audience, tx.Now())
+			if err != nil || !matches(claims) || claims.Generation != installation.PreviousGeneration {
 				return ErrDenied
 			}
 			result.PublicKey = append(json.RawMessage(nil), installation.PreviousPublicKey...)

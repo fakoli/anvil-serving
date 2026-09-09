@@ -38,10 +38,23 @@ func samePublicKey(left, right json.RawMessage) bool {
 // authority state. During a bounded rotation overlap it recognizes only the
 // immediately preceding key/generation contained in that snapshot.
 func (m *Manager) Check(snapshot Installation, resource string) error {
+	_, err := m.PermissionLifetime(snapshot, resource, time.Hour)
+	return err
+}
+
+// PermissionLifetime bounds a freshly authenticated control response. In the
+// prior-key overlap it never extends permission beyond PreviousUntil. The
+// connector anchors this duration to its local request-start time, so network
+// delay shortens permission rather than extending the rotation window.
+func (m *Manager) PermissionLifetime(snapshot Installation, resource string, maximum time.Duration) (time.Duration, error) {
 	if !config.ValidID(snapshot.ID) || !m.resources[resource] {
-		return ErrDenied
+		return 0, ErrDenied
 	}
-	return m.state.View(func(tx *store.Tx) error {
+	if maximum <= 0 || maximum > time.Hour {
+		return 0, ErrDenied
+	}
+	var lifetime time.Duration
+	err := m.state.View(func(tx *store.Tx) error {
 		var current Installation
 		if tx.Get("installations", snapshot.ID, &current) != nil || !activeForResource(current, tx, resource) || current.Role != snapshot.Role {
 			return ErrDenied
@@ -54,6 +67,7 @@ func (m *Manager) Check(snapshot Installation, resource string) error {
 			return ErrDenied
 		}
 		if snapshot.Generation == current.Generation && snapshot.Fingerprint == current.Fingerprint && samePublicKey(snapshot.PublicKey, current.PublicKey) {
+			lifetime = maximum
 			return nil
 		}
 		if !current.PreviousUntil.IsZero() && tx.Now().Before(current.PreviousUntil) && snapshot.Generation == current.PreviousGeneration && snapshot.Fingerprint == current.PreviousFingerprint && samePublicKey(snapshot.PublicKey, current.PreviousPublicKey) {
@@ -61,10 +75,12 @@ func (m *Manager) Check(snapshot Installation, resource string) error {
 			if err != nil || fingerprint != current.PreviousFingerprint {
 				return ErrDenied
 			}
+			lifetime = min(maximum, current.PreviousUntil.Sub(tx.Now()))
 			return nil
 		}
 		return ErrDenied
 	})
+	return lifetime, err
 }
 
 // Revoke is idempotent after its first generation advance. A revoked record
