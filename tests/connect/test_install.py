@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -11,6 +12,7 @@ import zipfile
 import pytest
 
 ROOT = Path(__file__).parents[2]
+requires_posix = pytest.mark.skipif(os.name != 'posix', reason='Native POSIX installer filesystem contract; Windows bundles are unsupported')
 
 
 def load_module(name: str):
@@ -54,6 +56,7 @@ def test_standalone_manager_contains_no_router_or_third_party_runtime(tmp_path: 
     assert 'Traceback' not in invalid.stderr
 
 
+@requires_posix
 def test_installer_preview_repeat_and_drift_preserve_existing_files(tmp_path: Path, monkeypatch) -> None:
     installer, root, digest = bundle(tmp_path)
     monkeypatch.setattr(installer, 'host_platform', lambda: 'darwin-arm64')
@@ -80,6 +83,7 @@ def test_installer_preview_repeat_and_drift_preserve_existing_files(tmp_path: Pa
     assert command.read_text() == 'unrelated command'
 
 
+@requires_posix
 def test_installer_rejects_corruption_roles_and_foreign_prefix(tmp_path: Path, monkeypatch) -> None:
     installer, root, digest = bundle(tmp_path)
     monkeypatch.setattr(installer, 'host_platform', lambda: 'darwin-arm64')
@@ -100,6 +104,7 @@ def test_installer_rejects_corruption_roles_and_foreign_prefix(tmp_path: Path, m
     assert (prefix / 'unrelated').read_text() == 'keep'
 
 
+@requires_posix
 def test_installer_rejects_symlink_ancestry(tmp_path: Path) -> None:
     installer = load_module('install')
     link = tmp_path / 'link'
@@ -108,6 +113,7 @@ def test_installer_rejects_symlink_ancestry(tmp_path: Path) -> None:
         installer.checked_directory(link / 'prefix')
 
 
+@requires_posix
 def test_atomic_upgrade_rollback_and_interrupted_first_install(tmp_path: Path, monkeypatch) -> None:
     installer, root, digest = bundle(tmp_path)
     monkeypatch.setattr(installer, 'host_platform', lambda: 'darwin-arm64')
@@ -140,6 +146,7 @@ def test_atomic_upgrade_rollback_and_interrupted_first_install(tmp_path: Path, m
     assert len(list((prefix / 'releases').iterdir())) == 2
 
 
+@requires_posix
 def test_installed_receipt_and_selected_file_closure_cannot_drift(tmp_path: Path, monkeypatch) -> None:
     installer, root, digest = bundle(tmp_path)
     monkeypatch.setattr(installer, 'host_platform', lambda: 'darwin-arm64')
@@ -154,3 +161,16 @@ def test_installed_receipt_and_selected_file_closure_cannot_drift(tmp_path: Path
     receipt.write_text(json.dumps(data))
     with pytest.raises(ValueError, match='receipt drifted'):
         installer.install(root, prefix, role='client', expected=digest, apply=True)
+
+
+@pytest.mark.parametrize('target', ['windows-amd64', 'linux-arm64'])
+def test_unsupported_platform_is_rejected_before_posix_file_access(tmp_path: Path, monkeypatch, target: str) -> None:
+    installer = load_module('install')
+    monkeypatch.setattr(installer, 'host_platform', lambda: target)
+    def forbidden_read(*args, **kwargs):
+        pytest.fail('Unsupported platform reached native filesystem access')
+    monkeypatch.setattr(installer, 'load_bundle', forbidden_read)
+    prefix = tmp_path / 'untouched'
+    with pytest.raises(ValueError, match='platform is not supported'):
+        installer.install(tmp_path / 'missing-bundle', prefix, role='client', expected='0' * 64, apply=True)
+    assert not prefix.exists()
