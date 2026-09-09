@@ -101,6 +101,47 @@ The output must not exist; its parent must be owned and mode 0700. It is reserve
 as a mode-0600 file before the issuing request is sent. Credentials are never
 printed in command output and should not be placed in the deployment manifest.
 
+For the generic deployment example, a request file granting an API principal
+read access contains:
+
+```json
+{"operation":"principal-set","principal":"sdk-reader","grants":[{"resource":"dashboard-api","methods":["GET"]}],"disabled":false}
+```
+
+After applying that request, a separate issuance request is:
+
+```json
+{"operation":"api-key-issue","principal":"sdk-reader","grants":[{"resource":"dashboard-api","methods":["GET"]}],"lifetime_seconds":86400}
+```
+
+Apply it with `--output` to receive the one-time private response. Provision its
+`secret` through the caller's secret mechanism. An ordinary SDK then uses
+`https://api.example.test/v1` and that key; a native application token stays in
+the connector's declared environment. Key grants are explicit and must be a
+subset of the principal's current grants; they are not inherited. This example
+grants GET only. Chat or
+other POST operations require an explicit matching method in both the resource
+declaration and caller grant.
+
+A browser grant uses the managed issuer's exact opaque subject, replacing the
+placeholder before applying:
+
+```json
+{"operation":"human-set","issuer":"https://auth.example.test","subject":"REPLACE_WITH_EXACT_OIDC_SUB","resources":["dashboard"],"disabled":false}
+```
+
+The subject is not the username. An invitation for the example connector names
+its exact resource set:
+
+```json
+{"operation":"invite","installation":"dashboard","role":"connector","resources":["dashboard","dashboard-api"],"lifetime_seconds":300}
+```
+
+Save its private output, redeem it with `connect init --service
+connector:dashboard --bundle ...`, then inspect `connect identity`. The final
+approval request uses `operation: approve`, `installation: dashboard`, and the
+independently checked `fingerprint` returned by identity inspection.
+
 ## Keygen
 
 `connect keygen --service client:ID --output /absolute/private/local-key` previews
