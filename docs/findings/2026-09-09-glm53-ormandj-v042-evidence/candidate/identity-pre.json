@@ -1,0 +1,18 @@
+{
+  "schema": "runtime-identity-gate/v1",
+  "phase": "pre",
+  "passed": true,
+  "container_id": "11f50dce9faf98fa4f97384acdf942ce71da9a9c8c94d22507b71212811ba103",
+  "recipe_digest": "a02c438f6622ccbb7bf3e09bbd872afacc8752830b02454b830cf1d7eaf34981",
+  "image_digest": "sha256:877ae29486eb7d385eb2a07921522aa3597f643f9a7c50112751f2aaa14d558a",
+  "unit": {
+    "ActiveState": "active",
+    "SubState": "exited",
+    "Job": "",
+    "NRestarts": "0"
+  },
+  "gpu_snapshot": "[REDACTED_GPU_UUID], 93765 MiB, 3485 MiB, 0 %\n[REDACTED_GPU_UUID], 93765 MiB, 3485 MiB, 0 %\n",
+  "cache_provenance": "Mounts inferred from initially absent volume, deterministic managed-create argv, matching immutable live recipe/registry labels and new container ID; not a direct mount inspection",
+  "qualification_commit": "f19180c41724050b834cd77d1f14d662e4ea57b8",
+  "capture_directory": "[REDACTED_PATH]"
+}

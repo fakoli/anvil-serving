@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.public-evidence-redaction/v1",
+  "campaign_id": "2026-09-09-glm53-ormandj-v042",
+  "records": [
+    {
+      "path": "restoration.json",
+      "original_sha256": "62f14508502dfcf736dc5a95ed955e50121075ee9184fddfb23caa6bb526ee51",
+      "public_sha256": "62f14508502dfcf736dc5a95ed955e50121075ee9184fddfb23caa6bb526ee51"
+    },
+    {
+      "path": "summary.json",
+      "original_sha256": "d100d899db50d2659a3ff70bd3d5b2cd66c338261ebd47f05ac39525fcab500b",
+      "public_sha256": "d100d899db50d2659a3ff70bd3d5b2cd66c338261ebd47f05ac39525fcab500b"
+    },
+    {
+      "path": "comparison.json",
+      "original_sha256": "78de1fd59435394b40f2af3fa99321e5e45258574069e5d9a4657235061d1048",
+      "public_sha256": "78de1fd59435394b40f2af3fa99321e5e45258574069e5d9a4657235061d1048"
+    }
+  ],
+  "redactions": [
+    "private paths",
+    "GPU UUIDs",
+    "host identity"
+  ],
+  "private_only": "operator topology, rollback registry, and secret-bearing runtime data"
+}

@@ -1,13 +1,9 @@
 # Campaign friction log
 
-Record entries while the campaign is running. Preserve the earliest actionable
-failure and distinguish product defects from model behavior.
-
-| Time | Stage | Category | Earliest actionable evidence | Immediate disposition | Durable fix-forward artifact | Independent verification | Status |
-|---|---|---|---|---|---|---|---|
-| YYYY-MM-DDTHH:MM:SSZ | RESEARCH, FEASIBILITY, SCOUT, FINALIST, QUALITY, RESTORATION, OR PUBLICATION | manual-workaround, ambiguous-output, missing-identity, unsafe-default, repeated-command, or failure | BOUNDED SYMPTOM OR ERROR; LINK RAW EVIDENCE INSTEAD OF COPYING LARGE OUTPUT | STOP, REJECT, RETRY, RESTORE, OR NONE | TICKET, CLI, TEST, RECIPE, SKILL, UPSTREAM WATCH, OR EXPLICITLY DEFERRED REASON | COMMAND OR RETAINED ARTIFACT | open or closed |
-
-If there was no friction, retain the file with one sentence stating that no
-manual workaround, ambiguity, missing identity, unsafe default, repeated
-command, or actionable failure was observed. A retry closes the incident only
-when a durable disposition and its independent verification are recorded.
+| Stage | Evidence | Disposition | Status |
+|---|---|---|---|
+| Baseline functional | 128K synthetic needle refused twice | Retained; baseline not relabeled fully passing | closed |
+| Strict turnover | Candidate 58/60, unchanged repeat 57/60; baseline 53/60 | Candidate held pending explicit user exception | open |
+| Diagnostic quality | Candidate PowerShell marker 2/3 | Independent semantic caveat retained; not a full quality pass | closed |
+| Candidate startup | IPC-seed and TileLang warnings | Retained; no warning-free or race-check-disable claim | closed |
+| Restoration | Exact baseline restored with direct/routed checks | Public receipts retained; private topology remains private | closed |

@@ -1,27 +1,88 @@
 {
   "schema": "anvil-serving.benchmark-campaign-state/v1",
-  "campaign_id": "YYYY-MM-DD-SLUG",
-  "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
-  "status": "planned",
-  "current_stage": "research",
+  "campaign_id": "2026-09-09-glm53-ormandj-v042",
+  "updated_at": "2026-09-09T12:05:36.566362+00:00",
+  "status": "awaiting-user-decision",
+  "current_stage": "publication",
   "launcher": {
     "invocation": "python -m anvil_serving.cli",
-    "version": null,
-    "repository_revision": "0000000000000000000000000000000000000000",
-    "module_source": "REPLACE_WITH_SANITIZED_REPOSITORY_RELATIVE_PATH",
-    "verified": false
+    "version": "1.0.0",
+    "repository_revision": "f19180c41724050b834cd77d1f14d662e4ea57b8",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
   },
   "stages": [
-    {"id": "research", "status": "pending", "evidence": [], "failures": []},
-    {"id": "feasibility", "status": "pending", "evidence": [], "failures": []},
-    {"id": "scout", "status": "pending", "evidence": [], "failures": []},
-    {"id": "finalist", "status": "pending", "evidence": [], "failures": []},
-    {"id": "quality", "status": "pending", "evidence": [], "failures": []},
-    {"id": "restoration", "status": "pending", "evidence": [], "failures": []},
-    {"id": "publication", "status": "pending", "evidence": [], "failures": []}
+    {
+      "id": "research",
+      "status": "complete",
+      "evidence": [
+        "source-registry.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "complete",
+      "evidence": [
+        "run-plan.json",
+        "candidate/identity-pre.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "scout",
+      "status": "complete",
+      "evidence": [
+        "candidate/preflight.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "finalist",
+      "status": "complete",
+      "evidence": [
+        "comparison.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "quality",
+      "status": "failed",
+      "evidence": [
+        "candidate/turnover-controlled.json",
+        "candidate/turnover-controlled-repeat.json",
+        "sources/independent-review-ledger.json"
+      ],
+      "failures": [
+        "Strict turnover58/60 then57/60; repeat includes one length512 truncation"
+      ]
+    },
+    {
+      "id": "restoration",
+      "status": "complete",
+      "evidence": [
+        "restoration.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "in-progress",
+      "evidence": [],
+      "failures": []
+    }
   ],
-  "active_assignments": [],
-  "completed_cells": [],
-  "next_actions": [],
+  "active_assignments": [
+    "Public artifact-contract closure by independent publication worker"
+  ],
+  "completed_cells": [
+    "baseline and candidate functional/thinking/high-context/quality/multimodal/capacity4k/capacity120k/turnover",
+    "one unchanged candidate turnover repeat",
+    "exact baseline restore plus direct/routed smoke and JSON"
+  ],
+  "next_actions": [
+    "Finish documentation consistency and repository checks",
+    "Await user exception decision; no candidate promotion under unchanged strict gate"
+  ],
   "promotion_authorized": false
 }

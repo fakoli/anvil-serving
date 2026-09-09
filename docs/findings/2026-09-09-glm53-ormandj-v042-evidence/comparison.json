@@ -61,7 +61,7 @@
   "performance_gate_passed": true,
   "strict_turnover_gate_passed": false,
   "qualification": "not a blanket deterministic pass",
-  "promotion": "held: strict turnover gate failed in original and one unchanged repeat; exact baseline restoration in progress",
+  "promotion": "held pending user decision on strict-gate exception; exact baseline restored and readmitted",
   "baseline_turnover": {
     "requests": 60,
     "exact_output_passed": 53,

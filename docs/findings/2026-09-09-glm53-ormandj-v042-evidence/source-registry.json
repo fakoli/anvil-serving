@@ -1,6 +1,37 @@
 {
   "schema": "anvil-serving.benchmark-source-registry/v1",
-  "campaign_id": "YYYY-MM-DD-SLUG",
-  "observed_at": "YYYY-MM-DDTHH:MM:SSZ",
-  "sources": []
+  "campaign_id": "2026-09-09-glm53-ormandj-v042",
+  "observed_at": "2026-09-09T12:00:06.076452+00:00",
+  "sources": [
+    {
+      "id": "ormandj-v042-release",
+      "url": "https://github.com/ormandj/sglang-glm53-flash-sm120/releases/tag/v0.4.2",
+      "published_or_observed": "2026-09-08T21:39:19Z",
+      "observed_at": "2026-09-09",
+      "age_class": "current-within-1-day",
+      "evidence_type": "official-upstream-release",
+      "hardware_runtime_relevance": "Exact SM120 GLM-5.3 serving release; local two RTX PRO6000 Max-Q profile remains independently measured",
+      "decision_impact": "Selected immutable digest and release-profile settings; external throughput is not local evidence"
+    },
+    {
+      "id": "ormandj-image-source",
+      "url": "https://github.com/ormandj/sglang-glm53-flash-sm120/tree/23570f89955d29abd2deaf478835ee050ccb25db",
+      "published_or_observed": "2026-09-09",
+      "observed_at": "2026-09-09",
+      "age_class": "current-local-verification",
+      "evidence_type": "official-source-and-measured-image-labels",
+      "hardware_runtime_relevance": "Exact candidate image source and v81 integration lock",
+      "decision_impact": "Bound runtime build to SGLang/FlashInfer/ModelOpt revisions; distinguished tag publication HEAD from built source"
+    },
+    {
+      "id": "local-paired-campaign",
+      "url": "",
+      "published_or_observed": "2026-09-09",
+      "observed_at": "2026-09-09T12:00:06.076452+00:00",
+      "age_class": "current-local-measurement",
+      "evidence_type": "local-managed-direct-requests",
+      "hardware_runtime_relevance": "Exact two RTX PRO6000 Blackwell Max-Q GPUs; matched393216context/C1/TP2/modelrevision/P2P profile",
+      "decision_impact": "Eligible cells show no measured regression; strict turnover prevents unconditional qualification"
+    }
+  ]
 }
