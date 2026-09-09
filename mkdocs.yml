@@ -63,6 +63,7 @@ nav:
       - Overview: index.md
       - Install and run a first serve: GETTING-STARTED.md
       - Private networking with Tailscale: TAILSCALE-NETWORKING.md
+      - Application access with Anvil Connect: ANVIL-CONNECT.md
       - Product map and journeys: PRODUCT-FAMILIES.md
       - Discover the product from the CLI: cli/product.md
   - Benchmarks & evidence:
@@ -126,6 +127,7 @@ nav:
           - Runtime image identity: cli/image-identity.md
           - Fleet: cli/fleet.md
           - Control Plane and Fleet: cli/control-plane.md
+          - Anvil Connect: cli/connect.md
       - Help and project records:
           - Troubleshooting: TROUBLESHOOTING.md
           - Architecture decisions: adr/README.md
