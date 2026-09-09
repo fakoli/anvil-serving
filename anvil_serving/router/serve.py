@@ -39,6 +39,7 @@ from .backends.relay import _ClosingIterator, DiscoveryTransport, Transport, dis
 from .config import (
     ConfigError,
     CONTEXT_ADMISSION_UPSTREAM,
+    MAX_CONCURRENCY_AUTO,
     METADATA_UPSTREAM,
     PRIVACY_LOCAL,
     RouterConfig,
@@ -74,6 +75,7 @@ from .model_capacity import (
     MetricsProvider,
     ReplicaPressureCache,
     build_model_capacity,
+    engine_declared_concurrency,
     fetch_vllm_metrics,
 )
 from .model_metadata import (
@@ -386,6 +388,10 @@ def build_backends(
     return backends, []
 
 
+def _auto_concurrency_log(message: str) -> None:
+    print(f"[anvil-serving] {message}", file=sys.stderr, flush=True)
+
+
 class _ConcurrencyLimitedBackend:
     """Apply an optional configured in-flight cap to one configured tier."""
 
@@ -424,6 +430,150 @@ class _ConcurrencyLimitedBackend:
     def get_last_structured(self) -> Optional[StructuredResult]:
         fn = getattr(self._inner, "get_last_structured", None)
         return fn() if callable(fn) else None
+
+
+class _AutoConcurrencyGate:
+    """Dynamic in-flight cap whose ceiling tracks the engine's declared concurrency.
+
+    flexibility:T023: backs ``max_concurrency = "auto"``. Until the first
+    engine report arrives the gate is unlimited (the engine still enforces
+    its own scheduler limit); ``set_ceiling`` then bounds dispatch. Lowering
+    the ceiling never revokes in-flight requests — new dispatches wait until
+    in-flight drops to the new ceiling, exactly like a semaphore swap would.
+    """
+
+    def __init__(self, inner: Backend, tier_id: str) -> None:
+        self._inner = inner
+        self._tier_id = tier_id
+        self._cond = threading.Condition()
+        self._in_flight = 0
+        self._ceiling: Optional[int] = None
+
+    def ceiling(self) -> Optional[int]:
+        with self._cond:
+            return self._ceiling
+
+    def set_ceiling(self, value: Optional[int]) -> None:
+        with self._cond:
+            if value == self._ceiling:
+                return
+            self._ceiling = value
+            self._cond.notify_all()
+
+    def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
+        return self._generate(self._inner.generate, request)
+
+    def generate_member(
+        self, member_id: str, request: InternalRequest
+    ) -> Iterator[BackendDelta]:
+        generate_member = getattr(self._inner, "generate_member", None)
+        if not callable(generate_member):
+            raise RuntimeError("replica member selection is required")
+        return self._generate(generate_member, member_id, request)
+
+    def _generate(
+        self,
+        generate: Callable[..., Iterator[BackendDelta]],
+        *args: object,
+    ) -> Iterator[BackendDelta]:
+        with self._cond:
+            while self._ceiling is not None and self._in_flight >= self._ceiling:
+                self._cond.wait()
+            self._in_flight += 1
+        try:
+            inner = iter(generate(*args))
+        except BaseException:
+            with self._cond:
+                self._in_flight -= 1
+                self._cond.notify_all()
+            raise
+        return _ClosingIterator(inner, self._release)
+
+    def _release(self) -> None:
+        with self._cond:
+            self._in_flight -= 1
+            self._cond.notify_all()
+
+    def get_last_structured(self) -> Optional[StructuredResult]:
+        fn = getattr(self._inner, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+
+class _AutoConcurrencyRefresher:
+    """Poll auto tiers' engine info and push declared ceilings into their gates.
+
+    Bounded, read-only, stdlib-only. A transport or shape fault keeps the
+    gate's last known ceiling; the tier is never hidden and routing never
+    falls back. Effective-value changes are logged once each.
+    """
+
+    def __init__(
+        self,
+        gates: Mapping[str, Tuple[_AutoConcurrencyGate, str]],
+        *,
+        interval: float,
+        timeout: float,
+        max_bytes: int,
+        opener: Optional[Callable[..., object]] = None,
+        log: Optional[Callable[[str], None]] = None,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._gates = dict(gates)
+        self._interval = max(1.0, interval)
+        self._timeout = timeout
+        self._max_bytes = max_bytes
+        self._opener = opener
+        self._log = log
+        self._clock = clock
+        self._stop = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._wake = threading.Event()
+
+    def start(self) -> None:
+        if self._thread is not None:
+            return
+        self._thread = threading.Thread(
+            target=self._run, name="auto-concurrency", daemon=True
+        )
+        self._thread.start()
+
+    def close(self) -> None:
+        self._stop.set()
+        self._wake.set()
+        thread = self._thread
+        if thread is not None:
+            thread.join(timeout=self._interval + self._timeout + 2.0)
+
+    def refresh_once(self) -> None:
+        """One bounded poll across all auto tiers; also the unit-test seam."""
+        for tier_id, (gate, base_url) in self._gates.items():
+            value = engine_declared_concurrency(
+                base_url, timeout=self._timeout, max_bytes=self._max_bytes,
+                opener=self._opener,
+            )
+            if value is None:
+                # Unresolved (transport/shape fault or no declared limit):
+                # keep the last known ceiling. The engine still enforces its
+                # own scheduler limit; a stale router ceiling is the
+                # conservative direction.
+                continue
+            previous = gate.ceiling()
+            if value != previous:
+                gate.set_ceiling(value)
+                if self._log is not None:
+                    self._log(
+                        f"tier {tier_id!r}: auto max_concurrency resolved to {value}"
+                    )
+
+    def _run(self) -> None:
+        next_due = self._clock()
+        while not self._stop.is_set():
+            self.refresh_once()
+            remaining = max(0.0, self._interval - (self._clock() - next_due))
+            if self._wake.wait(timeout=remaining):
+                self._wake.clear()
+                return
+            next_due += self._interval
 
 
 def _configured_replica_members(config: RouterConfig) -> dict[str, tuple[str, ...]]:
@@ -472,15 +622,33 @@ class RoutingBackend:
         decision_log: Optional[DecisionLog] = None,
     ) -> None:
         self._config = config
-        self._backends: Dict[str, Backend] = {
-            tier_id: (
-                _ConcurrencyLimitedBackend(backend, config.tier(tier_id).max_concurrency)
-                if config.tier(tier_id).max_concurrency is not None
-                and not config.tier(tier_id).replicas
-                else backend
+        self._backends: Dict[str, Backend] = {}
+        auto_gates: Dict[str, Tuple[_AutoConcurrencyGate, str]] = {}
+        for tier_id, backend in backends.items():
+            tier = config.tier(tier_id)
+            if tier.replicas or tier.max_concurrency is None:
+                self._backends[tier_id] = backend
+            elif tier.max_concurrency == MAX_CONCURRENCY_AUTO:
+                gate = _AutoConcurrencyGate(backend, tier_id)
+                self._backends[tier_id] = gate
+                auto_gates[tier_id] = (gate, tier.base_url)
+            else:
+                self._backends[tier_id] = _ConcurrencyLimitedBackend(
+                    backend, tier.max_concurrency
+                )
+        self._auto_refresher = (
+            _AutoConcurrencyRefresher(
+                auto_gates,
+                interval=config.availability_probe_interval,
+                timeout=max(1.0, config.availability_probe_timeout * 2),
+                max_bytes=config.availability_probe_max_bytes,
+                log=_auto_concurrency_log,
             )
-            for tier_id, backend in backends.items()
-        }
+            if auto_gates
+            else None
+        )
+        if self._auto_refresher is not None:
+            self._auto_refresher.start()
         self._availability = availability if availability is not None else AlwaysAvailable()
         self._admission = admission if admission is not None else _configured_admission(config)
         self._capacity_metrics = fetch_vllm_metrics if capacity_metrics is None else capacity_metrics
@@ -497,6 +665,8 @@ class RoutingBackend:
 
     def close(self) -> None:
         """Stop this owner's bounded telemetry refreshes without waiting on I/O."""
+        if self._auto_refresher is not None:
+            self._auto_refresher.close()
         self._replica_pressure.close()
 
     def get_last_structured(self) -> Optional[StructuredResult]:
