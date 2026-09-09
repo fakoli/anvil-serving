@@ -132,8 +132,8 @@ def preview_observatory(manifest_path: str | Path, observatory_config_path: str 
     base_path = config["base_path"]
     if _base_prefix(base_path) != rule["path_prefix"] or config.get("strip_prefix", True) is not False:
         raise MigrationError("Observatory base path requires an exact non-stripping browser resource mapping")
-    if not {"GET", "POST"}.issubset(set(rule["methods"])):
-        raise MigrationError("Observatory browser resource must allow exact GET and POST methods")
+    if not {"GET", "POST", "DELETE"}.issubset(set(rule["methods"])):
+        raise MigrationError("Observatory browser resource must allow GET, POST and DELETE for native logout")
     connector_id, origin_url = _connector_binding(data, selected)
     return {
         "schema": "anvil-connect.observatory-migration/v1",
