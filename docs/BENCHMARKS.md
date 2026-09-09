@@ -50,7 +50,19 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-08**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-09**.
+
+## GLM-5.3-Flash native NCCL P2P transport A/B (2026-09-09)
+
+The user-authorized native GLM TP=2/393,216/C1 recipe retains P2P enabled
+after a bounded transport-only A/B. With fixed 32-word, unique-prefix C1
+requests, median TTFT/E2E improved by about 9%/7.4% at the 4K target (n=12)
+and 8.9%/8.9% at 120K (n=3); decode changed by +2.1%/+1.4%. This does not
+change global NCCL policy, the retained Windows/WSL history, model/image,
+adaptive MTP, or client contract. Both 380K strict capacity cells returned 33
+rather than 32 words and are excluded from performance claims; the raw
+PowerShell diagnostic marker failure also remains retained. See the
+[canonical finding and evidence](findings/2026-09-09-glm53-native-nccl-p2p.md).
 
 ## GLM-5.3-Flash native Linux versus Windows/WSL (2026-09-08)
 
