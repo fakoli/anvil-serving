@@ -5,7 +5,8 @@
     "Structured JSON traversal preserves unique dictionary keys and native schemas",
     "Private checkout roots become repository/; private campaign inputs retain unique private-campaign/ names",
     "GPU UUIDs use ordered reference labels; container IDs use stable role labels",
-    "Original and public SHA256 values identify transformations; model outputs and measurements remain unchanged except private-identity redaction"
+    "Original and public SHA256 values identify transformations; model outputs and measurements remain unchanged except private-identity redaction",
+    "Campaign state and summary bind retained immutable pre-decision source snapshots; public decision metadata is reconciled with the dated human decision without rewriting native measurements or gates"
   ],
   "private_only": [
     "Full operator topology and exact registry snapshots",
@@ -86,9 +87,10 @@
     },
     {
       "path": "campaign-state.json",
-      "source_role": "campaign-state.json",
-      "original_sha256": "76899680302978ff8e5c05fdd1d60f1ad9454456936c7609c9fb37d97a6f68f9",
-      "public_sha256": "e1bd539c3acccaf32a6c7b04e83a07d264d2380bc6574f99a4a88b3490c9ca92"
+      "source_role": "sources/publication-inputs/campaign-state.json",
+      "original_sha256": "9e4a704b88e513fbefa64a770648c61713c70ce95135eca7ef569256593a0680",
+      "public_sha256": "e1bd539c3acccaf32a6c7b04e83a07d264d2380bc6574f99a4a88b3490c9ca92",
+      "transformation": "Retained pre-decision source snapshot; public decision metadata reconciled with human-decision.json. Native measurements and failed gates are preserved."
     },
     {
       "path": "candidate/capacity-120k.json",
@@ -202,7 +204,7 @@
       "path": "coverage-and-gaps.md",
       "source_role": "coverage-and-gaps.md",
       "original_sha256": "adef50b32930b00574c299aabb50f842bf8823c7512871509d8d7d584b68ff54",
-      "public_sha256": "eeed5c50eb164517b3eb3f735d8c3de6285b41c1c68ceac1ad54280ba6b68fa4"
+      "public_sha256": "6a358332e5037a58708dd8d22b55308215f47b51a7d81d36f52900d6169fa44b"
     },
     {
       "path": "friction-log.md",
@@ -272,9 +274,10 @@
     },
     {
       "path": "summary.json",
-      "source_role": "summary.json",
-      "original_sha256": "d100d899db50d2659a3ff70bd3d5b2cd66c338261ebd47f05ac39525fcab500b",
-      "public_sha256": "82ed61783720ceaf87b168deb4db1bfffcfa02e2082c2d2809a7a385ac6f0f76"
+      "source_role": "sources/publication-inputs/summary.json",
+      "original_sha256": "cf2e3fdc75411a5e2dafdd990b42b6da375390c94114711264eae11eb70a82a9",
+      "public_sha256": "82ed61783720ceaf87b168deb4db1bfffcfa02e2082c2d2809a7a385ac6f0f76",
+      "transformation": "Retained pre-decision source snapshot; public decision metadata reconciled with human-decision.json. Native measurements and failed gates are preserved."
     },
     {
       "path": "workload-manifest.json",

@@ -39,8 +39,8 @@
         },
         {
           "path": "redaction-provenance.json",
-          "sha256": "90bdca5e7dcba5bcad2a96c1776b40e5bffe254cdab23418f02be6e1441fc25d",
-          "bytes": 13888
+          "sha256": "49805bafd61abb08374b80083e8d81f2fec9628e82cb7c48295992cad888aa1e",
+          "bytes": 14507
         }
       ],
       "reason": "Concluded comparison retains supporting evidence and failures."
@@ -281,8 +281,8 @@
         },
         {
           "path": "coverage-and-gaps.md",
-          "sha256": "eeed5c50eb164517b3eb3f735d8c3de6285b41c1c68ceac1ad54280ba6b68fa4",
-          "bytes": 1054
+          "sha256": "6a358332e5037a58708dd8d22b55308215f47b51a7d81d36f52900d6169fa44b",
+          "bytes": 1052
         },
         {
           "path": "independent-review-ledger.json",
