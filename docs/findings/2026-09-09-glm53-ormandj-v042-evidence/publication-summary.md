@@ -4,7 +4,7 @@
 
 ## Canonical facts
 
-- **Decision:** `held-for-strict-turnover`; no promotion or deployment.
+- **Decision:** `held-for-strict-turnover`; no production promotion or router admission.
 - **Matched cells:** candidate improved median TTFT/E2E/decode by -5.19%/-4.91%/+3.93% at 4K n12 and -1.31%/-1.45%/+17.21% at 120K n3.
 - **Caveat:** strict turnover was 58/60, then 57/60 on one unchanged repeat; candidate routed validation was intentionally not attempted.
 - **Evidence:** [finding](../2026-09-09-glm53-ormandj-v042.md) · [manifest](artifact-manifest.json).
