@@ -15,7 +15,9 @@ import time
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional
 
 from ..internal import (
+    BackendDelta,
     InternalRequest,
+    ModelDelta,
     estimate_tokens,
     normalize_messages,
     normalize_stop,
@@ -148,7 +150,7 @@ class OpenAIDialect:
     def stream(
         self,
         request: InternalRequest,
-        deltas: Iterable[str],
+        deltas: Iterable[BackendDelta],
         *,
         get_structured: Optional[Callable[[], Any]] = None,
         response_model: Optional[str] = None,
@@ -184,9 +186,23 @@ class OpenAIDialect:
         # 2) one chunk per text delta. Yield immediately as each arrives; on the
         #    usage path also append to ``collected`` for a later estimate.
         for piece in deltas:
-            if emit_usage:
-                collected.append(piece)
-            yield _sse(_chunk(cid, created, model, {"content": piece}, None))
+            if isinstance(piece, ModelDelta):
+                delta: Dict[str, str] = {}
+                if piece.reasoning:
+                    delta["reasoning_content"] = piece.reasoning
+                if piece.text:
+                    delta["content"] = piece.text
+                    if emit_usage:
+                        collected.append(piece.text)
+                if not delta:
+                    continue
+            else:
+                if not piece:
+                    continue
+                delta = {"content": piece}
+                if emit_usage:
+                    collected.append(piece)
+            yield _sse(_chunk(cid, created, model, delta, None))
 
         # Gather structured fields AFTER deltas are fully consumed (#42 / #52).
         _structured = get_structured() if callable(get_structured) else None
@@ -200,10 +216,12 @@ class OpenAIDialect:
         # so chunk boundaries do not skew the count (matches ``render()``).
         if emit_usage:
             _cached: Optional[int] = None
+            _reasoning_tokens: Optional[int] = None
             if _usage is not None:
                 prompt = int(_usage.get("input_tokens", 0))
                 completion = int(_usage.get("output_tokens", 0))
                 _cached = _usage.get("cache_read_input_tokens")
+                _reasoning_tokens = _usage.get("reasoning_tokens")
             else:
                 prompt_texts: List[str] = [
                     m.content for m in request.messages
@@ -220,6 +238,10 @@ class OpenAIDialect:
             # never a zero-filled details block, and never an estimate.
             if _cached is not None:
                 _usage_wire["prompt_tokens_details"] = {"cached_tokens": int(_cached)}
+            if _reasoning_tokens is not None:
+                _usage_wire["completion_tokens_details"] = {
+                    "reasoning_tokens": int(_reasoning_tokens),
+                }
 
         # 3) Tool-call chunks (if any).  Two chunks per call: header (id/name) then
         #    arguments.  Consolidated streaming — full arguments in one chunk.
@@ -273,6 +295,9 @@ class OpenAIDialect:
         _usage = getattr(structured, "usage", None) if structured is not None else None
 
         message: Dict[str, Any] = {"role": "assistant", "content": text if text else None}
+        _reasoning = getattr(structured, "reasoning", None) if structured is not None else None
+        if _reasoning:
+            message["reasoning_content"] = _reasoning
         if _tool_calls:
             tc_wire = []
             for _tc in _tool_calls:
@@ -288,10 +313,12 @@ class OpenAIDialect:
 
         # Real upstream counts when the backend surfaced them; else estimates.
         _cached: Optional[int] = None
+        _reasoning_tokens: Optional[int] = None
         if _usage is not None:
-            prompt = _usage["input_tokens"]
-            completion = _usage["output_tokens"]
+            prompt = int(_usage.get("input_tokens", 0))
+            completion = int(_usage.get("output_tokens", 0))
             _cached = _usage.get("cache_read_input_tokens")
+            _reasoning_tokens = _usage.get("reasoning_tokens")
         else:
             prompt_texts: List[str] = [m.content for m in request.messages]
             prompt = estimate_tokens(prompt_texts)
@@ -304,6 +331,10 @@ class OpenAIDialect:
         # Only when upstream reported it — absent, never zero-filled.
         if _cached is not None:
             usage_wire["prompt_tokens_details"] = {"cached_tokens": int(_cached)}
+        if _reasoning_tokens is not None:
+            usage_wire["completion_tokens_details"] = {
+                "reasoning_tokens": int(_reasoning_tokens),
+            }
         return {
             "id": _new_id("chatcmpl-"),
             "object": "chat.completion",

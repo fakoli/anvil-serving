@@ -21,7 +21,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Callable, Dict, Iterable, Iterator, Mapping, Optional
 
-from ..internal import InternalRequest
+from ..internal import BackendDelta, InternalRequest
 
 from typing import Protocol, runtime_checkable
 
@@ -42,7 +42,7 @@ class Dialect(Protocol):
     def stream(
         self,
         request: InternalRequest,
-        deltas: Iterable[str],
+        deltas: Iterable[BackendDelta],
         *,
         get_structured: Optional[Callable[[], Any]] = None,
         response_model: Optional[str] = None,
