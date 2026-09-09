@@ -1,7 +1,8 @@
 # Anvil Connect implementation evidence
 
 Delivery record dated 2026-09-09. The implementation and isolated qualification
-have passed independent review and are ready for owner acceptance. This record
+passed independent review, and the owner accepted all 23 Anvil tasks with strict
+evidence checks on 2026-09-09 and authorized the source merge. This record
 does not authorize or claim a public deployment, DNS change, VPN replacement,
 router restart, or model-serving change.
 
@@ -103,7 +104,8 @@ packaging, native runtime/control/browser-adapter slices, lifecycle, coordinated
 upgrades, recovery, migration preview and the final combined fixture after
 corrections. Independent checks included the real runtime browser test, Go race
 tests and pinned edge validators. No unresolved high-severity finding remains
-in the reviewed scope. Owner acceptance is a separate Anvil review decision.
+in the reviewed scope. Owner acceptance was recorded through Anvil's formal
+review gate; it does not establish public deployment qualification.
 
 Review found and corrected issues at the boundaries: callback grammar,
 installation fingerprint format, validator service identity, selected-role
