@@ -13,7 +13,9 @@ passing run never changes a serve or route without a separate human gate.
     **[reproduction guide](configurations.md)** for the full TOML and the field
     mapping for readers who do not use Anvil Serving.
 
-**Last evidence review: 2026-09-05 UTC.**
+**Last evidence review: 2026-09-09 UTC.**
+
+The latest [GLM-5.3-Flash native NCCL P2P transport A/B](../findings/2026-09-09-glm53-native-nccl-p2p.md) retains P2P enabled for the pinned TP=2/C1 native recipe. Its results are bounded matched latency evidence, with failed 380K strict-output cells excluded from performance claims.
 
 ## Choose by hardware and workload
 

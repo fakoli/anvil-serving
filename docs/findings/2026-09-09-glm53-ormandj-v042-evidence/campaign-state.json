@@ -1,0 +1,88 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-09-glm53-ormandj-v042",
+  "updated_at": "2026-09-09T15:27:40.694678+00:00",
+  "status": "complete",
+  "current_stage": "publication",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.0.0",
+    "repository_revision": "f19180c41724050b834cd77d1f14d662e4ea57b8",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "complete",
+      "evidence": [
+        "source-registry.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "complete",
+      "evidence": [
+        "run-plan.json",
+        "candidate/identity-pre.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "scout",
+      "status": "complete",
+      "evidence": [
+        "candidate/preflight.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "finalist",
+      "status": "complete",
+      "evidence": [
+        "comparison.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "quality",
+      "status": "failed",
+      "evidence": [
+        "candidate/turnover-controlled.json",
+        "candidate/turnover-controlled-repeat.json",
+        "independent-review-ledger.json"
+      ],
+      "failures": [
+        "Strict turnover58/60 then57/60; repeat includes one length512 truncation"
+      ]
+    },
+    {
+      "id": "restoration",
+      "status": "complete",
+      "evidence": [
+        "restoration.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "complete",
+      "evidence": [
+        "artifact-manifest.json"
+      ],
+      "failures": []
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [
+    "baseline and candidate functional/thinking/high-context/quality/multimodal/capacity4k/capacity120k/turnover",
+    "one unchanged candidate turnover repeat",
+    "exact baseline restore plus direct/routed smoke and JSON"
+  ],
+  "next_actions": [
+    "Campaign concluded: retain exact baseline; no production promotion."
+  ],
+  "promotion_authorized": false,
+  "publication_decision": "human-decision.json"
+}

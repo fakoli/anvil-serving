@@ -1,0 +1,53 @@
+{
+  "command": "models recipes running --transport local",
+  "context": {
+    "command": "models-recipes-running",
+    "command_host": "reference-host",
+    "command_runtime": "dark-native",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "reference-host",
+    "execution_runtime": "dark-docker",
+    "gpu_role": "dark-compute-a",
+    "gpu_uuid": "GPU-REFERENCE-1",
+    "overlay": null,
+    "resource": "dark-model-operator",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "reference-host",
+    "resource_runtime": "dark-docker",
+    "target": null,
+    "topology": "reference-host",
+    "transport": "local"
+  },
+  "data": {
+    "containers": [
+      {
+        "bound_port": 8001,
+        "bound_ports": [
+          8001
+        ],
+        "container": "sglang-glm53-ormandj-sm120-393k-primary",
+        "container_id": "restored-baseline-container",
+        "gpu_selection": [
+          "GPU-REFERENCE-0",
+          "GPU-REFERENCE-1"
+        ],
+        "health": null,
+        "image_digest": "sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+        "model": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO",
+        "native_kv_offload": false,
+        "recipe_digest": "595966873909cb2b2679dd481741d63de77e16f76cc3e8859a12c9be75eea2bb",
+        "registry_digest": "34360ae2272eab7309e53b8221df7fb4043c41fbe24a3974acf131557e0324db",
+        "revision": "c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+        "running": true,
+        "served_identity": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "state": "running"
+      }
+    ],
+    "schema": "recipe-container-inventory/v1"
+  },
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

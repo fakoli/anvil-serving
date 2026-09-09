@@ -1,0 +1,26 @@
+{
+  "schema": "anvil-serving.campaign-restoration/v1",
+  "observed_at": "2026-09-09T10:50:45.787761+00:00",
+  "status": "authorized_new_default_retained",
+  "original_baseline_restored": false,
+  "reason": "User authorized native NCCL P2P default; transport/functional/high-context/performance/routed gates passed with the retained independently adjudicated diagnostic keyword failure.",
+  "new_default": {
+    "NCCL_P2P_DISABLE": "0",
+    "NCCL_P2P_LEVEL": "unset",
+    "NCCL_CUMEM_ENABLE": "0",
+    "registry_sha256": "34360ae2272eab7309e53b8221df7fb4043c41fbe24a3974acf131557e0324db",
+    "unit_enabled": true,
+    "unit_active": true,
+    "routed_preflight_passed": true
+  },
+  "rollback_recipe": "rollback/serve-recipes.glm53-sglang-sm120-393k.toml",
+  "evidence": [
+    "candidate/router-readmit.json",
+    "candidate/router-final.json",
+    "candidate/status-final.json",
+    "candidate/routed-preflight.json",
+    "candidate/post-workload-health.json",
+    "diagnostic-adjudication.json"
+  ],
+  "scope": "Native Dark existing pinned GLM recipe only; no global NCCL, Windows/WSL, BIOS, ACS, image/model/client-contract change."
+}

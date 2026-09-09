@@ -113,6 +113,10 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-09-08-glm53-linux-wsl-comparison-evidence/README.md`;
 `docs/findings/2026-09-08-glm53-linux-wsl-comparison-evidence/publication-summary.md`;
 `docs/findings/2026-09-08-glm53-linux-wsl-comparison-evidence/reproduction.md`;
+`docs/findings/2026-09-09-glm53-native-nccl-p2p.md`;
+`docs/findings/2026-09-09-glm53-native-nccl-p2p-evidence/README.md`;
+`docs/findings/2026-09-09-glm53-native-nccl-p2p-evidence/publication-dispatch.md`;
+`docs/findings/2026-09-09-glm53-native-nccl-p2p-evidence/publication-summary.md`;
 `docs/findings/blackwell-sm120-lab-notebook.md`;
 `.tickets/closed/2026-07-27-release-sweep-fixes.md`;
 `.tickets/closed/2026-07-28-agents-a1-multimodal-qualification.md`;

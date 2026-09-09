@@ -1,0 +1,111 @@
+{
+  "schema": "nccl-model-qualification-plan/v1",
+  "campaign_id": "2026-09-09-glm53-native-nccl-p2p",
+  "created_at": "2026-09-09T10:19:12.497919+00:00",
+  "authorization": "User requested NCCL P2P as default after successful collective comparison; qualify and apply to native Dark GLM only if gates pass.",
+  "change": {
+    "NCCL_P2P_DISABLE": [
+      "1",
+      "0"
+    ]
+  },
+  "unchanged": [
+    "model revision",
+    "runtime image",
+    "TP2",
+    "393216 context",
+    "4096 max output",
+    "C1",
+    "adaptive MTP",
+    "KV/state dtypes",
+    "cuMem0",
+    "router aliases and client contract",
+    "BIOS and ACS"
+  ],
+  "capacity_cells": [
+    {
+      "context_target": 4096,
+      "requests": 12
+    },
+    {
+      "context_target": 120000,
+      "requests": 3
+    },
+    {
+      "context_target": 380000,
+      "requests": 1
+    }
+  ],
+  "capacity_controls": {
+    "response_words": 32,
+    "max_tokens": 512,
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "controlled_output_policy": "strict",
+    "seed": 0,
+    "concurrency": 1,
+    "thinking_mode": "disabled",
+    "timeout_seconds": 240,
+    "margin": 4096
+  },
+  "functional_checks": [
+    "smoke",
+    "json",
+    "needle",
+    "tools",
+    "long-tools",
+    "streaming-tools",
+    "tool-result",
+    "responses",
+    "image",
+    "ocr"
+  ],
+  "quality_suite": "coding-agent-suite-v2; two repetitions; visible2048",
+  "gates": [
+    "No new deterministic failures relative to baseline; full preflight, marker diagnostics and added high-context assertions must pass.",
+    "startup P2P in both directions and no SHM fallback",
+    "no GPU Xid/OOM/crash/request loss",
+    "same model/client contract and healthy routed final state",
+    "No greater than 10 percent repeatable regression in eligible matched 4k/120k latency or throughput; investigate noise."
+  ],
+  "performance_scope": "bounded matched transport A/B; fixed speculation not compared; no p99 service-tail claim",
+  "rollback": "Drain; stop current exact model via systemd/managed recipes; restore previous registry through models recipes update; clear only unit failure counter if needed; start exact baseline; direct and routed gates; readmit.",
+  "amendments": [
+    {
+      "at": "2026-09-09T10:24:07.271539+00:00",
+      "stage": "scout before comparative cells",
+      "reason": "The baseline 128-word scout returned 254 codewords and one extra word; the strict gate correctly excluded it. Reduce to 32 words before comparative cells, retaining the 512-token cap and strict policy.",
+      "response_words": [
+        128,
+        32
+      ]
+    },
+    {
+      "at": "2026-09-09T10:34:15.803498+00:00",
+      "stage": "baseline complete before candidate cutover",
+      "reason": "The baseline 380k capacity cell returned 33 codewords rather than 32 and is performance-ineligible. Preserve the failed cell; use matched 380k-target needle and long-tools exact assertions for high-context correctness. Comparative performance gates use only eligible 4k and 120k cells. Two-repetition marker quality remains diagnostic, not a comparable quality ranking.",
+      "high_context_checks": {
+        "checks": [
+          "needle",
+          "long-tools"
+        ],
+        "needle_ctx": 380000,
+        "long_tool_ctx": 380000,
+        "tool_batch": 4,
+        "visible_answer_tokens": 1024
+      }
+    }
+  ],
+  "transaction": {
+    "review": "Independent Sol reviewer accepted 2026-09-09 before mutation",
+    "before_every_registry_write": [
+      "systemctl stop anvil-glm53.service",
+      "systemctl reset-failed anvil-glm53.service",
+      "systemctl show -p ActiveState -p SubState -p Job anvil-glm53.service",
+      "ABORT registry mutation unless inactive/dead and Job empty"
+    ],
+    "startup": "Start once with --no-block; poll every 2 seconds, maximum 600 seconds. On failed, auto-restart, exception or timeout, stop/reset/verify before restoring original registry and starting baseline.",
+    "gates": "Keep primary-local quiesced through direct gates and identity checks. Any new deterministic failure or repeatable >10 percent matched-cell performance regression invokes guarded rollback.",
+    "readmission": "After direct gates and readiness pass, readmit and run actual routed smoke/json. Routed failure immediately quiesces and invokes guarded rollback."
+  }
+}

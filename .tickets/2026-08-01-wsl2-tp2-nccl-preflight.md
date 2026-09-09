@@ -32,3 +32,12 @@ loading model weights.
   they never mutate global NCCL configuration.
 - The command exits before model loading and provides a reusable JSON artifact for
   qualification findings.
+
+## Native Linux implementation, 2026-09-09
+
+`host nccl` now provides the bounded local Linux collective/transport probe in
+an existing digest-pinned PyTorch image, with explicit UUID pair, idle-device
+and IOMMU guards, private JSON evidence, exact-owned-container timeout cleanup,
+and deterministic per-element all-reduce verification. It changes no global
+NCCL configuration or production recipe. WSL/remote-controller support remains
+open; do not treat the native Linux implementation as WSL qualification.
