@@ -16,8 +16,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "fc71959d2b33233190ea2c550e036f46ea80184c32fba845342f6d75a8ac47f0",
-          "bytes": 2050
+          "sha256": "562f9a1db10ba58a6a3de9503f6b6987a16f8dc77281ea4a436b5040ed3075e0",
+          "bytes": 2108
         },
         {
           "path": "redaction-provenance.json",
@@ -264,8 +264,8 @@
       "files": [
         {
           "path": "publication-summary.md",
-          "sha256": "f01a3c427d288385639ff0b103071eb7520b2e0a256874058d6880cf26300b92",
-          "bytes": 1652
+          "sha256": "78f3dd83579bd5254f85d27822423cfff84ee96e213821f7d0b6004e64e938bf",
+          "bytes": 2024
         }
       ],
       "reason": "Derivative public copy and claim ledger."

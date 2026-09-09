@@ -23,3 +23,11 @@ Chart comparing P2P-disabled and P2P-enabled native GLM-5.3-Flash TP=2 C1 cells 
 | P2P enabled lowered median latency in the eligible cells | 4K n=12 and 120K n=3, strict 32 words, unique-prefix C1 | [comparison](comparison.json) |
 | The native default retains P2P enabled | authorized bounded recipe decision after routed checks | [restoration](restoration.json) |
 | No high-context performance claim | both 380K strict cells returned 33 rather than 32 words | [coverage](coverage-and-gaps.md) |
+
+## Publication validation
+
+The 19 focused benchmark-docs tests passed, and all relative links passed the
+606-file tracked Markdown check. Graph rendering and manifest finalization
+were byte-identical on repeated runs. A strict MkDocs build passed using the
+repository's requirements-docs.txt in an isolated tool environment; no runtime
+serving dependencies were changed.
