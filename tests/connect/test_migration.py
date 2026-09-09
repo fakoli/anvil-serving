@@ -15,7 +15,7 @@ import pytest
 from anvil_serving.connect.migration import MigrationError, preview_observatory
 from anvil_serving.observability.api import TelemetryRegistry, run_server_in_thread
 from anvil_serving.observability.dashboard.app import create_dashboard_server
-from anvil_serving.observability.dashboard.console import Console, attach_console
+from anvil_serving.observability.dashboard.console import Console, attach_console, load_config
 from anvil_serving.observability.dashboard.contracts import digest
 
 
@@ -145,6 +145,36 @@ def test_preview_has_one_canonical_origin_and_ordered_safe_cutover(tmp_path: Pat
     assert [step["order"] for step in preview["steps"]] == [1, 2, 3, 4, 5, 6]
     assert "two-origin" not in json.dumps(preview).lower()
     assert preview["steps"][-1]["action"].startswith("retire-the-prior")
+
+
+def test_preview_accepts_current_optional_logs_without_disclosing_log_binding(tmp_path: Path):
+    manifest, config, values = deployment(tmp_path)
+    values["inventory"] = {"hosts": [{"id": "dashboard-host"}], "serves": []}
+    values["logs"] = {
+        "url": "http://127.0.0.1:3100",
+        "hosts": {"dashboard-host": "dashboard-host"},
+        "serves": {},
+    }
+    config.write_text(json.dumps(values), encoding="utf-8")
+
+    # The app's own closed loader accepts the current optional block.  The
+    # migration preview retains its fixed browser-origin contract and returns
+    # no collector configuration or endpoint.
+    assert load_config(str(config))["logs"] == values["logs"]
+    preview = preview_observatory(manifest, config, resource_id="dashboard")
+    assert preview["canonical_origin"] == ORIGIN
+    assert preview["resource"]["access"] == "browser"
+    assert preview["resource"]["native_auth"] == "passthrough"
+    assert "logs" not in preview
+    assert "127.0.0.1:3100" not in json.dumps(preview, sort_keys=True)
+
+
+def test_preview_still_rejects_unknown_observatory_top_level_key(tmp_path: Path):
+    manifest, config, values = deployment(tmp_path)
+    values["unrecognized"] = {"not": "allowed"}
+    config.write_text(json.dumps(values), encoding="utf-8")
+    with pytest.raises(MigrationError, match="configuration is invalid"):
+        preview_observatory(manifest, config, resource_id="dashboard")
 
 
 def test_origin_change_is_refused_instead_of_claiming_preserved_sessions(tmp_path: Path):
