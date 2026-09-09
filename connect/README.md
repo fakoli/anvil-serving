@@ -1,9 +1,13 @@
 # Anvil Connect native component
 
-Implementation in progress. The separate Go module contains the gateway,
+The separate Go module contains the gateway,
 outbound origin connector, browser access gateway, scoped API keys, and optional
 loopback SDK forwarder. Isolated process and browser tests are available;
-managed deployment and migration qualification are still being completed.
+managed lifecycle, recovery and migration previews are exposed through
+`anvil-serving connect`. See the [operator overview](../docs/ANVIL-CONNECT.md),
+[CLI reference](../docs/cli/connect.md), and
+[implementation evidence](../docs/ANVIL-CONNECT-IMPLEMENTATION.md) for measured
+coverage and outstanding deployment qualification.
 It has not replaced an installed Tailscale edge. The Python router and controller
 gain no runtime dependencies from this module.
 
@@ -89,12 +93,14 @@ The authority caps active sessions at 1,024 globally and 32 per human and reclai
 expired or invalid records before issuance. Its owned OIDC client requires TLS
 1.3 and the same HTTPS origin for discovery, authorization, token and key URLs.
 Chromium tests exercise real TLS origins, cookies, callbacks, native dashboard
-session/CSRF controls, and cancellation on logout against a synthetic issuer.
-Actual Authelia login and the complete managed deployment remain to be qualified.
+session/CSRF controls, and cancellation on logout. Separate fixtures use a
+synthetic issuer and actual Caddy/Authelia processes. The latter exercises
+password, TOTP, consent, an exact opaque subject grant, and authorization-response
+issuer validation. Isolated tests do not establish a public deployment.
 
 ## Native process interface
 
-Build the Linux command with `go -C connect build -o /absolute/output/anvil-connect
+Build the Linux command with `go -C connect build -trimpath -o /absolute/output/anvil-connect
 ./cmd/anvil-connect`. Its help lists validation, explicit gateway initialization,
 connector enrollment, gateway/connector/client processes, public installation
 identity inspection, local admin requests, and local SDK key generation.

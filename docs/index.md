@@ -59,6 +59,7 @@ hide:
   <div class="anvil-resource-list">
     <a href="HOST-SERVICES/"><strong>Manage host services</strong><span>Discover, adopt, inspect, start, and stop services through Anvil. Use Docker on Windows and Linux, or native MLX and Docker on macOS.</span></a>
     <a href="TAILSCALE-NETWORKING/"><strong>Set up private networking</strong><span>Understand device roles, identity, grants, MagicDNS, mobile access, and the Serve-to-loopback pattern.</span></a>
+    <a href="ANVIL-CONNECT/"><strong>Protect application access</strong><span>Use a self-hosted HTTPS gateway, browser login, scoped SDK keys, and outbound origin connectors.</span></a>
     <a href="DEVICE-TOPOLOGIES/"><strong>Place roles across devices</strong><span>Separate primary inference, harness, voice, media, and operator ownership without exposing machine identity.</span></a>
   </div>
 </section>

@@ -128,7 +128,8 @@ gateway/controller authority split.
 
 Control Plane & Fleet owns topology and target resolution, bounded MCP and
 controller dispatch, host readiness and repair, fleet parity/drift reports,
-client reconciliation, observability, tailnet edge management, upgrades, and
+client reconciliation, observability, tailnet edge management, Anvil Connect
+application access, upgrades, and
 the optional Workbench stack. Normal operations flow through typed Anvil
 surfaces. Verified SSH exists only as bounded recovery for commands that
 declare it.
@@ -142,6 +143,7 @@ declare it.
 
 Continue with [Control Plane & Fleet commands](cli/control-plane.md),
 [Private networking with Tailscale](TAILSCALE-NETWORKING.md),
+[Application access with Anvil Connect](ANVIL-CONNECT.md),
 [Fleet commands](cli/fleet.md), [Host & setup](cli/host.md), and the
 [Agent workbench](WORKBENCH.md).
 
