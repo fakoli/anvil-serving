@@ -1,3 +1,5 @@
+//go:build linux
+
 // Command anvil-connect is the native data plane. Operator automation lives in
 // anvil-serving connect; this command consumes its closed generated declarations.
 package main
@@ -6,20 +8,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"log"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/admin"
 	"github.com/fakoli/anvil-serving/connect/internal/client"
+	"github.com/fakoli/anvil-serving/connect/internal/clientconfig"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	connectruntime "github.com/fakoli/anvil-serving/connect/internal/runtime"
 	"github.com/fakoli/anvil-serving/connect/internal/transport"
@@ -172,14 +170,14 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	}
 	var gateway connectruntime.GatewayConfig
 	var connector connectruntime.ConnectorConfig
-	var local connectruntime.ClientConfig
+	var local clientconfig.Config
 	switch mode {
 	case "gateway":
 		gateway, err = connectruntime.ReadGateway(bytes.NewReader(data))
 	case "connector":
 		connector, err = connectruntime.ReadConnector(bytes.NewReader(data))
 	case "client":
-		local, err = connectruntime.ReadClient(bytes.NewReader(data))
+		local, err = clientconfig.Read(bytes.NewReader(data))
 	}
 	if err != nil {
 		return invalid()
@@ -267,40 +265,4 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 		return fail()
 	}
 	return status(map[string]string{"mode": mode, "status": "stopped"})
-}
-
-func serveClient(ctx context.Context, c connectruntime.ClientConfig, lookup func(string) (string, bool), started func() error) error {
-	key, ok := lookup(c.LocalKeyEnv)
-	if !ok {
-		return client.ErrConfiguration
-	}
-	forwarder, err := client.New(c.Rule, c.Listen, key, c.RemoteKeyEnv, lookup, client.Options{})
-	if err != nil {
-		return err
-	}
-	defer forwarder.Close()
-	listener, err := net.Listen("tcp", c.Listen)
-	if err != nil {
-		return err
-	}
-	defer listener.Close()
-	server := &http.Server{Handler: forwarder, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 65536, ErrorLog: log.New(io.Discard, "", 0), BaseContext: func(net.Listener) context.Context { return ctx }}
-	defer server.Close()
-	exited := make(chan error, 1)
-	go func() { exited <- server.Serve(listener) }()
-	// Every return after Serve starts closes and reaps this owned server.
-	defer func() { _ = server.Close(); <-exited }()
-	if err := started(); err != nil {
-		return err
-	}
-	select {
-	case <-ctx.Done():
-		return nil
-	case err := <-exited:
-		exited <- err
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-		return err
-	}
 }

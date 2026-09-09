@@ -23,8 +23,8 @@ class _Once(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
-def _parser() -> argparse.ArgumentParser:
-    parser = _Parser(prog="anvil-serving connect", allow_abbrev=False)
+def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
+    parser = _Parser(prog=prog, allow_abbrev=False)
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
     for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration"):
         leaf = actions.add_parser(action, allow_abbrev=False)
@@ -56,9 +56,9 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def dispatch(argv: list[str] | None = None) -> CommandResult:
+def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connect") -> CommandResult:
     try:
-        args = _parser().parse_args(argv)
+        args = _parser(prog).parse_args(argv)
         from . import manage  # help/importing the registry never starts discovery
 
         if not manage.supported_platform():
