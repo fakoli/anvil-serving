@@ -95,12 +95,13 @@ keep a concurrent HTTP/2 stream alive when a sibling upload times out. Focused
 tests also reject missing, wrong-name, unknown-CA, expired and wrong-EKU inner
 peers, mismatched gateway private keys, and replacement file/directory paths.
 
-These results do not establish installation-generation revocation, public
-Caddy integration or browser authorization. The shared-port design requires a
-Go gate that owns each authenticated Upgrade stream between stock Caddy and the
+These API adapter results alone do not establish installation-generation
+revocation, Caddy integration or browser authorization. Subsequent implementation
+adds a Go gate that owns each authenticated Upgrade stream between Caddy and the
 private wstunnel listener; terminating TLS at Caddy alone does not preserve the
-connector certificate identity. Current inner service-name certificates must
-also be bound to the current enrolled generation before production admission.
+connector certificate identity. Inner service certificates bind the current
+enrolled generation and public key. See the
+[implementation record](ANVIL-CONNECT-IMPLEMENTATION.md) for those separate gates.
 
 ## Limits and next qualification
 
@@ -118,7 +119,8 @@ corporate network compatibility. The
 HTTP/2 limitations; this lab does not select that mode.
 
 The reverse listener may outlive its disconnected connector. Listener existence
-therefore cannot imply application readiness. Finish authenticated connector
-leases, installation enrollment integration, browser admission, active revocation
-and the product lifecycle commands before exposing an application. A tunnel's client certificate
-must never be treated as a browser session or a universal application key.
+therefore cannot imply application readiness. Connect now checks renewable
+connector leases, enrollment, browser admission and active revocation, with
+owned lifecycle commands. Each selected deployment must qualify the complete
+path before exposure. A tunnel's client certificate is distinct from a browser
+session or an application key.
