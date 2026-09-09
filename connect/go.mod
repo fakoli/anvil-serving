@@ -7,3 +7,5 @@ require (
 	go.etcd.io/bbolt v1.5.0
 	golang.org/x/sys v0.45.0
 )
+
+require github.com/go-jose/go-jose/v4 v4.1.5
