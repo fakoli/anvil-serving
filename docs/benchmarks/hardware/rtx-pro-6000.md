@@ -2,9 +2,9 @@
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark; native Linux
-measurements on 2026-09-08, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-09-08. **Evidence
-interpretation reviewed:** 2026-09-08.
+measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
+history. **Last locally measured:** 2026-09-09. **Evidence
+interpretation reviewed:** 2026-09-09.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -42,14 +42,6 @@ Fakoli Mini is model-free in the reference topology and reaches Dark remotely.
 
 ## Native Linux migration comparison (2026-09-08)
 
-## Native NCCL P2P transport A/B (2026-09-09)
-
-The pinned GLM TP=2/C1 native recipe now retains P2P enabled after the bounded
-transport A/B: 4K n12 and 120K n3 matched cells lowered median TTFT by about
-9% and E2E by 7.4–8.9%, while decode changed by +1.4–2.1%. Both 380K strict
-capacity cells failed the required 32-word count and are excluded from
-performance claims. See the [finding and evidence](../../findings/2026-09-09-glm53-native-nccl-p2p.md).
-
 The same physical pair, exact GLM-5.3-Flash model/image and TP2/393,216/C1
 profile measured warm direct median decode of 149.02/125.03/124.46/120.29
 versus retained WSL 112.07/96.17/102.42/99.79 tok/s at nominal
@@ -70,6 +62,14 @@ the direct image phrase-sensitive miss is retained. The native stack adds
 OS-only causal experiment or strict finalist qualification. `no-promotion`;
 prior promotion decisions remain dated history. See the
 [finding and artifacts](../../findings/2026-09-08-glm53-linux-wsl-comparison.md).
+
+## Native NCCL P2P transport A/B (2026-09-09)
+
+The pinned GLM TP=2/C1 native recipe now retains P2P enabled after the bounded
+transport A/B: 4K n12 and 120K n3 matched cells lowered median TTFT by about
+9% and E2E by 7.4–8.9%, while decode changed by +1.4–2.1%. Both 380K strict
+capacity cells failed the required 32-word count and are excluded from
+performance claims. See the [finding and evidence](../../findings/2026-09-09-glm53-native-nccl-p2p.md).
 
 ## Recorded promotion, rollback, and challenger state
 
