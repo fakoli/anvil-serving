@@ -2,7 +2,7 @@
   "schema": "runtime-identity-gate/v1",
   "phase": "post",
   "passed": true,
-  "container_id": "11f50dce9faf98fa4f97384acdf942ce71da9a9c8c94d22507b71212811ba103",
+  "container_id": "candidate-container",
   "recipe_digest": "a02c438f6622ccbb7bf3e09bbd872afacc8752830b02454b830cf1d7eaf34981",
   "image_digest": "sha256:877ae29486eb7d385eb2a07921522aa3597f643f9a7c50112751f2aaa14d558a",
   "unit": {
@@ -11,8 +11,8 @@
     "Job": "",
     "NRestarts": "0"
   },
-  "gpu_snapshot": "[REDACTED_GPU_UUID], 95015 MiB, 2235 MiB, 0 %\n[REDACTED_GPU_UUID], 95015 MiB, 2235 MiB, 0 %\n",
+  "gpu_snapshot": "GPU-REFERENCE-0, 95015 MiB, 2235 MiB, 0 %\nGPU-REFERENCE-1, 95015 MiB, 2235 MiB, 0 %\n",
   "cache_provenance": "Mounts inferred from initially absent volume, deterministic managed-create argv, matching immutable live recipe/registry labels and new container ID; not a direct mount inspection",
   "qualification_commit": "f19180c41724050b834cd77d1f14d662e4ea57b8",
-  "capture_directory": "[REDACTED_PATH]"
+  "capture_directory": "private-campaign/candidate/identity-post-attempts/d66dfd0e712d4935ae56b85f6b1a0d95"
 }

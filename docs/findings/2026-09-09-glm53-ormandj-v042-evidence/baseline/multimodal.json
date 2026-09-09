@@ -898,7 +898,7 @@
         "sampling": null
       }
     ],
-    "path": "[REDACTED_PATH]",
+    "path": "repository/tests/fixtures/eval-data/agents-a1-v1/image-corpus.json",
     "provenance": {
       "derived_from": "corpus.json",
       "observed_date": "2026-08-29",

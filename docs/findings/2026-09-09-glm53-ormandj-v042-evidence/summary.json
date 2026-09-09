@@ -164,17 +164,18 @@
       "partial-qualification"
     ],
     "decision_labels": [
+      "held-for-strict-turnover",
       "no-promotion"
     ],
     "promotion_authorized": false,
     "user_authorization": "User authorized promotion and PR/merge if better or on par; no exception to failed frozen strict gate recorded",
-    "next_gate": "explicit user comparative exception after strict turnover hold"
+    "next_gate": "User decision on accepting comparative residual; absent exception, keep exact restored baseline. Candidate routed acceptance remains required after any exception."
   },
   "evidence": [
     "run-plan.json",
     "workload-manifest.json",
     "comparison.json",
-    "sources/independent-review-ledger.json",
+    "independent-review-ledger.json",
     "restoration.json"
   ],
   "restoration": {

@@ -842,7 +842,7 @@
     "chat_template_kwargs": {
       "enable_thinking": false
     },
-    "control_evidence": "[REDACTED_PATH]",
+    "control_evidence": "private-campaign/candidate/control-evidence.json",
     "control_evidence_sha256": "f7276b43b7a47d5b25c0bbe757af36177e81ee05c44b8f33c765c630b27aeb55",
     "control_mechanism": "chat_template_kwargs",
     "control_requested": {

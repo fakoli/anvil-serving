@@ -6,11 +6,9 @@
   "starting_state": {
     "captured": true,
     "evidence": [
-      "rollback/serve-recipes.glm53-sglang-sm120-393k.toml",
-      "rollback/serves.glm53-sglang-sm120-393k.toml",
-      "rollback/anvil-router.glm53-ormandj-sglang-sm120-393k.toml",
-      "rollback/operator-topology.toml"
-    ]
+      "private-restoration-hashes.json"
+    ],
+    "boundary": "Exact operator files remain private; public receipt contains original and verified-restored digests."
   },
   "ending_state": {
     "captured": true,
@@ -53,6 +51,6 @@
   "verified": true,
   "not_applicable_reason": null,
   "verified_at": "2026-09-09T12:02:45.300400+00:00",
-  "container_id": "d80230e3146bc7d3d4237f3d55ddb55690b5e916c1b42b6151d45bf8dcbb90f5",
+  "container_id": "restored-baseline-container",
   "recipe_sha256": "34360ae2272eab7309e53b8221df7fb4043c41fbe24a3974acf131557e0324db"
 }
