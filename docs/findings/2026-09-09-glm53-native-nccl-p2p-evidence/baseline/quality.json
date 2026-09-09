@@ -1,0 +1,724 @@
+{
+  "context": {
+    "cap_tokens": 387072,
+    "max_model_len": 393216,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 2,
+    "version": 3,
+    "visible_answer_tokens": 2048
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:8001/v1",
+    "candidate_id": "glm53-native-transport",
+    "config_id": "p2p-disabled",
+    "engine": "sglang-glm53-sm120-v0.1.1-rc14",
+    "gpu": "dual-rtx-pro-6000-blackwell-max-q",
+    "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+    "started_at": "2026-09-09T10:27:24Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260909T102724Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "disabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "deepseek-v4-flash-0731-local-coding-agent-v2": {
+      "checks": [
+        {
+          "attempt_count": 2,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "```diff\n--- a/worker.py\n+++ b/worker.py\n@@ -1,2 +1,5 @@\n def run(timeout):\n-    return request(timeout=timeout)\n+    if timeout <= 0:\n+        raise ValueError('timeout must be positive')\n+    return request(timeout=timeout)\n```\n\nThe check runs before `request` is called, so non-positive values (including `0` and negatives) raise `ValueError('timeout must be positive')`, while positive values still flow through to `request(timeout=timeout)` unchanged.",
+              "content_chars": 455,
+              "content_excerpt": "```diff\n--- a/worker.py\n+++ b/worker.py\n@@ -1,2 +1,5 @@\n def run(timeout):\n-    return request(timeout=timeout)\n+    if timeout <= 0:\n+        raise ValueError('timeout must be positive')\n+    return ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 809.0243050000936,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "unified-diff",
+                  "passed": true
+                },
+                {
+                  "name": "guard",
+                  "passed": true
+                },
+                {
+                  "name": "valid-path",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 114,
+                "prompt_tokens": 59,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 173
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "```diff\n--- a/worker.py\n+++ b/worker.py\n@@ -1,2 +1,5 @@\n def run(timeout):\n-    return request(timeout=timeout)\n+    if timeout <= 0:\n+        raise ValueError('timeout must be positive')\n+    return request(timeout=timeout)\n```\n\n**Note:** The diff assumes `worker.py` contains exactly the two lines shown. If the file has other content, adjust the hunk header (`@@`) line numbers accordingly.",
+              "content_chars": 393,
+              "content_excerpt": "```diff\n--- a/worker.py\n+++ b/worker.py\n@@ -1,2 +1,5 @@\n def run(timeout):\n-    return request(timeout=timeout)\n+    if timeout <= 0:\n+        raise ValueError('timeout must be positive')\n+    return ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 780.0092409997887,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "unified-diff",
+                  "passed": true
+                },
+                {
+                  "name": "guard",
+                  "passed": true
+                },
+                {
+                  "name": "valid-path",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 102,
+                "prompt_tokens": 59,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 161
+              }
+            }
+          ],
+          "id": "python-timeout-guard-diff",
+          "pass_count": 2,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 2,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "{\"root_cause\": \"The parameter `queue` uses a mutable default argument (a list literal `[]`). Python evaluates default arguments once at function definition time, not at each call, so every call that omits `queue` appends to the same shared list object, leaking state across calls.\", \"fix\": \"Use a safe signature `def add_job(job, queue=None):` and initialize inside the body with `if queue is None: queue = []` (or `queue = list(queue)` to copy), so each call gets a fresh list instead of the shared mutable default.\"}\n\nThat's the answer. Let me verify the requirements:\n\n- Exactly two keys: `root_cause` and `fix` \u2713\n- `root_cause` identifies why calls leak state: shared mutable default evaluated once at definition time \u2713\n- `fix` states the safe signature (`queue=None`) and initialization (`if queue is None: queue = []`) \u2713\n- Required words: \"mutable\" \u2713, \"default\" \u2713, \"None\" \u2713, \"queue\" \u2713 \u2014 all present in appropriate values\n\nThe JSON is valid (double quotes, escaped backticks are fine as plain characters). One JSON object returned.",
+              "content_chars": 1036,
+              "content_excerpt": "{\"root_cause\": \"The parameter `queue` uses a mutable default argument (a list literal `[]`). Python evaluates default arguments once at function definition time, not at each call, so every call that o",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1626.941282000189,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "root-cause",
+                  "passed": true
+                },
+                {
+                  "name": "safe-fix",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 249,
+                "prompt_tokens": 85,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 334
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "```json\n{\n  \"root_cause\": \"The bug is the mutable default argument: `queue=[]` creates a single list object at function definition time, so every call that omits `queue` appends to and returns that same shared list, leaking state across calls.\",\n  \"fix\": \"Use a safe signature `def add_job(job, queue=None):` and initialize inside the body with `if queue is None: queue = []` (or `queue = queue or []`), so each call gets a fresh list instead of the shared mutable default.\"\n}\n```\n\nThe bug: Python evaluates default arguments **once**, at `def` time \u2014 not per call. Since a list is mutable, all calls sharing the default mutate the same object.\n\nThe fix: the standard `None` sentinel pattern \u2014 default to `None`, then create a fresh list inside the function body.",
+              "content_chars": 763,
+              "content_excerpt": "```json\n{\n  \"root_cause\": \"The bug is the mutable default argument: `queue=[]` creates a single list object at function definition time, so every call that omits `queue` appends to and returns that sa",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1267.8163480004514,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "root-cause",
+                  "passed": true
+                },
+                {
+                  "name": "safe-fix",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 182,
+                "prompt_tokens": 85,
+                "prompt_tokens_details": {
+                  "cached_tokens": 64
+                },
+                "reasoning_tokens": 0,
+                "total_tokens": 267
+              }
+            }
+          ],
+          "id": "mutable-default-root-cause",
+          "pass_count": 2,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 2,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "# Fail-Closed PowerShell Plan: Recursive Directory Move Within a Workspace\n\n## Step 1 \u2014 Define and Resolve the Workspace Boundary\n\n```powershell\n$workspace = 'C:\\Work\\MyProject'\n$workspacePath = (Resolve-Path -LiteralPath $workspace -ErrorAction Stop).Path\n```\n\nResolve the workspace root first and fail immediately if it does not exist. Every subsequent check compares against this verified absolute path. Do not proceed on a resolved value that is `$null` or empty.\n\n## Step 2 \u2014 Resolve and Validate the Source Directory\n\n```powershell\n$sourceName = 'OldData'\n$sourceCandidate = Join-Path $workspacePath $sourceName\n\n$sourcePath = (Resolve-Path -LiteralPath $sourceCandidate -ErrorAction Stop).Path\n```\n\nResolve the source by joining the name onto the verified workspace path, then resolving. This prevents traversal tricks: if `$sourceName` contained `..` or an absolute path, `Join-Path` plus `Resolve-Path` would produce a path outside the workspace, which the next check catches.\n\n## Step 3 \u2014 Containment Check (Fail-Closed Gate)\n\n```powershell\nfunction Test-InsidePath {\n    param([string]$Path, [string]$Root)\n    $fullRoot  = [System.IO.Path]::GetFullPath($Root).TrimEnd('\\') + '\\'\n    $fullPath  = [System.IO.Path]::GetFullPath($Path)\n    return $fullPath.StartsWith($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)\n}\n\nif (-not (Test-InsidePath $sourcePath $workspacePath)) {\n    throw \"Source resolved outside workspace: $sourcePath\"\n}\n```\n\nFail closed: if the containment test cannot confirm the source is inside the workspace, abort. Note the trailing backslash on the root so that a sibling directory like `C:\\Work\\MyProject2` cannot pass a naive prefix match.\n\n## Step 4 \u2014 Resolve and Validate the Destination\n\n```powershell\n$destName = 'Archive'\n$destCandidate = Join-Path $workspacePath $destName\n\nif (Test-Path -LiteralPath $destCandidate) {\n    $destPath = (Resolve-Path -LiteralPath $destCandidate).Path\n} else {\n    $destPath = $destCandidate   # does not exist yet; Move-Item will create it\n}\n\nif (-not (Test-InsidePath $snippets... \n```\n\nThe destination may not exist yet, so `Resolve-Path` alone cannot be used unconditionally. Resolve it if it exists; otherwise use the candidate path directly, since it was constructed from the verified workspace root. Run the same containment check on the destination. Additionally, verify the destination is not inside the source (`Test-InsidePath $destPath $sourcePath` must be `$false`) to prevent moving a directory into its own subtree.\n\n## Step 5 \u2014 Execute the Move with Literal Paths\n\n```powershell\nMove-Item -LiteralPath $sourcePath -Destination $destPath -ErrorAction Stop\n```\n\nUse `-LiteralPath` on both the source and destination so wildcard characters in directory names (`[`, `]`, `*`, `?`) are treated literally rather than as glob patterns. `-ErrorAction Stop` converts any move failure into a terminating error. Because every path was resolved and containment-checked in Steps 1\u20134, the move cannot touch anything outside the workspace, and unrelated files are untouched \u2014 `Move-Item` relocates only the named directory.\n\n---\n\n**Fail-closed summary:** any failure to resolve, any containment violation, or any move error throws and halts the script before or during the operation; nothing is moved unless all five gates pass.",
+              "content_chars": 3309,
+              "content_excerpt": "# Fail-Closed PowerShell Plan: Recursive Directory Move Within a Workspace\n\n## Step 1 \u2014 Define and Resolve the Workspace Boundary\n\n```powershell\n$workspace = 'C:\\Work\\MyProject'\n$workspacePath = (Reso",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4824.811172999944,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "absolute-verification",
+                  "passed": true
+                },
+                {
+                  "name": "literal-native-move",
+                  "passed": true
+                },
+                {
+                  "name": "scope-preservation",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 768,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 841
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "# Fail-Closed PowerShell Plan: Recursive Directory Move Within a Workspace\n\n## Step 1 \u2014 Define and Resolve the Workspace Boundary\n\n```powershell\n$workspace = Resolve-Path -LiteralPath 'C:\\Work\\MyProject' -ErrorAction Stop\n$workspacePath = $workspace.Path.TrimEnd('\\')\n```\n\nResolve the workspace root first and fail immediately if it does not exist. Trimming the trailing backslash ensures consistent prefix comparisons later. Everything downstream is gated on this anchor.\n\n## Step 2 \u2014 Resolve and Validate the Source Path\n\n```powershell\n$source = Resolve-Path -LiteralPath 'C:\\Work\\MyProject\\old\\reports' -ErrorAction Stop\n$sourcePath = $source.Path.TrimEnd('\\')\n\nif (-not $sourcePath.StartsWith($workspacePath + '\\', [System.StringComparison]::OrdinalIgnoreCase)) {\n    throw \"Source escapes workspace: $sourcePath\"\n}\nif ($sourcePath -eq $workspacePath) {\n    throw \"Source must not be the workspace root itself\"\n}\n```\n\n`Resolve-Path` confirms the source exists and normalizes it to an absolute path. The ordinal, case-insensitive prefix check guarantees the source is strictly inside the workspace \u2014 never the root, never a sibling, never a path that escaped via symlinks or `..` segments (which `Resolve-Path` collapses). Fail closed: any violation aborts before any filesystem mutation.\n\n## Step 3 \u2014 Resolve and Validate the Destination Parent\n\n```powershell\n$destParent = Resolve-Path -LiteralPath 'C:\\Work\\MyProject\\archive' -ErrorAction Stop\n$destParentPath = $destParent.Path.TrimEnd('\\')\n\nif (-not $destParentPath.StartsWith($workspacePath + '\\', [System.StringComparison]::OrdinalIgnoreCase)) {\n    throw \"Destination escapes workspace: $destParentPath\"\n}\nif ($destParentPath -eq $workspacePath) {\n    if ($destParentPath -eq $sourcePath) {\n        throw \"Destination parent equals source\"\n    }\n}\n```\n\nThe destination parent must already exist and must also resolve strictly inside the workspace. This is the second fail-closed gate: if the parent directory is missing or resolves outside the boundary, the plan aborts rather than creating directories or moving data to an unintended location.\n\n## Step 4 \u2014 Compute the Destination and Check for Collisions\n\n```powerspace\n$destName = Split-Path -Path $sourcePath -Leaf\n$destPath = Join-Path -Path $destParentPath -ChildPath $destName\n\nif (Test-Path -LiteralPath $destPath) {\n    throw \"Destination already exists: $destPath\"\n}\n```\n\nDerive the destination from the validated parent plus the source's leaf name, so the directory keeps its name. `Test-Path` with `-LiteralPath` refuses to overwrite anything \u2014 if the target exists, abort. This preserves unrelated files at the destination: nothing is merged, overwritten, or clobbered.\n\n## Step 5 \u2014 Execute the Move with Literal Paths\n\n```powershell\nMove-Item -LiteralPath $sourcePath -Destination $destPath -ErrorAction Stop\n```\n\nPerform the single mutation only after all four validation gates pass. `-LiteralPath` ensures wildcard characters in directory names (`[`, `]`, `*`, `?`) are treated as literal characters, not patterns \u2014 so a directory named `data[old]` moves correctly instead of failing or matching unintended targets. `-ErrorAction Stop` makes any mid-move failure throw, and because `Move-Item` on a directory within the same volume is a metadata rename, the operation is atomic on NTFS: either the whole tree moves or nothing does.\n\n---\n\n**Fail-closed summary:** every step either validates or aborts. No directory creation, no `-Force`, no overwrite, no wildcard expansion, and the move only runs if source and destination both provably resolve inside the workspace.",
+              "content_chars": 3594,
+              "content_excerpt": "# Fail-Closed PowerShell Plan: Recursive Directory Move Within a Workspace\n\n## Step 1 \u2014 Define and Resolve the Workspace Boundary\n\n```powershell\n$workspace = Resolve-Path -LiteralPath 'C:\\Work\\MyProje",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5269.586065000112,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "absolute-verification",
+                  "passed": true
+                },
+                {
+                  "name": "literal-native-move",
+                  "passed": true
+                },
+                {
+                  "name": "scope-preservation",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 811,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": {
+                  "cached_tokens": 64
+                },
+                "reasoning_tokens": 0,
+                "total_tokens": 884
+              }
+            }
+          ],
+          "id": "windows-safe-recursive-move-plan",
+          "pass_count": 2,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 2,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "```json\n{\n  \"mode\": \"dual-gpu-exclusive\",\n  \"gpu_count\": 2,\n  \"other_gpu_inference\": \"offline\",\n  \"memory_semantics\": \"aggregate VRAM is not unified memory\"\n}\n```",
+              "content_chars": 162,
+              "content_excerpt": "```json\n{\n  \"mode\": \"dual-gpu-exclusive\",\n  \"gpu_count\": 2,\n  \"other_gpu_inference\": \"offline\",\n  \"memory_semantics\": \"aggregate VRAM is not unified memory\"\n}\n```",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 372.28013100047974,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "mode",
+                  "passed": true
+                },
+                {
+                  "name": "gpu-count",
+                  "passed": true
+                },
+                {
+                  "name": "offline",
+                  "passed": true
+                },
+                {
+                  "name": "not-unified",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 50,
+                "prompt_tokens": 88,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 138
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "```json\n{\n  \"mode\": \"dual-gpu-exclusive\",\n  \"gpu_count\": 2,\n  \"other_gpu_inference\": \"offline\",\n  \"memory_semantics\": \"aggregate VRAM is not unified memory\"\n}\n```",
+              "content_chars": 162,
+              "content_excerpt": "```json\n{\n  \"mode\": \"dual-gpu-exclusive\",\n  \"gpu_count\": 2,\n  \"other_gpu_inference\": \"offline\",\n  \"memory_semantics\": \"aggregate VRAM is not unified memory\"\n}\n```",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 331.90105599987874,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "mode",
+                  "passed": true
+                },
+                {
+                  "name": "gpu-count",
+                  "passed": true
+                },
+                {
+                  "name": "offline",
+                  "passed": true
+                },
+                {
+                  "name": "not-unified",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 50,
+                "prompt_tokens": 88,
+                "prompt_tokens_details": {
+                  "cached_tokens": 64
+                },
+                "reasoning_tokens": 0,
+                "total_tokens": 138
+              }
+            }
+          ],
+          "id": "exclusive-tp2-invariant",
+          "pass_count": 2,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 2,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 241.1700889997519,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "severity": "production-gap",
+                  "title": "Managed recipe logs unavailable"
+                },
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 21,
+                "prompt_tokens": 218,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0,
+                "total_tokens": 239
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 207.98571900013485,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "severity": "production-gap",
+                  "title": "Managed recipe logs unavailable"
+                },
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 21,
+                "prompt_tokens": 218,
+                "prompt_tokens_details": {
+                  "cached_tokens": 192
+                },
+                "reasoning_tokens": 0,
+                "total_tokens": 239
+              }
+            }
+          ],
+          "id": "ticket-before-workaround",
+          "pass_count": 2,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "tool_call"
+        }
+      ],
+      "date": "2026-08-01",
+      "evidence_use": "diagnostic",
+      "source": "docs/findings/2026-08-01-deepseek-v4-flash-0731-nvfp4-evidence/coding-agent-suite-v2.json",
+      "source_sha256": "2e8c4e7f9a20b37ef722d922c8729f4c1387e0d507fd176e9801829b5b8e510c",
+      "status": "passed",
+      "validator_strength": "deterministic_marker",
+      "work_class": "coding-agent"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": false
+    },
+    "control_status": "requested_unverified",
+    "mode": "disabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": null,
+      "completion_tokens_mean": null,
+      "completion_tokens_mean_ci95_high": null,
+      "completion_tokens_mean_ci95_low": null,
+      "completion_tokens_min": null,
+      "completion_tokens_p25": null,
+      "completion_tokens_p50": null,
+      "completion_tokens_p75": null,
+      "completion_tokens_p90": null,
+      "completion_tokens_p95": null,
+      "completion_tokens_p99": null,
+      "completion_tokens_samples": 0,
+      "completion_tokens_stddev": null,
+      "content_chunks": 0,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": null,
+      "decode_tok_s_mean": null,
+      "decode_tok_s_mean_ci95_high": null,
+      "decode_tok_s_mean_ci95_low": null,
+      "decode_tok_s_min": null,
+      "decode_tok_s_p25": null,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p75": null,
+      "decode_tok_s_p90": null,
+      "decode_tok_s_p95": null,
+      "decode_tok_s_p99": null,
+      "decode_tok_s_samples": 0,
+      "decode_tok_s_stddev": null,
+      "e2e_max_ms": null,
+      "e2e_mean_ci95_high_ms": null,
+      "e2e_mean_ci95_low_ms": null,
+      "e2e_mean_ms": null,
+      "e2e_min_ms": null,
+      "e2e_p25_ms": null,
+      "e2e_p50_ms": null,
+      "e2e_p75_ms": null,
+      "e2e_p90_ms": null,
+      "e2e_p95_ms": null,
+      "e2e_p99_ms": null,
+      "e2e_samples": 0,
+      "e2e_stddev_ms": null,
+      "effective_prefill_tok_s_max": null,
+      "effective_prefill_tok_s_mean": null,
+      "effective_prefill_tok_s_mean_ci95_high": null,
+      "effective_prefill_tok_s_mean_ci95_low": null,
+      "effective_prefill_tok_s_min": null,
+      "effective_prefill_tok_s_p25": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p75": null,
+      "effective_prefill_tok_s_p90": null,
+      "effective_prefill_tok_s_p95": null,
+      "effective_prefill_tok_s_p99": null,
+      "effective_prefill_tok_s_samples": 0,
+      "effective_prefill_tok_s_stddev": null,
+      "generation_max_ms": null,
+      "generation_mean_ci95_high_ms": null,
+      "generation_mean_ci95_low_ms": null,
+      "generation_mean_ms": null,
+      "generation_min_ms": null,
+      "generation_p25_ms": null,
+      "generation_p50_ms": null,
+      "generation_p75_ms": null,
+      "generation_p90_ms": null,
+      "generation_p95_ms": null,
+      "generation_p99_ms": null,
+      "generation_samples": 0,
+      "generation_stddev_ms": null,
+      "mean_inter_token_latency_ms_max": null,
+      "mean_inter_token_latency_ms_mean": null,
+      "mean_inter_token_latency_ms_mean_ci95_high": null,
+      "mean_inter_token_latency_ms_mean_ci95_low": null,
+      "mean_inter_token_latency_ms_min": null,
+      "mean_inter_token_latency_ms_p25": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p75": null,
+      "mean_inter_token_latency_ms_p90": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "mean_inter_token_latency_ms_p99": null,
+      "mean_inter_token_latency_ms_samples": 0,
+      "mean_inter_token_latency_ms_stddev": null,
+      "mean_time_per_output_token_max_ms": null,
+      "mean_time_per_output_token_mean_ci95_high_ms": null,
+      "mean_time_per_output_token_mean_ci95_low_ms": null,
+      "mean_time_per_output_token_mean_ms": null,
+      "mean_time_per_output_token_min_ms": null,
+      "mean_time_per_output_token_p25_ms": null,
+      "mean_time_per_output_token_p50_ms": null,
+      "mean_time_per_output_token_p75_ms": null,
+      "mean_time_per_output_token_p90_ms": null,
+      "mean_time_per_output_token_p95_ms": null,
+      "mean_time_per_output_token_p99_ms": null,
+      "mean_time_per_output_token_samples": 0,
+      "mean_time_per_output_token_stddev_ms": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_max": null,
+      "prompt_tokens_mean": null,
+      "prompt_tokens_mean_ci95_high": null,
+      "prompt_tokens_mean_ci95_low": null,
+      "prompt_tokens_min": null,
+      "prompt_tokens_p25": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p75": null,
+      "prompt_tokens_p90": null,
+      "prompt_tokens_p95": null,
+      "prompt_tokens_p99": null,
+      "prompt_tokens_samples": 0,
+      "prompt_tokens_stddev": null,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": null,
+      "time_to_first_output_mean_ci95_high_ms": null,
+      "time_to_first_output_mean_ci95_low_ms": null,
+      "time_to_first_output_mean_ms": null,
+      "time_to_first_output_min_ms": null,
+      "time_to_first_output_p25_ms": null,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p75_ms": null,
+      "time_to_first_output_p90_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "time_to_first_output_p99_ms": null,
+      "time_to_first_output_samples": 0,
+      "time_to_first_output_stddev_ms": null,
+      "tpot_max_ms": null,
+      "tpot_mean_ci95_high_ms": null,
+      "tpot_mean_ci95_low_ms": null,
+      "tpot_mean_ms": null,
+      "tpot_min_ms": null,
+      "tpot_p25_ms": null,
+      "tpot_p50_ms": null,
+      "tpot_p75_ms": null,
+      "tpot_p90_ms": null,
+      "tpot_p95_ms": null,
+      "tpot_p99_ms": null,
+      "tpot_samples": 0,
+      "tpot_stddev_ms": null,
+      "ttft_max_ms": null,
+      "ttft_mean_ci95_high_ms": null,
+      "ttft_mean_ci95_low_ms": null,
+      "ttft_mean_ms": null,
+      "ttft_min_ms": null,
+      "ttft_p25_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p75_ms": null,
+      "ttft_p90_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_p99_ms": null,
+      "ttft_samples": 0,
+      "ttft_stddev_ms": null
+    },
+    "wall_ms": 15732.516531999863
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

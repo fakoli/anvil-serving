@@ -1,0 +1,442 @@
+{
+  "base_url": "http://127.0.0.1:8001/v1",
+  "budget": {
+    "max_completion_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "needle",
+    "tools",
+    "long-tools",
+    "streaming-tools",
+    "tool-result",
+    "responses",
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "ANVIL READY"
+  ],
+  "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nThat's it \u2014 Python's built-in `sum()` function does exactly this. If you want a one-liner *expression* that works even when `xs` might be empty or you want to be explicit, alternatives include:\n\n```python\nfunctools.reduce(operator.add, xs, 0)\n```\n\nor\n\n```python\nsum(xs, 0)\n```\n\nBut `sum(xs)` is the idiomatic choice.",
+      "content_chars": 339,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nThat's it \u2014 Python's built-in `sum()` function does exactly this. If you want a one-liner *expression* that works even when `xs` might be empty or you want to be explicit, alter",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.716,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 96,
+        "prompt_tokens": 29,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 125
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.173,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 10,
+        "prompt_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 41
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 17.359,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 105647,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 105659
+      },
+      "validation_detail": "needle present"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 0.961,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 4968,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 4980
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 1.121,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 4968,
+        "prompt_tokens_details": {
+          "cached_tokens": 4928
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 4980
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 2,
+      "seconds": 1.288,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 4968,
+        "prompt_tokens_details": {
+          "cached_tokens": 4928
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 4980
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "request_index": 3,
+      "seconds": 1.454,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 4968,
+        "prompt_tokens_details": {
+          "cached_tokens": 4928
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 4980
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "measured_prompt_tokens": 109852,
+      "minimum_prompt_tokens": 100000,
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "requested_context_tokens": 130000,
+      "seconds": 17.831,
+      "test": "long-tools",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 109852,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 109864
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "event_count": 7,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.2,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 167,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 179
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.178,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 167,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 179
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "OAKLAND 72F",
+      "content_chars": 11,
+      "content_excerpt": "OAKLAND 72F",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.178,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 7,
+        "prompt_tokens": 71,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 78
+      },
+      "validation_detail": "tool result retained"
+    },
+    {
+      "content_chars": 5,
+      "content_excerpt": "READY",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "response_status": "completed",
+      "seconds": 0.159,
+      "test": "responses",
+      "usage": {
+        "input_tokens": 17,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 2,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 19
+      },
+      "validation_detail": "completed exact READY"
+    },
+    {
+      "content": "# Image Description\n\nThis image shows a **status display screen** with a dark navy blue background containing three lines of text:\n\n## Text Content\n\n| Line | Text | Color |\n|------|------|-------|\n| 1 | **ANVIL READY** | Bright green |\n| 2 | **CODE 42917** | White |\n| 3 | **TEMPERATURE 42 C** | Light blue |\n\n## Key Information\n\n- **Status:** ANVIL READY \u2014 indicating a system or device (likely an anvil, possibly in an industrial, forging, or laboratory context) is operational and prepared for use\n- **Code:** 42917 \u2014 an identification or reference number\n- **Temperature:** 42\u00b0C \u2014 a moderate reading, slightly above normal room temperature\n\n## Interpretation\n\nThis appears to be a **machine interface or monitoring display**, possibly from:\n- Industrial equipment (e.g., a forge, press, or manufacturing system)\n- A laboratory instrument\n- A game or simulation interface\n\nThe green \"ANVIL READY\" text suggests a **positive/operational status**, while the temperature reading of 42\u00b0C indicates the equipment is warm but within a presumably safe operating range. The layout is clean and functional, typical of a control panel readout or diagnostic screen.",
+      "content_chars": 1157,
+      "content_excerpt": "# Image Description\n\nThis image shows a **status display screen** with a dark navy blue background containing three lines of text:\n\n## Text Content\n\n| Line | Text | Color |\n|------|------|-------|\n| 1",
+      "expected": [
+        "ANVIL READY"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 2.081,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 267,
+        "prompt_tokens": 334,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 299
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 601
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "content_chars": 39,
+      "content_excerpt": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "expected": [
+        "42917"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.26,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 18,
+        "prompt_tokens": 335,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 299
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 353
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "42917"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "0.7s got=\"```python\\nsum(xs)\\n```\\n\\nThat's it \u2014 Python's built-\" finish='stop' visible=339 reasoning_chars=0 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=0 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "17.4s ctx~128000 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=0 reasoning_tokens=None",
+      "name": "needle @ ~128000 ctx",
+      "passed": true
+    },
+    {
+      "detail": "4/4 clean (sample: 1.0s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=0 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x4",
+      "passed": true
+    },
+    {
+      "detail": "17.8s measured_prompt=109852 valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=0 reasoning_tokens=None",
+      "name": "tool call after >=100K prompt (target 130000)",
+      "passed": true
+    },
+    {
+      "detail": "0.2s done=True events=7 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "0.4s tool result retained finish='stop' visible=11 reasoning_chars=0 reasoning_tokens=None",
+      "name": "tool-result continuation",
+      "passed": true
+    },
+    {
+      "detail": "0.2s status='completed' output='READY' reasoning_chars=0",
+      "name": "Responses API subset",
+      "passed": true
+    },
+    {
+      "detail": "2.1s all expected text present finish='stop' visible=1157 reasoning_chars=0 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "0.3s all expected text present finish='stop' visible=39 reasoning_chars=0 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

@@ -1,0 +1,19 @@
+{
+  "schema":"anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign":"2026-09-09-glm53-native-nccl-p2p",
+  "native_evidence_schemas":["anvil-serving.benchmark/v1","anvil-serving.benchmark-decision-summary/v1","anvil-serving.benchmark-graph-manifest/v1","anvil-serving.benchmark-graph-data/v1","preflight/v2","anvil-serving.fast-tier-bakeoff/v1"],
+  "bundle_size_policy_verified":true,
+  "size_policy":"each retained public artifact is under 1 MiB",
+  "artifact_roles":[
+    {"role":"evidence-index","status":"retained","files":["README.md","redaction-provenance.json"],"reason":"Sanitized evidence index and redaction record."},
+    {"role":"source-registry","status":"retained","files":["source-registry.json"],"reason":"Dated official and runtime sources."},
+    {"role":"workload-manifest","status":"retained","files":["workload-manifest.json"],"reason":"Pinned workload controls."},
+    {"role":"run-plan","status":"retained","files":["run-plan.json","campaign-state.json","publication-dispatch.md"],"reason":"Predeclared comparison and delegated publication controls."},
+    {"role":"configuration-and-identity","status":"retained","files":["configuration-and-identity.json","candidate/nccl-transport-observation.md","cutover-transaction.json"],"reason":"Sanitized runtime identity and transport activation."},
+    {"role":"raw-run-evidence","status":"retained","files":["baseline/preflight.json","baseline/scout-128-4k.json","baseline/scout-32-4k.json","baseline/capacity-4k.json","baseline/capacity-120k.json","baseline/capacity-380k.json","baseline/high-context.json","baseline/quality.json","candidate/preflight.json","candidate/scout-32-4k.json","candidate/capacity-4k.json","candidate/capacity-120k.json","candidate/capacity-380k.json","candidate/high-context.json","candidate/routed-preflight.json","candidate/quality.json","comparison.json","diagnostic-adjudication.json","graph-manifest.json","benchmark-graph-data.json","benchmark-matrix.svg"],"reason":"Native successes and failures, comparison, independent adjudication, and derived graph."},
+    {"role":"failures-and-friction","status":"retained","files":["friction-log.md","coverage-and-gaps.md"],"reason":"Failed strict cells and diagnostic limits remain visible."},
+    {"role":"restoration","status":"retained","files":["restoration.json","cache-before.json","cache-after.json"],"reason":"Authorized retained default and post-run state."},
+    {"role":"decision-summary","status":"retained","files":["summary.json"],"reason":"Bounded decision derived from retained evidence."},
+    {"role":"publication-summary","status":"retained","files":["publication-summary.md"],"reason":"Derivative public copy and claim ledger."}
+  ]
+}

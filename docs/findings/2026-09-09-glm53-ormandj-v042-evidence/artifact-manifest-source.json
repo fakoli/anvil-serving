@@ -1,0 +1,159 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-09-glm53-ormandj-v042",
+    "capability": "LLM and image understanding",
+    "repository_revision": "f19180c41724050b834cd77d1f14d662e4ea57b8",
+    "dirty_state": "clean source at measurement; documentation added after model requests",
+    "started_at": "2026-09-09T11:15:15.376421+00:00",
+    "completed_at": null,
+    "evidence_labels": [
+      "measured",
+      "matched-direct",
+      "partial-qualification"
+    ],
+    "decision_labels": [
+      "retain-baseline",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.control-evidence/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "docker-image-identity/v1",
+    "multimodal-benchmark-evidence/v1",
+    "preflight/v2",
+    "runtime-identity-gate/v1"
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "redaction-provenance.json"
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json",
+        "campaign-state.json",
+        "candidate/turnover-repeat-plan.json",
+        "candidate/turnover-repeat-result.json"
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "candidate/image-identity.json",
+        "candidate/identity-pre.json",
+        "candidate/identity-post.json",
+        "candidate/control-evidence.json",
+        "baseline/control-evidence.json",
+        "configuration-and-identity.json",
+        "candidate/post-repeat/identity.json"
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "comparison.json",
+        "baseline/preflight.json",
+        "baseline/capacity-4k.json",
+        "baseline/capacity-120k.json",
+        "baseline/high-context.json",
+        "baseline/turnover.json",
+        "baseline/turnover-controlled.json",
+        "candidate/preflight.json",
+        "candidate/capacity-4k.json",
+        "candidate/capacity-120k.json",
+        "candidate/high-context.json",
+        "candidate/turnover-controlled.json",
+        "candidate/turnover-controlled-repeat.json",
+        "graph-manifest.json",
+        "benchmark-graph-data.json",
+        "benchmark-matrix.svg",
+        "baseline/needle-repeat.json",
+        "baseline/quality.json",
+        "baseline/multimodal.json",
+        "baseline/thinking-default.json",
+        "baseline/thinking-enabled.json",
+        "candidate/quality.json",
+        "candidate/multimodal.json",
+        "candidate/thinking-default.json",
+        "candidate/thinking-enabled.json"
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md",
+        "independent-review-ledger.json"
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "restoration/direct-preflight.json",
+        "restoration/routed-preflight.json",
+        "restoration/router-models.json",
+        "restoration/running.json",
+        "private-restoration-hashes.json",
+        "restoration/unit.txt",
+        "restoration/router-transition-status.txt"
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "comparison.json",
+        "human-decision.json"
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    }
+  ]
+}

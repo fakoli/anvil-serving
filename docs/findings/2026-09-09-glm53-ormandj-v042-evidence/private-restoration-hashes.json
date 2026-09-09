@@ -1,0 +1,35 @@
+{
+  "schema": "private-restoration-hash-receipt/v1",
+  "verified_at": "2026-09-09T12:02:45.300400+00:00",
+  "verification": "Root and independent reviewer compared live bytes to exact starting snapshots; private topology content is not published",
+  "files": [
+    {
+      "role": "serve-recipes.glm53-sglang-sm120-393k.toml",
+      "starting_sha256": "34360ae2272eab7309e53b8221df7fb4043c41fbe24a3974acf131557e0324db",
+      "restored_sha256": "34360ae2272eab7309e53b8221df7fb4043c41fbe24a3974acf131557e0324db",
+      "bytes": 8878,
+      "identical": true
+    },
+    {
+      "role": "serves.glm53-sglang-sm120-393k.toml",
+      "starting_sha256": "41420b61989af605c1e743b2f139a10b4c9c68a4b52480f1148fda1e337ee46d",
+      "restored_sha256": "41420b61989af605c1e743b2f139a10b4c9c68a4b52480f1148fda1e337ee46d",
+      "bytes": 1127,
+      "identical": true
+    },
+    {
+      "role": "anvil-router.glm53-ormandj-sglang-sm120-393k.toml",
+      "starting_sha256": "59b153251dab1569516c68050a3c61a5486f8ebb24946990af6d693d9ffb2f93",
+      "restored_sha256": "59b153251dab1569516c68050a3c61a5486f8ebb24946990af6d693d9ffb2f93",
+      "bytes": 4039,
+      "identical": true
+    },
+    {
+      "role": "operator-topology.toml",
+      "starting_sha256": "eb697a11d429a4ddb23ba3c0b90727ea6530c27dc5dada1544f09006d376d84c",
+      "restored_sha256": "eb697a11d429a4ddb23ba3c0b90727ea6530c27dc5dada1544f09006d376d84c",
+      "bytes": 2445,
+      "identical": true
+    }
+  ]
+}
