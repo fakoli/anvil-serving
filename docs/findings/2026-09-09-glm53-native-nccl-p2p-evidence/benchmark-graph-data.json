@@ -1,0 +1,134 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "P2P disabled",
+          "points": [
+            {
+              "artifact": "baseline/capacity-4k.json",
+              "artifact_sha256": "c41a985c7ae763a8ad84a2aa8cff65ddf054e03103633d6a01fb92ddf78d68d1",
+              "value": 544.4157719994109,
+              "x": "4K"
+            },
+            {
+              "artifact": "baseline/capacity-120k.json",
+              "artifact_sha256": "4adcf497f9ef9a37315c2fec88f0027db2079767adc15ac2f643f4297a27f75f",
+              "value": 16406.720802000564,
+              "x": "120K"
+            }
+          ]
+        },
+        {
+          "label": "P2P enabled",
+          "points": [
+            {
+              "artifact": "candidate/capacity-4k.json",
+              "artifact_sha256": "8027dd21fce4f38d1a8854eee8c0e7f4c9bae5f16264065a5f59f6af6ff21fe4",
+              "value": 495.45400499937386,
+              "x": "4K"
+            },
+            {
+              "artifact": "candidate/capacity-120k.json",
+              "artifact_sha256": "c7e4067625fb9f3575d3dba9b6202f6a059a9ddaba6cdea9d752c93890dbafd6",
+              "value": 14941.19061299989,
+              "x": "120K"
+            }
+          ]
+        }
+      ],
+      "title": "Median TTFT",
+      "x_label": "target context",
+      "y_label": "milliseconds"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "P2P disabled",
+          "points": [
+            {
+              "artifact": "baseline/capacity-4k.json",
+              "artifact_sha256": "c41a985c7ae763a8ad84a2aa8cff65ddf054e03103633d6a01fb92ddf78d68d1",
+              "value": 688.4723299999678,
+              "x": "4K"
+            },
+            {
+              "artifact": "baseline/capacity-120k.json",
+              "artifact_sha256": "4adcf497f9ef9a37315c2fec88f0027db2079767adc15ac2f643f4297a27f75f",
+              "value": 16569.573079000293,
+              "x": "120K"
+            }
+          ]
+        },
+        {
+          "label": "P2P enabled",
+          "points": [
+            {
+              "artifact": "candidate/capacity-4k.json",
+              "artifact_sha256": "8027dd21fce4f38d1a8854eee8c0e7f4c9bae5f16264065a5f59f6af6ff21fe4",
+              "value": 637.2978179997517,
+              "x": "4K"
+            },
+            {
+              "artifact": "candidate/capacity-120k.json",
+              "artifact_sha256": "c7e4067625fb9f3575d3dba9b6202f6a059a9ddaba6cdea9d752c93890dbafd6",
+              "value": 15101.824650999333,
+              "x": "120K"
+            }
+          ]
+        }
+      ],
+      "title": "Median E2E",
+      "x_label": "target context",
+      "y_label": "milliseconds"
+    },
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "P2P disabled",
+          "points": [
+            {
+              "artifact": "baseline/capacity-4k.json",
+              "artifact_sha256": "c41a985c7ae763a8ad84a2aa8cff65ddf054e03103633d6a01fb92ddf78d68d1",
+              "value": 282.1348827289961,
+              "x": "4K"
+            },
+            {
+              "artifact": "baseline/capacity-120k.json",
+              "artifact_sha256": "4adcf497f9ef9a37315c2fec88f0027db2079767adc15ac2f643f4297a27f75f",
+              "value": 251.76088780022232,
+              "x": "120K"
+            }
+          ]
+        },
+        {
+          "label": "P2P enabled",
+          "points": [
+            {
+              "artifact": "candidate/capacity-4k.json",
+              "artifact_sha256": "8027dd21fce4f38d1a8854eee8c0e7f4c9bae5f16264065a5f59f6af6ff21fe4",
+              "value": 288.14985681734345,
+              "x": "4K"
+            },
+            {
+              "artifact": "candidate/capacity-120k.json",
+              "artifact_sha256": "c7e4067625fb9f3575d3dba9b6202f6a059a9ddaba6cdea9d752c93890dbafd6",
+              "value": 255.2379845827617,
+              "x": "120K"
+            }
+          ]
+        }
+      ],
+      "title": "Median decode",
+      "x_label": "target context",
+      "y_label": "tokens / second"
+    }
+  ],
+  "metric_semantics": {},
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Native Linux TP=2/C1; strict 32-word unique-prefix cells; 4K n=12 and 120K n=3 per arm",
+  "title": "GLM-5.3-Flash NCCL P2P transport A/B"
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "independent-diagnostic-adjudication/v1",
+  "observed_at": "2026-09-09T10:45:52.472428+00:00",
+  "reviewer": "GPT-5.6 Sol high, independent from GLM and campaign author",
+  "raw_artifact": "candidate/quality.json",
+  "raw_artifact_sha256": "26b87601b6258764a2514027e960dbd8bb40b62b791695dc00a5da758c120ab7",
+  "check": "windows-safe-recursive-move-plan / absolute-verification / attempt 1",
+  "raw_status": "failed",
+  "raw_case_pass_rate": 0.5,
+  "disposition": "demonstrable keyword-validator false negative; raw result retained",
+  "reason": "The answer contains Resolve-Path -LiteralPath, System.IO.Path::GetFullPath normalization, separator-aware OrdinalIgnoreCase workspace containment, collision refusal, Move-Item -LiteralPath, and postcondition checks. Only the literal word absolute is absent.",
+  "limits": [
+    "This is a diagnostic marker suite, not executed-code scoring or comparable-quality proof.",
+    "Do not label the raw quality artifact or all deterministic checks passed.",
+    "No suite edit, output alteration or retry was used to erase the failure."
+  ],
+  "authorized_next_steps": [
+    "Continue only the planned high-context, health and routed gates.",
+    "Promote only if remaining gates pass; otherwise guarded rollback."
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "at": "2026-09-09T11:57:20.804744+00:00",
+  "container_id": "candidate-container",
+  "image_digest": "sha256:877ae29486eb7d385eb2a07921522aa3597f643f9a7c50112751f2aaa14d558a",
+  "recipe_digest": "a02c438f6622ccbb7bf3e09bbd872afacc8752830b02454b830cf1d7eaf34981",
+  "reference": "../identity-pre.json",
+  "scope": "Post single unchanged turnover repeat; exact container and recipe retained, no runtime/kernel failure."
+}

@@ -1,0 +1,87 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-09-glm53-native-nccl-p2p",
+  "updated_at": "2026-09-09T10:34:15.803498+00:00",
+  "status": "running",
+  "current_stage": "baseline_high_context",
+  "launcher": {
+    "invocation": "python3 -m anvil_serving.cli",
+    "version": "1.0",
+    "repository_revision": "b7df878d",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "pending",
+      "evidence": [],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "pending",
+      "evidence": [],
+      "failures": []
+    },
+    {
+      "id": "scout",
+      "status": "pending",
+      "evidence": [],
+      "failures": []
+    },
+    {
+      "id": "finalist",
+      "status": "pending",
+      "evidence": [],
+      "failures": []
+    },
+    {
+      "id": "quality",
+      "status": "pending",
+      "evidence": [],
+      "failures": []
+    },
+    {
+      "id": "restoration",
+      "status": "pending",
+      "evidence": [],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "pending",
+      "evidence": [],
+      "failures": []
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [
+    "baseline/preflight.json",
+    "baseline/capacity-4k.json",
+    "baseline/capacity-120k.json",
+    "baseline/capacity-380k.json (failed strict count; excluded)",
+    "baseline/quality.json (diagnostic)"
+  ],
+  "next_actions": [
+    "Run baseline high-context assertions",
+    "Execute reviewed guarded cutover",
+    "Qualify candidate",
+    "Promote if gates pass; otherwise guarded rollback",
+    "Readmit and check routed requests",
+    "Publish evidence"
+  ],
+  "promotion_authorized": true,
+  "transaction_guard": {
+    "review": "Independent Sol reviewer accepted 2026-09-09 before mutation",
+    "before_every_registry_write": [
+      "systemctl stop anvil-glm53.service",
+      "systemctl reset-failed anvil-glm53.service",
+      "systemctl show -p ActiveState -p SubState -p Job anvil-glm53.service",
+      "ABORT registry mutation unless inactive/dead and Job empty"
+    ],
+    "startup": "Start once with --no-block; poll every 2 seconds, maximum 600 seconds. On failed, auto-restart, exception or timeout, stop/reset/verify before restoring original registry and starting baseline.",
+    "gates": "Keep primary-local quiesced through direct gates and identity checks. Any new deterministic failure or repeatable >10 percent matched-cell performance regression invokes guarded rollback.",
+    "readmission": "After direct gates and readiness pass, readmit and run actual routed smoke/json. Routed failure immediately quiesces and invokes guarded rollback."
+  }
+}

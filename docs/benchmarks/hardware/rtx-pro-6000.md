@@ -2,9 +2,9 @@
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark; native Linux
-measurements on 2026-09-08, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-09-08. **Evidence
-interpretation reviewed:** 2026-09-08.
+measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
+history. **Last locally measured:** 2026-09-09. **Evidence
+interpretation reviewed:** 2026-09-09.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -63,7 +63,20 @@ OS-only causal experiment or strict finalist qualification. `no-promotion`;
 prior promotion decisions remain dated history. See the
 [finding and artifacts](../../findings/2026-09-08-glm53-linux-wsl-comparison.md).
 
+## Native NCCL P2P transport A/B (2026-09-09)
+
+The pinned GLM TP=2/C1 native recipe now retains P2P enabled after the bounded
+transport A/B: 4K n12 and 120K n3 matched cells lowered median TTFT by about
+9% and E2E by 7.4–8.9%, while decode changed by +1.4–2.1%. Both 380K strict
+capacity cells failed the required 32-word count and are excluded from
+performance claims. See the [finding and evidence](../../findings/2026-09-09-glm53-native-nccl-p2p.md).
+
 ## Recorded promotion, rollback, and challenger state
+
+The 2026-09-09 ormandj v0.4.2 runtime candidate passed direct gates and
+bounded matched capacity, but strict turnover was 58/60 then 57/60. The user
+selected `retain-baseline/no-promotion`; the exact baseline was restored. See the
+[dated finding](../../findings/2026-09-09-glm53-ormandj-v042.md).
 
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
