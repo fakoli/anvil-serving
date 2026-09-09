@@ -1,0 +1,94 @@
+{
+  "base_url": "http://127.0.0.1:8001/v1",
+  "budget": {
+    "max_completion_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "needle",
+    "long-tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 48.584,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 313547,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 313559
+      },
+      "validation_detail": "needle present"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "measured_prompt_tokens": 320794,
+      "minimum_prompt_tokens": 100000,
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "requested_context_tokens": 380000,
+      "seconds": 50.367,
+      "test": "long-tools",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 320794,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 320806
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "48.6s ctx~380000 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=0 reasoning_tokens=None",
+      "name": "needle @ ~380000 ctx",
+      "passed": true
+    },
+    {
+      "detail": "50.4s measured_prompt=320794 valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=0 reasoning_tokens=None",
+      "name": "tool call after >=100K prompt (target 380000)",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}
