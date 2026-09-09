@@ -273,6 +273,18 @@ max_concurrency = 1
 llm.secondary = "secondary-local"
 ```
 
+A direct tier may also set `max_concurrency = "auto"`: the router then derives
+the tier's dispatch ceiling from the serving engine's own declared scheduler
+concurrency instead of a hand-maintained integer. The router reads the
+bounded, read-only runtime-info surface of the engine root (SGLang
+`GET /get_server_info`, vLLM `GET /server_info`; allowlisted keys
+`max_running_requests` / `max_num_seqs` only) on the availability-probe
+interval and applies the reported value as the in-flight cap. Until the first
+successful report the tier is uncapped (the engine still enforces its own
+limit); a transport or shape fault keeps the last known ceiling. Effective
+changes are logged once each. `"auto"` is direct-tier only: replica members
+and replica aggregate ceilings require explicit integers.
+
 Do not set `model`, `context_limit`, `engine`, `quantization`,
 `model_identity`, or `params.fingerprint` on an upstream-owned tier. The
 router probes health and requires exactly one entry from `GET /v1/models`.

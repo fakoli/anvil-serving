@@ -24,7 +24,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from functools import cached_property
 from types import MappingProxyType
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Union
 
 
 # Tier dialect + privacy enums as NAMED constants, defined once here so the bare
@@ -38,6 +38,11 @@ PRIVACY_LOCAL = "local"
 VALID_PRIVACY = {PRIVACY_LOCAL}
 
 METADATA_CONFIGURED = "configured"
+# flexibility:T023 — tier ``max_concurrency = "auto"``: derive the tier's
+# dispatch ceiling from the serving engine's own declared concurrency
+# (bounded ``/get_server_info`` / ``/server_info`` adapter) instead of a
+# hand-maintained integer. See ``serve._AutoConcurrencyGate``.
+MAX_CONCURRENCY_AUTO = "auto"
 METADATA_UPSTREAM = "upstream"
 VALID_METADATA_SOURCES = {METADATA_CONFIGURED, METADATA_UPSTREAM}
 
@@ -277,7 +282,10 @@ class Tier:
     # its dispatch stays bounded only by the global limiter. Additive and
     # default-unset (NOT in ``_REQUIRED_TIER_KEYS``), so existing configs parse
     # unchanged with it reading as ``None``.
-    max_concurrency: Optional[int] = None
+    max_concurrency: Optional[Union[int, str]] = None
+    # Exact string "auto" (``MAX_CONCURRENCY_AUTO``) derives the ceiling from
+    # the engine's declared concurrency at runtime; integers cap directly.
+    # Replica members are integer-only ("auto" is rejected at parse time).
     # Optional per-tier completion ceiling. Requests above this value are
     # clamped before relay and receive client-visible warning headers. Absent
     # preserves caller/upstream behavior. This is a runtime safety envelope,
@@ -674,10 +682,15 @@ def _parse_replica_member(
     member: Optional[ReplicaMember] = None
     ceiling = raw.get("max_concurrency")
     invalid_ceiling = "max_concurrency" in raw and (
-        type(ceiling) is not int or not 1 <= ceiling <= 100000
+        ceiling == MAX_CONCURRENCY_AUTO
+        or type(ceiling) is not int
+        or not 1 <= ceiling <= 100000
     )
     if invalid_ceiling:
-        errors.append(f"{label} max_concurrency must be an integer from 1 through 100000")
+        errors.append(
+            f"{label} max_concurrency must be an integer from 1 through 100000; "
+            'the literal "auto" is not supported on replica members'
+        )
     if len(values) == 3 and not invalid_qualification_ref and endpoint is not None:
         member = ReplicaMember(
             id=values["id"],
@@ -956,23 +969,28 @@ def _parse_tier(raw: object) -> Tier:
             )
         tier_timeout = float(raw_timeout)
 
-    # ``max_concurrency`` (flexibility:T009): per-tier cap on concurrent in-flight
-    # requests to this tier. bool is an int subclass -- reject it explicitly; must
-    # be a positive int. Absent -> None (no per-tier cap; the process-global
-    # front-door limiter is unchanged).
+    # ``max_concurrency`` (flexibility:T009/T023): per-tier cap on concurrent
+    # in-flight requests to this tier. bool is an int subclass -- reject it
+    # explicitly; must be a positive int, or the exact literal "auto" to
+    # derive the ceiling from the engine's declared concurrency at runtime.
+    # Absent -> None (no per-tier cap; the process-global front-door limiter
+    # is unchanged).
     raw_max_concurrency = raw.get("max_concurrency")
-    tier_max_concurrency: Optional[int] = None
+    tier_max_concurrency: Optional[Union[int, str]] = None
     if raw_max_concurrency is not None:
-        if (
+        if raw_max_concurrency == MAX_CONCURRENCY_AUTO:
+            tier_max_concurrency = MAX_CONCURRENCY_AUTO
+        elif (
             isinstance(raw_max_concurrency, bool)
             or not isinstance(raw_max_concurrency, int)
             or raw_max_concurrency <= 0
         ):
             raise ConfigError(
-                f"tier {tid!r}: max_concurrency must be a positive integer "
-                f"or absent, got {raw_max_concurrency!r}"
+                f"tier {tid!r}: max_concurrency must be a positive integer, "
+                f"the literal \"auto\", or absent, got {raw_max_concurrency!r}"
             )
-        tier_max_concurrency = raw_max_concurrency
+        else:
+            tier_max_concurrency = raw_max_concurrency
 
     raw_max_output_tokens = raw.get("max_output_tokens")
     tier_max_output_tokens: Optional[int] = None
@@ -1139,6 +1157,11 @@ def _parse_tier(raw: object) -> Tier:
         replica_identity = _parse_replica_identity(
             raw.get("replica_identity"), tid, errors
         )
+        if tier_max_concurrency == MAX_CONCURRENCY_AUTO:
+            errors.append(
+                f"tier {tid!r}: the aggregate max_concurrency \"auto\" is not "
+                "supported on replica tiers; set explicit integer ceilings"
+            )
         if replica_strategy == "capacity" and any(
             member.max_concurrency is None for member in members
         ):
