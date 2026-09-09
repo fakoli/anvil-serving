@@ -23,7 +23,7 @@ map to the six product families.
 | Evaluation & Evidence | `eval` | [Evaluation & benchmarks](cli/eval.md) |
 | Anvil Voice | `voice` | [Voice](cli/voice.md) |
 | Anvil Media | `media` | [Media](cli/media.md) |
-| Control Plane & Fleet | `fleet`, `harness`, `mcp`, `controller`, `host`, `doctor`, `upgrade`, `topology`, `collectors`, `dashboard`, `edge`, `workbench` | [Control Plane & Fleet](cli/control-plane.md) · [Fleet](cli/fleet.md) · [Host & setup](cli/host.md) |
+| Control Plane & Fleet | `fleet`, `harness`, `mcp`, `controller`, `host`, `doctor`, `upgrade`, `topology`, `collectors`, `dashboard`, `edge`, `connect`, `workbench` | [Control Plane & Fleet](cli/control-plane.md) · [Fleet](cli/fleet.md) · [Host & setup](cli/host.md) · [Anvil Connect](cli/connect.md) |
 
 The canonical promises, boundaries, and cross-family handoffs are in
 [Product families and user journeys](PRODUCT-FAMILIES.md).
@@ -371,6 +371,18 @@ required operands, choices, and defaults.
 | `edge status` | Show serve mappings, flagging which this tool manages. | `read` / `bounded` | - |
 | `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `connect` | Manage authenticated API and browser access with Anvil Connect. | `read` / `bounded` | - |
+| `connect validate` | Validate declarations and selected native components. | `read` / `bounded` | `--manifest`<br>`--service` |
+| `connect render` | Preview or stage an owned configuration generation. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect up` | Preview or activate only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--dry-run`<br>`--confirm` |
+| `connect down` | Preview or stop only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--dry-run`<br>`--confirm` |
+| `connect status` | Inspect owned service state without claiming origin readiness. | `read` / `bounded` | `--manifest`<br>`--service` |
+| `connect doctor` | Check declared paths, components, and ownership. | `read` / `bounded` | `--manifest`<br>`--service` |
+| `connect logs` | Read bounded service event metadata. | `read` / `bounded` | `--manifest`<br>`--service`<br>`--tail` |
+| `connect init` | Initialize an authority or enroll a connector explicitly. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--bundle`<br>`--dry-run`<br>`--confirm` |
+| `connect identity` | Read the public fingerprint of a declared connector. | `read` / `bounded` | `--manifest`<br>`--service` |
+| `connect admin` | Send a declared request to the local gateway authority. | `mutate` / `bounded` | `--manifest`<br>`--request`<br>`--output`<br>`--dry-run`<br>`--confirm` |
+| `connect keygen` | Create a private key for a declared local SDK forwarder. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `workbench` | Manage the optional private Anvil Workbench hub stack. | `read` / `bounded` | - |
 | `workbench build` | Build the Workbench hub image from the local companion checkout. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--source`<br>`--image` |
 | `workbench up` | Start the private Workbench hub, Postgres, and Neo4j projection. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
