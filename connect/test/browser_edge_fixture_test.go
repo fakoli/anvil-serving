@@ -499,7 +499,7 @@ func TestBrowserEdgeFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	oidcPath := filepath.Join(secrets, "oidc-rs256.pem")
+	oidcPath := filepath.Join(secrets, "oidc.pem")
 	edgeWrite(t, oidcPath, string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: oidcDER})))
 	authListen, caddyListen := edgeReserve(t), edgeReserve(t)
 	authConfig := filepath.Join(directory, "authelia.yml")

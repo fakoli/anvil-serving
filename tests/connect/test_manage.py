@@ -22,6 +22,7 @@ else:  # Keep Windows collection independent of POSIX account modules.
 
 
 _LINUX_AMD64 = sys.platform == "linux" and platform.machine().lower() in {"x86_64", "amd64"}
+_ROOT_WITH_UID_DROP = _LINUX_AMD64 and hasattr(os, "geteuid") and os.geteuid() == 0
 pytestmark = pytest.mark.skipif(not _LINUX_AMD64, reason="Connect lifecycle tests require Linux amd64")
 
 ROOT = Path(__file__).parents[2]
@@ -528,7 +529,7 @@ def test_connector_update_preserves_existing_gateway_component_pins(tmp_path: Pa
     assert json.loads(record_path.read_text())["components"] == before
 
 
-@pytest.mark.skipif(os.geteuid() != 0, reason="requires root to exercise real service-UID drop")
+@pytest.mark.skipif(not _ROOT_WITH_UID_DROP, reason="requires root to exercise real service-UID drop")
 def test_preflight_temporary_declaration_is_readable_after_real_uid_drop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import pwd
     service = pwd.getpwnam(service_account())
