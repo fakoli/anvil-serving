@@ -12,7 +12,7 @@ import os
 import posixpath
 import re
 import stat
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 SCHEMA = "anvil-connect.deployment/v1"
@@ -75,9 +75,11 @@ def _string(value: Any, path: str) -> str:
 
 
 def _abs_path(value: Any, path: str) -> str:
+    """Validate a Linux target path without inheriting the runner's grammar."""
     text = _string(value, path)
-    candidate = Path(text)
-    if not candidate.is_absolute() or text.startswith("//") or str(candidate) != text or str(candidate) == "/" or ".." in candidate.parts:
+    candidate = PurePosixPath(text)
+    if (not text.startswith("/") or text.startswith("//") or str(candidate) != text
+            or str(candidate) == "/" or ".." in candidate.parts):
         raise _error(path, "must be a clean absolute path")
     return str(candidate)
 

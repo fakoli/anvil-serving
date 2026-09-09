@@ -7,7 +7,7 @@ import platform
 import shutil
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import pytest
 
@@ -22,6 +22,14 @@ _NATIVE = pytest.mark.skipif(not _LINUX_AMD64, reason="native Connect filesystem
 
 def manifest() -> dict:
     return json.loads((ROOT / "connect/examples/deployment.json").read_text())
+
+
+def test_linux_target_paths_validate_independently_of_windows_runner_grammar() -> None:
+    value = manifest()
+    # Deployment paths name the Linux service target.  A Windows CI runner
+    # must render that target without treating its POSIX paths as relative.
+    assert not PureWindowsPath(value["binary"]).is_absolute()
+    assert validate_manifest(value)["binary"] == value["binary"]
 
 
 def test_closed_shape_duplicate_case_and_null_are_rejected(tmp_path: Path) -> None:
