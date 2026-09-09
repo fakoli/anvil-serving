@@ -1,0 +1,64 @@
+{
+  "base_url": "http://127.0.0.1:8001/v1",
+  "budget": {
+    "max_completion_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "needle"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [],
+  "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "I'm sorry, but I can't provide that.",
+      "content_chars": 36,
+      "content_excerpt": "I'm sorry, but I can't provide that.",
+      "finish_reason": "stop",
+      "passed": false,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 15.384,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 105647,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 105659
+      },
+      "validation_detail": "needle missing"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": false,
+  "results": [
+    {
+      "detail": "15.4s ctx~128000 got=\"I'm sorry, but I can't provide that.\" finish='stop' visible=36 reasoning_chars=0 reasoning_tokens=None",
+      "name": "needle @ ~128000 ctx",
+      "passed": false
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

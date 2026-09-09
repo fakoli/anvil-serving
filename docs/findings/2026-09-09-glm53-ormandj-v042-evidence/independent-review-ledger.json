@@ -1,0 +1,90 @@
+{
+  "schema": "independent-review-ledger/v1",
+  "reviewer": "GPT-5.6 Sol high; separate read-only agent",
+  "implementer": "GPT-6 Astra",
+  "evaluated_model": "GLM-5.3-Flash",
+  "reviews": [
+    {
+      "scope": "upstream compatibility",
+      "state": "conditional pass",
+      "recipe_sha256": "b61334048a994b8dbdfd48fae09e0d7c214a7af3c14abd213e99d64e84157b61",
+      "accepted": "Release-profile delta, fresh v81 cache, retained hash-gated thinking template, removed obsolete logits edit; 1800s startup and guarded rollback; <=5% performance regression threshold.",
+      "hard_gates": [
+        "No serving_coverage warmup failure even if healthy",
+        "Both ranks PCIe IPC world_size2 plus NCCL P2P",
+        "Exact model/client contract, functional/thinking/multimodal/high-context and turnover gates"
+      ]
+    },
+    {
+      "scope": "plan and harness",
+      "state": "hold until corrected before candidate",
+      "findings": [
+        "Stale workload hashes after baseline amendments",
+        "Need executable pre/post identity and startup-log gate"
+      ],
+      "remediation": "verify-candidate.py invoked by candidate run-arm; frozen clean source and workload hashes to be verified before candidate requests."
+    },
+    {
+      "scope": "new managed image identity",
+      "state": "hold until fixes verified",
+      "findings": [
+        "NUL immutable image identity raises subprocess ValueError",
+        "CLI docs manifest/nav absent",
+        "Result bound is not subprocess memory bound"
+      ],
+      "remediation": "Shared normalizer rejects C0/DEL; exact NUL test. Regenerated command manifest and CLI audit/nav. Capture memory limitation documented and tracked."
+    },
+    {
+      "scope": "mount provenance",
+      "state": "accepted with explicit inference",
+      "accepted": "Absent fresh volume and target container, exact immediately-preceding managed-create argv, matching new container ID and recipe/registry/image/GPU/port labels; infer mounts rather than claim direct inspection."
+    },
+    {
+      "scope": "final code and executable identity gate recheck",
+      "state": "clear before pre-request identity gate",
+      "at": "2026-09-09T11:36:20.803740+00:00",
+      "qualification_commit": "f19180c41724050b834cd77d1f14d662e4ea57b8",
+      "verifier_sha256": "16bde078fee1f3966e5a41de2f81f3937fbc116db9c445a5ff8aedf3878eb045",
+      "accepted": [
+        "NUL normalizer regression and generated CLI docs/nav fixed",
+        "189 focused tests passed,8 skipped; Ruff passed",
+        "Explicit failure checks survive optimization",
+        "Combined stdout and stderr error checks plus saturation rejection",
+        "Unique retained attempts and no successful-evidence overwrite",
+        "Ordered GPU binding and explicit inferred mount provenance",
+        "Frozen source and workload hashes match"
+      ],
+      "residual": "IPC seed config warning retained; no tuning-quality claim. Promotion only after actual campaign gates under user conditional authorization."
+    },
+    {
+      "scope": "TileLang MHC static analyzer warnings",
+      "state": "cited stores refuted as races; local qualification still required",
+      "source": "Exact SGLang afe90a8bc908002219993794404c7c95dd3ced1d python/sglang/kernels/ops/layernorm/mhc.py:638-693",
+      "reason": "Unique (px,bz) CTA with t=px*token_block+i under t<num_tokens is injective for loop range. Reported num_tokens1 counterexample i0/i1 both t0 is impossible; second t1 fails guard. Ormandj patch does not alter this body.",
+      "residual": "Upstream test report is not exact SM120 parity proof. Retain four warnings and run local functional, quality, multimodal, high-context, performance and turnover gates. Do not disable race checker."
+    },
+    {
+      "scope": "Marker quality diagnostic",
+      "state": "literal marker false negative; retain semantic caveats",
+      "reason": "Candidate failing PowerShell attempt omits literal absolute but uses Resolve-Path and separator-aware containment. It creates destination parent before checking containment, does not verify source absence and overclaims failed-Move source preservation. Baseline literal passes include invalid PowerShell. No executed coding-quality claim is supported.",
+      "artifacts": [
+        "candidate/quality.json",
+        "baseline/quality.json"
+      ]
+    },
+    {
+      "scope": "Frozen qualification promotion disposition",
+      "state": "hold",
+      "reviewer": "GPT-5.6 Sol high separate read-only agent",
+      "reason": "Strict60 gate is not diagnostic; original58/60 fails. Final routed candidate gate outstanding. User comparative authorization does not silently change the frozen gate. Root performed one pre-recorded unchanged repeat:57/60, gate remains failed.",
+      "artifacts": [
+        "run-plan.json",
+        "candidate/turnover-controlled.json",
+        "candidate/turnover-repeat-plan.json",
+        "candidate/turnover-controlled-repeat.json",
+        "candidate/post-repeat/identity.json"
+      ],
+      "next": "Exact baseline restoration and documentation; no deployment promotion or merge under failed strict gate."
+    }
+  ]
+}
