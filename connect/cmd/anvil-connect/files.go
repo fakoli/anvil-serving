@@ -56,7 +56,7 @@ func readPrivate(path string) ([]byte, error) {
 	if !absolute(path) {
 		return nil, errFile
 	}
-	directory, err := privatefiles.Open(filepath.Dir(path))
+	directory, err := privatefiles.OpenExisting(filepath.Dir(path))
 	if err != nil {
 		return nil, errFile
 	}

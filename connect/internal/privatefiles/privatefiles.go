@@ -41,6 +41,15 @@ type Directory struct {
 // Parent path components may be symlinks (for example /data); the selected
 // directory itself may not be a symlink and is checked again after opening.
 func Open(path string) (*Directory, error) {
+	return open(path, true)
+}
+
+// OpenExisting retains an existing private directory without creating parents.
+func OpenExisting(path string) (*Directory, error) {
+	return open(path, false)
+}
+
+func open(path string, create bool) (*Directory, error) {
 	if runtime.GOOS != "linux" || path == "" {
 		return nil, ErrPrivate
 	}
@@ -49,8 +58,10 @@ func Open(path string) (*Directory, error) {
 		return nil, ErrPrivate
 	}
 	absolute = filepath.Clean(absolute)
-	if err := os.MkdirAll(absolute, 0700); err != nil {
-		return nil, ErrPrivate
+	if create {
+		if err := os.MkdirAll(absolute, 0700); err != nil {
+			return nil, ErrPrivate
+		}
 	}
 	before, err := os.Lstat(absolute)
 	if err != nil || !validDirectoryInfo(before) {
@@ -173,7 +184,7 @@ func (d *Directory) Read(name string, max int) ([]byte, error) {
 	if d.closed {
 		return nil, ErrClosed
 	}
-	fd, err := unix.Openat(d.fd, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	fd, err := unix.Openat(d.fd, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, ErrPrivate
 	}

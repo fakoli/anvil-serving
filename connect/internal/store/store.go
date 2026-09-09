@@ -39,11 +39,23 @@ type Tx struct {
 // directory private by chmod, follows a database symlink or logs a record.
 // Initial delivery targets Linux; cross-platform storage needs qualification.
 func Open(directory string, now func() time.Time) (*Store, error) {
+	return open(directory, now, false)
+}
+
+// OpenExisting acquires the database lock without creating, initializing or
+// repairing any state. Recovery backups use this read-only database handle.
+func OpenExisting(directory string, now func() time.Time) (*Store, error) {
+	return open(directory, now, true)
+}
+
+func open(directory string, now func() time.Time, existing bool) (*Store, error) {
 	if now == nil {
 		now = time.Now
 	}
-	if err := os.MkdirAll(directory, 0700); err != nil {
-		return nil, ErrState
+	if !existing {
+		if err := os.MkdirAll(directory, 0700); err != nil {
+			return nil, ErrState
+		}
 	}
 	info, err := os.Lstat(directory)
 	if err != nil || !info.IsDir() || info.Mode().Perm() != 0700 {
@@ -58,7 +70,8 @@ func Open(directory string, now func() time.Time) (*Store, error) {
 		return nil, err
 	}
 	db, err := bolt.Open(filepath.Join(directory, "state.db"), 0600, &bolt.Options{
-		Timeout: time.Second,
+		Timeout:  time.Second,
+		ReadOnly: existing,
 		OpenFile: func(_ string, flags int, mode os.FileMode) (*os.File, error) {
 			f, err := root.OpenFile("state.db", flags|unix.O_NOFOLLOW, mode)
 			if err != nil {
@@ -78,34 +91,38 @@ func Open(directory string, now func() time.Time) (*Store, error) {
 		return nil, ErrState
 	}
 	s := &Store{db: db, root: root, now: now}
-	err = db.Update(func(tx *bolt.Tx) error {
-		meta := tx.Bucket([]byte("meta"))
-		if meta == nil {
-			var err error
-			meta, err = tx.CreateBucket([]byte("meta"))
-			if err != nil {
-				return err
+	if existing {
+		err = db.View(validateBackupNamespaces)
+	} else {
+		err = db.Update(func(tx *bolt.Tx) error {
+			meta := tx.Bucket([]byte("meta"))
+			if meta == nil {
+				var err error
+				meta, err = tx.CreateBucket([]byte("meta"))
+				if err != nil {
+					return err
+				}
+				if err := meta.Put([]byte("schema"), []byte("anvil-connect.authority/v1")); err != nil {
+					return err
+				}
+				epoch, err := randomEpoch()
+				if err != nil {
+					return err
+				}
+				if err := meta.Put([]byte("epoch"), []byte(epoch)); err != nil {
+					return err
+				}
+			} else if string(meta.Get([]byte("schema"))) != "anvil-connect.authority/v1" || !validEpoch(string(meta.Get([]byte("epoch")))) {
+				return ErrState
 			}
-			if err := meta.Put([]byte("schema"), []byte("anvil-connect.authority/v1")); err != nil {
-				return err
+			for _, name := range buckets {
+				if _, err := tx.CreateBucketIfNotExists([]byte(name)); err != nil {
+					return err
+				}
 			}
-			epoch, err := randomEpoch()
-			if err != nil {
-				return err
-			}
-			if err := meta.Put([]byte("epoch"), []byte(epoch)); err != nil {
-				return err
-			}
-		} else if string(meta.Get([]byte("schema"))) != "anvil-connect.authority/v1" || len(meta.Get([]byte("epoch"))) != 64 {
-			return ErrState
-		}
-		for _, name := range buckets {
-			if _, err := tx.CreateBucketIfNotExists([]byte(name)); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+			return nil
+		})
+	}
 	if err != nil {
 		s.Close()
 		return nil, ErrState
