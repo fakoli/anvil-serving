@@ -49,7 +49,10 @@ def _read_observatory_config(path: str | Path) -> dict[str, Any]:
     except Exception as exc:
         raise MigrationError("Observatory configuration is invalid") from exc
     required = {"schema", "origin", "base_path", "users", "authentication", "inventory", "prometheus_url", "state_path"}
-    allowed = required | {"operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence"}
+    # Keep this top-level shape aligned with Observatory's closed loader.  The
+    # migration plan does not consume or disclose the optional log collector
+    # binding; it only needs to accept an otherwise-valid current app config.
+    allowed = required | {"operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence", "logs"}
     if not isinstance(config, dict) or set(config) - allowed or required - set(config) or config.get("schema") != "anvil-observatory/config/v1":
         raise MigrationError("Observatory configuration is invalid")
     return config

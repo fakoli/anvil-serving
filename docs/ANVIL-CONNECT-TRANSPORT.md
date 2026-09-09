@@ -15,7 +15,7 @@ Port 443 alone does not guarantee proxy compatibility.
 
 The [upstream release](https://github.com/erebe/wstunnel/releases/tag/v10.7.1)
 was published 2026-09-01. It is BSD-3-Clause licensed. The
-[transport lock](../connect/transport.lock.json) records the release URL, archive
+[transport lock](https://github.com/fakoli/anvil-serving/blob/main/connect/transport.lock.json) records the release URL, archive
 digest and executable digest. The linux-amd64 archive SHA-256 is
 `fa842ed53fbb14b1c69cd98829f9895d7f8a6b0d562c57c1175851a52cea9ea2`;
 the extracted executable SHA-256 is
@@ -41,7 +41,7 @@ Linux socket ownership checks prevent a colliding process from satisfying a
 listener assertion; an allocation collision can still fail the lab because the
 upstream cannot inherit an already bound socket.
 
-The [fixture](../connect/lab/fixture_test.go) records exact invocations. In
+The [fixture](https://github.com/fakoli/anvil-serving/blob/main/connect/lab/fixture_test.go) records exact invocations. In
 particular, **`--tls-verify-certificate` is required**: upstream disables server
 verification by default. A private test CA is supplied through child-local
 `SSL_CERT_FILE` and an empty `SSL_CERT_DIR`. The server requires client
@@ -51,7 +51,7 @@ the product's local destination envelope or per-request authorization.
 
 ## Measured results
 
-The initial [transport lab](../connect/lab/transport_test.go) passed in 2.916 seconds.
+The initial [transport lab](https://github.com/fakoli/anvil-serving/blob/main/connect/lab/transport_test.go) passed in 2.916 seconds.
 Timing below describes one loopback run, not a latency SLO.
 
 | Probe | Observation |
@@ -67,7 +67,7 @@ Timing below describes one loopback run, not a latency SLO.
 
 ## API integration extension
 
-The [API tests](../connect/lab/api_test.go) now exercise this complete path with
+The [API tests](https://github.com/fakoli/anvil-serving/blob/main/connect/lab/api_test.go) now exercise this complete path with
 the real pinned server and connector children:
 
 ```mermaid

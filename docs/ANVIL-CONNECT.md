@@ -73,7 +73,7 @@ to terminate work already running inside a model engine.
 
 ## Declarations and operation
 
-Start from the generic [deployment manifest](../connect/examples/deployment.json).
+Start from the generic [deployment manifest](https://github.com/fakoli/anvil-serving/blob/main/connect/examples/deployment.json).
 It declares resources, matching origin envelopes, private state locations,
 versioned binary paths, a dedicated non-root service user/group, and secret-file
 references. A resource has an exact hostname, canonical path prefix, allowed
