@@ -426,6 +426,45 @@ an explicit rollback. Ad-hoc Compose starts, voice, request-time ComfyUI loads,
 and the request-triggered multiplexer remain outside v1. See
 [ADR-0023](../adr/0023-lifecycle-aware-wsl-cache-reclaim.md).
 
+## NCCL collective probe
+
+`host nccl` runs two ranks in an already cached, digest-pinned PyTorch/NCCL
+image on the native Linux resource owner. It loads no model weights and uses
+the local system Docker socket, independent of the caller's Docker context.
+The host package remains stdlib-only. Remote controllers, WSL and containerized
+callers are not supported by this first probe.
+
+```bash
+anvil-serving host nccl --image REGISTRY/IMAGE@sha256:FULL_DIGEST --gpu-uuid GPU-UUID-A --gpu-uuid GPU-UUID-B --p2p disabled --dry-run
+anvil-serving host nccl --image REGISTRY/IMAGE@sha256:FULL_DIGEST --gpu-uuid GPU-UUID-A --gpu-uuid GPU-UUID-B --p2p disabled --output /private/evidence/nccl-disabled.json --confirm
+anvil-serving host nccl --image REGISTRY/IMAGE@sha256:FULL_DIGEST --gpu-uuid GPU-UUID-A --gpu-uuid GPU-UUID-B --p2p enabled --output /private/evidence/nccl-enabled.json --confirm
+```
+
+Replace both UUID placeholders with distinct full device UUIDs in rank order.
+Preview reports occupied devices; confirmed execution refuses active compute,
+display devices, more than 512 MiB of existing allocation, unknown ownership
+inventory, and translated/unknown IOMMU paths for P2P. Drain/unload a live model
+through its managed lifecycle before running, then restore its exact baseline.
+No command evicts another owner or changes boot/ACS/driver/router configuration.
+
+The temporary container has a read-only root, no host mounts or network access,
+private 256 MiB shared memory, and a 4 GiB host-memory limit. The probe sweeps
+8 bytes, 1 KiB, 64 KiB and `--max-mib` (default 16, maximum 64 MiB), checks every
+element against a deterministic two-rank sum, and records rank-to-UUID mapping,
+PyTorch and its CUDA/NCCL build versions, loaded NCCL versions from runtime
+logs, timings, transport logs, exit state and cleanup. Build and loaded versions
+can differ within the same pinned image.
+Timings include host dispatch and synchronization and are microprobe evidence,
+not model throughput. `--cumem 0` is the default; compare P2P with the same
+cuMem setting before treating cuMem as a separate variable.
+
+P2P success requires log evidence in both directions without SHM fallback.
+A timeout (default 90 seconds, maximum 180) triggers cleanup of only the
+invocation's uniquely labeled container. Cleanup must be verified for success.
+Artifacts contain unsanitized host/GPU identity and belong in private storage.
+Capability flags, collective correctness and model qualification are separate
+gates; a passed probe never promotes a recipe or changes a route.
+
 ## GPU sharing
 
 Start with static, non-mutating inspection:
