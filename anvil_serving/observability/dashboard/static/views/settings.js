@@ -17,6 +17,7 @@ export const pages = [
   "workstations",
   "serves",
   "workloads",
+  "logs",
   "configuration",
   "experiments",
   "operations",
