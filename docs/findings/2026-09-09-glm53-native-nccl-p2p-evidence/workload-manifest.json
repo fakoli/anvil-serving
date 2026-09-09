@@ -1,0 +1,7 @@
+{
+  "schema": "nccl-workload/v1",
+  "plan": "run-plan.json",
+  "preflight_module_sha256": "f26787f3f0f1a7aea7df2d90a9f26bd1bf64ef8210ecff3b353f782faea1bd03",
+  "quality_suite_sha256": "2e8c4e7f9a20b37ef722d922c8729f4c1387e0d507fd176e9801829b5b8e510c",
+  "image_corpus": "tests/fixtures/eval-data/agents-a1-v1/image-corpus.json"
+}

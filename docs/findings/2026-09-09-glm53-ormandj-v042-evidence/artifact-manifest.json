@@ -1,0 +1,380 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-09-glm53-ormandj-v042",
+    "capability": "LLM and image understanding",
+    "repository_revision": "f19180c41724050b834cd77d1f14d662e4ea57b8",
+    "dirty_state": "clean source at measurement; documentation added after model requests",
+    "started_at": "2026-09-09T11:15:15.376421+00:00",
+    "completed_at": null,
+    "evidence_labels": [
+      "measured",
+      "matched-direct",
+      "partial-qualification"
+    ],
+    "decision_labels": [
+      "retain-baseline",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.control-evidence/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "docker-image-identity/v1",
+    "multimodal-benchmark-evidence/v1",
+    "preflight/v2",
+    "runtime-identity-gate/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "ff9c051fc3f4ac310955d772ab14433c7360d63838fcade4da9d0dd6004a3e76",
+          "bytes": 1721
+        },
+        {
+          "path": "redaction-provenance.json",
+          "sha256": "e9221fc1c2099a597ddbbda00de4e3591efb3dacd5572a71e308400492bf4c4c",
+          "bytes": 14507
+        }
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "3133885748714f85e7936fc6f922c4a5de4ae4c2f5cc79c30a50eb26b138c4eb",
+          "bytes": 1901
+        }
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "246913f3a69239e6f6352091fc6576ba3ebd0371df2cf51d27951eea333539bb",
+          "bytes": 2424
+        }
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "79dfaff658f15b224ab25c7362ad165b9eb0702e613f52170e824495014ca9cf",
+          "bytes": 6647
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "f096b8c039864cdd48b4199c368354ff4c6d47945377d8054c9594eac6465d0f",
+          "bytes": 2184
+        },
+        {
+          "path": "candidate/turnover-repeat-plan.json",
+          "sha256": "f5910f50ef12e5ca2c458609783ead1a79e8572eeeca4e0c02c775d1d7493036",
+          "bytes": 1266
+        },
+        {
+          "path": "candidate/turnover-repeat-result.json",
+          "sha256": "16f1c2d55d370619036a867ca8792ce2549ca3f1aa0b92c31a91a12f5f6d24f4",
+          "bytes": 1337
+        }
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "candidate/image-identity.json",
+          "sha256": "f2da6adbc0c12140d6b13d13d1adf2a853986955ca348142796b9678e80d6588",
+          "bytes": 1278
+        },
+        {
+          "path": "candidate/identity-pre.json",
+          "sha256": "b8a7da2490796164f54c462119349735af269e9caf3279e9e8bbf4649adf23b3",
+          "bytes": 899
+        },
+        {
+          "path": "candidate/identity-post.json",
+          "sha256": "96d84a546e56048141b08db58132cbd12e0576e18c934a0efc1013f96814e418",
+          "bytes": 901
+        },
+        {
+          "path": "candidate/control-evidence.json",
+          "sha256": "f7276b43b7a47d5b25c0bbe757af36177e81ee05c44b8f33c765c630b27aeb55",
+          "bytes": 563
+        },
+        {
+          "path": "baseline/control-evidence.json",
+          "sha256": "b43b1ffb3ac68038c1863b1800ff348c4688fb1cbf17f5ef0fa25a8b32a97752",
+          "bytes": 563
+        },
+        {
+          "path": "configuration-and-identity.json",
+          "sha256": "423d3220c101089de54be9be57a3b03403aa94088df17e577a6279d2b13242d8",
+          "bytes": 4985
+        },
+        {
+          "path": "candidate/post-repeat/identity.json",
+          "sha256": "90d7ac979dbd16fa71635a78c795671f8c8212dfc907700e4552ddc7bd88a4a4",
+          "bytes": 442
+        }
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "comparison.json",
+          "sha256": "814671e972a64e7ce56482ded1fe3a4e5eb9666734b143de3e744a18ca8a02c0",
+          "bytes": 5557
+        },
+        {
+          "path": "baseline/preflight.json",
+          "sha256": "275b53f5eb98870c469c2ff5e8ae0c1ffc66aa64de01542722e073dffb3f90f6",
+          "bytes": 24448
+        },
+        {
+          "path": "baseline/capacity-4k.json",
+          "sha256": "0e0fe5d40e9565cb4d18b8d8746e582bc46c0e6e372ba9b53a5583aa47a0e08f",
+          "bytes": 26063
+        },
+        {
+          "path": "baseline/capacity-120k.json",
+          "sha256": "07740dcc5c9d05ad0433ea401061ccbf0e7252a020a30fed16f656b8982f3f2b",
+          "bytes": 15067
+        },
+        {
+          "path": "baseline/high-context.json",
+          "sha256": "30585be3c0c97aaa0b55933725a0651f0f0f40361f69bb63c17f64a4242d1038",
+          "bytes": 2546
+        },
+        {
+          "path": "baseline/turnover.json",
+          "sha256": "a9613df926e0fd8256b0fe6b6964fe3dac2d17fa9b6107d00640737ea8e7c31e",
+          "bytes": 135257
+        },
+        {
+          "path": "baseline/turnover-controlled.json",
+          "sha256": "a643ecf02f8eca2698faee8a5f943d0aaa647251bfde9dc68049e8b555a69406",
+          "bytes": 94428
+        },
+        {
+          "path": "candidate/preflight.json",
+          "sha256": "70870a8a9dd7d47729ca4994fad63904bad944d0fec6f18af055fc7b3f40c358",
+          "bytes": 24298
+        },
+        {
+          "path": "candidate/capacity-4k.json",
+          "sha256": "abbc1e962371d0ecb7839bbf0d80d364379b53873bc346a485afcc9edef5ac84",
+          "bytes": 26116
+        },
+        {
+          "path": "candidate/capacity-120k.json",
+          "sha256": "2cc37fc3ae194c7a83377c131320fc68ebf269c16af5874d2fe71459805e1be6",
+          "bytes": 15089
+        },
+        {
+          "path": "candidate/high-context.json",
+          "sha256": "8d10f52de3aa9e332d58312a1386d35d6618645b3470e82b7efd681488bf806c",
+          "bytes": 2546
+        },
+        {
+          "path": "candidate/turnover-controlled.json",
+          "sha256": "acf42fbe5a04a31e219cc0e14b06f67e1bd26c956342745516b19581f192c93a",
+          "bytes": 87526
+        },
+        {
+          "path": "candidate/turnover-controlled-repeat.json",
+          "sha256": "b266be9c179e21deb5affc0f4e535f44a8f3044ff82934fbc82e20c8e6af740c",
+          "bytes": 88928
+        },
+        {
+          "path": "graph-manifest.json",
+          "sha256": "e799baa93317e411a70ae3b1cba54a256162b2046a30b14d4d0fbad9b71b4558",
+          "bytes": 1811
+        },
+        {
+          "path": "benchmark-graph-data.json",
+          "sha256": "58aa50ac895a0951e0a7e2732268e85439f6614424d6516c7f0a4b5433757934",
+          "bytes": 2981
+        },
+        {
+          "path": "benchmark-matrix.svg",
+          "sha256": "41b188147e1367607c18d1e263c65faad444e06f3cd610a4725dbafc9cf406be",
+          "bytes": 5196
+        },
+        {
+          "path": "baseline/needle-repeat.json",
+          "sha256": "14637951e39f4bd19693f2007036068ec1f837f2476da39caf12d91917b4fbca",
+          "bytes": 1618
+        },
+        {
+          "path": "baseline/quality.json",
+          "sha256": "50c5ff30c02deb1f9e3645c3f8ddf8422249f494a60e6dd7de1f1ca9d83b9692",
+          "bytes": 64047
+        },
+        {
+          "path": "baseline/multimodal.json",
+          "sha256": "74c802b89cbc104b323a480ec0496be8dbd7f0a5a49f22898b377267a6ac78d4",
+          "bytes": 25763
+        },
+        {
+          "path": "baseline/thinking-default.json",
+          "sha256": "667282fbc26e5d995e1af0bfd1878efe2d3116141de1e1e45141c61a7cd38de1",
+          "bytes": 3162
+        },
+        {
+          "path": "baseline/thinking-enabled.json",
+          "sha256": "297560824f28a2df6d1dece36468942b68583f0d58a5e95cae0afe45b47397d5",
+          "bytes": 3422
+        },
+        {
+          "path": "candidate/quality.json",
+          "sha256": "7de2c6c56ac412da9a9dd28290506c157cc1ca9ff0103d43c905dc557a89eb0c",
+          "bytes": 57202
+        },
+        {
+          "path": "candidate/multimodal.json",
+          "sha256": "d9c6b15c18efde367a59d162b40ccaef30d8e45b9a0ce510e803b7238062a35b",
+          "bytes": 25904
+        },
+        {
+          "path": "candidate/thinking-default.json",
+          "sha256": "d4ba6ee3376081b6761255e83236345e99de144aeae391c01533edcbfdfaf28a",
+          "bytes": 3343
+        },
+        {
+          "path": "candidate/thinking-enabled.json",
+          "sha256": "f9ed04e4a9019075b4e14a8fb1b915c919f63f65e24ccdc6603ca7db3d7b08a6",
+          "bytes": 3447
+        }
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "dcea6e29d11be7bf67e2058604bdfa365fb325ca2f851194e7b063b47e09fa50",
+          "bytes": 2537
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "6a358332e5037a58708dd8d22b55308215f47b51a7d81d36f52900d6169fa44b",
+          "bytes": 1052
+        },
+        {
+          "path": "independent-review-ledger.json",
+          "sha256": "4cfea88407613d2a2d932956ad0a8738a2e417e705bdb2a7025083768de800f8",
+          "bytes": 5153
+        }
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "30dabe1c6174df5002a97322e50b68a2e020919a6879bf637b8b3ba544f6e058",
+          "bytes": 1763
+        },
+        {
+          "path": "restoration/direct-preflight.json",
+          "sha256": "664ea4878f0e35e38039dc9b1acb58aeb54a3e88a34ab8ec29c69415daa435c7",
+          "bytes": 2856
+        },
+        {
+          "path": "restoration/routed-preflight.json",
+          "sha256": "0ed445f58ae7d320f1067bd0a3fdaa59c8c522191bd406fcfb0792869377bea2",
+          "bytes": 2980
+        },
+        {
+          "path": "restoration/router-models.json",
+          "sha256": "54aacab17fba7f6aedb76304e5b7c525ee677e4d38b4b0b9037b64dbaf6a4621",
+          "bytes": 1703
+        },
+        {
+          "path": "restoration/running.json",
+          "sha256": "9d079914e013944a96ab957bf4509ae4db69cc04fda2f6786792756ac3349a46",
+          "bytes": 1773
+        },
+        {
+          "path": "private-restoration-hashes.json",
+          "sha256": "0e64f19f8caf29a3cc9c74be6f95191f47d4e9fce1c4b12d30cfc9c3aa7480b7",
+          "bytes": 1462
+        },
+        {
+          "path": "restoration/unit.txt",
+          "sha256": "fba237d3aaf0f5b1fe397cc5ad4119bcf9254907a6743bb9c055058253ce2b99",
+          "bytes": 52
+        },
+        {
+          "path": "restoration/router-transition-status.txt",
+          "sha256": "431bf427bcded00514794d6049c79e417a7abe7c24fe579d7a8d63353a0b33df",
+          "bytes": 433
+        }
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "82ed61783720ceaf87b168deb4db1bfffcfa02e2082c2d2809a7a385ac6f0f76",
+          "bytes": 6186
+        },
+        {
+          "path": "comparison.json",
+          "sha256": "814671e972a64e7ce56482ded1fe3a4e5eb9666734b143de3e744a18ca8a02c0",
+          "bytes": 5557
+        },
+        {
+          "path": "human-decision.json",
+          "sha256": "a5d6c5353ff63d38fac9e64ac2012372238287055ef0ef16a73ec0167a437f28",
+          "bytes": 592
+        }
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "9e0caffbd56871d548736c2d73b13bbb378fbcd1959ae3a6bb4d1a90acaa9723",
+          "bytes": 1139
+        }
+      ],
+      "reason": "Concluded comparison retains supporting evidence and failures."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}
