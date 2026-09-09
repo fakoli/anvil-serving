@@ -123,6 +123,7 @@ nav:
           - Evaluation and benchmarks: cli/eval.md
           - Voice: cli/voice.md
           - Host and setup: cli/host.md
+          - Runtime image identity: cli/image-identity.md
           - Fleet: cli/fleet.md
           - Control Plane and Fleet: cli/control-plane.md
       - Help and project records:
