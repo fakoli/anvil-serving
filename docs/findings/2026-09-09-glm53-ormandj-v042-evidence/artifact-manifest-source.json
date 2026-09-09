@@ -15,7 +15,8 @@
       "role": "evidence-index",
       "status": "retained",
       "files": [
-        "README.md"
+        "README.md",
+        "redaction-provenance.json"
       ],
       "reason": "Held qualification retains supporting evidence and failures."
     },
@@ -31,7 +32,7 @@
       "role": "workload-manifest",
       "status": "retained",
       "files": [
-        "run-plan.json"
+        "workload-manifest.json"
       ],
       "reason": "Held qualification retains supporting evidence and failures."
     },
@@ -48,7 +49,11 @@
       "role": "configuration-and-identity",
       "status": "retained",
       "files": [
-        "candidate/image-identity.json"
+        "candidate/image-identity.json",
+        "candidate/identity-pre.json",
+        "candidate/identity-post.json",
+        "candidate/control-evidence.json",
+        "baseline/control-evidence.json"
       ],
       "reason": "Held qualification retains supporting evidence and failures."
     },
@@ -71,7 +76,16 @@
         "candidate/turnover-controlled-repeat.json",
         "graph-manifest.json",
         "benchmark-graph-data.json",
-        "benchmark-matrix.svg"
+        "benchmark-matrix.svg",
+        "baseline/needle-repeat.json",
+        "baseline/quality.json",
+        "baseline/multimodal.json",
+        "baseline/thinking-default.json",
+        "baseline/thinking-enabled.json",
+        "candidate/quality.json",
+        "candidate/multimodal.json",
+        "candidate/thinking-default.json",
+        "candidate/thinking-enabled.json"
       ],
       "reason": "Held qualification retains supporting evidence and failures."
     },
@@ -89,7 +103,11 @@
       "role": "restoration",
       "status": "retained",
       "files": [
-        "restoration.json"
+        "restoration.json",
+        "restoration/direct-preflight.json",
+        "restoration/routed-preflight.json",
+        "restoration/router-models.json",
+        "restoration/running.json"
       ],
       "reason": "Held qualification retains supporting evidence and failures."
     },
@@ -97,7 +115,8 @@
       "role": "decision-summary",
       "status": "retained",
       "files": [
-        "summary.json"
+        "summary.json",
+        "comparison.json"
       ],
       "reason": "Held qualification retains supporting evidence and failures."
     },
