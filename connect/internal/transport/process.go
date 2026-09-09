@@ -52,7 +52,7 @@ func pinnedFile(path string) (*os.File, error) {
 	if runtime.GOOS != "linux" || !filepath.IsAbs(path) {
 		return nil, ErrProcess
 	}
-	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NOFOLLOW, 0)
+	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, ErrProcess
 	}
@@ -79,6 +79,20 @@ func pinnedFile(path string) (*os.File, error) {
 		return deny()
 	}
 	return f, nil
+}
+
+// VerifyBinary checks the exact embedded platform artifact without starting a
+// child or opening a network listener. Startup repeats this check and executes
+// the retained verified inode, so preflight is not used as a TOCTOU guarantee.
+func VerifyBinary(path string) error {
+	f, err := pinnedFile(path)
+	if err != nil {
+		return err
+	}
+	if f.Close() != nil {
+		return ErrProcess
+	}
+	return nil
 }
 
 func openInput(path string, private bool) (*os.File, error) {

@@ -22,15 +22,19 @@ import (
 	"github.com/fakoli/anvil-serving/connect/internal/client"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	connectruntime "github.com/fakoli/anvil-serving/connect/internal/runtime"
+	"github.com/fakoli/anvil-serving/connect/internal/transport"
 )
 
 const usage = `anvil-connect validate --mode gateway|connector|client --config FILE
+anvil-connect preflight --mode gateway|connector|client --config FILE
 anvil-connect init --mode gateway --config FILE
 anvil-connect init --mode connector --config FILE --bundle PRIVATE_FILE
 anvil-connect gateway|connector|client --config FILE
 anvil-connect identity --config FILE
 anvil-connect admin --socket PATH --request FILE [--output PRIVATE_FILE]
 anvil-connect keygen --output PRIVATE_FILE
+anvil-connect backup --config GATEWAY_FILE --output PRIVATE_FILE
+anvil-connect restore --config GATEWAY_FILE --input PRIVATE_FILE --sha256 DIGEST
 `
 
 func main() {
@@ -65,9 +69,9 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	command := args[0]
 	fs := flag.NewFlagSet(command, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	var mode, file, bundle, socket, request, output string
+	var mode, file, bundle, socket, request, output, input, digest string
 	switch command {
-	case "validate", "init":
+	case "validate", "preflight", "init":
 		fs.StringVar(&mode, "mode", "", "native mode")
 		fs.StringVar(&file, "config", "", "closed declaration")
 		if command == "init" {
@@ -85,6 +89,15 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 		fs.StringVar(&output, "output", "", "exclusive private response file")
 	case "keygen":
 		fs.StringVar(&output, "output", "", "exclusive private key file")
+	case "backup", "restore":
+		mode = "gateway"
+		fs.StringVar(&file, "config", "", "closed gateway declaration")
+		if command == "backup" {
+			fs.StringVar(&output, "output", "", "exclusive private backup file")
+		} else {
+			fs.StringVar(&input, "input", "", "private backup file")
+			fs.StringVar(&digest, "sha256", "", "independently retained backup digest")
+		}
 	default:
 		return invalid()
 	}
@@ -173,6 +186,35 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	}
 	if command == "validate" {
 		return status(map[string]string{"mode": mode, "status": "valid"})
+	}
+	if command == "preflight" {
+		binary := gateway.TunnelBinary
+		if mode == "connector" {
+			binary = connector.TunnelBinary
+		}
+		if mode != "client" && transport.VerifyBinary(binary) != nil {
+			return fail()
+		}
+		return status(map[string]string{"mode": mode, "status": "artifacts-verified"})
+	}
+	if command == "backup" {
+		reserved, err := reserveOutput(output)
+		if err != nil {
+			return fail()
+		}
+		defer reserved.Close()
+		data, err := connectruntime.BackupGateway(gateway)
+		if err != nil || reserved.Write(data) != nil {
+			return fail()
+		}
+		return status(map[string]string{"mode": mode, "status": "backup-created", "sha256": connectruntime.BackupDigest(data)})
+	}
+	if command == "restore" {
+		data, err := readPrivate(input)
+		if err != nil || connectruntime.RestoreGateway(gateway, data, digest) != nil {
+			return fail()
+		}
+		return status(map[string]string{"mode": mode, "status": "restored", "grants": "disabled", "sha256": digest})
 	}
 	if command == "identity" {
 		installation, err := connectruntime.ConnectorIdentity(connector)
