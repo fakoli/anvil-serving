@@ -38,13 +38,18 @@ def license_notices(environment: dict[str, str]) -> str:
     sections = []
     for source in sorted((ROOT / 'connect/packaging/licenses').glob('*.txt')):
         sections.append(source.stem + '\n\n' + source.read_text())
-    modules = subprocess.check_output(['go', 'list', '-m', '-json', 'all'], cwd=ROOT / 'connect', env=environment, text=True)
+    # Only modules in the target executable's dependency graph are bundled.
+    # `go list -m all` also includes unloaded test-only modules with no Dir.
+    modules = subprocess.check_output(['go', 'list', '-deps', '-json', './cmd/anvil-connect'], cwd=ROOT / 'connect', env=environment, text=True)
     decoder = json.JSONDecoder()
+    seen = set()
     while modules.strip():
-        module, offset = decoder.raw_decode(modules.lstrip())
+        package, offset = decoder.raw_decode(modules.lstrip())
         modules = modules.lstrip()[offset:]
-        if module.get('Main'):
+        module = package.get('Module')
+        if not module or module.get('Main') or module['Path'] in seen:
             continue
+        seen.add(module['Path'])
         directory = Path(module['Dir'])
         notices = [directory / name for name in ('LICENSE', 'LICENSE.txt', 'LICENSE.md', 'COPYING', 'NOTICE') if (directory / name).is_file()]
         if not notices:
