@@ -1,0 +1,1661 @@
+{
+  "cache": {
+    "available_bytes": 3473132044288,
+    "capacity_bytes": 3998832386048,
+    "logical_bytes": 178068277238,
+    "path": "/root/.cache/huggingface",
+    "used_bytes": 525700341760
+  },
+  "docker": {
+    "build_cache": [
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:13.923988507 +0000 UTC",
+        "id": "qqrzkn19ok362ddo992065rg0",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:13.953731082 +0000 UTC",
+        "size_bytes": 29800000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:13.946971005 +0000 UTC",
+        "id": "y13f0j665bokrvu5snjiwwqn0",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:13.974669856 +0000 UTC",
+        "size_bytes": 16800000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:13.969418842 +0000 UTC",
+        "id": "0klgenhubvpvqjkzwh09sslx6",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:13.995788689 +0000 UTC",
+        "size_bytes": 62100000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:14.805081581 +0000 UTC",
+        "id": "ubl844zbhcyfi2e8eae81hpkf",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:18.12588839 +0000 UTC",
+        "size_bytes": 32400,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:16.75610792 +0000 UTC",
+        "id": "pkym1bz1ja9y3u1ssjec9957l",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:18.127783295 +0000 UTC",
+        "size_bytes": 33800000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:17.05836272 +0000 UTC",
+        "id": "9wcew40u1lz30byekd6ogqq7v",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:18.138284261 +0000 UTC",
+        "size_bytes": 52500,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:13.989594754 +0000 UTC",
+        "id": "uynpeql4lan2nti6otqtrbhdp",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:18.140117876 +0000 UTC",
+        "size_bytes": 249,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:14.768111027 +0000 UTC",
+        "id": "5tk7564v8x4oli6uqjfvm4rje",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:18.144391637 +0000 UTC",
+        "size_bytes": 93,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:14.852752923 +0000 UTC",
+        "id": "wqtutsn4099z5vn3uoz9ntny2",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:18.146215721 +0000 UTC",
+        "size_bytes": 7530000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:16.897031119 +0000 UTC",
+        "id": "pbxpj5507mb9qz1u33046kqsn",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:18.147485715 +0000 UTC",
+        "size_bytes": 169,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:19.260154099 +0000 UTC",
+        "id": "m731t357oc2zgytaajx82s11v",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:19.280918722 +0000 UTC",
+        "size_bytes": 12600000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:19.276575181 +0000 UTC",
+        "id": "mclub8oxdocan4jcoawgusc83",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:19.294779747 +0000 UTC",
+        "size_bytes": 26300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:19.289779894 +0000 UTC",
+        "id": "ex0athguebkku4mcevrtu4cj5",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:19.308844413 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:19.30372708 +0000 UTC",
+        "id": "8r5e7l8xtq65gecm383fuonup",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:19.321469235 +0000 UTC",
+        "size_bytes": 8650,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:19.317261854 +0000 UTC",
+        "id": "jvrna3aplgint39092amzuzrq",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:19.335680661 +0000 UTC",
+        "size_bytes": 61900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:19.33124911 +0000 UTC",
+        "id": "lsw36f2yr319z0fycml46e37i",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:19.349105936 +0000 UTC",
+        "size_bytes": 88300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:19.344256023 +0000 UTC",
+        "id": "jd9k3ptgy2i9vdolu4il0m45x",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:19.362987051 +0000 UTC",
+        "size_bytes": 43900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:19.357828208 +0000 UTC",
+        "id": "4auiax95vaohfqcyucnmv7wq7",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:19.378129419 +0000 UTC",
+        "size_bytes": 4630,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:19.371788643 +0000 UTC",
+        "id": "91ed0crw1l2svovhd66m9d39w",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:19.393716949 +0000 UTC",
+        "size_bytes": 5110,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:20.892516757 +0000 UTC",
+        "id": "s0z0yt2qgu9b9qx7uv54t9go4",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:22.896292932 +0000 UTC",
+        "size_bytes": 61900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-07 20:06:13.957082691 +0000 UTC",
+        "id": "nhq0b9fiy7rqzr4ulzvbt0r8y",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:22.89932009 +0000 UTC",
+        "size_bytes": 6280000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:17.110071082 +0000 UTC",
+        "id": "mqwwqc3ewef4kjzd2pv8nbg7k",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:22.900549363 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:19.387271713 +0000 UTC",
+        "id": "ruo0kxq16w7cxxgp5470vq7f2",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:22.902465418 +0000 UTC",
+        "size_bytes": 116,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-07 20:06:12.830255831 +0000 UTC",
+        "id": "w65am4un89ivp71lnlugt5ktn",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:22.906924099 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:20.925608721 +0000 UTC",
+        "id": "5ifik81af7dxm0edbr0smf7ej",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:22.908814954 +0000 UTC",
+        "size_bytes": 88300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-07 20:06:13.889316408 +0000 UTC",
+        "id": "7yvim3cpj4vpu6dyaz39xw04l",
+        "in_use": false,
+        "last_used_at": "2026-09-07 20:06:22.911960722 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.532297762 +0000 UTC",
+        "id": "z4ttksmk776q3dn30ficlqnqh",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.553635322 +0000 UTC",
+        "size_bytes": 112000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.547188687 +0000 UTC",
+        "id": "uss8mkduue7ewlt8m2d520mnw",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.570577832 +0000 UTC",
+        "size_bytes": 13300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.564424387 +0000 UTC",
+        "id": "qya3jdanmx80awoiws8zc4trt",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.588375173 +0000 UTC",
+        "size_bytes": 57800000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.581734498 +0000 UTC",
+        "id": "eolzcjbrlazvgeyccyv1f9bs3",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.604894632 +0000 UTC",
+        "size_bytes": 249,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.598939518 +0000 UTC",
+        "id": "qbp23jws5dg1r8ult67mik5tj",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.622284033 +0000 UTC",
+        "size_bytes": 75700000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.615803677 +0000 UTC",
+        "id": "q149buwwbixnlqp7unabbowr5",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.638770091 +0000 UTC",
+        "size_bytes": 119000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.632894937 +0000 UTC",
+        "id": "zbecwrfbq4znluz0ap8ip0dv3",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.666622846 +0000 UTC",
+        "size_bytes": 323000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.652762214 +0000 UTC",
+        "id": "m1tcb71g6bb43t15nwdhagyba",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.682182943 +0000 UTC",
+        "size_bytes": 522000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.675973348 +0000 UTC",
+        "id": "ym5tsmzfphcq7rg54c5o72j5a",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.70256979 +0000 UTC",
+        "size_bytes": 419000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.692125486 +0000 UTC",
+        "id": "i1q8citwd4ss97ojze4qg4m2v",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.725632594 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.719386529 +0000 UTC",
+        "id": "8tilrqhqfvfujoeum729ellaq",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.743815816 +0000 UTC",
+        "size_bytes": 90700,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.735721777 +0000 UTC",
+        "id": "uvuh4yydr89rsr1frtz4yrorw",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:15.768098513 +0000 UTC",
+        "size_bytes": 56900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:20.75681404 +0000 UTC",
+        "id": "0yhf5l9g5723vmcaw1cn0li3y",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:21.203265392 +0000 UTC",
+        "size_bytes": 7540000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:15.758839352 +0000 UTC",
+        "id": "w4ne7co3roal7alv5en02bguz",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:53:21.215417741 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 21:53:20.792145122 +0000 UTC",
+        "id": "9asah3b8vqbpont0wu1181765",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:56:20.989539735 +0000 UTC",
+        "size_bytes": 94700,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-07 21:53:14.649849382 +0000 UTC",
+        "id": "178txcyk33aactnayv04h4na2",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:56:20.992633492 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-07 21:53:15.481876885 +0000 UTC",
+        "id": "49pe0dvy3j5ylwcmu1brgv5ac",
+        "in_use": false,
+        "last_used_at": "2026-09-07 21:56:20.995386748 +0000 UTC",
+        "size_bytes": 0,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 20:06:20.958557225 +0000 UTC",
+        "id": "v1qb2rjlbkcp3rxxyqv6c007a",
+        "in_use": false,
+        "last_used_at": "2026-09-07 22:40:25.131657192 +0000 UTC",
+        "size_bytes": 43900000,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 22:40:24.831870682 +0000 UTC",
+        "id": "tmwt0w7g2jizuw5nv57hdl6w9",
+        "in_use": false,
+        "last_used_at": "2026-09-07 22:40:25.140183605 +0000 UTC",
+        "size_bytes": 1200000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-07 22:40:24.196300736 +0000 UTC",
+        "id": "ergk5om4l7bjf261cvlv7utp4",
+        "in_use": false,
+        "last_used_at": "2026-09-07 22:40:43.950906701 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-07 22:40:24.301605147 +0000 UTC",
+        "id": "8kdpagc9aaoqsxvqjcho50hlh",
+        "in_use": false,
+        "last_used_at": "2026-09-07 22:40:43.953774399 +0000 UTC",
+        "size_bytes": 0,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 22:40:24.375591045 +0000 UTC",
+        "id": "uebmqaq6az6ur30qz5udtyr13",
+        "in_use": false,
+        "last_used_at": "2026-09-07 22:40:43.955470653 +0000 UTC",
+        "size_bytes": 156000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-07 22:40:24.342036945 +0000 UTC",
+        "id": "l7dy3fydapumb3bcwdhyor3g5",
+        "in_use": false,
+        "last_used_at": "2026-09-07 22:40:43.958267871 +0000 UTC",
+        "size_bytes": 81900,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 20:32:04.861659973 +0000 UTC",
+        "id": "tvms8rnopduo0msbd6y3lmmsc",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:32:04.880018418 +0000 UTC",
+        "size_bytes": 3840000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 20:32:04.876036554 +0000 UTC",
+        "id": "o9s12a79t0yotj5w4bbmvdwz0",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:32:04.8974694 +0000 UTC",
+        "size_bytes": 409000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 20:32:04.892767953 +0000 UTC",
+        "id": "y6kfx4l440h5x2hr2t81d7uib",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:32:04.909636893 +0000 UTC",
+        "size_bytes": 13500000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 20:32:04.937272411 +0000 UTC",
+        "id": "z3qr9q5brocdqxq9ms164vjdf",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:32:07.778909228 +0000 UTC",
+        "size_bytes": 3440000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 20:32:06.895557815 +0000 UTC",
+        "id": "pcpf63nc10h5fyskndre3df01",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:32:07.780022382 +0000 UTC",
+        "size_bytes": 33299999,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 20:32:06.927700719 +0000 UTC",
+        "id": "bw1epxl0elhtme3eehku6buda",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:32:07.781717928 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 20:32:04.213114403 +0000 UTC",
+        "id": "5m8ccxpel54vzym292xp274qw",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:44:30.267771752 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 20:44:27.520221688 +0000 UTC",
+        "id": "ylopfzz2olyalfbmxnvwvtfab",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:44:30.268877316 +0000 UTC",
+        "size_bytes": 3460000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 20:32:04.821872252 +0000 UTC",
+        "id": "lytw9w5u8plnhrqq86eukabh2",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:44:30.271899926 +0000 UTC",
+        "size_bytes": 0,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 20:44:29.380367385 +0000 UTC",
+        "id": "qle7kjukfqiub9xiyfgenyjp6",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:44:30.273798853 +0000 UTC",
+        "size_bytes": 33400000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 20:44:29.415126098 +0000 UTC",
+        "id": "olzycs240tpd1vxhw6c3m0mtv",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:44:30.274894427 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 20:32:04.866963341 +0000 UTC",
+        "id": "wm6wf2r8m1ibyiq675ko6tsq6",
+        "in_use": false,
+        "last_used_at": "2026-09-08 20:44:30.281117649 +0000 UTC",
+        "size_bytes": 1750000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 21:31:36.862425715 +0000 UTC",
+        "id": "xkuom866chv5ii38d9slkx57z",
+        "in_use": false,
+        "last_used_at": "2026-09-08 21:31:39.760529664 +0000 UTC",
+        "size_bytes": 3470000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 21:31:38.862933901 +0000 UTC",
+        "id": "d566ft855gttyl72s1oi8j86u",
+        "in_use": false,
+        "last_used_at": "2026-09-08 21:31:39.762485081 +0000 UTC",
+        "size_bytes": 33400000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 21:31:38.901119796 +0000 UTC",
+        "id": "7eg7yeiy3mzzmamiqieko95cj",
+        "in_use": false,
+        "last_used_at": "2026-09-08 21:31:39.763576345 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 21:31:39.965762722 +0000 UTC",
+        "id": "rgctze8j8k2qvqyxb729axdyh",
+        "in_use": false,
+        "last_used_at": "2026-09-08 21:31:41.320289507 +0000 UTC",
+        "size_bytes": 3470000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 21:31:40.716669966 +0000 UTC",
+        "id": "rw2nfalns8h0xannavbmtm6wi",
+        "in_use": false,
+        "last_used_at": "2026-09-08 21:31:41.321672912 +0000 UTC",
+        "size_bytes": 19600000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 21:31:36.219074963 +0000 UTC",
+        "id": "7bugehb2od2pxrt9qv9u6yoqd",
+        "in_use": false,
+        "last_used_at": "2026-09-08 21:31:41.32669059 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 21:31:36.809798678 +0000 UTC",
+        "id": "kfkl07xhoj3k9hcqmpsf5cou1",
+        "in_use": false,
+        "last_used_at": "2026-09-08 21:31:41.330915424 +0000 UTC",
+        "size_bytes": 1750000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 21:31:36.767188307 +0000 UTC",
+        "id": "6w4k4d7loldwv8r0yizzulwut",
+        "in_use": false,
+        "last_used_at": "2026-09-08 21:31:41.333825955 +0000 UTC",
+        "size_bytes": 0,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 22:09:19.063390371 +0000 UTC",
+        "id": "69jvgyo516i4japdzq7v5v0q5",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:09:19.882304045 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 22:09:17.054756182 +0000 UTC",
+        "id": "xttqepo21xp681ih0fq1j72pm",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:09:19.892644213 +0000 UTC",
+        "size_bytes": 3490000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 22:09:19.033144731 +0000 UTC",
+        "id": "xjmlpsj88z4al0yc0up7jyb12",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:09:19.893778707 +0000 UTC",
+        "size_bytes": 33600000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 22:09:20.795798024 +0000 UTC",
+        "id": "55e58saobi2hcu6osqzw44s09",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:09:21.394839516 +0000 UTC",
+        "size_bytes": 19700000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 22:09:16.94720142 +0000 UTC",
+        "id": "49d7zi995ytlu89cjybhtrlm5",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:09:21.398972541 +0000 UTC",
+        "size_bytes": 0,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 22:09:16.982096967 +0000 UTC",
+        "id": "nsirznm8hy6i09150ddq2salz",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:09:21.401748752 +0000 UTC",
+        "size_bytes": 1770000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 22:09:16.394149025 +0000 UTC",
+        "id": "l8yqhr5n1uh83kh8v42pa1oek",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:09:21.406230388 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 22:09:20.028863869 +0000 UTC",
+        "id": "p14vyk78nt3vjxh9dg386hcab",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:09:21.407317282 +0000 UTC",
+        "size_bytes": 3490000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 22:18:00.290818079 +0000 UTC",
+        "id": "8djl35yz285uiw3kk5pp8hcas",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:18:01.133505404 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 20:32:04.905618739 +0000 UTC",
+        "id": "1nfdmn819nlrwtcws37j4piq7",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:18:01.142076927 +0000 UTC",
+        "size_bytes": 248,
+        "usage_count": 5
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 22:17:58.25182166 +0000 UTC",
+        "id": "karjll7mp6bkvs1ul99gdc33v",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:18:01.145944721 +0000 UTC",
+        "size_bytes": 3500000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 22:18:00.258856327 +0000 UTC",
+        "id": "k84abkk6m1xsmmy4xlcv3l8bg",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:18:01.147671178 +0000 UTC",
+        "size_bytes": 33600000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-07 22:40:43.711259211 +0000 UTC",
+        "id": "l2ly69g108lnxmw1ne90msr3b",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:18:02.646638026 +0000 UTC",
+        "size_bytes": 1110000,
+        "usage_count": 4
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 22:18:01.296029494 +0000 UTC",
+        "id": "6akrvvdo23d05uys4fatj4gbt",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:18:02.647757071 +0000 UTC",
+        "size_bytes": 3500000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-08 22:18:02.043034914 +0000 UTC",
+        "id": "rxpvew48igpyqmjmndds2759l",
+        "in_use": false,
+        "last_used_at": "2026-09-08 22:18:02.649479837 +0000 UTC",
+        "size_bytes": 19700000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 00:08:31.185855941 +0000 UTC",
+        "id": "miwmo3y2haidl5kg2l9rt5wss",
+        "in_use": false,
+        "last_used_at": "2026-09-09 00:08:32.641730608 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 00:08:31.220012817 +0000 UTC",
+        "id": "cru939q52edb7mbx509nme0ee",
+        "in_use": false,
+        "last_used_at": "2026-09-09 00:08:32.644538907 +0000 UTC",
+        "size_bytes": 0,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 00:08:31.25941508 +0000 UTC",
+        "id": "fuis8zr201zd8fd11zsjgxd19",
+        "in_use": false,
+        "last_used_at": "2026-09-09 00:08:32.647333886 +0000 UTC",
+        "size_bytes": 1770000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 00:08:31.350995184 +0000 UTC",
+        "id": "s9rh6r1bm1fb5js0fpndl12fr",
+        "in_use": false,
+        "last_used_at": "2026-09-09 00:08:32.649060918 +0000 UTC",
+        "size_bytes": 3500000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 00:08:32.068173518 +0000 UTC",
+        "id": "t6q0jf37t3vt8307jg46ris0b",
+        "in_use": false,
+        "last_used_at": "2026-09-09 00:08:32.650167526 +0000 UTC",
+        "size_bytes": 19700000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:35.153210667 +0000 UTC",
+        "id": "1nvrnz7a7au7in4oxbn2qhcht",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:35.174381182 +0000 UTC",
+        "size_bytes": 112000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:35.169130091 +0000 UTC",
+        "id": "yrfu8vuul7ak8rd49v9tezg0x",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:35.187851346 +0000 UTC",
+        "size_bytes": 13300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:35.18384999 +0000 UTC",
+        "id": "zg059shhq1ln99kz8l30tmpze",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:35.205329007 +0000 UTC",
+        "size_bytes": 57800000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:35.19878667 +0000 UTC",
+        "id": "bf94n0zrdjd5eh2ubm1xtbiju",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:35.223770741 +0000 UTC",
+        "size_bytes": 250,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:35.219762375 +0000 UTC",
+        "id": "hw5ykffamyle1vxgpi30aqv2i",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:52.604578063 +0000 UTC",
+        "size_bytes": 75300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:37.185838964 +0000 UTC",
+        "id": "iuhrvoyx3z8v4q19iaa0s8d1h",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:52.605749108 +0000 UTC",
+        "size_bytes": 490000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:44.21765215 +0000 UTC",
+        "id": "8qztajgbdidm5k1ds9bace7v8",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:52.610453307 +0000 UTC",
+        "size_bytes": 52300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:44.396808181 +0000 UTC",
+        "id": "vjuk740ujnuxhe2o3ojt4ganw",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:52.611622852 +0000 UTC",
+        "size_bytes": 60700,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:37.145423412 +0000 UTC",
+        "id": "mvr38y1lpx0vudqysal53am7x",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:52.619496413 +0000 UTC",
+        "size_bytes": 93,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:42.625082605 +0000 UTC",
+        "id": "ov2nl964ic0kjfvxc0ktxgchi",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:52.620679378 +0000 UTC",
+        "size_bytes": 9000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:42.656784452 +0000 UTC",
+        "id": "ol4wmbvw1dzxlopm9unq8jdvf",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:16:52.622423985 +0000 UTC",
+        "size_bytes": 10500,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:22:30.529644467 +0000 UTC",
+        "id": "3ywpfd4hogzmmmh27zm6s7jgo",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:22:32.740886464 +0000 UTC",
+        "size_bytes": 52300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:22:30.726222108 +0000 UTC",
+        "id": "sk6xfwniq8flqfvvnne7bw7a3",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:22:32.742648071 +0000 UTC",
+        "size_bytes": 60700,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:22:29.192302959 +0000 UTC",
+        "id": "xr7iv2wdtorxtoi0yq15r9dju",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:22:32.74992435 +0000 UTC",
+        "size_bytes": 9040000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:22:29.223614766 +0000 UTC",
+        "id": "s83g0l2hjegjqirr8rlc6hlhw",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:22:32.751670457 +0000 UTC",
+        "size_bytes": 10500,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:35:42.957927451 +0000 UTC",
+        "id": "tfvlgfstlfxkwmi1z0b6ky433",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:35:46.645885801 +0000 UTC",
+        "size_bytes": 9040000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:35:42.989947608 +0000 UTC",
+        "id": "n7u6bvl8x4kstfcpjq0kzvzqh",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:35:46.647165685 +0000 UTC",
+        "size_bytes": 10500,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 05:16:34.322541551 +0000 UTC",
+        "id": "u7mr08saqtqhl13e1311u5eok",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:35:46.650119214 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 05:16:35.107265102 +0000 UTC",
+        "id": "fxzouzaficp0d78pok10rbekn",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:35:46.653020332 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 05:16:35.157863085 +0000 UTC",
+        "id": "2y1ydpwperi42sinkm9lux2ge",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:35:46.655921831 +0000 UTC",
+        "size_bytes": 7320000,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:35:44.402116203 +0000 UTC",
+        "id": "9aeeitcj7dkcgib3295jb76id",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:35:46.657670976 +0000 UTC",
+        "size_bytes": 52300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:35:44.630488963 +0000 UTC",
+        "id": "q3pr95nkye6dd8mcqhjvy7gf0",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:35:46.65882378 +0000 UTC",
+        "size_bytes": 60700,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 05:16:42.548492956 +0000 UTC",
+        "id": "le1xbkkbc0eudh5xf9cw4mvhg",
+        "in_use": false,
+        "last_used_at": "2026-09-09 05:35:46.661920729 +0000 UTC",
+        "size_bytes": 450000000,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 07:00:55.142520136 +0000 UTC",
+        "id": "kmji9jfcchprsbiw5ikrrxgg3",
+        "in_use": false,
+        "last_used_at": "2026-09-09 07:00:56.647681791 +0000 UTC",
+        "size_bytes": 37400000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 07:00:55.290959316 +0000 UTC",
+        "id": "zjj1mb5wd73iusopyacyw2lms",
+        "in_use": false,
+        "last_used_at": "2026-09-09 07:00:56.648879697 +0000 UTC",
+        "size_bytes": 172,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 07:00:51.856812775 +0000 UTC",
+        "id": "yiqbxo5oe61l2htu2pdxy2h9d",
+        "in_use": false,
+        "last_used_at": "2026-09-09 07:00:56.652069132 +0000 UTC",
+        "size_bytes": 8189,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 07:00:52.412880529 +0000 UTC",
+        "id": "pwezvd1bn5jlbqd3fwr2h8e03",
+        "in_use": false,
+        "last_used_at": "2026-09-09 07:00:56.655086966 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 07:00:55.48976296 +0000 UTC",
+        "id": "d3bp1xwlp02arp8rz7i9ehp1i",
+        "in_use": false,
+        "last_used_at": "2026-09-09 07:00:56.656967324 +0000 UTC",
+        "size_bytes": 52500,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 07:00:52.606814661 +0000 UTC",
+        "id": "l9uozwol0gc8zu8l722hlt6s8",
+        "in_use": false,
+        "last_used_at": "2026-09-09 07:00:56.65827826 +0000 UTC",
+        "size_bytes": 24200000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 07:00:52.448742406 +0000 UTC",
+        "id": "9a5vua96c6zj719penzj8vori",
+        "in_use": false,
+        "last_used_at": "2026-09-09 07:00:56.661377605 +0000 UTC",
+        "size_bytes": 18600000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 07:00:52.546792922 +0000 UTC",
+        "id": "xpyf9w19qxryfyz5vak32bg0c",
+        "in_use": false,
+        "last_used_at": "2026-09-09 07:00:56.663227914 +0000 UTC",
+        "size_bytes": 37400,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 07:00:55.535178981 +0000 UTC",
+        "id": "x7gytxhb2jowvkapw224v1wod",
+        "in_use": false,
+        "last_used_at": "2026-09-09 07:00:56.664504639 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 22:17:58.164272756 +0000 UTC",
+        "id": "nn2286315l3uob5v0emcmi29h",
+        "in_use": false,
+        "last_used_at": "2026-09-09 09:45:46.039609703 +0000 UTC",
+        "size_bytes": 1770000,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 09:45:43.203801017 +0000 UTC",
+        "id": "crq3ivzg8uyigm916xa4abuzt",
+        "in_use": false,
+        "last_used_at": "2026-09-09 09:45:46.041299849 +0000 UTC",
+        "size_bytes": 3500000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 09:45:45.157791422 +0000 UTC",
+        "id": "5bo4ogxsudxrwowrqswha9x80",
+        "in_use": false,
+        "last_used_at": "2026-09-09 09:45:46.042379013 +0000 UTC",
+        "size_bytes": 33600000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 09:45:45.189165575 +0000 UTC",
+        "id": "xczylnkliq8agu46kkrhai361",
+        "in_use": false,
+        "last_used_at": "2026-09-09 09:45:46.044075258 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 22:17:58.094929052 +0000 UTC",
+        "id": "er50ss3foi3y46yhxkz5b3quq",
+        "in_use": false,
+        "last_used_at": "2026-09-09 09:45:46.048061531 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 22:17:58.129451923 +0000 UTC",
+        "id": "lrpvga6tudj1uo4ruh33iry4p",
+        "in_use": false,
+        "last_used_at": "2026-09-09 09:45:46.05085148 +0000 UTC",
+        "size_bytes": 0,
+        "usage_count": 3
+      }
+    ],
+    "containers": [
+      {
+        "container_id": "5d1756d36faec0eb2be1c45a1bcd6299fd1ae1a955996451d4a5476d09241f1c",
+        "created_at": "2026-09-09 10:37:39 +0000 UTC",
+        "image_id": null,
+        "image_reference": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+        "name": "sglang-glm53-ormandj-sm120-393k-primary",
+        "state": "running",
+        "status": "Up 7 minutes"
+      },
+      {
+        "container_id": "4e4212f3011f981a72ccb420a097e742a04fef17d11aeaf44ad67a697c38b514",
+        "created_at": "2026-09-09 09:52:05 +0000 UTC",
+        "image_id": null,
+        "image_reference": "grafana/alloy@sha256:b8ec653c44235fbe910879145dac3597d66b0aaecf60bcbbe82580767771a839",
+        "name": "fakoli-observability-alloy-1",
+        "state": "running",
+        "status": "Up 50 minutes"
+      },
+      {
+        "container_id": "de0974313c69c54955306204d1201cbf9d57c0d779f71b6f39016763d20e7872",
+        "created_at": "2026-09-09 09:51:55 +0000 UTC",
+        "image_id": null,
+        "image_reference": "grafana/grafana@sha256:f772d434e8fab0049deb2b1b30abd43342bcfca1537614aa8d36080232cf4283",
+        "name": "fakoli-observability-grafana-1",
+        "state": "running",
+        "status": "Up 53 minutes"
+      },
+      {
+        "container_id": "af4f7ca50bc13577d07a91656de5b509dcdbe71412d40487a8141d976d69a875",
+        "created_at": "2026-09-09 09:51:55 +0000 UTC",
+        "image_id": null,
+        "image_reference": "python@sha256:b165067c5afc37fa5608a3c05609cc3d51aafd808a30fbfd822ee594fef55ad4",
+        "name": "fakoli-observability-docker-log-proxy-1",
+        "state": "running",
+        "status": "Up 53 minutes"
+      },
+      {
+        "container_id": "d020fcb761367d85afdf15b0c1cf360268d7192745cdfad6c3f682c061f773c9",
+        "created_at": "2026-09-09 09:51:55 +0000 UTC",
+        "image_id": null,
+        "image_reference": "grafana/loki@sha256:d70e4659623f3e109af669cae76fe2a5dd5be54e2298fe8aed380d982fbc2500",
+        "name": "fakoli-observability-loki-1",
+        "state": "running",
+        "status": "Up 50 minutes"
+      },
+      {
+        "container_id": "5639709f71c2ce19cfea127d93ae80a89a219d29de7442df2bf598e6683a86df",
+        "created_at": "2026-09-09 09:51:55 +0000 UTC",
+        "image_id": null,
+        "image_reference": "prom/prometheus@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0",
+        "name": "fakoli-observability-prometheus-1",
+        "state": "running",
+        "status": "Up 53 minutes"
+      },
+      {
+        "container_id": "b8c7ab6cd15235e0071e8109e8e07efe2e3ca09730aaf5061a87b29eb669ce9c",
+        "created_at": "2026-09-09 09:47:08 +0000 UTC",
+        "image_id": null,
+        "image_reference": "anvil-observatory:wheel-fef029cf342f",
+        "name": "anvil-observatory",
+        "state": "running",
+        "status": "Up 57 minutes (healthy)"
+      },
+      {
+        "container_id": "95011c759f7835dd95e6bba159efd7ccac0957c7d9bbc3c353f27d35d9e89bcd",
+        "created_at": "2026-09-09 07:01:18 +0000 UTC",
+        "image_id": null,
+        "image_reference": "anvil-serving:1.0.0-81dfc4fa-linux",
+        "name": "anvil-router",
+        "state": "running",
+        "status": "Up 2 hours (healthy)"
+      },
+      {
+        "container_id": "2b45e60beb526e6a432b444b622ee239ed625941a6ac2f276d46eb4b02e61242",
+        "created_at": "2026-09-08 22:19:08 +0000 UTC",
+        "image_id": null,
+        "image_reference": "anvil-serving-controller:observatory-f5efd045b7ab",
+        "name": "anvil-serving-controller",
+        "state": "running",
+        "status": "Up 2 hours (healthy)"
+      },
+      {
+        "container_id": "d46b33b68130849fc11750fa4bb442d14045483c9b271a167d1a17194d0d317f",
+        "created_at": "2026-09-08 22:07:42 +0000 UTC",
+        "image_id": null,
+        "image_reference": "python@sha256:b165067c5afc37fa5608a3c05609cc3d51aafd808a30fbfd822ee594fef55ad4",
+        "name": "fakoli-observability-observer-1",
+        "state": "running",
+        "status": "Up 2 hours"
+      },
+      {
+        "container_id": "0f4cce671f2ea19bce61dcbdd98b49884545da6966432699c3a30897f02df0e5",
+        "created_at": "2026-09-08 08:57:07 +0000 UTC",
+        "image_id": null,
+        "image_reference": "utkuozdemir/nvidia_gpu_exporter@sha256:7aee2d42836ad29d4adb2722b7cfdc806ec9cc8d45fd0b8971ebbad2d9f3d087",
+        "name": "fakoli-observability-gpu-exporter-1",
+        "state": "running",
+        "status": "Up 2 hours"
+      },
+      {
+        "container_id": "4880e5f7645435ac15b39fbc5ba9e28d9f4da93f01329b3e8352caaa8755ba42",
+        "created_at": "2026-09-08 08:57:07 +0000 UTC",
+        "image_id": null,
+        "image_reference": "quay.io/prometheus/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0",
+        "name": "fakoli-observability-node-exporter-1",
+        "state": "running",
+        "status": "Up 2 hours"
+      },
+      {
+        "container_id": "36816142e155a68d0e0f72a3330a66d68756cf7dd421dccf5a5f641f7473a82d",
+        "created_at": "2026-09-07 22:40:44 +0000 UTC",
+        "image_id": null,
+        "image_reference": "anvil-serving-controller:1.0.0-8fecf386-linux-events022",
+        "name": "anvil-open-webui-readonly-controller",
+        "state": "running",
+        "status": "Up 2 hours (healthy)"
+      },
+      {
+        "container_id": "4c2bd2dc1c72e56fa5677baaa5a61798b179ae47fc0ee6eb5b34526f36aaa721",
+        "created_at": "2026-09-07 22:05:29 +0000 UTC",
+        "image_id": null,
+        "image_reference": "nats@sha256:e4bf19f15fd3218814a4e3c9e0064e1334bd8aa20d5984b9f1a0afd084f8cc00",
+        "name": "anvil-events-fleet-nats-1",
+        "state": "running",
+        "status": "Up 2 hours (healthy)"
+      },
+      {
+        "container_id": "26f111aaee22b0ee8e488c05c7c334eb5e2b07815972035afbe51f2e20014552",
+        "created_at": "2026-09-07 21:56:27 +0000 UTC",
+        "image_id": null,
+        "image_reference": "anvil-serving-controller:1.0.0-8fecf386-linux",
+        "name": "anvil-media-controller",
+        "state": "running",
+        "status": "Up 2 hours (healthy)"
+      },
+      {
+        "container_id": "390b23ca2c25e726127e744dbddfe5a9d85335b50063e924d11471427c8dd1fb",
+        "created_at": "2026-09-07 21:56:21 +0000 UTC",
+        "image_id": null,
+        "image_reference": "ghcr.io/open-webui/open-terminal@sha256:3af1a1aab49d653d357a5176c9862af0111ccf4b8b3a5f2bbdef109f196aeca7",
+        "name": "anvil-open-webui-key-init",
+        "state": "exited",
+        "status": "Exited (0) 37 hours ago"
+      },
+      {
+        "container_id": "b2ebd85f876cb2965875786f87769d558667fc666617cea4493ab051c2531d23",
+        "created_at": "2026-09-07 21:54:23 +0000 UTC",
+        "image_id": null,
+        "image_reference": "sha256:850f58bd038fca955889c093ae95860a67a44fa67e505ab67b814c38508112aa",
+        "name": "anvil-open-webui-tools",
+        "state": "running",
+        "status": "Up 2 hours (healthy)"
+      },
+      {
+        "container_id": "85a20417aaad4d62b838709e2b89d088484b0e84d4cb694f08db7f78ec22b2cb",
+        "created_at": "2026-09-07 21:54:23 +0000 UTC",
+        "image_id": null,
+        "image_reference": "ghcr.io/open-webui/open-webui@sha256:6a773e5c3a246b65cbe74ce942b294292c0e5f81c138f703d111bc162f7d7c3d",
+        "name": "anvil-open-webui",
+        "state": "running",
+        "status": "Up 2 hours (healthy)"
+      },
+      {
+        "container_id": "568fe6f09673efa96eaf26c18db131531b6f400dba98200cbdcead9ac1c30c4b",
+        "created_at": "2026-09-07 21:54:23 +0000 UTC",
+        "image_id": null,
+        "image_reference": "ghcr.io/open-webui/open-terminal@sha256:3af1a1aab49d653d357a5176c9862af0111ccf4b8b3a5f2bbdef109f196aeca7",
+        "name": "anvil-open-terminal",
+        "state": "running",
+        "status": "Up 2 hours (healthy)"
+      },
+      {
+        "container_id": "91acd9809ad56300c3ad1c68c525ffde835c627d19300f72bfc0546cee1e178c",
+        "created_at": "2026-09-07 21:54:23 +0000 UTC",
+        "image_id": null,
+        "image_reference": "docker.io/searxng/searxng@sha256:ec536bcd1e83577aad4cc07f7ecb9a30858a9a905d2d57c8796abc83f872a036",
+        "name": "anvil-open-webui-searxng",
+        "state": "running",
+        "status": "Up 2 hours (healthy)"
+      }
+    ],
+    "images": [
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-09-09 09:45:45 +0000 UTC",
+        "image_id": "sha256:b680aa74440e47f76a5b7dd80df630fa17b8a45c215ecaf65a1e70bd87c66390",
+        "last_container_observed_at": "2026-09-09 09:47:08 +0000 UTC",
+        "reference": "anvil-observatory:wheel-fef029cf342f",
+        "shared_bytes": 70890000,
+        "size_bytes": 108000000,
+        "unique_bytes": 37130000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-09-09 07:00:55 +0000 UTC",
+        "image_id": "sha256:14be881d1adeecf7ad80438ca0d1507b084abe0d34dbedc36f762863b155c8d2",
+        "last_container_observed_at": "2026-09-09 07:01:18 +0000 UTC",
+        "reference": "anvil-serving:1.0.0-81dfc4fa-linux",
+        "shared_bytes": 194700000,
+        "size_bytes": 256000000,
+        "unique_bytes": 61620000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-09 00:08:32 +0000 UTC",
+        "image_id": "sha256:c27a5de8dc23d40a39447dbe14b4fef412e2d5682b4240d9cd24f02c588bd162",
+        "last_container_observed_at": null,
+        "reference": "anvil-serving:1.0.0-b2667ed1-linux",
+        "shared_bytes": 236100000,
+        "size_bytes": 259000000,
+        "unique_bytes": 23220000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-09-08 22:18:02 +0000 UTC",
+        "image_id": "sha256:f347671fddcc1e3db701dcb9f91dace214090d9068fc8d5440b15a820e3d9759",
+        "last_container_observed_at": "2026-09-08 22:19:08 +0000 UTC",
+        "reference": "anvil-serving-controller:observatory-f5efd045b7ab",
+        "shared_bytes": 431500000,
+        "size_bytes": 455000000,
+        "unique_bytes": 23210000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-08 22:18:00 +0000 UTC",
+        "image_id": "sha256:c360dc0d47ed5c3a0d725fbd3f2b895486a2e488b70a6dc7c111ae0b2e8d1f11",
+        "last_container_observed_at": null,
+        "reference": "anvil-observatory:wheel-f5efd045b7ab",
+        "shared_bytes": 70890000,
+        "size_bytes": 108000000,
+        "unique_bytes": 37070000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-08 22:09:20 +0000 UTC",
+        "image_id": "sha256:81145f2cca1aef28ed052fedcd5f65db92f40a3333cc8ec0656665cd67a52322",
+        "last_container_observed_at": null,
+        "reference": "anvil-serving-controller:observatory-f84ee0e7ab3c",
+        "shared_bytes": 431500000,
+        "size_bytes": 455000000,
+        "unique_bytes": 23200000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-08 22:09:19 +0000 UTC",
+        "image_id": "sha256:4b56ad960633c6c74438ad2cb61b70097faba9c4a445b4ddb5b2163b27afdc74",
+        "last_container_observed_at": null,
+        "reference": "anvil-observatory:wheel-f84ee0e7ab3c",
+        "shared_bytes": 70890000,
+        "size_bytes": 108000000,
+        "unique_bytes": 37070000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-08 21:31:40 +0000 UTC",
+        "image_id": "sha256:2ac25d2c16751e3752d92f44584d433326dc33d0a1a9113d427971775697b680",
+        "last_container_observed_at": null,
+        "reference": "anvil-serving-controller:observatory-37c1d57e01c4",
+        "shared_bytes": 431500000,
+        "size_bytes": 454000000,
+        "unique_bytes": 23030000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-08 21:31:38 +0000 UTC",
+        "image_id": "sha256:886b8e6457eda955bbf89904c5849ba16a25c4992bb99ef04715d2fc7d06652f",
+        "last_container_observed_at": null,
+        "reference": "anvil-observatory:wheel-37c1d57e01c4",
+        "shared_bytes": 70890000,
+        "size_bytes": 108000000,
+        "unique_bytes": 36900000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-08 20:44:29 +0000 UTC",
+        "image_id": "sha256:512c95db034c9566ac1b223999b07736febdb5606554d62927b90fc7cdb93f8f",
+        "last_container_observed_at": null,
+        "reference": "anvil-observatory:wheel-fb135d39bc2d",
+        "shared_bytes": 70890000,
+        "size_bytes": 108000000,
+        "unique_bytes": 36800000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-08 20:32:06 +0000 UTC",
+        "image_id": "sha256:aa2d085d0ce6074525a438d72987f141cdd6cbd15c200f4637e32efb93a9cabc",
+        "last_container_observed_at": null,
+        "reference": "anvil-observatory:wheel-a6618179da50",
+        "shared_bytes": 70890000,
+        "size_bytes": 108000000,
+        "unique_bytes": 36720000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-09-07 22:40:43 +0000 UTC",
+        "image_id": "sha256:6fc0c848c83a298ca7394fc1f25a2966236fb8d13f140ac73db89ff24d9be888",
+        "last_container_observed_at": "2026-09-07 22:40:44 +0000 UTC",
+        "reference": "anvil-serving-controller:1.0.0-8fecf386-linux-events022",
+        "shared_bytes": 431500000,
+        "size_bytes": 431000000,
+        "unique_bytes": 16680
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-09-07 21:53:20 +0000 UTC",
+        "image_id": "sha256:a27e2ddb646953566bc421f217bc3f32199edfecb5f459a9fcd6c017875e3791",
+        "last_container_observed_at": null,
+        "reference": "anvil-open-webui-mcpo:1.0.0-8fecf386-linux",
+        "shared_bytes": 34,
+        "size_bytes": 766000000,
+        "unique_bytes": 766200000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-09-07 20:06:20 +0000 UTC",
+        "image_id": "sha256:01f6690b39820530009371184c741d32a3365dfcc4977e92e32e229e0bd7016a",
+        "last_container_observed_at": "2026-09-07 21:56:27 +0000 UTC",
+        "reference": "anvil-serving-controller:1.0.0-8fecf386-linux",
+        "shared_bytes": 430200000,
+        "size_bytes": 430000000,
+        "unique_bytes": 16149
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-07 20:06:17 +0000 UTC",
+        "image_id": "sha256:4a38c3123adf933b35b2dcf09f49b2ab0e9910854b4605c7fb12fddc96184c8b",
+        "last_container_observed_at": null,
+        "reference": "anvil-serving:1.0.0-8fecf386-linux",
+        "shared_bytes": 236100000,
+        "size_bytes": 236000000,
+        "unique_bytes": 13960
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-07 05:22:06 +0000 UTC",
+        "image_id": "sha256:254eebf919e8b7b0d530d97fccc606c36f380ff6724d64bc190951bec1aee838",
+        "last_container_observed_at": null,
+        "reference": "vllm/vllm-openai:nightly",
+        "shared_bytes": 32,
+        "size_bytes": 30500000000,
+        "unique_bytes": 30450000000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-09-02 21:54:09 +0000 UTC",
+        "image_id": "sha256:7aee2d42836ad29d4adb2722b7cfdc806ec9cc8d45fd0b8971ebbad2d9f3d087",
+        "last_container_observed_at": null,
+        "reference": "utkuozdemir/nvidia_gpu_exporter:1.15.1",
+        "shared_bytes": 5039000,
+        "size_bytes": 44500000,
+        "unique_bytes": 39460000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-09-02 02:52:36 +0000 UTC",
+        "image_id": "sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 32,
+        "size_bytes": 49600000000,
+        "unique_bytes": 49590000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-09-01 00:12:40 +0000 UTC",
+        "image_id": "sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea",
+        "last_container_observed_at": null,
+        "reference": "python:3.12-slim",
+        "shared_bytes": 115800000,
+        "size_bytes": 187000000,
+        "unique_bytes": 71670000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-08-28 16:39:41 +0000 UTC",
+        "image_id": "sha256:f772d434e8fab0049deb2b1b30abd43342bcfca1537614aa8d36080232cf4283",
+        "last_container_observed_at": null,
+        "reference": "grafana/grafana:13.2.1",
+        "shared_bytes": 32,
+        "size_bytes": 1900000000,
+        "unique_bytes": 1905000000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-08-27 19:20:03 +0000 UTC",
+        "image_id": "sha256:d70e4659623f3e109af669cae76fe2a5dd5be54e2298fe8aed380d982fbc2500",
+        "last_container_observed_at": null,
+        "reference": "grafana/loki:3.7.7",
+        "shared_bytes": 5039000,
+        "size_bytes": 207000000,
+        "unique_bytes": 201600000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-08-26 20:45:41 +0000 UTC",
+        "image_id": "sha256:b8ec653c44235fbe910879145dac3597d66b0aaecf60bcbbe82580767771a839",
+        "last_container_observed_at": null,
+        "reference": "grafana/alloy:v1.19.2",
+        "shared_bytes": 2,
+        "size_bytes": 897000000,
+        "unique_bytes": 897400000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-08-18 07:38:26 +0000 UTC",
+        "image_id": "sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0",
+        "last_container_observed_at": null,
+        "reference": "prom/prometheus:v3.14.0",
+        "shared_bytes": 0,
+        "size_bytes": 372000000,
+        "unique_bytes": 371700000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-08-01 03:15:19 +0000 UTC",
+        "image_id": "sha256:ec536bcd1e83577aad4cc07f7ecb9a30858a9a905d2d57c8796abc83f872a036",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 0,
+        "size_bytes": 374000000,
+        "unique_bytes": 374100000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-07-27 10:51:11 +0000 UTC",
+        "image_id": "sha256:6a773e5c3a246b65cbe74ce942b294292c0e5f81c138f703d111bc162f7d7c3d",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 32,
+        "size_bytes": 7140000000,
+        "unique_bytes": 7136000000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-07-14 12:11:16 +0000 UTC",
+        "image_id": "sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0",
+        "last_container_observed_at": null,
+        "reference": "quay.io/prometheus/node-exporter:v1.12.1",
+        "shared_bytes": 0,
+        "size_bytes": 40900000,
+        "unique_bytes": 40860000
+      },
+      {
+        "attached_container_count": 2,
+        "created_at": "2026-06-22 22:10:22 +0000 UTC",
+        "image_id": "sha256:3af1a1aab49d653d357a5176c9862af0111ccf4b8b3a5f2bbdef109f196aeca7",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 32,
+        "size_bytes": 5130000000,
+        "unique_bytes": 5133000000
+      },
+      {
+        "attached_container_count": 2,
+        "created_at": "2026-06-22 20:04:46 +0000 UTC",
+        "image_id": "sha256:b165067c5afc37fa5608a3c05609cc3d51aafd808a30fbfd822ee594fef55ad4",
+        "last_container_observed_at": null,
+        "reference": "python:3.14.6-alpine3.23",
+        "shared_bytes": 70890000,
+        "size_bytes": 71500000,
+        "unique_bytes": 626800
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-04-28 00:10:45 +0000 UTC",
+        "image_id": "sha256:e4bf19f15fd3218814a4e3c9e0064e1334bd8aa20d5984b9f1a0afd084f8cc00",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 0,
+        "size_bytes": 38900000,
+        "unique_bytes": 38880000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-03-21 02:19:08 +0000 UTC",
+        "image_id": "sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 0,
+        "size_bytes": 76100000,
+        "unique_bytes": 76120000
+      }
+    ],
+    "usage_caveat": "Image last_container_observed_at is derived from retained container creation metadata, not a complete execution history. Docker's reclaimable-volume label does not establish that a volume is disposable.",
+    "volumes": []
+  },
+  "inspector_image": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+  "observed_at": "2026-09-09T10:45:23.857772Z",
+  "repositories": [
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-09-07T22:04:06.617134Z",
+      "logical_bytes": 178061085084,
+      "refs": {},
+      "repo_id": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO",
+      "snapshots": [
+        "c3cbb9891b67c741bcbf6b176dd7af9265b069db"
+      ]
+    }
+  ],
+  "schema_version": "model-cache-inventory/v1",
+  "timestamp_caveat": "Cache modification timestamps describe local filesystem changes; they do not prove when a model was last served or benchmarked.",
+  "volume": "vllm-hfcache"
+}

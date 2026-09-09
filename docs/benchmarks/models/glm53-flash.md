@@ -351,6 +351,7 @@ The 524K EXL3/DFlash2 profile is the immediate same-model rollback, and the
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-09-09 | Native NCCL P2P transport A/B | User-authorized native default retains P2P enabled after direct/routed gates and bounded 4K n12/120K n3 latency evidence; both 380K strict-output cells and the raw PowerShell diagnostic marker failure remain explicit; [finding](../../findings/2026-09-09-glm53-native-nccl-p2p.md) |
 | 2026-09-08 | Native Linux versus retained WSL on the same dual-card GLM image/model | C1/n3 historical-style decode +20.5–33.0%; bounded quality and SWE smoke pass, extended context 128/150 (9 empty, 13 incorrect), strict-output/canary and routed failures retained; whole-stack comparison, `no-promotion`; [finding](../../findings/2026-09-08-glm53-linux-wsl-comparison.md) |
 | 2026-09-03 | Cross-run scheduler, KV-capacity, and measured-concurrency reconciliation | Current SGLang remains qualified at 393K/C1; corrected 524K rollback retains measured C2 at 206,630 prompt tokens/request; historical BrandonMusic C16 is short-request evidence, not full-window concurrency; [interpretation and artifact links](../../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md) |
 | 2026-09-02 | Isolated-worker SWE-bench Verified smoke and harness fix-forward | Fixed `django__django-11099` attempted 1/1, officially graded 1/1, and resolved 1/1 through 11 routed requests; one-instance smoke only; [finding and sanitized evidence](../../findings/2026-09-02-glm53-sglang-sm120-swe-smoke.md) |

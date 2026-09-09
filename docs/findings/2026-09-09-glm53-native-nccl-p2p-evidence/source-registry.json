@@ -1,0 +1,27 @@
+{
+  "schema": "benchmark-source-registry/v1",
+  "observed_at": "2026-09-09T10:47:15.364693+00:00",
+  "sources": [
+    {
+      "url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html#nccl-p2p-disable",
+      "type": "official documentation",
+      "observed_date": "2026-09-09",
+      "age_class": "current documentation",
+      "decision_impact": "NCCL_P2P_DISABLE=1 disables P2P; candidate sets0 without forced P2P_LEVEL. Runtime2.30.7 measured separately."
+    },
+    {
+      "url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting/gpu_troubleshooting.html",
+      "type": "official documentation",
+      "observed_date": "2026-09-09",
+      "age_class": "current documentation",
+      "decision_impact": "Bare-metal translated IOMMU PCIe P2P unsupported; qualify on active amd_iommu=off host."
+    },
+    {
+      "url": "https://github.com/ormandj/sglang-glm53-flash-sm120/tree/a547c90c74f1363920287eb80adc88a16d1e7005",
+      "type": "pinned runtime source",
+      "observed_date": "2026-09-09",
+      "age_class": "exact local accepted runtime pin",
+      "decision_impact": "Retain runtime pin, patches and serving controls."
+    }
+  ]
+}
