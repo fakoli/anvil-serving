@@ -397,7 +397,15 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         "clients": {name: _abs_path(client_env_raw[name], "$.environment_files.clients." + name) for name in sorted(client_env_raw)},
     }
 
-    caddy_raw = _mapping(raw["caddy"], "$.caddy", {"service_name", "tls"})
+    caddy_fields = {"service_name", "tls"}
+    if isinstance(raw["caddy"], dict) and "listen" in raw["caddy"]:
+        caddy_fields.add("listen")
+    caddy_raw = _mapping(raw["caddy"], "$.caddy", caddy_fields)
+    caddy_listen = caddy_raw.get("listen", ":443")
+    if caddy_listen != ":443":
+        caddy_listen = _loopback(caddy_listen, "$.caddy.listen")
+        if caddy_listen in all_listens:
+            raise _error("$.caddy.listen", "must not reuse a native listener")
     tls_raw = _mapping(caddy_raw["tls"], "$.caddy.tls", {"mode", "certificate_file", "key_file"})
     tls_mode = tls_raw["mode"]
     if tls_mode not in {"acme", "provided"}:
@@ -408,10 +416,15 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         certificate_file, key_file = _secret_file(certificate_file, "$.caddy.tls.certificate_file"), _secret_file(key_file, "$.caddy.tls.key_file")
     elif certificate_file != "" or key_file != "":
         raise _error("$.caddy.tls", "ACME mode may not name certificate files")
+    if caddy_listen != ":443" and tls_mode != "provided":
+        raise _error("$.caddy.tls", "a loopback edge requires provided TLS certificates")
     caddy_name = _ident(caddy_raw["service_name"], "$.caddy.service_name")
     if caddy_name != "anvil-connect-caddy":
         raise _error("$.caddy.service_name", "must equal anvil-connect-caddy")
     caddy = {"service_name": caddy_name, "tls": {"mode": tls_mode, "certificate_file": certificate_file, "key_file": key_file}}
+    # Preserve existing canonical generations when the optional field is absent.
+    if "listen" in caddy_raw:
+        caddy["listen"] = caddy_listen
 
     authelia_raw = _mapping(raw["authelia"], "$.authelia", {"service_name", "host", "listen", "state_directory", "users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file"})
     authelia = {key: _secret_file(authelia_raw[key], "$.authelia." + key) for key in ("users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file")}
@@ -422,7 +435,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     all_hosts = {gateway["control_host"], gateway["tunnel_host"], *(r["rule"]["host"] for r in gateway["gateway"]["resources"])}
     if authelia["host"] in all_hosts:
         raise _error("$.authelia.host", "must be distinct from public resource, control, and tunnel hosts")
-    if authelia["listen"] in all_listens:
+    if authelia["listen"] in all_listens or authelia["listen"] == caddy_listen:
         raise _error("$.authelia.listen", "must not reuse a native listener")
     issuer_host = gateway["oidc"]["issuer"].removeprefix("https://")
     if issuer_host != authelia["host"]:

@@ -12,8 +12,7 @@ import os
 import stat
 from typing import Any
 
-from .config import read_manifest
-from ..observability.dashboard.contracts import strict_json
+from .config import _json_load, read_manifest
 
 _MAX_OBSERVATORY_CONFIG = 262_144
 
@@ -45,7 +44,7 @@ def _read_observatory_config(path: str | Path) -> dict[str, Any]:
     finally:
         os.close(descriptor)
     try:
-        config = strict_json(raw)
+        config = _json_load(raw.decode("utf-8"))
     except Exception as exc:
         raise MigrationError("Observatory configuration is invalid") from exc
     required = {"schema", "origin", "base_path", "users", "authentication", "inventory", "prometheus_url", "state_path"}

@@ -101,11 +101,17 @@ def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
         tls["certificates"] = {"load_files": [{"certificate": manifest["caddy"]["tls"]["certificate_file"], "key": manifest["caddy"]["tls"]["key_file"]}]}
     else:
         tls["automation"] = {"policies": [{"subjects": sorted(hosts), "issuers": [{"module": "acme"}]}]}
-    server: dict[str, Any] = {"listen": [":443"], "routes": routes}
+    edge_listen = manifest["caddy"].get("listen", ":443")
+    server: dict[str, Any] = {"listen": [edge_listen], "routes": routes}
     if manifest["caddy"]["tls"]["mode"] == "provided":
         # A supplied certificate need not cover control/tunnel/API hosts. Do
         # not let their route matchers trigger an unrelated ACME transaction.
         server["automatic_https"] = {"disable_certificates": True}
+        if edge_listen != ":443":
+            # Tunnel origins use only this explicit HTTPS listener: no implicit
+            # port-80 redirect listener, and TLS even on a nonstandard port.
+            server["automatic_https"]["disable_redirects"] = True
+            server["tls_connection_policies"] = [{}]
     return {"admin": {"disabled": True}, "apps": {"http": {"servers": {"anvil_connect": server}}, "tls": tls}}
 
 
@@ -154,7 +160,7 @@ def render(manifest: dict[str, Any]) -> dict[str, Any]:
         "caddy.json": _json(_caddy(data)),
         "authelia/configuration.yml": _authelia(data),
         "systemd/anvil-connect-gateway.service": _unit("Anvil Connect gateway", [data["binary"], "gateway", "--config", data["config_root"] + "/gateway.json"], data["service_user"], environment_file=data["environment_files"]["gateway"]),
-        "systemd/anvil-connect-caddy.service": _unit("Anvil Connect Caddy", [data["components"]["caddy"], "run", "--config", data["config_root"] + "/caddy.json"], data["service_user"], bind_public_tls=True),
+        "systemd/anvil-connect-caddy.service": _unit("Anvil Connect Caddy", [data["components"]["caddy"], "run", "--config", data["config_root"] + "/caddy.json"], data["service_user"], bind_public_tls=int(data["caddy"].get("listen", ":443").rsplit(":", 1)[1]) < 1024),
         "systemd/anvil-connect-authelia.service": _unit("Anvil Connect Authelia", [data["components"]["authelia"], "--config", data["config_root"] + "/authelia/configuration.yml", "--config.experimental.filters", "template"], data["service_user"]),
     }
     for connector in data["connectors"]:
