@@ -14,6 +14,7 @@ import (
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/origin"
+	"github.com/fakoli/anvil-serving/connect/internal/testidentity"
 	"github.com/fakoli/anvil-serving/connect/internal/testpki"
 )
 
@@ -33,6 +34,8 @@ func declaration(t *testing.T) config.Gateway {
 
 func TestDispatchHasFixedTargetAndVerifiedInnerTLS(t *testing.T) {
 	ca := testpki.New(t)
+	g := declaration(t)
+	authority := testidentity.New(t, g, ca)
 	var calls atomic.Int32
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
@@ -44,13 +47,12 @@ func TestDispatchHasFixedTargetAndVerifiedInnerTLS(t *testing.T) {
 		}
 		_, _ = io.WriteString(w, "authenticated connector")
 	}))
-	server.TLS = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{ca.Leaf(t, ConnectorPeer("origin-a"), false)}, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: ca.Roots}
+	server.TLS = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{authority.Certificates["router"]}, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: ca.Roots}
 	server.EnableHTTP2 = true
 	server.StartTLS()
 	defer server.Close()
-	g := declaration(t)
 	g.Resources[0].TunnelAddress = server.Listener.Addr().String()
-	d, err := NewDispatcher(g, ca.Roots, ca.Leaf(t, GatewayPeer, true))
+	d, err := NewDispatcher(g, ca.Roots, ca.Leaf(t, GatewayPeer, true), authority.Issuer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,8 +111,9 @@ func TestInnerServerIdentityCannotBeSubstituted(t *testing.T) {
 			server.StartTLS()
 			defer server.Close()
 			g := declaration(t)
+			authority := testidentity.New(t, g, ca)
 			g.Resources[0].TunnelAddress = server.Listener.Addr().String()
-			d, err := NewDispatcher(g, ca.Roots, ca.Leaf(t, GatewayPeer, true))
+			d, err := NewDispatcher(g, ca.Roots, ca.Leaf(t, GatewayPeer, true), authority.Issuer)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -136,10 +139,11 @@ func TestInnerServerIdentityCannotBeSubstituted(t *testing.T) {
 func TestDispatcherRejectsMissingOrWrongGatewayIdentity(t *testing.T) {
 	ca := testpki.New(t)
 	g := declaration(t)
+	authority := testidentity.New(t, g, ca)
 	mismatched := ca.Leaf(t, GatewayPeer, true)
 	mismatched.PrivateKey = ca.Leaf(t, GatewayPeer, true).PrivateKey
 	for _, cert := range []tls.Certificate{{}, mismatched, ca.Leaf(t, "*.anvil-connect.internal", true), ca.Leaf(t, GatewayPeer, true, "other.anvil-connect.internal"), ca.Leaf(t, "other.anvil-connect.internal", true), ca.Leaf(t, GatewayPeer, false), testpki.New(t).Leaf(t, GatewayPeer, true)} {
-		if d, err := NewDispatcher(g, ca.Roots, cert); err == nil {
+		if d, err := NewDispatcher(g, ca.Roots, cert, authority.Issuer); err == nil {
 			d.Close()
 			t.Fatal("invalid client identity accepted")
 		}
