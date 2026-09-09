@@ -12,7 +12,13 @@ import json
 import time
 from typing import Any, Callable, Dict, Iterable, Iterator, Mapping, Optional
 
-from ..internal import DialectError, InternalRequest, estimate_tokens
+from ..internal import (
+    BackendDelta,
+    DialectError,
+    InternalRequest,
+    ModelDelta,
+    estimate_tokens,
+)
 from . import _new_id
 from .openai import OpenAIDialect
 
@@ -318,10 +324,12 @@ class ResponsesDialect:
     def _usage(request: InternalRequest, text: str, structured: Any) -> dict[str, Any]:
         usage = getattr(structured, "usage", None) if structured is not None else None
         cached = None
+        reasoning_tokens = None
         if usage is not None:
             input_tokens = int(usage.get("input_tokens", 0))
             output_tokens = int(usage.get("output_tokens", 0))
             cached = usage.get("cache_read_input_tokens")
+            reasoning_tokens = usage.get("reasoning_tokens")
         else:
             input_tokens = estimate_tokens([message.content for message in request.messages])
             output_tokens = estimate_tokens([text])
@@ -329,6 +337,10 @@ class ResponsesDialect:
         # Responses wire name for prompt-cache hits; only when upstream reported it.
         if cached is not None:
             wire["input_tokens_details"] = {"cached_tokens": int(cached)}
+        if reasoning_tokens is not None:
+            wire["output_tokens_details"] = {
+                "reasoning_tokens": int(reasoning_tokens),
+            }
         return wire
 
     @staticmethod
@@ -353,7 +365,7 @@ class ResponsesDialect:
         (ADR-0033). Generic label only, never upstream exception text."""
         return _event("error", {"error": {"type": "upstream_error", "message": message}})
 
-    def stream(self, request: InternalRequest, deltas: Iterable[str], *, get_structured: Optional[Callable[[], Any]] = None, response_model: Optional[str] = None) -> Iterator[bytes]:
+    def stream(self, request: InternalRequest, deltas: Iterable[BackendDelta], *, get_structured: Optional[Callable[[], Any]] = None, response_model: Optional[str] = None) -> Iterator[bytes]:
         response_id = _new_id("resp_")
         created_at = int(time.time())
         model = response_model or request.model
@@ -362,7 +374,10 @@ class ResponsesDialect:
         yield _event("response.in_progress", base)
         message_id: str | None = None
         pieces: list[str] = []
-        for piece in deltas:
+        for model_delta in deltas:
+            piece = model_delta.text if isinstance(model_delta, ModelDelta) else model_delta
+            if not piece:
+                continue
             pieces.append(piece)
             if message_id is None:
                 message_id = _new_id("msg_")
