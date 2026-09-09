@@ -4,8 +4,8 @@ import copy
 import hashlib
 import json
 import os
-import grp
-import pwd
+import platform
+import sys
 import tempfile
 from types import SimpleNamespace
 from pathlib import Path
@@ -14,6 +14,15 @@ import pytest
 
 from anvil_serving.connect import manage
 
+if sys.platform == "linux":
+    import grp
+    import pwd
+else:  # Keep Windows collection independent of POSIX account modules.
+    grp = pwd = None
+
+
+_LINUX_AMD64 = sys.platform == "linux" and platform.machine().lower() in {"x86_64", "amd64"}
+pytestmark = pytest.mark.skipif(not _LINUX_AMD64, reason="Connect lifecycle tests require Linux amd64")
 
 ROOT = Path(__file__).parents[2]
 
@@ -74,7 +83,7 @@ def deployment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, d
     native = tmp_path / "anvil-connect"
     caddy = tmp_path / "caddy"
     authelia = tmp_path / "authelia"
-    native_digest = _executable(native, b"native-v1")
+    _executable(native, b"native-v1")
     caddy_digest = _executable(caddy, b"caddy-v1")
     authelia_digest = _executable(authelia, b"authelia-v1")
     value["binary"] = str(native)
@@ -108,6 +117,21 @@ def test_target_is_closed_and_declared(tmp_path: Path, monkeypatch: pytest.Monke
             manage.Target.parse(value)
     with pytest.raises(manage.ManageError, match="not declared"):
         manage.up(manifest, manage.Target("connector", "missing"))
+
+
+@pytest.mark.parametrize(
+    ("operation", "arguments"),
+    [
+        (manage.up, (Path("/missing/deployment.json"), manage.Target("gateway"))),
+        (manage.up_many, (Path("/missing/deployment.json"), (manage.Target("gateway"),))),
+    ],
+)
+def test_up_rejects_unsupported_platform_before_manifest_read(
+    monkeypatch: pytest.MonkeyPatch, operation, arguments
+) -> None:
+    monkeypatch.setattr(manage, "supported_platform", lambda: False)
+    with pytest.raises(manage.UnsupportedPlatformError):
+        operation(*arguments)
 
 
 def test_validate_and_render_preview_never_stage_or_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

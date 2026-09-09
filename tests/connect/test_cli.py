@@ -52,7 +52,11 @@ def fake_manager(monkeypatch):
         if value != "gateway" and not value.startswith(("connector:", "client:")):
             raise ValueError("private operand")
         return value
-    value = SimpleNamespace(Target=SimpleNamespace(parse=target), **{name: invoke(name) for name in LEAVES | {"native_init", "up_many"}})
+    value = SimpleNamespace(
+        Target=SimpleNamespace(parse=target),
+        supported_platform=lambda: True,
+        **{name: invoke(name) for name in LEAVES | {"native_init", "up_many"}},
+    )
     package = importlib.import_module("anvil_serving.connect")
     monkeypatch.setattr(package, "manage", value, raising=False)
     return calls
@@ -77,6 +81,15 @@ def test_coordinated_selection_is_unique_and_exclusive(fake_manager):
         result = dispatch(["up", "--manifest", "/deployment.json", *operands])
         assert result.error is not None
     assert fake_manager == []
+
+
+def test_unsupported_platform_returns_typed_operator_error_before_manifest_access(monkeypatch):
+    manager = importlib.import_module("anvil_serving.connect.manage")
+    monkeypatch.setattr(manager, "supported_platform", lambda: False)
+    result = dispatch(["validate", "--manifest", "/private/deployment.json"])
+    assert result.error is not None
+    assert result.error.code == "connect_platform_unsupported"
+    assert "deployment.json" not in str(result.error)
 
 
 def test_cli_rejects_unknown_duplicate_or_credential_like_operands_before_manager(fake_manager):

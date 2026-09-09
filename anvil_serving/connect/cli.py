@@ -61,6 +61,11 @@ def dispatch(argv: list[str] | None = None) -> CommandResult:
         args = _parser().parse_args(argv)
         from . import manage  # help/importing the registry never starts discovery
 
+        if not manage.supported_platform():
+            return CommandResult(error=OperatorError(
+                "Connect native operations require Linux amd64.",
+                code="connect_platform_unsupported",
+            ))
         target = manage.Target.parse(args.service) if getattr(args, "service", None) else None
         apply = bool(getattr(args, "confirm", False) and not getattr(args, "dry_run", False))
         action = args.action
