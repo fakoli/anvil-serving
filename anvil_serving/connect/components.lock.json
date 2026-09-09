@@ -1,0 +1,42 @@
+{
+  "components": [
+    {
+      "artifact": "caddy_2.11.3_linux_amd64.tar.gz",
+      "binary": "caddy",
+      "binary_sha256": "f16be85d67d7a8369c7255a8514204112bb63a58490bba7d458b38818a75fb94",
+      "checksum": {
+        "algorithm": "sha512",
+        "provenance_url": "https://github.com/caddyserver/caddy/releases/download/v2.11.3/caddy_2.11.3_checksums.txt",
+        "value": "ee886eceda0ff9f30610d3be9b5b594026591e19add6b3961a341c72abe468e5eac9d7c2c2450bbb8420db1f827b954521f9336be4872f81090b8618adf8815a"
+      },
+      "license": {
+        "evidence_url": "https://github.com/caddyserver/caddy/blob/v2.11.3/LICENSE",
+        "spdx": "Apache-2.0"
+      },
+      "name": "caddy",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.3/caddy_2.11.3_linux_amd64.tar.gz",
+      "validation": "caddy validate --config <rendered>/caddy.json",
+      "version": "2.11.3"
+    },
+    {
+      "artifact": "authelia-v4.39.20-linux-amd64.tar.gz",
+      "binary": "authelia",
+      "binary_sha256": "d6ef74f039b89d0eb8873dd0e8219ea2016ee25c4ddb6695acd56ebb72b7c3f8",
+      "checksum": {
+        "algorithm": "sha256",
+        "provenance_url": "https://github.com/authelia/authelia/releases/tag/v4.39.20",
+        "value": "1f122add61752d6ef54e64ae7116bec4e026f5c0a6493498288c5a9770d92088"
+      },
+      "license": {
+        "evidence_url": "https://github.com/authelia/authelia/blob/v4.39.20/LICENSE",
+        "spdx": "Apache-2.0"
+      },
+      "name": "authelia",
+      "url": "https://github.com/authelia/authelia/releases/download/v4.39.20/authelia-v4.39.20-linux-amd64.tar.gz",
+      "validation": "authelia --config <rendered>/authelia/configuration.yml --config.experimental.filters template config validate",
+      "version": "4.39.20"
+    }
+  ],
+  "platform": "linux-amd64",
+  "schema": "anvil-connect.edge-tools/v1"
+}

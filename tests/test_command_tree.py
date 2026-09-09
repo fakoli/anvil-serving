@@ -544,7 +544,7 @@ def test_explicit_family_list_rebuilds_the_same_tree():
     rebuilt = build_command_tree(FAMILIES)
 
     assert rebuilt == COMMAND_TREE
-    assert len(FAMILIES) == 11
+    assert len(FAMILIES) == 12
 
 
 def test_product_families_partition_the_operational_root_surface_once():

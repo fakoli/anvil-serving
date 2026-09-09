@@ -125,6 +125,7 @@ nav:
           - Host and setup: cli/host.md
           - Fleet: cli/fleet.md
           - Control Plane and Fleet: cli/control-plane.md
+          - Anvil Connect: cli/connect.md
       - Help and project records:
           - Troubleshooting: TROUBLESHOOTING.md
           - Architecture decisions: adr/README.md

@@ -85,6 +85,7 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
     "_hermes_skills/*/*.md",
 ]
 "anvil_serving.observability.dashboard.static" = ["*.html", "*.js", "*.css", "views/*.js"]
+"anvil_serving.connect" = ["components.lock.json"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
