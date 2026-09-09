@@ -9,6 +9,7 @@ import (
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/relay"
 )
 
 // Dispatch must remain active until its response or upgraded connection closes.
@@ -107,7 +108,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	clean := r.Clone(ctx)
 	CleanAPIHeaders(clean.Header)
-	clean.Body = http.MaxBytesReader(w, r.Body, resource.declaration.Rule.Limits.RequestBytes)
+	clean.Body = relay.Body(w, http.MaxBytesReader(w, r.Body, resource.declaration.Rule.Limits.RequestBytes), ctx, time.Duration(resource.declaration.Rule.Limits.IdleSeconds)*time.Second)
 	defer clean.Body.Close()
 	// Close the admission gap after capacity accounting. Active revocation is a
 	// separate lifetime contract; it must also cancel connections after dispatch.

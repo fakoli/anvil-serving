@@ -180,6 +180,10 @@ func loopbackPort(t *testing.T) string {
 // qualification rather than accepting another process's listener as ours.
 // The lock qualifies Linux only, so inspect socket ownership on our child.
 func ownsListener(address string, process *child) (bool, error) {
+	return ownsPIDListener(address, process.cmd.Process.Pid)
+}
+
+func ownsPIDListener(address string, pid int) (bool, error) {
 	host, portText, err := net.SplitHostPort(address)
 	if err != nil || host != "127.0.0.1" {
 		return false, fmt.Errorf("unexpected lab listener address")
@@ -188,7 +192,7 @@ func ownsListener(address string, process *child) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	root := fmt.Sprintf("/proc/%d", process.cmd.Process.Pid)
+	root := fmt.Sprintf("/proc/%d", pid)
 	fds, err := os.ReadDir(root + "/fd")
 	if err != nil {
 		return false, err

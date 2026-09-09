@@ -26,15 +26,31 @@ wstunnel release, measured behavior, and environments still requiring testing.
   requiring those URL forms need an explicit compatibility extension.
 - HTTP/1 uploads require a known body length. Transfer-coded requests are denied
   because Go's parser discards Content-Length when both framing mechanisms are
-  supplied. Unknown-length HTTP/2 requests have a bounded reader, but wire-level
-  HTTP/2 integration is still pending. This restriction does not apply to SSE
+  supplied. Unknown-length HTTP/2 requests have a bounded reader and pass the
+  real tunnel API test. Ordinary inner requests require HTTP/2; classic WebSocket
+  upgrades use a separate HTTP/1 transport. This restriction does not apply to SSE
   responses or the already qualified tunnel's WebSocket framing.
 - Forwarded API headers are an explicit allowlist: content type/length, Accept,
   Accept-Encoding, User-Agent, Anthropic-Version/Beta, OpenAI-Beta, Last-Event-ID,
   X-Request-ID and WebSocket handshake headers. Credentials, proxy identity,
   route-override and other custom headers are removed. Standard HTTP transports
-  still own hop-by-hop framing. Native token delegation is a later connector
-  adapter stage; caller Connect keys are never native application credentials.
+  still own hop-by-hop framing. The connector supplies the declared native token
+  only after its independent rule and authenticated gateway peer checks pass;
+  caller Connect keys are never native application credentials.
+
+The API integration test uses the managed pinned tunnel, verified inner TLS,
+native-token delegation, immediate SSE delivery, WebSockets, upload deadlines,
+and cancellation without replaying an ambiguous POST. TLS verifies the deployment
+CA and exact service names. Binding those certificates to the currently enrolled
+installation generation and closing access on revocation remain required before
+deployment. A valid certificate name alone is not proof of a current installation.
+
+The Linux process wrapper executes the digest-verified binary inode and passes
+opened immutable certificate, key, trust and restriction files by descriptor.
+Rotating header files are confined beneath an opened, owned mode-0700 directory.
+It supplies an explicit environment, discards upstream logs that could contain
+credentials, and reaps only its owned children. It does not claim readiness from
+process start or listener existence.
 
 ## Authority state
 
