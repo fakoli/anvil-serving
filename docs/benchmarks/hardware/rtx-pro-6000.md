@@ -73,6 +73,11 @@ performance claims. See the [finding and evidence](../../findings/2026-09-09-glm
 
 ## Recorded promotion, rollback, and challenger state
 
+The 2026-09-09 ormandj v0.4.2 runtime candidate passed direct gates and
+bounded matched capacity, but is held for strict turnover (58/60 then 57/60).
+The exact baseline was restored; no promotion occurred. See the
+[dated finding](../../findings/2026-09-09-glm53-ormandj-v042.md).
+
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
 | 1 | [GLM-5.3-Flash SGLang W4A16](../models/glm53-flash.md) | `current`, 2026-09-02 human-approved 393K/C1 profile | Exact rc14 SGLang image and W4A16/NVFP4 checkpoint at exclusive TP=2, 393,216 tokens, C1, 4,096 maximum output, FP8 KV, adaptive EAGLE, image/OCR, and explicit thinking control; direct, managed, routed, and real-client gates passed under a recorded model-only reserve waiver |

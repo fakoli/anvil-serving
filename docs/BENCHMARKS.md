@@ -52,6 +52,13 @@ This page is the public, searchable summary of the model and end-to-end benchmar
 
 The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-09**.
 
+## GLM-5.3-Flash ormandj v0.4.2 runtime qualification (2026-09-09)
+
+The candidate showed bounded direct and matched capacity gains but failed the
+strict 60-request turnover gate at 58/60 and again at 57/60. It is held with
+no promotion, and the exact baseline was restored. See the
+[finding](findings/2026-09-09-glm53-ormandj-v042.md).
+
 ## GLM-5.3-Flash native NCCL P2P transport A/B (2026-09-09)
 
 The user-authorized native GLM TP=2/393,216/C1 recipe retains P2P enabled

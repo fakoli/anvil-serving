@@ -1,0 +1,12 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "Direct default, enabled, and disabled preflight channel assertions",
+  "observed_at": "2026-09-09T11:27:30.428754+00:00",
+  "artifacts": {
+    "preflight.json": "275b53f5eb98870c469c2ff5e8ae0c1ffc66aa64de01542722e073dffb3f90f6",
+    "thinking-enabled.json": "297560824f28a2df6d1dece36468942b68583f0d58a5e95cae0afe45b47397d5",
+    "thinking-default.json": "667282fbc26e5d995e1af0bfd1878efe2d3116141de1e1e45141c61a7cd38de1"
+  }
+}

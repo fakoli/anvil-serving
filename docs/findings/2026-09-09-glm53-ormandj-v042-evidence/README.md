@@ -1,0 +1,24 @@
+# GLM-5.3-Flash ormandj v0.4.2 qualification evidence
+
+This is the sanitized publication scaffold for the dated
+[v0.4.2 qualification finding](../2026-09-09-glm53-ormandj-v042.md).
+
+The retained plan fixes the model revision, TP=2, 393,216-token/C1 contract,
+adaptive MTP, P2P-enabled transport, disabled cuMem, and disabled HiCache. The
+candidate is a pinned source state separate from the release tag. Final native
+artifacts, outcome, promotion boundary, and navigation remain pending.
+
+## Retained direct artifacts
+
+- [Matched comparison](comparison.json), [baseline](baseline/), and
+  [candidate](candidate/) native JSON retain functional, thinking, high-context,
+  and capacity observations.
+- Strict turnover retains baseline 53/60 and candidate 58/60; neither failed
+  population is silently converted into a pass.
+- Sanitized multimodal, diagnostic, restoration, and final-decision records
+  await the campaign owner's disposition.
+
+Public evidence will redact private addresses, DNS names, GPU UUIDs, and local
+paths while retaining native schemas and a redaction record. Known baseline
+needle and turnover failures, candidate startup warnings, and any final gate
+failure will remain visible.
