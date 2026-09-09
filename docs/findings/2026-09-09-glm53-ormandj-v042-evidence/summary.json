@@ -1,38 +1,185 @@
 {
   "schema": "anvil-serving.benchmark-decision-summary/v1",
   "campaign_id": "2026-09-09-glm53-ormandj-v042",
-  "complete": true,
-  "measurement": {
-    "path": "direct online matched capacity",
-    "warm_cold_state": "unique-cache; cold not established",
-    "sample_count": "4K n12, 120K n3, turnover n60",
-    "statistics": [
-      "medians"
+  "complete": false,
+  "identity": {
+    "model": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO",
+    "model_revision": "c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+    "baseline_image": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+    "candidate_image": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:877ae29486eb7d385eb2a07921522aa3597f643f9a7c50112751f2aaa14d558a",
+    "qualification_commit": "f19180c41724050b834cd77d1f14d662e4ea57b8"
+  },
+  "workload": {
+    "context_limit_tokens": 393216,
+    "max_output_tokens": 4096,
+    "tp": 2,
+    "concurrency": 1,
+    "NCCL_P2P_DISABLE": "0",
+    "thinking_modes": [
+      "disabled",
+      "enabled",
+      "default"
     ]
   },
-  "headline_results": [
-    "candidate versus baseline: TTFT -5.19%/-1.31%, E2E -4.91%/-1.45%, decode +3.93%/+17.21% at 4K/120K"
+  "measurement": {
+    "path": "online-direct",
+    "warm_cold_state": "fresh isolated v81 cache, startup/warmup completed before requests; unique request prefixes for measured capacity",
+    "sample_count": {
+      "capacity_4k_per_arm": 12,
+      "capacity_120k_per_arm": 3,
+      "turnover_per_run": 60
+    },
+    "statistics": [
+      "median TTFT",
+      "median E2E",
+      "median decode tok/s"
+    ]
+  },
+  "gates": [
+    {
+      "name": "direct functional",
+      "passed": true,
+      "evidence": "candidate/preflight.json"
+    },
+    {
+      "name": "thinking enabled/default",
+      "passed": true,
+      "evidence": [
+        "candidate/thinking-enabled.json",
+        "candidate/thinking-default.json"
+      ]
+    },
+    {
+      "name": "high-context",
+      "passed": true,
+      "evidence": "candidate/high-context.json"
+    },
+    {
+      "name": "multimodal",
+      "passed": true,
+      "evidence": "candidate/multimodal.json"
+    },
+    {
+      "name": "eligible paired performance",
+      "passed": true,
+      "evidence": "comparison.json"
+    },
+    {
+      "name": "strict turnover",
+      "passed": false,
+      "evidence": [
+        "candidate/turnover-controlled.json",
+        "candidate/turnover-controlled-repeat.json"
+      ]
+    },
+    {
+      "name": "identity and runtime stability",
+      "passed": true,
+      "evidence": [
+        "candidate/identity-pre.json",
+        "candidate/identity-post.json",
+        "candidate/post-repeat/identity.json"
+      ]
+    },
+    {
+      "name": "candidate routed acceptance",
+      "passed": null,
+      "reason": "Not attempted after direct strict gate failed"
+    }
   ],
+  "headline_results": {
+    "capacity-4k": {
+      "baseline_requests": 12,
+      "candidate_requests": 12,
+      "baseline_performance_eligible": true,
+      "candidate_performance_eligible": true,
+      "median_prompt_tokens": 2970.0,
+      "metrics": {
+        "ttft_p50_ms": {
+          "baseline": 496.0971620002965,
+          "candidate": 470.34554300080345,
+          "delta_percent": -5.190841829382952,
+          "no_more_than_5_percent_regression": true
+        },
+        "e2e_p50_ms": {
+          "baseline": 638.3741200006625,
+          "candidate": 607.0386419996794,
+          "delta_percent": -4.908638527036557,
+          "no_more_than_5_percent_regression": true
+        },
+        "decode_tok_s_p50": {
+          "baseline": 288.5934894410126,
+          "candidate": 299.94095771922105,
+          "delta_percent": 3.931990392502538,
+          "no_more_than_5_percent_regression": true
+        }
+      }
+    },
+    "capacity-120k": {
+      "baseline_requests": 3,
+      "candidate_requests": 3,
+      "baseline_performance_eligible": true,
+      "candidate_performance_eligible": true,
+      "median_prompt_tokens": 97159.0,
+      "metrics": {
+        "ttft_p50_ms": {
+          "baseline": 14939.95374699989,
+          "candidate": 14744.056768000519,
+          "delta_percent": -1.311228818487542,
+          "no_more_than_5_percent_regression": true
+        },
+        "e2e_p50_ms": {
+          "baseline": 15100.452483000481,
+          "candidate": 14881.152528001621,
+          "delta_percent": -1.4522740642754828,
+          "no_more_than_5_percent_regression": true
+        },
+        "decode_tok_s_p50": {
+          "baseline": 255.4481387120637,
+          "candidate": 299.41073265701567,
+          "delta_percent": 17.20998797118103,
+          "no_more_than_5_percent_regression": true
+        }
+      }
+    }
+  },
   "failures": [
-    "candidate strict turnover 58/60 then unchanged repeat 57/60",
-    "baseline strict turnover 53/60",
-    "candidate routed gate intentionally not attempted"
+    "Baseline preflight9/10: launch-code needle refusal twice",
+    "Baseline strict turnover53/60; candidate58/60 and unchanged repeat57/60. Repeat includes two33-word stop responses and one499-code-word response ending length at512tokens. All canaries passed; incomplete turnover populations excluded from performance claims.",
+    "Candidate PowerShell marker case2/3: independently reviewed marker omission with semantic caveats",
+    "Initial baseline summary-turnover prompt failed marker-at-start; retained and excluded before candidate",
+    "TileLang static warnings and missing IPC seed config retained; cited race warning reviewed but no general warning-free or tuned-kernel claim"
+  ],
+  "limitations": [
+    "Small samples; no stable p99 or soak claim",
+    "Maximum configured393216; high-context tested nominal380000, actual long-tools320794",
+    "Runtime-profile upgrade includes FP8 LM head and release kernel/graph controls; not single-variable image comparison",
+    "Coding quality is a marker diagnostic, not executed software acceptance",
+    "No HiCache, video, input logprobs, C4 or524K expansion tested"
   ],
   "decision": {
     "evidence_labels": [
-      "functional",
-      "capacity",
-      "quality"
+      "measured",
+      "matched-direct",
+      "partial-qualification"
     ],
     "decision_labels": [
       "no-promotion"
     ],
     "promotion_authorized": false,
-    "next_gate": "explicit user comparative exception or a passing strict turnover population"
+    "user_authorization": "User authorized promotion and PR/merge if better or on par; no exception to failed frozen strict gate recorded",
+    "next_gate": "explicit user comparative exception after strict turnover hold"
   },
   "evidence": [
+    "run-plan.json",
+    "workload-manifest.json",
     "comparison.json",
-    "restoration.json",
-    "independent-review-ledger.json"
-  ]
+    "sources/independent-review-ledger.json",
+    "restoration.json"
+  ],
+  "restoration": {
+    "verified": true,
+    "evidence": "restoration.json"
+  },
+  "artifact_set_complete": true
 }
