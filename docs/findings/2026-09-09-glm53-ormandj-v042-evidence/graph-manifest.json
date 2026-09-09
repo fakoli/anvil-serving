@@ -1,7 +1,7 @@
 {
   "schema": "anvil-serving.benchmark-graph-manifest/v1",
-  "title": "GLM v0.4.2 held runtime comparison",
-  "subtitle": "Direct C1 strict capacity; candidate held for turnover",
+  "title": "GLM v0.4.2 retained-baseline runtime comparison",
+  "subtitle": "Direct C1 strict capacity; baseline retained after turnover failure",
   "charts": [
     {
       "title": "Median TTFT",

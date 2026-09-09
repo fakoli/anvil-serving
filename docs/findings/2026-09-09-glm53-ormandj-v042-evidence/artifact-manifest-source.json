@@ -13,7 +13,7 @@
       "partial-qualification"
     ],
     "decision_labels": [
-      "held-for-strict-turnover",
+      "retain-baseline",
       "no-promotion"
     ],
     "promotion_authorized": false
@@ -37,7 +37,7 @@
         "README.md",
         "redaction-provenance.json"
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "source-registry",
@@ -45,7 +45,7 @@
       "files": [
         "source-registry.json"
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "workload-manifest",
@@ -53,7 +53,7 @@
       "files": [
         "workload-manifest.json"
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "run-plan",
@@ -64,7 +64,7 @@
         "candidate/turnover-repeat-plan.json",
         "candidate/turnover-repeat-result.json"
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "configuration-and-identity",
@@ -78,7 +78,7 @@
         "configuration-and-identity.json",
         "candidate/post-repeat/identity.json"
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "raw-run-evidence",
@@ -110,7 +110,7 @@
         "candidate/thinking-default.json",
         "candidate/thinking-enabled.json"
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "failures-and-friction",
@@ -120,7 +120,7 @@
         "coverage-and-gaps.md",
         "independent-review-ledger.json"
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "restoration",
@@ -135,16 +135,17 @@
         "restoration/unit.txt",
         "restoration/router-transition-status.txt"
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "decision-summary",
       "status": "retained",
       "files": [
         "summary.json",
-        "comparison.json"
+        "comparison.json",
+        "human-decision.json"
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "publication-summary",
@@ -152,7 +153,7 @@
       "files": [
         "publication-summary.md"
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     }
   ]
 }

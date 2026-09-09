@@ -13,7 +13,7 @@
       "partial-qualification"
     ],
     "decision_labels": [
-      "held-for-strict-turnover",
+      "retain-baseline",
       "no-promotion"
     ],
     "promotion_authorized": false
@@ -34,16 +34,16 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "eaf2b431bad2bc6217099a6c9ae35d26e776bc7d5f7673bc185a99a28b707893",
-          "bytes": 1606
+          "sha256": "ff9c051fc3f4ac310955d772ab14433c7360d63838fcade4da9d0dd6004a3e76",
+          "bytes": 1721
         },
         {
           "path": "redaction-provenance.json",
-          "sha256": "21826685f7c5fc668bc8efbc8b501a10c8115f5543e1c7298583b474a3382d98",
+          "sha256": "90bdca5e7dcba5bcad2a96c1776b40e5bffe254cdab23418f02be6e1441fc25d",
           "bytes": 13888
         }
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "source-registry",
@@ -55,7 +55,7 @@
           "bytes": 1901
         }
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "workload-manifest",
@@ -67,7 +67,7 @@
           "bytes": 2424
         }
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "run-plan",
@@ -80,8 +80,8 @@
         },
         {
           "path": "campaign-state.json",
-          "sha256": "d9c5cd5ca89cb111ec703bd17efc0e771c032818520f30d7da3f2d1707263208",
-          "bytes": 2244
+          "sha256": "e1bd539c3acccaf32a6c7b04e83a07d264d2380bc6574f99a4a88b3490c9ca92",
+          "bytes": 2184
         },
         {
           "path": "candidate/turnover-repeat-plan.json",
@@ -94,7 +94,7 @@
           "bytes": 1337
         }
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "configuration-and-identity",
@@ -136,7 +136,7 @@
           "bytes": 442
         }
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "raw-run-evidence",
@@ -144,8 +144,8 @@
       "files": [
         {
           "path": "comparison.json",
-          "sha256": "78de1fd59435394b40f2af3fa99321e5e45258574069e5d9a4657235061d1048",
-          "bytes": 5438
+          "sha256": "814671e972a64e7ce56482ded1fe3a4e5eb9666734b143de3e744a18ca8a02c0",
+          "bytes": 5557
         },
         {
           "path": "baseline/preflight.json",
@@ -209,18 +209,18 @@
         },
         {
           "path": "graph-manifest.json",
-          "sha256": "800bed04ba856c095162ab4e2ac1fe5238647589aa5da242761614f6cfe8ee13",
-          "bytes": 1785
+          "sha256": "e799baa93317e411a70ae3b1cba54a256162b2046a30b14d4d0fbad9b71b4558",
+          "bytes": 1811
         },
         {
           "path": "benchmark-graph-data.json",
-          "sha256": "716d2648d097c3dd57e15a2991f8835d1ce1dd198653e48b2f2b4000efb76c26",
-          "bytes": 2955
+          "sha256": "58aa50ac895a0951e0a7e2732268e85439f6614424d6516c7f0a4b5433757934",
+          "bytes": 2981
         },
         {
           "path": "benchmark-matrix.svg",
-          "sha256": "0fd39f924322567ae5251361c6821acfefe0ff48796a8a9d8a26ae4230bc1acc",
-          "bytes": 5144
+          "sha256": "41b188147e1367607c18d1e263c65faad444e06f3cd610a4725dbafc9cf406be",
+          "bytes": 5196
         },
         {
           "path": "baseline/needle-repeat.json",
@@ -268,7 +268,7 @@
           "bytes": 3447
         }
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "failures-and-friction",
@@ -276,13 +276,13 @@
       "files": [
         {
           "path": "friction-log.md",
-          "sha256": "98ffefc7905f59ee300a80241a134923436d168ed0ea89166ef291b3c05bc260",
-          "bytes": 2518
+          "sha256": "dcea6e29d11be7bf67e2058604bdfa365fb325ca2f851194e7b063b47e09fa50",
+          "bytes": 2537
         },
         {
           "path": "coverage-and-gaps.md",
-          "sha256": "adef50b32930b00574c299aabb50f842bf8823c7512871509d8d7d584b68ff54",
-          "bytes": 871
+          "sha256": "eeed5c50eb164517b3eb3f735d8c3de6285b41c1c68ceac1ad54280ba6b68fa4",
+          "bytes": 1054
         },
         {
           "path": "independent-review-ledger.json",
@@ -290,7 +290,7 @@
           "bytes": 5153
         }
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "restoration",
@@ -337,7 +337,7 @@
           "bytes": 433
         }
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "decision-summary",
@@ -345,16 +345,21 @@
       "files": [
         {
           "path": "summary.json",
-          "sha256": "5e592aee6720600572e266cacf89afcec96579b466a6973514fc1cef509f54e7",
-          "bytes": 6350
+          "sha256": "82ed61783720ceaf87b168deb4db1bfffcfa02e2082c2d2809a7a385ac6f0f76",
+          "bytes": 6186
         },
         {
           "path": "comparison.json",
-          "sha256": "78de1fd59435394b40f2af3fa99321e5e45258574069e5d9a4657235061d1048",
-          "bytes": 5438
+          "sha256": "814671e972a64e7ce56482ded1fe3a4e5eb9666734b143de3e744a18ca8a02c0",
+          "bytes": 5557
+        },
+        {
+          "path": "human-decision.json",
+          "sha256": "a5d6c5353ff63d38fac9e64ac2012372238287055ef0ef16a73ec0167a437f28",
+          "bytes": 592
         }
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     },
     {
       "role": "publication-summary",
@@ -362,11 +367,11 @@
       "files": [
         {
           "path": "publication-summary.md",
-          "sha256": "611f14328a6f14bee08d0909204b9fa149ec42aedfbb6bcd9d47e7b4ac9e41da",
-          "bytes": 995
+          "sha256": "9e0caffbd56871d548736c2d73b13bbb378fbcd1959ae3a6bb4d1a90acaa9723",
+          "bytes": 1139
         }
       ],
-      "reason": "Held qualification retains supporting evidence and failures."
+      "reason": "Concluded comparison retains supporting evidence and failures."
     }
   ],
   "bundle_size_policy_verified": true,

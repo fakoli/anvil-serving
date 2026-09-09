@@ -61,7 +61,7 @@
   "performance_gate_passed": true,
   "strict_turnover_gate_passed": false,
   "qualification": "not a blanket deterministic pass",
-  "promotion": "held pending user decision on strict-gate exception; exact baseline restored and readmitted",
+  "promotion": "User selected retain-baseline/no-promotion after failed strict turnover; exact baseline restored and readmitted",
   "baseline_turnover": {
     "requests": 60,
     "exact_output_passed": 53,
@@ -196,5 +196,6 @@
         "canary_passed": true
       }
     ]
-  }
+  },
+  "human_decision": "retain-baseline/no-promotion; user-reported other reports remain unverified"
 }

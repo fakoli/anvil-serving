@@ -74,8 +74,8 @@ performance claims. See the [finding and evidence](../../findings/2026-09-09-glm
 ## Recorded promotion, rollback, and challenger state
 
 The 2026-09-09 ormandj v0.4.2 runtime candidate passed direct gates and
-bounded matched capacity, but is held for strict turnover (58/60 then 57/60).
-The exact baseline was restored; no promotion occurred. See the
+bounded matched capacity, but strict turnover was 58/60 then 57/60. The user
+selected `retain-baseline/no-promotion`; the exact baseline was restored. See the
 [dated finding](../../findings/2026-09-09-glm53-ormandj-v042.md).
 
 | Order | Model | Decision | Contract |
