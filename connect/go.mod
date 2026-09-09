@@ -2,4 +2,8 @@ module github.com/fakoli/anvil-serving/connect
 
 go 1.26.0
 
-require github.com/coder/websocket v1.8.15
+require (
+	github.com/coder/websocket v1.8.15
+	go.etcd.io/bbolt v1.5.0
+	golang.org/x/sys v0.45.0
+)
