@@ -1,0 +1,119 @@
+{
+  "schema": "runtime-profile-public-identity/v1",
+  "model": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO",
+  "model_revision": "c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+  "qualification_commit": "f19180c41724050b834cd77d1f14d662e4ea57b8",
+  "hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q",
+    "count": 2,
+    "memory_per_gpu_gib": 96,
+    "topology": "PHB; GPU IOMMU groups absent after boot with amd_iommu=off",
+    "desktop": "Separate AMD iGPU"
+  },
+  "candidate_serve": {
+    "engine": "sglang-glm53-sm120-v0.4.2",
+    "image": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:877ae29486eb7d385eb2a07921522aa3597f643f9a7c50112751f2aaa14d558a",
+    "quantization": "ModelOpt mixed W4A16 NVFP4 K32 routed experts plus FP8 weight-only attention/shared experts; FP8 E4M3 KV; BF16 recurrent state; native adaptive EAGLE MTP [3,5]; runtime FP8 LM head enabled",
+    "context_tokens": 393216,
+    "served_model_name": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+    "ipc": "host",
+    "shm_size": "64gb",
+    "ulimits": [
+      "memlock=-1",
+      "nofile=1048576:1048576",
+      "stack=67108864:67108864"
+    ],
+    "env": [
+      "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+      "CUDA_VISIBLE_DEVICES=0,1",
+      "PYTHONHASHSEED=0",
+      "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+      "CUBLAS_WORKSPACE_CONFIG=:4096:2:16:8",
+      "GLM53_CHAT_TEMPLATE_OLD_B64=eyUtIGlmIGFkZF9nZW5lcmF0aW9uX3Byb21wdCAtJX0KICAgIDx8YXNzaXN0YW50fD57ey0gJzx0aGluaz4nIC19fQp7JS0gZW5kaWYgLSV9",
+      "GLM53_CHAT_TEMPLATE_NEW_B64=eyUtIGlmIGFkZF9nZW5lcmF0aW9uX3Byb21wdCAtJX0KICAgIHslLSBpZiBub3QgZW5hYmxlX3RoaW5raW5nIGlzIGRlZmluZWQgLSV9eyUtIHNldCBlbmFibGVfdGhpbmtpbmcgPSB0cnVlIC0lfXslLSBlbmRpZiAtJX0KICAgIDx8YXNzaXN0YW50fD57JS0gaWYgZW5hYmxlX3RoaW5raW5nIC0lfXt7LSAnPHRoaW5rPicgLX19eyUtIGVsc2UgLSV9e3stICc8dGhpbms+PC90aGluaz4nIC19fXslLSBlbmRpZiAtJX0KeyUtIGVuZGlmIC0lfQ==",
+      "NCCL_CUMEM_ENABLE=0",
+      "NCCL_DEBUG=INFO",
+      "SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION=0",
+      "TORCHINDUCTOR_CACHE_DIR=/root/.cache/torchinductor",
+      "TILELANG_CACHE_DIR=/root/.cache/tilelang",
+      "TRITON_CACHE_DIR=/root/.cache/triton",
+      "NCCL_P2P_DISABLE=0",
+      "SGLANG_ENABLE_PCIE_IPC_ALLREDUCE=1",
+      "SGLANG_PCIE_IPC_MAX_NUMEL=786432",
+      "SGLANG_EXPERIMENTAL_DSA_KPOOL_METADATA_FUSION=1",
+      "SGLANG_LM_HEAD_FP8=1",
+      "SGLANG_KDA_EXTEND_BLOCK_TOKENS=2048",
+      "SGLANG_BCG_RAGGED_SHAPES=1",
+      "SGLANG_BCG_RAGGED_MAX_BS=1",
+      "SGLANG_BCG_SEPARATE_CAPTURE_SESSIONS=1"
+    ],
+    "flags": [
+      "--served-model-name glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+      "--tp-size 2",
+      "--quantization modelopt_mixed",
+      "--enable-multimodal",
+      "--image-processor-backend torchvision",
+      "--mm-process-config '{\"image\":{\"max_image_tokens\":3072}}'",
+      "--warmups serving_coverage",
+      "--moe-runner-backend flashinfer_cutlass",
+      "--disable-shared-experts-fusion",
+      "--disable-custom-all-reduce",
+      "--attention-backend dsa",
+      "--linear-attn-backend triton",
+      "--dsa-prefill-backend flashinfer_sparse_mla",
+      "--dsa-decode-backend flashinfer_sparse_mla",
+      "--kv-cache-dtype fp8_e4m3",
+      "--mamba-ssm-dtype bfloat16",
+      "--context-length 393216",
+      "--max-total-tokens 393216",
+      "--mem-fraction-static 0.99",
+      "--chunked-prefill-size 4096",
+      "--max-prefill-tokens 4096",
+      "--max-running-requests 1",
+      "--max-mamba-cache-size 5",
+      "--speculative-algorithm EAGLE",
+      "--speculative-num-steps 5",
+      "--speculative-eagle-topk 1",
+      "--speculative-num-draft-tokens 6",
+      "--speculative-adaptive",
+      "--speculative-adaptive-config /tmp/glm53-adaptive.json",
+      "--reasoning-parser glm45",
+      "--tool-call-parser glm47",
+      "--enable-metrics",
+      "--enable-cache-report",
+      "--host 0.0.0.0",
+      "--port 8001",
+      "--cuda-graph-backend-prefill breakable",
+      "--cuda-graph-bs-prefill 64 128",
+      "--cuda-graph-backend-decode full",
+      "--cuda-graph-bs-decode 1",
+      "--mm-preprocessing-device cpu"
+    ]
+  },
+  "entrypoint": {
+    "source_chat_template_sha256": "34d5ee66b12fa6446cdae131c352b8f68cd85369e0e6fda115583805fada3891",
+    "derived_chat_template_sha256": "3133af873d620976b1561b76dc20ec2ad2599279ba61b873e872b1250f4f2ec5",
+    "adaptive_configuration": {
+      "candidate_steps": [
+        3,
+        5
+      ],
+      "up_hysteresis": 0.0,
+      "down_hysteresis": -0.25,
+      "ceiling_coeff": 0
+    },
+    "native_logits_path": true
+  },
+  "cache": {
+    "candidate_schema": "v81",
+    "isolated_volume_initially_absent": true,
+    "hf_model_cache": "shared existing cache; no weight mutation"
+  },
+  "private_recipe_sha256": "b61334048a994b8dbdfd48fae09e0d7c214a7af3c14abd213e99d64e84157b61",
+  "identity_evidence": [
+    "candidate/identity-pre.json",
+    "candidate/identity-post.json",
+    "candidate/post-repeat/identity.json"
+  ],
+  "promotion": false
+}

@@ -1,0 +1,1 @@
+{"schema":"anvil-serving.public-evidence-redaction/v1","campaign_id":"2026-09-09-glm53-native-nccl-p2p","redacted":["GPU UUIDs","host and endpoint identity","personal paths","boot and command-line values","raw container and rollback records"],"retained":"Native JSON schemas and bounded sanitized transport, configuration, and restoration evidence."}

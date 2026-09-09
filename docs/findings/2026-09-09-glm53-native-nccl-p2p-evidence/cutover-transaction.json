@@ -1,0 +1,29 @@
+[
+  {
+    "at": 1788950257.458692,
+    "event": "preconditions_passed"
+  },
+  {
+    "at": 1788950259.2628903,
+    "event": "owner_stopped_no_queued_restart",
+    "state": {
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "Job": ""
+    }
+  },
+  {
+    "at": 1788950259.3421693,
+    "event": "candidate_registry_applied"
+  },
+  {
+    "at": 1788950390.410462,
+    "event": "candidate_healthy",
+    "state": {
+      "ActiveState": "active",
+      "SubState": "exited",
+      "Job": ""
+    },
+    "elapsed_seconds": 131.06
+  }
+]

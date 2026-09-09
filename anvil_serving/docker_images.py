@@ -44,7 +44,10 @@ class DockerImageCleanupError(ValueError):
 
 def normalize_immutable_image_reference(value: str) -> str:
     """Validate one full image ID or repository-qualified sha256 digest."""
-    candidate = str(value or "").strip()
+    supplied = str(value or "")
+    if any(ord(character) < 32 or ord(character) == 127 for character in supplied):
+        raise DockerImageCleanupError("immutable image identity must not contain control characters")
+    candidate = supplied.strip()
     match = _FULL_IMAGE_ID_RE.fullmatch(candidate)
     if match:
         return "sha256:" + match.group(1)
