@@ -51,6 +51,16 @@ func (ca Authority) PEM() []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.certificate.Raw})
 }
 
+// SigningIdentity supplies synthetic CA inputs to issuer tests only.
+func (ca Authority) SigningIdentity(t *testing.T) (*x509.Certificate, ed25519.PrivateKey) {
+	t.Helper()
+	certificate, err := x509.ParseCertificate(append([]byte(nil), ca.certificate.Raw...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return certificate, append(ed25519.PrivateKey(nil), ca.private...)
+}
+
 func (ca Authority) leaf(t *testing.T, name, commonName string, client bool, additionalNames ...string) tls.Certificate {
 	t.Helper()
 	public, private, err := ed25519.GenerateKey(rand.Reader)
