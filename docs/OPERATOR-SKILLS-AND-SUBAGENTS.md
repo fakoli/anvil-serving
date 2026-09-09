@@ -5,6 +5,71 @@ Use a stronger independent model for architecture changes, benchmark synthesis, 
 review. Neither class may change a serve, capability alias, or host state without the required human
 authorization.
 
+## Codex development models
+
+Trusted checkouts load the project defaults from `.codex/config.toml`: GPT-6
+Astra with high reasoning for the lead agent, and GPT-5.6 Terra with medium
+reasoning for general subagents. Explicit task selections override these
+defaults. The existing MCP registration remains checkout-relative. These are
+development settings; Claude Code keeps its separately selected provider.
+
+Named Codex roles are standalone `.codex/agents/*.toml` files with `name`,
+`description`, and `developer_instructions`. The former Markdown definitions
+are replaced, not retained as a second source of model pins. Their operational
+instructions and skill references remain in the role prompts.
+
+| Role | Model | Reasoning |
+| --- | --- | --- |
+| Lead / orchestrator | `gpt-6-astra` | high |
+| General implementation subagent | `gpt-5.6-terra` | medium; high for complex boundaries |
+| Inventory scout / evidence reporter | `gpt-5.6-terra` | low |
+| Serve operator / preflight runner / benchmark runner | `gpt-5.6-terra` | medium |
+| Adversarial reviewer / quality critic | `gpt-5.6-sol` | high |
+
+Review Terra implementation with Astra in a separate session. The named review
+roles default to Sol so they can review Astra work. Before dispatch, identify
+the implementing model, evidence author, and evaluated model; use a different
+reviewer model or human review when any would otherwise grade its own output.
+A second session alone does not establish model independence. Review and
+inventory roles also request a read-only shell sandbox; their instructions
+remain responsible for rejecting mutating MCP operations.
+
+Use these explicit CLI selections when a task needs to override the defaults:
+
+```bash
+codex -m gpt-6-astra -c 'model_reasoning_effort="high"'
+codex -m gpt-5.6-terra -c 'model_reasoning_effort="medium"'
+codex -m gpt-5.6-sol -c 'model_reasoning_effort="high"'
+```
+
+In the desktop app, select the corresponding model and reasoning level for the
+task. Check effective settings in a fresh session after configuration changes;
+an existing task may retain its explicit selection. Project settings require a
+trusted checkout. Do not change provider, authentication, permissions, or local
+serving configuration merely to adopt a development model.
+
+### Validation and rollback
+
+Validate TOML parsing, custom-role discovery in the installed Codex client,
+effective lead/subagent model selection, explicit overrides, and read-only MCP
+access. Exercise representative documentation, parser/router, planning, and
+review tasks against a recorded baseline. Record independent correctness
+checks, unnecessary clarification pauses, test selection, completion time, and
+usage; a small pilot establishes compatibility, not a general quality or cost
+ranking. Run the repository gates selected by the changed paths.
+
+For rollback, revert the development-model configuration change and reopen the
+task, or explicitly select the previous model and reasoning level for that
+task. Before this migration, the project had no lead-model pin; record the
+effective inherited model before changing defaults. Restoring that state means
+restoring inheritance, not assuming every user previously used Sol.
+
+References checked 2026-09-09: [Astra migration and prompting](https://developers.openai.com/api/docs/guides/latest-model),
+[Codex configuration](https://learn.chatgpt.com/docs/config-file/config-basic),
+and [custom agent schema](https://learn.chatgpt.com/docs/agent-configuration/subagents).
+
+## Operator roles
+
 | Role | Inputs | Output | Boundary |
 | --- | --- | --- | --- |
 | Inventory scout | Router config, serves manifest, status | Current aliases, tiers, and blockers | Read-only. |
