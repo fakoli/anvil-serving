@@ -1,9 +1,11 @@
 # Anvil Connect native component
 
-Implementation in progress. The separate Go module contains the qualified
-transport lab and access-control libraries; it does not yet provide a deployable
-gateway, browser login, or a replacement for an installed Tailscale edge.
-The Python router and controller gain no runtime dependencies from this module.
+Implementation in progress. The separate Go module contains the gateway,
+outbound origin connector, browser access gateway, scoped API keys, and optional
+loopback SDK forwarder. Isolated process and browser tests are available;
+managed deployment and migration qualification are still being completed.
+It has not replaced an installed Tailscale edge. The Python router and controller
+gain no runtime dependencies from this module.
 
 The [transport finding](../docs/ANVIL-CONNECT-TRANSPORT.md) records the pinned
 wstunnel release, measured behavior, and environments still requiring testing.
@@ -20,7 +22,7 @@ wstunnel release, measured behavior, and environments still requiring testing.
 - API clients use either `Authorization: Bearer <connect-key>` or
   `X-Api-Key: <connect-key>`, exclusively. The key grants exact resource/method
   access. API requests with Origin, Cookie or proxy credentials are refused;
-  browser sessions have a separate implementation stage.
+  browser sessions use a separate OIDC admission path.
 - Public hostnames have no explicit port or trailing dot. Paths reject escapes,
   non-ASCII characters, dot segments and duplicate separators. Applications
   requiring those URL forms need an explicit compatibility extension.
@@ -41,9 +43,11 @@ wstunnel release, measured behavior, and environments still requiring testing.
 The API integration test uses the managed pinned tunnel, verified inner TLS,
 native-token delegation, immediate SSE delivery, WebSockets, upload deadlines,
 and cancellation without replaying an ambiguous POST. TLS verifies the deployment
-CA and exact service names. Binding those certificates to the currently enrolled
-installation generation and closing access on revocation remain required before
-deployment. A valid certificate name alone is not proof of a current installation.
+CA and exact service names. Inner certificates bind their TLS public key to the
+installation identity, resource, generation and authority epoch. The gateway
+checks that binding at connection admission and throughout active requests;
+revocation closes streams and upgraded connections. A valid certificate name
+alone is not proof of a current installation.
 
 The Linux process wrapper executes the digest-verified binary inode and passes
 opened immutable certificate, key, trust and restriction files by descriptor.
@@ -71,8 +75,10 @@ redemption verifies possession and creates a pending installation. Activation
 requires an administrator to check its public-key fingerprint independently.
 The signed installation-control proof has a maximum 30-second lifetime, fixed
 role/resource bindings and persisted replay markers. This identity is distinct
-from a human dashboard session or an API key. Endpoint integration and active
-connection revocation remain implementation stages.
+from a human dashboard session or an API key. The connector renews a bounded
+45-second origin lease and tunnel authorization through signed control requests.
+Failure to renew closes access when the lease expires; starting a child process
+does not establish origin readiness.
 
 The browser-session library now uses the managed OIDC issuer with single-use
 state, nonce and PKCE transactions, exact callback hosts, explicit human grants,
@@ -82,15 +88,48 @@ resources; it does not remove the application's cookies or the IdP session.
 The authority caps active sessions at 1,024 globally and 32 per human and reclaims
 expired or invalid records before issuance. Its owned OIDC client requires TLS
 1.3 and the same HTTPS origin for discovery, authorization, token and key URLs.
-These are library tests against a synthetic issuer; live Authelia, browser
-cookies, callback routes and native dashboard controls remain to be qualified.
+Chromium tests exercise real TLS origins, cookies, callbacks, native dashboard
+session/CSRF controls, and cancellation on logout against a synthetic issuer.
+Actual Authelia login and the complete managed deployment remain to be qualified.
+
+## Native process interface
+
+Build the Linux command with `go -C connect build -o /absolute/output/anvil-connect
+./cmd/anvil-connect`. Its help lists validation, explicit gateway initialization,
+connector enrollment, gateway/connector/client processes, public installation
+identity inspection, local admin requests, and local SDK key generation.
+
+`validate --mode gateway|connector|client --config /absolute/declaration.json`
+checks the closed native declaration without starting services or loading secrets.
+Gateway initialization creates two independent private authorities exclusively;
+ordinary startup never silently replaces a missing authority. Connector enrollment
+persists locally generated keys before its network request, and owner approval
+uses the installation fingerprint. Corrected invitations retain the pending
+installation's keys under the same immutable declaration.
+
+Administrative requests use a separate owner-only Unix socket. Key issuance and
+invitation commands require an exclusive mode-0600 output file beneath an owned
+mode-0700 directory. Raw credentials are never printed. Native declarations use
+explicit environment references; there is no shared environment-file discovery.
+The optional local client uses its own key and forwards to exactly one declared
+public resource using a separately provisioned Connect API key.
+
+The native gateway accepts ingress only over its own same-user Unix socket. A
+managed TLS edge supplies public HTTPS and forwards ordinary HTTP/2 and classic
+WebSocket upgrades through separate transports. The private tunnel backend uses
+another certificate authority and gate-only mTLS. Gateway service certificates
+currently require a supervised process restart before their 24-hour expiry;
+this is not a zero-downtime certificate rotation claim.
 
 ## Local verification
 
 ```sh
 go -C connect test ./internal/... -count=1
+go -C connect test ./cmd/anvil-connect -count=1
 # The lab also requires the exact binary identified in transport.lock.json:
 ANVIL_CONNECT_WSTUNNEL=/path/to/verified/wstunnel go -C connect test ./lab -count=1 -v
+npm --prefix connect ci
+npm --prefix connect run test:browser
 ```
 
 Dependencies are pinned in go.mod/go.sum: [bbolt](https://github.com/etcd-io/bbolt)
