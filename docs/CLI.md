@@ -374,7 +374,7 @@ required operands, choices, and defaults.
 | `connect` | Manage authenticated API and browser access with Anvil Connect. | `read` / `bounded` | - |
 | `connect validate` | Validate declarations and selected native components. | `read` / `bounded` | `--manifest`<br>`--service` |
 | `connect render` | Preview or stage an owned configuration generation. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
-| `connect up` | Preview or activate only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--dry-run`<br>`--confirm` |
+| `connect up` | Preview or activate only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--services`<br>`--upgrade`<br>`--dry-run`<br>`--confirm` |
 | `connect down` | Preview or stop only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--dry-run`<br>`--confirm` |
 | `connect status` | Inspect owned service state without claiming origin readiness. | `read` / `bounded` | `--manifest`<br>`--service` |
 | `connect doctor` | Check declared paths, components, and ownership. | `read` / `bounded` | `--manifest`<br>`--service` |
@@ -383,6 +383,9 @@ required operands, choices, and defaults.
 | `connect identity` | Read the public fingerprint of a declared connector. | `read` / `bounded` | `--manifest`<br>`--service` |
 | `connect admin` | Send a declared request to the local gateway authority. | `mutate` / `bounded` | `--manifest`<br>`--request`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `connect keygen` | Create a private key for a declared local SDK forwarder. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--output`<br>`--dry-run`<br>`--confirm` |
+| `connect backup` | Back up the stopped gateway authority to a private file. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
+| `connect restore` | Restore fenced authority into a fresh private directory. | `mutate` / `bounded` | `--manifest`<br>`--input`<br>`--destination`<br>`--sha256`<br>`--native-sha256`<br>`--dry-run`<br>`--confirm` |
+| `connect migration` | Preview Observatory access at one canonical origin. | `read` / `bounded` | `--manifest`<br>`--observatory-config`<br>`--resource` |
 | `workbench` | Manage the optional private Anvil Workbench hub stack. | `read` / `bounded` | - |
 | `workbench build` | Build the Workbench hub image from the local companion checkout. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--source`<br>`--image` |
 | `workbench up` | Start the private Workbench hub, Postgres, and Neo4j projection. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
