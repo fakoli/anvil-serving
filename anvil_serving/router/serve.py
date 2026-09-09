@@ -566,14 +566,13 @@ class _AutoConcurrencyRefresher:
                     )
 
     def _run(self) -> None:
-        next_due = self._clock()
         while not self._stop.is_set():
             self.refresh_once()
-            remaining = max(0.0, self._interval - (self._clock() - next_due))
-            if self._wake.wait(timeout=remaining):
+            # Fixed-delay, not fixed-rate: a probe that overruns the interval
+            # must never collapse the sleep to zero (busy-loop protection).
+            if self._wake.wait(timeout=self._interval):
                 self._wake.clear()
                 return
-            next_due += self._interval
 
 
 def _configured_replica_members(config: RouterConfig) -> dict[str, tuple[str, ...]]:

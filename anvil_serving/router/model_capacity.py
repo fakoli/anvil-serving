@@ -32,7 +32,13 @@ from .availability import (
     safe_check,
     safe_check_member,
 )
-from .config import METADATA_UPSTREAM, RouterConfig, Tier, normalize_model_alias
+from .config import (
+    MAX_CONCURRENCY_AUTO,
+    METADATA_UPSTREAM,
+    RouterConfig,
+    Tier,
+    normalize_model_alias,
+)
 from .replica_scheduler import (
     ReplicaPressure,
     PressureFreshness,
@@ -906,7 +912,10 @@ def build_model_capacity(
                     if kv_capacity is not None and context_limit is not None
                     else None
                 ),
-                "configured_max_concurrency": tier.max_concurrency,
+                "configured_max_concurrency": (
+                    None if tier.max_concurrency == MAX_CONCURRENCY_AUTO
+                    else tier.max_concurrency
+                ),
                 "scheduler_max_num_seqs": _positive_int(
                     capacity.get("scheduler_max_num_seqs")
                 ),
@@ -987,7 +996,7 @@ def engine_declared_concurrency(
     router's own authority, and responses are never echoed into errors.
     """
     parsed = urlsplit(base_url)
-    path = parsed.path or ""
+    path = (parsed.path or "").rstrip("/")
     root = path[: -len("/v1")] if path.endswith("/v1") else path
     paths = [f"{root}/get_server_info", f"{root}/server_info"]
     transport = opener if opener is not None else urllib.request.build_opener(
@@ -1016,7 +1025,10 @@ def engine_declared_concurrency(
             value = body.get(key)
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 continue
-            return value
+            # Clamp to the router's own admission ceiling bound: an engine
+            # reporting an absurd limit is treated as "at the router maximum",
+            # never as an unbounded gate.
+            return min(value, 100_000)
     return None
 
 
