@@ -123,6 +123,7 @@ func TestIndependentConnectorEnvelope(t *testing.T) {
 	for _, target := range []string{
 		"http://100.64.0.10:19000", "http://127.0.0.1:19000/admin", "http://user:password@127.0.0.1:19000",
 		"http://127.0.0.1:19000?x=1", "http://127.0.0.1:19000#fragment", "file:///etc/passwd", "http://127.0.0.1:019000", "http://127.0.0.1",
+		"http://127.0.0.1:19000#", "http://127.0.0.1:19000/#",
 	} {
 		t.Run(target, func(t *testing.T) {
 			c := connector(t)
@@ -152,6 +153,11 @@ func TestIndependentConnectorEnvelope(t *testing.T) {
 
 func TestResourceMatching(t *testing.T) {
 	rule := gateway(t).Resources[0].Rule
+	root := rule
+	root.PathPrefix = "/"
+	if root.Allows(root.Host, "//", "GET") {
+		t.Fatal("duplicate root separator accepted")
+	}
 	for _, tc := range []struct {
 		host, path, method string
 		allowed            bool

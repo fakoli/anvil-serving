@@ -99,7 +99,7 @@ func ValidHost(value string) bool {
 // duplicate separators and non-ASCII paths need an explicit later contract.
 // Query strings are not paths and do not participate in resource selection.
 func CanonicalPath(value string) bool {
-	if value == "" || value[0] != '/' || strings.ContainsAny(value, `%\?#`) {
+	if value == "" || value[0] != '/' || strings.ContainsAny(value, `%\?#`) || strings.Contains(value, "//") {
 		return false
 	}
 	for _, c := range value {
@@ -216,7 +216,7 @@ func (c Connector) Validate() error {
 
 func validateOrigin(value string) error {
 	u, err := url.Parse(value)
-	if err != nil || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.RawPath != "" || (u.Path != "" && u.Path != "/") || u.Opaque != "" || strings.ContainsAny(value, "\\\r\n\t ") {
+	if err != nil || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.RawPath != "" || (u.Path != "" && u.Path != "/") || u.Opaque != "" || strings.ContainsAny(value, "\\\r\n\t #") {
 		return errors.New("origin must be a fixed authority URL without credentials, path, query or fragment")
 	}
 	if !LoopbackAddress(u.Host) || u.Scheme != "http" {
