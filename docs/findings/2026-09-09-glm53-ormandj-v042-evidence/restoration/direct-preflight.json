@@ -1,0 +1,91 @@
+{
+  "base_url": "http://127.0.0.1:8001/v1",
+  "budget": {
+    "max_completion_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [],
+  "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nThat's it \u2014 `sum()` is the built-in function for exactly this. If you want a one-liner *expression* without built-ins (e.g., for an exercise), you could use `functools.reduce(lambda a, b: a + b, xs, 0)`, but `sum(xs)` is the idiomatic choice.",
+      "content_chars": 265,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nThat's it \u2014 `sum()` is the built-in function for exactly this. If you want a one-liner *expression* without built-ins (e.g., for an exercise), you could use `functools.reduce(la",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.599,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 80,
+        "prompt_tokens": 29,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 109
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.167,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 10,
+        "prompt_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 41
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "0.6s got=\"```python\\nsum(xs)\\n```\\n\\nThat's it \u2014 `sum()` is the \" finish='stop' visible=265 reasoning_chars=0 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=0 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

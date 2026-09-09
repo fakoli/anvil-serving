@@ -1,0 +1,201 @@
+{
+  "schema": "runtime-profile-comparison/v1",
+  "baseline_image": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+  "candidate_image": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:877ae29486eb7d385eb2a07921522aa3597f643f9a7c50112751f2aaa14d558a",
+  "cells": {
+    "capacity-4k": {
+      "baseline_requests": 12,
+      "candidate_requests": 12,
+      "baseline_performance_eligible": true,
+      "candidate_performance_eligible": true,
+      "median_prompt_tokens": 2970.0,
+      "metrics": {
+        "ttft_p50_ms": {
+          "baseline": 496.0971620002965,
+          "candidate": 470.34554300080345,
+          "delta_percent": -5.190841829382952,
+          "no_more_than_5_percent_regression": true
+        },
+        "e2e_p50_ms": {
+          "baseline": 638.3741200006625,
+          "candidate": 607.0386419996794,
+          "delta_percent": -4.908638527036557,
+          "no_more_than_5_percent_regression": true
+        },
+        "decode_tok_s_p50": {
+          "baseline": 288.5934894410126,
+          "candidate": 299.94095771922105,
+          "delta_percent": 3.931990392502538,
+          "no_more_than_5_percent_regression": true
+        }
+      }
+    },
+    "capacity-120k": {
+      "baseline_requests": 3,
+      "candidate_requests": 3,
+      "baseline_performance_eligible": true,
+      "candidate_performance_eligible": true,
+      "median_prompt_tokens": 97159.0,
+      "metrics": {
+        "ttft_p50_ms": {
+          "baseline": 14939.95374699989,
+          "candidate": 14744.056768000519,
+          "delta_percent": -1.311228818487542,
+          "no_more_than_5_percent_regression": true
+        },
+        "e2e_p50_ms": {
+          "baseline": 15100.452483000481,
+          "candidate": 14881.152528001621,
+          "delta_percent": -1.4522740642754828,
+          "no_more_than_5_percent_regression": true
+        },
+        "decode_tok_s_p50": {
+          "baseline": 255.4481387120637,
+          "candidate": 299.41073265701567,
+          "delta_percent": 17.20998797118103,
+          "no_more_than_5_percent_regression": true
+        }
+      }
+    }
+  },
+  "performance_gate_passed": true,
+  "strict_turnover_gate_passed": false,
+  "qualification": "not a blanket deterministic pass",
+  "promotion": "User selected retain-baseline/no-promotion after failed strict turnover; exact baseline restored and readmitted",
+  "baseline_turnover": {
+    "requests": 60,
+    "exact_output_passed": 53,
+    "failed": 7,
+    "responses_received": 60,
+    "performance_eligible": false,
+    "failures": [
+      {
+        "request_index": 0,
+        "failure_class": "controlled_output_failed",
+        "words": 497,
+        "finish_reasons": [
+          "length"
+        ],
+        "canary_passed": true
+      },
+      {
+        "request_index": 1,
+        "failure_class": "controlled_output_failed",
+        "words": 488,
+        "finish_reasons": [
+          "length"
+        ],
+        "canary_passed": true
+      },
+      {
+        "request_index": 2,
+        "failure_class": "controlled_output_failed",
+        "words": 0,
+        "finish_reasons": [
+          "stop"
+        ],
+        "canary_passed": true
+      },
+      {
+        "request_index": 24,
+        "failure_class": "controlled_output_failed",
+        "words": 33,
+        "finish_reasons": [
+          "stop"
+        ],
+        "canary_passed": true
+      },
+      {
+        "request_index": 25,
+        "failure_class": "controlled_output_failed",
+        "words": 33,
+        "finish_reasons": [
+          "stop"
+        ],
+        "canary_passed": true
+      },
+      {
+        "request_index": 39,
+        "failure_class": "controlled_output_failed",
+        "words": 33,
+        "finish_reasons": [
+          "stop"
+        ],
+        "canary_passed": true
+      },
+      {
+        "request_index": 56,
+        "failure_class": "controlled_output_failed",
+        "words": 487,
+        "finish_reasons": [
+          "length"
+        ],
+        "canary_passed": true
+      }
+    ]
+  },
+  "candidate_turnover": {
+    "requests": 60,
+    "exact_output_passed": 58,
+    "failed": 2,
+    "responses_received": 60,
+    "performance_eligible": false,
+    "failures": [
+      {
+        "request_index": 2,
+        "failure_class": "controlled_output_failed",
+        "words": 33,
+        "finish_reasons": [
+          "stop"
+        ],
+        "canary_passed": true
+      },
+      {
+        "request_index": 35,
+        "failure_class": "controlled_output_failed",
+        "words": 31,
+        "finish_reasons": [
+          "stop"
+        ],
+        "canary_passed": true
+      }
+    ]
+  },
+  "candidate_turnover_repeat": {
+    "requests": 60,
+    "exact_output_passed": 57,
+    "failed": 3,
+    "responses_received": 60,
+    "performance_eligible": false,
+    "failures": [
+      {
+        "request_index": 20,
+        "failure_class": "controlled_output_failed",
+        "words": 33,
+        "finish_reasons": [
+          "stop"
+        ],
+        "canary_passed": true
+      },
+      {
+        "request_index": 32,
+        "failure_class": "controlled_output_failed",
+        "words": 499,
+        "finish_reasons": [
+          "length"
+        ],
+        "canary_passed": true
+      },
+      {
+        "request_index": 36,
+        "failure_class": "controlled_output_failed",
+        "words": 33,
+        "finish_reasons": [
+          "stop"
+        ],
+        "canary_passed": true
+      }
+    ]
+  },
+  "human_decision": "retain-baseline/no-promotion; user-reported other reports remain unverified"
+}
