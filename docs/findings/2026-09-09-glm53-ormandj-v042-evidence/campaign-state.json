@@ -1,7 +1,7 @@
 {
   "schema": "anvil-serving.benchmark-campaign-state/v1",
   "campaign_id": "2026-09-09-glm53-ormandj-v042",
-  "updated_at": "2026-09-09T12:05:36.566362+00:00",
+  "updated_at": "2026-09-09T15:27:40.694678+00:00",
   "status": "complete",
   "current_stage": "publication",
   "launcher": {
