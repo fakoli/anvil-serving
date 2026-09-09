@@ -3,6 +3,7 @@
 package store
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -200,6 +201,36 @@ func (t *Tx) Delete(bucket, id string) error {
 		return err
 	}
 	return b.Delete([]byte(id))
+}
+
+// Record is a copied JSON value, valid after the transaction ends. Callers can
+// delete expired records after List returns without mutating a live cursor.
+type Record struct {
+	ID    string
+	Value json.RawMessage
+}
+
+// List provides a bounded snapshot within an explicit bucket namespace. Exceeding
+// either bound fails closed; it never silently returns a partial authority view.
+func (t *Tx) List(bucket, prefix string, limit int) ([]Record, error) {
+	if len(prefix) < 1 || len(prefix) > 256 || limit < 1 || limit > 4096 {
+		return nil, ErrState
+	}
+	b, err := t.bucket(bucket)
+	if err != nil {
+		return nil, err
+	}
+	var records []Record
+	var size int
+	cursor := b.Cursor()
+	for key, value := cursor.Seek([]byte(prefix)); key != nil && bytes.HasPrefix(key, []byte(prefix)); key, value = cursor.Next() {
+		size += len(key) + len(value)
+		if len(key) > 256 || value == nil || len(value) > 65536 || !json.Valid(value) || len(records) == limit || size > 8*1024*1024 {
+			return nil, ErrState
+		}
+		records = append(records, Record{ID: string(key), Value: append(json.RawMessage(nil), value...)})
+	}
+	return records, nil
 }
 
 // ResetAuthority invalidates all credentials carrying a prior epoch. Recovery

@@ -1,12 +1,72 @@
 package store
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+func TestBoundedNamespacedSnapshots(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "authority"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	var snapshot []Record
+	if err := s.Update(func(tx *Tx) error {
+		for _, id := range []string{"oidc:a", "oidc:b", "other:c"} {
+			if err := tx.Put("transactions", id, map[string]int{"value": 1}); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.List("transactions", "", 3); err == nil {
+			t.Fatal("empty namespace accepted")
+		}
+		if _, err := tx.List("meta", "epoch", 3); err == nil {
+			t.Fatal("private metadata listed")
+		}
+		if _, err := tx.List("transactions", "oidc:", 1); err == nil {
+			t.Fatal("partial snapshot returned at overflow")
+		}
+		var err error
+		snapshot, err = tx.List("transactions", "oidc:", 2)
+		if err != nil {
+			return err
+		}
+		if len(snapshot) != 2 {
+			t.Fatal("namespace filter changed")
+		}
+		for _, record := range snapshot {
+			if err := tx.Delete("transactions", record.ID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, record := range snapshot {
+		var data map[string]int
+		if json.Unmarshal(record.Value, &data) != nil || data["value"] != 1 {
+			t.Fatal("snapshot invalid after delete/transaction close")
+		}
+	}
+	if err := s.View(func(tx *Tx) error {
+		records, err := tx.List("transactions", "other:", 1)
+		if err != nil {
+			return err
+		}
+		if len(records) != 1 {
+			t.Fatal("different namespace was deleted")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestAtomicPersistenceAndEpoch(t *testing.T) {
 	directory := filepath.Join(t.TempDir(), "authority")

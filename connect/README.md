@@ -74,6 +74,17 @@ role/resource bindings and persisted replay markers. This identity is distinct
 from a human dashboard session or an API key. Endpoint integration and active
 connection revocation remain implementation stages.
 
+The browser-session library now uses the managed OIDC issuer with single-use
+state, nonce and PKCE transactions, exact callback hosts, explicit human grants,
+and opaque host/resource sessions. Pending transactions and sessions are bound
+to the authority epoch. Logout invalidates that human's Connect sessions across
+resources; it does not remove the application's cookies or the IdP session.
+The authority caps active sessions at 1,024 globally and 32 per human and reclaims
+expired or invalid records before issuance. Its owned OIDC client requires TLS
+1.3 and the same HTTPS origin for discovery, authorization, token and key URLs.
+These are library tests against a synthetic issuer; live Authelia, browser
+cookies, callback routes and native dashboard controls remain to be qualified.
+
 ## Local verification
 
 ```sh
@@ -84,6 +95,8 @@ ANVIL_CONNECT_WSTUNNEL=/path/to/verified/wstunnel go -C connect test ./lab -coun
 
 Dependencies are pinned in go.mod/go.sum: [bbolt](https://github.com/etcd-io/bbolt)
 (MIT), [go-jose](https://github.com/go-jose/go-jose) (Apache-2.0),
+[go-oidc](https://github.com/coreos/go-oidc) (Apache-2.0),
+[Go OAuth2](https://pkg.go.dev/golang.org/x/oauth2) (BSD-3-Clause),
 [coder/websocket](https://github.com/coder/websocket) (ISC), and
 [Go system interfaces](https://pkg.go.dev/golang.org/x/sys) (BSD-3-Clause).
 The initial runtime and transport qualification target Linux amd64.
