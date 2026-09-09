@@ -15,6 +15,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -24,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -127,6 +129,7 @@ func (b *boundedLog) String() string {
 }
 
 type child struct {
+	t    *testing.T
 	cmd  *exec.Cmd
 	log  *boundedLog
 	done chan struct{}
@@ -135,7 +138,7 @@ type child struct {
 
 func startChild(t *testing.T, binary string, env []string, args ...string) *child {
 	t.Helper()
-	c := &child{cmd: exec.Command(binary, args...), log: &boundedLog{}, done: make(chan struct{})}
+	c := &child{t: t, cmd: exec.Command(binary, args...), log: &boundedLog{}, done: make(chan struct{})}
 	// Do not inherit proxy, credential, or tracing variables from the operator.
 	c.cmd.Env = append([]string{"PATH=" + os.Getenv("PATH")}, env...)
 	c.cmd.Stdout, c.cmd.Stderr = c.log, c.log
@@ -149,10 +152,13 @@ func startChild(t *testing.T, binary string, env []string, args ...string) *chil
 
 func (c *child) stop() {
 	c.once.Do(func() {
-		_ = c.cmd.Process.Kill()
+		if err := c.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			c.t.Errorf("transport cleanup kill failed: %v", err)
+		}
 		select {
 		case <-c.done:
 		case <-time.After(5 * time.Second):
+			c.t.Error("transport cleanup did not reap child within 5 seconds")
 		}
 	})
 }
@@ -170,14 +176,58 @@ func loopbackPort(t *testing.T) string {
 	return port
 }
 
-func awaitListener(t *testing.T, address string, process *child) {
+// wstunnel cannot inherit a prebound FD. A port allocation collision must fail
+// qualification rather than accepting another process's listener as ours.
+// The lock qualifies Linux only, so inspect socket ownership on our child.
+func ownsListener(address string, process *child) (bool, error) {
+	host, portText, err := net.SplitHostPort(address)
+	if err != nil || host != "127.0.0.1" {
+		return false, fmt.Errorf("unexpected lab listener address")
+	}
+	port, err := strconv.Atoi(portText)
+	if err != nil {
+		return false, err
+	}
+	root := fmt.Sprintf("/proc/%d", process.cmd.Process.Pid)
+	fds, err := os.ReadDir(root + "/fd")
+	if err != nil {
+		return false, err
+	}
+	sockets := map[string]bool{}
+	for _, fd := range fds {
+		link, err := os.Readlink(root + "/fd/" + fd.Name())
+		if err == nil && strings.HasPrefix(link, "socket:[") {
+			sockets[strings.TrimSuffix(strings.TrimPrefix(link, "socket:["), "]")] = true
+		}
+	}
+	tcp, err := os.ReadFile(root + "/net/tcp")
+	if err != nil {
+		return false, err
+	}
+	wanted := fmt.Sprintf("0100007F:%04X", port)
+	for _, line := range strings.Split(string(tcp), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) > 9 && fields[1] == wanted && fields[3] == "0A" && sockets[fields[9]] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func awaitListener(t *testing.T, address string, process, owner *child) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		conn, err := net.DialTimeout("tcp4", address, 50*time.Millisecond)
 		if err == nil {
 			_ = conn.Close()
-			return
+			owned, err := ownsListener(address, owner)
+			if err != nil {
+				t.Fatalf("cannot verify transport listener ownership: %v", err)
+			}
+			if owned {
+				return
+			}
 		}
 		select {
 		case <-process.done:
@@ -186,7 +236,7 @@ func awaitListener(t *testing.T, address string, process *child) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	t.Fatalf("transport did not bind loopback listener: %s", process.log.String())
+	t.Fatalf("transport did not own loopback listener %s (possible port collision): %s", address, process.log.String())
 }
 
 type authority struct {
@@ -287,17 +337,20 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	f.server = startChild(t, f.binary, nil, "server", "--no-color", "--log-lvl", "warn", "--nb-worker-threads", "1", "--tls-certificate", serverID.certPath, "--tls-private-key", serverID.keyPath, "--tls-client-ca-certs", f.caPath, "--restrict-config", restrictions, "wss://"+f.serverAddress)
-	awaitListener(t, f.serverAddress, f.server)
+	awaitListener(t, f.serverAddress, f.server, f.server)
 	return f
 }
 
-func (f *fixture) connector(t *testing.T, target, bind string, id identity, trust string) *child {
+func (f *fixture) connector(t *testing.T, target, bind string, id identity, trust string, options ...string) *child {
 	t.Helper()
 	empty := filepath.Join(f.dir, "empty-roots")
 	if err := os.MkdirAll(empty, 0700); err != nil {
 		t.Fatal(err)
 	}
-	return startChild(t, f.binary, []string{"SSL_CERT_FILE=" + trust, "SSL_CERT_DIR=" + empty}, "client", "--no-color", "--log-lvl", "warn", "--nb-worker-threads", "1", "--tls-verify-certificate", "--tls-certificate", id.certPath, "--tls-private-key", id.keyPath, "--connection-retry-max-backoff", "1s", "--reverse-tunnel-connection-retry-max-backoff", "1s", "-R", "tcp://127.0.0.1:"+bind+":"+target, "wss://"+f.serverAddress)
+	args := []string{"client", "--no-color", "--log-lvl", "warn", "--nb-worker-threads", "1", "--tls-verify-certificate", "--tls-certificate", id.certPath, "--tls-private-key", id.keyPath, "--connection-retry-max-backoff", "1s", "--reverse-tunnel-connection-retry-max-backoff", "1s", "-R", "tcp://127.0.0.1:" + bind + ":" + target}
+	args = append(args, options...)
+	args = append(args, "wss://"+f.serverAddress)
+	return startChild(t, f.binary, []string{"SSL_CERT_FILE=" + trust, "SSL_CERT_DIR=" + empty}, args...)
 }
 
 func TestPinnedBinary(t *testing.T) {
@@ -360,7 +413,7 @@ func TestTLSConnectorVerifiesServer(t *testing.T) {
 	}
 	defer origin.Close()
 	good := f.connector(t, origin.Addr().String(), f.reversePort, f.client, f.caPath)
-	awaitListener(t, "127.0.0.1:"+f.reversePort, good)
+	awaitListener(t, "127.0.0.1:"+f.reversePort, good, f.server)
 	good.stop()
 	// A separate fixture avoids the reverse listener's documented idle lifetime.
 	other := newFixture(t)
@@ -383,7 +436,7 @@ func TestTLSConnectorVerifiesServer(t *testing.T) {
 			// Restore only the trust root to demonstrate the same otherwise
 			// healthy endpoint becomes usable once certificate trust is valid.
 			recovered := other.connector(t, origin.Addr().String(), other.reversePort, other.client, other.caPath)
-			awaitListener(t, "127.0.0.1:"+other.reversePort, recovered)
+			awaitListener(t, "127.0.0.1:"+other.reversePort, recovered, other.server)
 			return
 		}
 		time.Sleep(20 * time.Millisecond)
