@@ -217,8 +217,20 @@ def commands() -> tuple[CommandNode, ...]:
                 ),
                 _node(
                     "docker-image",
-                    "Audit and remove one exact immutable Docker image.",
+                    "Inspect or remove one exact immutable Docker image.",
                     children=(
+                        _resource_node(
+                            "inspect",
+                            "Read the platform and selected build labels of one cached image.",
+                            "anvil_serving.image_identity",
+                            role="host",
+                            argv_prefix=(),
+                            options=(
+                                _option("--label", value_name="NAME", summary="Additional build label; repeatable."),
+                            ),
+                            execution_runtime_roles=("native",),
+                            docs_anchor="docs/cli/image-identity.md",
+                        ),
                         _resource_node(
                             "remove",
                             "Remove one unreferenced full image ID or digest.",

@@ -335,12 +335,14 @@ required operands, choices, and defaults.
 | `host gpu-sharing` | Inspect and probe CUDA GPU-sharing capabilities. | `read` / `bounded` | - |
 | `host gpu-sharing inspect` | Inspect Green Context and MPS capability without mutation. | `read` / `bounded` | - |
 | `host gpu-sharing probe` | Run the guarded Docker CUDA prerequisite probe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `host nccl` | Check two-rank NCCL correctness and transport in a pinned local image. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--image`<br>`--gpu-uuid`<br>`--p2p`<br>`--cumem`<br>`--max-mib`<br>`--iterations`<br>`--timeout`<br>`--output` |
 | `host doctor` | Diagnose host configuration. | `read` / `bounded` | - |
 | `host memory` | Show host RAM and WSL VM memory usage. | `read` / `bounded` | - |
 | `host shared-memory` | Inspect and reclaim vLLM native KV-offload shared memory. | `read` / `bounded` | - |
 | `host shared-memory status` | Inspect ownership of vLLM offload mmap files. | `read` / `bounded` | - |
 | `host shared-memory reclaim` | Remove only twice-verified orphan vLLM offload mmap files. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `host docker-image` | Audit and remove one exact immutable Docker image. | `read` / `bounded` | - |
+| `host docker-image` | Inspect or remove one exact immutable Docker image. | `read` / `bounded` | - |
+| `host docker-image inspect` | Read the platform and selected build labels of one cached image. | `read` / `bounded` | `--label` |
 | `host docker-image remove` | Remove one unreferenced full image ID or digest. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config-home` |
 | `host docker-disk` | Inspect and compact the Docker Desktop data disk. | `read` / `bounded` | - |
 | `host docker-disk compact` | Stop Docker Desktop and compact one exact data VHDX. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
