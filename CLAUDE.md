@@ -178,17 +178,32 @@ Public examples and the packaged scaffold contain generic placeholders only.
 
 Use model depth at decision boundaries, then reduce it for bounded execution:
 
-- Use **GPT-5.6 Sol with high reasoning** for behavior-first PRDs, product or
-  architecture boundaries, cross-cutting breaking changes, and final removal
-  review.
-- Use **GPT-5.6 Terra with medium reasoning** for focused implementation tasks
-  whose acceptance criteria and verification commands are explicit. Raise Terra
-  to high for parser, router, migration, or edge-case-heavy work.
-- Use Terra low or medium for mechanical renames, fixtures, inventories,
-  documentation synchronization, and straightforward tests.
-- Prefer PR-sized tasks and the lowest reasoning effort that reliably passes an
-  independent verification gate. Do not use stronger reasoning as a substitute
-  for recorded tests or human promotion approval.
+- Use **GPT-6 Astra with high reasoning** as the lead development agent for
+  behavior-first PRDs, architecture, difficult debugging, and cross-cutting changes.
+- Use **GPT-5.6 Terra with medium reasoning** for focused implementation with
+  explicit acceptance criteria. Raise Terra to high for parser, router, migration,
+  or edge-case-heavy work; use low or medium for mechanical changes and inventory.
+- Review Terra work with Astra in a separate review session. Review Astra work
+  with **GPT-5.6 Sol with high reasoning** or a human. A reviewer must also be
+  independent from the model being evaluated and the author of its evidence.
+- The trusted project defaults live in `.codex/config.toml`; named Codex roles
+  live in `.codex/agents/*.toml`. Explicit task-level model selections take
+  precedence. Keep Claude Code's provider configuration separate.
+- Complete authorized work within the assigned scope. Reuse established user
+  authorization; ask only when a missing decision materially changes the result
+  or the requested action needs additional authorization. Preserve operational
+  preview, confirmation, and human promotion gates.
+- Delegate only concrete independent tasks when requested or when applicable
+  instructions call for delegation. Keep concurrency bounded and do not create
+  competing writers. Prefer PR-sized tasks and the lowest reasoning effort that
+  passes independent verification; reserve higher efforts for demonstrated need.
+- Report outcomes, relevant evidence, and remaining limitations in concise prose.
+  Run the checks required by the affected surfaces once; broaden or repeat them
+  only after changes, failures, or unresolved concerns justify it. Never use the
+  model's own assessment as the acceptance gate.
+
+See `docs/OPERATOR-SKILLS-AND-SUBAGENTS.md` for role discovery, overrides,
+validation, and rollback.
 
 ## Documentation
 
