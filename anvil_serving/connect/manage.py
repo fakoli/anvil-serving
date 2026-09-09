@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
-import grp
-import fcntl
 from importlib import resources
 import json
 import os
+import platform
 from pathlib import Path
-import pwd
 import re
 import selectors
 import signal
@@ -28,6 +26,16 @@ from contextlib import contextmanager
 
 from .config import read_manifest
 from .render import plan, render as render_config, stage
+
+# The package and command help remain portable.  The actual ownership model
+# below deliberately depends on Linux uid/gid, openat-style flags, flock and
+# systemd, so bind those imports only on its supported platform.
+if os.name == "posix" and platform.system() == "Linux":
+    import fcntl
+    import grp
+    import pwd
+else:  # pragma: no cover - imported only to keep Windows help/wheel safe.
+    fcntl = grp = pwd = None
 
 _SYSTEMCTL = "/usr/bin/systemctl"
 _JOURNALCTL = "/usr/bin/journalctl"
@@ -44,6 +52,23 @@ class ManageError(RuntimeError):
     def __init__(self, message: str, *, may_have_executed: bool = False) -> None:
         super().__init__(message)
         self.may_have_executed = may_have_executed
+
+
+class UnsupportedPlatformError(ManageError):
+    """Connect native lifecycle is intentionally Linux amd64 only."""
+
+
+def supported_platform() -> bool:
+    return (
+        os.name == "posix"
+        and platform.system() == "Linux"
+        and platform.machine().lower() in {"x86_64", "amd64"}
+    )
+
+
+def _require_supported_platform() -> None:
+    if not supported_platform():
+        raise UnsupportedPlatformError("Connect lifecycle requires Linux amd64")
 
 
 def _executed_error(exc: Exception) -> ManageError:
@@ -405,6 +430,7 @@ def _validate_data(data: dict[str, Any], target: Target | tuple[Target, ...] | N
 
 def validate(manifest_path: str | Path, target: Target | None = None, *, runner: Runner | None = None) -> dict[str, Any]:
     """Validate one declaration without writing a generation or running services."""
+    _require_supported_platform()
     data = read_manifest(manifest_path)
     result = _validate_data(data, target, runner)
     result.update({"schema": "anvil-connect.manage/v1", "action": "validate", "applied": False, "plan": plan(data, data["config_root"])})
@@ -413,6 +439,7 @@ def validate(manifest_path: str | Path, target: Target | None = None, *, runner:
 
 def render_generation(manifest_path: str | Path, *, apply: bool = False, runner: Runner | None = None) -> dict[str, Any]:
     """Preview or write only a sibling staged generation; never activate it."""
+    _require_supported_platform()
     data = read_manifest(manifest_path)
     checked = _validate_data(data, None, runner)
     result: dict[str, Any] = {"schema": "anvil-connect.manage/v1", "action": "render", "applied": bool(apply), "plan": plan(data, data["config_root"]), **checked}
@@ -972,6 +999,7 @@ def _restore_running(runner: Runner | None, units: tuple[str, ...], prior: dict[
 
 def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bool, upgrade: bool, runner: Runner | None, unit_root: str | Path, action: str) -> dict[str, Any]:
     """Activate one closed role set in a single reversible transaction."""
+    _require_supported_platform()
     checked = _validate_data(data, targets, runner)
     report = plan(data, data["config_root"])
     units = _target_units(targets)
@@ -1046,6 +1074,7 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
 
 def up(manifest_path: str | Path, target: Target, *, apply: bool = False, runner: Runner | None = None, unit_root: str | Path = "/etc/systemd/system") -> dict[str, Any]:
     """Activate and start one role; ordinary one-role updates stay strict."""
+    _require_supported_platform()
     data = read_manifest(manifest_path)
     targets = _selected_targets(data, target)
     result = _up_selected(data, targets, apply=apply, upgrade=False, runner=runner, unit_root=unit_root, action="up")
@@ -1060,6 +1089,7 @@ def up_many(manifest_path: str | Path, targets: tuple[Target, ...], *, upgrade: 
     or edge artifacts must use versioned new paths while the prior ExecStart
     paths still verify against the active record, so rollback remains possible.
     """
+    _require_supported_platform()
     data = read_manifest(manifest_path)
     selected = _selected_targets(data, targets)
     return _up_selected(data, selected, apply=apply, upgrade=upgrade, runner=runner, unit_root=unit_root, action="up-many")
@@ -1067,6 +1097,7 @@ def up_many(manifest_path: str | Path, targets: tuple[Target, ...], *, upgrade: 
 
 def down(manifest_path: str | Path, target: Target, *, apply: bool = False, runner: Runner | None = None, unit_root: str | Path = "/etc/systemd/system") -> dict[str, Any]:
     """Stop/disable one owned role without changing public configuration."""
+    _require_supported_platform()
     data = read_manifest(manifest_path)
     _targets(data, target)
     root = Path(data["config_root"])
@@ -1102,6 +1133,7 @@ def _unit_status(runner: Runner | None, units: tuple[str, ...]) -> list[dict[str
 
 def status(manifest_path: str | Path, target: Target | None = None, *, runner: Runner | None = None) -> dict[str, Any]:
     """Return bounded unit metadata and renderer drift, without a readiness claim."""
+    _require_supported_platform()
     data = read_manifest(manifest_path)
     selected = _targets(data, target)
     return {"schema": "anvil-connect.manage/v1", "action": "status", "applied": False, "plan": plan(data, data["config_root"]), "targets": [{"target": item.text(), "units": _unit_status(runner, _units(item))} for item in selected]}
@@ -1109,6 +1141,7 @@ def status(manifest_path: str | Path, target: Target | None = None, *, runner: R
 
 def doctor(manifest_path: str | Path, target: Target | None = None, *, runner: Runner | None = None) -> dict[str, Any]:
     """Combine no-write validation, drift inspection, and supervisor metadata."""
+    _require_supported_platform()
     checked = validate(manifest_path, target, runner=runner)
     observed = status(manifest_path, target, runner=runner)
     return {"schema": "anvil-connect.manage/v1", "action": "doctor", "applied": False, "validation": checked, "status": observed}
@@ -1116,6 +1149,7 @@ def doctor(manifest_path: str | Path, target: Target | None = None, *, runner: R
 
 def logs(manifest_path: str | Path, target: Target, *, tail: int = 200, runner: Runner | None = None) -> dict[str, Any]:
     """Return metadata only: journal text is not safe to expose generically."""
+    _require_supported_platform()
     if not isinstance(tail, int) or not 1 <= tail <= 200:
         raise ManageError("log tail must be between 1 and 200")
     data = read_manifest(manifest_path)
@@ -1165,6 +1199,7 @@ def _native_verified(data: dict[str, Any]) -> str:
 
 def native_init(manifest_path: str | Path, target: Target, *, bundle: str | Path | None = None, apply: bool = False, runner: Runner | None = None) -> dict[str, Any]:
     """Initialize a declaration before service activation, using no active root."""
+    _require_supported_platform()
     data = read_manifest(manifest_path)
     _targets(data, target)
     if target.kind == "client" or (target.kind == "gateway" and bundle is not None) or (target.kind == "connector" and bundle is None):
@@ -1203,6 +1238,7 @@ def _closed_identity(raw: bytes) -> dict[str, Any]:
 
 def identity(manifest_path: str | Path, target: Target, *, runner: Runner | None = None) -> dict[str, Any]:
     """Read a closed public connector identity through the native owner command."""
+    _require_supported_platform()
     if target.kind != "connector":
         raise ManageError("identity is defined only for a connector")
     data = read_manifest(manifest_path)
@@ -1241,6 +1277,7 @@ def _admin_preview(request: Path) -> dict[str, str]:
 
 def admin(manifest_path: str | Path, *, request_path: str | Path, output_path: str | Path | None = None, apply: bool = False, runner: Runner | None = None) -> dict[str, Any]:
     """Call the derived same-user gateway admin socket; never accepts a socket."""
+    _require_supported_platform()
     data = read_manifest(manifest_path)
     _current(data)
     native_digest = _native_verified(data)
@@ -1263,6 +1300,7 @@ def admin(manifest_path: str | Path, *, request_path: str | Path, output_path: s
 
 def keygen(manifest_path: str | Path, target: Target, *, output_path: str | Path, apply: bool = False, runner: Runner | None = None) -> dict[str, Any]:
     """Create one local client key through the native private-output contract."""
+    _require_supported_platform()
     if target.kind != "client":
         raise ManageError("key generation is defined only for a local client")
     data = read_manifest(manifest_path)

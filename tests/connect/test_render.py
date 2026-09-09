@@ -3,8 +3,10 @@ from __future__ import annotations
 import copy
 import json
 import os
+import platform
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -14,6 +16,8 @@ from anvil_serving.connect.render import plan, render, stage
 
 
 ROOT = Path(__file__).parents[2]
+_LINUX_AMD64 = sys.platform == "linux" and platform.machine().lower() in {"x86_64", "amd64"}
+_NATIVE = pytest.mark.skipif(not _LINUX_AMD64, reason="native Connect filesystem contract requires Linux amd64")
 
 
 def manifest() -> dict:
@@ -108,6 +112,18 @@ def test_caddy_routes_keep_h2c_and_bound_websocket_path() -> None:
     tunnel = next(route for route in routes if route["match"][0].get("path") == ["/acv1/events"])
     assert tunnel["match"][0]["method"] == ["GET"]
     assert tunnel["handle"][1]["transport"]["versions"] == ["1.1"]
+    upgrade_routes = [route for route in routes if "header_regexp" in route.get("match", [{}])[0]]
+    assert len(upgrade_routes) == 1 + len(manifest()["gateway"]["gateway"]["resources"])
+    # Exercise HTTP token semantics, rather than only snapshotting a pattern.
+    import re
+    for route in upgrade_routes:
+        patterns = route["match"][0]["header_regexp"]
+        for connection in ("upgrade", "Upgrade", "UPGRADE", "keep-alive, upgrade"):
+            assert re.search(patterns["Connection"]["pattern"], connection)
+        for connection in ("xupgrade", "upgrade-extra", "keep-alive"):
+            assert not re.search(patterns["Connection"]["pattern"], connection)
+        for upgrade in ("websocket", "WebSocket", "WEBSOCKET"):
+            assert re.search(patterns["Upgrade"]["pattern"], upgrade)
     ordinary = next(route for route in routes if route["match"][0].get("method") == ["GET", "POST"])
     assert ordinary["handle"][1]["transport"]["versions"] == ["h2c"]
     assert "Forwarded" in ordinary["handle"][0]["request"]["delete"]
@@ -131,6 +147,7 @@ def test_authelia_template_has_explicit_pkce_rs256_and_callbacks() -> None:
     assert "default_policy: two_factor" in text
 
 
+@_NATIVE
 def test_plan_and_staging_preserve_drift_and_are_idempotent(tmp_path: Path) -> None:
     output = tmp_path / "rendered"
     output.mkdir()
@@ -180,6 +197,7 @@ def test_systemd_units_have_real_argv_and_reject_unsafe_paths() -> None:
         render(value)
 
 
+@_NATIVE
 def test_plan_and_stage_reject_symlink_roots_markers_and_staging(tmp_path: Path) -> None:
     target = tmp_path / "target"
     target.mkdir()
@@ -201,6 +219,7 @@ def test_plan_and_stage_reject_symlink_roots_markers_and_staging(tmp_path: Path)
         stage(manifest(), root)
 
 
+@_NATIVE
 def test_rendered_native_runtime_json_passes_real_cli(tmp_path: Path) -> None:
     selected_go = os.environ.get("ANVIL_CONNECT_GO") or shutil.which("go")
     if not selected_go:
@@ -264,6 +283,7 @@ def test_rendered_native_runtime_json_passes_real_cli(tmp_path: Path) -> None:
     assert result.returncode != 0
 
 
+@_NATIVE
 def test_plan_rejects_hostile_marker_without_reading_external_file(tmp_path: Path) -> None:
     root = tmp_path / "owned"
     root.mkdir()

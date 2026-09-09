@@ -62,6 +62,15 @@ def _route(match: dict[str, Any], proxy_versions: list[str], socket: str) -> dic
     return {"match": [match], "handle": [_headers(), _proxy(socket, proxy_versions)]}
 
 
+def _upgrade_match() -> dict[str, Any]:
+    # Caddy's plain header values are case-sensitive; HTTP upgrade tokens are
+    # not. This only selects HTTP/1 transport. Go still validates the handshake.
+    return {"header_regexp": {
+        "Connection": {"pattern": r"(?i)(^|,)[\t ]*upgrade[\t ]*(,|$)"},
+        "Upgrade": {"pattern": r"(?i)^websocket$"},
+    }}
+
+
 def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
     gateway = manifest["gateway"]
     authelia = manifest["authelia"]
@@ -74,7 +83,7 @@ def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
         "handle": [_headers(), {"handler": "reverse_proxy", "upstreams": [{"dial": authelia["listen"]}], "transport": {"protocol": "http", "versions": ["1.1"]}}],
     })
     # The tunnel endpoint is deliberately narrower than the ordinary ingress.
-    routes.append(_route({"host": [gateway["tunnel_host"]], "method": ["GET"], "path": ["/acv1/events"], "header": {"Connection": ["*Upgrade*"], "Upgrade": ["websocket"]}}, ["1.1"], socket))
+    routes.append(_route({"host": [gateway["tunnel_host"]], "method": ["GET"], "path": ["/acv1/events"], **_upgrade_match()}, ["1.1"], socket))
     for resource in gateway["gateway"]["resources"]:
         rule = resource["rule"]
         host, prefix, methods = rule["host"], rule["path_prefix"], rule["methods"]
@@ -83,7 +92,7 @@ def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
             # starts below /; Go owns their session and origin checks.
             routes.append(_route({"host": [host], "path": ["/_anvil-connect/login", "/_anvil-connect/callback", "/_anvil-connect/logout"]}, ["h2c"], socket))
         match_paths = ["/", "/*"] if prefix == "/" else [prefix, prefix + "/*"]
-        routes.append(_route({"host": [host], "path": match_paths, "header": {"Connection": ["*Upgrade*"], "Upgrade": ["websocket"]}}, ["1.1"], socket))
+        routes.append(_route({"host": [host], "path": match_paths, **_upgrade_match()}, ["1.1"], socket))
         routes.append(_route({"host": [host], "path": match_paths, "method": methods}, ["h2c"], socket))
     routes.append(_route({"host": [gateway["control_host"]]}, ["h2c"], socket))
     routes.append({"handle": [{"handler": "static_response", "status_code": 404}]})
