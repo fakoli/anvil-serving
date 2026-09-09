@@ -1,0 +1,15 @@
+{
+  "schema": "anvil-connect.transport-lock/v1",
+  "name": "wstunnel",
+  "version": "10.7.1",
+  "license": "BSD-3-Clause",
+  "source": "https://github.com/erebe/wstunnel/tree/v10.7.1",
+  "release": "https://github.com/erebe/wstunnel/releases/tag/v10.7.1",
+  "artifacts": {
+    "linux/amd64": {
+      "url": "https://github.com/erebe/wstunnel/releases/download/v10.7.1/wstunnel_10.7.1_linux_amd64.tar.gz",
+      "archive_sha256": "fa842ed53fbb14b1c69cd98829f9895d7f8a6b0d562c57c1175851a52cea9ea2",
+      "binary_sha256": "628143a837e35e8dcbda032bc1e2b07937412bc69e2344b9b583c3acfef8431d"
+    }
+  }
+}
