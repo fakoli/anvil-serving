@@ -1,12 +1,31 @@
 {
   "schema": "anvil-serving.benchmark-artifact-set-source/v1",
-  "campaign": "2026-09-09-glm53-ormandj-v042",
+  "campaign": {
+    "id": "2026-09-09-glm53-ormandj-v042",
+    "capability": "LLM and image understanding",
+    "repository_revision": "f19180c41724050b834cd77d1f14d662e4ea57b8",
+    "dirty_state": "clean source at measurement; documentation added after model requests",
+    "started_at": "2026-09-09T11:15:15.376421+00:00",
+    "completed_at": null,
+    "evidence_labels": [
+      "measured",
+      "matched-direct",
+      "partial-qualification"
+    ],
+    "decision_labels": [
+      "held-for-strict-turnover",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
   "native_evidence_schemas": [
     "anvil-serving.benchmark/v1",
+    "anvil-serving.control-evidence/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "docker-image-identity/v1",
+    "multimodal-benchmark-evidence/v1",
     "preflight/v2",
-    "anvil-serving.benchmark-decision-summary/v1",
-    "anvil-serving.benchmark-graph-manifest/v1",
-    "anvil-serving.benchmark-graph-data/v1"
+    "runtime-identity-gate/v1"
   ],
   "bundle_size_policy_verified": true,
   "size_policy": "each retained public artifact is under 1 MiB",
@@ -41,7 +60,9 @@
       "status": "retained",
       "files": [
         "run-plan.json",
-        "campaign-state.json"
+        "campaign-state.json",
+        "candidate/turnover-repeat-plan.json",
+        "candidate/turnover-repeat-result.json"
       ],
       "reason": "Held qualification retains supporting evidence and failures."
     },
@@ -53,7 +74,9 @@
         "candidate/identity-pre.json",
         "candidate/identity-post.json",
         "candidate/control-evidence.json",
-        "baseline/control-evidence.json"
+        "baseline/control-evidence.json",
+        "configuration-and-identity.json",
+        "candidate/post-repeat/identity.json"
       ],
       "reason": "Held qualification retains supporting evidence and failures."
     },
@@ -107,7 +130,10 @@
         "restoration/direct-preflight.json",
         "restoration/routed-preflight.json",
         "restoration/router-models.json",
-        "restoration/running.json"
+        "restoration/running.json",
+        "private-restoration-hashes.json",
+        "restoration/unit.txt",
+        "restoration/router-transition-status.txt"
       ],
       "reason": "Held qualification retains supporting evidence and failures."
     },

@@ -115,7 +115,12 @@
     "thinking": "disabled",
     "claim": "Bounded request turnover, not soak or p99 SLO proof",
     "controlled_output_policy": "strict",
-    "artifact": "turnover-controlled.json"
+    "artifact": "turnover-controlled.json",
+    "artifact_scope": "basename written under each arm directory",
+    "artifact_locations": [
+      "baseline/turnover-controlled.json",
+      "candidate/turnover-controlled.json"
+    ]
   },
   "gates": [
     "All functional, thinking, multimodal and high-context exact assertions pass. No unexplained new diagnostic quality regression.",
@@ -152,7 +157,7 @@
       "evidence": [
         "baseline/preflight.json",
         "baseline/needle-repeat.json",
-        "baseline/logs-preflight-failure.txt"
+        "private-only:baseline/logs-preflight-failure.txt"
       ],
       "observation": "Baseline refused the synthetic launch-code needle twice at nominal128000; other9 functional checks passed. No authoritative runtime failure.",
       "decision": "Preserve failure; continue other baseline measurements to characterize current deployment. Candidate correctness criteria and 5 percent performance threshold unchanged. Do not classify baseline as fully passing."

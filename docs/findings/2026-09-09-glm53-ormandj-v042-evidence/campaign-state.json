@@ -51,7 +51,7 @@
       "evidence": [
         "candidate/turnover-controlled.json",
         "candidate/turnover-controlled-repeat.json",
-        "sources/independent-review-ledger.json"
+        "independent-review-ledger.json"
       ],
       "failures": [
         "Strict turnover58/60 then57/60; repeat includes one length512 truncation"
@@ -67,22 +67,22 @@
     },
     {
       "id": "publication",
-      "status": "in-progress",
-      "evidence": [],
+      "status": "complete",
+      "evidence": [
+        "artifact-manifest.json"
+      ],
       "failures": []
     }
   ],
-  "active_assignments": [
-    "Public artifact-contract closure by independent publication worker"
-  ],
+  "active_assignments": [],
   "completed_cells": [
     "baseline and candidate functional/thinking/high-context/quality/multimodal/capacity4k/capacity120k/turnover",
     "one unchanged candidate turnover repeat",
     "exact baseline restore plus direct/routed smoke and JSON"
   ],
   "next_actions": [
-    "Finish documentation consistency and repository checks",
-    "Await user exception decision; no candidate promotion under unchanged strict gate"
+    "Await user comparative exception decision; preserve failed strict artifacts",
+    "Candidate direct/routed acceptance remains required if an exception is approved"
   ],
   "promotion_authorized": false
 }

@@ -846,7 +846,7 @@
     "chat_template_kwargs": {
       "enable_thinking": false
     },
-    "control_evidence": "[REDACTED_PATH]",
+    "control_evidence": "private-campaign/baseline/control-evidence.json",
     "control_evidence_sha256": "1009b41fca588bedd637a21e3db41f1115e146356a44d30e54509d96301dcf0f",
     "control_mechanism": "chat_template_kwargs",
     "control_requested": {

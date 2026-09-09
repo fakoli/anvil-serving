@@ -1,27 +1,286 @@
 {
   "schema": "anvil-serving.public-evidence-redaction/v1",
   "campaign_id": "2026-09-09-glm53-ormandj-v042",
+  "rules": [
+    "Structured JSON traversal preserves unique dictionary keys and native schemas",
+    "Private checkout roots become repository/; private campaign inputs retain unique private-campaign/ names",
+    "GPU UUIDs use ordered reference labels; container IDs use stable role labels",
+    "Original and public SHA256 values identify transformations; model outputs and measurements remain unchanged except private-identity redaction"
+  ],
+  "private_only": [
+    "Full operator topology and exact registry snapshots",
+    "Full authoritative runtime logs and successful verifier capture directories"
+  ],
   "records": [
     {
-      "path": "restoration.json",
-      "original_sha256": "62f14508502dfcf736dc5a95ed955e50121075ee9184fddfb23caa6bb526ee51",
-      "public_sha256": "62f14508502dfcf736dc5a95ed955e50121075ee9184fddfb23caa6bb526ee51"
+      "path": "baseline/capacity-120k.json",
+      "source_role": "baseline/capacity-120k.json",
+      "original_sha256": "07740dcc5c9d05ad0433ea401061ccbf0e7252a020a30fed16f656b8982f3f2b",
+      "public_sha256": "07740dcc5c9d05ad0433ea401061ccbf0e7252a020a30fed16f656b8982f3f2b"
     },
     {
-      "path": "summary.json",
-      "original_sha256": "d100d899db50d2659a3ff70bd3d5b2cd66c338261ebd47f05ac39525fcab500b",
-      "public_sha256": "d100d899db50d2659a3ff70bd3d5b2cd66c338261ebd47f05ac39525fcab500b"
+      "path": "baseline/capacity-4k.json",
+      "source_role": "baseline/capacity-4k.json",
+      "original_sha256": "0e0fe5d40e9565cb4d18b8d8746e582bc46c0e6e372ba9b53a5583aa47a0e08f",
+      "public_sha256": "0e0fe5d40e9565cb4d18b8d8746e582bc46c0e6e372ba9b53a5583aa47a0e08f"
+    },
+    {
+      "path": "baseline/control-evidence.json",
+      "source_role": "baseline/control-evidence.json",
+      "original_sha256": "b43b1ffb3ac68038c1863b1800ff348c4688fb1cbf17f5ef0fa25a8b32a97752",
+      "public_sha256": "b43b1ffb3ac68038c1863b1800ff348c4688fb1cbf17f5ef0fa25a8b32a97752"
+    },
+    {
+      "path": "baseline/high-context.json",
+      "source_role": "baseline/high-context.json",
+      "original_sha256": "30585be3c0c97aaa0b55933725a0651f0f0f40361f69bb63c17f64a4242d1038",
+      "public_sha256": "30585be3c0c97aaa0b55933725a0651f0f0f40361f69bb63c17f64a4242d1038"
+    },
+    {
+      "path": "baseline/multimodal.json",
+      "source_role": "baseline/multimodal.json",
+      "original_sha256": "190016fb23b469344f27d4fa43f411cb0bc0b392f10ed2e488ab03a947303d72",
+      "public_sha256": "74c802b89cbc104b323a480ec0496be8dbd7f0a5a49f22898b377267a6ac78d4"
+    },
+    {
+      "path": "baseline/needle-repeat.json",
+      "source_role": "baseline/needle-repeat.json",
+      "original_sha256": "14637951e39f4bd19693f2007036068ec1f837f2476da39caf12d91917b4fbca",
+      "public_sha256": "14637951e39f4bd19693f2007036068ec1f837f2476da39caf12d91917b4fbca"
+    },
+    {
+      "path": "baseline/preflight.json",
+      "source_role": "baseline/preflight.json",
+      "original_sha256": "275b53f5eb98870c469c2ff5e8ae0c1ffc66aa64de01542722e073dffb3f90f6",
+      "public_sha256": "275b53f5eb98870c469c2ff5e8ae0c1ffc66aa64de01542722e073dffb3f90f6"
+    },
+    {
+      "path": "baseline/quality.json",
+      "source_role": "baseline/quality.json",
+      "original_sha256": "6d7f43433526d119b4b58f28ad1ec62d90b1aa442272b2fc777551a18f3503b8",
+      "public_sha256": "50c5ff30c02deb1f9e3645c3f8ddf8422249f494a60e6dd7de1f1ca9d83b9692"
+    },
+    {
+      "path": "baseline/thinking-default.json",
+      "source_role": "baseline/thinking-default.json",
+      "original_sha256": "667282fbc26e5d995e1af0bfd1878efe2d3116141de1e1e45141c61a7cd38de1",
+      "public_sha256": "667282fbc26e5d995e1af0bfd1878efe2d3116141de1e1e45141c61a7cd38de1"
+    },
+    {
+      "path": "baseline/thinking-enabled.json",
+      "source_role": "baseline/thinking-enabled.json",
+      "original_sha256": "297560824f28a2df6d1dece36468942b68583f0d58a5e95cae0afe45b47397d5",
+      "public_sha256": "297560824f28a2df6d1dece36468942b68583f0d58a5e95cae0afe45b47397d5"
+    },
+    {
+      "path": "baseline/turnover-controlled.json",
+      "source_role": "baseline/turnover-controlled.json",
+      "original_sha256": "a643ecf02f8eca2698faee8a5f943d0aaa647251bfde9dc68049e8b555a69406",
+      "public_sha256": "a643ecf02f8eca2698faee8a5f943d0aaa647251bfde9dc68049e8b555a69406"
+    },
+    {
+      "path": "baseline/turnover.json",
+      "source_role": "baseline/turnover.json",
+      "original_sha256": "a9613df926e0fd8256b0fe6b6964fe3dac2d17fa9b6107d00640737ea8e7c31e",
+      "public_sha256": "a9613df926e0fd8256b0fe6b6964fe3dac2d17fa9b6107d00640737ea8e7c31e"
+    },
+    {
+      "path": "campaign-state.json",
+      "source_role": "campaign-state.json",
+      "original_sha256": "76899680302978ff8e5c05fdd1d60f1ad9454456936c7609c9fb37d97a6f68f9",
+      "public_sha256": "d9c5cd5ca89cb111ec703bd17efc0e771c032818520f30d7da3f2d1707263208"
+    },
+    {
+      "path": "candidate/capacity-120k.json",
+      "source_role": "candidate/capacity-120k.json",
+      "original_sha256": "2cc37fc3ae194c7a83377c131320fc68ebf269c16af5874d2fe71459805e1be6",
+      "public_sha256": "2cc37fc3ae194c7a83377c131320fc68ebf269c16af5874d2fe71459805e1be6"
+    },
+    {
+      "path": "candidate/capacity-4k.json",
+      "source_role": "candidate/capacity-4k.json",
+      "original_sha256": "abbc1e962371d0ecb7839bbf0d80d364379b53873bc346a485afcc9edef5ac84",
+      "public_sha256": "abbc1e962371d0ecb7839bbf0d80d364379b53873bc346a485afcc9edef5ac84"
+    },
+    {
+      "path": "candidate/control-evidence.json",
+      "source_role": "candidate/control-evidence.json",
+      "original_sha256": "f7276b43b7a47d5b25c0bbe757af36177e81ee05c44b8f33c765c630b27aeb55",
+      "public_sha256": "f7276b43b7a47d5b25c0bbe757af36177e81ee05c44b8f33c765c630b27aeb55"
+    },
+    {
+      "path": "candidate/high-context.json",
+      "source_role": "candidate/high-context.json",
+      "original_sha256": "8d10f52de3aa9e332d58312a1386d35d6618645b3470e82b7efd681488bf806c",
+      "public_sha256": "8d10f52de3aa9e332d58312a1386d35d6618645b3470e82b7efd681488bf806c"
+    },
+    {
+      "path": "candidate/identity-post.json",
+      "source_role": "candidate/identity-post.json",
+      "original_sha256": "8287fc22be45752ff35d3800d9c3a90386c171112e9964ad12ba5b2669a2fe80",
+      "public_sha256": "96d84a546e56048141b08db58132cbd12e0576e18c934a0efc1013f96814e418"
+    },
+    {
+      "path": "candidate/identity-pre.json",
+      "source_role": "candidate/identity-pre.json",
+      "original_sha256": "de0870dc681abb43df1308a3caa6854a04c706768a45c608d2dfce72f3352ef7",
+      "public_sha256": "b8a7da2490796164f54c462119349735af269e9caf3279e9e8bbf4649adf23b3"
+    },
+    {
+      "path": "candidate/image-identity.json",
+      "source_role": "candidate/image-identity.json",
+      "original_sha256": "f2da6adbc0c12140d6b13d13d1adf2a853986955ca348142796b9678e80d6588",
+      "public_sha256": "f2da6adbc0c12140d6b13d13d1adf2a853986955ca348142796b9678e80d6588"
+    },
+    {
+      "path": "candidate/multimodal.json",
+      "source_role": "candidate/multimodal.json",
+      "original_sha256": "a1df55c97002b349f1287130ce21e6b7bed2b2a3b36b7ed33fcdd071f74208a7",
+      "public_sha256": "d9c6b15c18efde367a59d162b40ccaef30d8e45b9a0ce510e803b7238062a35b"
+    },
+    {
+      "path": "candidate/post-repeat/identity.json",
+      "source_role": "candidate/post-repeat/identity.json",
+      "original_sha256": "63708b4b3307fb7c778ed5465af297798ed8c2295fec3f04e10b099b4d7f941d",
+      "public_sha256": "90d7ac979dbd16fa71635a78c795671f8c8212dfc907700e4552ddc7bd88a4a4"
+    },
+    {
+      "path": "candidate/preflight.json",
+      "source_role": "candidate/preflight.json",
+      "original_sha256": "70870a8a9dd7d47729ca4994fad63904bad944d0fec6f18af055fc7b3f40c358",
+      "public_sha256": "70870a8a9dd7d47729ca4994fad63904bad944d0fec6f18af055fc7b3f40c358"
+    },
+    {
+      "path": "candidate/quality.json",
+      "source_role": "candidate/quality.json",
+      "original_sha256": "a5fc823a3a2198a27bc2af14b54132d28f65c9c58fba3fa6deb1e748c29167ed",
+      "public_sha256": "7de2c6c56ac412da9a9dd28290506c157cc1ca9ff0103d43c905dc557a89eb0c"
+    },
+    {
+      "path": "candidate/thinking-default.json",
+      "source_role": "candidate/thinking-default.json",
+      "original_sha256": "d4ba6ee3376081b6761255e83236345e99de144aeae391c01533edcbfdfaf28a",
+      "public_sha256": "d4ba6ee3376081b6761255e83236345e99de144aeae391c01533edcbfdfaf28a"
+    },
+    {
+      "path": "candidate/thinking-enabled.json",
+      "source_role": "candidate/thinking-enabled.json",
+      "original_sha256": "f9ed04e4a9019075b4e14a8fb1b915c919f63f65e24ccdc6603ca7db3d7b08a6",
+      "public_sha256": "f9ed04e4a9019075b4e14a8fb1b915c919f63f65e24ccdc6603ca7db3d7b08a6"
+    },
+    {
+      "path": "candidate/turnover-controlled-repeat.json",
+      "source_role": "candidate/turnover-controlled-repeat.json",
+      "original_sha256": "b266be9c179e21deb5affc0f4e535f44a8f3044ff82934fbc82e20c8e6af740c",
+      "public_sha256": "b266be9c179e21deb5affc0f4e535f44a8f3044ff82934fbc82e20c8e6af740c"
+    },
+    {
+      "path": "candidate/turnover-controlled.json",
+      "source_role": "candidate/turnover-controlled.json",
+      "original_sha256": "acf42fbe5a04a31e219cc0e14b06f67e1bd26c956342745516b19581f192c93a",
+      "public_sha256": "acf42fbe5a04a31e219cc0e14b06f67e1bd26c956342745516b19581f192c93a"
+    },
+    {
+      "path": "candidate/turnover-repeat-plan.json",
+      "source_role": "candidate/turnover-repeat-plan.json",
+      "original_sha256": "ce0a44e2761c12a807ba2a3d9ff5043a9f53760f356357b8df7c599e4e268e36",
+      "public_sha256": "f5910f50ef12e5ca2c458609783ead1a79e8572eeeca4e0c02c775d1d7493036"
+    },
+    {
+      "path": "candidate/turnover-repeat-result.json",
+      "source_role": "candidate/turnover-repeat-result.json",
+      "original_sha256": "8fb6ee9489d89dbc523cb8df4d369e0de41bac923bc5584c0a03a1f6f4e94cf3",
+      "public_sha256": "16f1c2d55d370619036a867ca8792ce2549ca3f1aa0b92c31a91a12f5f6d24f4"
     },
     {
       "path": "comparison.json",
+      "source_role": "comparison.json",
       "original_sha256": "78de1fd59435394b40f2af3fa99321e5e45258574069e5d9a4657235061d1048",
       "public_sha256": "78de1fd59435394b40f2af3fa99321e5e45258574069e5d9a4657235061d1048"
+    },
+    {
+      "path": "coverage-and-gaps.md",
+      "source_role": "coverage-and-gaps.md",
+      "original_sha256": "adef50b32930b00574c299aabb50f842bf8823c7512871509d8d7d584b68ff54",
+      "public_sha256": "adef50b32930b00574c299aabb50f842bf8823c7512871509d8d7d584b68ff54"
+    },
+    {
+      "path": "friction-log.md",
+      "source_role": "friction-log.md",
+      "original_sha256": "b1ff8f892c5f86972448cab28e1316ba924b24a22854614e5dcd957c7328683a",
+      "public_sha256": "98ffefc7905f59ee300a80241a134923436d168ed0ea89166ef291b3c05bc260"
+    },
+    {
+      "path": "independent-review-ledger.json",
+      "source_role": "sources/independent-review-ledger.json",
+      "original_sha256": "4cfea88407613d2a2d932956ad0a8738a2e417e705bdb2a7025083768de800f8",
+      "public_sha256": "4cfea88407613d2a2d932956ad0a8738a2e417e705bdb2a7025083768de800f8"
+    },
+    {
+      "path": "restoration.json",
+      "source_role": "restoration.json",
+      "original_sha256": "62f14508502dfcf736dc5a95ed955e50121075ee9184fddfb23caa6bb526ee51",
+      "public_sha256": "30dabe1c6174df5002a97322e50b68a2e020919a6879bf637b8b3ba544f6e058"
+    },
+    {
+      "path": "restoration/direct-preflight.json",
+      "source_role": "restoration/direct-preflight.json",
+      "original_sha256": "664ea4878f0e35e38039dc9b1acb58aeb54a3e88a34ab8ec29c69415daa435c7",
+      "public_sha256": "664ea4878f0e35e38039dc9b1acb58aeb54a3e88a34ab8ec29c69415daa435c7"
+    },
+    {
+      "path": "restoration/routed-preflight.json",
+      "source_role": "restoration/routed-preflight.json",
+      "original_sha256": "0ed445f58ae7d320f1067bd0a3fdaa59c8c522191bd406fcfb0792869377bea2",
+      "public_sha256": "0ed445f58ae7d320f1067bd0a3fdaa59c8c522191bd406fcfb0792869377bea2"
+    },
+    {
+      "path": "restoration/router-models.json",
+      "source_role": "restoration/router-models.json",
+      "original_sha256": "54aacab17fba7f6aedb76304e5b7c525ee677e4d38b4b0b9037b64dbaf6a4621",
+      "public_sha256": "54aacab17fba7f6aedb76304e5b7c525ee677e4d38b4b0b9037b64dbaf6a4621"
+    },
+    {
+      "path": "restoration/router-transition-status.txt",
+      "source_role": "restoration/router-transition-status.txt",
+      "original_sha256": "431bf427bcded00514794d6049c79e417a7abe7c24fe579d7a8d63353a0b33df",
+      "public_sha256": "431bf427bcded00514794d6049c79e417a7abe7c24fe579d7a8d63353a0b33df"
+    },
+    {
+      "path": "restoration/running.json",
+      "source_role": "restoration/running.json",
+      "original_sha256": "4c062e364f6be09eaa41a01b15ee1a47b41bf8ecca5a6fa86db880342d3acc42",
+      "public_sha256": "9d079914e013944a96ab957bf4509ae4db69cc04fda2f6786792756ac3349a46"
+    },
+    {
+      "path": "restoration/unit.txt",
+      "source_role": "restoration/unit.txt",
+      "original_sha256": "fba237d3aaf0f5b1fe397cc5ad4119bcf9254907a6743bb9c055058253ce2b99",
+      "public_sha256": "fba237d3aaf0f5b1fe397cc5ad4119bcf9254907a6743bb9c055058253ce2b99"
+    },
+    {
+      "path": "run-plan.json",
+      "source_role": "run-plan.json",
+      "original_sha256": "3fb49c7d4c0f923c9e59e5e8771cfe3aafb1f7132233b1db7f1b048edcfdca4a",
+      "public_sha256": "79dfaff658f15b224ab25c7362ad165b9eb0702e613f52170e824495014ca9cf"
+    },
+    {
+      "path": "source-registry.json",
+      "source_role": "source-registry.json",
+      "original_sha256": "3133885748714f85e7936fc6f922c4a5de4ae4c2f5cc79c30a50eb26b138c4eb",
+      "public_sha256": "3133885748714f85e7936fc6f922c4a5de4ae4c2f5cc79c30a50eb26b138c4eb"
+    },
+    {
+      "path": "summary.json",
+      "source_role": "summary.json",
+      "original_sha256": "d100d899db50d2659a3ff70bd3d5b2cd66c338261ebd47f05ac39525fcab500b",
+      "public_sha256": "5e592aee6720600572e266cacf89afcec96579b466a6973514fc1cef509f54e7"
+    },
+    {
+      "path": "workload-manifest.json",
+      "source_role": "workload-manifest.json",
+      "original_sha256": "95ddc0c0c14c087484e4e666e700eb433b9350f497c03faba399469325ca19dc",
+      "public_sha256": "246913f3a69239e6f6352091fc6576ba3ebd0371df2cf51d27951eea333539bb"
     }
-  ],
-  "redactions": [
-    "private paths",
-    "GPU UUIDs",
-    "host identity"
-  ],
-  "private_only": "operator topology, rollback registry, and secret-bearing runtime data"
+  ]
 }
