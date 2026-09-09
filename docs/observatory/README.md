@@ -110,3 +110,26 @@ not an accessibility compliance claim.
 The design follows the [Prometheus HTTP API](https://prometheus.io/docs/prometheus/latest/querying/api/),
 [OWASP session guidance](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html),
 and the [WAI modal dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
+
+## Container logs
+
+An optional `logs` connection adds the Logs page without giving the web process
+Docker access. Configure one fixed private Loki URL, map enrolled inventory host
+IDs to their exact Loki `host` labels, and optionally map serves to an explicit
+host and list of container names. Example with synthetic inventory IDs:
+
+```json
+{"logs":{"url":"http://127.0.0.1:3100","hosts":{"host-a":"collector-a"},"serves":{"serve-a":{"host_id":"host-a","containers":["chat-a"]}}}}
+```
+
+The authenticated `logs` and `logs/sources` read routes accept only `host`,
+`serve`, `container`, `stream`, `range`, and bounded literal `search` filters.
+A host read grant covers that host's container logs; a serve grant covers only
+its configured containers. All-host reads require an explicit wildcard grant.
+Unconfigured hosts and failed collectors remain explicit errors. The browser
+cannot submit LogQL, choose another endpoint or read arbitrary Docker metadata.
+Queries return at most 500 newest entries over a supported 15m–7d window; long
+lines are shortened with an explicit marker. Results render as literal text.
+Use Search logs to refresh; log content and search text are never persisted in
+browser storage or the Observatory journal. Collector retention and redaction
+are separate operator responsibilities; log text is private application data.
