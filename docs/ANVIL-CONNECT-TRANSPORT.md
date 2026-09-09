@@ -1,7 +1,8 @@
 # Anvil Connect transport qualification
 
-Observed 2026-09-09 on Linux amd64 with Go 1.27.1. This is an isolated transport
-experiment, not a deployed access gateway or an application authorization test.
+Observed 2026-09-09 on Linux amd64 with Go 1.27.1. The initial transport
+experiment and subsequent API integration use isolated synthetic applications;
+neither is a deployed access gateway.
 
 ## Decision
 
@@ -50,7 +51,7 @@ the product's local destination envelope or per-request authorization.
 
 ## Measured results
 
-The complete [lab](../connect/lab/transport_test.go) passed in 2.916 seconds.
+The initial [transport lab](../connect/lab/transport_test.go) passed in 2.916 seconds.
 Timing below describes one loopback run, not a latency SLO.
 
 | Probe | Observation |
@@ -63,6 +64,43 @@ Timing below describes one loopback run, not a latency SLO.
 | Disconnect | Killing the connector interrupts a response; reconnecting does not repeat the admitted POST. One origin execution is counted. |
 | Restrictions | A different CA-trusted connector identity and an unassigned reverse port are refused; valid controls establish the assigned listener. |
 | Backpressure | A nonreading caller causes the origin's two-second write deadline to expire after 9,532,323 bytes accepted across application, transport and kernel buffers. The 64-MiB response cannot drain completely. |
+
+## API integration extension
+
+The [API tests](../connect/lab/api_test.go) now exercise this complete path with
+the real pinned server and connector children:
+
+```mermaid
+flowchart LR
+  SDK[SDK with scoped Connect key] --> Gateway[Go gateway admission]
+  Gateway --> Tunnel[Managed wstunnel reverse TCP]
+  Tunnel --> Adapter[Connector adapter over inner mTLS]
+  Adapter --> App[Fixed origin requiring its native token]
+```
+
+The origin validates a deployment-issued gateway certificate and its local
+resource envelope before fetching the native token. The gateway validates the
+connector certificate and uses only its declared reverse address. Redirects
+cannot change the allowed hostname/path, and caller credentials are stripped.
+Inner ordinary requests require HTTP/2 so unknown-length bodies preserve their
+framing; classic WebSocket upgrades use a separate HTTP/1 connection.
+
+Passing controls cover SSE before origin completion, cancellation reaching the
+origin, a killed connector yielding one POST execution, 64-KiB WebSocket data and
+subprotocol/close preservation, and an actual HTTP/2 unknown-length upload.
+A stalled declared-length upload releases gateway and origin capacity under a
+one-second configured deadline. Independent review found and corrected that
+upload-cancellation gap. Separate regression tests preserve HTTP/1 keepalive and
+keep a concurrent HTTP/2 stream alive when a sibling upload times out. Focused
+tests also reject missing, wrong-name, unknown-CA, expired and wrong-EKU inner
+peers, mismatched gateway private keys, and replacement file/directory paths.
+
+These results do not establish installation-generation revocation, public
+Caddy integration or browser authorization. The shared-port design requires a
+Go gate that owns each authenticated Upgrade stream between stock Caddy and the
+private wstunnel listener; terminating TLS at Caddy alone does not preserve the
+connector certificate identity. Current inner service-name certificates must
+also be bound to the current enrolled generation before production admission.
 
 ## Limits and next qualification
 
@@ -80,8 +118,7 @@ corporate network compatibility. The
 HTTP/2 limitations; this lab does not select that mode.
 
 The reverse listener may outlive its disconnected connector. Listener existence
-therefore cannot imply application readiness. Add authenticated connector
-leases, unique installation enrollment, independently constrained local origin
-bindings, native-token delegation, API/browser admission, active revocation and
-owned lifecycle before exposing an application. A tunnel's client certificate
+therefore cannot imply application readiness. Finish authenticated connector
+leases, installation enrollment integration, browser admission, active revocation
+and the product lifecycle commands before exposing an application. A tunnel's client certificate
 must never be treated as a browser session or a universal application key.
