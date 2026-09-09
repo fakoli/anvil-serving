@@ -34,8 +34,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "5c35a79be050cb2042cf1d5e0b583cc4564e0cde3b01f72a22e160ad87c6865f",
-          "bytes": 1627
+          "sha256": "eaf2b431bad2bc6217099a6c9ae35d26e776bc7d5f7673bc185a99a28b707893",
+          "bytes": 1606
         },
         {
           "path": "redaction-provenance.json",
@@ -362,8 +362,8 @@
       "files": [
         {
           "path": "publication-summary.md",
-          "sha256": "d50cb25cf9848e034414ac84473d0d0f7fad5a2dc04c832da41f00e9082816d2",
-          "bytes": 978
+          "sha256": "611f14328a6f14bee08d0909204b9fa149ec42aedfbb6bcd9d47e7b4ac9e41da",
+          "bytes": 995
         }
       ],
       "reason": "Held qualification retains supporting evidence and failures."
