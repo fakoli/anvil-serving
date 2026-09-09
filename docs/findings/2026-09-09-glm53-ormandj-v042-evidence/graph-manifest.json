@@ -1,0 +1,75 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "GLM v0.4.2 held runtime comparison",
+  "subtitle": "Direct C1 strict capacity; candidate held for turnover",
+  "charts": [
+    {
+      "title": "Median TTFT",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "target context",
+      "y_label": "milliseconds",
+      "series": [
+        {
+          "label": "Baseline",
+          "points": [
+            {
+              "x": "4K",
+              "artifact": "baseline/capacity-4k.json"
+            },
+            {
+              "x": "120K",
+              "artifact": "baseline/capacity-120k.json"
+            }
+          ]
+        },
+        {
+          "label": "Candidate",
+          "points": [
+            {
+              "x": "4K",
+              "artifact": "candidate/capacity-4k.json"
+            },
+            {
+              "x": "120K",
+              "artifact": "candidate/capacity-120k.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Median decode",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "target context",
+      "y_label": "tokens / second",
+      "series": [
+        {
+          "label": "Baseline",
+          "points": [
+            {
+              "x": "4K",
+              "artifact": "baseline/capacity-4k.json"
+            },
+            {
+              "x": "120K",
+              "artifact": "baseline/capacity-120k.json"
+            }
+          ]
+        },
+        {
+          "label": "Candidate",
+          "points": [
+            {
+              "x": "4K",
+              "artifact": "candidate/capacity-4k.json"
+            },
+            {
+              "x": "120K",
+              "artifact": "candidate/capacity-120k.json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

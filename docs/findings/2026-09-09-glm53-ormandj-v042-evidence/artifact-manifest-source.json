@@ -1,0 +1,113 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": "2026-09-09-glm53-ormandj-v042",
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "preflight/v2",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-graph-manifest/v1",
+    "anvil-serving.benchmark-graph-data/v1"
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "run-plan.json"
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json",
+        "campaign-state.json"
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "candidate/image-identity.json"
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "comparison.json",
+        "baseline/preflight.json",
+        "baseline/capacity-4k.json",
+        "baseline/capacity-120k.json",
+        "baseline/high-context.json",
+        "baseline/turnover.json",
+        "baseline/turnover-controlled.json",
+        "candidate/preflight.json",
+        "candidate/capacity-4k.json",
+        "candidate/capacity-120k.json",
+        "candidate/high-context.json",
+        "candidate/turnover-controlled.json",
+        "candidate/turnover-controlled-repeat.json",
+        "graph-manifest.json",
+        "benchmark-graph-data.json",
+        "benchmark-matrix.svg"
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md",
+        "independent-review-ledger.json"
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    }
+  ]
+}

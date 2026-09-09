@@ -1,0 +1,226 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": "2026-09-09-glm53-ormandj-v042",
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "preflight/v2",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-graph-manifest/v1",
+    "anvil-serving.benchmark-graph-data/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "a51d317412d1f5783d8a72221806e8dacc163b3cb0d120a53f6808b9bd5de5a8",
+          "bytes": 1202
+        }
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "d72d89e7b166cf2345a39cf6f4b3f0d6026ecf491ea682a480ce7623d89ddd13",
+          "bytes": 155
+        }
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "3fb49c7d4c0f923c9e59e5e8771cfe3aafb1f7132233b1db7f1b048edcfdca4a",
+          "bytes": 6446
+        }
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "3fb49c7d4c0f923c9e59e5e8771cfe3aafb1f7132233b1db7f1b048edcfdca4a",
+          "bytes": 6446
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "b0a2af0f8beb2db5ddf97671e4c6666c040d3607cd9fe48705cd41c63644afe3",
+          "bytes": 1116
+        }
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "candidate/image-identity.json",
+          "sha256": "f2da6adbc0c12140d6b13d13d1adf2a853986955ca348142796b9678e80d6588",
+          "bytes": 1278
+        }
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "comparison.json",
+          "sha256": "99b62d1e12c245832db8af66ab57f82b6fac8303d0ce9e89f29731fb47d7b498",
+          "bytes": 5457
+        },
+        {
+          "path": "baseline/preflight.json",
+          "sha256": "275b53f5eb98870c469c2ff5e8ae0c1ffc66aa64de01542722e073dffb3f90f6",
+          "bytes": 24448
+        },
+        {
+          "path": "baseline/capacity-4k.json",
+          "sha256": "0e0fe5d40e9565cb4d18b8d8746e582bc46c0e6e372ba9b53a5583aa47a0e08f",
+          "bytes": 26063
+        },
+        {
+          "path": "baseline/capacity-120k.json",
+          "sha256": "07740dcc5c9d05ad0433ea401061ccbf0e7252a020a30fed16f656b8982f3f2b",
+          "bytes": 15067
+        },
+        {
+          "path": "baseline/high-context.json",
+          "sha256": "30585be3c0c97aaa0b55933725a0651f0f0f40361f69bb63c17f64a4242d1038",
+          "bytes": 2546
+        },
+        {
+          "path": "baseline/turnover.json",
+          "sha256": "a9613df926e0fd8256b0fe6b6964fe3dac2d17fa9b6107d00640737ea8e7c31e",
+          "bytes": 135257
+        },
+        {
+          "path": "baseline/turnover-controlled.json",
+          "sha256": "a643ecf02f8eca2698faee8a5f943d0aaa647251bfde9dc68049e8b555a69406",
+          "bytes": 94428
+        },
+        {
+          "path": "candidate/preflight.json",
+          "sha256": "70870a8a9dd7d47729ca4994fad63904bad944d0fec6f18af055fc7b3f40c358",
+          "bytes": 24298
+        },
+        {
+          "path": "candidate/capacity-4k.json",
+          "sha256": "abbc1e962371d0ecb7839bbf0d80d364379b53873bc346a485afcc9edef5ac84",
+          "bytes": 26116
+        },
+        {
+          "path": "candidate/capacity-120k.json",
+          "sha256": "2cc37fc3ae194c7a83377c131320fc68ebf269c16af5874d2fe71459805e1be6",
+          "bytes": 15089
+        },
+        {
+          "path": "candidate/high-context.json",
+          "sha256": "8d10f52de3aa9e332d58312a1386d35d6618645b3470e82b7efd681488bf806c",
+          "bytes": 2546
+        },
+        {
+          "path": "candidate/turnover-controlled.json",
+          "sha256": "acf42fbe5a04a31e219cc0e14b06f67e1bd26c956342745516b19581f192c93a",
+          "bytes": 87526
+        },
+        {
+          "path": "candidate/turnover-controlled-repeat.json",
+          "sha256": "b266be9c179e21deb5affc0f4e535f44a8f3044ff82934fbc82e20c8e6af740c",
+          "bytes": 88928
+        },
+        {
+          "path": "graph-manifest.json",
+          "sha256": "800bed04ba856c095162ab4e2ac1fe5238647589aa5da242761614f6cfe8ee13",
+          "bytes": 1785
+        },
+        {
+          "path": "benchmark-graph-data.json",
+          "sha256": "716d2648d097c3dd57e15a2991f8835d1ce1dd198653e48b2f2b4000efb76c26",
+          "bytes": 2955
+        },
+        {
+          "path": "benchmark-matrix.svg",
+          "sha256": "0fd39f924322567ae5251361c6821acfefe0ff48796a8a9d8a26ae4230bc1acc",
+          "bytes": 5144
+        }
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "a59325e85ad7a75502a4339be95d53603caa4e0c4a769c35c1f7641f52917312",
+          "bytes": 1106
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "b3ec5ea7661e89fc13893561adc511eefed4d2adbbb10ebf6bcaf8cd70a26a0b",
+          "bytes": 765
+        },
+        {
+          "path": "independent-review-ledger.json",
+          "sha256": "4cfea88407613d2a2d932956ad0a8738a2e417e705bdb2a7025083768de800f8",
+          "bytes": 5153
+        }
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "62f14508502dfcf736dc5a95ed955e50121075ee9184fddfb23caa6bb526ee51",
+          "bytes": 1863
+        }
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "9498d705cf4f27bf3e2c7746054ada317a515c98a42bf76ac59def43b50bed1e",
+          "bytes": 1069
+        }
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "d50cb25cf9848e034414ac84473d0d0f7fad5a2dc04c832da41f00e9082816d2",
+          "bytes": 978
+        }
+      ],
+      "reason": "Held qualification retains supporting evidence and failures."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

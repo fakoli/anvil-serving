@@ -1,0 +1,38 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-09-glm53-ormandj-v042",
+  "complete": true,
+  "measurement": {
+    "path": "direct online matched capacity",
+    "warm_cold_state": "unique-cache; cold not established",
+    "sample_count": "4K n12, 120K n3, turnover n60",
+    "statistics": [
+      "medians"
+    ]
+  },
+  "headline_results": [
+    "candidate versus baseline: TTFT -5.19%/-1.31%, E2E -4.91%/-1.45%, decode +3.93%/+17.21% at 4K/120K"
+  ],
+  "failures": [
+    "candidate strict turnover 58/60 then unchanged repeat 57/60",
+    "baseline strict turnover 53/60",
+    "candidate routed gate intentionally not attempted"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "explicit user comparative exception or a passing strict turnover population"
+  },
+  "evidence": [
+    "comparison.json",
+    "restoration.json",
+    "independent-review-ledger.json"
+  ]
+}

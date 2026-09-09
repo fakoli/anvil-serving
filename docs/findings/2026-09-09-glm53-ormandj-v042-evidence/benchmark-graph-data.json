@@ -1,0 +1,92 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "Baseline",
+          "points": [
+            {
+              "artifact": "baseline/capacity-4k.json",
+              "artifact_sha256": "0e0fe5d40e9565cb4d18b8d8746e582bc46c0e6e372ba9b53a5583aa47a0e08f",
+              "value": 496.0971620002965,
+              "x": "4K"
+            },
+            {
+              "artifact": "baseline/capacity-120k.json",
+              "artifact_sha256": "07740dcc5c9d05ad0433ea401061ccbf0e7252a020a30fed16f656b8982f3f2b",
+              "value": 14939.95374699989,
+              "x": "120K"
+            }
+          ]
+        },
+        {
+          "label": "Candidate",
+          "points": [
+            {
+              "artifact": "candidate/capacity-4k.json",
+              "artifact_sha256": "abbc1e962371d0ecb7839bbf0d80d364379b53873bc346a485afcc9edef5ac84",
+              "value": 470.34554300080345,
+              "x": "4K"
+            },
+            {
+              "artifact": "candidate/capacity-120k.json",
+              "artifact_sha256": "2cc37fc3ae194c7a83377c131320fc68ebf269c16af5874d2fe71459805e1be6",
+              "value": 14744.056768000519,
+              "x": "120K"
+            }
+          ]
+        }
+      ],
+      "title": "Median TTFT",
+      "x_label": "target context",
+      "y_label": "milliseconds"
+    },
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "Baseline",
+          "points": [
+            {
+              "artifact": "baseline/capacity-4k.json",
+              "artifact_sha256": "0e0fe5d40e9565cb4d18b8d8746e582bc46c0e6e372ba9b53a5583aa47a0e08f",
+              "value": 288.5934894410126,
+              "x": "4K"
+            },
+            {
+              "artifact": "baseline/capacity-120k.json",
+              "artifact_sha256": "07740dcc5c9d05ad0433ea401061ccbf0e7252a020a30fed16f656b8982f3f2b",
+              "value": 255.4481387120637,
+              "x": "120K"
+            }
+          ]
+        },
+        {
+          "label": "Candidate",
+          "points": [
+            {
+              "artifact": "candidate/capacity-4k.json",
+              "artifact_sha256": "abbc1e962371d0ecb7839bbf0d80d364379b53873bc346a485afcc9edef5ac84",
+              "value": 299.94095771922105,
+              "x": "4K"
+            },
+            {
+              "artifact": "candidate/capacity-120k.json",
+              "artifact_sha256": "2cc37fc3ae194c7a83377c131320fc68ebf269c16af5874d2fe71459805e1be6",
+              "value": 299.41073265701567,
+              "x": "120K"
+            }
+          ]
+        }
+      ],
+      "title": "Median decode",
+      "x_label": "target context",
+      "y_label": "tokens / second"
+    }
+  ],
+  "metric_semantics": {},
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Direct C1 strict capacity; candidate held for turnover",
+  "title": "GLM v0.4.2 held runtime comparison"
+}
