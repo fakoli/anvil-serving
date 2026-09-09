@@ -299,6 +299,7 @@ PRODUCT_FAMILIES = (
             "collectors",
             "dashboard",
             "edge",
+            "connect",
             "workbench",
         ),
         docs_anchor="docs/PRODUCT-FAMILIES.md#control-plane-fleet",
