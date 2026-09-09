@@ -21,7 +21,7 @@ from .contracts import (ObservatoryError, canonical, digest, fields, identifier,
 from .intents import IntentStore
 
 PREVIEW_FIELDS = frozenset({"id", "host_id", "resource_id", "action_id", "label", "baseline_digest", "candidate_digest", "policy_digest", "expires_at_epoch_seconds", "effect", "diff", "affected_aliases", "workload_impact", "gpu_ids", "stop_semantics", "recovery", "planned_steps", "actor", "service_identity", "acknowledgement_required"})
-_SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings"})
+_SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings", "logs"})
 
 
 def load_config(path: str) -> dict:
@@ -30,7 +30,7 @@ def load_config(path: str) -> dict:
         raise ValueError("use an absolute bounded private Observatory config")
     config = strict_json(source.read_bytes())
     fields(config, required=("schema", "origin", "base_path", "users", "authentication", "inventory", "prometheus_url", "state_path"),
-           optional=("operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence"))
+           optional=("operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence", "logs"))
     if config["schema"] != "anvil-observatory/config/v1":
         raise ValueError("unsupported Observatory configuration")
     if type(config.get("operate", False)) is not bool or type(config.get("fixture", False)) is not bool:
@@ -50,6 +50,10 @@ class Console:
             from .metrics_client import MetricsClient
             metrics = MetricsClient(prometheus_url=config["prometheus_url"], inventory=config["inventory"], grafana_url=config.get("grafana_url"))
         self.metrics, self.adapter = metrics, adapter
+        self.logs = None
+        if config.get("logs"):
+            from .logs_client import LogsClient
+            self.logs = LogsClient(config["logs"], config["inventory"])
         if adapter is None and config.get("controller"):
             from .controller_adapter import ControllerAdapter
             self.adapter = ControllerAdapter(config["controller"], env)
@@ -295,6 +299,10 @@ class Console:
         if route == "controls":
             fields(query, optional=("resource",))
             return self.controls(session, identifier(query["resource"])) if "resource" in query else {"resources": self.resources(session)}
+        if route in {"logs", "logs/sources"}:
+            if self.logs is None:
+                raise ObservatoryError("logs_not_configured", "Container log collection is not configured.", 404)
+            return self.logs.read(query, session.principal, sources=route == "logs/sources")
         if route == "metrics":
             fields(query, required=("chart",), optional=("host", "serve", "range"))
             from .metrics_client import CHARTS, WINDOWS
