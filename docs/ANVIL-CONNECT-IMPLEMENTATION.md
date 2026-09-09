@@ -86,8 +86,8 @@ python scripts/run_tests.py tests/connect/test_migration.py tests/observability/
 ```
 
 Pinned artifacts and provenance live in
-[`transport.lock.json`](../connect/transport.lock.json) and
-[`edge-tools.json`](../connect/lab/edge-tools.json). Go and browser dependency
+[`transport.lock.json`](https://github.com/fakoli/anvil-serving/blob/main/connect/transport.lock.json) and
+[`edge-tools.json`](https://github.com/fakoli/anvil-serving/blob/main/connect/lab/edge-tools.json). Go and browser dependency
 locks are separate. The Python package contains the byte-identical edge-tool
 pin manifest for installed lifecycle verification.
 
