@@ -34,7 +34,10 @@ def commands() -> CommandNode:
         children=(
             _command("validate", "Validate declarations and selected native components."),
             _command("render", "Preview or stage an owned configuration generation.", service=False, mutation=True),
-            _command("up", "Preview or activate only the selected owned services.", mutation=True),
+            _command("up", "Preview or activate only the selected owned services.", mutation=True, extra=(
+                _option("--services", summary="Comma-separated exact roles for one coordinated activation; exclusive with --service.", value_name="SERVICES"),
+                _option("--upgrade", summary="Explicitly accept new artifact paths while retaining verified rollback binaries."),
+            )),
             _command("down", "Preview or stop only the selected owned services.", mutation=True),
             _command("status", "Inspect owned service state without claiming origin readiness."),
             _command("doctor", "Check declared paths, components, and ownership."),
@@ -46,6 +49,19 @@ def commands() -> CommandNode:
                 _option("--output", summary="Exclusive private output for an issued credential.", value_name="PATH"),
             )),
             _command("keygen", "Create a private key for a declared local SDK forwarder.", mutation=True, extra=(_option("--output", summary="Exclusive private output for the local key.", value_name="PATH"),)),
+            _command("backup", "Back up the stopped gateway authority to a private file.", service=False, mutation=True, extra=(
+                _option("--output", summary="Exclusive private backup output.", value_name="PATH"),
+            )),
+            _command("restore", "Restore fenced authority into a fresh private directory.", service=False, mutation=True, extra=(
+                _option("--input", summary="Private gateway backup file.", value_name="PATH"),
+                _option("--destination", summary="Fresh gateway state directory; never activated automatically.", value_name="PATH"),
+                _option("--sha256", summary="Backup digest retained independently at creation.", value_name="DIGEST"),
+                _option("--native-sha256", summary="Approved native executable digest.", value_name="DIGEST"),
+            )),
+            _command("migration", "Preview Observatory access at one canonical origin.", service=False, extra=(
+                _option("--observatory-config", summary="Existing Observatory access configuration.", value_name="PATH"),
+                _option("--resource", summary="Exact browser resource ID in the manifest.", value_name="ID"),
+            )),
         ),
         docs_anchor="docs/cli/connect.md",
     )
