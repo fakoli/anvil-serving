@@ -1308,3 +1308,9 @@ progress {
     max-width: 100%;
   }
 }
+
+/* Container logs keep arbitrary long lines inside the results region. */
+.log-message { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 72ch; font-size: 0.8rem; }
+.log-filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; }
+.log-filters .field { flex: 1 1 12rem; min-width: 0; }
+.log-filters input, .log-filters select { width: 100%; }
