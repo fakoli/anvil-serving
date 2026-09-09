@@ -121,8 +121,11 @@ def write_durable(path: Path, data: bytes, mode: int = 0o644) -> None:
 
 
 def install(root: Path, prefix: Path, *, role: str, expected: str, apply: bool) -> dict:
+    target = host_platform()
+    if target not in {'linux-amd64', 'darwin-amd64', 'darwin-arm64'}:
+        raise ValueError('This platform is not supported by the standalone installer')
     manifest, raw = load_bundle(root, expected)
-    if manifest['platform'] != host_platform() or role not in manifest['roles']:
+    if manifest['platform'] != target or role not in manifest['roles']:
         raise ValueError('This bundle does not support the selected platform and role')
     checked_directory(prefix)
     release_name = manifest['version'] + '-' + manifest['source_revision'][:12]
