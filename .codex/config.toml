@@ -1,3 +1,11 @@
+# Development defaults for this trusted project. Explicit task selections win.
+model = "gpt-6-astra"
+model_reasoning_effort = "high"
+
+[agents]
+default_subagent_model = "gpt-5.6-terra"
+default_subagent_reasoning_effort = "medium"
+
 # Project-scoped controller for trusted Codex checkouts. Codex passes cwd to the
 # child relative to the task working directory, so "." keeps imports in this
 # checkout instead of the worktree parent or a stale editable installation.
