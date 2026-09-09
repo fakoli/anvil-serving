@@ -59,6 +59,11 @@ jobs:
       - name: Check Node.js
         run: node --version
 
+      - name: Run Connect contracts before the full suite
+        # Catch portable schema/renderer and platform-boundary regressions
+        # before spending a complete Linux or Windows suite run.
+        run: python -m pytest tests/connect/ -q
+
       - name: Run tests
         run: python -m pytest tests/ -q
 
