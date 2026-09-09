@@ -11,7 +11,8 @@ from pathlib import Path, PureWindowsPath
 
 import pytest
 
-from anvil_serving.connect.config import ManifestError, read_manifest, validate_manifest
+from anvil_serving.connect import config as connect_config
+from anvil_serving.connect.config import ManifestError, parse_manifest_text, read_manifest, validate_manifest
 from anvil_serving.connect.render import plan, render, stage
 
 
@@ -32,6 +33,29 @@ def test_linux_target_paths_validate_independently_of_windows_runner_grammar() -
     assert validate_manifest(value)["binary"] == value["binary"]
 
 
+def test_manifest_text_parsing_is_portable_while_native_file_reads_fail_closed_without_hardened_flags(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = tmp_path / "deployment.json"
+    source.write_text(json.dumps(manifest()), encoding="utf-8")
+    for flag in ("O_CLOEXEC", "O_NONBLOCK", "O_NOFOLLOW"):
+        monkeypatch.delattr(connect_config.os, flag, raising=False)
+    assert parse_manifest_text(source.read_text(encoding="utf-8"))["schema"] == "anvil-connect.deployment/v1"
+    with pytest.raises(ManifestError, match="secure manifest file reads"):
+        read_manifest(source)
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        (None, "not UTF-8"),
+        (" " * (connect_config._MAX_MANIFEST_BYTES + 1), "bounded manifest read"),
+        ("\ud800", "not UTF-8"),
+    ],
+)
+def test_manifest_text_parsing_rejects_non_utf8_and_oversized_input(value, message: str) -> None:
+    with pytest.raises(ManifestError, match=message):
+        parse_manifest_text(value)
+
+
 def test_closed_shape_duplicate_case_and_null_are_rejected(tmp_path: Path) -> None:
     value = manifest()
     value["unexpected"] = True
@@ -48,7 +72,7 @@ def test_closed_shape_duplicate_case_and_null_are_rejected(tmp_path: Path) -> No
     duplicate = tmp_path / "duplicate.json"
     duplicate.write_text('{"schema":"anvil-connect.deployment/v1","schema":"anvil-connect.deployment/v1"}')
     with pytest.raises(ManifestError, match="duplicate JSON key"):
-        read_manifest(duplicate)
+        parse_manifest_text(duplicate.read_text(encoding="utf-8"))
 
 
 def test_literal_credentials_and_unbound_bindings_are_rejected() -> None:

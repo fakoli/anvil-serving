@@ -22,6 +22,7 @@ _ID = re.compile(r"[a-z][a-z0-9-]{0,62}$")
 _ENV = re.compile(r"[A-Z][A-Z0-9_]{0,127}$")
 _METHODS = {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 _LITERAL_SECRET = re.compile(r"(?:password|secret|credential|private[_-]?key)", re.I)
+_MAX_MANIFEST_BYTES = 1024 * 1024
 
 
 class ManifestError(ValueError):
@@ -430,9 +431,17 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     return {"schema": SCHEMA, "binary": binary, "components": components, "config_root": config_root, "environment_files": environment_files, "service_user": service_user, "gateway": gateway, "connectors": connectors, "clients": clients, "caddy": caddy, "authelia": authelia}
 
 
+def _secure_read_flags() -> int:
+    """Return the mandatory no-follow flags for a native manifest file read."""
+    try:
+        return os.O_RDONLY | os.O_CLOEXEC | os.O_NONBLOCK | os.O_NOFOLLOW
+    except AttributeError as exc:
+        raise ManifestError("secure manifest file reads require platform no-follow descriptors") from exc
+
+
 def _read_regular(path: Path, maximum: int) -> bytes:
     """Read a bounded, pinned regular file without following its final symlink."""
-    flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NONBLOCK | os.O_NOFOLLOW
+    flags = _secure_read_flags()
     try:
         descriptor = os.open(path, flags)
     except OSError as exc:
@@ -457,14 +466,27 @@ def _read_regular(path: Path, maximum: int) -> bytes:
         os.close(descriptor)
 
 
+def parse_manifest_text(text: str) -> dict[str, Any]:
+    """Parse one strict JSON declaration without touching the host filesystem."""
+    if not isinstance(text, str):
+        raise ManifestError("manifest text is not UTF-8")
+    try:
+        encoded = text.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ManifestError("manifest text is not UTF-8") from exc
+    if len(encoded) > _MAX_MANIFEST_BYTES:
+        raise ManifestError("manifest text exceeds the bounded manifest read")
+    return validate_manifest(_json_load(text))
+
+
 def read_manifest(path: str | Path) -> dict[str, Any]:
-    """Read strict JSON and return a normalized, validated manifest."""
+    """Securely read one native manifest file, then parse its closed JSON shape."""
     source = Path(path)
     try:
-        text = _read_regular(source, 1024 * 1024).decode("utf-8")
+        text = _read_regular(source, _MAX_MANIFEST_BYTES).decode("utf-8")
     except UnicodeDecodeError as exc:
         raise ManifestError(f"{source}: manifest is not UTF-8") from exc
-    return validate_manifest(_json_load(text))
+    return parse_manifest_text(text)
 
 
 def canonical_manifest(manifest: dict[str, Any]) -> bytes:
