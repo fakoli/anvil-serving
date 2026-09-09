@@ -270,3 +270,36 @@ def test_refresher_starts_and_stops_thread():
     refresher.start()
     refresher.close()  # joins; must not hang
     assert gate.ceiling() is None
+
+def test_gate_ceiling_raise_unblocks_waiters():
+    gate = _AutoConcurrencyGate(_FakeBackend(), "primary")
+    gate.set_ceiling(1)
+    acquired = []
+    acquired_ok = threading.Event()
+
+    def wait_for_slot():
+        gate.generate(object())
+        acquired.append(1)
+        acquired_ok.set()
+
+    first = gate.generate(object())  # fills the single slot
+    thread = threading.Thread(target=wait_for_slot, daemon=True)
+    thread.start()
+    assert not acquired_ok.wait(timeout=0.5)
+    gate.set_ceiling(3)  # raise: the waiter must proceed without any release
+    assert acquired_ok.wait(timeout=5)
+    thread.join(timeout=5)
+    assert acquired == [1]
+    first.close()
+    gate.set_ceiling(None)
+
+
+def test_engine_adapter_respects_byte_cap():
+    opener = _FakeOpener({"/get_server_info": {"max_running_requests": 1}})
+    # Body is larger than the cap: the candidate is skipped entirely.
+    assert (
+        engine_declared_concurrency(
+            "http://127.0.0.1:8001/v1", opener=opener, max_bytes=4
+        )
+        is None
+    )
