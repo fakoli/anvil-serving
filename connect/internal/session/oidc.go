@@ -183,6 +183,12 @@ func (m *Manager) Complete(ctx context.Context, callback Callback) (Completion, 
 	if callback.State == "" || len(callback.State) > 256 || callback.Code == "" || len(callback.Code) > 8192 || !validBinding(callback.Binding) {
 		return Completion{}, ErrDenied
 	}
+	// RFC 9207: compare the decoded response issuer exactly before consuming
+	// state or sending the code to the token endpoint. A provider advertising
+	// support must always return it; legacy single-issuer providers may omit it.
+	if (callback.Issuer != "" && callback.Issuer != m.issuer) || (m.responseIssuerRequired && callback.Issuer == "") {
+		return Completion{}, ErrDenied
+	}
 	key := transactionKey(callback.State)
 	stateHash := sha256.Sum256([]byte(callback.State))
 	bindingHash := sha256.Sum256([]byte(callback.Binding))

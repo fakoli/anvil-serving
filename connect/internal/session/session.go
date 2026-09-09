@@ -106,6 +106,7 @@ type Callback struct {
 	State   string
 	Code    string
 	Binding string
+	Issuer  string
 }
 
 // Completion returns a newly minted host-only session cookie and a confined
@@ -134,19 +135,20 @@ type transaction struct {
 }
 
 type Manager struct {
-	state               *store.Store
-	rules               map[string]config.Rule
-	issuer              string
-	clientID            string
-	clientSecret        string
-	callbackPath        string
-	transactionLifetime time.Duration
-	sessionLifetime     time.Duration
-	maxTransactions     int
-	maxPerBrowser       int
-	provider            *oidc.Provider
-	endpoint            oauth2.Endpoint
-	client              *http.Client
+	state                  *store.Store
+	rules                  map[string]config.Rule
+	issuer                 string
+	responseIssuerRequired bool
+	clientID               string
+	clientSecret           string
+	callbackPath           string
+	transactionLifetime    time.Duration
+	sessionLifetime        time.Duration
+	maxTransactions        int
+	maxPerBrowser          int
+	provider               *oidc.Provider
+	endpoint               oauth2.Endpoint
+	client                 *http.Client
 }
 
 // New discovers the issuer and constructs a strict verifier. It deliberately
@@ -195,14 +197,16 @@ func New(ctx context.Context, state *store.Store, rules []config.Rule, settings 
 	m.endpoint = provider.Endpoint()
 	m.endpoint.AuthStyle = oauth2.AuthStyleInHeader
 	var metadata struct {
-		AuthorizationEndpoint string `json:"authorization_endpoint"`
-		TokenEndpoint         string `json:"token_endpoint"`
-		JWKSURI               string `json:"jwks_uri"`
+		AuthorizationEndpoint   string `json:"authorization_endpoint"`
+		TokenEndpoint           string `json:"token_endpoint"`
+		JWKSURI                 string `json:"jwks_uri"`
+		ResponseIssuerSupported bool   `json:"authorization_response_iss_parameter_supported"`
 	}
 	if provider.Claims(&metadata) != nil || !sameIssuerOrigin(issuer, metadata.AuthorizationEndpoint) || !sameIssuerOrigin(issuer, metadata.TokenEndpoint) || !sameIssuerOrigin(issuer, metadata.JWKSURI) {
 		m.Close()
 		return nil, ErrConfiguration
 	}
+	m.responseIssuerRequired = metadata.ResponseIssuerSupported
 	return m, nil
 }
 
