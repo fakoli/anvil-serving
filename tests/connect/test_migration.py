@@ -5,6 +5,8 @@ import http.client
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import os
+import platform
+import sys
 import threading
 from pathlib import Path
 
@@ -15,6 +17,12 @@ from anvil_serving.observability.api import TelemetryRegistry, run_server_in_thr
 from anvil_serving.observability.dashboard.app import create_dashboard_server
 from anvil_serving.observability.dashboard.console import Console, attach_console
 from anvil_serving.observability.dashboard.contracts import digest
+
+
+pytestmark = pytest.mark.skipif(
+    sys.platform != "linux" or platform.machine().lower() not in {"x86_64", "amd64"},
+    reason="Connect migration preview requires Linux amd64",
+)
 
 ROOT = Path(__file__).parents[2]
 HOST = "dash.example.test"

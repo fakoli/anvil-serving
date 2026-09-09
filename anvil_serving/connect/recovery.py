@@ -59,6 +59,7 @@ def _response(raw: bytes, *, operation: str) -> dict[str, str]:
 
 def backup(manifest_path: str | Path, *, output_path: str | Path, apply: bool = False, runner: manage.Runner | None = None) -> dict[str, Any]:
     """Back up an existing gateway offline, preserving every existing output."""
+    manage._require_supported_platform()
     data = read_manifest(manifest_path)
     output = _path(output_path)
     identity, uid = _recovery_identity(data)
@@ -94,6 +95,7 @@ def restore(manifest_path: str | Path, *, input_path: str | Path, destination: s
     digest is explicit too, so this remains usable after the active config and
     activation record are lost without silently accepting another executable.
     """
+    manage._require_supported_platform()
     data = read_manifest(manifest_path)
     input_file, target_dir = _path(input_path), _path(destination)
     expected, expected_native = _digest(sha256), _digest(native_sha256)

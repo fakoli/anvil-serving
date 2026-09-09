@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import platform
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,7 +12,31 @@ from anvil_serving.connect import manage, recovery
 from anvil_serving.connect.config import ManifestError
 
 
+pytestmark = pytest.mark.skipif(
+    sys.platform != "linux" or platform.machine().lower() not in {"x86_64", "amd64"},
+    reason="Connect recovery tests require Linux amd64",
+)
+
+
 ROOT = Path(__file__).parents[2]
+
+
+@pytest.mark.parametrize(
+    ("operation", "kwargs"),
+    [
+        (recovery.backup, {"output_path": Path("/private/output")}),
+        (recovery.restore, {
+            "input_path": Path("/private/input"),
+            "destination": Path("/private/destination"),
+            "sha256": "a" * 64,
+            "native_sha256": "b" * 64,
+        }),
+    ],
+)
+def test_recovery_rejects_unsupported_platform_before_manifest_read(monkeypatch, operation, kwargs):
+    monkeypatch.setattr(manage, "supported_platform", lambda: False)
+    with pytest.raises(manage.UnsupportedPlatformError):
+        operation(Path("/missing/deployment.json"), **kwargs)
 
 
 @pytest.fixture
