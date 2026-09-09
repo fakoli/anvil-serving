@@ -246,6 +246,17 @@ func ReadConnector(reader io.Reader) (Connector, error) {
 // Go's JSON decoder normally accepts duplicate keys and case-insensitive field
 // aliases. Reject both, along with nulls and unknown nested fields, before decode.
 func decode(reader io.Reader, target any) error {
+	return Decode(reader, target)
+}
+
+// Decode applies the same closed, bounded JSON grammar to native lifecycle
+// declarations. Callers must still validate the decoded declaration's values.
+// Targets must be nonnil pointers to structs whose fields have JSON tags.
+func Decode(reader io.Reader, target any) error {
+	kind := reflect.TypeOf(target)
+	if reader == nil || kind == nil || kind.Kind() != reflect.Pointer || reflect.ValueOf(target).IsNil() || kind.Elem().Kind() != reflect.Struct {
+		return errors.New("invalid configuration target")
+	}
 	data, err := io.ReadAll(io.LimitReader(reader, MaxConfigBytes+1))
 	if err != nil || len(data) > MaxConfigBytes {
 		return errors.New("configuration unreadable or too large")

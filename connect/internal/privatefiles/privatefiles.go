@@ -82,6 +82,41 @@ func validDirectoryInfo(info os.FileInfo) bool {
 	return info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) == 0
 }
 
+// Subdirectory opens or creates one owned child directory beneath the retained
+// descriptor. It never resolves the original pathname and the returned child
+// owns its descriptor independently of this directory's Close.
+func (d *Directory) Subdirectory(name string) (*Directory, error) {
+	if !validName(name) {
+		return nil, ErrPrivate
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.closed {
+		return nil, ErrClosed
+	}
+	err := unix.Mkdirat(d.fd, name, 0700)
+	if err != nil && !errors.Is(err, unix.EEXIST) {
+		return nil, ErrPrivate
+	}
+	if err == nil && unix.Fsync(d.fd) != nil {
+		return nil, ErrPrivate
+	}
+	var before unix.Stat_t
+	if unix.Fstatat(d.fd, name, &before, unix.AT_SYMLINK_NOFOLLOW) != nil || before.Mode&unix.S_IFMT != unix.S_IFDIR || before.Mode&07777 != 0700 || before.Uid != uint32(os.Geteuid()) {
+		return nil, ErrPrivate
+	}
+	fd, err := unix.Openat(d.fd, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, ErrPrivate
+	}
+	var after unix.Stat_t
+	if unix.Fstat(fd, &after) != nil || after.Dev != before.Dev || after.Ino != before.Ino || after.Mode&unix.S_IFMT != unix.S_IFDIR || after.Mode&07777 != 0700 || after.Uid != uint32(os.Geteuid()) {
+		_ = unix.Close(fd)
+		return nil, ErrPrivate
+	}
+	return &Directory{dir: os.NewFile(uintptr(fd), name), fd: fd}, nil
+}
+
 // PinnedPath owns a separate directory descriptor. Keep this handle open until
 // every external pathname operation (including socket cleanup) has finished.
 // Closing the originating Directory does not invalidate or retarget this path.

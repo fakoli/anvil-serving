@@ -217,3 +217,56 @@ func TestRetainedDirectorySurvivesPathRename(t *testing.T) {
 		t.Fatalf("replacement directory received a file: %v", err)
 	}
 }
+
+func TestSubdirectoryRetainsOwnedParentAndChild(t *testing.T) {
+	directory, path := openTestDirectory(t)
+	moved := path + "-moved"
+	if err := os.Rename(path, moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	child, err := directory.Subdirectory("headers")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer child.Close()
+	if err := directory.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := child.Create("router", []byte("private")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(moved, "headers", "router")); err != nil {
+		t.Fatal("child escaped retained parent", err)
+	}
+	if _, err := os.Stat(filepath.Join(path, "headers")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("replacement directory changed", err)
+	}
+}
+
+func TestSubdirectoryRefusesUnsafeExistingEntry(t *testing.T) {
+	for _, mode := range []string{"symlink", "file", "permissions"} {
+		t.Run(mode, func(t *testing.T) {
+			directory, path := openTestDirectory(t)
+			name := filepath.Join(path, "headers")
+			var err error
+			switch mode {
+			case "symlink":
+				err = os.Symlink(t.TempDir(), name)
+			case "file":
+				err = os.WriteFile(name, nil, 0600)
+			case "permissions":
+				err = os.Mkdir(name, 0755)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if child, err := directory.Subdirectory("headers"); err == nil {
+				child.Close()
+				t.Fatal("unsafe child accepted")
+			}
+		})
+	}
+}
