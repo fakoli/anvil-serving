@@ -1,0 +1,20 @@
+{
+  "schema": "anvil-connect.gateway/v1",
+  "listen": "127.0.0.1:9080",
+  "max_concurrent": 32,
+  "resources": [
+    {
+      "rule": {
+        "id": "router",
+        "host": "api.example.test",
+        "path_prefix": "/v1",
+        "methods": ["GET", "POST"],
+        "access": "api",
+        "native_auth": "delegate-bearer",
+        "limits": {"request_bytes": 4194304, "concurrent": 16, "buffer_bytes": 65536, "idle_seconds": 120, "duration_seconds": 3600}
+      },
+      "connector": "origin-a",
+      "tunnel_address": "127.0.0.1:9081"
+    }
+  ]
+}
