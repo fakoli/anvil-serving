@@ -22,6 +22,7 @@ import (
 	"github.com/fakoli/anvil-serving/connect/internal/httpedge"
 	"github.com/fakoli/anvil-serving/connect/internal/origin"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
+	"github.com/fakoli/anvil-serving/connect/internal/testidentity"
 	"github.com/fakoli/anvil-serving/connect/internal/testpki"
 	"github.com/fakoli/anvil-serving/connect/internal/transport"
 )
@@ -82,7 +83,8 @@ func fullAPI(t *testing.T, native http.HandlerFunc, mutate ...func(*config.Gatew
 		change(&g)
 	}
 	ca := testpki.New(t)
-	binding := access.LeaseBinding{Installation: "origin-a", Resource: g.Resources[0].Rule.ID, Epoch: strings.Repeat("a", 64), Generation: 1}
+	authority := testidentity.New(t, g, ca)
+	binding := access.LeaseBinding{Installation: "origin-a", Resource: g.Resources[0].Rule.ID, Epoch: authority.Installations["origin-a"].Epoch, Generation: authority.Installations["origin-a"].Generation}
 	lease, err := access.NewLease(binding, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +100,7 @@ func fullAPI(t *testing.T, native http.HandlerFunc, mutate ...func(*config.Gatew
 	}
 	t.Cleanup(adapter.Close)
 	inner := httptest.NewUnstartedServer(adapter)
-	inner.TLS = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{ca.Leaf(t, transport.ConnectorPeer("origin-a"), false)}, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: ca.Roots}
+	inner.TLS = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{authority.Certificates["router"]}, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: ca.Roots}
 	inner.EnableHTTP2 = true
 	inner.StartTLS()
 	t.Cleanup(func() { inner.CloseClientConnections(); inner.Close() })
@@ -158,7 +160,7 @@ func fullAPI(t *testing.T, native http.HandlerFunc, mutate ...func(*config.Gatew
 	if err != nil {
 		t.Fatal(err)
 	}
-	dispatcher, err := transport.NewDispatcher(g, ca.Roots, ca.Leaf(t, transport.GatewayPeer, true))
+	dispatcher, err := transport.NewDispatcher(g, ca.Roots, ca.Leaf(t, transport.GatewayPeer, true), authority.Issuer)
 	if err != nil {
 		t.Fatal(err)
 	}

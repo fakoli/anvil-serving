@@ -13,16 +13,20 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/http/httputil"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/httpedge"
+	"github.com/fakoli/anvil-serving/connect/internal/identity"
 	"github.com/fakoli/anvil-serving/connect/internal/origin"
 	"github.com/fakoli/anvil-serving/connect/internal/relay"
+	"github.com/fakoli/anvil-serving/connect/internal/session"
 )
 
 const GatewayPeer = "gateway.anvil-connect.internal"
@@ -37,13 +41,23 @@ type binding struct {
 	upgradeProxy     *httputil.ReverseProxy
 }
 
-type Dispatcher struct{ resources map[string]binding }
+// PeerAuthority binds signed TLS material to a currently approved installation.
+// The credential issuer implements this using its persisted generation bindings.
+type PeerAuthority interface {
+	VerifyPeer(string, *x509.Certificate) (identity.Installation, error)
+}
+
+type Dispatcher struct {
+	resources map[string]binding
+	peers     PeerAuthority
+	active    *access.Active
+}
 
 // NewDispatcher owns TLS configuration: there is no skip-verification or caller
 // supplied dial/proxy option. Certificates must be deployment-issued credentials;
 // the issuer, not a CSR, assigns the gateway/connector names and EKUs.
-func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate tls.Certificate) (*Dispatcher, error) {
-	if declaration.Validate() != nil || roots == nil || len(certificate.Certificate) == 0 || certificate.PrivateKey == nil {
+func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate tls.Certificate, peers PeerAuthority) (*Dispatcher, error) {
+	if declaration.Validate() != nil || roots == nil || len(certificate.Certificate) == 0 || certificate.PrivateKey == nil || peers == nil {
 		return nil, errors.New("invalid transport configuration")
 	}
 	leaf, err := x509.ParseCertificate(certificate.Certificate[0])
@@ -73,11 +87,12 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 	if _, err := leaf.Verify(x509.VerifyOptions{Roots: roots, Intermediates: intermediates, DNSName: GatewayPeer, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}}); err != nil {
 		return nil, errors.New("invalid gateway certificate trust")
 	}
-	d := &Dispatcher{resources: map[string]binding{}}
+	active, err := access.NewActive(declaration.MaxConcurrent, 250*time.Millisecond)
+	if err != nil {
+		return nil, errors.New("invalid transport capacity")
+	}
+	d := &Dispatcher{resources: map[string]binding{}, peers: peers, active: active}
 	for _, resource := range declaration.Resources {
-		if resource.Rule.Access != "api" {
-			continue
-		}
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
 		idle := time.Duration(resource.Rule.Limits.IdleSeconds) * time.Second
 		tr := &http.Transport{
@@ -104,7 +119,8 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 			if len(state.VerifiedChains) == 0 || len(state.PeerCertificates) == 0 || !relay.ExactPeerName(state.PeerCertificates[0], ConnectorPeer(resource.Connector)) {
 				return errors.New("connector certificate identity denied")
 			}
-			return nil
+			_, err := peers.VerifyPeer(resource.Rule.ID, state.PeerCertificates[0])
+			return err
 		}
 		tr.Protocols.SetHTTP2(true)
 		upgradeTransport := tr.Clone()
@@ -116,10 +132,20 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 				request.Out.URL.Scheme, request.Out.URL.Host = "https", resource.TunnelAddress
 				request.Out.Host = resource.Rule.Host
 				request.Out.GetBody = nil
-				httpedge.CleanAPIHeaders(request.Out.Header)
+				if resource.Rule.Access == "api" {
+					httpedge.CleanAPIHeaders(request.Out.Header)
+				} else {
+					// BrowserDispatch validates before the transport is invoked.
+					_ = httpedge.CleanBrowserHeaders(request.Out.Header, resource.Rule.NativeAuth)
+				}
 				request.Out.Header.Set(origin.ResourceHeader, resource.Rule.ID)
 			},
-			ModifyResponse: func(response *http.Response) error { return relay.APIResponse(response, resource.Rule) },
+			ModifyResponse: func(response *http.Response) error {
+				if resource.Rule.Access == "browser" {
+					return httpedge.ValidateBrowserResponse(response, resource.Rule)
+				}
+				return relay.APIResponse(response, resource.Rule)
+			},
 			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 				var bodyLimit *http.MaxBytesError
 				status := http.StatusBadGateway
@@ -137,6 +163,7 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 }
 
 func (d *Dispatcher) Close() {
+	d.active.Close()
 	for _, target := range d.resources {
 		target.transport.CloseIdleConnections()
 		target.upgradeTransport.CloseIdleConnections()
@@ -146,14 +173,79 @@ func (d *Dispatcher) Close() {
 // Dispatch is called only by the authenticated edge. It rechecks the immutable
 // resource binding and holds the caller's context through the entire response.
 func (d *Dispatcher) Dispatch(w http.ResponseWriter, r *http.Request, resource config.Resource, admitted access.Admission) {
-	target, ok := d.resources[resource.Rule.ID]
-	if !ok || !reflect.DeepEqual(resource, target.resource) || admitted.Resource != resource.Rule.ID || admitted.Method != r.Method || !resource.Rule.Allows(r.Host, r.URL.Path, r.Method) || httpedge.ValidateHead(r) != nil {
+	if resource.Rule.Access != "api" || admitted.Resource != resource.Rule.ID || admitted.Method != r.Method {
 		http.Error(w, "transport resource denied", http.StatusForbidden)
 		return
 	}
+	d.dispatch(w, r, resource)
+}
+
+// BrowserDispatch preserves native application controls after the browser edge
+// has authenticated its own session. API admissions cannot select this path.
+func (d *Dispatcher) BrowserDispatch(w http.ResponseWriter, r *http.Request, resource config.Resource, admitted session.Admission) {
+	if resource.Rule.Access != "browser" || admitted.Resource != resource.Rule.ID || admitted.Host != resource.Rule.Host {
+		http.Error(w, "transport resource denied", http.StatusForbidden)
+		return
+	}
+	clean := r.Clone(r.Context())
+	if httpedge.CleanBrowserHeaders(clean.Header, resource.Rule.NativeAuth) != nil {
+		http.Error(w, "transport headers denied", http.StatusBadRequest)
+		return
+	}
+	d.dispatch(w, clean, resource)
+}
+
+func (d *Dispatcher) dispatch(w http.ResponseWriter, r *http.Request, resource config.Resource) {
+	target, ok := d.resources[resource.Rule.ID]
+	if !ok || !reflect.DeepEqual(resource, target.resource) || !resource.Rule.Allows(r.Host, r.URL.Path, r.Method) || httpedge.ValidateHead(r) != nil {
+		http.Error(w, "transport resource denied", http.StatusForbidden)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(resource.Rule.Limits.DurationSeconds)*time.Second)
+	defer cancel()
+	var certificate atomic.Pointer[x509.Certificate]
+	ctx, release, err := d.active.Watch(ctx, func() error {
+		// Before GotConn the transport has bounded dial/handshake deadlines and
+		// its TLS verifier independently checks current installation authority.
+		leaf := certificate.Load()
+		if leaf == nil {
+			return nil
+		}
+		_, err := d.peers.VerifyPeer(resource.Rule.ID, leaf)
+		return err
+	})
+	if err != nil {
+		http.Error(w, "transport unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	defer release()
+	trace := &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) {
+		connection, ok := info.Conn.(*tls.Conn)
+		if !ok {
+			cancel()
+			return
+		}
+		state := connection.ConnectionState()
+		if len(state.VerifiedChains) == 0 || len(state.PeerCertificates) == 0 {
+			cancel()
+			return
+		}
+		// Retain owned signed DER for rechecks through the whole response and
+		// upgrade lifetime. Never infer a new generation from a reused key.
+		leaf, err := x509.ParseCertificate(append([]byte(nil), state.PeerCertificates[0].Raw...))
+		if err != nil {
+			cancel()
+			return
+		}
+		certificate.Store(leaf)
+		if _, err := d.peers.VerifyPeer(resource.Rule.ID, leaf); err != nil {
+			cancel()
+		}
+	}}
+	r = r.Clone(httptrace.WithClientTrace(ctx, trace))
 	proxy := target.proxy
 	if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
 		proxy = target.upgradeProxy
 	}
-	proxy.ServeHTTP(relay.Writer(w, r.Context(), time.Duration(resource.Rule.Limits.IdleSeconds)*time.Second), r)
+	proxy.ServeHTTP(relay.Writer(w, ctx, time.Duration(resource.Rule.Limits.IdleSeconds)*time.Second), r)
 }
