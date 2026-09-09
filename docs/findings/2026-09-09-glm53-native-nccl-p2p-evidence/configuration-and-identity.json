@@ -1,0 +1,42 @@
+{
+  "schema": "anvil-serving.nccl-transport-configuration/v1",
+  "campaign_id": "2026-09-09-glm53-native-nccl-p2p",
+  "repository_revision": "b7df878d",
+  "model": {
+    "id": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO",
+    "revision": "c3cbb9891b67c741bcbf6b176dd7af9265b069db",
+    "served_name": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp"
+  },
+  "runtime": {
+    "image": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
+    "engine": "SGLang",
+    "topology": "TP=2 on two RTX PRO 6000 Blackwell Max-Q GPUs",
+    "context_tokens": 393216,
+    "concurrency": 1,
+    "adaptive_mtp": "fixed across both transport arms",
+    "fixed_environment": {
+      "NCCL_CUMEM_ENABLE": "0",
+      "iommu": "off",
+      "acs": "unchanged"
+    },
+    "comparison_environment": {
+      "baseline": {"NCCL_P2P_DISABLE": "1"},
+      "candidate": {"NCCL_P2P_DISABLE": "0"}
+    }
+  },
+  "platform": {
+    "kernel": "7.0.0-31",
+    "driver": "595.91.07"
+  },
+  "qualification_lineage": {
+    "inherited": "Earlier WSL2 qualification metadata establishes the prior GLM profile only; it is not native-campaign measurement evidence.",
+    "native_campaign": "This campaign measures only the declared native-Linux transport A/B."
+  },
+  "client_contract_unchanged": true,
+  "redactions": [
+    "GPU UUIDs and inventory identifiers",
+    "host, endpoint, and personal path values",
+    "boot and command-line identifiers",
+    "unrelated environment values and rollback configuration"
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "schema": "native-glm-nccl-comparison/v1",
+  "cells": [
+    {
+      "cell": "4k",
+      "requests_each": 12,
+      "baseline_passed": true,
+      "candidate_passed": true,
+      "actual_prompt_tokens_p50": 2970.0,
+      "metrics": {
+        "ttft_p50_ms": {
+          "baseline": 544.4157719994109,
+          "candidate": 495.45400499937386,
+          "percent_change": -8.99345124044093
+        },
+        "e2e_p50_ms": {
+          "baseline": 688.4723299999678,
+          "candidate": 637.2978179997517,
+          "percent_change": -7.433052828748899
+        },
+        "decode_tok_s_p50": {
+          "baseline": 282.1348827289961,
+          "candidate": 288.14985681734345,
+          "percent_change": 2.1319498071867393
+        }
+      }
+    },
+    {
+      "cell": "120k",
+      "requests_each": 3,
+      "baseline_passed": true,
+      "candidate_passed": true,
+      "actual_prompt_tokens_p50": 97159.0,
+      "metrics": {
+        "ttft_p50_ms": {
+          "baseline": 16406.720802000564,
+          "candidate": 14941.19061299989,
+          "percent_change": -8.932499106231962
+        },
+        "e2e_p50_ms": {
+          "baseline": 16569.573079000293,
+          "candidate": 15101.824650999333,
+          "percent_change": -8.858094418021745
+        },
+        "decode_tok_s_p50": {
+          "baseline": 251.76088780022232,
+          "candidate": 255.2379845827617,
+          "percent_change": 1.3811107884631024
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Only 12 short and 3 medium requests per arm; no service-tail or broad inference throughput claim.",
+    "Strict count failed baseline 380k cell; no high-context performance headline.",
+    "32-word fixed output; marker quality diagnostic only, two repetitions.",
+    "Unique prefix requested; cache metadata incomplete, cold cache not established."
+  ]
+}

@@ -42,6 +42,14 @@ Companion Node is model-free in the reference topology and reaches Dark remotely
 
 ## Native Linux migration comparison (2026-09-08)
 
+## Native NCCL P2P transport A/B (2026-09-09)
+
+The pinned GLM TP=2/C1 native recipe now retains P2P enabled after the bounded
+transport A/B: 4K n12 and 120K n3 matched cells lowered median TTFT by about
+9% and E2E by 7.4–8.9%, while decode changed by +1.4–2.1%. Both 380K strict
+capacity cells failed the required 32-word count and are excluded from
+performance claims. See the [finding and evidence](../../findings/2026-09-09-glm53-native-nccl-p2p.md).
+
 The same physical pair, exact GLM-5.3-Flash model/image and TP2/393,216/C1
 profile measured warm direct median decode of 149.02/125.03/124.46/120.29
 versus retained WSL 112.07/96.17/102.42/99.79 tok/s at nominal
