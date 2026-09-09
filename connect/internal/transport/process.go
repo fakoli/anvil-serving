@@ -245,13 +245,19 @@ func StartClient(ctx context.Context, o ClientOptions) (*Process, error) {
 	}
 	var in inputs
 	defer in.close()
-	certificate, err := in.file(o.CertificateFile, false)
-	if err != nil {
-		return nil, err
-	}
-	key, err := in.file(o.PrivateKeyFile, true)
-	if err != nil {
-		return nil, err
+	certificate, key := "", ""
+	if !o.ViaGate {
+		var inputErr error
+		certificate, inputErr = in.file(o.CertificateFile, false)
+		if inputErr != nil {
+			return nil, inputErr
+		}
+		key, inputErr = in.file(o.PrivateKeyFile, true)
+		if inputErr != nil {
+			return nil, inputErr
+		}
+	} else if o.HeadersFile == "" {
+		return nil, ErrProcess
 	}
 	trust, err := in.file(o.TrustFile, false)
 	if err != nil {
@@ -261,8 +267,10 @@ func StartClient(ctx context.Context, o ClientOptions) (*Process, error) {
 	if err != nil {
 		return nil, err
 	}
-	args := []string{"client", "--no-color", "--log-lvl", "warn", "--nb-worker-threads", "1", "--tls-verify-certificate", "--tls-certificate", certificate, "--tls-private-key", key, "--connection-retry-max-backoff", "1s", "--reverse-tunnel-connection-retry-max-backoff", "1s", "-R", "tcp://" + o.ReverseAddress + ":" + o.OriginAddress}
-	if o.ViaGate {
+	args := []string{"client", "--no-color", "--log-lvl", "warn", "--nb-worker-threads", "1", "--tls-verify-certificate", "--connection-retry-max-backoff", "1s", "--reverse-tunnel-connection-retry-max-backoff", "1s", "-R", "tcp://" + o.ReverseAddress + ":" + o.OriginAddress}
+	if !o.ViaGate {
+		args = append(args, "--tls-certificate", certificate, "--tls-private-key", key)
+	} else {
 		args = append(args, "--http-upgrade-path-prefix", "acv1")
 	}
 	if o.HeadersFile != "" {
