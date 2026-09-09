@@ -429,12 +429,12 @@ func (b *Browser) callback(w http.ResponseWriter, r *http.Request, resource brow
 		browserFailure(w, http.StatusForbidden)
 		return
 	}
-	query, err := browserQuery(r, "state", "code")
-	if err != nil || !query.Has("state") || !query.Has("code") || cookies.transaction == "" {
+	query, err := browserQuery(r, "state", "code", "iss", "scope")
+	if err != nil || !query.Has("state") || !query.Has("code") || cookies.transaction == "" || (query.Has("iss") && query.Get("iss") == "") || (query.Has("scope") && query.Get("scope") != "openid") {
 		browserFailure(w, http.StatusBadRequest)
 		return
 	}
-	completion, err := b.authority.Complete(r.Context(), session.Callback{Host: r.Host, State: query.Get("state"), Code: query.Get("code"), Binding: cookies.transaction})
+	completion, err := b.authority.Complete(r.Context(), session.Callback{Host: r.Host, State: query.Get("state"), Code: query.Get("code"), Binding: cookies.transaction, Issuer: query.Get("iss")})
 	if err != nil || completion.Host != r.Host || completion.Resource != resource.declaration.Rule.ID || !sameResourcePath(resource.declaration.Rule, completion.ReturnPath) || completion.Cookie == "" || completion.ExpiresAt.IsZero() {
 		browserFailure(w, http.StatusUnauthorized)
 		return
