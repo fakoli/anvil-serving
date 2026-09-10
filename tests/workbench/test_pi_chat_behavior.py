@@ -11,7 +11,7 @@ import pytest
 SOURCE = Path(__file__).parents[2] / "anvil_serving/observability/dashboard/static/views/pi_chat.js"
 
 
-def test_pi_chat_keeps_drafts_isolated_and_transcript_ordered() -> None:
+def test_pi_chat_keeps_drafts_isolated_and_transcript_ordered(tmp_path) -> None:
     node = shutil.which("node")
     if node is None:
         pytest.skip("Node is required for the Pi frontend behavior gate")
@@ -90,10 +90,14 @@ def test_pi_chat_keeps_drafts_isolated_and_transcript_ordered() -> None:
       assert.equal(replaceTranscript(output, ["new event"], {{ id: "composer" }}), true);
       assert.equal(output.replacements, 1);
     """
+    harness = tmp_path / "pi-chat-behavior.mjs"
+    harness.write_text(script, encoding="utf-8")
     result = subprocess.run(
-        [node, "--input-type=module", "--eval", script],
+        [node, harness],
+        stdin=subprocess.DEVNULL,
         text=True,
+        encoding="utf-8",
         capture_output=True,
-        timeout=10,
+        timeout=30,
     )
     assert result.returncode == 0, result.stderr

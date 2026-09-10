@@ -353,8 +353,15 @@ class WorkbenchService:
             if route == "pi/sessions":
                 fields(body, required=("project_id", "task_id", "request_id", "provider_id", "model_id", "thinking_level"), optional=("parent_session_id",))
                 config = self.config["pi"]
-                from .pi_storage import validate_pool
-                validate_pool(self.config)
+                from .pi_storage import PiStorageError, validate_pool
+                try:
+                    validate_pool(self.config)
+                except PiStorageError:
+                    raise ObservatoryError(
+                        "pi_storage_unavailable",
+                        "Pi storage is not ready. Check the managed pool mount and ownership before starting a conversation.",
+                        409,
+                    ) from None
                 if body["model_id"] not in config["models"].get(body["provider_id"], []) or body["thinking_level"] not in config["thinking_levels"]:
                     raise ObservatoryError("model_unavailable", "Choose a declared Pi model and thinking level.")
                 if body.get("parent_session_id"):
