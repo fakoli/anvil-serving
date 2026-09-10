@@ -41,7 +41,12 @@ _SYSTEMCTL = "/usr/bin/systemctl"
 _JOURNALCTL = "/usr/bin/journalctl"
 _MAX_OUTPUT = 64 * 1024
 _MAX_BINARY = 512 * 1024 * 1024
-_SYSTEMD_TIMEOUT = 20.0
+# Generated services have a 20-second hard stop deadline. A systemctl restart
+# must also wait for the replacement process to launch, so its command bound
+# carries a fixed margin instead of racing TimeoutStopSec. Caddy's finite
+# 15-second HTTP grace period keeps long-lived WebSocket drains below that
+# supervisor deadline.
+_SYSTEMD_TIMEOUT = 30.0
 _VALIDATE_TIMEOUT = 10.0
 _ID = re.compile(r"[a-z][a-z0-9-]{0,62}\Z")
 
