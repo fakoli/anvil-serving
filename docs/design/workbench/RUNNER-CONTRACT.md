@@ -4,6 +4,25 @@ Proposal for an early isolated spike, not a shipped API. Use fake State and
 runner adapters first. Anvil Connect remains the transport/identity integration
 owned by the concurrent workstream.
 
+Revision 2 proposes reusing Pi Web for the conversational session UI; see
+[PI-REUSE.md](PI-REUSE.md). UI reuse does not replace this lifecycle contract.
+The session service remains a separate runtime from the stdlib Serving facade.
+
+## Conversation and deterministic evaluation
+
+Pi owns conversational turns, model/thinking selections, persisted sessions,
+branching, tool events and extension UI. The runner exposes those supported
+controls rather than reducing a Pi session to independent shell-test buttons.
+Correlate extension select/confirm/input/editor responses to the exact pending
+request. Unsupported terminal components must not imply a completed interaction.
+
+The evaluation runner owns a different fixed plan: resolve target, preflight,
+measurement, evidence collection, independent review. Its target identity and
+resource location are separate from the cloud model used by the agent. Routine
+phase transitions need no language model. Retain original input/output and gate
+provenance; a plan-producing agent cannot supply its own acceptance proof.
+Changing the UI target does not alter an existing run or active Pi session.
+
 ## Authorities
 
 The task coordinator owns workflow correlation and invokes Anvil State for

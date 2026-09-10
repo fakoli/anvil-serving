@@ -7,6 +7,8 @@
     <title>Anvil Workbench · Design concept</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="workbench.css" />
+    <link rel="stylesheet" href="pi-surface.css" />
+    <script defer src="pi-surface.js"></script>
     <script defer src="workbench.js"></script>
   </head>
   <body>
@@ -29,11 +31,6 @@
         <a href="#bench" data-page="bench"
           ><span aria-hidden="true">◫</span>Workbench</a
         >
-        <a href="#experiments" data-page="experiments"
-          ><span aria-hidden="true">⌁</span>Experiments<span class="nav-count"
-            >03</span
-          ></a
-        >
         <a href="#playground" data-page="playground"
           ><span aria-hidden="true">›_</span>Playground</a
         >
@@ -44,10 +41,16 @@
           ><span aria-hidden="true">☷</span>Anvil work</a
         >
         <a href="#sessions" data-page="sessions"
-          ><span aria-hidden="true">π</span>Pi sessions</a
+          ><span aria-hidden="true">π</span>Pi workspace</a
         >
         <a href="#system" data-page="system"
           ><span aria-hidden="true">⊞</span>System & logs</a
+        >
+        <a href="#access" data-page="access"
+          ><span aria-hidden="true">⌘</span>Connect access</a
+        >
+        <a href="#docs" data-page="docs"
+          ><span aria-hidden="true">▤</span>Documentation</a
         >
       </nav>
       <div class="sidebar-bottom">
@@ -66,7 +69,7 @@
         </div>
         <button class="search-button" id="command-open">
           Find a model, run, or action <kbd>Ctrl K</kbd></button
-        ><span class="concept">CONCEPT 01</span>
+        ><span class="concept">CONCEPT 02</span>
       </header>
       <div class="demo-banner">
         <span class="dot amber"></span> Interactive design study
@@ -74,9 +77,13 @@
           >All models, metrics, and actions are simulated.</span
         ><button id="scenario-toggle">Show stale telemetry</button>
       </div>
+      <section
+        class="status-strip"
+        aria-label="System status and compute selection"
+        id="hud"
+      ></section>
       <div class="content-layout">
         <main id="main" tabindex="-1"></main>
-        <aside class="hud" aria-label="Persistent system HUD" id="hud"></aside>
       </div>
       <footer>
         <span><span class="dot amber"></span> SAMPLE ENVIRONMENT</span

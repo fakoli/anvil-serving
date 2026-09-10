@@ -3,13 +3,35 @@
 Updated: September 10, 2026. Start here after a context reset; then read only the
 linked documents relevant to the next action.
 
+## Revision 2 status
+
+Human feedback accepted September 10 and implemented in the interactive concept:
+Serving docs navy/cyan/amber palette; one document scroll owner; compact operation
+indicators; experiment tabs inside Workbench; compute/model selection including
+synthetic MacBook; recipe candidate edit/save/load review; Connect grants and
+session revocation; documentation reader; conversational Pi with model/thinking,
+branch/resume, steering, extension note and diff controls. Deterministic evaluation
+is separate from the cloud operator model.
+
+Research recommends a bounded Pi Web reuse spike, not an Open WebUI fork yet.
+See PI-REUSE.md for primary sources, exact-revision requirements and integration
+unknowns. The prototype has no imported Pi or Pi Web dependency.
+
+Lead owns existing files. Terra delivered only pi-surface.js/css; Sol supplied
+read-only independent review. Five material review findings were fixed and their
+browser paths rechecked: recipe identity, compute drill-down, complete Pi session
+state, dialog focus and section semantics. Final focused follow-up approved the bounded concept revision; no material
+findings remained. Final reload and Access/Workbench navigation had no new
+browser warnings or errors.
+Production integration and the concurrent Connect work remain untouched.
+
 ## Objective and scope
 
 A goal in the current Codex thread tracks an implementation-ready design
 for an Anvil workbench: model recipe/connector/preset playground, experiment
 inspection/evidence, fleet HUD, exact-project PRDs/tasks and sandboxed Pi coding
 sessions. Current phase is design and interactive prototype validation, not a
-production migration. The design phase is complete and ready for human feedback;
+production migration. The revised design is ready for further human feedback;
 production implementation has not begun. The full design is [DESIGN.md](DESIGN.md).
 
 ## Accepted user direction
@@ -30,8 +52,8 @@ production implementation has not begun. The full design is [DESIGN.md](DESIGN.m
 - Working name: Anvil Workbench.
 - Distinct application boundary, source initially beside existing facade;
   preserve backend ownership. Extract packaging/repository later if warranted.
-- Evaluate unmodified Open WebUI integration before a permanent fork. The
-  comparison and decision spike are in DESIGN.md.
+- Test Pi Web reuse for the conversational workspace before a custom Pi UI or
+  permanent Open WebUI fork. Evidence and spike criteria are in PI-REUSE.md.
 - Pi behind a dedicated runner using its supported RPC/SDK, isolated worktrees,
   explicit model connection, resource limits, Anvil claims and evidence gates.
 
@@ -42,7 +64,9 @@ independent Sol/high review is read-only. Existing unrelated untracked directori
 `.pi-subagents/` and `_pull_backup_20260807/` were present before this work and are
 untouched. No production source, private configuration or Anvil State was changed.
 
-- `index.html`, `workbench.css`, `workbench.js`: offline interactive concept.
+- `index.html`, `workbench.css`, `workbench.js`: offline interactive shell and flows.
+- `pi-surface.js`, `pi-surface.css`: isolated simulated Pi conversation component.
+- `PI-REUSE.md`: source-backed reuse recommendation and remaining contracts.
 - `fonts/`: bundled Barlow and Barlow Condensed plus OFL licenses.
 - `DESIGN.md`: journeys, architecture options, backend gaps, delivery slices.
 - `README.md`: launch and demo behavior.
@@ -60,11 +84,15 @@ planned, claimed, approved or mutated. Recheck before implementation planning.
 
 ## Current implementation
 
-Eight pages: Workbench, Experiments (four run sections), Playground, Models &
-recipes, Anvil work, Pi sessions (activity/diff/tests), System & logs, Architecture.
-Demo actions include bounded experiment review/submission, evidence attachment,
-offline model rejection, preset updates, canned response, Pi plan review, log
-filtering, stale HUD and Ctrl/Cmd+K search. All data is clearly synthetic.
+Eight primary destinations: Workbench (overview, run flow, compare, evidence,
+events, all runs), Playground, Models & recipes, Anvil work, Pi workspace,
+System & logs, Connect access and Documentation. Architecture remains a secondary
+link. Old #experiments bookmarks resolve into Workbench.
+
+All data is synthetic and resets on reload. Compute/model selects scope new work
+and instruments; retained runs keep their original identity. Recipe candidates
+and deployed revisions stay separate. Pi owns in-memory session/branch state;
+its cloud operator selection is independent of the benchmark target.
 
 No model calls, runtime changes, sandbox launch or production deployment occurred.
 Opening `index.html` directly requires no server/build/network. A temporary local
@@ -74,12 +102,16 @@ was visually inspected using its isolated fixture, not a live deployment.
 
 ## Validation so far
 
+Revision 2 browser checks and independent disposition are recorded in
+[VALIDATION.md](VALIDATION.md). The list below retains the initial concept gates.
+
 - JavaScript syntax passed and frontend files formatted with Prettier 3.6.2.
 - Browser: experiment edit → review → local simulated submission; comparison
   caveat; evidence attachment to sample task.
 - Browser: preset temperature changed to 0.8; offline recipe rejected without
   substitution; canned response rendered; literal HTML payload created no image.
-- Browser: Pi environment review → retained local plan → diff/tests panes.
+- Revision 1 browser: Pi environment review → retained local plan → diff/tests panes;
+  superseded by the revision 2 conversation and session-state checks.
 - Browser: literal log filter; stale HUD; command palette filtering and Escape.
 - Both 390px visual review and 320px main-page reflow checks passed. The narrow
   experiment modal and review controls were reachable.
@@ -94,10 +126,12 @@ real Pi execution, screen-reader usability or complete accessibility compliance.
 
 ## Next actions
 
-1. Gather human feedback on the interactive design, navigation and app/fork choice.
-2. Begin the early fake-runner contract spike described in RUNNER-CONTRACT.md.
-   Test only fake adapters until the real State/Connect contracts are coordinated.
-3. After design direction settles, create appropriately scoped Anvil planning
-   records through its supported engine, coordinate Connect seams, and implement
-   one vertical slice at a time. Do not treat this proposal as automatic approval
-   of an Open WebUI fork, model promotion or production deployment.
+1. Obtain feedback on revision 2, especially Pi reuse and the integrated run flow.
+2. Pin Pi Web/Pi and test the smallest integration seam in PI-REUSE.md, using fake
+   owner adapters first. Prove embedding, extension dialogs, identity and recovery;
+   do not assume the third-party app can simply be iframed.
+3. Exercise the early fake-runner contract in RUNNER-CONTRACT.md. Coordinate the
+   current Connect contract before production adapter work.
+4. Once direction settles, inspect exact-project Anvil status again, plan bounded
+   implementation records through State and build one vertical slice at a time.
+   The concept is not acceptance of live integration or automatic promotion.
