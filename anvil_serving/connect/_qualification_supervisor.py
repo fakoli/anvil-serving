@@ -201,33 +201,91 @@ class Children:
         return not active and not exceeded, escalated, limited | exceeded
 
 
-def _valid_report(output: bytes, expected_name: str) -> bool:
+_FIXTURE_MARKER = __import__("re").compile(r"browser_edge_fixture_test\.go:[1-9][0-9]{0,4}")
+_FAILURE_STAGES = frozenset({"build", "fixture-startup", "browser-launch-cert", "browser-assertion", "report-parsing", "timeout", "interrupted", "supervisor"})
+
+
+def _report_value(output: bytes) -> dict[str, Any] | None:
     try:
         value = json.loads(output.decode("utf-8", "strict"))
-        if not isinstance(value, dict) or value.get("errors") not in ([], None):
-            return False
-        specs: list[dict[str, Any]] = []
-        pending: list[Any] = [value.get("suites", [])]
-        while pending:
-            item = pending.pop()
-            if isinstance(item, list):
-                pending.extend(item)
-            elif isinstance(item, dict):
-                if "tests" in item and "title" in item:
-                    specs.append(item)
-                pending.extend(item.get("suites", []))
-                pending.extend(item.get("specs", []))
-        matched = [spec for spec in specs if spec.get("title") == expected_name]
-        if len(matched) != 1 or matched[0].get("ok") is not True:
-            return False
-        tests = matched[0].get("tests")
-        return isinstance(tests, list) and len(tests) == 1 and tests[0].get("status") == "expected" and isinstance(tests[0].get("results"), list) and bool(tests[0]["results"]) and all(isinstance(result, dict) and result.get("status") == "passed" for result in tests[0]["results"])
+        return value if isinstance(value, dict) else None
     except (UnicodeError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def _fixture_marker(value: Any) -> str | None:
+    for text in _report_strings(value):
+        match = _FIXTURE_MARKER.search(text)
+        if match:
+            return match.group(0)
+    return None
+
+
+def _report_strings(value: Any, limit: int = 64) -> list[str]:
+    # These strings are used only for in-memory classification and are never
+    # returned, logged, or written to artifacts.
+    found: list[str] = []
+    pending = [value]
+    while pending and len(found) < limit:
+        item = pending.pop()
+        if isinstance(item, str):
+            found.append(item[:1024])
+        elif isinstance(item, dict):
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            pending.extend(item)
+    return found
+
+
+def _matching_spec(value: dict[str, Any], expected_name: str) -> dict[str, Any] | None:
+    specs: list[dict[str, Any]] = []
+    pending: list[Any] = [value.get("suites", [])]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, list):
+            pending.extend(item)
+        elif isinstance(item, dict):
+            if "tests" in item and "title" in item:
+                specs.append(item)
+            pending.extend(item.get("suites", []))
+            pending.extend(item.get("specs", []))
+    matched = [spec for spec in specs if spec.get("title") == expected_name]
+    return matched[0] if len(matched) == 1 else None
+
+
+def _failure_stage(output: bytes, expected_name: str) -> str:
+    value = _report_value(output)
+    if value is None:
+        return "report-parsing"
+    if _fixture_marker(value) is not None:
+        return "fixture-startup"
+    text = "\n".join(_report_strings(value)).lower()
+    if "fixture build" in text or "go test -c" in text:
+        return "build"
+    if any(token in text for token in ("fixture did not become ready", "fixture exited", "reverse listener", "tunnel child", "wstunnel")):
+        return "fixture-startup"
+    if any(token in text for token in ("chromium.launch", "browsertype.launch", "verifyuntrustedcertificate", "unknown fixture certificate", "err_cert", "certificate")):
+        return "browser-launch-cert"
+    return "browser-assertion" if _matching_spec(value, expected_name) is not None else "report-parsing"
+
+
+def _valid_report(output: bytes, expected_name: str) -> bool:
+    value = _report_value(output)
+    if value is None or value.get("errors") not in ([], None):
         return False
+    matched = _matching_spec(value, expected_name)
+    if matched is None or matched.get("ok") is not True:
+        return False
+    tests = matched.get("tests")
+    return isinstance(tests, list) and len(tests) == 1 and tests[0].get("status") == "expected" and isinstance(tests[0].get("results"), list) and bool(tests[0]["results"]) and all(isinstance(result, dict) and result.get("status") == "passed" for result in tests[0]["results"])
 
 
-def _finish(status: str, *, escalated: bool = False) -> int:
-    sys.stdout.write(json.dumps({"status": status, "escalated": escalated}, separators=(",", ":")) + "\n")
+def _finish(status: str, *, escalated: bool = False, failure_stage: str | None = None, fixture_marker: str | None = None) -> int:
+    if failure_stage is not None and failure_stage not in _FAILURE_STAGES:
+        failure_stage = "supervisor"
+    if fixture_marker is not None and _FIXTURE_MARKER.fullmatch(fixture_marker) is None:
+        fixture_marker = None
+    sys.stdout.write(json.dumps({"status": status, "escalated": escalated, "failure_stage": failure_stage, "fixture_marker": fixture_marker}, separators=(",", ":")) + "\n")
     sys.stdout.flush()
     return 0
 
@@ -250,17 +308,28 @@ def run(argv: list[str], timeout: float, expected_name: str, *, batch_size: int 
     status = "runner-failed"
     escalated = False
     try:
-        process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True, close_fds=True)
+        process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True, close_fds=True)
         selector = selectors.DefaultSelector()
-        assert process.stdout is not None
-        selector.register(process.stdout, selectors.EVENT_READ)
+        assert process.stdout is not None and process.stderr is not None
+        selector.register(process.stdout, selectors.EVENT_READ, "stdout")
+        selector.register(process.stderr, selectors.EVENT_READ, "stderr")
         output = bytearray()
+        stderr_bytes = 0
         deadline = time.monotonic() + timeout
         while selector.get_map() and not interrupted and time.monotonic() < deadline:
             for key, _ in selector.select(min(0.05, max(0.0, deadline - time.monotonic()))):
                 chunk = os.read(key.fileobj.fileno(), 8192)
                 if not chunk:
                     selector.unregister(key.fileobj)
+                    continue
+                if key.data == "stderr":
+                    # Node/runtime diagnostics can include synthetic fixture
+                    # credentials. Drain them only to enforce a bound.
+                    stderr_bytes += len(chunk)
+                    if stderr_bytes > _MAX_OUTPUT:
+                        too_much = True
+                        interrupted = True
+                        break
                     continue
                 if len(output) + len(chunk) > _MAX_OUTPUT:
                     too_much = True
@@ -277,6 +346,14 @@ def run(argv: list[str], timeout: float, expected_name: str, *, batch_size: int 
             except subprocess.TimeoutExpired:
                 pass
             status = "passed" if process.poll() is not None and process.returncode == 0 else "runner-failed"
+        fixture_marker = _fixture_marker(_report_value(bytes(output)) or {})
+        failure_stage: str | None = None
+        if status == "runner-timeout":
+            failure_stage = "timeout"
+        elif status == "runner-interrupted":
+            failure_stage = "interrupted"
+        elif status == "runner-failed":
+            failure_stage = _failure_stage(bytes(output), expected_name)
         if status == "passed":
             empty, limited = children.wait_empty(0.5)
             cleanup_escalated = False
@@ -286,26 +363,31 @@ def run(argv: list[str], timeout: float, expected_name: str, *, batch_size: int 
             if not empty or limited:
                 _drained, cleanup_escalated, _cleanup_limited = children.cleanup(2)
                 status = "runner-failed"
+                failure_stage = "supervisor"
         else:
             empty, cleanup_escalated, limited = children.cleanup(2)
         if not empty or limited:
             status = "runner-failed"
+            failure_stage = "supervisor"
         escalated |= cleanup_escalated
         if status == "passed" and not _valid_report(bytes(output), expected_name):
             status = "runner-failed"
-        return _finish(status, escalated=escalated)
+            failure_stage = _failure_stage(bytes(output), expected_name)
+        return _finish(status, escalated=escalated, failure_stage=failure_stage, fixture_marker=fixture_marker)
     except Exception:
         try:
             empty, cleanup_escalated, _limited = children.cleanup(2)
             escalated |= cleanup_escalated or not empty
         except Exception:
             escalated = True
-        return _finish("runner-failed", escalated=True)
+        return _finish("runner-failed", escalated=True, failure_stage="supervisor")
     finally:
         if selector is not None:
             selector.close()
-        if process is not None and process.stdout is not None:
-            process.stdout.close()
+        if process is not None:
+            for stream in (process.stdout, process.stderr):
+                if stream is not None:
+                    stream.close()
         signal.signal(signal.SIGTERM, old_term)
         signal.signal(signal.SIGINT, old_int)
         children.close()

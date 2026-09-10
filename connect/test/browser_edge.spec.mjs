@@ -1,6 +1,6 @@
 import { test, expect, chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { chmod, lstat, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +25,11 @@ async function waitForExit(child, milliseconds) {
 
 function cleanExit(result) {
   return result.done && !result.error && result.code === 0 && result.signal === null;
+}
+
+function fixtureMarker(line) {
+  const match = /\bbrowser_edge_fixture_test\.go:(\d+):/.exec(line);
+  return match ? `browser_edge_fixture_test.go:${match[1]}` : '';
 }
 
 async function stopChild(child) {
@@ -85,15 +90,31 @@ async function verifyUntrustedCertificate(resolver, home) {
   }
 }
 
+async function removePrivateRoot(path) {
+  if (!path) return;
+  await rm(path, { recursive: true, force: true });
+  try {
+    await lstat(path);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return;
+  }
+  throw new Error('fixture-private-temp-cleanup-failed');
+}
+
 async function cleanup(value) {
   const outcomes = await Promise.allSettled([value.context?.close(), stopChild(value.child)]);
-  await rm(value.dir, { recursive: true, force: true });
-  const failed = outcomes.find(result => result.status === 'rejected');
+  const removed = await Promise.allSettled([removePrivateRoot(value.dir), removePrivateRoot(value.fixtureTmp)]);
+  const failed = outcomes.find(result => result.status === 'rejected') || removed.find(result => result.status === 'rejected');
   if (failed) throw failed.reason;
 }
 
 async function startFixture(testPattern = '^TestBrowserEdgeFixture$', fixtureFlag = 'ANVIL_CONNECT_BROWSER_EDGE_FIXTURE') {
-  const value = { dir: await mkdtemp(join(tmpdir(), 'anvil-connect-browser-edge-')) };
+  // Go's t.TempDir adds the test name below TMPDIR and the fixture binds a
+  // Unix socket there. Qualification artifact paths are intentionally long, so
+  // use a separate short, private, runner-owned root only for fixture children.
+  const fixtureTmp = await mkdtemp(join(tmpdir(), 'ace-'));
+  await chmod(fixtureTmp, 0o700);
+  const value = { dir: await mkdtemp(join(tmpdir(), 'ace-')), fixtureTmp };
   try {
     const binary = join(value.dir, 'fixture.test');
     await new Promise((resolve, reject) => {
@@ -102,10 +123,10 @@ async function startFixture(testPattern = '^TestBrowserEdgeFixture$', fixtureFla
       build.stderr.on('data', data => { output = (output + data).slice(-16384); });
       const timer = setTimeout(() => { build.kill('SIGKILL'); reject(new Error('actual-edge fixture build timed out')); }, 60_000);
       build.on('error', error => { clearTimeout(timer); reject(error); });
-      build.on('exit', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(`actual-edge fixture build failed (${code}): ${output}`)); });
+      build.on('exit', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error('fixture-build-failed')); });
     });
     const child = value.child = spawn(binary, ['-test.run', testPattern, '-test.v'], {
-      env: { PATH: process.env.PATH, TMPDIR: value.dir, [fixtureFlag]: '1', ANVIL_CONNECT_EDGE_CADDY: process.env.ANVIL_CONNECT_EDGE_CADDY || '/data/cache/anvil-connect/edge-tools/extract/caddy/caddy', ANVIL_CONNECT_EDGE_AUTHELIA: process.env.ANVIL_CONNECT_EDGE_AUTHELIA || '/data/cache/anvil-connect/edge-tools/extract/authelia/authelia', ANVIL_CONNECT_WSTUNNEL: process.env.ANVIL_CONNECT_WSTUNNEL || '/data/cache/anvil-connect/tools/wstunnel/10.7.1/linux-amd64/wstunnel' },
+      env: { PATH: process.env.PATH, TMPDIR: value.fixtureTmp, [fixtureFlag]: '1', ANVIL_CONNECT_EDGE_CADDY: process.env.ANVIL_CONNECT_EDGE_CADDY || '/data/cache/anvil-connect/edge-tools/extract/caddy/caddy', ANVIL_CONNECT_EDGE_AUTHELIA: process.env.ANVIL_CONNECT_EDGE_AUTHELIA || '/data/cache/anvil-connect/edge-tools/extract/authelia/authelia', ANVIL_CONNECT_WSTUNNEL: process.env.ANVIL_CONNECT_WSTUNNEL || '/data/cache/anvil-connect/tools/wstunnel/10.7.1/linux-amd64/wstunnel' },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     const replies = [];
@@ -119,7 +140,7 @@ async function startFixture(testPattern = '^TestBrowserEdgeFixture$', fixtureFla
       lines.on('line', line => {
         // Go test failures here are fixed fixture-stage labels only. Do not
         // retain OIDC values or fixture JSON in diagnostics.
-        if (/connector (?:did not CONNECT|reverse listener|tunnel child exited)|public tunnel route/i.test(line)) fixtureDiagnostic = line.trim().slice(-256);
+        if (!fixtureDiagnostic) fixtureDiagnostic = fixtureMarker(line);
         try {
           const message = JSON.parse(line);
           if (message.url) { clearTimeout(timer); resolve(message); return; }
@@ -147,13 +168,15 @@ async function startFixture(testPattern = '^TestBrowserEdgeFixture$', fixtureFla
       command(command, timeout = 5_000) {
         return new Promise((resolve, reject) => {
           const timer = setTimeout(() => reject(new Error('actual-edge fixture command timed out')), timeout);
-          replies.push(message => { clearTimeout(timer); if (message.ack !== command) reject(new Error('unexpected actual-edge acknowledgement')); else if (message.error) reject(new Error(message.error)); else resolve(message); });
+          replies.push(message => { clearTimeout(timer); if (message.ack !== command) reject(new Error('unexpected actual-edge acknowledgement')); else if (message.error) reject(new Error('fixture-command-failed')); else resolve(message); });
           child.stdin.write(`${command}\n`);
         });
       },
     };
   } catch (error) {
-    await cleanup(value);
+    try { await cleanup(value); } catch {}
+    // Startup failure is the actionable owner; cleanup may only add a later
+    // consequence after a fixture has already exited.
     throw error;
   }
 }
