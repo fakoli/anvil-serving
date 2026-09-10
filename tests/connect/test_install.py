@@ -49,25 +49,51 @@ def private_test_directory(path: Path, create: bool = False) -> None:
         path.chmod(0o755)
 
 
+ROOT_FIXTURE_PARENTS = (Path('/opt'), Path('/usr/local'))
+
+
+def root_owned_nonwritable_ancestry(path: Path) -> bool:
+    if not path.is_absolute():
+        return False
+    for candidate in (path, *path.parents):
+        try:
+            info = candidate.lstat()
+        except OSError:
+            return False
+        if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
+            return False
+    return True
+
+
+def root_fixture_parent() -> Path | None:
+    for parent in ROOT_FIXTURE_PARENTS:
+        if root_owned_nonwritable_ancestry(parent):
+            return parent
+    return None
+
+
 def root_fixture_directory() -> Path:
     if platform.system() != 'Linux' or shutil.which('sudo') is None:
         pytest.skip('requires Linux sudo for the root/service installer contract')
+    parent = root_fixture_parent()
+    if parent is None:
+        pytest.skip('requires a root-owned non-writable /opt or /usr/local fixture parent')
     created = subprocess.run(
-        ['sudo', '-n', '/usr/bin/mktemp', '-d', '-p', '/opt', 'anvil-connect-install-test.XXXXXXXX'],
+        ['sudo', '-n', '/usr/bin/mktemp', '-d', '-p', str(parent), 'anvil-connect-install-test.XXXXXXXX'],
         capture_output=True,
         text=True,
     )
     if created.returncode != 0:
-        pytest.skip('requires passwordless sudo and an isolated /opt test directory')
+        pytest.skip('requires passwordless sudo and an isolated root fixture directory')
     root = Path(created.stdout.strip())
-    if root.parent != Path('/opt') or not root.name.startswith('anvil-connect-install-test.'):
+    if root.parent != parent or not root.name.startswith('anvil-connect-install-test.'):
         raise AssertionError('sudo fixture allocation returned an unsafe path')
     subprocess.run(['sudo', '-n', '/bin/chmod', '0755', str(root)], check=True)
     return root
 
 
 def remove_root_fixture(root: Path) -> None:
-    if root.parent != Path('/opt') or not root.name.startswith('anvil-connect-install-test.'):
+    if root.parent not in ROOT_FIXTURE_PARENTS or not root_owned_nonwritable_ancestry(root.parent) or not root.name.startswith('anvil-connect-install-test.'):
         raise AssertionError('refusing to remove an unexpected root fixture')
     subprocess.run(['sudo', '-n', '/bin/rm', '-rf', '--', str(root)], check=True)
 
