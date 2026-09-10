@@ -55,7 +55,6 @@ def _config(tmp_path: Path, *, image: bytes = _IMAGE, maximum: int = 1024) -> tu
 def _prepare_fakes(monkeypatch: pytest.MonkeyPatch, config: qualification.QualificationConfig, *, image: bytes = _IMAGE,
                    qemu: dict[str, object] | None = None, signer: str = "D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81") -> list[str]:
     calls: list[str] = []
-    monkeypatch.setattr(subject, "_require_linux_execution", lambda: None)
     monkeypatch.setattr(subject, "_read_config", lambda _: config)
     monkeypatch.setattr(subject, "_tool_metadata", lambda **kwargs: {
         "gpgv": {"sha256": "b" * 64, "version": "2.4.8"},

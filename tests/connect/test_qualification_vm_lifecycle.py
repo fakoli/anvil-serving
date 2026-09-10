@@ -25,6 +25,7 @@ from anvil_serving.connect.qualification import QualificationConfig, Qualificati
 _ARTIFACTS = {"SHA256SUMS", "evidence.json", "junit.xml", "result.json"}
 _PRIVATE = "private-lifecycle-sentinel"
 _LINUX = sys.platform == "linux"
+pytestmark = pytest.mark.skipif(not _LINUX, reason="requires Linux VM lifecycle custody controls")
 
 
 def _config(tmp_path: Path) -> QualificationConfig:
@@ -183,9 +184,6 @@ def _install_boundaries(
         return ProcessResult(0, _guest_result(), 7, 1024, len(_guest_result()))
 
     monkeypatch.setattr(subject, "_stage_source", stage)
-    monkeypatch.setattr(subject, "_require_linux_execution", lambda: None)
-    monkeypatch.setattr(subject, "_private_directory", lambda path, **_kwargs: path.mkdir(parents=True, exist_ok=True))
-    monkeypatch.setattr(subject, "_safe_cache", lambda _path: None)
     monkeypatch.setattr(subject, "_payload", payload)
     monkeypatch.setattr(subject, "_iso", iso)
     monkeypatch.setattr(subject, "_overlay", overlay)
@@ -386,7 +384,6 @@ def test_private_payload_copies_the_managed_component_lock(tmp_path):
     assert (payload / copied).read_text(encoding="ascii") == '{"schema":"fixture"}\n'
 
 
-@pytest.mark.skipif(not _LINUX, reason="requires Linux process controls")
 def test_static_declaration_render_does_not_execute_staged_guest_code(tmp_path):
     config = _config(tmp_path)
     source = config.source_root
@@ -421,7 +418,7 @@ def test_static_declaration_render_does_not_execute_staged_guest_code(tmp_path):
     assert rendered == {}
 
 
-@pytest.mark.skipif(not _LINUX or not subject._XORRISO.is_file() or not subject._QEMU_IMG.is_file(), reason="requires Linux pinned VM image tools")
+@pytest.mark.skipif(not subject._XORRISO.is_file() or not subject._QEMU_IMG.is_file(), reason="pinned VM image tools are unavailable")
 def test_retained_iso_and_qcow_descriptors_are_verified_without_booting(tmp_path):
     cpus = tuple(sorted(os.sched_getaffinity(0))[:2])
     source = tmp_path / "source"
@@ -472,7 +469,6 @@ def test_retained_iso_and_qcow_descriptors_are_verified_without_booting(tmp_path
         os.close(image_fd)
 
 
-@pytest.mark.skipif(not _LINUX, reason="requires Linux descriptor controls")
 def test_open_pinned_fifo_returns_promptly_without_reading_it(tmp_path):
     fifo = tmp_path / "input.fifo"
     os.mkfifo(fifo, 0o600)
@@ -503,7 +499,6 @@ else:
     assert result.returncode == 0
 
 
-@pytest.mark.skipif(not _LINUX, reason="requires Linux descriptor controls")
 def test_verify_retained_descriptor_hashes_original_after_path_rename_and_replacement(tmp_path):
     original = tmp_path / "pinned"
     retained = tmp_path / "retained"
@@ -531,7 +526,6 @@ def test_verify_retained_descriptor_hashes_original_after_path_rename_and_replac
     assert original.read_bytes() == b"replacement"
 
 
-@pytest.mark.skipif(not _LINUX, reason="requires Linux descriptor controls")
 def test_verify_rejects_unlinked_retained_descriptor_after_atomic_replace(tmp_path):
     original = tmp_path / "pinned"
     replacement = tmp_path / "replacement"
@@ -558,7 +552,6 @@ def test_verify_rejects_unlinked_retained_descriptor_after_atomic_replace(tmp_pa
 
 
 @pytest.mark.parametrize("kind", ["iso", "overlay"])
-@pytest.mark.skipif(not _LINUX, reason="requires Linux descriptor controls")
 def test_failed_output_build_closes_its_retained_descriptor(tmp_path, monkeypatch, kind):
     closed: list[int] = []
     close = os.close
