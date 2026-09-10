@@ -14,7 +14,7 @@ import pytest
 
 from anvil_serving.observability.api import TelemetryRegistry, run_server_in_thread
 from anvil_serving.observability.dashboard.access import ConnectVerifier
-from anvil_serving.observability.dashboard.console import Console, attach_console
+from anvil_serving.observability.dashboard.console import Console, attach_console, load_config
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
 
 
@@ -103,7 +103,7 @@ def connect_site(tmp_path):
     server = create_dashboard_server(TelemetryRegistry(), port=0)
     attach_console(server, console)
     thread = run_server_in_thread(server)
-    state = {}
+    state = {"port": server.server_address[1]}
 
     def call(method, route, *, signed=True, cookie=True, body=None, extra=None, token=None):
         target = BASE + "api/observatory/v1/" + route
@@ -154,6 +154,45 @@ def test_connect_session_bootstraps_and_requires_fresh_bound_assertions(connect_
     assert call("GET", "fleet", token=wrong_target)[0] == 401
     wrong_binding = assertion("GET", target, sid="c" * 32)
     assert call("GET", "fleet", token=wrong_binding)[0] == 401
+
+
+def test_connect_access_advertisement_is_opt_in_and_requires_connect_mode(tmp_path):
+    disabled = Console(config(tmp_path), metrics=Metrics(), environment={"CONNECT_ASSERTION_CURRENT": SECRET_TEXT})
+    try:
+        assert "connect_access_path" not in disabled.session_view(None)
+    finally:
+        disabled.close()
+
+    current = config(tmp_path)
+    current["connect_access"] = True
+    console = Console(current, metrics=Metrics(), environment={"CONNECT_ASSERTION_CURRENT": SECRET_TEXT})
+    try:
+        assert console.session_view(None)["connect_access_path"] == "/observatory/_anvil-connect/access"
+    finally:
+        console.close()
+
+    source = {**config(tmp_path), "schema": "anvil-observatory/config/v1", "connect_access": True}
+    path = tmp_path / "observatory.json"
+    path.write_text(json.dumps(source))
+    assert load_config(str(path))["connect_access"] is True
+    source["authentication"] = {"mode": "legacy", "grafana_url": "https://grafana.example.test"}
+    path.write_text(json.dumps(source))
+    with pytest.raises(ValueError, match="requires Connect"):
+        load_config(str(path))
+    source["connect_access"] = "true"
+    with pytest.raises(ValueError, match="invalid Connect access"):
+        Console(source, metrics=Metrics(), environment={})
+
+
+def test_connect_access_bookmark_returns_the_shell(connect_site):
+    _console, _call, state = connect_site
+    connection = http.client.HTTPConnection("127.0.0.1", state["port"], timeout=5)
+    connection.request("GET", BASE + "access", headers={"Host": "console.example.test"})
+    response = connection.getresponse()
+    body = response.read()
+    connection.close()
+    assert response.status == 200
+    assert b"Anvil Observatory" in body
 
 
 def test_connect_mutation_replay_and_password_logout_routes_are_closed(connect_site):

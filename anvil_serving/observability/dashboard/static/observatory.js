@@ -28,6 +28,8 @@ import {
   closeDialog,
 } from "./views/operations.js";
 import { settingsView, loadPreferences, pages } from "./views/settings.js";
+import { connectAccessView } from "./views/connect_access.js";
+import { configureConnectAccess } from "./views/connect_access_api.js";
 const main = document.getElementById("main"),
   scope = document.getElementById("scope-bar");
 const preferences = loadPreferences();
@@ -51,10 +53,13 @@ const titles = {
   experiments: "Experiments",
   operations: "Operations",
   settings: "Settings",
+  access: "Access",
 };
 const symbols = ["◫", "▦", "◈", "≋", "▤", "⚙", "⌁", "⇄", "⋯"];
 const navigation = document.getElementById("primary-navigation");
-pages.forEach((name, index) =>
+const activePages = [...pages];
+function addNavigation(name) {
+  const index = activePages.indexOf(name);
   navigation.append(
     el(
       "a",
@@ -62,12 +67,25 @@ pages.forEach((name, index) =>
       el("span", {
         class: "nav-symbol",
         "aria-hidden": "true",
-        text: symbols[index],
+        text: symbols[index] || "⌘",
       }),
       titles[name],
     ),
-  ),
-);
+  );
+}
+activePages.forEach(addNavigation);
+function configureAccessNavigation(session) {
+  const enabled = configureConnectAccess(session);
+  const link = navigation.querySelector('[data-page="access"]');
+  if (enabled && !link) {
+    activePages.push("access");
+    addNavigation("access");
+  } else if (!enabled && link) {
+    link.remove();
+    activePages.splice(activePages.indexOf("access"), 1);
+  }
+  return enabled;
+}
 document.body.classList.toggle(
   "density-compact",
   preferences.density === "compact",
@@ -88,7 +106,7 @@ function parseRoute() {
       }
     });
   return {
-    page: pages.includes(pieces[0]) ? pieces[0] : preferences.landing,
+    page: activePages.includes(pieces[0]) ? pieces[0] : preferences.landing,
     id: pieces[1],
     tab: pieces[2],
   };
@@ -171,6 +189,7 @@ document.querySelector(".skip-link").addEventListener("click", (event) => {
 });
 function sessionChrome(session) {
   if (session?.authentication_mode === "connect") authenticationMode = "connect";
+  configureAccessNavigation(session);
   document.getElementById("access-mode").textContent = session?.authenticated
     ? session.operate
       ? "Operate"
@@ -318,7 +337,8 @@ function login(message) {
     "Authentication required";
 }
 function updateScope(session, page) {
-  scope.hidden = ["settings"].includes(page);
+  scope.hidden = ["settings", "access"].includes(page);
+  if (scope.hidden) return;
   const hostControl = select(
     [
       ["", "All workstations"],
@@ -428,21 +448,29 @@ async function refresh({ quiet = false } = {}) {
       return;
     }
     sessionChrome(session);
-    const reads = await Promise.allSettled([
-      request("fleet", { signal }),
-      request("settings", { signal }),
-    ]);
-    if (signal.aborted) return;
-    if (reads[0].status === "rejected") throw reads[0].reason;
-    fleet = reads[0].value;
-    settings =
-      reads[1].status === "fulfilled"
-        ? reads[1].value
-        : { integration_error: reads[1].reason.message };
-    if (!Array.isArray(fleet?.hosts) || !Array.isArray(fleet?.serves))
-      throw new Error(
-        "Invalid fleet response. Current owner state cannot be established.",
-      );
+    // Access navigation is learned from the authenticated session. Re-evaluate
+    // a bookmarked Access route before any normal dashboard read begins.
+    if (target.page !== parseRoute().page) {
+      refresh({ quiet });
+      return;
+    }
+    if (target.page !== "access") {
+      const reads = await Promise.allSettled([
+        request("fleet", { signal }),
+        request("settings", { signal }),
+      ]);
+      if (signal.aborted) return;
+      if (reads[0].status === "rejected") throw reads[0].reason;
+      fleet = reads[0].value;
+      settings =
+        reads[1].status === "fulfilled"
+          ? reads[1].value
+          : { integration_error: reads[1].reason.message };
+      if (!Array.isArray(fleet?.hosts) || !Array.isArray(fleet?.serves))
+        throw new Error(
+          "Invalid fleet response. Current owner state cannot be established.",
+        );
+    }
     updateScope(session, target.page);
     const jobs = [];
     const ctx = {
@@ -485,13 +513,18 @@ async function refresh({ quiet = false } = {}) {
       case "settings":
         content = settingsView(ctx);
         break;
+      case "access":
+        content = await connectAccessView(ctx);
+        break;
       default:
         content = await overviewView(ctx);
     }
     if (signal.aborted) return;
     main.replaceChildren(content);
     document.getElementById("connection-status").textContent =
-      `Source coverage: ${fleet.coverage?.status || "unknown"}`;
+      target.page === "access"
+        ? "Anvil Connect access inventory"
+        : `Source coverage: ${fleet.coverage?.status || "unknown"}`;
     if (navigationChanged) {
       main.focus({ preventScroll: true });
       window.scrollTo(0, 0);
@@ -513,7 +546,7 @@ async function refresh({ quiet = false } = {}) {
       (!quiet || navigationChanged)
     )
       await openOperation(target.id, ctx);
-    if (!["configuration", "experiments", "settings", "logs"].includes(target.page))
+    if (!["configuration", "experiments", "settings", "logs", "access"].includes(target.page))
       refreshTimer = setTimeout(() => {
         if (
           !document.hidden &&
@@ -549,7 +582,7 @@ function scheduleResume() {
     if (
       !document.hidden &&
       !document.querySelector("dialog[open]") &&
-      !["configuration", "experiments", "settings", "logs"].includes(page) &&
+      !["configuration", "experiments", "settings", "logs", "access"].includes(page) &&
       (!main.contains(document.activeElement) ||
         document.activeElement === main)
     )
@@ -579,7 +612,7 @@ document.addEventListener("visibilitychange", () => {
     clearTimeout(refreshTimer);
     currentController?.abort();
   } else if (
-    !["configuration", "experiments", "settings"].includes(parseRoute().page) &&
+    !["configuration", "experiments", "settings", "access"].includes(parseRoute().page) &&
     !document.querySelector("dialog[open]")
   )
     refresh({ quiet: true });
