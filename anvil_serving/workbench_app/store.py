@@ -5,11 +5,20 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import stat
 import threading
 import time
 from pathlib import Path
 
 from ..observability.dashboard.contracts import ObservatoryError, canonical
+
+
+def _regular_state_file(path):
+    metadata = path.lstat()
+    if (not stat.S_ISREG(metadata.st_mode)
+            or getattr(metadata, "st_file_attributes", 0) & 0x400):
+        raise ValueError("Workbench state must be a regular file, never a link or reparse point")
+    return metadata
 
 
 class PrivateStore:
@@ -18,9 +27,24 @@ class PrivateStore:
         if not self.path.is_absolute() or self.path.is_symlink():
             raise ValueError("Use an absolute private Workbench state file")
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        fd = os.open(self.path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-        os.close(fd)
-        os.chmod(self.path, 0o600)
+        for parent in self.path.parents:
+            metadata = parent.lstat()
+            if stat.S_ISLNK(metadata.st_mode) or getattr(metadata, "st_file_attributes", 0) & 0x400:
+                raise ValueError("Workbench state parents must not be links or reparse points")
+        try:
+            _regular_state_file(self.path)
+        except FileNotFoundError:
+            pass
+        fd = os.open(self.path, os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0), 0o600)
+        try:
+            opened = os.fstat(fd)
+            current = _regular_state_file(self.path)
+            if not stat.S_ISREG(opened.st_mode) or (os.name == "posix" and not os.path.samestat(opened, current)):
+                raise ValueError("Workbench state file changed while opening")
+            if os.name == "posix":
+                os.fchmod(fd, 0o600)
+        finally:
+            os.close(fd)
         self.lock = threading.RLock()
         self.db = sqlite3.connect(self.path, check_same_thread=False)
         page_size = self.db.execute("PRAGMA page_size").fetchone()[0]

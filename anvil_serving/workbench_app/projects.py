@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import selectors
 import subprocess
 import threading
 import time
@@ -14,6 +13,7 @@ from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from ..control_plane.mcp.runtime import _process_group_options, _terminate_process_tree
 from ..observability.dashboard.contracts import ObservatoryError, digest, identifier
 from .task_artifacts import TaskArtifacts
 
@@ -22,33 +22,44 @@ def run_bounded(argv, *, cwd, timeout=30, limit=4 * 1024 * 1024):
     """Drain bounded output without a shell, unbounded pipes, or ambient credentials."""
     env = {key: os.environ[key] for key in ("PATH", "HOME", "LANG", "SYSTEMROOT") if key in os.environ}
     env.update(NO_COLOR="1", TERM="dumb")
-    process = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True)
+    process = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, **_process_group_options())
     output = bytearray()
+    done = threading.Event()
+    failures = []
+    deadline = time.monotonic() + timeout
+
+    def drain():
+        try:
+            while block := process.stdout.read1(min(65536, limit + 1)):
+                remaining = limit - len(output)
+                if len(block) > remaining:
+                    raise ValueError("command output bound")
+                output.extend(block)
+        except (OSError, ValueError) as error:
+            failures.append(error)
+        finally:
+            done.set()
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
     try:
-        with selectors.DefaultSelector() as selector:
-            selector.register(process.stdout, selectors.EVENT_READ)
-            deadline = time.monotonic() + timeout
-            while selector.get_map():
-                if time.monotonic() >= deadline:
-                    raise TimeoutError()
-                for key, _ in selector.select(timeout=min(0.25, max(0, deadline - time.monotonic()))):
-                    block = os.read(key.fileobj.fileno(), 65536)
-                    if not block:
-                        selector.unregister(key.fileobj)
-                    else:
-                        output.extend(block)
-                        if len(output) > limit:
-                            raise ValueError("command output bound")
+        if not done.wait(max(0, deadline - time.monotonic())):
+            raise TimeoutError()
+        if failures:
+            raise failures[0]
+        try:
             code = process.wait(timeout=max(0.01, deadline - time.monotonic()))
-            if code:
-                raise ObservatoryError("project_source_unavailable", "Anvil could not complete this operation. Check the project's State health and current claims.", 409)
-            return bytes(output)
+        except subprocess.TimeoutExpired:
+            raise TimeoutError() from None
+        if code:
+            raise ObservatoryError("project_source_unavailable", "Anvil could not complete this operation. Check the project's State health and current claims.", 409)
+        return bytes(output)
     finally:
-        if process.poll() is None:
-            import signal
-            os.killpg(process.pid, signal.SIGKILL)
-            process.wait()
-        process.stdout.close()
+        if process.poll() is None or reader.is_alive():
+            _terminate_process_tree(process)
+        reader.join(timeout=2)
+        if not reader.is_alive():
+            process.stdout.close()
 
 
 class Projects:

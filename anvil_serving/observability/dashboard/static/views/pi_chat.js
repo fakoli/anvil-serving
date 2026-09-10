@@ -48,15 +48,15 @@ function extensionControl(event, send, resolved = false) {
     return el("div", { class: "notice info", role: "status" }, el("strong", { text: title }), el("p", { text: "Response sent." }));
   }
   if (data.method === "confirm") {
-    return el("div", { class: "notice warning" }, el("strong", { text: title }), el("p", { text: data.message || "Confirmation requested." }), button("Confirm", () => send("extension_response", { request_id: data.id, response: { confirmed: true } }), "primary"), button("Cancel", () => send("extension_response", { request_id: data.id, response: { cancelled: true } }), "quiet-button"));
+    return el("div", { class: "notice warning", "data-extension-request": data.id }, el("strong", { text: title }), el("p", { text: data.message || "Confirmation requested." }), button("Confirm", () => send("extension_response", { request_id: data.id, response: { confirmed: true } }), "primary"), button("Cancel", () => send("extension_response", { request_id: data.id, response: { cancelled: true } }), "quiet-button"));
   }
   if (data.method === "select") {
     const choice = select(list(data.options), list(data.options)[0] || "");
-    return el("form", { class: "notice warning", onSubmit: (submitted) => { submitted.preventDefault(); send("extension_response", { request_id: data.id, response: { value: choice.value } }); } }, el("strong", { text: title }), field("Choice", choice), el("button", { type: "submit", class: "primary", text: "Submit response" }));
+    return el("form", { class: "notice warning", "data-extension-request": data.id, onSubmit: (submitted) => { submitted.preventDefault(); send("extension_response", { request_id: data.id, response: { value: choice.value } }); } }, el("strong", { text: title }), field("Choice", choice), el("button", { type: "submit", class: "primary", text: "Submit response" }));
   }
   if (data.method === "input" || data.method === "editor") {
     const input = el(data.method === "editor" ? "textarea" : "input", { value: data.prefill || "", placeholder: data.placeholder || "" });
-    return el("form", { class: "notice warning", onSubmit: (submitted) => { submitted.preventDefault(); send("extension_response", { request_id: data.id, response: { value: input.value } }); } }, el("strong", { text: title }), field("Response", input), el("button", { type: "submit", class: "primary", text: "Submit response" }));
+    return el("form", { class: "notice warning", "data-extension-request": data.id, onSubmit: (submitted) => { submitted.preventDefault(); send("extension_response", { request_id: data.id, response: { value: input.value } }); } }, el("strong", { text: title }), field("Response", input), el("button", { type: "submit", class: "primary", text: "Submit response" }));
   }
   return el("div", { class: "notice info", text: `${title}: ${words(data.method || "extension update")}` });
 }
@@ -171,8 +171,19 @@ export function sessionPresentationChanged(before, after) {
     .some((key) => before[key] !== after[key]);
 }
 
-export function replaceTranscript(output, nodes, activeElement) {
-  if (output.contains(activeElement)) return false;
+export function pendingTranscriptControlIds(events, locallyResolved = []) {
+  return transcriptItems(events, locallyResolved)
+    .filter((item) => item.type === "extension" && !item.resolved && ["confirm", "select", "input", "editor"].includes(item.event.data?.method))
+    .map((item) => item.event.data.id);
+}
+
+export function shouldPreserveTranscriptControls(events, locallyResolved = [], renderedIds = []) {
+  const pending = new Set(pendingTranscriptControlIds(events, locallyResolved));
+  return renderedIds.some((id) => pending.has(id));
+}
+
+export function replaceTranscript(output, nodes, activeElement, preserveControls = false) {
+  if (preserveControls || output.contains(activeElement)) return false;
   output.replaceChildren(...nodes);
   return true;
 }
@@ -222,7 +233,10 @@ export async function piChatView(ctx, { projectId, taskId, detail }) {
     if (!transcriptRoot) return;
     const nodes = transcript(state.events, send, state.resolvedExtensions);
     if (!nodes.length) nodes.push(empty(selected() ? "No runner events have arrived." : "Choose a provider, model and thinking level to create a conversation."));
-    if (replaceTranscript(transcriptRoot, nodes, document.activeElement)) {
+    const renderedControls = [...transcriptRoot.querySelectorAll("[data-extension-request]")]
+      .map((node) => node.getAttribute("data-extension-request"));
+    const preserveControls = shouldPreserveTranscriptControls(state.events, state.resolvedExtensions, renderedControls);
+    if (replaceTranscript(transcriptRoot, nodes, document.activeElement, preserveControls)) {
       state.transcriptDirty = false;
       state.transcriptDeferred = false;
       return;

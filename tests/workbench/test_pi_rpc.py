@@ -35,11 +35,11 @@ class _Process:
         self.terminated = True
 
 
-def _client(process: _Process) -> PiRpcClient:
+def _client(process: _Process, tmp_path: Path) -> PiRpcClient:
     return PiRpcClient(
         ("pi", "--mode", "rpc"),
-        cwd=Path("/tmp/checkout"),
-        environment={"PI_CODING_AGENT_DIR": "/private/agent"},
+        cwd=tmp_path / "checkout",
+        environment={"PI_CODING_AGENT_DIR": str(tmp_path / "agent")},
         process_factory=lambda *_args, **_kwargs: process,
         read_chunk=lambda instance, _size: instance.chunks.pop(0) if instance.chunks else b"",
     )
@@ -54,9 +54,9 @@ def test_decoder_requires_lf_json_objects_and_handles_crlf() -> None:
         JsonlDecoder(5).feed(b"123456")
 
 
-def test_commands_are_jsonl_and_response_is_distinct_from_events() -> None:
+def test_commands_are_jsonl_and_response_is_distinct_from_events(tmp_path: Path) -> None:
     process = _Process()
-    client = _client(process)
+    client = _client(process, tmp_path)
     client.start()
     command_id = client.prompt("inspect contract")
     sent = json.loads(process.stdin.writes[-1])
@@ -70,9 +70,9 @@ def test_commands_are_jsonl_and_response_is_distinct_from_events() -> None:
     assert client.take_response(command_id).ok is True
 
 
-def test_extension_reply_uses_official_request_id_and_no_fake_command_ack() -> None:
+def test_extension_reply_uses_official_request_id_and_no_fake_command_ack(tmp_path: Path) -> None:
     process = _Process()
-    client = _client(process)
+    client = _client(process, tmp_path)
     client.start()
     client.extension_response("request-1", {"confirmed": True})
     assert json.loads(process.stdin.writes[-1]) == {
@@ -82,9 +82,9 @@ def test_extension_reply_uses_official_request_id_and_no_fake_command_ack() -> N
     }
 
 
-def test_runner_exit_is_detected_and_close_terminates_live_process() -> None:
+def test_runner_exit_is_detected_and_close_terminates_live_process(tmp_path: Path) -> None:
     process = _Process()
-    client = _client(process)
+    client = _client(process, tmp_path)
     client.start()
     process.exit_code = 143
     with pytest.raises(PiProcessExited):

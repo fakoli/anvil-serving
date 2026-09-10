@@ -10,8 +10,8 @@ from anvil_serving.workbench_app import recipe_admission as admission
 
 
 @pytest.fixture
-def owner(monkeypatch):
-    args = {"manifest": "/private/serves.toml", "serve": "candidate", "topology": "/private/topology.toml", "registry": "/private/recipes.toml", "container": "candidate", "command_host": "host-a", "command_runtime": "native"}
+def owner(monkeypatch, tmp_path):
+    args = {"manifest": str(tmp_path / "serves.toml"), "serve": "candidate", "topology": str(tmp_path / "topology.toml"), "registry": str(tmp_path / "recipes.toml"), "container": "candidate", "command_host": "host-a", "command_runtime": "native"}
     recipe = {"model": "org/model", "serve": {"port": 30001}, "hardware": {"gpu_uuid": "GPU-A"}}
     budget = reservations.GpuRoleBudget("compute", 10000, 1000)
     target = {"name": "candidate", "model": "org/model", "runtime": "docker", "container": "candidate", "port": 30001,

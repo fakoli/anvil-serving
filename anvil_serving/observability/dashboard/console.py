@@ -148,7 +148,7 @@ class Console:
                         if item["id"] in updates:
                             observation = updates[item["id"]]
                             allowed = ({"controller", "profiles", "mode", "ownership_status", "maintenance"}
-                                       if kind == "hosts" else {"runtime_state", "readiness", "admission", "observed_model", "observed_at", "ownership_status", "operation_id", "configuration", "container"})
+                                       if kind == "hosts" else {"runtime_state", "readiness", "admission", "observed_model", "observed_at", "ownership_status", "operation_id", "configuration", "container", "exec"})
                             item.update({key: value for key, value in observation.items() if key in allowed})
                             if kind == "hosts":
                                 for gpu in item.get("gpus", []):

@@ -18,7 +18,7 @@ def test_shipped_esmodule_parses(source):
         pytest.skip("Node is required for the frontend syntax gate")
     result = subprocess.run(
         [node, "--check", "--input-type=module"],
-        input=source.read_text(),
+        input=source.read_text(encoding="utf-8"),
         text=True,
         capture_output=True,
         timeout=10,
