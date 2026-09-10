@@ -5,6 +5,7 @@ import io
 from pathlib import Path
 import tarfile
 import urllib.request
+import sys
 
 import pytest
 
@@ -21,6 +22,7 @@ def test_redirect_refuses_tls_downgrade_before_request():
 
 
 @pytest.mark.parametrize("symlink,bad_hash", [(False, False), (True, False), (False, True)])
+@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux executable file permissions")
 def test_only_verified_regular_binary_is_accepted(tmp_path, monkeypatch, symlink, bad_hash):
     tools = tmp_path / "tools"
     tools.mkdir()
