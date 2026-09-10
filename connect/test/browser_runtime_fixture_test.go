@@ -799,8 +799,14 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			restartEpoch = before.Epoch
 			gatewayCancel()
 		case "backup restore authority":
+			failRestore := func(message string) {
+				response["error"] = message
+				if _, _, line, ok := stdruntime.Caller(1); ok {
+					response["error_location"] = "browser_runtime_fixture_test.go:" + strconv.Itoa(line)
+				}
+			}
 			if !restartFixture || gateway == nil || connector == nil || len(restartEpoch) != 64 || resetPending || restorePending {
-				response["error"] = "authority restore is unavailable"
+				failRestore("authority restore is unavailable")
 				break
 			}
 			// The caller observed closure after stop runtime. Join the old stack
@@ -811,21 +817,21 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			connector = nil
 			backup, backupErr := connectruntime.BackupGateway(gatewayCfg)
 			if backupErr != nil {
-				response["error"] = "authority backup failed"
+				failRestore("authority backup failed")
 				break
 			}
 			restoredCfg := gatewayCfg
 			restoredCfg.StateDirectory = filepath.Join(directory, "gateway-restore")
 			if _, stateErr := os.Lstat(restoredCfg.StateDirectory); !os.IsNotExist(stateErr) {
-				response["error"] = "authority restore state is unavailable"
+				failRestore("authority restore state is unavailable")
 				break
 			}
 			if restoreErr := connectruntime.RestoreGateway(restoredCfg, backup, connectruntime.BackupDigest(backup)); restoreErr != nil {
-				response["error"] = "authority restore failed"
+				failRestore("authority restore failed")
 				break
 			}
 			if closeErr := caddyChild.Close(); closeErr != nil {
-				response["error"] = "authority restore edge shutdown failed"
+				failRestore("authority restore edge shutdown failed")
 				break
 			}
 			caddyChild = startCaddy(restoredCfg.StateDirectory)
@@ -834,7 +840,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			if startErr != nil {
 				restoredCancel()
 				_ = caddyChild.Close()
-				response["error"] = "authority restore gateway start failed"
+				failRestore("authority restore gateway start failed")
 				break
 			}
 			gateway, gatewayCancel, gatewayCfg = restoredGateway, restoredCancel, restoredCfg
@@ -842,7 +848,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 				gateway.Close()
 				gateway = nil
 				_ = caddyChild.Close()
-				response["error"] = "authority restore readiness failed"
+				failRestore("authority restore readiness failed")
 				break
 			}
 			after, statusErr := adminCall(admin.Request{Operation: "status"})
@@ -850,7 +856,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 				gateway.Close()
 				gateway = nil
 				_ = caddyChild.Close()
-				response["error"] = "authority restore epoch failed"
+				failRestore("authority restore epoch failed")
 				break
 			}
 			restartEpoch = ""
