@@ -18,15 +18,30 @@ def declaration() -> dict:
     return json.loads((ROOT / "connect/examples/deployment.json").read_text(encoding="utf-8"))
 
 
-def test_browser_session_lifetime_is_optional_and_renders_exactly_when_declared() -> None:
+def isolated_declaration() -> dict:
     value = declaration()
+    del value["service_user"]
+    value["service_identities"] = {
+        "gateway": {"uid": 1201, "gid": 1201},
+        "edge": {"uid": 1202, "gid": 1202},
+        "idp": {"uid": 1203, "gid": 1203},
+        "connectors": {"dashboard": {"uid": 1204, "gid": 1204}},
+        "clients": {"dashboard-api": {"uid": 1205, "gid": 1205}},
+        "ingress": {"group_id": 1290, "directory": "/run/anvil-connect/ingress"},
+    }
+    value["caddy"]["state_directory"] = "/var/lib/anvil-connect/caddy"
+    return value
+
+
+def test_browser_session_lifetime_is_optional_and_renders_exactly_when_declared() -> None:
+    value = isolated_declaration()
     del value["gateway"]["browser_session_lifetime_seconds"]
     normalized = validate_manifest(value)
     assert "browser_session_lifetime_seconds" not in normalized["gateway"]
     assert "browser_session_lifetime_seconds" not in json.loads(render(value)["files"]["gateway.json"])
 
     for seconds in (60, 86400):
-        value = declaration()
+        value = isolated_declaration()
         value["gateway"]["browser_session_lifetime_seconds"] = seconds
         normalized = validate_manifest(value)
         assert normalized["gateway"]["browser_session_lifetime_seconds"] == seconds

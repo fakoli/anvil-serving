@@ -13,7 +13,7 @@ import pytest
 
 from anvil_serving.connect import config as connect_config
 from anvil_serving.connect.config import ManifestError, parse_manifest_text, read_manifest, validate_manifest
-from anvil_serving.connect.render import plan, render, stage
+from anvil_serving.connect.render import plan, plan_for_inspection, render, render_for_inspection, stage
 
 
 ROOT = Path(__file__).parents[2]
@@ -23,6 +23,21 @@ _NATIVE = pytest.mark.skipif(not _LINUX_AMD64, reason="native Connect filesystem
 
 def manifest() -> dict:
     return json.loads((ROOT / "connect/examples/deployment.json").read_text())
+
+
+def isolated_manifest() -> dict:
+    value = manifest()
+    del value["service_user"]
+    value["service_identities"] = {
+        "gateway": {"uid": 1201, "gid": 1201},
+        "edge": {"uid": 1202, "gid": 1202},
+        "idp": {"uid": 1203, "gid": 1203},
+        "connectors": {"dashboard": {"uid": 1204, "gid": 1204}},
+        "clients": {"dashboard-api": {"uid": 1205, "gid": 1205}},
+        "ingress": {"group_id": 1290, "directory": "/run/anvil-connect/ingress"},
+    }
+    value["caddy"]["state_directory"] = "/var/lib/anvil-connect/caddy"
+    return value
 
 
 def test_linux_target_paths_validate_independently_of_windows_runner_grammar() -> None:
@@ -120,7 +135,7 @@ def test_gateway_bindings_reject_native_control_and_tunnel_collisions() -> None:
 
 
 def test_render_is_stable_secret_free_and_matches_native_contract() -> None:
-    first, second = render(manifest()), render(copy.deepcopy(manifest()))
+    first, second = render(isolated_manifest()), render(copy.deepcopy(isolated_manifest()))
     assert first == second
     assert first["generation"] == first["ownership"]["generation"]
     gateway = json.loads(first["files"]["gateway.json"])
@@ -137,8 +152,24 @@ def test_render_is_stable_secret_free_and_matches_native_contract() -> None:
     assert "/etc/anvil-connect/secrets/oidc-client-secret-hash" in first["files"]["authelia/configuration.yml"]
 
 
+def test_legacy_generation_is_inspection_only() -> None:
+    legacy = manifest()
+    inspected = render_for_inspection(legacy)
+    assert inspected == render_for_inspection(copy.deepcopy(legacy))
+    assert "User=anvil-connect" in inspected["files"]["systemd/anvil-connect-gateway.service"]
+    with pytest.raises(ManifestError, match="isolated service identities"):
+        render(legacy)
+
+
+def test_legacy_inspection_plan_remains_read_only(tmp_path: Path) -> None:
+    legacy = manifest()
+    assert plan_for_inspection(legacy, tmp_path / "missing")["state"] == "absent"
+    with pytest.raises(ManifestError, match="isolated service identities"):
+        plan(legacy, tmp_path / "missing")
+
+
 def test_caddy_routes_keep_h2c_and_bound_websocket_path() -> None:
-    document = json.loads(render(manifest())["files"]["caddy.json"])
+    document = json.loads(render(isolated_manifest())["files"]["caddy.json"])
     routes = document["apps"]["http"]["servers"]["anvil_connect"]["routes"]
     rendered = json.dumps(routes)
     assert "wstunnel" not in rendered
@@ -146,7 +177,7 @@ def test_caddy_routes_keep_h2c_and_bound_websocket_path() -> None:
     assert tunnel["match"][0]["method"] == ["GET"]
     assert tunnel["handle"][1]["transport"]["versions"] == ["1.1"]
     upgrade_routes = [route for route in routes if "header_regexp" in route.get("match", [{}])[0]]
-    assert len(upgrade_routes) == 1 + len(manifest()["gateway"]["gateway"]["resources"])
+    assert len(upgrade_routes) == 1 + len(isolated_manifest()["gateway"]["gateway"]["resources"])
     # Exercise HTTP token semantics, rather than only snapshotting a pattern.
     import re
     for route in upgrade_routes:
@@ -160,7 +191,7 @@ def test_caddy_routes_keep_h2c_and_bound_websocket_path() -> None:
     ordinary = next(route for route in routes if route["match"][0].get("method") == ["GET", "POST"])
     assert ordinary["handle"][1]["transport"]["versions"] == ["h2c"]
     assert "Forwarded" in ordinary["handle"][0]["request"]["delete"]
-    assert ordinary["handle"][1]["upstreams"][0]["dial"] == "unix/" + manifest()["gateway"]["state_directory"] + "/ingress.sock"
+    assert ordinary["handle"][1]["upstreams"][0]["dial"] == "unix/" + isolated_manifest()["service_identities"]["ingress"]["directory"] + "/ingress.sock"
     reserved = next(route for route in routes if route.get("match", [{}])[0].get("path") == ["/_anvil-connect/login", "/_anvil-connect/callback", "/_anvil-connect/logout"])
     assert reserved["handle"][1]["transport"]["versions"] == ["h2c"]
     assert routes[-1] == {"handle": [{"handler": "static_response", "status_code": 404}]}
@@ -168,7 +199,7 @@ def test_caddy_routes_keep_h2c_and_bound_websocket_path() -> None:
 
 
 def test_authelia_template_has_explicit_pkce_rs256_and_callbacks() -> None:
-    text = render(manifest())["files"]["authelia/configuration.yml"]
+    text = render(isolated_manifest())["files"]["authelia/configuration.yml"]
     assert "require_pkce: true" in text
     assert "pkce_challenge_method: S256" in text
     assert "id_token_signed_response_alg: RS256" in text
@@ -187,35 +218,35 @@ def test_plan_and_staging_preserve_drift_and_are_idempotent(tmp_path: Path) -> N
     foreign = output / "keep.txt"
     foreign.write_text("operator owned")
     before = foreign.read_text()
-    assert plan(manifest(), output)["state"] == "unmanaged"
+    assert plan(isolated_manifest(), output)["state"] == "unmanaged"
     assert foreign.read_text() == before
     with pytest.raises(ManifestError, match="unmanaged"):
-        stage(manifest(), output)
+        stage(isolated_manifest(), output)
 
     output = tmp_path / "clean"
-    first_stage = stage(manifest(), output)
-    second_stage = stage(manifest(), output)
+    first_stage = stage(isolated_manifest(), output)
+    second_stage = stage(isolated_manifest(), output)
     assert first_stage == second_stage
     assert not output.exists()  # sibling staging never contaminates a deployment root
     assert (Path(first_stage["path"]) / "gateway.json").is_file()
 
     owned = tmp_path / "owned"
     owned.mkdir()
-    rendered = render(manifest())["files"]
+    rendered = render(isolated_manifest())["files"]
     for name, content in rendered.items():
         target = owned / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content)
-    assert plan(manifest(), owned)["state"] == "current"
+    assert plan(isolated_manifest(), owned)["state"] == "current"
     (owned / "gateway.json").write_text("tampered")
-    report = plan(manifest(), owned)
+    report = plan(isolated_manifest(), owned)
     assert report["state"] == "drift"
     assert "gateway.json" in report["corrupt"]
     assert (owned / "gateway.json").read_text() == "tampered"
 
 
 def test_systemd_units_have_real_argv_and_reject_unsafe_paths() -> None:
-    files = render(manifest())["files"]
+    files = render(isolated_manifest())["files"]
     caddy = json.loads(files["caddy.json"])
     assert "${CONFIG_ROOT}" not in "\n".join(files.values())
     assert "--adapter json" not in files["systemd/anvil-connect-caddy.service"]
@@ -227,7 +258,7 @@ def test_systemd_units_have_real_argv_and_reject_unsafe_paths() -> None:
     assert "EnvironmentFile=/etc/anvil-connect/secrets/clients/dashboard-api.env" in files["systemd/anvil-connect-client-dashboard-api.service"]
     assert caddy["apps"]["http"]["grace_period"] == "15s"
     assert "TimeoutStopSec=20" in files["systemd/anvil-connect-caddy.service"]
-    value = manifest()
+    value = isolated_manifest()
     value["config_root"] = "/etc/anvil connect"
     with pytest.raises(ManifestError, match="ExecStart argument"):
         render(value)
@@ -240,19 +271,19 @@ def test_plan_and_stage_reject_symlink_roots_markers_and_staging(tmp_path: Path)
     root_link = tmp_path / "root-link"
     root_link.symlink_to(target, target_is_directory=True)
     with pytest.raises(ManifestError, match="non-symlink"):
-        plan(manifest(), root_link)
+        plan(isolated_manifest(), root_link)
 
     output = tmp_path / "output"
     output.mkdir()
     (output / "managed.json").symlink_to(target / "marker")
     with pytest.raises(ManifestError, match="invalid ownership marker"):
-        plan(manifest(), output)
+        plan(isolated_manifest(), output)
 
     root = tmp_path / "clean"
     staging_link = tmp_path / ".clean.anvil-connect-staging"
     staging_link.symlink_to(target, target_is_directory=True)
     with pytest.raises(ManifestError, match="staging root"):
-        stage(manifest(), root)
+        stage(isolated_manifest(), root)
 
 
 @_NATIVE
@@ -265,10 +296,10 @@ def test_rendered_native_runtime_json_passes_real_cli(tmp_path: Path) -> None:
         [selected_go, "-C", str(ROOT / "connect"), "build", "-o", str(binary), "./cmd/anvil-connect"],
         check=True, cwd=ROOT, capture_output=True, text=True, timeout=30,
     )
-    files = render(manifest())["files"]
+    files = render(isolated_manifest())["files"]
     paths = [("gateway", "gateway.json")]
-    paths.extend(("connector", "connectors/" + item["id"] + ".json") for item in manifest()["connectors"])
-    paths.extend(("client", "clients/" + item["rule"]["id"] + ".json") for item in manifest()["clients"])
+    paths.extend(("connector", "connectors/" + item["id"] + ".json") for item in isolated_manifest()["connectors"])
+    paths.extend(("client", "clients/" + item["rule"]["id"] + ".json") for item in isolated_manifest()["clients"])
     for mode, name in paths:
         config = tmp_path / name
         config.parent.mkdir(parents=True, exist_ok=True)
@@ -331,16 +362,16 @@ def test_plan_rejects_hostile_marker_without_reading_external_file(tmp_path: Pat
         "files": {"../../outside-sentinel": "b" * 64},
     }
     (root / "managed.json").write_text(json.dumps(marker), encoding="utf-8")
-    assert plan(manifest(), root)["state"] == "unmanaged"
+    assert plan(isolated_manifest(), root)["state"] == "unmanaged"
     assert sentinel.read_text(encoding="utf-8") == "must remain unread"
     marker["files"] = {"/absolute": "b" * 64}
     (root / "managed.json").write_text(json.dumps(marker), encoding="utf-8")
-    assert plan(manifest(), root)["state"] == "unmanaged"
+    assert plan(isolated_manifest(), root)["state"] == "unmanaged"
     assert sentinel.read_text(encoding="utf-8") == "must remain unread"
 
 
 def test_environment_file_bindings_and_client_rules_are_closed() -> None:
-    value = manifest()
+    value = isolated_manifest()
     value["environment_files"]["connectors"] = {}
     with pytest.raises(ManifestError, match="missing keys"):
         validate_manifest(value)
@@ -355,7 +386,7 @@ def test_environment_file_bindings_and_client_rules_are_closed() -> None:
 
 
 def test_loopback_edge_keeps_tls_without_implicit_public_listeners() -> None:
-    value = manifest()
+    value = isolated_manifest()
     value['caddy']['listen'] = '127.0.0.1:19443'
     value['caddy']['tls'] = {'mode': 'provided', 'certificate_file': '/etc/connect/tls.pem', 'key_file': '/etc/connect/tls.key'}
     generated = render(value)
