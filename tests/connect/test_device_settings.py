@@ -8,15 +8,37 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.connect.config import ManifestError, canonical_manifest, validate_manifest
-from anvil_serving.connect.render import render
+from anvil_serving.connect.render import render, render_for_inspection
 
 
 def declaration() -> dict:
     return json.loads((Path(__file__).parents[2] / "connect/examples/deployment.json").read_text())
 
 
-def device_declaration(prefix: str = "/") -> dict:
+def isolated_declaration() -> dict:
     value = declaration()
+    del value["service_user"]
+    value["service_identities"] = {
+        "gateway": {"uid": 1201, "gid": 1201},
+        "edge": {"uid": 1202, "gid": 1202},
+        "idp": {"uid": 1203, "gid": 1203},
+        "connectors": {"dashboard": {"uid": 1204, "gid": 1204}},
+        "clients": {"dashboard-api": {"uid": 1205, "gid": 1205}},
+        "ingress": {"group_id": 1290, "directory": "/run/anvil-connect/ingress"},
+    }
+    value["service_limits"] = {
+        "gateway": {"memory_max_bytes": 805306368, "tasks_max": 128},
+        "edge": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "idp": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "connectors": {"dashboard": {"memory_max_bytes": 402653184, "tasks_max": 64}},
+        "clients": {"dashboard-api": {"memory_max_bytes": 268435456, "tasks_max": 32}},
+    }
+    value["caddy"]["state_directory"] = "/var/lib/anvil-connect/caddy"
+    return value
+
+
+def device_declaration(prefix: str = "/", *, isolated: bool = False) -> dict:
+    value = isolated_declaration() if isolated else declaration()
     browser = next(item for item in value["gateway"]["gateway"]["resources"] if item["rule"]["access"] == "browser")
     browser["rule"]["path_prefix"] = prefix
     for connector in value["connectors"]:
@@ -45,12 +67,12 @@ def test_absent_device_fields_preserve_legacy_canonical_manifest_and_render() ->
     normalized = validate_manifest(value)
     assert "device_authorizations" not in normalized["gateway"]["gateway"]
     assert "device_authorization" not in normalized["clients"][0]
-    assert json.loads(render(value)["files"]["gateway.json"]) == normalized["gateway"]
+    assert json.loads(render_for_inspection(value)["files"]["gateway.json"]) == normalized["gateway"]
     assert canonical_manifest(value) == canonical_manifest(normalized)
 
 
 def test_device_authorization_is_copied_from_the_exact_gateway_binding() -> None:
-    value = device_declaration("/observatory")
+    value = device_declaration("/observatory", isolated=True)
     normalized = validate_manifest(value)
     binding = normalized["gateway"]["gateway"]["device_authorizations"][0]
     client = normalized["clients"][0]["device_authorization"]

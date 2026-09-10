@@ -58,6 +58,10 @@ func TestRecoveryDisablesGrantsAndDropsAllHistoricalAuthority(t *testing.T) {
 		if record["disabled"] != true || record["generation"] != float64(2) {
 			t.Fatal("restored grant active or audit generation lost")
 		}
+		resources, ok := record["resources"].([]any)
+		if !ok || len(resources) != 1 || resources[0] != "dashboard" {
+			t.Fatal("restored principal declarations lost")
+		}
 		for _, bucket := range buckets[1:] {
 			if !errors.Is(tx.Get(bucket, "record", &record), ErrMissing) {
 				t.Fatal("historical authority restored", bucket)

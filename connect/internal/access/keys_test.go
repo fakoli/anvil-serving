@@ -230,13 +230,13 @@ func TestConcurrentKeyIssuance(t *testing.T) {
 }
 
 func TestDeviceCredentialUsesRollbackSafeGrammar(t *testing.T) {
-	keys, _, _, _ := keyFixture(t)
+	keys, _, now, _ := keyFixture(t)
 	if err := keys.SetDeviceChecker(func(DeviceCredential, string, string, string, uint64) error { return nil }); err != nil {
 		t.Fatal(err)
 	}
 	mapping := strings.Repeat("a", 64)
 	session := strings.Repeat("b", 32)
-	raw, _, err := keys.IssueDevice("owner", []Grant{{Resource: "router", Methods: []string{"POST"}}}, time.Hour, DeviceCredential{HumanID: "human:" + strings.Repeat("c", 64), HumanGeneration: 1, MappingHash: mapping, Session: session, SessionGeneration: 1})
+	raw, _, err := keys.IssueDevice("owner", []Grant{{Resource: "router", Methods: []string{"POST"}}}, time.Hour, now.Add(time.Hour), DeviceCredential{HumanID: "human:" + strings.Repeat("c", 64), HumanGeneration: 1, MappingHash: mapping, Session: session, SessionGeneration: 1})
 	if err != nil || !strings.HasPrefix(raw, "acd1.") {
 		t.Fatalf("device issue err=%v raw grammar=%q", err, strings.Split(raw, ".")[0])
 	}
@@ -248,5 +248,33 @@ func TestDeviceCredentialUsesRollbackSafeGrammar(t *testing.T) {
 	}
 	if _, err := keys.Authenticate(raw, "router", "POST"); err != nil {
 		t.Fatal("current device credential rejected", err)
+	}
+}
+
+func TestDeviceCredentialDeadlineRejectsBelowMinuteWithoutWriting(t *testing.T) {
+	keys, state, now, _ := keyFixture(t)
+	device := DeviceCredential{HumanID: "human:" + strings.Repeat("c", 64), HumanGeneration: 1, MappingHash: strings.Repeat("a", 64), Session: strings.Repeat("b", 32), SessionGeneration: 1}
+	if _, _, err := keys.IssueDevice("owner", []Grant{{Resource: "router", Methods: []string{"POST"}}}, time.Hour, now.Add(59*time.Second), device); err == nil {
+		t.Fatal("device credential shorter than one minute was issued")
+	}
+	var deviceKeys int
+	if err := state.View(func(tx *store.Tx) error {
+		for _, prefix := range []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"} {
+			entries, err := tx.List("api_keys", prefix, 4096)
+			if err != nil {
+				return err
+			}
+			deviceKeys += len(entries)
+		}
+		return nil
+	}); err != nil || deviceKeys != 0 {
+		t.Fatalf("rejected device credential wrote key count=%d err=%v", deviceKeys, err)
+	}
+	raw, ordinary, err := keys.Issue("owner", []Grant{{Resource: "router", Methods: []string{"POST"}}}, time.Hour)
+	if err != nil || ordinary.ExpiresAt.Sub(*now) != time.Hour {
+		t.Fatalf("ordinary key lifetime changed: lifetime=%s err=%v", ordinary.ExpiresAt.Sub(*now), err)
+	}
+	if _, err := keys.Authenticate(raw, "router", "POST"); err != nil {
+		t.Fatal("ordinary key was not issued after device deadline rejection")
 	}
 }

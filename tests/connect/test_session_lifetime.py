@@ -1,0 +1,71 @@
+"""Closed browser-session lifetime declaration and rendering contract."""
+from __future__ import annotations
+
+import copy
+import json
+from pathlib import Path
+
+import pytest
+
+from anvil_serving.connect.config import ManifestError, validate_manifest
+from anvil_serving.connect.render import render
+
+
+ROOT = Path(__file__).parents[2]
+
+
+def declaration() -> dict:
+    return json.loads((ROOT / "connect/examples/deployment.json").read_text(encoding="utf-8"))
+
+
+def isolated_declaration() -> dict:
+    value = declaration()
+    del value["service_user"]
+    value["service_identities"] = {
+        "gateway": {"uid": 1201, "gid": 1201},
+        "edge": {"uid": 1202, "gid": 1202},
+        "idp": {"uid": 1203, "gid": 1203},
+        "connectors": {"dashboard": {"uid": 1204, "gid": 1204}},
+        "clients": {"dashboard-api": {"uid": 1205, "gid": 1205}},
+        "ingress": {"group_id": 1290, "directory": "/run/anvil-connect/ingress"},
+    }
+    value["service_limits"] = {
+        "gateway": {"memory_max_bytes": 805306368, "tasks_max": 128},
+        "edge": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "idp": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "connectors": {"dashboard": {"memory_max_bytes": 402653184, "tasks_max": 64}},
+        "clients": {"dashboard-api": {"memory_max_bytes": 268435456, "tasks_max": 32}},
+    }
+    value["caddy"]["state_directory"] = "/var/lib/anvil-connect/caddy"
+    return value
+
+
+def test_browser_session_lifetime_is_optional_and_renders_exactly_when_declared() -> None:
+    value = isolated_declaration()
+    del value["gateway"]["browser_session_lifetime_seconds"]
+    normalized = validate_manifest(value)
+    assert "browser_session_lifetime_seconds" not in normalized["gateway"]
+    assert "browser_session_lifetime_seconds" not in json.loads(render(value)["files"]["gateway.json"])
+
+    for seconds in (60, 86400):
+        value = isolated_declaration()
+        value["gateway"]["browser_session_lifetime_seconds"] = seconds
+        normalized = validate_manifest(value)
+        assert normalized["gateway"]["browser_session_lifetime_seconds"] == seconds
+        assert json.loads(render(value)["files"]["gateway.json"])["browser_session_lifetime_seconds"] == seconds
+
+
+@pytest.mark.parametrize("bad", [0, -1, 59, 86401, True, "60", None])
+def test_browser_session_lifetime_rejects_non_integer_or_out_of_range_values(bad: object) -> None:
+    value = copy.deepcopy(declaration())
+    value["gateway"]["browser_session_lifetime_seconds"] = bad
+    with pytest.raises(ManifestError):
+        validate_manifest(value)
+
+
+def test_browser_session_lifetime_gateway_shape_remains_closed() -> None:
+    value = declaration()
+    value["gateway"]["browser_session_lifetime_seconds"] = 3600
+    value["gateway"]["unexpected"] = 1
+    with pytest.raises(ManifestError, match="unknown keys"):
+        validate_manifest(value)

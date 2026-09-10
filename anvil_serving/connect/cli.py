@@ -26,6 +26,12 @@ class _Once(argparse.Action):
 def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     parser = _Parser(prog=prog, allow_abbrev=False)
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
+    qualification = actions.add_parser("qualify", allow_abbrev=False)
+    qualify_mode = qualification.add_mutually_exclusive_group()
+    qualify_mode.add_argument("--lane", choices=("baseline", "container-baseline", "device", "revocation", "isolation"), action=_Once)
+    qualify_mode.add_argument("--prepare-container", action="store_true")
+    qualify_mode.add_argument("--prepare-vm", action="store_true")
+    qualification.add_argument("--config", action=_Once)
     for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration"):
         leaf = actions.add_parser(action, allow_abbrev=False)
         leaf.add_argument("--manifest", required=True, action=_Once)
@@ -56,9 +62,85 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     return parser
 
 
+def _qualify(args: argparse.Namespace) -> CommandResult:
+    from .qualification import QualificationError, qualify
+
+    if args.prepare_container or args.prepare_vm:
+        if args.prepare_vm:
+            from .qualification_vm import prepare
+            preparation_kind = "vm"
+        else:
+            from .qualification_container import prepare
+            preparation_kind = "container"
+
+        try:
+            return CommandResult(data=prepare(args.config))
+        except QualificationError as exc:
+            return CommandResult(data={
+                "schema": f"anvil-connect.qualification-{preparation_kind}/v1", "ok": False,
+                "error_code": exc.code,
+            }, error=OperatorError(f"Connect qualification {preparation_kind} preparation failed.", code=exc.code))
+    expected_count = 2
+    if args.lane in {"device", "revocation"}:
+        from .qualification_container_run import _DEVICE_TESTS, _REVOCATION_TESTS
+        expected_count = len(_DEVICE_TESTS if args.lane == "device" else _REVOCATION_TESTS)
+    elif args.lane == "isolation":
+        from .qualification_vm_run import _CASES
+        expected_count = len(_CASES)
+
+    def unavailable_counts() -> dict[str, int]:
+        return {"passed": 0, "failed": 0, "skipped": 0, "not_run": 0, "unavailable": expected_count}
+
+    try:
+        if args.lane == "isolation":
+            from .qualification_vm_run import qualify as isolation_qualify
+            result = isolation_qualify(args.config)
+        elif args.lane in {"container-baseline", "device", "revocation"}:
+            from .qualification_container_run import qualify as container_qualify
+            result = container_qualify(args.config, lane=args.lane)
+        else:
+            result = qualify(args.config, lane=args.lane or "baseline")
+    except KeyboardInterrupt as exc:
+        if args.lane != "isolation":
+            raise
+        started = bool(getattr(exc, "execution_started", True))
+        counts = getattr(exc, "case_counts", None)
+        if counts is None:
+            counts = unavailable_counts() if started else {"passed": 0, "failed": 0, "skipped": 0, "not_run": expected_count}
+        return CommandResult(data={
+            "schema": "anvil-connect.qualification/v1", "ok": False,
+            "state": "failed" if started else "not-run", "error_code": "runner-interrupted",
+            "counts": counts, "stage": getattr(exc, "stage", "execution"),
+        }, error=OperatorError(
+            "Connect isolation qualification was interrupted.",
+            code="runner-interrupted",
+        ))
+    except QualificationError as exc:
+        started = bool(getattr(exc, "execution_started", False))
+        state = "failed" if started else "not-run"
+        counts = getattr(exc, "case_counts", None) if started else {"passed": 0, "failed": 0, "skipped": 0, "not_run": expected_count}
+        if args.lane == "isolation" and started and counts is None:
+            counts = unavailable_counts()
+        return CommandResult(data={
+            "schema": "anvil-connect.qualification/v1", "ok": False, "state": state,
+            "error_code": exc.code, "counts": counts, "stage": getattr(exc, "stage", "preflight"),
+        }, error=OperatorError(
+            "Connect qualification failed during execution or cleanup." if started else "Connect qualification preflight failed; check the saved qualification settings and pinned prerequisites.",
+            code=exc.code,
+        ))
+    if result.get("ok") is not True:
+        return CommandResult(data=result, error=OperatorError(
+            "Connect qualification failed; inspect the redacted result artifact.",
+            code="connect_qualification_failed",
+        ))
+    return CommandResult(data=result)
+
+
 def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connect") -> CommandResult:
     try:
         args = _parser(prog).parse_args(argv)
+        if args.action == "qualify":
+            return _qualify(args)
         from . import manage  # help/importing the registry never starts discovery
 
         if not manage.supported_platform():

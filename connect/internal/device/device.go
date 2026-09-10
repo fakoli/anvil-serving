@@ -516,19 +516,7 @@ func (a *Authority) Poll(deviceCode string) (Poll, error) {
 	if !ok || binding.Principals[record.HumanID] != record.APIPrincipal {
 		return Poll{Status: "redeemed", ExpiresAt: record.ExpiresAt}, nil
 	}
-	var now time.Time
-	if a.state.View(func(tx *store.Tx) error { now = tx.Now(); return nil }) != nil {
-		return Poll{Status: "redeemed", ExpiresAt: record.ExpiresAt}, nil
-	}
-	lifetime := CredentialLife
-	untilSession := record.SessionExpiresAt.Sub(now)
-	if untilSession < lifetime {
-		lifetime = untilSession
-	}
-	if lifetime < time.Minute {
-		return Poll{Status: "redeemed", ExpiresAt: record.ExpiresAt}, nil
-	}
-	secret, key, err := a.keys.IssueDevice(record.APIPrincipal, []access.Grant{{Resource: record.APIResource, Methods: record.Methods}}, lifetime, access.DeviceCredential{HumanID: record.HumanID, HumanGeneration: record.HumanGeneration, MappingHash: record.BindingHash, Session: record.SessionID, SessionGeneration: record.SessionGeneration})
+	secret, key, err := a.keys.IssueDevice(record.APIPrincipal, []access.Grant{{Resource: record.APIResource, Methods: record.Methods}}, CredentialLife, record.SessionExpiresAt, access.DeviceCredential{HumanID: record.HumanID, HumanGeneration: record.HumanGeneration, MappingHash: record.BindingHash, Session: record.SessionID, SessionGeneration: record.SessionGeneration})
 	if err != nil {
 		return Poll{Status: "redeemed", ExpiresAt: record.ExpiresAt}, nil
 	}

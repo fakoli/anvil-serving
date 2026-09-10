@@ -2,6 +2,7 @@ package httpedge
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -166,6 +167,128 @@ func TestGatewayCapacityAndCancellation(t *testing.T) {
 		t.Fatal("client cancellation not propagated")
 	}
 	<-done
+}
+
+func gatewayAuthorityFixture(t *testing.T, dispatch Dispatch) (*Gateway, string, access.Key, *access.Keys, *atomic.Int64) {
+	t.Helper()
+	file, err := os.Open("../../examples/connect.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	declaration, err := config.ReadGateway(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaration.MaxConcurrent = 1
+	declaration.Resources[0].Rule.Limits.Concurrent = 1
+	declaration.Resources[0].Rule.Limits.RequestBytes = 1024
+	var now atomic.Int64
+	now.Store(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC).UnixNano())
+	state, err := store.Open(filepath.Join(t.TempDir(), "authority"), func() time.Time { return time.Unix(0, now.Load()).UTC() })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = state.Close() })
+	keys, err := access.NewKeys(state, []config.Rule{declaration.Resources[0].Rule})
+	if err != nil {
+		t.Fatal(err)
+	}
+	grants := []access.Grant{{Resource: "router", Methods: []string{http.MethodPost}}}
+	if err := keys.SetPrincipal("sdk", grants, false); err != nil {
+		t.Fatal(err)
+	}
+	raw, key, err := keys.Issue("sdk", grants, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gateway, err := NewGateway(declaration, keys, dispatch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gateway.Close)
+	return gateway, raw, key, keys, &now
+}
+
+func TestGatewayAuthorityChangesCancelActivePost(t *testing.T) {
+	for name, mutate := range map[string]func(*access.Keys, access.Key, *atomic.Int64) error{
+		"key-revoke": func(keys *access.Keys, key access.Key, _ *atomic.Int64) error {
+			return keys.Revoke(key.ID)
+		},
+		"key-expiry": func(_ *access.Keys, key access.Key, now *atomic.Int64) error {
+			now.Store(key.ExpiresAt.UnixNano())
+			return nil
+		},
+		"principal-disable": func(keys *access.Keys, _ access.Key, _ *atomic.Int64) error {
+			return keys.SetPrincipal("sdk", []access.Grant{{Resource: "router", Methods: []string{http.MethodPost}}}, true)
+		},
+		"grant-removal": func(keys *access.Keys, _ access.Key, _ *atomic.Int64) error {
+			return keys.SetPrincipal("sdk", []access.Grant{{Resource: "router", Methods: []string{http.MethodGet}}}, false)
+		},
+		"principal-regeneration": func(keys *access.Keys, _ access.Key, _ *atomic.Int64) error {
+			return keys.SetPrincipal("sdk", []access.Grant{{Resource: "router", Methods: []string{http.MethodPost}}}, false)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			started, stopped, returned := make(chan struct{}), make(chan struct{}), make(chan struct{})
+			var dispatched atomic.Int32
+			gateway, raw, key, keys, now := gatewayAuthorityFixture(t, func(_ http.ResponseWriter, r *http.Request, _ config.Resource, _ access.Admission) {
+				if dispatched.Add(1) != 1 {
+					return
+				}
+				close(started)
+				<-r.Context().Done()
+				close(stopped)
+			})
+			caller, cancel := context.WithCancel(context.Background())
+			t.Cleanup(cancel)
+			activeRequest := request().WithContext(caller)
+			activeRequest.Header.Set("Authorization", "Bearer "+raw)
+			go func() {
+				defer close(returned)
+				gateway.ServeHTTP(httptest.NewRecorder(), activeRequest)
+			}()
+			select {
+			case <-started:
+			case <-time.After(time.Second):
+				t.Fatal("initial mutating request was not dispatched")
+			}
+			if caller.Err() != nil {
+				t.Fatal("caller context ended before authority mutation")
+			}
+			changed := time.Now()
+			if err := mutate(keys, key, now); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-stopped:
+				if elapsed := time.Since(changed); elapsed > time.Second {
+					t.Fatalf("authority cancellation exceeded component bound: %s", elapsed)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("authority mutation did not cancel active dispatch")
+			}
+			if caller.Err() != nil {
+				t.Fatal("authority cancellation was confused with caller cancellation")
+			}
+			select {
+			case <-returned:
+			case <-time.After(time.Second):
+				t.Fatal("gateway did not return after authority cancellation")
+			}
+			if dispatched.Load() != 1 {
+				t.Fatal("interrupted mutating request was replayed")
+			}
+
+			fresh := request()
+			fresh.Header.Set("Authorization", "Bearer "+raw)
+			response := httptest.NewRecorder()
+			gateway.ServeHTTP(response, fresh)
+			if response.Code != http.StatusUnauthorized || dispatched.Load() != 1 {
+				t.Fatal("stale credential reached dispatcher after authority mutation")
+			}
+		})
+	}
 }
 
 func TestUnknownLengthBodyLimit(t *testing.T) {

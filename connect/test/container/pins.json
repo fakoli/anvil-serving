@@ -1,0 +1,17 @@
+{
+  "schema": "anvil-connect.qualification-container-pins/v1",
+  "platform": "linux/amd64",
+  "base_image": "mcr.microsoft.com/playwright@sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7",
+  "playwright_version": "1.63.0",
+  "nss_tools_version": "2:3.98-1ubuntu0.2",
+  "go": {
+    "version": "1.27.1",
+    "url": "https://go.dev/dl/go1.27.1.linux-amd64.tar.gz",
+    "sha256": "63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445",
+    "source": "https://go.dev/dl/?mode=json"
+  },
+  "sources": [
+    "https://playwright.dev/docs/docker",
+    "https://packages.ubuntu.com/noble/libnss3-tools"
+  ]
+}

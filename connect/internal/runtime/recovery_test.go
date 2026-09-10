@@ -147,6 +147,41 @@ func TestBackupRejectsIncompleteDatabaseWithoutRepair(t *testing.T) {
 	}
 }
 
+func TestRestoreRequiresPrivateDestinationParent(t *testing.T) {
+	c := gatewaySettings(t)
+	if err := InitializeGateway(c); err != nil {
+		t.Fatal(err)
+	}
+	state, err := store.Open(filepath.Join(c.StateDirectory, "authority"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := state.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := BackupGateway(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent := t.TempDir()
+	c.StateDirectory = filepath.Join(parent, "restored")
+	if err := os.Chmod(parent, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if RestoreGateway(c, data, BackupDigest(data)) == nil {
+		t.Fatal("restore accepted a non-private destination parent")
+	}
+	if _, err := os.Lstat(c.StateDirectory); !os.IsNotExist(err) {
+		t.Fatalf("non-private parent created destination: %v", err)
+	}
+	if err := os.Chmod(parent, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := RestoreGateway(c, data, BackupDigest(data)); err != nil {
+		t.Fatalf("private destination parent rejected: %v", err)
+	}
+}
+
 func TestRestoreMissingParentAndDirectorySyncFailureStayInert(t *testing.T) {
 	c := gatewaySettings(t)
 	if err := InitializeGateway(c); err != nil {

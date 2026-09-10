@@ -162,13 +162,20 @@ def test_unknown_supervisor_state_is_not_absent(setup):
     assert not adapter.commands
 
 
-def test_restart_requires_replacement_evidence(setup):
-    from anvil_serving.service_runtime.operations import execute
+def test_restart_requires_replacement_evidence(setup, monkeypatch):
+    from itertools import count
+    from types import SimpleNamespace
+    from anvil_serving.service_runtime import operations
     from anvil_serving.service_runtime.contracts import ServiceError
     adapter, options = setup
     adapter.running = True
-    with pytest.raises(ServiceError, match="postcondition"):
-        execute("restart", "events", confirm=True, dry_run=False, **options)
+    # Exercise the unchanged-PID postcondition independently of CI scheduling.
+    ticks = count(0, .001)
+    monkeypatch.setattr(operations, "time", SimpleNamespace(monotonic=lambda: next(ticks)))
+    with pytest.raises(ServiceError, match="postcondition") as caught:
+        operations.execute("restart", "events", confirm=True, dry_run=False, **options)
+    assert caught.value.code == "postcondition_failed"
+    assert adapter.commands == [["fixture-supervisor", "restart"]]
 
 
 def test_start_polls_endpoint_until_ready(setup):

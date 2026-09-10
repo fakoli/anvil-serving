@@ -17,7 +17,8 @@ import (
 
 // Exercise the real certificate-derived timer with a short-lived test CA.
 // Production leaf lifetime and the system clock remain unchanged. This proves
-// the supervisor failure signal, not a full-day live rotation/reconnect soak.
+// the supervisor failure signal in the protocol-only same-UID fixture, not a
+// full-day live rotation/reconnect soak.
 func TestGatewayCertificateBoundarySignalsSupervisorFailure(t *testing.T) {
 	if os.Getenv("ANVIL_CONNECT_WSTUNNEL") == "" {
 		t.Skip("requires explicit pinned transport artifact")
@@ -55,7 +56,7 @@ func TestGatewayCertificateBoundarySignalsSupervisorFailure(t *testing.T) {
 	if err != nil || directory.Replace("authorities.json", raw) != nil {
 		t.Fatal("could not prepare bounded test authority")
 	}
-	gateway, err := StartGateway(context.Background(), c, func(string) (string, bool) {
+	gateway, err := ComposeGatewayForProtocolFixture(context.Background(), c, func(string) (string, bool) {
 		t.Error("API-only gateway read an OIDC secret")
 		return "", false
 	})

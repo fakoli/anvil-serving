@@ -30,6 +30,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -55,6 +56,25 @@ type edgeFixture struct {
 	nativeBypass  atomic.Bool
 	dispatcher    *transport.Dispatcher
 	resource      config.Resource
+}
+
+// edgeSocketPath reserves enough space for Linux sockaddr_un and turns an
+// otherwise opaque net.Listen error into a fixed fixture-stage diagnostic.
+func edgeSocketPath(directory string) (string, error) {
+	path := filepath.Join(directory, "ingress.sock")
+	if len(path) >= 104 {
+		return "", errors.New("fixture socket path exceeds unix limit")
+	}
+	return path, nil
+}
+
+func TestEdgeSocketPathBounded(t *testing.T) {
+	if _, err := edgeSocketPath(filepath.Join("/tmp", strings.Repeat("x", 110))); err == nil {
+		t.Fatal("overlong fixture socket path accepted")
+	}
+	if path, err := edgeSocketPath("/tmp/ace-123"); err != nil || path != "/tmp/ace-123/ingress.sock" {
+		t.Fatal("safe fixture socket path rejected")
+	}
 }
 
 func (f *edgeFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -116,8 +136,39 @@ func (f *edgeFixture) nativeDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 type edgeChild struct {
-	cmd  *exec.Cmd
-	done chan error
+	cmd       *exec.Cmd
+	done      chan error
+	closeOnce sync.Once
+	closeErr  error
+}
+
+// Close stops the owned child once, so a fixture can replace a listener before
+// its testing cleanup without racing the original cleanup's wait channel.
+func (child *edgeChild) Close() error {
+	child.closeOnce.Do(func() {
+		if child.cmd.Process == nil {
+			return
+		}
+		if err := child.cmd.Process.Signal(syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			child.closeErr = errors.New("owned edge child stop failed")
+			return
+		}
+		select {
+		case err := <-child.done:
+			if err != nil {
+				child.closeErr = errors.New("owned edge child exited unsuccessfully")
+			}
+		case <-time.After(5 * time.Second):
+			_ = child.cmd.Process.Kill()
+			select {
+			case <-child.done:
+				child.closeErr = errors.New("owned edge child required forced termination")
+			case <-time.After(2 * time.Second):
+				child.closeErr = errors.New("owned edge child did not exit")
+			}
+		}
+	})
+	return child.closeErr
 }
 
 func edgeEnvironment(home string) []string {
@@ -146,26 +197,8 @@ func startEdgeChild(t *testing.T, home, binary string, args ...string) *edgeChil
 	child := &edgeChild{cmd: cmd, done: make(chan error, 1)}
 	go func() { child.done <- cmd.Wait() }()
 	t.Cleanup(func() {
-		if cmd.Process == nil {
-			return
-		}
-		if err := cmd.Process.Signal(syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
-			t.Error("owned edge child stop failed")
-			return
-		}
-		select {
-		case err := <-child.done:
-			if err != nil {
-				t.Error("owned edge child exited unsuccessfully")
-			}
-		case <-time.After(5 * time.Second):
-			_ = cmd.Process.Kill()
-			select {
-			case <-child.done:
-				t.Error("owned edge child required forced termination")
-			case <-time.After(2 * time.Second):
-				t.Error("owned edge child did not exit")
-			}
+		if err := child.Close(); err != nil {
+			t.Error(err)
 		}
 	})
 	return child
@@ -391,12 +424,19 @@ func edgeStableTOTP(secret string) string {
 	return edgeTOTP(secret, now)
 }
 
-func edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey string) string {
+func edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey string, redirectURIs ...string) string {
 	q := func(value string) string { encoded, _ := json.Marshal(value); return string(encoded) }
 	template := func(path string, indent int) string {
 		return fmt.Sprintf("{{- fileContent %s | nindent %d }}", q(path), indent)
 	}
-	return strings.Join([]string{
+	if len(redirectURIs) == 0 {
+		redirectURIs = []string{"https://" + dashHost + "/_anvil-connect/callback"}
+	}
+	redirectLines := []string{"        redirect_uris:"}
+	for _, uri := range redirectURIs {
+		redirectLines = append(redirectLines, "          - "+q(uri))
+	}
+	lines := []string{
 		"server:", "  address: " + q("tcp://"+authListen),
 		"authentication_backend:", "  file:", "    path: " + q(users),
 		"access_control:", "  default_policy: two_factor",
@@ -405,8 +445,9 @@ func edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKe
 		"session:", "  secret: |-", "    " + template(sessionSecret, 4), "  cookies:", "    - domain: " + q(edgeAuthHost), "      authelia_url: " + q("https://"+edgeAuthHost),
 		"storage:", "  encryption_key: |-", "    " + template(storageKey, 4), "  local:", "    path: " + q(filepath.Join(state, "authelia.sqlite3")),
 		"identity_providers:", "  oidc:", "    hmac_secret: |-", "      " + template(hmacSecret, 6), "    jwks:", "      - key_id: 'anvil-connect-rs256'", "        algorithm: RS256", "        use: sig", "        key: |-", "          " + template(rsaKey, 10),
-		"    clients:", "      - client_id: 'connect-browser'", "        client_secret: |-", "          " + template(clientSecret, 10), "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256", "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:", "          - openid", "        id_token_signed_response_alg: RS256", "        token_endpoint_auth_method: client_secret_basic", "        redirect_uris:", "          - 'https://dash.example.test/_anvil-connect/callback'",
-	}, "\n") + "\n"
+		"    clients:", "      - client_id: 'connect-browser'", "        client_secret: |-", "          " + template(clientSecret, 10), "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256", "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:", "          - openid", "        id_token_signed_response_alg: RS256", "        token_endpoint_auth_method: client_secret_basic",
+	}
+	return strings.Join(append(lines, redirectLines...), "\n") + "\n"
 }
 
 func edgeCaddyConfig(listen, authListen, socket, certificate, key string) map[string]any {
@@ -544,7 +585,10 @@ func TestBrowserEdgeFixture(t *testing.T) {
 	}
 	defer dispatcher.Close()
 	fixture.dispatcher, fixture.resource = dispatcher, gateway.Resources[0]
-	socket := filepath.Join(directory, "ingress.sock")
+	socket, err := edgeSocketPath(directory)
+	if err != nil {
+		t.Fatal("fixture socket path is unsafe")
+	}
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
 		t.Fatal(err)
@@ -608,25 +652,13 @@ func TestBrowserEdgeFixture(t *testing.T) {
 	if err := json.NewEncoder(os.Stdout).Encode(ready); err != nil {
 		t.Fatal(err)
 	}
-	commands := make(chan string)
-	go func() {
-		defer close(commands)
-		buffer := make([]byte, 256)
-		for {
-			n, readErr := os.Stdin.Read(buffer)
-			if n > 0 {
-				for _, line := range strings.Split(string(buffer[:n]), "\n") {
-					if strings.TrimSpace(line) != "" {
-						commands <- strings.TrimSpace(line)
-					}
-				}
-			}
-			if readErr != nil {
-				return
-			}
+	commands := fixtureCommands(os.Stdin)
+	for received := range commands {
+		if received.err != nil {
+			t.Error(errFixtureCommandInput)
+			return
 		}
-	}()
-	for command := range commands {
+		command := received.command
 		response := map[string]string{"ack": command}
 		switch command {
 		case "grant allowed":
