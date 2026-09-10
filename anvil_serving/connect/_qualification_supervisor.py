@@ -203,6 +203,14 @@ class Children:
 
 _FIXTURE_MARKER = __import__("re").compile(r"(?:browser_(?:edge|runtime)_fixture_test\.go|browser_edge\.spec\.mjs):[1-9][0-9]{0,4}")
 _FAILURE_STAGES = frozenset({"build", "fixture-startup", "browser-launch-cert", "browser-connection", "browser-dns", "browser-navigation", "browser-assertion", "report-parsing", "timeout", "interrupted", "supervisor"})
+_CLOSURE_MS_ANNOTATION = "closure_ms"
+_STREAM_CLOSURE_TESTS = frozenset({
+    "container-gated browser streams close on human disable",
+    "container-gated browser streams close on logout",
+    "container-gated CLI streams close on human disable",
+    "container-gated CLI streams close on browser logout",
+})
+_CLOSURE_MS = __import__("re").compile(r"(?:0|[1-9][0-9]{0,3})")
 
 
 def _report_value(output: bytes) -> dict[str, Any] | None:
@@ -311,6 +319,38 @@ def _skipped_report(output: bytes, expected_name: str) -> bool:
     return isinstance(tests, list) and len(tests) == 1 and tests[0].get("status") == "skipped"
 
 
+def _closure_ms(value: dict[str, Any], expected_name: str) -> int | None:
+    """Return one allowlisted closure observation from its exact passed test."""
+    matched = _matching_spec(value, expected_name)
+    if matched is None:
+        raise ValueError
+    tests = matched.get("tests")
+    if not isinstance(tests, list) or len(tests) != 1 or not isinstance(tests[0], dict):
+        raise ValueError
+    annotations = tests[0].get("annotations", [])
+    if not isinstance(annotations, list):
+        raise ValueError
+    closure_annotations = [
+        annotation for annotation in annotations
+        if isinstance(annotation, dict) and annotation.get("type") == _CLOSURE_MS_ANNOTATION
+    ]
+    requires_measurement = expected_name in _STREAM_CLOSURE_TESTS
+    if not requires_measurement:
+        if closure_annotations:
+            raise ValueError
+        return None
+    if len(closure_annotations) != 1:
+        raise ValueError
+    annotation = closure_annotations[0]
+    description = annotation.get("description")
+    if type(annotation.get("type")) is not str or type(description) is not str or _CLOSURE_MS.fullmatch(description) is None:
+        raise ValueError
+    measurement = int(description)
+    if measurement > 1000:
+        raise ValueError
+    return measurement
+
+
 def _valid_report(output: bytes, expected_name: str) -> bool:
     value = _report_value(output)
     if value is None or value.get("errors") not in ([], None):
@@ -319,15 +359,25 @@ def _valid_report(output: bytes, expected_name: str) -> bool:
     if matched is None or matched.get("ok") is not True:
         return False
     tests = matched.get("tests")
-    return isinstance(tests, list) and len(tests) == 1 and tests[0].get("status") == "expected" and isinstance(tests[0].get("results"), list) and bool(tests[0]["results"]) and all(isinstance(result, dict) and result.get("status") == "passed" for result in tests[0]["results"])
+    if not (isinstance(tests, list) and len(tests) == 1 and tests[0].get("status") == "expected" and isinstance(tests[0].get("results"), list) and bool(tests[0]["results"]) and all(isinstance(result, dict) and result.get("status") == "passed" for result in tests[0]["results"])):
+        return False
+    try:
+        _closure_ms(value, expected_name)
+    except ValueError:
+        return False
+    return True
 
 
-def _finish(status: str, *, escalated: bool = False, failure_stage: str | None = None, fixture_marker: str | None = None) -> int:
+def _finish(status: str, *, escalated: bool = False, failure_stage: str | None = None, fixture_marker: str | None = None, closure_ms: int | None = None) -> int:
     if failure_stage is not None and failure_stage not in _FAILURE_STAGES:
         failure_stage = "supervisor"
     if fixture_marker is not None and _FIXTURE_MARKER.fullmatch(fixture_marker) is None:
         fixture_marker = None
-    sys.stdout.write(json.dumps({"status": status, "escalated": escalated, "failure_stage": failure_stage, "fixture_marker": fixture_marker}, separators=(",", ":")) + "\n")
+    if closure_ms is not None and (type(closure_ms) is not int or not 0 <= closure_ms <= 1000):
+        status, failure_stage, closure_ms = "runner-failed", "supervisor", None
+    if status != "passed":
+        closure_ms = None
+    sys.stdout.write(json.dumps({"status": status, "escalated": escalated, "failure_stage": failure_stage, "fixture_marker": fixture_marker, "closure_ms": closure_ms}, separators=(",", ":")) + "\n")
     sys.stdout.flush()
     return 0
 
@@ -349,6 +399,7 @@ def run(argv: list[str], timeout: float, expected_name: str, *, batch_size: int 
     selector: selectors.BaseSelector | None = None
     status = "runner-failed"
     escalated = False
+    closure_ms: int | None = None
     try:
         process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True, close_fds=True)
         selector = selectors.DefaultSelector()
@@ -417,7 +468,9 @@ def run(argv: list[str], timeout: float, expected_name: str, *, batch_size: int 
         elif status == "passed" and not _valid_report(bytes(output), expected_name):
             status = "runner-failed"
             failure_stage = _failure_stage(bytes(output), expected_name)
-        return _finish(status, escalated=escalated, failure_stage=failure_stage, fixture_marker=fixture_marker)
+        elif status == "passed":
+            closure_ms = _closure_ms(_report_value(bytes(output)) or {}, expected_name)
+        return _finish(status, escalated=escalated, failure_stage=failure_stage, fixture_marker=fixture_marker, closure_ms=closure_ms)
     except Exception:
         try:
             empty, cleanup_escalated, _limited = children.cleanup(2)

@@ -28,6 +28,7 @@ _DEVICE_TESTS = (
     "container-gated CLI streams close on human disable",
     "container-gated CLI streams close on browser logout",
 )
+_STREAM_CLOSURE_TESTS = frozenset(_DEVICE_TESTS[6:])
 
 def _load_runner(path: Path):
     spec = importlib.util.spec_from_file_location("connect_qualification_runner", path)
@@ -66,9 +67,9 @@ def _entry() -> None:
         for index, name in enumerate(tests):
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                status, duration, forced = "runner-timeout", 0.0, False
+                status, duration, forced, closure_ms = "runner-timeout", 0.0, False, None
             else:
-                status, duration, forced = runner._run_test(
+                status, duration, forced, closure_ms = runner._run_test(
                     [str(tools["node"]), "/work/connect/node_modules/playwright/cli.js", "test", "test/browser_edge.spec.mjs", "--reporter=json", "--grep", re.escape(name) + "$"],
                     cwd=Path("/work/connect"), env=environment, timeout=remaining,
                     expected_name=name, supervisor=Path("/source/_qualification_supervisor.py"),
@@ -81,8 +82,11 @@ def _entry() -> None:
                             status = "runner-failed-" + label
                     except (OSError, ValueError):
                         pass
+                closure_ms = None
             escalated |= forced
             item = {"name": name, "status": status, "duration_seconds": round(duration, 3)}
+            if closure_ms is not None:
+                item["closure_ms"] = closure_ms
             cases.append(item)
             if status != "passed":
                 cases.extend({"name": later, "status": "not-run", "duration_seconds": 0.0} for later in tests[index + 1:])
@@ -141,12 +145,18 @@ def _cases(raw: bytes, names: tuple[str, ...]) -> tuple[list[dict], bool]:
         if not isinstance(cases, list) or len(cases) != len(names):
             raise ValueError
         for case, name in zip(cases, names):
-            if set(case) != {"name", "status", "duration_seconds"} or case["name"] != name:
+            if not isinstance(case, dict):
+                raise ValueError
+            is_passed_stream = name in _STREAM_CLOSURE_TESTS and case.get("status") == "passed"
+            expected_fields = {"name", "status", "duration_seconds", *( {"closure_ms"} if is_passed_stream else set())}
+            if set(case) != expected_fields or case["name"] != name:
                 raise ValueError
             status = case["status"]
             if not isinstance(status, str) or not re.fullmatch(r"passed|skipped|not-run|runner-timeout|runner-interrupted|runner-failed(?:-(?:pids-limit|memory-limit|build|fixture-startup|browser-launch-cert|browser-connection|browser-dns|browser-navigation|browser-assertion|report-parsing|timeout|interrupted|supervisor)(?:@(?:browser_(?:edge|runtime)_fixture_test\.go|browser_edge\.spec\.mjs):[1-9][0-9]{0,4})?)?", status):
                 raise ValueError
             if type(case["duration_seconds"]) not in (int, float) or not 0 <= case["duration_seconds"] <= 1000:
+                raise ValueError
+            if is_passed_stream and (type(case["closure_ms"]) is not int or not 0 <= case["closure_ms"] <= 1000):
                 raise ValueError
         return cases, value["escalated"]
     except (ValueError, TypeError, KeyError):

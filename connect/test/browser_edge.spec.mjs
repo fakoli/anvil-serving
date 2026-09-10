@@ -435,7 +435,9 @@ async function expectBrowserStreamClosure(started, clientClosed) {
       return browserStreamCountFields.map(field => counts[field]).join(',');
     }, { timeout: Math.max(1, 1_000 - (performance.now() - started)), intervals: [20, 50] }).toBe('1,1,1,1');
   });
-  expect(performance.now() - started).toBeLessThanOrEqual(1_000);
+  const closureMs = Math.ceil(performance.now() - started);
+  expect(closureMs).toBeLessThanOrEqual(1_000);
+  return closureMs;
 }
 
 async function expectFreshBrowserStreamsDenied(page) {
@@ -813,7 +815,8 @@ async function exerciseBrowserStreamRevocation(mutate) {
     const clientClosed = closedBrowserStreams(page);
     const started = performance.now();
     await mutate(page);
-    await expectBrowserStreamClosure(started, clientClosed);
+    const closureMs = await expectBrowserStreamClosure(started, clientClosed);
+    test.info().annotations.push({ type: 'closure_ms', description: String(closureMs) });
 
     const beforeDenied = await browserStreamCounts();
     await expectFreshBrowserStreamsDenied(page);
@@ -1087,7 +1090,9 @@ async function expectCLIStreamClosure(started, clientClosed) {
       return apiStreamCountFields.map(field => counts[field]).join(',');
     }, { timeout: Math.max(1, 1_000 - (performance.now() - started)), intervals: [20, 50] }).toBe('1,1,1,1');
   });
-  expect(performance.now() - started).toBeLessThanOrEqual(1_000);
+  const closureMs = Math.ceil(performance.now() - started);
+  expect(closureMs).toBeLessThanOrEqual(1_000);
+  return closureMs;
 }
 
 async function exerciseCLIStreamRevocation(mutate) {
@@ -1120,7 +1125,8 @@ async function exerciseCLIStreamRevocation(mutate) {
     const clientClosed = Promise.all([sse.closed, websocket.closed]).then(() => true, () => false);
     const started = performance.now();
     await mutate(page);
-    await expectCLIStreamClosure(started, clientClosed);
+    const closureMs = await expectCLIStreamClosure(started, clientClosed);
+    test.info().annotations.push({ type: 'closure_ms', description: String(closureMs) });
 
     const beforeDenied = await apiStreamCounts();
     const denialResources = new Set();
