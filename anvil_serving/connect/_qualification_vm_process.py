@@ -17,6 +17,46 @@ import time
 from .qualification import _error
 
 _GiB = 1024 ** 3
+_FAILURE_REASONS = frozenset({
+    "timeout", "rss-limit", "file-limit", "output-limit", "line-limit",
+    "record-duplicate", "record-oversized", "record-incomplete", "child-exit",
+    "process-error", "cleanup-failure",
+})
+
+
+class _ProcessFailure(RuntimeError):
+    """An internal, closed reason for a bounded child-execution failure."""
+
+    def __init__(self, reason: str) -> None:
+        if reason not in _FAILURE_REASONS:
+            raise ValueError("invalid process failure reason")
+        self.reason = reason
+
+
+def _failure(code: str, message: str, reason: str, *, execution_started: bool,
+             stage: str, measurements: dict[str, int | None]) -> Exception:
+    """Create a safe qualification error without exposing child diagnostics.
+
+    ``reason`` is deliberately a closed token.  Callers may retain or classify
+    it, but must never substitute a child exception or console content.
+    """
+    if reason not in _FAILURE_REASONS:
+        reason = "process-error"
+    error = _error(code, message, execution_started=execution_started, stage=stage)
+    error.reason = reason
+    error.measurements = measurements
+    return error
+
+
+def _measurements(started: float, peak_rss_bytes: int, output_bytes: int,
+                  process: subprocess.Popen | None) -> dict[str, int | None]:
+    """Return the fixed diagnostic envelope without child text or paths."""
+    return {
+        "elapsed_ms": max(0, round((time.monotonic() - started) * 1000)),
+        "peak_rss_bytes": max(0, peak_rss_bytes),
+        "output_bytes": max(0, output_bytes),
+        "returncode": process.returncode if process is not None and type(process.returncode) is int else None,
+    }
 
 
 @dataclass(frozen=True)
@@ -95,7 +135,7 @@ def execute(argv: list[str], *, home: Path, timeout: float, cpus: tuple[int, ...
             selector.register(process.stdout, selectors.EVENT_READ)
             while selector.get_map() or not _exited(process):
                 if time.monotonic() - started > timeout:
-                    raise TimeoutError
+                    raise _ProcessFailure("timeout")
                 if not _exited(process):
                     try:
                         peak = max(peak, _rss(process.pid))
@@ -103,9 +143,9 @@ def execute(argv: list[str], *, home: Path, timeout: float, cpus: tuple[int, ...
                         if not _exited(process):
                             raise
                     if peak > rss_limit:
-                        raise OSError("process memory bound exceeded")
+                        raise _ProcessFailure("rss-limit")
                 if watched_file is not None and watched_file.stat().st_size > file_limit:
-                    raise OSError("process disk bound exceeded")
+                    raise _ProcessFailure("file-limit")
                 for key, _ in selector.select(0.1):
                     chunk = os.read(key.fileobj.fileno(), 8192)
                     if not chunk:
@@ -113,7 +153,7 @@ def execute(argv: list[str], *, home: Path, timeout: float, cpus: tuple[int, ...
                         continue
                     total += len(chunk)
                     if total > maximum_output:
-                        raise OSError("process output bound exceeded")
+                        raise _ProcessFailure("output-limit")
                     if retained_prefix is None:
                         output.extend(chunk)
                         continue
@@ -122,12 +162,14 @@ def execute(argv: list[str], *, home: Path, timeout: float, cpus: tuple[int, ...
                         content, _, remainder = line.partition(b"\n")
                         line = bytearray(remainder)
                         if content.startswith(retained_prefix):
-                            if record_seen or len(content) > maximum_record:
-                                raise OSError("invalid guest result framing")
+                            if record_seen:
+                                raise _ProcessFailure("record-duplicate")
+                            if len(content) > maximum_record:
+                                raise _ProcessFailure("record-oversized")
                             output.extend(content[len(retained_prefix):].rstrip(b"\r"))
                             record_seen = True
                     if len(line) > maximum_record:
-                        raise OSError("guest console line bound exceeded")
+                        raise _ProcessFailure("line-limit")
         # Dispose of any unexpected descendants before reaping the leader.
         # QEMU and the fixed helper tools must not leave background processes.
         try:
@@ -136,19 +178,25 @@ def execute(argv: list[str], *, home: Path, timeout: float, cpus: tuple[int, ...
             pass
         code = process.wait(timeout=1)
         if retained_prefix is not None and (not record_seen or line.startswith(retained_prefix)):
-            raise OSError("incomplete guest result")
+            raise _ProcessFailure("record-incomplete")
         return ProcessResult(code, bytes(output), round((time.monotonic() - started) * 1000), peak, total)
     except BaseException as exc:
+        reason = "timeout" if isinstance(exc, TimeoutError) else (
+            exc.reason if isinstance(exc, _ProcessFailure) else "process-error"
+        )
         if process is not None:
             try:
                 _terminate(process)
             except (OSError, subprocess.SubprocessError):
-                raise _error("runner-failed", "VM child cleanup failed", execution_started=True, stage="cleanup") from None
+                raise _failure("runner-failed", "VM child cleanup failed", "cleanup-failure",
+                               execution_started=True, stage="cleanup",
+                               measurements=_measurements(started, peak, total, process)) from None
         if isinstance(exc, (KeyboardInterrupt, SystemExit)):
             raise
-        raise _error("runner-timeout" if isinstance(exc, TimeoutError) else "runner-failed",
-                     "VM child exceeded a limit or failed", execution_started=process is not None,
-                     stage="execution") from None
+        raise _failure("runner-timeout" if reason == "timeout" else "runner-failed",
+                       "VM child exceeded a limit or failed", reason,
+                       execution_started=process is not None, stage="execution",
+                       measurements=_measurements(started, peak, total, process)) from None
     finally:
         if process is not None and process.stdout is not None:
             process.stdout.close()
