@@ -21,6 +21,7 @@ _LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _ID = re.compile(r"[a-z][a-z0-9-]{0,62}$")
 _ENV = re.compile(r"[A-Z][A-Z0-9_]{0,127}$")
 _METHODS = {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+_DEVICE_HUMAN = re.compile(r"human:[0-9a-f]{64}$")
 _LITERAL_SECRET = re.compile(r"(?:password|secret|credential|private[_-]?key)", re.I)
 _MAX_MANIFEST_BYTES = 1024 * 1024
 
@@ -148,6 +149,40 @@ def _proxy_url(value: Any, path: str) -> str:
     return text
 
 
+def _canonical_nonroot_path(value: Any, path: str) -> str:
+    """Accept one conservative, non-root path with no normalization ambiguity."""
+    text = _string(value, path)
+    segments = text.split("/")
+    if (not text.startswith("/") or text == "/" or any(char in text for char in "%\\?#")
+            or "//" in text or any(ord(char) < 33 or ord(char) > 126 for char in text)
+            or any(segment in {".", ".."} for segment in segments)
+            or text.endswith("/") or posixpath.normpath(text) != text):
+        raise _error(path, "must be a conservative canonical non-root path")
+    return text
+
+
+def _device_label(value: Any, path: str) -> str:
+    text = _string(value, path)
+    try:
+        encoded = text.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise _error(path, "must contain only valid Unicode scalar values") from exc
+    if len(encoded) > 128 or any(ord(char) < 32 or ord(char) == 127 for char in text):
+        raise _error(path, "must be at most 128 UTF-8 bytes without ASCII controls")
+    return text
+
+
+def _device_methods(value: Any, path: str, allowed: set[str]) -> list[str]:
+    methods = _list(value, path, 7)
+    if any(not isinstance(method, str) or method not in _METHODS for method in methods):
+        raise _error(path, "contains an unsupported HTTP method")
+    if len(set(methods)) != len(methods):
+        raise _error(path, "contains duplicate methods")
+    if not set(methods).issubset(allowed):
+        raise _error(path, "must be a subset of the fixed resource method intersection")
+    return sorted(methods)
+
+
 def _issuer(value: Any, path: str) -> str:
     text = _string(value, path)
     match = re.fullmatch(r"https://([^/:?#]+)", text)
@@ -268,7 +303,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     gateway_raw = _mapping(raw["gateway"], "$.gateway", {"schema", "gateway", "control_host", "tunnel_host", "state_directory", "tunnel_binary", "tunnel_listen", "oidc"})
     if gateway_raw["schema"] != "anvil-connect.gateway-runtime/v1":
         raise _error("$.gateway.schema", "must equal anvil-connect.gateway-runtime/v1")
-    embedded = _mapping(gateway_raw["gateway"], "$.gateway.gateway", {"schema", "listen", "max_concurrent", "resources"})
+    embedded_fields = {"schema", "listen", "max_concurrent", "resources"}
+    if isinstance(gateway_raw["gateway"], dict) and "device_authorizations" in gateway_raw["gateway"]:
+        embedded_fields.add("device_authorizations")
+    embedded = _mapping(gateway_raw["gateway"], "$.gateway.gateway", embedded_fields)
     if embedded["schema"] != "anvil-connect.gateway/v1":
         raise _error("$.gateway.gateway.schema", "must equal anvil-connect.gateway/v1")
     gateway_listen = _loopback(embedded["listen"], "$.gateway.gateway.listen")
@@ -310,9 +348,52 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if not any(resource["rule"]["access"] == "browser" for resource in resources):
         raise _error("$.gateway.gateway.resources", "managed deployment requires at least one browser resource")
     oidc = _mapping(gateway_raw["oidc"], "$.gateway.oidc", {"issuer", "client_id", "client_secret_env"})
+    gateway_resource_index = {resource["rule"]["id"]: resource for resource in resources}
+    device_authorizations: list[dict[str, Any]] = []
+    if "device_authorizations" in embedded:
+        raw_authorizations = _list(embedded["device_authorizations"], "$.gateway.gateway.device_authorizations")
+        browser_resources: set[str] = set()
+        api_resources: set[str] = set()
+        for index, raw_authorization in enumerate(raw_authorizations):
+            path = f"$.gateway.gateway.device_authorizations[{index}]"
+            authorization = _mapping(raw_authorization, path, {"browser_resource", "api_resource", "methods", "label", "principals"})
+            browser_id = _ident(authorization["browser_resource"], path + ".browser_resource")
+            api_id = _ident(authorization["api_resource"], path + ".api_resource")
+            browser = gateway_resource_index.get(browser_id)
+            api = gateway_resource_index.get(api_id)
+            if browser is None or browser["rule"]["access"] != "browser":
+                raise _error(path + ".browser_resource", "must name a declared browser resource")
+            if api is None or api["rule"]["access"] != "api":
+                raise _error(path + ".api_resource", "must name a declared API resource")
+            if browser_id == api_id or browser_id in browser_resources or api_id in api_resources:
+                raise _error(path, "browser_resource and api_resource must each be unique")
+            if not {"GET", "POST"}.issubset(browser["rule"]["methods"]):
+                raise _error(path + ".browser_resource", "device approval browser resource must allow GET and POST")
+            browser_resources.add(browser_id)
+            api_resources.add(api_id)
+            methods = _device_methods(authorization["methods"], path + ".methods", set(browser["rule"]["methods"]).intersection(api["rule"]["methods"]))
+            principals = authorization["principals"]
+            if not isinstance(principals, dict) or not 1 <= len(principals) <= _MAX_ITEMS or any(item is None for item in principals.values()):
+                raise _error(path + ".principals", "must contain between 1 and 64 opaque human mappings")
+            normalized_principals: dict[str, str] = {}
+            for human, principal in principals.items():
+                if not isinstance(human, str) or not _DEVICE_HUMAN.fullmatch(human):
+                    raise _error(path + ".principals", "keys must be canonical opaque human identifiers")
+                normalized_principals[human] = _ident(principal, path + ".principals." + human)
+            device_authorizations.append({
+                "browser_resource": browser_id,
+                "api_resource": api_id,
+                "methods": methods,
+                "label": _device_label(authorization["label"], path + ".label"),
+                "principals": {human: normalized_principals[human] for human in sorted(normalized_principals)},
+            })
+        device_authorizations.sort(key=lambda item: item["browser_resource"])
+    gateway_embedded = {"schema": embedded["schema"], "listen": gateway_listen, "max_concurrent": _positive(embedded["max_concurrent"], "$.gateway.gateway.max_concurrent", 512), "resources": sorted(resources, key=lambda r: r["rule"]["id"])}
+    if "device_authorizations" in embedded:
+        gateway_embedded["device_authorizations"] = device_authorizations
     gateway = {
         "schema": gateway_raw["schema"],
-        "gateway": {"schema": embedded["schema"], "listen": gateway_listen, "max_concurrent": _positive(embedded["max_concurrent"], "$.gateway.gateway.max_concurrent", 512), "resources": sorted(resources, key=lambda r: r["rule"]["id"])},
+        "gateway": gateway_embedded,
         "control_host": _host(gateway_raw["control_host"], "$.gateway.control_host"),
         "tunnel_host": _host(gateway_raw["tunnel_host"], "$.gateway.tunnel_host"),
         "state_directory": _abs_path(gateway_raw["state_directory"], "$.gateway.state_directory"),
@@ -340,8 +421,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         if item["schema"] != "anvil-connect.connector-runtime/v1":
             raise _error(path + ".schema", "must equal anvil-connect.connector-runtime/v1")
         connector_resources = []
-        for resource_index, resource_raw in enumerate(_list(item["resources"], path + ".resources")):
-            rp = f"{path}.resources[{resource_index}]"
+        for resource_number, resource_raw in enumerate(_list(item["resources"], path + ".resources")):
+            rp = f"{path}.resources[{resource_number}]"
             resource = _mapping(resource_raw, rp, {"envelope", "reverse_address"})
             connector_resources.append({"envelope": _envelope(resource["envelope"], rp + ".envelope"), "reverse_address": _loopback(resource["reverse_address"], rp + ".reverse_address")})
         connector = {
@@ -393,7 +474,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     clients: list[dict[str, Any]] = []
     for index, client_raw in enumerate(client_raws):
         path = f"$.clients[{index}]"
-        item = _mapping(client_raw, path, {"schema", "rule", "listen", "local_key_env", "remote_key_env"})
+        client_fields = {"schema", "rule", "listen", "local_key_env", "remote_key_env"}
+        if isinstance(client_raw, dict) and "device_authorization" in client_raw:
+            client_fields.add("device_authorization")
+        item = _mapping(client_raw, path, client_fields)
         if item["schema"] != "anvil-connect.client-runtime/v1":
             raise _error(path + ".schema", "must equal anvil-connect.client-runtime/v1")
         rule = _rule(item["rule"], path + ".rule")
@@ -406,12 +490,37 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         local_key_env, remote_key_env = _env(item["local_key_env"], path + ".local_key_env"), _env(item["remote_key_env"], path + ".remote_key_env")
         if local_key_env == remote_key_env:
             raise _error(path, "local_key_env and remote_key_env must differ")
-        clients.append({"schema": item["schema"], "rule": rule, "listen": listen, "local_key_env": local_key_env, "remote_key_env": remote_key_env})
+        client = {"schema": item["schema"], "rule": rule, "listen": listen, "local_key_env": local_key_env, "remote_key_env": remote_key_env}
+        if "device_authorization" in item:
+            raw_device = _mapping(item["device_authorization"], path + ".device_authorization", {"browser_host", "approval_path", "api_resource", "methods"})
+            api_resource = _ident(raw_device["api_resource"], path + ".device_authorization.api_resource")
+            if api_resource != rule["id"]:
+                raise _error(path + ".device_authorization.api_resource", "must equal the client API resource")
+            client["device_authorization"] = {
+                "browser_host": _host(raw_device["browser_host"], path + ".device_authorization.browser_host"),
+                "approval_path": _canonical_nonroot_path(raw_device["approval_path"], path + ".device_authorization.approval_path"),
+                "api_resource": api_resource,
+                "methods": _device_methods(raw_device["methods"], path + ".device_authorization.methods", set(rule["methods"])),
+            }
+        clients.append(client)
     if len({client["rule"]["id"] for client in clients}) != len(clients):
         raise _error("$.clients", "contains duplicate client rule ids")
     gateway_api_rules = {resource["rule"]["id"]: resource["rule"] for resource in gateway["gateway"]["resources"] if resource["rule"]["access"] == "api"}
     if any(gateway_api_rules.get(client["rule"]["id"]) != client["rule"] for client in clients):
         raise _error("$.clients", "every client rule must exactly match a gateway API rule")
+    device_by_api = {item["api_resource"]: item for item in device_authorizations}
+    for client in clients:
+        device = client.get("device_authorization")
+        if device is None:
+            continue
+        expected = device_by_api.get(client["rule"]["id"])
+        if expected is None:
+            raise _error("$.clients", "device authorization must copy a declared gateway authorization")
+        browser = gateway_resource_index[expected["browser_resource"]]["rule"]
+        approval_path = posixpath.join(browser["path_prefix"], "_anvil-connect/device")
+        if (device["browser_host"] != browser["host"] or device["approval_path"] != approval_path
+                or device["api_resource"] != expected["api_resource"] or device["methods"] != expected["methods"]):
+            raise _error("$.clients", "device authorization must exactly copy the fixed gateway authorization")
     clients.sort(key=lambda c: c["rule"]["id"])
     connector_env_raw = _mapping(environment_raw["connectors"], "$.environment_files.connectors", set(connector_index))
     client_env_raw = _mapping(environment_raw["clients"], "$.environment_files.clients", {client["rule"]["id"] for client in clients})

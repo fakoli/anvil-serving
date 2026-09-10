@@ -28,6 +28,7 @@ anvil-connect preflight --mode gateway|connector|client --config FILE
 anvil-connect init --mode gateway --config FILE
 anvil-connect init --mode connector --config FILE --bundle PRIVATE_FILE
 anvil-connect gateway|connector|client --config FILE
+anvil-connect login --config FILE
 anvil-connect identity --config FILE
 anvil-connect admin --socket PATH --request FILE [--output PRIVATE_FILE]
 anvil-connect keygen --output PRIVATE_FILE
@@ -75,9 +76,12 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 		if command == "init" {
 			fs.StringVar(&bundle, "bundle", "", "private enrollment invitation")
 		}
-	case "gateway", "connector", "client", "identity":
+	case "gateway", "connector", "client", "login", "identity":
 		fs.StringVar(&file, "config", "", "closed declaration")
 		mode = command
+		if command == "login" {
+			mode = "client"
+		}
 		if command == "identity" {
 			mode = "connector"
 		}
@@ -239,6 +243,8 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	}
 	if command == "client" {
 		err = serveClient(ctx, local, lookup, func() error { return json.NewEncoder(out).Encode(map[string]string{"mode": mode, "status": "running"}) })
+	} else if command == "login" {
+		err = loginClient(ctx, local, lookup, out)
 	} else {
 		var process interface {
 			Close()
@@ -262,6 +268,9 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 		process.Close()
 	}
 	if err != nil {
+		if command == "login" {
+			return loginFailure(diagnostics, err)
+		}
 		return fail()
 	}
 	return status(map[string]string{"mode": mode, "status": "stopped"})
