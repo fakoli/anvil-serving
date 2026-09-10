@@ -1,6 +1,8 @@
 import { test, expect, chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
 import { chmod, lstat, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import * as http from 'node:http';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -835,6 +837,326 @@ test('container-gated browser streams close on logout', async () => {
   test.setTimeout(90_000);
   test.skip(process.env.ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE !== '1', 'requires the disposable P02 container loopback DNS and port 443');
   await exerciseBrowserStreamRevocation(async page => {
+    const logout = page.waitForResponse(response => response.url().startsWith(`https://${dashHost}/_anvil-connect/logout`) && response.request().method() === 'POST').catch(() => null);
+    await page.evaluate(() => fetch('/_anvil-connect/logout', { method: 'POST', redirect: 'manual' }));
+    const response = await logout;
+    expect(response).not.toBeNull();
+    expect(response.status()).toBe(303);
+  });
+});
+
+const apiStreamCountFields = ['events_started', 'events_closed', 'ws_started', 'ws_closed'];
+const localKeyPattern = /^acl1\.[A-Za-z0-9_-]{43}$/;
+
+// The local forwarder defines acl1. + raw-base64url(32 bytes). Decode and
+// re-encode rather than treating a shape-only string as a usable local key.
+function validFixtureLocalKey(value) {
+  if (!localKeyPattern.test(value)) return false;
+  try {
+    const encoded = value.slice('acl1.'.length);
+    return Buffer.from(encoded, 'base64url').length === 32 && Buffer.from(encoded, 'base64url').toString('base64url') === encoded;
+  } catch {
+    return false;
+  }
+}
+
+function loopbackStreamOptions(baseURL, path, localKey) {
+  let base;
+  try {
+    base = new URL(baseURL);
+  } catch {
+    throw new Error('invalid-loopback-stream-configuration');
+  }
+  const port = Number(base.port);
+  if (base.protocol !== 'http:' || base.hostname !== '127.0.0.1' || base.username || base.password
+    || base.pathname !== '/v1' || base.search || base.hash || !/^[1-9]\d{0,4}$/.test(base.port)
+    || port > 65_535 || !['/events', '/ws'].includes(path) || !validFixtureLocalKey(localKey)) {
+    throw new Error('invalid-loopback-stream-configuration');
+  }
+  return {
+    protocol: 'http:', hostname: '127.0.0.1', port,
+    method: 'GET', path: `/v1${path}`, maxHeaderSize: 8192,
+    headers: { Authorization: `Bearer ${localKey}` },
+  };
+}
+
+function destroyOwned(resources) {
+  for (const resource of resources) {
+    try { resource.destroy?.(); } catch {}
+  }
+}
+
+function boundedOpen(open, label, resources) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      destroyOwned(resources);
+      reject(new Error(`${label}-open-timeout`));
+    }, 5_000);
+    open.then(value => {
+      clearTimeout(timer);
+      resolve(value);
+    }, error => {
+      clearTimeout(timer);
+      destroyOwned(resources);
+      reject(error);
+    });
+  });
+}
+
+function openCLISSE(baseURL, localKey, resources) {
+  return boundedOpen(new Promise((resolve, reject) => {
+    const request = http.request(loopbackStreamOptions(baseURL, '/events', localKey));
+    resources.add(request);
+    let settled = false;
+    const fail = () => {
+      if (!settled) {
+        settled = true;
+        destroyOwned(resources);
+        reject(new Error('cli-sse-open-failed'));
+      }
+    };
+    request.once('error', fail);
+    request.once('response', response => {
+      resources.add(response);
+      response.on('error', () => {});
+      if (response.statusCode !== 200) {
+        response.destroy();
+        request.destroy();
+        fail();
+        return;
+      }
+      let marker = '';
+      const closed = new Promise(done => {
+        const finish = () => done(true);
+        response.once('close', finish);
+        response.once('end', finish);
+        response.once('error', finish);
+      });
+      response.on('data', chunk => {
+        marker = (marker + chunk).slice(-64);
+        if (!marker.includes('data: ready\n\n') || settled) return;
+        settled = true;
+        resolve({ request, response, closed });
+      });
+      response.once('end', fail);
+    });
+    request.end();
+  }), 'cli-sse', resources);
+}
+
+function websocketAccept(key) {
+  return createHash('sha1').update(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`).digest('base64');
+}
+
+function hasConnectionUpgrade(value) {
+  return typeof value === 'string' && value.split(',').some(token => token.trim().toLowerCase() === 'upgrade');
+}
+
+function openCLIWebSocket(baseURL, localKey, resources) {
+  return boundedOpen(new Promise((resolve, reject) => {
+    const key = randomBytes(16).toString('base64');
+    const options = loopbackStreamOptions(baseURL, '/ws', localKey);
+    options.headers = {
+      ...options.headers, Connection: 'Upgrade', Upgrade: 'websocket',
+      'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': key,
+    };
+    const request = http.request(options);
+    resources.add(request);
+    let settled = false;
+    const fail = () => {
+      if (!settled) {
+        settled = true;
+        destroyOwned(resources);
+        reject(new Error('cli-websocket-open-failed'));
+      }
+    };
+    request.once('error', fail);
+    request.once('response', response => {
+      resources.add(response);
+      response.on('error', () => {});
+      response.destroy();
+      request.destroy();
+      fail();
+    });
+    request.once('upgrade', (response, socket) => {
+      resources.add(response);
+      resources.add(socket);
+      socket.on('error', () => {});
+      const valid = response.statusCode === 101
+        && String(response.headers.upgrade || '').toLowerCase() === 'websocket'
+        && hasConnectionUpgrade(response.headers.connection)
+        && response.headers['sec-websocket-accept'] === websocketAccept(key);
+      if (!valid) {
+        socket.destroy();
+        request.destroy();
+        fail();
+        return;
+      }
+      const closed = new Promise(done => {
+        const finish = () => done(true);
+        socket.once('close', finish);
+        socket.once('end', finish);
+        socket.once('error', finish);
+      });
+      // Drain control frames so the close handshake remains observable without
+      // retaining an unread socket buffer during the active-stream interval.
+      socket.resume();
+      settled = true;
+      resolve({ request, socket, closed });
+    });
+    request.end();
+  }), 'cli-websocket', resources);
+}
+
+async function streamHTTPStatus(baseURL, path, localKey, upgrade, resources) {
+  return boundedOpen(new Promise((resolve, reject) => {
+    const options = loopbackStreamOptions(baseURL, path, localKey);
+    if (upgrade) {
+      const key = randomBytes(16).toString('base64');
+      options.headers = {
+        ...options.headers, Connection: 'Upgrade', Upgrade: 'websocket',
+        'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': key,
+      };
+    }
+    const request = http.request(options);
+    resources.add(request);
+    let settled = false;
+    const finish = status => { if (!settled) { settled = true; resolve(status); } };
+    const fail = () => {
+      if (!settled) {
+        settled = true;
+        destroyOwned(resources);
+        reject(new Error('cli-stream-denial-failed'));
+      }
+    };
+    request.once('error', fail);
+    request.once('response', response => {
+      resources.add(response);
+      response.on('error', () => {});
+      const status = response.statusCode;
+      response.destroy();
+      request.destroy();
+      finish(status);
+    });
+    request.once('upgrade', (response, socket) => {
+      resources.add(response);
+      resources.add(socket);
+      socket.on('error', () => {});
+      const status = response.statusCode;
+      socket.destroy();
+      request.destroy();
+      finish(status);
+    });
+    request.end();
+  }), 'cli-stream-denial', resources);
+}
+
+function closeCLIStreams(streams, resources) {
+  destroyOwned(resources);
+  streams?.sse?.request?.destroy();
+  streams?.sse?.response?.destroy();
+  streams?.websocket?.request?.destroy();
+  streams?.websocket?.socket?.destroy();
+}
+
+async function apiStreamCounts(timeout = 5_000) {
+  const counts = await fixture.command('api stream counts', timeout);
+  expect(Object.keys(counts).sort()).toEqual(['ack', ...apiStreamCountFields].sort());
+  expect(counts.ack).toBe('api stream counts');
+  for (const field of apiStreamCountFields) expect(counts[field]).toMatch(/^\d+$/);
+  return counts;
+}
+
+async function expectCLIStreamClosure(started, clientClosed) {
+  const withinBound = action => {
+    const remaining = 1_000 - (performance.now() - started);
+    if (remaining <= 0) throw new Error('cli-stream-closure-exceeded-bound');
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('cli-stream-closure-exceeded-bound')), remaining);
+      Promise.resolve().then(action).then(
+        value => { clearTimeout(timer); resolve(value); },
+        error => { clearTimeout(timer); reject(error); },
+      );
+    });
+  };
+  expect(await withinBound(async () => clientClosed)).toBe(true);
+  await withinBound(async () => {
+    await expect.poll(async () => {
+      const remaining = Math.max(1, 1_000 - (performance.now() - started));
+      const counts = await apiStreamCounts(remaining);
+      return apiStreamCountFields.map(field => counts[field]).join(',');
+    }, { timeout: Math.max(1, 1_000 - (performance.now() - started)), intervals: [20, 50] }).toBe('1,1,1,1');
+  });
+  expect(performance.now() - started).toBeLessThanOrEqual(1_000);
+}
+
+async function exerciseCLIStreamRevocation(mutate) {
+  const edgeFixture = fixture;
+  let loginSession;
+  let streams;
+  const streamResources = new Set();
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE');
+  try {
+    const page = await freshPage();
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+
+    const cli = await buildDeviceCLI(fixture.dir);
+    loginSession = await startDeviceCLI(cli, fixture);
+    const challenge = await waitForDeviceEvent(loginSession.challenge);
+    await page.goto(challenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(challenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const ready = await waitForDeviceEvent(loginSession.ready);
+    const localKey = (await readFile(fixture.local_key, 'utf8')).trim();
+    expect(validFixtureLocalKey(localKey)).toBe(true);
+
+    const [sse, websocket] = await Promise.all([openCLISSE(ready.baseURL, localKey, streamResources), openCLIWebSocket(ready.baseURL, localKey, streamResources)]);
+    streams = { sse, websocket };
+    expect(await apiStreamCounts()).toMatchObject({
+      events_started: '1', events_closed: '0', ws_started: '1', ws_closed: '0',
+    });
+    const clientClosed = Promise.all([sse.closed, websocket.closed]).then(() => true, () => false);
+    const started = performance.now();
+    await mutate(page);
+    await expectCLIStreamClosure(started, clientClosed);
+
+    const beforeDenied = await apiStreamCounts();
+    const denialResources = new Set();
+    try {
+      expect(await streamHTTPStatus(ready.baseURL, '/events', localKey, false, denialResources)).toBe(401);
+      expect(await streamHTTPStatus(ready.baseURL, '/ws', localKey, true, denialResources)).toBe(401);
+    } finally {
+      destroyOwned(denialResources);
+    }
+    expect(await apiStreamCounts()).toEqual(beforeDenied);
+
+    await stopDeviceCLI(loginSession);
+    loginSession = undefined;
+    await assertLoopbackReleased(ready.baseURL);
+  } finally {
+    closeCLIStreams(streams, streamResources);
+    try { await stopDeviceCLI(loginSession); } finally {
+      const deviceFixture = fixture;
+      fixture = edgeFixture;
+      await cleanup(deviceFixture);
+    }
+  }
+}
+
+test('container-gated CLI streams close on human disable', async () => {
+  test.setTimeout(90_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE !== '1', 'requires the disposable P02 container loopback DNS and port 443');
+  await exerciseCLIStreamRevocation(async () => {
+    await fixture.command('disable allowed');
+  });
+});
+
+test('container-gated CLI streams close on browser logout', async () => {
+  test.setTimeout(90_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE !== '1', 'requires the disposable P02 container loopback DNS and port 443');
+  await exerciseCLIStreamRevocation(async page => {
     const logout = page.waitForResponse(response => response.url().startsWith(`https://${dashHost}/_anvil-connect/logout`) && response.request().method() === 'POST').catch(() => null);
     await page.evaluate(() => fetch('/_anvil-connect/logout', { method: 'POST', redirect: 'manual' }));
     const response = await logout;
