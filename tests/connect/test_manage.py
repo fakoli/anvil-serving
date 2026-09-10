@@ -115,7 +115,16 @@ def deployment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, d
     value["config_root"] = str(tmp_path / "rendered")
     value["gateway"]["state_directory"] = str(tmp_path / "gateway-state")
     value["authelia"]["state_directory"] = str(tmp_path / "authelia-state")
-    value["service_user"] = service_account()
+    value.pop("service_user")
+    value["caddy"]["state_directory"] = str(tmp_path / "caddy-state")
+    value["service_identities"] = {
+        "gateway": {"uid": 1201, "gid": 2201},
+        "edge": {"uid": 1202, "gid": 2202},
+        "idp": {"uid": 1203, "gid": 2203},
+        "connectors": {"dashboard": {"uid": 1204, "gid": 2204}},
+        "clients": {"dashboard-api": {"uid": 1205, "gid": 2205}},
+        "ingress": {"group_id": 2290, "directory": str(tmp_path / "ingress")},
+    }
     for section, name in (("gateway", "gateway.env"),):
         value["environment_files"][section] = str(tmp_path / name)
     for name in value["environment_files"]["connectors"]:
@@ -125,6 +134,20 @@ def deployment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, d
     for env in [value["environment_files"]["gateway"], *value["environment_files"]["connectors"].values(), *value["environment_files"]["clients"].values()]:
         Path(env).write_text("DECLARED_ONLY=1\n", encoding="utf-8")
         Path(env).chmod(0o600)
+    environment_paths = {Path(value["environment_files"]["gateway"]), *(Path(item) for item in value["environment_files"]["connectors"].values()), *(Path(item) for item in value["environment_files"]["clients"].values())}
+    original_lstat = Path.lstat
+
+    def root_owned_environment_lstat(path: Path):
+        info = original_lstat(path)
+        if path in environment_paths:
+            return os.stat_result((info.st_mode, info.st_ino, info.st_dev, info.st_nlink,
+                                   0, info.st_gid, info.st_size, info.st_atime, info.st_mtime, info.st_ctime))
+        return info
+
+    monkeypatch.setattr(Path, "lstat", root_owned_environment_lstat)
+    monkeypatch.setattr(manage, "_validate_isolated_runtime", lambda *_: None)
+    monkeypatch.setattr(manage, "_safe_root_ancestors", lambda *_: None)
+    monkeypatch.setattr(manage, "_role_service_identity", lambda *_: None)
     manifest = tmp_path / "deployment.json"
     manifest.write_text(json.dumps(value), encoding="utf-8")
     monkeypatch.setattr(manage, "_component_lock", lambda: {"caddy": caddy_digest, "authelia": authelia_digest})
@@ -553,7 +576,7 @@ def test_gateway_readiness_status_request_is_readable_by_service_identity_under_
         root = Path(temporary)
         root.chmod(0o755)
         _manifest, value, _native = deployment(root, monkeypatch)
-        value["service_user"] = service.pw_name
+        monkeypatch.setattr(manage, "_role_service_identity", lambda *_: manage.ServiceIdentity(service.pw_uid, service.pw_gid))
         observed: list[Path] = []
 
         def service_runner(argv, timeout, identity):  # type: ignore[no-untyped-def]
@@ -793,9 +816,7 @@ def test_preflight_temporary_declaration_is_readable_after_real_uid_drop(tmp_pat
         checker.chmod(0o755)
         value["binary"] = str(checker)
         value["components"] = {"caddy": str(checker), "authelia": str(checker)}
-        value["service_user"] = service.pw_name
-        for path in [value["environment_files"]["gateway"], *value["environment_files"]["connectors"].values(), *value["environment_files"]["clients"].values()]:
-            os.chown(path, service.pw_uid, service.pw_gid)
+        monkeypatch.setattr(manage, "_role_service_identity", lambda *_: manage.ServiceIdentity(service.pw_uid, service.pw_gid))
         manifest.write_text(json.dumps(value), encoding="utf-8")
         digest = hashlib.sha256(checker.read_bytes()).hexdigest()
         monkeypatch.setattr(manage, "_component_lock", lambda: {"caddy": digest, "authelia": digest})
@@ -836,16 +857,18 @@ def test_partial_component_activation_record_is_closed_before_binding_or_upgrade
         manage.up_many(manifest, manage._targets(value, None), upgrade=True, apply=True, runner=runner, unit_root=units)
 
 
-def test_service_identity_rejects_root_and_group_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
-    data = {"service_user": "svc"}
-    monkeypatch.setattr(manage.pwd, "getpwnam", lambda _: SimpleNamespace(pw_uid=0, pw_gid=10))
-    monkeypatch.setattr(manage.grp, "getgrnam", lambda _: SimpleNamespace(gr_gid=10))
+def test_role_identity_rejects_root_and_group_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    data = {"service_identities": {}}
+    monkeypatch.setattr(manage, "role_identity", lambda *_: (0, 10))
+    monkeypatch.setattr(manage.pwd, "getpwuid", lambda _: SimpleNamespace(pw_uid=0, pw_gid=10, pw_name="svc"))
+    monkeypatch.setattr(manage.grp, "getgrgid", lambda _: SimpleNamespace(gr_gid=10))
     with pytest.raises(manage.ManageError, match="unsafe"):
-        manage._service_identity(data)
-    monkeypatch.setattr(manage.pwd, "getpwnam", lambda _: SimpleNamespace(pw_uid=10, pw_gid=11))
-    monkeypatch.setattr(manage.grp, "getgrnam", lambda _: SimpleNamespace(gr_gid=12))
+        manage._role_service_identity(data, "gateway")
+    monkeypatch.setattr(manage, "role_identity", lambda *_: (10, 12))
+    monkeypatch.setattr(manage.pwd, "getpwuid", lambda _: SimpleNamespace(pw_uid=10, pw_gid=11, pw_name="svc"))
+    monkeypatch.setattr(manage.grp, "getgrgid", lambda _: SimpleNamespace(gr_gid=12))
     with pytest.raises(manage.ManageError, match="unsafe"):
-        manage._service_identity(data)
+        manage._role_service_identity(data, "gateway")
 
 
 def test_restore_preserves_enabled_runtime_and_partial_failure() -> None:

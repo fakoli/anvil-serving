@@ -24,6 +24,7 @@ _METHODS = {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 _DEVICE_HUMAN = re.compile(r"human:[0-9a-f]{64}$")
 _LITERAL_SECRET = re.compile(r"(?:password|secret|credential|private[_-]?key)", re.I)
 _MAX_MANIFEST_BYTES = 1024 * 1024
+_MAX_LINUX_ID = 2147483647
 
 
 class ManifestError(ValueError):
@@ -122,6 +123,77 @@ def _positive(value: Any, path: str, maximum: int) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or not 0 < value <= maximum:
         raise _error(path, f"must be an integer between 1 and {maximum}")
     return value
+
+
+def _identity(value: Any, path: str) -> dict[str, int]:
+    raw = _mapping(value, path, {"uid", "gid"})
+    return {
+        "uid": _positive(raw["uid"], path + ".uid", _MAX_LINUX_ID),
+        "gid": _positive(raw["gid"], path + ".gid", _MAX_LINUX_ID),
+    }
+
+
+def _identity_map(value: Any, path: str) -> dict[str, dict[str, int]]:
+    if not isinstance(value, dict) or len(value) > _MAX_ITEMS or any(item is None for item in value.values()):
+        raise _error(path, f"must contain at most {_MAX_ITEMS} identity mappings")
+    normalized: dict[str, dict[str, int]] = {}
+    for name, identity in value.items():
+        normalized[_ident(name, path + ".key")] = _identity(identity, path + "." + str(name))
+    return {name: normalized[name] for name in sorted(normalized)}
+
+
+def _service_identities(value: Any, path: str) -> dict[str, Any]:
+    raw = _mapping(value, path, {"gateway", "edge", "idp", "connectors", "clients", "ingress"})
+    ingress = _mapping(raw["ingress"], path + ".ingress", {"group_id", "directory"})
+    normalized: dict[str, Any] = {
+        "gateway": _identity(raw["gateway"], path + ".gateway"),
+        "edge": _identity(raw["edge"], path + ".edge"),
+        "idp": _identity(raw["idp"], path + ".idp"),
+        "connectors": _identity_map(raw["connectors"], path + ".connectors"),
+        "clients": _identity_map(raw["clients"], path + ".clients"),
+        "ingress": {
+            "group_id": _positive(ingress["group_id"], path + ".ingress.group_id", _MAX_LINUX_ID),
+            "directory": _abs_path(ingress["directory"], path + ".ingress.directory"),
+        },
+    }
+    roles = [normalized["gateway"], normalized["edge"], normalized["idp"], *normalized["connectors"].values(), *normalized["clients"].values()]
+    if len({item["uid"] for item in roles}) != len(roles):
+        raise _error(path, "role UIDs must be distinct")
+    if len({item["gid"] for item in roles}) != len(roles):
+        raise _error(path, "role primary GIDs must be distinct")
+    if normalized["ingress"]["group_id"] in {item["gid"] for item in roles}:
+        raise _error(path + ".ingress.group_id", "must differ from every role primary GID")
+    return normalized
+
+
+def require_isolated(data: dict[str, Any]) -> None:
+    """Reject a legacy declaration at a publishing or activation boundary."""
+    if not isinstance(data, dict) or "service_identities" not in data:
+        raise ManifestError("$.service_identities: isolated service identities are required")
+
+
+def role_identity(data: dict[str, Any], role: str, identifier: str | None = None) -> tuple[int, int]:
+    """Return one normalized isolated role identity without host account lookup."""
+    require_isolated(data)
+    identities = data["service_identities"]
+    if role in {"gateway", "edge", "idp"} and identifier is None:
+        identity = identities[role]
+    elif role in {"connector", "client"} and isinstance(identifier, str):
+        collection = "connectors" if role == "connector" else "clients"
+        identity = identities[collection].get(identifier)
+        if identity is None:
+            raise ManifestError(f"$.service_identities.{collection}: unknown role identifier")
+    else:
+        raise ManifestError("$.service_identities: invalid role identity lookup")
+    return identity["uid"], identity["gid"]
+
+
+def _paths_disjoint(paths: dict[str, str], path: str) -> None:
+    entries = sorted(paths.items())
+    for index, (left_name, left) in enumerate(entries):
+        for right_name, right in entries[index + 1:]:
+            if left == right or left.startswith(right + "/") or right.startswith(left + "/"):
+                raise _error(path, f"{left_name} and {right_name} must be disjoint paths")
 
 
 def _loopback(value: Any, path: str) -> str:
@@ -284,7 +356,10 @@ def _reject_literal_credentials(value: Any, path: str = "$") -> None:
 def validate_manifest(value: Any) -> dict[str, Any]:
     """Validate and normalize a closed deployment manifest without side effects."""
     _reject_literal_credentials(value)
-    raw = _mapping(value, "$", {"schema", "binary", "components", "config_root", "environment_files", "service_user", "gateway", "connectors", "clients", "caddy", "authelia"})
+    root_fields = {"schema", "binary", "components", "config_root", "environment_files", "gateway", "connectors", "clients", "caddy", "authelia"}
+    if isinstance(value, dict):
+        root_fields.update({"service_user", "service_identities"}.intersection(value))
+    raw = _mapping(value, "$", root_fields)
     if raw["schema"] != SCHEMA:
         raise _error("$.schema", f"must equal {SCHEMA}")
     binary = _abs_path(raw["binary"], "$.binary")
@@ -298,11 +373,18 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     environment_gateway = _abs_path(environment_raw["gateway"], "$.environment_files.gateway")
     environment_gateway_identity = (_abs_path(environment_raw["gateway_identity"], "$.environment_files.gateway_identity")
                                     if "gateway_identity" in environment_raw else None)
-    service_user = _ident(raw["service_user"], "$.service_user")
+    has_legacy_user = "service_user" in raw
+    has_identities = "service_identities" in raw
+    if has_legacy_user == has_identities:
+        raise _error("$", "must contain exactly one of service_user or service_identities")
+    service_user = _ident(raw["service_user"], "$.service_user") if has_legacy_user else None
+    service_identities = _service_identities(raw["service_identities"], "$.service_identities") if has_identities else None
 
     gateway_fields = {"schema", "gateway", "control_host", "tunnel_host", "state_directory", "tunnel_binary", "tunnel_listen", "oidc"}
     if isinstance(raw["gateway"], dict) and "browser_session_lifetime_seconds" in raw["gateway"]:
         gateway_fields.add("browser_session_lifetime_seconds")
+    if isinstance(raw["gateway"], dict) and "ingress" in raw["gateway"]:
+        gateway_fields.add("ingress")
     gateway_raw = _mapping(raw["gateway"], "$.gateway", gateway_fields)
     if gateway_raw["schema"] != "anvil-connect.gateway-runtime/v1":
         raise _error("$.gateway.schema", "must equal anvil-connect.gateway-runtime/v1")
@@ -417,6 +499,26 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         "tunnel_listen": _loopback(gateway_raw["tunnel_listen"], "$.gateway.tunnel_listen"),
         "oidc": {"issuer": _issuer(oidc["issuer"], "$.gateway.oidc.issuer"), "client_id": _client_id(oidc["client_id"], "$.gateway.oidc.client_id"), "client_secret_env": _env(oidc["client_secret_env"], "$.gateway.oidc.client_secret_env")},
     }
+    if service_identities is not None:
+        derived_ingress = {
+            "directory": service_identities["ingress"]["directory"],
+            "gateway_uid": service_identities["gateway"]["uid"],
+            "edge_uid": service_identities["edge"]["uid"],
+            "group_id": service_identities["ingress"]["group_id"],
+        }
+        if "ingress" in gateway_raw:
+            supplied = _mapping(gateway_raw["ingress"], "$.gateway.ingress", {"directory", "gateway_uid", "edge_uid", "group_id"})
+            normalized_supplied = {
+                "directory": _abs_path(supplied["directory"], "$.gateway.ingress.directory"),
+                "gateway_uid": _positive(supplied["gateway_uid"], "$.gateway.ingress.gateway_uid", _MAX_LINUX_ID),
+                "edge_uid": _positive(supplied["edge_uid"], "$.gateway.ingress.edge_uid", _MAX_LINUX_ID),
+                "group_id": _positive(supplied["group_id"], "$.gateway.ingress.group_id", _MAX_LINUX_ID),
+            }
+            if normalized_supplied != derived_ingress:
+                raise _error("$.gateway.ingress", "must equal the derived isolated ingress policy")
+        gateway["ingress"] = derived_ingress
+    elif "ingress" in gateway_raw:
+        raise _error("$.gateway.ingress", "requires service_identities")
     if "browser_session_lifetime_seconds" in gateway_raw:
         lifetime = gateway_raw["browser_session_lifetime_seconds"]
         if isinstance(lifetime, bool) or not isinstance(lifetime, int) or not 60 <= lifetime <= 86400:
@@ -557,10 +659,21 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     }
     if environment_gateway_identity is not None:
         environment_files["gateway_identity"] = environment_gateway_identity
+    environment_paths = [
+        environment_files["gateway"],
+        *environment_files["connectors"].values(),
+        *environment_files["clients"].values(),
+    ]
+    if "gateway_identity" in environment_files:
+        environment_paths.append(environment_files["gateway_identity"])
+    if len(environment_paths) != len(set(environment_paths)):
+        raise _error("$.environment_files", "must not reuse canonical EnvironmentFile paths")
 
     caddy_fields = {"service_name", "tls"}
     if isinstance(raw["caddy"], dict) and "listen" in raw["caddy"]:
         caddy_fields.add("listen")
+    if isinstance(raw["caddy"], dict) and "state_directory" in raw["caddy"]:
+        caddy_fields.add("state_directory")
     caddy_raw = _mapping(raw["caddy"], "$.caddy", caddy_fields)
     caddy_listen = caddy_raw.get("listen", ":443")
     if caddy_listen != ":443":
@@ -586,6 +699,12 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     # Preserve existing canonical generations when the optional field is absent.
     if "listen" in caddy_raw:
         caddy["listen"] = caddy_listen
+    if service_identities is not None:
+        if "state_directory" not in caddy_raw:
+            raise _error("$.caddy.state_directory", "is required with service_identities")
+        caddy["state_directory"] = _abs_path(caddy_raw["state_directory"], "$.caddy.state_directory")
+    elif "state_directory" in caddy_raw:
+        caddy["state_directory"] = _abs_path(caddy_raw["state_directory"], "$.caddy.state_directory")
 
     authelia_fields = {"service_name", "host", "listen", "state_directory", "users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file"}
     if isinstance(raw["authelia"], dict) and "webauthn" in raw["authelia"]:
@@ -620,7 +739,25 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if issuer_host != authelia["host"]:
         raise _error("$.gateway.oidc.issuer", "must equal the managed Authelia HTTPS host")
 
-    return {"schema": SCHEMA, "binary": binary, "components": components, "config_root": config_root, "environment_files": environment_files, "service_user": service_user, "gateway": gateway, "connectors": connectors, "clients": clients, "caddy": caddy, "authelia": authelia}
+    result = {"schema": SCHEMA, "binary": binary, "components": components, "config_root": config_root, "environment_files": environment_files, "gateway": gateway, "connectors": connectors, "clients": clients, "caddy": caddy, "authelia": authelia}
+    if service_identities is None:
+        result["service_user"] = service_user
+        return result
+
+    if set(service_identities["connectors"]) != set(connector_index):
+        raise _error("$.service_identities.connectors", "must exactly match declared connector ids")
+    if set(service_identities["clients"]) != {client["rule"]["id"] for client in clients}:
+        raise _error("$.service_identities.clients", "must exactly match declared client rule ids")
+    state_paths = {
+        "gateway": gateway["state_directory"],
+        "edge": caddy["state_directory"],
+        "idp": authelia["state_directory"],
+        **{"connector." + connector["id"]: connector["state_directory"] for connector in connectors},
+        "ingress": service_identities["ingress"]["directory"],
+    }
+    _paths_disjoint(state_paths, "$.service_identities")
+    result["service_identities"] = service_identities
+    return result
 
 
 def _secure_read_flags() -> int:
