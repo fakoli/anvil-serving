@@ -437,13 +437,16 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		lifetime := profile.browserSessionLifetimeSeconds
 		gatewayCfg.BrowserSessionLifetimeSeconds = &lifetime
 	}
-	caddyConfig, err := json.Marshal(runtimeCaddyConfig(caddyListen, authListen, filepath.Join(gatewayCfg.StateDirectory, "ingress.sock"), certificatePath, keyPath))
-	if err != nil {
-		t.Fatal(err)
-	}
 	caddyConfigPath := filepath.Join(directory, "caddy.json")
-	edgeWrite(t, caddyConfigPath, string(caddyConfig))
-	startEdgeChild(t, childHome, caddy, "run", "--config", caddyConfigPath)
+	startCaddy := func(stateDirectory string) *edgeChild {
+		caddyConfig, marshalErr := json.Marshal(runtimeCaddyConfig(caddyListen, authListen, filepath.Join(stateDirectory, "ingress.sock"), certificatePath, keyPath))
+		if marshalErr != nil {
+			t.Fatal(marshalErr)
+		}
+		edgeWrite(t, caddyConfigPath, string(caddyConfig))
+		return startEdgeChild(t, childHome, caddy, "run", "--config", caddyConfigPath)
+	}
+	caddyChild := startCaddy(gatewayCfg.StateDirectory)
 
 	probeTransport := &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots, ServerName: edgeAuthHost}, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 		if network != "tcp" || address != edgeAuthHost+":443" {
@@ -666,6 +669,13 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		ready["client_home"] = clientHome
 		ready["local_key"] = localKeyPath
 		ready["local_base_url"] = "http://127.0.0.1:8787/v1"
+		if restartFixture {
+			secondaryListen := edgeReserve(t)
+			secondaryHome, secondaryKeyPath := runtimeFixtureClientAt(t, directory, "device-client-secondary-home", profile.apiLimits, secondaryListen)
+			ready["client_home_secondary"] = secondaryHome
+			ready["local_key_secondary"] = secondaryKeyPath
+			ready["local_base_url_secondary"] = "http://" + secondaryListen + "/v1"
+		}
 	}
 	if passkeyFixture {
 		ready["passkey_fixture"] = "enabled"
@@ -700,11 +710,13 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	}()
 	restartEpoch := ""
 	resetPending := false
+	restorePending := false
+	restoreApproved := false
 	for command := range commands {
 		response := map[string]string{"ack": command}
 		switch command {
 		case "reset authority":
-			if !restartFixture || gateway == nil || connector == nil || restartEpoch != "" || resetPending {
+			if !restartFixture || gateway == nil || connector == nil || restartEpoch != "" || resetPending || restorePending {
 				response["error"] = "reset fixture is unavailable"
 				break
 			}
@@ -772,7 +784,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			resetPending = false
 			response["ack"] = "reenroll connector"
 		case "stop runtime":
-			if !restartFixture || gateway == nil || connector == nil || restartEpoch != "" || resetPending {
+			if !restartFixture || gateway == nil || connector == nil || restartEpoch != "" || resetPending || restorePending {
 				response["error"] = "restart fixture is disabled"
 				break
 			}
@@ -786,6 +798,124 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			// cancellation measurement; Close may include graceful server waits.
 			restartEpoch = before.Epoch
 			gatewayCancel()
+		case "backup restore authority":
+			if !restartFixture || gateway == nil || connector == nil || len(restartEpoch) != 64 || resetPending || restorePending {
+				response["error"] = "authority restore is unavailable"
+				break
+			}
+			// The caller observed closure after stop runtime. Join the old stack
+			// before BackupGateway takes its exclusive authority-database lock.
+			gateway.Close()
+			gateway = nil
+			connector.Close()
+			connector = nil
+			backup, backupErr := connectruntime.BackupGateway(gatewayCfg)
+			if backupErr != nil {
+				response["error"] = "authority backup failed"
+				break
+			}
+			restoredCfg := gatewayCfg
+			restoredCfg.StateDirectory = filepath.Join(directory, "gateway-restore")
+			if _, stateErr := os.Lstat(restoredCfg.StateDirectory); !os.IsNotExist(stateErr) {
+				response["error"] = "authority restore state is unavailable"
+				break
+			}
+			if restoreErr := connectruntime.RestoreGateway(restoredCfg, backup, connectruntime.BackupDigest(backup)); restoreErr != nil {
+				response["error"] = "authority restore failed"
+				break
+			}
+			if closeErr := caddyChild.Close(); closeErr != nil {
+				response["error"] = "authority restore edge shutdown failed"
+				break
+			}
+			caddyChild = startCaddy(restoredCfg.StateDirectory)
+			restoredContext, restoredCancel := context.WithCancel(context.Background())
+			restoredGateway, startErr := connectruntime.StartGateway(restoredContext, restoredCfg, gatewaySecrets)
+			if startErr != nil {
+				restoredCancel()
+				_ = caddyChild.Close()
+				response["error"] = "authority restore gateway start failed"
+				break
+			}
+			gateway, gatewayCancel, gatewayCfg = restoredGateway, restoredCancel, restoredCfg
+			if !runtimeCaddyControlReady(caddyListen, roots) {
+				gateway.Close()
+				gateway = nil
+				_ = caddyChild.Close()
+				response["error"] = "authority restore readiness failed"
+				break
+			}
+			after, statusErr := adminCall(admin.Request{Operation: "status"})
+			if statusErr != nil || len(after.Epoch) != 64 || after.Epoch == restartEpoch {
+				gateway.Close()
+				gateway = nil
+				_ = caddyChild.Close()
+				response["error"] = "authority restore epoch failed"
+				break
+			}
+			restartEpoch = ""
+			restorePending = true
+			response["epoch_changed"] = "true"
+		case "reapprove restored access":
+			if !restartFixture || !restorePending || restoreApproved || gateway == nil || connector != nil || restartEpoch != "" {
+				response["error"] = "restored access approval is unavailable"
+				break
+			}
+			if _, grantErr := adminCall(admin.Request{Operation: "human-set", Issuer: "https://" + edgeAuthHost, Subject: allowedSubject, Resources: []string{"dash"}, Disabled: false}); grantErr != nil {
+				response["error"] = "restored human approval failed"
+				break
+			}
+			if _, grantErr := adminCall(admin.Request{Operation: "principal-set", Principal: "fixture-sdk", Grants: []access.Grant{{Resource: "router", Methods: []string{"GET"}}}, Disabled: false}); grantErr != nil {
+				_, _ = adminCall(admin.Request{Operation: "human-set", Issuer: "https://" + edgeAuthHost, Subject: allowedSubject, Resources: []string{"dash"}, Disabled: true})
+				response["error"] = "restored API approval failed"
+				break
+			}
+			restoreApproved = true
+		case "reenroll restored connector":
+			if !restartFixture || !restorePending || !restoreApproved || gateway == nil || connector != nil || restartEpoch != "" {
+				response["error"] = "restored connector enrollment is unavailable"
+				break
+			}
+			nextConnectorCfg := connectorCfg
+			nextConnectorCfg.StateDirectory = filepath.Join(directory, "connector-restore")
+			if _, stateErr := os.Lstat(nextConnectorCfg.StateDirectory); !os.IsNotExist(stateErr) {
+				response["error"] = "restored connector state is unavailable"
+				break
+			}
+			priorTunnels := proxyObserver.count(edgeTunnelHost + ":443")
+			invite, inviteErr := adminCall(admin.Request{Operation: "invite", Installation: nextConnectorCfg.ID, Role: "connector", Resources: inviteResources, LifetimeSeconds: 60})
+			if inviteErr != nil {
+				response["error"] = "restored connector invitation failed"
+				break
+			}
+			if initErr := connectruntime.InitializeConnector(context.Background(), nextConnectorCfg, invite); initErr != nil {
+				response["error"] = "restored connector initialization failed"
+				break
+			}
+			identity, identityErr := connectruntime.ConnectorIdentity(nextConnectorCfg)
+			if identityErr != nil {
+				response["error"] = "restored connector identity failed"
+				break
+			}
+			if _, approveErr := adminCall(admin.Request{Operation: "approve", Installation: nextConnectorCfg.ID, Fingerprint: identity.Fingerprint}); approveErr != nil {
+				response["error"] = "restored connector approval failed"
+				break
+			}
+			nextConnector, startErr := connectruntime.StartConnector(context.Background(), nextConnectorCfg, connectorSecrets)
+			if startErr != nil {
+				response["error"] = "restored connector start failed"
+				break
+			}
+			if !runtimeConnectorReady(nextConnector, proxyObserver, priorTunnels, gatewayCfg.Gateway.Resources) {
+				nextConnector.Close()
+				response["error"] = "restored connector readiness failed"
+				break
+			}
+			connectorCfg = nextConnectorCfg
+			connector = nextConnector
+			restorePending = false
+			restoreApproved = false
+			response["ack"] = "reenroll restored connector"
 		case "start runtime":
 			if !restartFixture || gateway == nil || connector == nil || len(restartEpoch) != 64 || resetPending {
 				response["error"] = "restart fixture is unavailable"
@@ -954,15 +1084,23 @@ func runtimeFixtureHumanID(issuer, subject string) string {
 }
 
 func runtimeFixtureClientDeclaration(limits config.Limits) clientconfig.Config {
-	return clientconfig.Config{Schema: "anvil-connect.client-runtime/v1", Rule: config.Rule{ID: "router", Host: edgeAPIHost, PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: limits}, Listen: "127.0.0.1:8787", LocalKeyEnv: "ANVIL_CONNECT_LOCAL_KEY", RemoteKeyEnv: "ANVIL_CONNECT_REMOTE_KEY", DeviceAuthorization: &clientconfig.DeviceAuthorization{BrowserHost: dashHost, ApprovalPath: "/_anvil-connect/device", APIResource: "router", Methods: []string{"GET"}}}
+	return runtimeFixtureClientDeclarationAt(limits, "127.0.0.1:8787")
+}
+
+func runtimeFixtureClientDeclarationAt(limits config.Limits, listen string) clientconfig.Config {
+	return clientconfig.Config{Schema: "anvil-connect.client-runtime/v1", Rule: config.Rule{ID: "router", Host: edgeAPIHost, PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: limits}, Listen: listen, LocalKeyEnv: "ANVIL_CONNECT_LOCAL_KEY", RemoteKeyEnv: "ANVIL_CONNECT_REMOTE_KEY", DeviceAuthorization: &clientconfig.DeviceAuthorization{BrowserHost: dashHost, ApprovalPath: "/_anvil-connect/device", APIResource: "router", Methods: []string{"GET"}}}
 }
 
 // runtimeFixtureClient writes only a closed declaration and a sibling local
 // key. The Playwright lane gives this private HOME exclusively to the actual
 // CLI; no remote credential or approval code is written to disk.
 func runtimeFixtureClient(t *testing.T, directory string, limits config.Limits) (string, string) {
+	return runtimeFixtureClientAt(t, directory, "device-client-home", limits, "127.0.0.1:8787")
+}
+
+func runtimeFixtureClientAt(t *testing.T, directory, homeName string, limits config.Limits, listen string) (string, string) {
 	t.Helper()
-	home := filepath.Join(directory, "device-client-home")
+	home := filepath.Join(directory, homeName)
 	configDir := filepath.Join(home, ".config", "anvil-connect")
 	if err := os.MkdirAll(configDir, 0700); err != nil {
 		t.Fatal(err)
@@ -971,7 +1109,7 @@ func runtimeFixtureClient(t *testing.T, directory string, limits config.Limits) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	declaration := runtimeFixtureClientDeclaration(limits)
+	declaration := runtimeFixtureClientDeclarationAt(limits, listen)
 	encoded, err := json.Marshal(declaration)
 	if err != nil {
 		t.Fatal(err)
