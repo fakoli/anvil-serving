@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from anvil_serving.connect.config import ManifestError, require_isolated, role_identity, validate_manifest
+from anvil_serving.connect.config import ManifestError, require_isolated, role_identity, role_limits, validate_manifest
 from anvil_serving.connect.render import render, render_for_inspection
 
 
@@ -28,6 +28,13 @@ def isolated_manifest() -> dict:
         "connectors": {"dashboard": {"uid": 1204, "gid": 1204}},
         "clients": {"dashboard-api": {"uid": 1205, "gid": 1205}},
         "ingress": {"group_id": 1290, "directory": "/run/anvil-connect/ingress"},
+    }
+    value["service_limits"] = {
+        "gateway": {"memory_max_bytes": 805306368, "tasks_max": 128},
+        "edge": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "idp": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "connectors": {"dashboard": {"memory_max_bytes": 402653184, "tasks_max": 64}},
+        "clients": {"dashboard-api": {"memory_max_bytes": 268435456, "tasks_max": 32}},
     }
     value["caddy"]["state_directory"] = "/var/lib/anvil-connect/caddy"
     return value
@@ -54,6 +61,11 @@ def test_isolated_identity_shape_is_exact_sorted_and_revalidatable() -> None:
     assert role_identity(normalized, "idp") == (1203, 1203)
     assert role_identity(normalized, "connector", "dashboard") == (1204, 1204)
     assert role_identity(normalized, "client", "dashboard-api") == (1205, 1205)
+    assert role_limits(normalized, "gateway") == (805306368, 128)
+    assert role_limits(normalized, "edge") == (536870912, 64)
+    assert role_limits(normalized, "idp") == (536870912, 64)
+    assert role_limits(normalized, "connector", "dashboard") == (402653184, 64)
+    assert role_limits(normalized, "client", "dashboard-api") == (268435456, 32)
     assert normalized["gateway"]["ingress"] == {
         "directory": "/run/anvil-connect/ingress",
         "gateway_uid": 1201,
@@ -72,6 +84,13 @@ def test_isolated_identity_shape_is_exact_sorted_and_revalidatable() -> None:
     lambda value: value["service_identities"]["ingress"].__setitem__("group_id", 1201),
     lambda value: value["service_identities"]["connectors"].__setitem__("unknown", {"uid": 1206, "gid": 1206}),
     lambda value: value["service_identities"]["clients"].clear(),
+    lambda value: value.pop("service_limits"),
+    lambda value: value["service_limits"].__setitem__("unexpected", {}),
+    lambda value: value["service_limits"]["gateway"].__setitem__("memory_max_bytes", True),
+    lambda value: value["service_limits"]["gateway"].__setitem__("memory_max_bytes", 1 << 63),
+    lambda value: value["service_limits"]["edge"].__setitem__("tasks_max", 0),
+    lambda value: value["service_limits"]["connectors"].__setitem__("unknown", {"memory_max_bytes": 1, "tasks_max": 1}),
+    lambda value: value["service_limits"]["clients"].clear(),
 ])
 def test_isolated_identity_rejects_mixed_partial_or_nonunique_roles(mutate) -> None:
     value = isolated_manifest()
@@ -166,6 +185,11 @@ def test_isolated_units_are_numeric_and_role_scoped() -> None:
     for unit in (gateway, caddy, authelia, connector, client):
         for line in ("UMask=0077", "NoNewPrivileges=true", "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true", "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6"):
             assert line in unit
+    assert "MemoryMax=805306368\nTasksMax=128" in gateway
+    assert "MemoryMax=536870912\nTasksMax=64" in caddy
+    assert "MemoryMax=536870912\nTasksMax=64" in authelia
+    assert "MemoryMax=402653184\nTasksMax=64" in connector
+    assert "MemoryMax=268435456\nTasksMax=32" in client
     assert "ReadWritePaths=/run/anvil-connect/ingress /var/lib/anvil-connect/gateway" in gateway
     assert "ReadWritePaths=/var/lib/anvil-connect/caddy" in caddy
     assert "ReadWritePaths=/var/lib/anvil-connect/authelia" in authelia

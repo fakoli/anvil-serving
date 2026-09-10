@@ -125,6 +125,13 @@ def deployment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, d
         "clients": {"dashboard-api": {"uid": 1205, "gid": 2205}},
         "ingress": {"group_id": 2290, "directory": str(tmp_path / "ingress")},
     }
+    value["service_limits"] = {
+        "gateway": {"memory_max_bytes": 805306368, "tasks_max": 128},
+        "edge": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "idp": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "connectors": {"dashboard": {"memory_max_bytes": 402653184, "tasks_max": 64}},
+        "clients": {"dashboard-api": {"memory_max_bytes": 268435456, "tasks_max": 32}},
+    }
     for section, name in (("gateway", "gateway.env"),):
         value["environment_files"][section] = str(tmp_path / name)
     for name in value["environment_files"]["connectors"]:
@@ -276,6 +283,26 @@ def test_up_refuses_global_change_to_unselected_target(tmp_path: Path, monkeypat
     with pytest.raises(manage.ManageError, match="unselected target"):
         manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
     assert json.loads((Path(value["config_root"]) / "connectors/dashboard.json").read_text())["resources"][0]["envelope"]["origin_url"] == "http://127.0.0.1:18080"
+
+
+def test_service_limit_change_is_target_scoped_and_rolled_into_owned_units(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    runner = SyntheticRunner(); runner.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+
+    changed = copy.deepcopy(value)
+    changed["service_limits"]["connectors"]["dashboard"]["memory_max_bytes"] = 402653185
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+    with pytest.raises(manage.ManageError, match="unselected target"):
+        manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+
+    changed = copy.deepcopy(value)
+    changed["service_limits"]["gateway"]["memory_max_bytes"] = 805306369
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    assert "MemoryMax=805306369" in (units / "anvil-connect-gateway.service").read_text(encoding="utf-8")
 
 
 def test_up_many_coordinates_gateway_and_connector_generation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
