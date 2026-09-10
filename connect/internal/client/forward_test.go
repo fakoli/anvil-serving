@@ -117,6 +117,9 @@ func TestGenerateKeyCanonicalAndForwardingIsFixed(t *testing.T) {
 		if r.Header.Get("Authorization") != "Bearer "+remoteKey {
 			t.Error("remote Connect key missing")
 		}
+		if r.Header.Get("User-Agent") != "anvil-connect/1" {
+			t.Error("public request did not identify the actual Connect client")
+		}
 		for _, header := range []string{"X-Api-Key", "X-Forwarded-Host", "X-Anvil-Connect-Authorization", "X-Anvil-Connect-Authorization-Claim"} {
 			if r.Header.Get(header) != "" {
 				t.Errorf("caller credential or route header reached upstream: %s", header)
@@ -126,6 +129,7 @@ func TestGenerateKeyCanonicalAndForwardingIsFixed(t *testing.T) {
 	}))
 	r := f.request(t, "POST", "/v1/chat/completions?model=declared", strings.NewReader("payload"))
 	r.Header.Set("X-Forwarded-Host", "attacker.example.test")
+	r.Header.Set("User-Agent", "Python-urllib/3.13")
 	r.Header.Set("X-Anvil-Connect-Authorization", "Bearer caller-remote-key")
 	response, err := (&http.Client{Timeout: 2 * time.Second}).Do(r)
 	if err != nil {
@@ -183,6 +187,29 @@ func TestForwarderConfinesRedirects(t *testing.T) {
 	response.Body.Close()
 	if response.StatusCode != http.StatusBadGateway || dispatched.Load() != 1 || f.dials.Load() != 1 {
 		t.Fatal("unsafe redirect was followed or exposed")
+	}
+}
+
+func TestForwarderExplainsLocalAuthenticationFailureBeforeUpstream(t *testing.T) {
+	f := newForwardFixture(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("unauthorized request reached upstream")
+	}))
+	for _, key := range []string{"", "invalid-local-key"} {
+		r := f.request(t, "GET", "/v1/models", nil)
+		r.URL.Scheme, r.URL.Host = "", "" // incoming origin-form request
+		r.Header.Del("Authorization")
+		if key != "" {
+			r.Header.Set("Authorization", "Bearer "+key)
+		}
+		response := httptest.NewRecorder()
+		f.forwarder.ServeHTTP(response, r)
+		body := response.Body.String()
+		if response.Code != http.StatusUnauthorized || response.Header().Get("WWW-Authenticate") != `Bearer realm="anvil-connect-local"` || !strings.Contains(body, "missing or invalid local API key") || !strings.Contains(body, "Authorization: Bearer <local-key>") {
+			t.Fatal("local authentication failure did not explain the caller remedy")
+		}
+		if strings.Contains(body, f.localKey) || strings.Contains(body, f.remoteKey) || f.lookups.Load() != 0 || f.dials.Load() != 0 {
+			t.Fatal("local denial exposed or used credentials")
+		}
 	}
 }
 
@@ -263,6 +290,10 @@ func TestForwarderDoesNotRewriteRemoteAuthenticationFailure(t *testing.T) {
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusUnauthorized {
 		t.Fatal("remote authentication failure was hidden", response.StatusCode)
+	}
+	body, _ := io.ReadAll(response.Body)
+	if string(body) != "remote key denied\n" || response.Header.Get("WWW-Authenticate") == `Bearer realm="anvil-connect-local"` {
+		t.Fatal("upstream denial was relabeled as a local authentication failure")
 	}
 }
 

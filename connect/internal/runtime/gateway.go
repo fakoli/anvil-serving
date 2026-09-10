@@ -15,9 +15,12 @@ import (
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/admin"
+	"github.com/fakoli/anvil-serving/connect/internal/administration"
+	"github.com/fakoli/anvil-serving/connect/internal/browseridentity"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/control"
 	"github.com/fakoli/anvil-serving/connect/internal/credential"
+	"github.com/fakoli/anvil-serving/connect/internal/device"
 	"github.com/fakoli/anvil-serving/connect/internal/httpedge"
 	"github.com/fakoli/anvil-serving/connect/internal/identity"
 	"github.com/fakoli/anvil-serving/connect/internal/localhttp"
@@ -31,6 +34,25 @@ import (
 var ErrUnavailable = errors.New("native runtime unavailable")
 
 type SecretSource func(string) (string, bool)
+
+func identitySigners(resources []config.Resource, secrets SecretSource) (map[string]*browseridentity.Signer, error) {
+	result := map[string]*browseridentity.Signer{}
+	for _, resource := range resources {
+		if resource.Rule.NativeAuth != "signed-identity" {
+			continue
+		}
+		secret, ok := secrets(resource.IdentityKeyEnv)
+		if !ok {
+			return nil, ErrUnavailable
+		}
+		signer, err := browseridentity.NewSigner(secret, resource.IdentityKeyID)
+		if err != nil {
+			return nil, ErrUnavailable
+		}
+		result[resource.Rule.ID] = signer
+	}
+	return result, nil
+}
 
 // Gateway owns the Unix ingress/admin listeners, authority database, and its
 // pinned private tunnel child. Running is process state, not origin readiness.
@@ -177,6 +199,8 @@ func StartGateway(parent context.Context, declaration GatewayConfig, secrets Sec
 	}
 	var sessions *session.Manager
 	var browserHandler *httpedge.Browser
+	var devices *device.Authority
+	var accessAdministration *administration.Authority
 	if len(browserRules) != 0 {
 		secret, ok := secrets(declaration.OIDC.ClientSecretEnv)
 		if !ok || len(secret) < 1 || len(secret) > 4096 {
@@ -187,9 +211,31 @@ func StartGateway(parent context.Context, declaration GatewayConfig, secrets Sec
 			return nil, ErrUnavailable
 		}
 		g.cleanup = append(g.cleanup, sessions.Close)
-		browserHandler, err = httpedge.NewBrowser(declaration.Gateway, sessions, dispatcher.BrowserDispatch)
+		if declaration.Gateway.BrowserAdministration != nil {
+			accessAdministration, err = administration.New(state, sessions, declaration.Gateway)
+			if err != nil {
+				return nil, ErrUnavailable
+			}
+		}
+		if len(declaration.Gateway.DeviceAuthorizations) != 0 {
+			devices, err = device.New(state, declaration.Gateway, sessions, keys)
+			if err != nil {
+				return nil, ErrUnavailable
+			}
+		}
+		signers, signerErr := identitySigners(declaration.Gateway.Resources, secrets)
+		if signerErr != nil {
+			return nil, ErrUnavailable
+		}
+		browserHandler, err = httpedge.NewBrowserWithIdentityAndDevice(declaration.Gateway, sessions, signers, devices, dispatcher.BrowserDispatch)
 		if err != nil {
 			return nil, ErrUnavailable
+		}
+		if accessAdministration != nil {
+			adapter, adapterErr := httpedge.NewAccessAdministration(declaration.Gateway, accessAdministration)
+			if adapterErr != nil || browserHandler.SetAccessAdministration(adapter) != nil {
+				return nil, ErrUnavailable
+			}
 		}
 		g.cleanup = append(g.cleanup, browserHandler.Close)
 	}

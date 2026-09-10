@@ -587,3 +587,59 @@ func TestUnprovisionedOIDCIdentityIsDenied(t *testing.T) {
 		t.Fatal("valid but unprovisioned OIDC identity accepted")
 	}
 }
+
+func TestCheckDeviceSessionFailsClosed(t *testing.T) {
+	manager, _, idp, now, _ := sessionFixture(t, 8, 2)
+	if _, err := manager.SetHuman(idp.issuer(), "person-1", []string{"dash"}, false); err != nil {
+		t.Fatal(err)
+	}
+	binding, err := NewBinding()
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed := complete(t, manager, idp, mustBegin(t, manager, binding, "dash"), "person-1")
+	admitted, err := manager.Authenticate(completed.Cookie, "dash.example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.CheckDeviceSession(admitted.SessionID, admitted.SessionGeneration, admitted.Principal, admitted.PrincipalGeneration); err != nil {
+		t.Fatal("valid session rejected", err)
+	}
+	rule := manager.rules["dash"]
+	drifted := rule
+	drifted.Host = "other.example.test"
+	manager.rules["dash"] = drifted
+	if err := manager.CheckDeviceSession(admitted.SessionID, admitted.SessionGeneration, admitted.Principal, admitted.PrincipalGeneration); err == nil {
+		t.Fatal("browser host drift accepted")
+	}
+	manager.rules["dash"] = rule
+	for _, changed := range []Admission{
+		{SessionID: strings.Repeat("0", 32), SessionGeneration: admitted.SessionGeneration, Principal: admitted.Principal, PrincipalGeneration: admitted.PrincipalGeneration},
+		{SessionID: admitted.SessionID, SessionGeneration: admitted.SessionGeneration + 1, Principal: admitted.Principal, PrincipalGeneration: admitted.PrincipalGeneration},
+		{SessionID: admitted.SessionID, SessionGeneration: admitted.SessionGeneration, Principal: "human:" + strings.Repeat("b", 64), PrincipalGeneration: admitted.PrincipalGeneration},
+	} {
+		if err := manager.CheckDeviceSession(changed.SessionID, changed.SessionGeneration, changed.Principal, changed.PrincipalGeneration); err == nil {
+			t.Fatal("wrong device session fence accepted")
+		}
+	}
+	*now = admitted.ExpiresAt
+	if err := manager.CheckDeviceSession(admitted.SessionID, admitted.SessionGeneration, admitted.Principal, admitted.PrincipalGeneration); err == nil {
+		t.Fatal("expired device session accepted")
+	}
+	*now = admitted.ExpiresAt.Add(-time.Second)
+	if err := manager.Logout(completed.Cookie, "dash.example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.CheckDeviceSession(admitted.SessionID, admitted.SessionGeneration, admitted.Principal, admitted.PrincipalGeneration); err == nil {
+		t.Fatal("logged-out device session accepted")
+	}
+}
+
+func mustBegin(t *testing.T, manager *Manager, binding, resource string) Challenge {
+	t.Helper()
+	challenge, err := manager.Begin(resource, "/", binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return challenge
+}

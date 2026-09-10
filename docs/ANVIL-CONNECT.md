@@ -22,7 +22,7 @@ flowchart LR
   O[Origin connector] -->|Outbound authenticated WSS| E
   T --> O
   O -->|Fixed loopback origin| A[Native application]
-  B <-->|Password and TOTP login| I[Authelia through Caddy]
+  B <-->|Passkey or configured login| I[Authelia through Caddy]
 ```
 
 The outer tunnel uses WSS. Its authenticated Upgrade gate is in Connect; Caddy
@@ -56,6 +56,19 @@ Connect API key is removed before the connector supplies an explicitly declared
 native application token. Native tokens are environment-backed and remain at
 the origin. Controller delegation is outside the initial profile.
 
+For one browser identity across Connect and Observatory, explicitly enable
+[signed identity handoff](ANVIL-CONNECT-IDENTITY.md). This preserves native
+permissions while removing a second dashboard password. That guide also covers
+passkeys, profile provisioning and signing-key rotation.
+
+For day-to-day user grants and session revocation, see
+[Access administration in Observatory](ANVIL-CONNECT-ACCESS.md).
+
+The standalone client's [terminal sign-in flow](ANVIL-CONNECT-DEVICE-LOGIN.md)
+uses browser approval to obtain a short-lived API grant, including from SSH.
+After approval, ordinary SDKs can use its local HTTP endpoint and local caller
+key. The browser identity and API principal must be explicitly linked.
+
 The browser gateway uses state, nonce and PKCE and verifies OIDC signature,
 issuer, audience and time claims. It checks the authorization-response issuer
 before exchanging a code, and requires it when advertised by provider metadata.
@@ -72,6 +85,9 @@ reuse the IdP session. Revocation closes access at the gateway; it does not clai
 to terminate work already running inside a model engine.
 
 ## Declarations and operation
+
+For a separate installation without the Anvil Serving package, use the
+[standalone Connect bundle and installer](ANVIL-CONNECT-INSTALL.md).
 
 Start from the generic [deployment manifest](https://github.com/fakoli/anvil-serving/blob/main/connect/examples/deployment.json).
 It declares resources, matching origin envelopes, private state locations,

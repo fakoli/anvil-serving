@@ -179,3 +179,152 @@ func TestResourceMatching(t *testing.T) {
 		}
 	}
 }
+
+func TestSignedIdentityGatewayBinding(t *testing.T) {
+	valid := gateway(t)
+	resource := &valid.Resources[0]
+	resource.Rule.Access = "browser"
+	resource.Rule.NativeAuth = "signed-identity"
+	resource.IdentityKeyEnv = "ANVIL_CONNECT_DASH_IDENTITY_KEY"
+	resource.IdentityKeyID = "dash-v1"
+	if valid.Validate() != nil {
+		t.Fatal("valid signed identity resource rejected")
+	}
+	for name, mutate := range map[string]func(*Gateway){
+		"missing-env":    func(g *Gateway) { g.Resources[0].IdentityKeyEnv = "" },
+		"invalid-env":    func(g *Gateway) { g.Resources[0].IdentityKeyEnv = "literal" },
+		"missing-key-id": func(g *Gateway) { g.Resources[0].IdentityKeyID = "" },
+		"api-profile": func(g *Gateway) {
+			g.Resources[0].Rule.Access, g.Resources[0].Rule.NativeAuth = "api", "delegate-bearer"
+		},
+		"ordinary-profile": func(g *Gateway) { g.Resources[0].Rule.NativeAuth = "none" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := valid
+			candidate.Resources = append([]Resource(nil), valid.Resources...)
+			mutate(&candidate)
+			if candidate.Validate() == nil {
+				t.Fatal("invalid identity binding accepted")
+			}
+		})
+	}
+	second := valid.Resources[0]
+	second.Rule.ID, second.Rule.Host, second.TunnelAddress = "dash-two", "dash-two.example.test", "127.0.0.1:19002"
+	valid.Resources = append(valid.Resources, second)
+	if valid.Validate() == nil {
+		t.Fatal("identity key was reused across resources")
+	}
+}
+
+func deviceGateway(t *testing.T, label string) Gateway {
+	t.Helper()
+	g := gateway(t)
+	api := g.Resources[0]
+	api.Rule.Methods = []string{"GET", "POST"}
+	g.Resources[0] = api
+	browser := api
+	browser.Rule.ID, browser.Rule.Host, browser.Rule.PathPrefix = "dash", "dash.example.test", "/app"
+	browser.Rule.Access, browser.Rule.NativeAuth, browser.Rule.Methods = "browser", "none", []string{"GET", "POST"}
+	browser.Connector, browser.TunnelAddress = "dash-origin", "127.0.0.1:19001"
+	g.Resources = append(g.Resources, browser)
+	g.DeviceAuthorizations = []DeviceAuthorization{{BrowserResource: "dash", APIResource: api.Rule.ID, Methods: []string{"POST"}, Label: label, Principals: map[string]string{"human:" + strings.Repeat("a", 64): "owner"}}}
+	return g
+}
+
+func TestDeviceAuthorizationOptionalAndUnicodeClosedGrammar(t *testing.T) {
+	omitted := gateway(t)
+	if omitted.DeviceAuthorizations != nil || omitted.Validate() != nil {
+		t.Fatal("omitted device authorization default changed")
+	}
+	empty := gateway(t)
+	empty.DeviceAuthorizations = []DeviceAuthorization{}
+	if empty.Validate() == nil {
+		t.Fatal("explicit empty device authorization list accepted")
+	}
+	valid := deviceGateway(t, "ok")
+	getOnly := valid
+	getOnly.DeviceAuthorizations = append([]DeviceAuthorization(nil), valid.DeviceAuthorizations...)
+	getOnly.DeviceAuthorizations[0].Methods = []string{"GET"}
+	if getOnly.Validate() != nil {
+		t.Fatal("GET-only device API grant rejected")
+	}
+	missingBrowserPost := valid
+	missingBrowserPost.Resources = append([]Resource(nil), valid.Resources...)
+	missingBrowserPost.Resources[1].Rule.Methods = []string{"GET"}
+	if missingBrowserPost.Validate() == nil {
+		t.Fatal("device browser without reserved control POST accepted")
+	}
+	data, err := json.Marshal(valid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadGateway(bytes.NewReader(data)); err != nil {
+		t.Fatal("valid device authorization rejected", err)
+	}
+	for name, malformed := range map[string][]byte{
+		"invalid-utf8":   bytes.Replace(data, []byte(`"label":"ok"`), []byte{'"', 'l', 'a', 'b', 'e', 'l', '"', ':', '"', 0xff, '"'}, 1),
+		"high-surrogate": bytes.Replace(data, []byte(`"label":"ok"`), []byte(`"label":"\ud800"`), 1),
+		"low-surrogate":  bytes.Replace(data, []byte(`"label":"ok"`), []byte(`"label":"\udc00"`), 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ReadGateway(bytes.NewReader(malformed)); err == nil {
+				t.Fatal("malformed device label accepted")
+			}
+		})
+	}
+	pair := bytes.Replace(data, []byte(`"label":"ok"`), []byte(`"label":"\ud83d\ude00"`), 1)
+	decoded, err := ReadGateway(bytes.NewReader(pair))
+	if err != nil || decoded.DeviceAuthorizations[0].Label != "😀" {
+		t.Fatal("valid unicode surrogate pair rejected")
+	}
+}
+
+func TestBrowserAdministrationClosedGrammar(t *testing.T) {
+	g := deviceGateway(t, "admin")
+	human := "human:" + strings.Repeat("a", 64)
+	g.BrowserAdministration = &BrowserAdministration{BrowserResource: "dash", Operators: []string{human}}
+	if g.Validate() != nil {
+		t.Fatal("valid browser administration rejected")
+	}
+	g.BrowserAdministration.Operators = []string{human, human}
+	if g.Validate() == nil {
+		t.Fatal("duplicate operator accepted")
+	}
+	g.BrowserAdministration.Operators = []string{human}
+	g.Resources[1].Rule.Methods = []string{"GET"}
+	if g.Validate() == nil {
+		t.Fatal("admin browser without POST accepted")
+	}
+}
+
+func TestBrowserAdministrationDecodeClosed(t *testing.T) {
+	g := deviceGateway(t, "admin")
+	h := "human:" + strings.Repeat("a", 64)
+	g.BrowserAdministration = &BrowserAdministration{BrowserResource: "dash", Operators: []string{h}}
+	data, err := json.Marshal(g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadGateway(bytes.NewReader(data)); err != nil {
+		t.Fatal(err)
+	}
+	var raw map[string]any
+	if json.Unmarshal(data, &raw) != nil {
+		t.Fatal("marshal unreadable")
+	}
+	delete(raw, "browser_administration")
+	omitted, _ := json.Marshal(raw)
+	if _, err := ReadGateway(bytes.NewReader(omitted)); err != nil {
+		t.Fatal("omitted rejected")
+	}
+	raw["browser_administration"] = nil
+	nulled, _ := json.Marshal(raw)
+	if _, err := ReadGateway(bytes.NewReader(nulled)); err == nil {
+		t.Fatal("null accepted")
+	}
+	for _, bad := range [][]byte{bytes.Replace(data, []byte(`"browser_resource":`), []byte(`"unknown":1,"browser_resource":`), 1), bytes.Replace(data, []byte(`"operators":`), []byte(`"operators":[],"operators":`), 1)} {
+		if _, err := ReadGateway(bytes.NewReader(bad)); err == nil {
+			t.Fatal("open admin decode accepted")
+		}
+	}
+}

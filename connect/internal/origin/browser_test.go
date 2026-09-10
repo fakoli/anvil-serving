@@ -13,6 +13,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/fakoli/anvil-serving/connect/internal/access"
+	"github.com/fakoli/anvil-serving/connect/internal/browseridentity"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/testpki"
 )
@@ -88,7 +89,7 @@ func TestBrowserProxyPreservesNativeStateAndStripsConnectIdentity(t *testing.T) 
 		if r.Header.Get("Cookie") != "native=one" || r.Header.Get("X-CSRF-Token") != "csrf" || r.Header.Get("Authorization") != "Bearer application-token" {
 			t.Error("native browser session or csrf state did not survive")
 		}
-		for _, name := range []string{"X-Anvil-Connect-Resource", "X-Anvil-Connect-Principal", "X-Auth-Request-User", "X-Forwarded-For", "Remote-User"} {
+		for _, name := range []string{"X-Anvil-Connect-Resource", "X-Anvil-Connect-Principal", browseridentity.Header, "X-Auth-Request-User", "X-Forwarded-For", "Remote-User"} {
 			if r.Header.Get(name) != "" {
 				t.Errorf("forged identity header reached native browser app: %s", name)
 			}
@@ -120,12 +121,17 @@ func TestBrowserProxyResponseConfinement(t *testing.T) {
 	for name, responseHeader := range map[string]string{
 		"cross-origin-redirect": "https://other.example.test/",
 		"escaped-path":          "/%2e%2e/admin",
+		"identity-response":     "reserved",
 	} {
 		t.Run(name, func(t *testing.T) {
 			var dispatched atomic.Int32
 			f := browserProxyFixture(t, func(w http.ResponseWriter, r *http.Request) {
 				dispatched.Add(1)
-				w.Header().Set("Location", responseHeader)
+				if name == "identity-response" {
+					w.Header().Set(browseridentity.Header, responseHeader)
+				} else {
+					w.Header().Set("Location", responseHeader)
+				}
 				w.WriteHeader(http.StatusFound)
 			}, "none", true)
 			response, err := f.client.Do(f.request(t, http.MethodGet, "/"))
@@ -227,5 +233,52 @@ func TestBrowserNoneModeStripsNativeAuthorization(t *testing.T) {
 	response.Body.Close()
 	if response.StatusCode != http.StatusNoContent {
 		t.Fatal("browser none request denied unexpectedly")
+	}
+}
+
+func TestSignedBrowserIdentityRequiresGatewayHeaderAndRelaysIt(t *testing.T) {
+	const assertion = "acai1.e30.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	var received atomic.Int32
+	f := browserProxyFixture(t, func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+		if r.Header.Get(browseridentity.Header) != assertion || len(r.Header.Values(browseridentity.Header)) != 1 {
+			t.Error("connector did not relay exactly the gateway identity")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}, "signed-identity", true)
+	request := f.request(t, http.MethodGet, "/")
+	request.Header.Set(browseridentity.Header, assertion)
+	response, err := f.client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusNoContent || received.Load() != 1 {
+		t.Fatal("signed browser identity was not relayed")
+	}
+	for _, value := range []string{"", "forged", "acai1.e30.short"} {
+		request = f.request(t, http.MethodGet, "/")
+		if value != "" {
+			request.Header.Set(browseridentity.Header, value)
+		}
+		response, err = f.client.Do(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != http.StatusForbidden || received.Load() != 1 {
+			t.Fatal("missing or malformed signed identity reached origin")
+		}
+	}
+	request = f.request(t, http.MethodGet, "/")
+	request.Header.Add(browseridentity.Header, assertion)
+	request.Header.Add(browseridentity.Header, assertion)
+	response, err = f.client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusForbidden || received.Load() != 1 {
+		t.Fatal("ambiguous signed identity reached origin")
 	}
 }
