@@ -9,11 +9,41 @@ This delivery initially targets Linux amd64. Native Connect, Caddy, Authelia,
 and wstunnel run as separate processes. The Python package adds no runtime
 dependencies and does not download or start those binaries when imported.
 
-Every command requires `--manifest /absolute/deployment.json`. `--service` selects
+Deployment commands require `--manifest /absolute/deployment.json`. `--service` selects
 `gateway`, `connector:ID`, or `client:ID` from that manifest. These are local
 deployment selectors; the command does not perform implicit SSH or controller
 dispatch. Mutations preview by default; `--confirm` applies the operation and
 `--dry-run` keeps it a preview even when both flags are supplied.
+
+## Qualify
+
+Run the unattended Linux browser baseline with saved qualification settings:
+
+```sh
+anvil-serving connect qualify --lane baseline
+```
+
+The default settings file is `~/.config/anvil-connect/qualification.toml`.
+Use `--config /absolute/qualification.toml` to select another file. This is a
+separate test configuration: it contains source, artifact, dependency-cache and
+preinstalled tool paths, without production identities or credentials. It does
+not select a deployment manifest or contact a model endpoint.
+
+The baseline runs the existing Caddy, Authelia, wstunnel and Chromium fixtures
+with synthetic accounts and isolated state. It checks certificate rejection
+before trusting the fixture CA, authenticated browser access, and the fixture's
+logout/revocation behavior. Required binaries are checked against recorded pins;
+missing prerequisites fail preflight. The command does not install dependencies.
+
+Results distinguish a failed test, a failed preflight and incomplete cleanup.
+The private result artifact records revisions, tool identity, test outcomes and
+cleanup evidence. A failed qualification exits nonzero. Raw authentication
+responses and credential-bearing browser diagnostics are excluded from output.
+
+This baseline does not qualify virtual passkeys, terminal browser approval,
+physical biometrics, 1Password, host systemd isolation or the public deployment.
+Those require their own lanes and evidence. Fixture loopback listeners alone
+are not proof of operating-system-enforced network isolation.
 
 ## Validate
 

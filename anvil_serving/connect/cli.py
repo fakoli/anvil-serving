@@ -26,6 +26,9 @@ class _Once(argparse.Action):
 def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     parser = _Parser(prog=prog, allow_abbrev=False)
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
+    qualification = actions.add_parser("qualify", allow_abbrev=False)
+    qualification.add_argument("--lane", choices=("baseline",), action=_Once)
+    qualification.add_argument("--config", action=_Once)
     for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration"):
         leaf = actions.add_parser(action, allow_abbrev=False)
         leaf.add_argument("--manifest", required=True, action=_Once)
@@ -56,9 +59,29 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     return parser
 
 
+def _qualify(args: argparse.Namespace) -> CommandResult:
+    from .qualification import QualificationError, qualify
+
+    try:
+        result = qualify(args.config, lane=args.lane or "baseline")
+    except QualificationError as exc:
+        return CommandResult(error=OperatorError(
+            "Connect qualification preflight failed; check the saved qualification settings and pinned prerequisites.",
+            code=exc.code,
+        ))
+    if result.get("ok") is not True:
+        return CommandResult(data=result, error=OperatorError(
+            "Connect qualification failed; inspect the redacted result artifact.",
+            code="connect_qualification_failed",
+        ))
+    return CommandResult(data=result)
+
+
 def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connect") -> CommandResult:
     try:
         args = _parser(prog).parse_args(argv)
+        if args.action == "qualify":
+            return _qualify(args)
         from . import manage  # help/importing the registry never starts discovery
 
         if not manage.supported_platform():
