@@ -1533,7 +1533,7 @@ test('container-gated browser and CLI streams close on normal restart', async ()
     const closureMs = await expectRestartStreamClosure(started, browserClosed, postClosed, cliSSEClosed, cliWSClosed);
     test.info().annotations.push({ type: 'closure_ms', description: String(closureMs) });
 
-    const restarted = await fixture.command('start runtime', 45_000);
+    const restarted = await fixture.command('start runtime', 60_000);
     expect(restarted).toEqual({ ack: 'start runtime', epoch_equal: 'true' });
     expect(await page.evaluate(() => fetch('/', { redirect: 'manual' }).then(response => response.status, () => 0))).toBe(200);
     expect((await loopbackResponse(ready.baseURL, 'GET', localKey)).status).toBe(200);

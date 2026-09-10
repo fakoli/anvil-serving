@@ -491,11 +491,14 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	http.DefaultTransport = issuerTransport
 	t.Cleanup(func() { http.DefaultTransport = originalDefault; issuerTransport.CloseIdleConnections() })
 	gatewaySecrets := func(name string) (string, bool) { return clientSecret, name == "OIDC_CLIENT_SECRET" }
-	gateway, err := connectruntime.StartGateway(context.Background(), gatewayCfg, gatewaySecrets)
+	gatewayContext, gatewayCancel := context.WithCancel(context.Background())
+	gateway, err := connectruntime.StartGateway(gatewayContext, gatewayCfg, gatewaySecrets)
 	if err != nil {
+		gatewayCancel()
 		t.Fatal(err)
 	}
 	defer func() {
+		gatewayCancel()
 		if gateway != nil {
 			gateway.Close()
 		}
@@ -700,7 +703,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		response := map[string]string{"ack": command}
 		switch command {
 		case "stop runtime":
-			if !restartFixture || gateway == nil || connector == nil {
+			if !restartFixture || gateway == nil || connector == nil || restartEpoch != "" {
 				response["error"] = "restart fixture is disabled"
 				break
 			}
@@ -709,25 +712,31 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 				response["error"] = "restart status is unavailable"
 				break
 			}
-			// Close the authority first so every held transport observes its
-			// causal cancellation before the connector loses its tunnel child.
+			// Initiate the same parent-context cancellation used by native
+			// service shutdown. Keep full process draining out of the request
+			// cancellation measurement; Close may include graceful server waits.
+			restartEpoch = before.Epoch
+			gatewayCancel()
+		case "start runtime":
+			if !restartFixture || gateway == nil || connector == nil || len(restartEpoch) != 64 {
+				response["error"] = "restart fixture is unavailable"
+				break
+			}
+			// The caller has already observed client and native closure.
+			// Join the complete old stack before replacing any owned listener.
 			gateway.Close()
 			gateway = nil
 			connector.Close()
 			connector = nil
-			restartEpoch = before.Epoch
-		case "start runtime":
-			if !restartFixture || gateway != nil || connector != nil || len(restartEpoch) != 64 {
-				response["error"] = "restart fixture is unavailable"
-				break
-			}
 			priorTunnels := proxyObserver.count(edgeTunnelHost + ":443")
-			restartedGateway, startErr := connectruntime.StartGateway(context.Background(), gatewayCfg, gatewaySecrets)
+			restartedContext, restartedCancel := context.WithCancel(context.Background())
+			restartedGateway, startErr := connectruntime.StartGateway(restartedContext, gatewayCfg, gatewaySecrets)
 			if startErr != nil {
+				restartedCancel()
 				response["error"] = "gateway restart failed"
 				break
 			}
-			gateway = restartedGateway
+			gateway, gatewayCancel = restartedGateway, restartedCancel
 			if !runtimeCaddyControlReady(caddyListen, roots) {
 				gateway.Close()
 				gateway = nil
