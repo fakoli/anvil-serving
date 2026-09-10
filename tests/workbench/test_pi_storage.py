@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from subprocess import CompletedProcess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -76,6 +77,7 @@ def _claim_expected_owners(monkeypatch, config: dict[str, object]) -> None:
     monkeypatch.setattr(pi_storage.os, "stat", fake_stat)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage mount proof is Linux-only")
 def test_validate_pool_proves_exact_loop_mount_and_writable_roots(tmp_path, monkeypatch):
     config = _config(tmp_path)
     mountinfo, sys_block = _mount_fixture(tmp_path, config)
@@ -96,6 +98,7 @@ def test_validate_pool_proves_exact_loop_mount_and_writable_roots(tmp_path, monk
     ),
     lambda root, config: (root / "sys" / "loop7" / "loop" / "backing_file").write_text(str(root / "other.ext4"), encoding="utf-8"),
 ])
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage mount proof is Linux-only")
 def test_validate_pool_refuses_unproven_mounts(tmp_path, monkeypatch, mutator):
     config = _config(tmp_path)
     mountinfo, sys_block = _mount_fixture(tmp_path, config)
@@ -106,6 +109,7 @@ def test_validate_pool_refuses_unproven_mounts(tmp_path, monkeypatch, mutator):
         validate_pool(config, mountinfo_path=mountinfo, sys_block=sys_block)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage mount proof is Linux-only")
 def test_validate_pool_rejects_symlinked_runner_path(tmp_path, monkeypatch):
     config = _config(tmp_path)
     mountinfo, sys_block = _mount_fixture(tmp_path, config)
@@ -120,6 +124,7 @@ def test_validate_pool_rejects_symlinked_runner_path(tmp_path, monkeypatch):
         validate_pool(config, mountinfo_path=mountinfo, sys_block=sys_block)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage mount proof is Linux-only")
 def test_validate_pool_rejects_nested_mount_inside_the_bounded_pool(tmp_path, monkeypatch):
     config = _config(tmp_path)
     mountinfo, sys_block = _mount_fixture(tmp_path, config)
@@ -176,6 +181,7 @@ def test_storage_config_enforces_fixed_image_size_bound(tmp_path, size):
         storage_config(config)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage image contract is Linux-only")
 def test_existing_image_is_proven_and_never_reformatted(tmp_path, monkeypatch):
     config = _config(tmp_path)
     storage = config["pi_storage"]
@@ -204,6 +210,7 @@ def test_existing_image_is_proven_and_never_reformatted(tmp_path, monkeypatch):
     assert calls == [["blkid", "-p", "-o", "value", "-s", "TYPE", str(image)]]
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage image contract is Linux-only")
 def test_existing_non_ext4_image_is_refused_without_mkfs(tmp_path, monkeypatch):
     config = _config(tmp_path)
     storage = config["pi_storage"]
@@ -224,6 +231,7 @@ def test_existing_non_ext4_image_is_refused_without_mkfs(tmp_path, monkeypatch):
     assert not any(call[0] == "mkfs.ext4" for call in calls)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage provisioning is Linux-only")
 def test_existing_mounted_pool_is_proven_before_any_owner_mutation(tmp_path, monkeypatch):
     config = _config(tmp_path)
     storage = config["pi_storage"]
@@ -260,6 +268,29 @@ def test_unconfirmed_provision_is_a_reviewable_no_mutation_plan(tmp_path):
     assert calls == []
 
 
+def test_storage_configuration_and_dry_run_remain_portable_but_windows_provisioning_is_refused(tmp_path):
+    config = _config(tmp_path)
+
+    parsed = storage_config(config)
+    manager = PiStorageManager(config, platform="win32")
+
+    assert parsed.pool_path == Path(config["pi_storage"]["pool_path"])
+    assert manager.provision(confirm=False)["dry_run"] is True
+    with pytest.raises(PiStorageError, match="only on Linux"):
+        manager.provision(confirm=True)
+    with pytest.raises(PiStorageError, match="only on Linux"):
+        validate_pool(config, platform="win32")
+
+
+def test_missing_posix_effective_uid_is_a_bounded_provisioning_error(tmp_path, monkeypatch):
+    monkeypatch.delattr(pi_storage.os, "geteuid", raising=False)
+    manager = PiStorageManager(_config(tmp_path), platform="linux")
+
+    with pytest.raises(PiStorageError, match="requires root"):
+        manager.provision(confirm=True)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage systemd unit is Linux-only")
 def test_systemd_unit_is_idempotent_and_refuses_foreign_content(tmp_path):
     config = _config(tmp_path)
     manager = PiStorageManager(config, systemd_root=tmp_path / "units")
@@ -276,6 +307,7 @@ def test_systemd_unit_is_idempotent_and_refuses_foreign_content(tmp_path):
         manager._write_unit()
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage provisioning is Linux-only")
 def test_free_space_failure_precedes_new_image_creation(tmp_path, monkeypatch):
     config = _config(tmp_path / "new-private-root")
     image = Path(config["pi_storage"]["image_path"])
@@ -288,6 +320,7 @@ def test_free_space_failure_precedes_new_image_creation(tmp_path, monkeypatch):
     assert not image.exists()
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage image contract is Linux-only")
 def test_rollback_never_deletes_a_replaced_image(tmp_path):
     config = _config(tmp_path)
     image = Path(config["pi_storage"]["image_path"])

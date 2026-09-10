@@ -9,7 +9,7 @@
 **The system of record for agent teams** — durable, evidence-gated,
 lease-coordinated state for multi-agent software work.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/fakoli/anvil/blob/main/LICENSE)
 [![Version](https://img.shields.io/badge/version-0.6.5-blue.svg)](.claude-plugin/plugin.json)
 [![PyPI](https://img.shields.io/badge/pypi-anvil--state-purple.svg)](https://pypi.org/project/anvil-state/)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil-informational.svg)](https://fakoli.github.io/anvil/)
@@ -54,7 +54,7 @@ Two ideas separate it from an issue tracker:
   slice run without UAC or junction-dependent collection
   ([#118](https://github.com/fakoli/anvil/issues/118)).
 
-See the [v0.6.5 changelog](CHANGELOG.md#065---2026-08-24) for the complete
+See the [v0.6.5 changelog](https://github.com/fakoli/anvil/blob/main/CHANGELOG.md#065---2026-08-24) for the complete
 release-candidate-to-release history and related fixes.
 
 ## Install
@@ -147,7 +147,7 @@ walks through it on your own PRD.
 | **Coordination** | `Claim` row with lease + heartbeat; stale leases reaped at coordination entry points | Assignment-by-label — no enforcement |
 | **Agent hand-off** | Rendered work packet: intent, criteria, non-goals | Agent summarizes the whole thread |
 | **Completion** | Evidence-gated; signed, replayable proof | Trust the "done" checkbox |
-| **Context cost** | Measured ~2.4k always-on tokens ([audit](benchmarks/CONTEXT_AUDIT.md)) | Whole threads enter context on demand |
+| **Context cost** | Measured ~2.4k always-on tokens ([audit](https://github.com/fakoli/anvil/blob/main/benchmarks/CONTEXT_AUDIT.md)) | Whole threads enter context on demand |
 
 ## Proven in real sessions
 
@@ -160,7 +160,7 @@ projections:
   messages.
 - **Two concurrent agent loops finished an 18/18-task PRD in 16.7 hours** — the
   lease model deconflicted both sessions with zero explicit negotiation (in the
-  [benchmark](benchmarks/RESULTS.md), file collisions dropped 3.0 → 0.0 vs. a
+  [benchmark](https://github.com/fakoli/anvil/blob/main/benchmarks/RESULTS.md), file collisions dropped 3.0 → 0.0 vs. a
   shared-markdown control).
 - **The review gates catch real defects every time they run** — a fail-open deny
   gate, log-injection bugs, and a semantically broken "clean" merge, each caught
@@ -174,7 +174,7 @@ Full documentation: **[fakoli.github.io/anvil](https://fakoli.github.io/anvil/)*
 - [Using anvil on any harness](https://fakoli.github.io/anvil/how-to/using-anvil-on-any-harness/) — Cursor, VS Code, Zed, Codex, …
 - [Architecture](https://fakoli.github.io/anvil/architecture/) · [CLI reference](https://fakoli.github.io/anvil/cli-reference/) · [MCP reference](https://fakoli.github.io/anvil/mcp/)
 - [FAQ](https://fakoli.github.io/anvil/faq/) — installing, storage, backups, and common gotchas
-- [Roadmap](https://fakoli.github.io/anvil/roadmap/) · [CHANGELOG](CHANGELOG.md)
+- [Roadmap](https://fakoli.github.io/anvil/roadmap/) · [CHANGELOG](https://github.com/fakoli/anvil/blob/main/CHANGELOG.md)
 
 ## Status
 
@@ -186,5 +186,5 @@ contract hardening; Linear/Monday providers and webhook sync are on the
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Built by the operator
+MIT — see [LICENSE](https://github.com/fakoli/anvil/blob/main/LICENSE). Built by the operator
 ([@fakoli](https://github.com/fakoli)).

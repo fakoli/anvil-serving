@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from anvil_serving.workbench_app.task_sandbox import CommandResult, ProductionTaskSandbox
@@ -8,7 +7,7 @@ BASE = "a" * 40
 
 
 def _config():
-    return {"engine_binary": "/usr/bin/docker", "image": "example/pi@sha256:" + "b" * 64, "uid": os.getuid(), "gid": os.getgid(), "cpus": 2, "memory_bytes": 2 * 1024**3, "pids": 128}
+    return {"engine_binary": "/usr/bin/docker", "image": "example/pi@sha256:" + "b" * 64, "uid": 1000, "gid": 1000, "cpus": 2, "memory_bytes": 2 * 1024**3, "pids": 128}
 
 
 def test_capture_uses_only_pinned_unprivileged_networkless_containers(tmp_path):

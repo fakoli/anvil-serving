@@ -6,6 +6,7 @@ controller, Anvil checkout, account, credential, or inference endpoint is used.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
@@ -24,6 +25,12 @@ from anvil_serving.observability.dashboard.console import Console, attach_consol
 from anvil_serving.observability.dashboard.contracts import ObservatoryError, digest
 from anvil_serving.workbench_app.projects import Projects
 from anvil_serving.workbench_app.playground import NoRedirect
+from anvil_serving.workbench_app.pi_sessions import (
+    PiEventPage,
+    PiSession,
+    PiSessionEvent,
+    PiTaskBinding,
+)
 
 BASE = runpy.run_path(
     str(Path(__file__).parents[2] / "observability" / "test_observatory_operations.py")
@@ -290,6 +297,203 @@ class FixtureProjects(Projects):
             }
         raise ObservatoryError("fixture_read_only", "This fixture never executes Anvil tasks.", 409)
 
+    def pi_binding(self, row):
+        return PiTaskBinding(
+            principal_id=row["owner"],
+            project_id=row["project_id"],
+            task_id=row["task_id"],
+            lease_id=row["lease_id"],
+            runner_id="fixture-pi-runner",
+            provider_id=row["provider_id"],
+        )
+
+    def binding_for_pi(self, binding):
+        for row in self.store.list("task-binding", binding.principal_id):
+            if self.pi_binding(row).fingerprint == binding.fingerprint:
+                return row
+        raise ObservatoryError("not_found", "This fixture Pi binding is unavailable.", 404)
+
+    def validate_pi_binding(self, binding):
+        # This is a fixture-only ownership seam. Production validates the live
+        # Anvil lease before every mutation.
+        self.binding_for_pi(binding)
+
+
+class FixturePiStore:
+    """Deterministic retained Pi history for browser interaction checks only."""
+
+    def __init__(self, binding):
+        now = time.time()
+        self.lock = threading.RLock()
+        self.reads = 0
+        self.session = PiSession(
+            session_id="fixture-pi-session",
+            binding=binding,
+            created_at=now - 120,
+            updated_at=now,
+            start_key="fixture-retained-start",
+            model_id="atlas-fixture",
+            thinking_level="low",
+            official_session_id="fixture-native-pi-session",
+            status="running",
+            first_cursor=1,
+            next_cursor=9,
+        )
+        self.events = [
+            self._event(1, "command_accepted", {
+                "name": "prompt",
+                "command_id": "fixture-command-1",
+                "message": "Retained fixture request",
+            }),
+            self._event(2, "event", {
+                "type": "message_start",
+                "message": {"role": "user", "content": [{"type": "text", "text": "Retained fixture request"}]},
+            }),
+            self._event(3, "event", {
+                "type": "message_end",
+                "message": {"role": "user", "content": [{"type": "text", "text": "Retained fixture request"}]},
+            }),
+            self._event(4, "event", {
+                "type": "message_start",
+                "message": {"role": "assistant", "content": []},
+            }),
+            self._event(5, "text", {
+                "type": "message_update",
+                "message": {"role": "assistant", "content": [{"type": "text", "text": "Fixture assistant "}]},
+                "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "Fixture assistant "},
+            }),
+            self._event(6, "text", {
+                "type": "message_update",
+                "message": {"role": "assistant", "content": [{"type": "text", "text": "Fixture assistant reply."}]},
+                "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "reply."},
+            }),
+            self._event(7, "event", {
+                "type": "message_end",
+                "message": {"role": "assistant", "content": [{"type": "text", "text": "Fixture assistant reply."}]},
+            }),
+            self._event(8, "extension", {
+                "type": "extension_ui_request",
+                "id": "fixture-extension-input",
+                "method": "input",
+                "title": "Fixture extension input",
+                "placeholder": "Type while fixture events advance",
+            }),
+        ]
+
+    @staticmethod
+    def _event(cursor, kind, data):
+        return PiSessionEvent(cursor, time.time(), kind, data)
+
+    def get(self, session_id):
+        if session_id != self.session.session_id:
+            raise ValueError("unknown fixture Pi session")
+        return self.session
+
+    def list_for(self, binding):
+        return (self.session,) if binding.fingerprint == self.session.binding.fingerprint else ()
+
+    def all(self):
+        return (self.session,)
+
+    def events_after(self, session_id, cursor, *, limit=100):
+        with self.lock:
+            self.get(session_id)
+            self.reads += 1
+            # Every poll after initial history advances the cursor with a
+            # native-shaped lifecycle record. The transcript remains stable,
+            # which makes focus/cursor preservation observable in a browser.
+            if self.reads > 1 and len(self.events) < 256:
+                next_cursor = self.events[-1].cursor + 1
+                self.events.append(self._event(next_cursor, "lifecycle", {
+                    "type": "agent_start",
+                    "fixture_poll": self.reads,
+                }))
+                self.session = replace(
+                    self.session,
+                    updated_at=time.time(),
+                    next_cursor=next_cursor + 1,
+                )
+            selected = tuple(event for event in self.events if event.cursor > cursor)[:limit]
+            return PiEventPage(
+                selected,
+                selected[-1].cursor if selected else cursor,
+                False,
+            )
+
+    def append(self, kind, data):
+        with self.lock:
+            cursor = self.events[-1].cursor + 1
+            event = self._event(cursor, kind, data)
+            self.events.append(event)
+            self.session = replace(
+                self.session,
+                updated_at=time.time(),
+                next_cursor=cursor + 1,
+            )
+            return event
+
+
+class FixturePi:
+    """No-process Pi coordinator stub for the isolated browser fixture."""
+
+    def __init__(self, store):
+        self.store = store
+        self._clients = {}
+        self.commands = []
+
+    @staticmethod
+    def _session_json(session):
+        return {
+            "session_id": session.session_id,
+            "status": session.status,
+            "parent_session_id": session.parent_session_id,
+            "provider_id": session.binding.provider_id,
+            "model_id": session.model_id,
+            "thinking_level": session.thinking_level,
+            "official_session_id": session.official_session_id,
+            "created_at": session.created_at,
+            "updated_at": session.updated_at,
+            "first_cursor": session.first_cursor,
+            "next_cursor": session.next_cursor,
+        }
+
+    def command(self, session_id, binding, name, payload):
+        session = self.store.get(session_id)
+        if binding.fingerprint != session.binding.fingerprint or session.status != "running":
+            raise ObservatoryError("fixture_pi_unavailable", "The fixture Pi session is unavailable.", 409)
+        command_id = f"fixture-command-{len(self.commands) + 2}"
+        metadata = {"name": name, "command_id": command_id}
+        if name in {"prompt", "steer"}:
+            metadata["message"] = payload.get("message", "")
+        elif name == "extension_response":
+            metadata["request_id"] = payload.get("request_id")
+        self.commands.append({"name": name, "payload": dict(payload)})
+        self.store.append("command_accepted", metadata)
+        return {"accepted": True, "command_id": command_id}
+
+    def stop(self, session_id, binding, *, validate=True):
+        session = self.store.get(session_id)
+        if binding.fingerprint != session.binding.fingerprint:
+            raise ObservatoryError("fixture_pi_unavailable", "The fixture Pi session is unavailable.", 409)
+        self.store.session = replace(session, status="recoverable", updated_at=time.time())
+        return self._session_json(self.store.session)
+
+    def resume(self, session_id, binding):
+        session = self.store.get(session_id)
+        if binding.fingerprint != session.binding.fingerprint:
+            raise ObservatoryError("fixture_pi_unavailable", "The fixture Pi session is unavailable.", 409)
+        self.store.session = replace(session, status="running", updated_at=time.time())
+        return self._session_json(self.store.session)
+
+    def delete(self, *_args, **_kwargs):
+        raise ObservatoryError("fixture_read_only", "The fixture retains its Pi browser history.", 409)
+
+    def sweep(self):
+        return ()
+
+    def close(self):
+        pass
+
 
 class Logs:
     def read(self, query, principal, *, sources=False):
@@ -478,12 +682,30 @@ def main():
         console.workbench.projects = FixtureProjects(
             config["workbench"], console.workbench.store, console.access
         )
+        fixture_binding_row = {
+            "id": "fixture-pi-binding",
+            "project_id": "research-fixture",
+            "task_id": "workspace:T001",
+            "owner": "operator-fixture",
+            "lease_id": "fixture-pi-lease",
+            "provider_id": "fixture-provider-a",
+            "status": "ready",
+        }
+        console.workbench.store.put(
+            "task-binding", "operator-fixture", fixture_binding_row["id"], fixture_binding_row
+        )
+        fixture_pi_store = FixturePiStore(
+            console.workbench.projects.pi_binding(fixture_binding_row)
+        )
+        fixture_pi = FixturePi(fixture_pi_store)
+        console.workbench.pi_store = fixture_pi_store
+        console.workbench.pi = fixture_pi
         original_catalog = console.workbench.catalog
 
         def catalog(session):
             data = original_catalog(session)
             data["pi"] = {
-                "configured": False,
+                "configured": True,
                 "models": {
                     "fixture-provider-a": ["atlas-fixture", "finch-fixture"],
                     "fixture-provider-b": ["orion-fixture"],
@@ -520,6 +742,8 @@ def main():
                             "fixture": True,
                             "owner_mutations": owner.mutations,
                             "model_requests": Model.requests,
+                            "pi_event_reads": fixture_pi_store.reads,
+                            "pi_commands": fixture_pi.commands,
                         }
                     ),
                     flush=True,

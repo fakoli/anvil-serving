@@ -31,8 +31,12 @@ node tests/ui/workbench/browser.cjs /absolute/path/to/test-evidence
 It checks boot, an empty Workbench's Run flow, owner preview, one verified
 operation, reload without replay, retained evidence, server preferences, dependent
 Pi model choices, keyboard tabs, mobile navigation, and 1440/390px screenshots.
-The model and project fixture seams are also available for the wider product
-journeys. Browser fixture data does not establish production readiness.
+The fixture also exposes one retained, running Pi conversation whose deterministic
+event source advances on each poll. It includes durable accepted-command metadata,
+native-shaped ID-less assistant updates, and an extension input so a browser can
+check live transcript and focus behavior without starting a process or contacting a
+provider. The model and project fixture seams are also available for the wider
+product journeys. Browser fixture data does not establish production readiness.
 
 The author additionally exercised these flows through the CUA browser, compared
 production screenshots with approved Concept03, and corrected the mobile header

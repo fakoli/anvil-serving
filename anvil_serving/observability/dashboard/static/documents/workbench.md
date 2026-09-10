@@ -139,7 +139,7 @@ connections, storage ownership and existing Connect administration.
 
 ## Scope and verification
 
-The [implementation PRD](design/workbench/IMPLEMENTATION.md) identifies the
+The [implementation PRD](https://github.com/fakoli/anvil-serving/blob/main/docs/design/workbench/IMPLEMENTATION.md) identifies the
 user story behind each workspace. The implementation validation record maps each
 visible journey to its backend and focused tests. It records test evidence, not
 a release approval, merge, or live deployment claim.

@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import stat
 import subprocess
+import sys
 from typing import Callable, Mapping
 
 
@@ -26,6 +27,12 @@ _OUTPUT_LIMIT = 16 * 1024
 
 class PiStorageError(ValueError):
     """The installed Pi storage pool cannot be proven safe."""
+
+
+def _require_linux(platform: str | None = None) -> None:
+    """Keep host storage provisioning explicitly Linux-only after portable parsing."""
+    if (sys.platform if platform is None else platform) != "linux":
+        raise PiStorageError("Pi storage provisioning is supported only on Linux")
 
 
 @dataclass(frozen=True)
@@ -192,8 +199,10 @@ def validate_pool(
     *,
     mountinfo_path: Path = Path("/proc/self/mountinfo"),
     sys_block: Path = Path("/sys/block"),
+    platform: str | None = None,
 ) -> dict[str, object]:
     """Read-only proof that the configured Pi writable paths have a hard bound."""
+    _require_linux(platform)
     config = storage_config(value)
     _assert_no_symlink(config.image_path, allow_missing_leaf=False)
     _assert_no_symlink(config.pool_path, allow_missing_leaf=False)
@@ -288,9 +297,10 @@ class PiStorageManager:
         *,
         run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         systemd_root: Path = Path("/etc/systemd/system"),
-        geteuid: Callable[[], int] = os.geteuid,
+        geteuid: Callable[[], int] | None = None,
         mountinfo_path: Path = Path("/proc/self/mountinfo"),
         sys_block: Path = Path("/sys/block"),
+        platform: str | None = None,
     ) -> None:
         self.config = storage_config(value)
         self._value = value
@@ -299,6 +309,7 @@ class PiStorageManager:
         self._geteuid = geteuid
         self._mountinfo_path = mountinfo_path
         self._sys_block = sys_block
+        self._platform = platform
         self._created_image_identity: tuple[int, int] | None = None
 
     def plan(self) -> dict[str, object]:
@@ -412,7 +423,9 @@ class PiStorageManager:
         """Create, mount, verify, and persist the pool after an explicit gate."""
         if not confirm:
             return {"dry_run": True, **self.plan()}
-        if self._geteuid() != 0:
+        _require_linux(self._platform)
+        geteuid = self._geteuid or getattr(os, "geteuid", None)
+        if geteuid is None or geteuid() != 0:
             raise PiStorageError("Pi storage provisioning requires root; inspect the dry-run first")
         config = self.config
         _assert_no_symlink(config.pool_path, allow_missing_leaf=True)
