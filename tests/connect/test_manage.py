@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -13,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.connect import manage
+from anvil_serving.connect.render import render as render_config
 
 if sys.platform == "linux":
     import grp
@@ -36,6 +38,7 @@ def no_stability_delay(monkeypatch):
 class SyntheticRunner:
     def __init__(self, *, fail_daemon_reload: bool = False, fail_start: str | None = None, active: bool = False) -> None:
         self.calls: list[tuple[str, ...]] = []
+        self.timeouts: list[float] = []
         self.fail_daemon_reload = fail_daemon_reload
         self.fail_start = fail_start
         self.active = active
@@ -43,6 +46,7 @@ class SyntheticRunner:
 
     def __call__(self, argv: tuple[str, ...], timeout: float, identity: manage.ServiceIdentity | None) -> manage.RunResult:
         self.calls.append(argv)
+        self.timeouts.append(timeout)
         if len(argv) >= 2 and argv[1] == "admin":
             return manage.RunResult(0, _gateway_status())
         if argv == ("/usr/bin/systemctl", "daemon-reload") and self.fail_daemon_reload:
@@ -642,6 +646,23 @@ def test_mutating_action_marks_uncertain_execution() -> None:
     with pytest.raises(manage.ManageError) as caught:
         manage._action(failing, ("/fixed/action",), 1, "failed")
     assert caught.value.may_have_executed is True
+
+
+def test_systemd_action_deadline_exceeds_rendered_caddy_shutdown_budget(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    runner = SyntheticRunner(active=True); runner.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    caddy_restart = ("/usr/bin/systemctl", "restart", "anvil-connect-caddy.service")
+    timeout = next(timeout for call, timeout in zip(runner.calls, runner.timeouts) if call == caddy_restart)
+    files = render_config(value)["files"]
+    grace = json.loads(files["caddy.json"])["apps"]["http"]["grace_period"]
+    stop = re.search(r"^TimeoutStopSec=(\d+)$", files["systemd/anvil-connect-caddy.service"], flags=re.MULTILINE)
+    assert grace == "15s"
+    assert stop is not None
+    assert timeout == manage._SYSTEMD_TIMEOUT
+    assert timeout > int(stop.group(1)) > int(grace.removesuffix("s"))
 
 
 def test_connector_first_establishes_gateway_component_pins_later(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
