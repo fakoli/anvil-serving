@@ -171,6 +171,7 @@ def test_guest_prerequisites_are_closed_offline_base_tools(monkeypatch: pytest.M
     assert seen == [
         "/usr/sbin/groupadd", "/usr/sbin/useradd", "/usr/bin/openssl",
         "/usr/bin/systemctl", "/usr/bin/curl", "/usr/bin/setpriv", "/usr/bin/python3",
+        "/usr/sbin/update-ca-certificates",
     ]
 
 
@@ -206,6 +207,7 @@ def test_private_denials_cover_idp_and_tls_private_material_without_reads(monkey
 def test_role_read_probes_precede_managed_readiness(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
     monkeypatch.setattr(guest, "_role_read_probes", lambda: calls.append("probes"))
+    monkeypatch.setattr(guest, "_install_guest_trust", lambda: calls.append("trust"))
 
     def manager() -> SimpleNamespace:
         calls.append("manager")
@@ -217,7 +219,7 @@ def test_role_read_probes_precede_managed_readiness(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(guest, "_manager", manager)
     with pytest.raises(guest.GuestFailure):
         guest._managed_readiness(Path("synthetic-manifest"))
-    assert calls[:2] == ["probes", "manager"]
+    assert calls[:3] == ["probes", "trust", "manager"]
 
 
 def test_result_line_is_one_closed_json_record() -> None:
@@ -352,3 +354,41 @@ def test_failed_command_retains_only_bounded_returncode_and_source_locations(mon
     assert case['failure']['kind'] == 'fixture'
     assert len(case['failure']['frames']) <= 8
     assert 'SECRET' not in json.dumps(case)
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_guest_trust_installs_public_ca_and_verifies_system_bundle(monkeypatch, existing):
+    destination = guest.Path("/usr/local/share/ca-certificates/anvil-connect-fixture.crt")
+    writes, commands = [], []
+    certificate = b"synthetic-public-certificate"
+
+    def metadata(path):
+        if path == destination.parent:
+            return SimpleNamespace(st_mode=stat.S_IFDIR | 0o755, st_uid=0)
+        assert path == destination
+        if not existing:
+            raise FileNotFoundError
+        return SimpleNamespace(st_mode=stat.S_IFREG | 0o644, st_uid=0, st_gid=0, st_nlink=1)
+
+    monkeypatch.setattr(guest.Path, "lstat", metadata)
+    monkeypatch.setattr(guest, "_read_regular", lambda path, bound: certificate)
+    monkeypatch.setattr(guest, "_write_file", lambda *args: writes.append(args))
+    monkeypatch.setattr(guest, "_command", lambda argv, **kwargs: commands.append((argv, kwargs)))
+    guest._install_guest_trust()
+    assert writes == ([] if existing else [(destination, certificate, 0, 0, 0o644)])
+    assert commands == [
+        (["/usr/sbin/update-ca-certificates"], {"timeout": 30}),
+        (["/usr/bin/openssl", "verify", "-CAfile", "/etc/ssl/certs/ca-certificates.crt",
+          "-verify_hostname", "auth.example.test", "/etc/anvil-test/tls/service.pem"], {}),
+    ]
+
+
+def test_guest_trust_refuses_conflicting_existing_certificate(monkeypatch):
+    destination = guest.Path("/usr/local/share/ca-certificates/anvil-connect-fixture.crt")
+    monkeypatch.setattr(guest.Path, "lstat", lambda path: SimpleNamespace(
+        st_mode=(stat.S_IFDIR | 0o755) if path == destination.parent else (stat.S_IFREG | 0o644),
+        st_uid=0, st_gid=0, st_nlink=1))
+    monkeypatch.setattr(guest, "_read_regular", lambda path, bound: b"foreign" if path == destination else b"fixture")
+    monkeypatch.setattr(guest, "_command", lambda *args, **kwargs: pytest.fail("trust update ran after conflict"))
+    with pytest.raises(guest.GuestFailure):
+        guest._install_guest_trust()
