@@ -652,25 +652,13 @@ func TestBrowserEdgeFixture(t *testing.T) {
 	if err := json.NewEncoder(os.Stdout).Encode(ready); err != nil {
 		t.Fatal(err)
 	}
-	commands := make(chan string)
-	go func() {
-		defer close(commands)
-		buffer := make([]byte, 256)
-		for {
-			n, readErr := os.Stdin.Read(buffer)
-			if n > 0 {
-				for _, line := range strings.Split(string(buffer[:n]), "\n") {
-					if strings.TrimSpace(line) != "" {
-						commands <- strings.TrimSpace(line)
-					}
-				}
-			}
-			if readErr != nil {
-				return
-			}
+	commands := fixtureCommands(os.Stdin)
+	for received := range commands {
+		if received.err != nil {
+			t.Error(errFixtureCommandInput)
+			return
 		}
-	}()
-	for command := range commands {
+		command := received.command
 		response := map[string]string{"ack": command}
 		switch command {
 		case "grant allowed":
