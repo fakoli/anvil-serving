@@ -2,6 +2,48 @@
 
 September 10, 2026 · Interactive prototype only
 
+## Revision 2 observations
+
+The same isolated preview was revised after user feedback. No production sources,
+Connect workstream, model owner or operator configuration was changed.
+
+| Revised journey | Observed result |
+| --- | --- |
+| Palette and desktop layout | Serving docs navy/cyan/amber tokens applied; desktop screenshot inspected; right HUD removed |
+| Single scroll owner | No independently scrolling vertical elements across eight main pages at 320px; no document-wide horizontal overflow |
+| Dense tables | Connect tables retain bounded horizontal scrolling; document width stays within viewport |
+| Deterministic run flow | Review → simulated submission → advance → pause/resume changes phase and runner indicator; Advance disabled while paused |
+| Run identity | New flow identifies EXP-043; retained overview/comparison/evidence identify historical EXP-042 |
+| Cancel review | Reviewing and cancelling a second experiment does not rewrite the submitted run |
+| Pi conversation | One submitted turn, steering note and manual finish produce the expected messages and Working/Awaiting review state |
+| Pi text safety | Literal image/event-handler markup creates no image node |
+| Pi session isolation | Branch clears transient draft/diff; original and branch restore separate draft and thinking selections; original diff preserved |
+| Pi extension | Confirmation records a local review note; no tool grant or execution occurs |
+| Recipe editor | Finch context 8192 → 16384 saved as r2; save has no load effect; separate review simulates load |
+| Exact recipe identity | r1 remains marked not loaded, active revision shows r2, saved candidate shows loaded/unqualified |
+| Compute selection | MacBook target resolves to the loaded Finch r2; mismatched compute disables Send without substitution |
+| Request capture | A last submitted request from another target is rejected when converting to a new test |
+| Connect last admin | Disabling the final administrator is rejected beside the form |
+| Connect grants | Researcher access can be reviewed and disabled while retaining identity |
+| Connect cascade | Browser revocation preview names its terminal child; confirming marks both revoked |
+| System context | MacBook logs and Grafana preview show MacBook and the exact loaded Finch revision |
+| Documentation | Anvil State summary and source link render in the reader; topic selection retains its named content relationship |
+| Dialog focus | Recipe edit → review focuses the new heading; 320px modal measures 292px and controls remain reachable |
+| Workbench controls | Named tablist and labeled tabpanel expose current section; ArrowRight and Home move focus/selection correctly; source also handles ArrowLeft/End |
+
+Keyboard focus and DOM relationships were checked; these are not screen-reader
+or comprehensive keyboard-conformance results. The narrow viewport override was
+reset. Earlier revision observations below are retained as historical checks,
+including the former Pi evidence-tab layout, which revision 2 replaces.
+
+Independent Sol/high revision review found exact-recipe labeling, selected-host
+drill-down, Pi session state, dialog focus and section-semantics issues. All five
+were corrected and the affected browser paths rechecked. Final focused reviewer disposition: **approved for the bounded concept revision**;
+no material defects remained in the five rechecked areas. Both JavaScript files
+passed syntax checks. Final reload and Access/Workbench navigation produced no
+new browser warnings or errors. The browser log retains earlier partial-edit
+errors from before the Access function was added; these are not final-load errors.
+
 ## Scope
 
 The existing Observatory was inspected through its isolated synthetic fixture.
