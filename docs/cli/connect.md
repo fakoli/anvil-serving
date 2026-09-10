@@ -109,7 +109,7 @@ two browser fixtures under container isolation. Terminal approval, virtual and
 physical passkeys, host service identities and production routes need separate
 evidence.
 
-Run the terminal-login scenario in the same isolated image:
+Run the terminal-login scenarios in the same isolated image:
 
 ```sh
 anvil-serving connect qualify --lane device
@@ -119,10 +119,18 @@ This drives the actual standalone CLI, synthetic Authelia browser sign-in and
 approval form, then makes keyed requests through the CLI's loopback listener.
 Only the CLI child trusts its fixture CA; normal HTTPS hostname and certificate
 verification stay enabled. The lane checks absent/wrong local keys, declared
-models access, GET-only grant enforcement, and CLI exit/port release. Codes and
-credentials stay in transient fixture state, outside retained evidence. Denial,
-expiry, cancellation, replay and broader revocation scenarios require additional
-coverage; a passing positive scenario is not full device-flow qualification.
+models access, GET-only grant enforcement, and CLI exit/port release. Its negative
+scenario also checks unauthenticated approval, forged and foreign-origin CSRF,
+a real browser denial, and terminal cancellation before approval. A third scenario
+checks user disable and browser logout: an approved CLI request must return 401
+without reaching the origin. The logout check uses a fresh Connect session
+through the existing identity-provider SSO session. Codes and credentials stay
+in transient fixture state, outside retained evidence.
+
+Expiry and single-use redemption after a lost response are covered separately by
+authority and CLI unit tests, using an injected clock where appropriate. The
+device lane does not claim those are browser end-to-end tests. Active-stream
+revocation, authority recovery and physical passkeys require separate coverage.
 
 ## Validate
 

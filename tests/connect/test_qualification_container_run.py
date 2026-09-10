@@ -107,3 +107,13 @@ def test_root_invocation_is_refused_before_discovery(monkeypatch, uid, gid):
     monkeypatch.setattr(runner, "_read_config", lambda *args: pytest.fail("discovery before root guard"))
     with pytest.raises(runner.QualificationError, match="non-root"):
         subject.qualify()
+
+
+def test_device_lane_requires_positive_negative_and_revocation_results():
+    positive = {"name":subject._DEVICE_TESTS[0],"status":"passed","duration_seconds":1.0}
+    with pytest.raises(runner.QualificationError):
+        subject._cases(json.dumps({"tests":[positive],"escalated":False}).encode(),subject._DEVICE_TESTS)
+    negative = {"name":subject._DEVICE_TESTS[1],"status":"passed","duration_seconds":1.0}
+    revocation = {"name":subject._DEVICE_TESTS[2],"status":"not-run","duration_seconds":0.0}
+    cases, escalated = subject._cases(json.dumps({"tests":[positive,negative,revocation],"escalated":False}).encode(),subject._DEVICE_TESTS)
+    assert runner._counts(cases) == {"passed":2,"failed":0,"skipped":0,"not_run":1}

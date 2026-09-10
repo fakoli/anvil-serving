@@ -299,3 +299,10 @@ def test_container_baseline_dispatch_uses_saved_configuration(monkeypatch, capsy
     assert cli.main(["connect","qualify","--lane","container-baseline","--config","/private/settings.toml","--json"]) == 0
     assert calls == [("/private/settings.toml", "container-baseline")]
     assert json.loads(capsys.readouterr().out)["data"]["counts"]["passed"] == 2
+
+
+def test_device_preflight_reports_all_required_scenarios_not_run(tmp_path):
+    result = dispatch(["qualify", "--lane", "device", "--config", str(tmp_path / "missing.toml")])
+    assert result.error is not None
+    assert result.data["state"] == "not-run"
+    assert result.data["counts"] == {"passed":0,"failed":0,"skipped":0,"not_run":3}
