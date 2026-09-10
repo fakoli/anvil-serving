@@ -12,14 +12,13 @@ import os
 from pathlib import Path
 import selectors
 import signal
-import shutil
 import stat
 import subprocess
 import tempfile
 import time
 from typing import Any
 
-from .qualification import QualificationConfig, QualificationError, _error, _private_directory, _read_config
+from .qualification import QualificationConfig, _error, _private_directory, _read_config
 
 _SCHEMA = "anvil-connect.qualification-container/v1"
 _LABEL = "io.fakoli.anvil-connect.qualification.input-digest"
