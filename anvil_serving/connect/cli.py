@@ -28,7 +28,7 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
     qualification = actions.add_parser("qualify", allow_abbrev=False)
     qualify_mode = qualification.add_mutually_exclusive_group()
-    qualify_mode.add_argument("--lane", choices=("baseline", "container-baseline", "device", "revocation"), action=_Once)
+    qualify_mode.add_argument("--lane", choices=("baseline", "container-baseline", "device", "revocation", "isolation"), action=_Once)
     qualify_mode.add_argument("--prepare-container", action="store_true")
     qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
@@ -84,16 +84,43 @@ def _qualify(args: argparse.Namespace) -> CommandResult:
     if args.lane in {"device", "revocation"}:
         from .qualification_container_run import _DEVICE_TESTS, _REVOCATION_TESTS
         expected_count = len(_DEVICE_TESTS if args.lane == "device" else _REVOCATION_TESTS)
+    elif args.lane == "isolation":
+        from .qualification_vm_run import _CASES
+        expected_count = len(_CASES)
+
+    def unavailable_counts() -> dict[str, int]:
+        return {"passed": 0, "failed": 0, "skipped": 0, "not_run": 0, "unavailable": expected_count}
+
     try:
-        if args.lane in {"container-baseline", "device", "revocation"}:
+        if args.lane == "isolation":
+            from .qualification_vm_run import qualify as isolation_qualify
+            result = isolation_qualify(args.config)
+        elif args.lane in {"container-baseline", "device", "revocation"}:
             from .qualification_container_run import qualify as container_qualify
             result = container_qualify(args.config, lane=args.lane)
         else:
             result = qualify(args.config, lane=args.lane or "baseline")
+    except KeyboardInterrupt as exc:
+        if args.lane != "isolation":
+            raise
+        started = bool(getattr(exc, "execution_started", True))
+        counts = getattr(exc, "case_counts", None)
+        if counts is None:
+            counts = unavailable_counts() if started else {"passed": 0, "failed": 0, "skipped": 0, "not_run": expected_count}
+        return CommandResult(data={
+            "schema": "anvil-connect.qualification/v1", "ok": False,
+            "state": "failed" if started else "not-run", "error_code": "runner-interrupted",
+            "counts": counts, "stage": getattr(exc, "stage", "execution"),
+        }, error=OperatorError(
+            "Connect isolation qualification was interrupted.",
+            code="runner-interrupted",
+        ))
     except QualificationError as exc:
         started = bool(getattr(exc, "execution_started", False))
         state = "failed" if started else "not-run"
         counts = getattr(exc, "case_counts", None) if started else {"passed": 0, "failed": 0, "skipped": 0, "not_run": expected_count}
+        if args.lane == "isolation" and started and counts is None:
+            counts = unavailable_counts()
         return CommandResult(data={
             "schema": "anvil-connect.qualification/v1", "ok": False, "state": state,
             "error_code": exc.code, "counts": counts, "stage": getattr(exc, "stage", "preflight"),
