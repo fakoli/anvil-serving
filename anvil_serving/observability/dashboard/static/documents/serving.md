@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/hero-anvil.png" alt="" width="320">
+<img src="https://github.com/fakoli/anvil-serving/blob/main/docs/assets/hero-anvil.png" alt="" width="320">
 
 # Anvil Serving
 
@@ -10,9 +10,9 @@
 [![Source Version](https://img.shields.io/badge/source-1.0.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
-[Get started](docs/GETTING-STARTED.md) ·
-[Choose a product journey](docs/PRODUCT-FAMILIES.md) ·
-[Browse benchmark evidence](docs/benchmarks/index.md) ·
+[Get started](https://github.com/fakoli/anvil-serving/blob/main/docs/GETTING-STARTED.md) ·
+[Choose a product journey](https://github.com/fakoli/anvil-serving/blob/main/docs/PRODUCT-FAMILIES.md) ·
+[Browse benchmark evidence](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/index.md) ·
 [Open the documentation](https://fakoli.github.io/anvil-serving/)
 
 </div>
@@ -65,7 +65,7 @@ one explicitly declared TP=2 serve owns both cards and every other GPU
 inference workload is offline. Capability aliases remain independent of that
 placement. The gateway keeps authentication, dialect translation, streaming,
 readiness, admission, and decision evidence consistent across those
-capabilities. See [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
+capabilities. See [Product families and user journeys](https://github.com/fakoli/anvil-serving/blob/main/docs/PRODUCT-FAMILIES.md)
 for each authority boundary and its ordered path.
 
 ## Capability meta-router contract
@@ -92,7 +92,7 @@ grant the router GPU-device access.
 Related authenticated endpoints expose declared capabilities and fingerprints,
 router build/config identity, bounded-buffer statistics, request traces, and
 Prometheus gauges. See the
-[router observability API](docs/THIN-CAPABILITY-GATEWAY.md#router-observability-api).
+[router observability API](https://github.com/fakoli/anvil-serving/blob/main/docs/THIN-CAPABILITY-GATEWAY.md#router-observability-api).
 
 Purpose models and audio are equally explicit: embeddings and reranking use
 their configured model names on dedicated endpoints, while STT/TTS use
@@ -117,12 +117,12 @@ chooses among models. The complete request path is:
    when replicas are configured, and relays once or fails closed. Round-robin
    and capacity-aware selection never choose a different model, tier, or host.
 
-See [qualified replica configuration](docs/CONFIGURATION.md#qualified-same-host-replicas)
-and [member lifecycle limits](docs/cli/serves.md#replica-lifecycle-limits).
-The [workload activity view](docs/WORKLOAD-VISIBILITY.md) adds bounded, read-only
+See [qualified replica configuration](https://github.com/fakoli/anvil-serving/blob/main/docs/CONFIGURATION.md#qualified-same-host-replicas)
+and [member lifecycle limits](https://github.com/fakoli/anvil-serving/blob/main/docs/cli/serves.md#replica-lifecycle-limits).
+The [workload activity view](https://github.com/fakoli/anvil-serving/blob/main/docs/WORKLOAD-VISIBILITY.md) adds bounded, read-only
 node and fleet visibility without acquiring scheduling or lifecycle authority.
 
-See [Capability meta-router](docs/META-ROUTER.md) for the authority model and
+See [Capability meta-router](https://github.com/fakoli/anvil-serving/blob/main/docs/META-ROUTER.md) for the authority model and
 the product decisions that keep dynamic metadata separate from dynamic route
 selection.
 
@@ -132,7 +132,7 @@ Python 3.11+ is the only Anvil runtime prerequisite. Model serves additionally
 need their declared engine: Docker and compatible hardware for container
 recipes, or an installed MLX service on Apple Silicon macOS. A single-host installation can stay
 entirely on loopback; the reference multi-device deployment also installs
-Tailscale and follows [Private networking with Tailscale](docs/TAILSCALE-NETWORKING.md).
+Tailscale and follows [Private networking with Tailscale](https://github.com/fakoli/anvil-serving/blob/main/docs/TAILSCALE-NETWORKING.md).
 
 ```bash
 pip install -e .
@@ -205,7 +205,7 @@ Mutations preview by default; applying requires both flags shown above.
 Parakeet.cpp and Kokoro LaunchAgents can be adopted as legacy services without
 restarting or migrating them. Native serves, recipes, and voice endpoints can
 delegate lifecycle to a declared service binding. See
-[Host-supervised services](docs/HOST-SERVICES.md) for adoption, installation,
+[Host-supervised services](https://github.com/fakoli/anvil-serving/blob/main/docs/HOST-SERVICES.md) for adoption, installation,
 ownership, and the distinction between running, enabled, and ready.
 
 ## What it provides
@@ -237,28 +237,28 @@ controller, and ordinary CLI remain stdlib-only.
 
 ## Documentation
 
-- [Start here for the next internet model recipe](START_HERE.md)
-- [Getting started](docs/GETTING-STARTED.md)
-- [Private networking with Tailscale](docs/TAILSCALE-NETWORKING.md)
-- [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
-- [Capability meta-router](docs/META-ROUTER.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Configuration](docs/CONFIGURATION.md)
-- [Host-supervised services](docs/HOST-SERVICES.md)
-- [Public product and private operator state](docs/OPERATOR-PRIVACY.md)
-- [Meta-router request path](docs/THIN-CAPABILITY-GATEWAY.md)
-- [CLI reference](docs/CLI.md)
-- [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md)
-- [Split-host remote-control example](examples/primary-node/REMOTE-CONTROL.md)
-- [Voice pipeline](docs/VOICE.md)
-- [Anvil Media commands](docs/cli/media.md)
-- [Benchmarks](docs/benchmarks/index.md)
-  - [Context, agentic, and SWE benchmark jobs](docs/benchmarks/context-agentic-swe.md)
-  - [RTX PRO 6000](docs/benchmarks/hardware/rtx-pro-6000.md)
-  - [RTX 5090 historical measurements](docs/benchmarks/hardware/rtx-5090.md)
-- [Benchmark run catalog](docs/benchmarks/runs.md)
-- [OpenClaw integration](docs/OPENCLAW-INTEGRATION-SPEC.md)
-- [ADRs](docs/adr/README.md)
+- [Start here for the next internet model recipe](https://github.com/fakoli/anvil-serving/blob/main/START_HERE.md)
+- [Getting started](https://github.com/fakoli/anvil-serving/blob/main/docs/GETTING-STARTED.md)
+- [Private networking with Tailscale](https://github.com/fakoli/anvil-serving/blob/main/docs/TAILSCALE-NETWORKING.md)
+- [Product families and user journeys](https://github.com/fakoli/anvil-serving/blob/main/docs/PRODUCT-FAMILIES.md)
+- [Capability meta-router](https://github.com/fakoli/anvil-serving/blob/main/docs/META-ROUTER.md)
+- [Architecture](https://github.com/fakoli/anvil-serving/blob/main/docs/ARCHITECTURE.md)
+- [Configuration](https://github.com/fakoli/anvil-serving/blob/main/docs/CONFIGURATION.md)
+- [Host-supervised services](https://github.com/fakoli/anvil-serving/blob/main/docs/HOST-SERVICES.md)
+- [Public product and private operator state](https://github.com/fakoli/anvil-serving/blob/main/docs/OPERATOR-PRIVACY.md)
+- [Meta-router request path](https://github.com/fakoli/anvil-serving/blob/main/docs/THIN-CAPABILITY-GATEWAY.md)
+- [CLI reference](https://github.com/fakoli/anvil-serving/blob/main/docs/CLI.md)
+- [Operator playbooks](https://github.com/fakoli/anvil-serving/blob/main/docs/OPERATOR-PLAYBOOKS.md)
+- [Split-host remote-control example](https://github.com/fakoli/anvil-serving/blob/main/examples/primary-node/REMOTE-CONTROL.md)
+- [Voice pipeline](https://github.com/fakoli/anvil-serving/blob/main/docs/VOICE.md)
+- [Anvil Media commands](https://github.com/fakoli/anvil-serving/blob/main/docs/cli/media.md)
+- [Benchmarks](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/index.md)
+  - [Context, agentic, and SWE benchmark jobs](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/context-agentic-swe.md)
+  - [RTX PRO 6000](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/hardware/rtx-pro-6000.md)
+  - [RTX 5090 historical measurements](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/hardware/rtx-5090.md)
+- [Benchmark run catalog](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/runs.md)
+- [OpenClaw integration](https://github.com/fakoli/anvil-serving/blob/main/docs/OPENCLAW-INTEGRATION-SPEC.md)
+- [ADRs](https://github.com/fakoli/anvil-serving/blob/main/docs/adr/README.md)
 
 ## Security and operating boundaries
 
@@ -276,4 +276,4 @@ controller, and ordinary CLI remain stdlib-only.
   proxy port that forwards to another owner does not make the harness a model
   serving host.
 
-See [SECURITY.md](SECURITY.md) for the threat model and reporting policy.
+See [SECURITY.md](https://github.com/fakoli/anvil-serving/blob/main/SECURITY.md) for the threat model and reporting policy.

@@ -73,7 +73,7 @@ def start(svc, key="start-1", binding=None, **kwargs):
     return svc.new(binding or _binding(), key, model_id="model-a", thinking_level="low", **kwargs)
 
 
-def test_native_path_tracks_live_file_and_rejects_traversal_and_symlinks(tmp_path):
+def test_native_path_tracks_live_file_and_rejects_traversal(tmp_path):
     store = PiSessionStore(tmp_path)
     session, _ = store.create(_binding(), "start")
     for value in ("/sessions/../outside.jsonl", "/sessions/nested/file.jsonl", "/tmp/file.jsonl", str(tmp_path / "x.jsonl")):
@@ -88,8 +88,18 @@ def test_native_path_tracks_live_file_and_rejects_traversal_and_symlinks(tmp_pat
     with file.open("a") as output:
         output.write("second\n")
     assert Path(store.get(session.session_id).official_session_file).read_text() == "first\nsecond\n"
-    file.unlink()
-    file.symlink_to(tmp_path / "outside")
+
+
+def test_native_path_rejects_symlinked_official_state_file(tmp_path):
+    store = PiSessionStore(tmp_path)
+    session, _ = store.create(_binding(), "start")
+    file = store.session_dir(session.session_id) / "live.jsonl"
+    state = {"sessionId": session.session_id, "sessionFile": "/sessions/live.jsonl"}
+    store.record_official_state(session.session_id, state)
+    try:
+        file.symlink_to(tmp_path / "outside")
+    except OSError:
+        pytest.skip("symlink creation is unavailable")
     with pytest.raises(PiSessionError):
         store.record_official_state(session.session_id, state)
 

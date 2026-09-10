@@ -2,7 +2,7 @@
 
 The approved scope is the complete integrated Workbench, purposeful actions mapped
 to twelve stories in `IMPLEMENTATION.md`, independent review, live acceptance,
-push, CI and merge. The goal remains active. Production changes are uncommitted.
+push, CI and merge. The goal remains active. Production implementation is pushed in Serving PR 482.
 
 ## Architecture and completed gates
 
@@ -35,15 +35,13 @@ push, CI and merge. The goal remains active. Production changes are uncommitted.
 
 ## Dependencies and coordination
 
-Anvil PRs 223 and 226 merged. PR 227 adds supported local projection repair and
-retained backup, using SQLite online publication into the existing DB inode.
-Independent review rejected an earlier replacement approach; corrected peer-reader,
-staged-oracle, Windows reparse and sidecar cleanup tests pass. Fresh CI after
-WAL durability and Windows staging-cleanup corrections is pending. The reviewed
-CLI candidate is installed separately and resolves the canonical State identity. The repair agent
-owns merge, supported local repair, doctor/status checks, deterministic planning and
-scoring of the approved workbench PRD, plus a dedicated installed Anvil CLI.
-No direct State DB/event edits are authorized. No arbitrary task claim yet.
+Anvil PRs 223, 226 and 227 merged. Supported projection repair retained a backup
+and restored replay integrity. Deterministic planning exposed a separate historical
+identity gap: the canonical log contains PRD lifecycle records but no project
+registration event, so replay cannot supply the required project row. Investigation
+must use the event-proven identity and preserve concurrent claims; neither a fresh
+project initialization nor a direct database edit is an acceptable repair.
+The dedicated installed Anvil CLI resolves the canonical State workspace.
 
 The concurrent Connect checkout and dirty private operator repository must remain
 intact. No inference, router or Connect restart has occurred. A native Workbench canary now runs separately with explicit resource limits.
@@ -62,19 +60,23 @@ Installed canary acceptance: valid Connect assertions pass; unsigned reads fail;
 fleet, controls, docs and canonical Anvil project reads return authenticated data.
 A real Playground request completed through the selected primary alias, returned
 its exact marker and retained usage. Installed wheel smoke and strict docs pass.
-The full source suite reached 7,850 passes and 34 skips, with one missing-Python-
-PATH harness failure; that exact check passed with the development PATH restored.
-A final source snapshot still needs all late UI and owner changes included.
+The clean committed source suite passed 7,857 tests with 34 skips. Linux 3.11 and
+3.13 CI and both installed-wheel build jobs passed. The first CI pass found an
+import-time POSIX-only default, stale CLI inventory and packaged relative document
+links. Those are corrected in the follow-up, with platform-specific tests limited
+to the actual Linux storage boundary. The public scanner now recognizes only exact
+public metadata/container constants in the files that own them; independent review
+accepted its negative boundary tests.
 
-Pi's first UI review fixed separate drafts, explicit new-thread targets, ordered
-messages and durable extension resolution. The second review found polling focus
-loss and native events without synthetic message IDs; those corrections are in
-progress. Shell filters now use the HUD once, and hiding an interactive page no
-longer aborts its in-flight conversation request.
+Pi's two UI reviews fixed separate drafts, explicit new-thread targets, ordered
+native ID-less messages, durable extension resolution and polling focus retention.
+The isolated browser fixture now supplies a retained running thread and native
+events for actual browser verification. Shell filters use the HUD once, and hiding
+an interactive page no longer aborts its in-flight conversation request.
 
-The repeatable private infrastructure role is merged; production Serving source
-remains uncommitted. No Serving PR, native primary cutover, controller rebuild,
-final Pi browser acceptance or complete production merge is claimed yet.
+The repeatable private infrastructure role is merged. Private owner controls are
+in a separate scoped PR. Native primary cutover, the final controller artifact,
+Pi browser acceptance and the production merge remain delivery gates.
 
 Keep private runtime paths, current digests, host identities, credentials and raw
 receipts out of this tracked checkpoint. Private deployment evidence stays in the
