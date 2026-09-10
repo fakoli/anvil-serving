@@ -385,6 +385,107 @@ def test_gateway_readiness_failure_rolls_back_without_starting_connector(tmp_pat
     assert not any(call[-1] == "anvil-connect-connector-dashboard.service" and call[1] in {"enable", "restart"} for call in runner.calls)
 
 
+def test_rollback_waits_for_prior_gateway_before_restoring_dependents(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, native = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    initial = SyntheticRunner(active=True); initial.unit_root = units
+    targets = manage._targets(value, None)
+    manage.up_many(manifest, targets, apply=True, runner=initial, unit_root=units)
+    root = Path(value["config_root"])
+    old_gateway = (root / "gateway.json").read_bytes()
+    old_state = Path(value["gateway"]["state_directory"])
+    upgraded = tmp_path / "anvil-connect-v2"
+    _executable(upgraded, b"native-v2")
+    changed = copy.deepcopy(value)
+    changed["binary"] = str(upgraded)
+    changed["gateway"]["state_directory"] = str(tmp_path / "gateway-state-v2")
+    changed["service_identities"]["gateway"] = {"uid": 1291, "gid": 2291}
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+    monkeypatch.setattr(
+        manage,
+        "_role_service_identity",
+        lambda data, *_: manage.ServiceIdentity(data["service_identities"]["gateway"]["uid"], data["service_identities"]["gateway"]["gid"]),
+    )
+
+    class DelayedPriorRunner(SyntheticRunner):
+        def __init__(self) -> None:
+            super().__init__(active=True)
+            self.new_probes = 0
+            self.prior_probes = 0
+
+        def __call__(self, argv, timeout, identity):  # type: ignore[no-untyped-def]
+            if argv[:2] == (str(upgraded), "admin"):
+                self.calls.append(argv)
+                self.new_probes += 1
+                assert identity == manage.ServiceIdentity(1291, 2291)
+                return manage.RunResult(1)
+            if argv[:2] == (str(native), "admin"):
+                self.calls.append(argv)
+                self.prior_probes += 1
+                assert identity == manage.ServiceIdentity(1201, 2201)
+                assert argv[argv.index("--socket") + 1] == str(old_state / "admin.sock")
+                return manage.RunResult(1) if self.prior_probes < 3 else manage.RunResult(0, _gateway_status())
+            return super().__call__(argv, timeout, identity)
+
+    runner = DelayedPriorRunner(); runner.unit_root = units
+    with pytest.raises(manage.ManageError, match="gateway did not become ready"):
+        manage.up_many(manifest, (manage.Target("connector", "dashboard"), manage.Target("gateway"), manage.Target("client", "dashboard-api")), upgrade=True, apply=True, runner=runner, unit_root=units)
+    assert (root / "gateway.json").read_bytes() == old_gateway
+    assert runner.new_probes == 6
+    assert runner.prior_probes == 3
+    last_new_probe = max(index for index, call in enumerate(runner.calls) if call[:2] == (str(upgraded), "admin"))
+    restored = [call[-1] for call in runner.calls[last_new_probe + 1:] if call[:2] == ("/usr/bin/systemctl", "restart")]
+    assert restored == [
+        "anvil-connect-authelia.service",
+        "anvil-connect-caddy.service",
+        "anvil-connect-gateway.service",
+        "anvil-connect-connector-dashboard.service",
+        "anvil-connect-client-dashboard-api.service",
+    ]
+    third_prior_probe = [index for index, call in enumerate(runner.calls) if call[:2] == (str(native), "admin")][2]
+    connector_restart = next(index for index, call in enumerate(runner.calls) if call == ("/usr/bin/systemctl", "restart", "anvil-connect-connector-dashboard.service"))
+    assert third_prior_probe < connector_restart
+
+
+def test_rollback_refuses_dependent_restore_when_prior_gateway_never_ready(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, native = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    initial = SyntheticRunner(active=True); initial.unit_root = units
+    targets = manage._targets(value, None)
+    manage.up_many(manifest, targets, apply=True, runner=initial, unit_root=units)
+    root = Path(value["config_root"])
+    old_gateway = (root / "gateway.json").read_bytes()
+    upgraded = tmp_path / "anvil-connect-v2"
+    _executable(upgraded, b"native-v2")
+    changed = copy.deepcopy(value)
+    changed["binary"] = str(upgraded)
+    changed["gateway"]["state_directory"] = str(tmp_path / "gateway-state-v2")
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+
+    class NeverReadyRunner(SyntheticRunner):
+        def __init__(self) -> None:
+            super().__init__(active=True)
+            self.prior_probes = 0
+
+        def __call__(self, argv, timeout, identity):  # type: ignore[no-untyped-def]
+            if argv[:2] in {(str(upgraded), "admin"), (str(native), "admin")}:
+                self.calls.append(argv)
+                if argv[0] == str(native):
+                    self.prior_probes += 1
+                return manage.RunResult(1)
+            return super().__call__(argv, timeout, identity)
+
+    runner = NeverReadyRunner(); runner.unit_root = units
+    with pytest.raises(manage.ManageError, match="restoration failed") as caught:
+        manage.up_many(manifest, targets, upgrade=True, apply=True, runner=runner, unit_root=units)
+    assert caught.value.may_have_executed is True
+    assert (root / "gateway.json").read_bytes() == old_gateway
+    assert runner.prior_probes == 6
+    assert not any(call == ("/usr/bin/systemctl", "restart", "anvil-connect-connector-dashboard.service") for call in runner.calls)
+
+
 def test_up_many_refuses_same_path_binary_replacement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manifest, value, native = deployment(tmp_path, monkeypatch)
     units = tmp_path / "units"

@@ -1262,29 +1262,50 @@ def _unit_state(runner: Runner | None, unit: str) -> tuple[bool, str]:
     return fields["ActiveState"] == "active", state
 
 
-def _restore_running(runner: Runner | None, units: tuple[str, ...], prior: dict[str, tuple[bool, str]]) -> None:
-    """Restore only observed units and report a failed restoration to the caller."""
+def _restore_running(runner: Runner | None, units: tuple[str, ...], prior: dict[str, tuple[bool, str]],
+                     gateway_ready: Callable[[], None] | None = None) -> None:
+    """Restore observed units in dependency order after owned bytes are restored."""
     failure: ManageError | None = None
+    mutated = False
+
+    # Return previously inactive units to their exact enabled/runtime state
+    # before restarting active dependencies.  This avoids leaving a failed new
+    # generation running while preserving a manually running disabled unit.
     for unit in reversed(units):
         state = prior.get(unit)
         if state is None:
             continue
         was_active, unit_file_state = state
         try:
-            if was_active:
-                # Restart under the restored generation but do not turn a
-                # manually running, disabled unit into an enabled unit.
-                _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
-            else:
+            if not was_active:
+                mutated = True
                 _action(runner, (_SYSTEMCTL, "disable", "--now", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
                 if unit_file_state == "enabled":
+                    mutated = True
                     _action(runner, (_SYSTEMCTL, "enable", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
                 elif unit_file_state == "enabled-runtime":
+                    mutated = True
                     _action(runner, (_SYSTEMCTL, "enable", "--runtime", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
         except ManageError as exc:
             failure = exc
+    gateway_units = _units(Target("gateway"))
+    for unit in (*gateway_units, *(item for item in units if item not in gateway_units)):
+        state = prior.get(unit)
+        if state is None or not state[0]:
+            continue
+        try:
+            # Restart under the restored generation but do not turn a manually
+            # running, disabled unit into an enabled unit.
+            mutated = True
+            _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
+            if unit == "anvil-connect-gateway.service" and gateway_ready is not None:
+                gateway_ready()
+        except ManageError as exc:
+            failure = exc
+            if unit == "anvil-connect-gateway.service":
+                break
     if failure is not None:
-        raise ManageError("managed unit restoration failed", may_have_executed=failure.may_have_executed) from failure
+        raise ManageError("managed unit restoration failed", may_have_executed=mutated or failure.may_have_executed) from failure
 
 
 def _started_units(runner: Runner | None, unit_root: Path, units: tuple[str, ...]) -> None:
@@ -1362,6 +1383,71 @@ def _gateway_ready(data: dict[str, Any], runner: Runner | None) -> None:
             if attempt < 5:
                 time.sleep(1)
     raise ManageError("gateway did not become ready before dependent activation")
+
+
+def _prior_gateway_identity(data: dict[str, Any], source: bytes) -> ServiceIdentity | None:
+    """Resolve only the identity recorded in a restored owned gateway unit."""
+    try:
+        text = source.decode("utf-8", "strict")
+    except UnicodeDecodeError as exc:
+        raise ManageError("owned prior gateway unit is invalid") from exc
+    values = {
+        key: [line.removeprefix(key + "=") for line in text.splitlines() if line.startswith(key + "=")]
+        for key in ("User", "Group")
+    }
+    if any(len(value) != 1 or not value[0] for value in values.values()):
+        raise ManageError("owned prior gateway unit is invalid")
+    user, group = values["User"][0], values["Group"][0]
+    if user.isdecimal() and group.isdecimal():
+        uid, gid = int(user), int(group)
+        if uid <= 0 or gid <= 0:
+            raise ManageError("owned prior gateway identity is unsafe")
+        prior_identities = dict(data["service_identities"])
+        prior_identities["gateway"] = {"uid": uid, "gid": gid}
+        return _role_service_identity({**data, "service_identities": prior_identities}, "gateway")
+    if _ID.fullmatch(user) is None or _ID.fullmatch(group) is None:
+        raise ManageError("owned prior gateway identity is invalid")
+    if user != group:
+        raise ManageError("owned prior gateway identity is invalid")
+    # Legacy units had one service user for every role.  Resolve it through the
+    # existing current-credential checks rather than trusting a rendered name.
+    return _legacy_recovery_identity({**data, "service_user": user})
+
+
+def _restored_gateway_ready(data: dict[str, Any], root: Path, runner: Runner | None) -> None:
+    """Probe a restored gateway using only its prior owned binary and identity."""
+    generation, _ = _verify_owned_tree(root)
+    raw = _read_regular(_activation_record(root), _MAX_OUTPUT)
+    _valid_prior_record(raw, generation)
+    if raw is None:
+        raise ManageError("restored generation has no owned activation record")
+    record = _strict_json(raw, "activation record is not owned")
+    source = _unit_sources(root).get("anvil-connect-gateway.service")
+    if source is None:
+        raise ManageError("owned prior gateway unit is unavailable")
+    binary = _unit_exec_path(source)
+    if _digest(binary) != record["native_sha256"]:
+        raise ManageError("prior gateway executable is unavailable for rollback")
+    gateway = _strict_json(_read_regular(root / "gateway.json", _MAX_OUTPUT) or b"", "owned prior gateway declaration is invalid")
+    state_directory = gateway.get("state_directory")
+    socket = Path(state_directory) / "admin.sock" if isinstance(state_directory, str) else Path()
+    if not socket.is_absolute() or ".." in socket.parts:
+        raise ManageError("owned prior gateway declaration is invalid")
+    identity = _prior_gateway_identity(data, source)
+    _safe_dir(root.parent)
+    with tempfile.TemporaryDirectory(prefix=".anvil-connect-status-", dir=root.parent) as temporary:
+        request = Path(temporary) / "status.json"
+        _write_atomic(request, b'{"operation":"status"}\n')
+        os.chmod(request.parent, 0o755)
+        command = (str(binary), "admin", "--socket", str(socket), "--request", str(request))
+        for attempt in range(6):
+            observed = _run(runner, command, _VALIDATE_TIMEOUT, identity)
+            if observed.returncode == 0:
+                _closed_gateway_status(observed.stdout)
+                return
+            if attempt < 5:
+                time.sleep(1)
+    raise ManageError("restored gateway did not become ready before dependent restoration")
 
 
 def _active_generation_isolated(data: dict[str, Any]) -> bool:
@@ -1483,7 +1569,12 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                     raise rollback_error from exc
                 if prior:
                     try:
-                        _restore_running(runner, units, prior)
+                        _restore_running(
+                            runner,
+                            units,
+                            prior,
+                            (lambda: _restored_gateway_ready(data, root, runner)) if selected_gateway else None,
+                        )
                     except ManageError as restore_error:
                         raise restore_error from exc
             raise _executed_error(exc) from exc
