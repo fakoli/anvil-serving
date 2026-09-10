@@ -152,6 +152,15 @@ SAFE_OPERATOR_USER_NAMES = {
 GENERIC_TAILNET_NETWORK = ipaddress.ip_network("100.64.0.0/24")
 TAILNET_NETWORK = ipaddress.ip_network("100.64.0.0/10")
 TAILSCALE_IPV6_NETWORK = ipaddress.ip_network("fd7a:115c:a1e0::/48")
+# Exact public constants used by the isolated runner, never operator identities.
+# https://www.alibabacloud.com/help/en/ecs/user-guide/view-instance-metadata/
+PUBLIC_METADATA_ADDRESS = "100.100.100.200"  # semantic-scan-fixture
+PUBLIC_METADATA_FILES = frozenset({
+    "anvil_serving/workbench_app/pi_egress.py", "tests/workbench/test_pi_egress.py",
+})
+PUBLIC_PI_HOME_FILES = frozenset({
+    "anvil_serving/workbench_app/pi_runner.py", "tests/workbench/test_pi_runner.py",
+})
 
 
 def run_git(root: Path, *args: str) -> bytes:
@@ -264,7 +273,8 @@ def scan_text(text: str, rel_path: str, source: str) -> list[dict[str, object]]:
                 address = ipaddress.ip_address(match.group(0))
             except ValueError:
                 continue
-            if address in TAILNET_NETWORK and address not in GENERIC_TAILNET_NETWORK:
+            if (address in TAILNET_NETWORK and address not in GENERIC_TAILNET_NETWORK
+                    and not (normalized_path in PUBLIC_METADATA_FILES and str(address) == PUBLIC_METADATA_ADDRESS)):
                 findings.append(
                     {
                         "kind": "non-generic-tailnet-address",
@@ -325,7 +335,8 @@ def scan_text(text: str, rel_path: str, source: str) -> list[dict[str, object]]:
             SLUGGED_WINDOWS_HOME_PATTERN,
         ):
             for match in pattern.finditer(line):
-                if match.group("name").lower() not in SAFE_HOME_NAMES:
+                if (match.group("name").lower() not in SAFE_HOME_NAMES
+                        and not (normalized_path in PUBLIC_PI_HOME_FILES and match.group("name") == "pi")):
                     findings.append(
                         {
                             "kind": "operator-home-path",
@@ -502,7 +513,19 @@ def self_test() -> int:
             "reference-host-network-identity": 1,
         }
     )
+    public_metadata_path = "anvil_serving/workbench_app/pi_egress.py"
+    public_home_path = "anvil_serving/workbench_app/pi_runner.py"
+    public_home = "/".join(("", "home", "pi", ".pi", "agent"))
+    scoped_constants_safe = (
+        not scan_text(PUBLIC_METADATA_ADDRESS, public_metadata_path, "self-test")
+        and not scan_text(public_home, public_home_path, "self-test")
+        and len(scan_text(PUBLIC_METADATA_ADDRESS + " " + tailnet, public_metadata_path, "self-test")) == 1
+        and len(scan_text(public_home + " " + slash_home, public_home_path, "self-test")) == 1
+        and len(scan_text(PUBLIC_METADATA_ADDRESS + " " + public_home, "docs/other.md", "self-test")) == 2
+    )
     passed = (
+        scoped_constants_safe
+        and
         Counter(finding["kind"] for finding in findings) == expected_semantic_kinds
         and file_kinds
         == {

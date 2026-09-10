@@ -192,7 +192,7 @@ def test_connect_access_bookmark_returns_the_shell(connect_site):
     body = response.read()
     connection.close()
     assert response.status == 200
-    assert b"Anvil Observatory" in body
+    assert b"Anvil Workbench" in body
 
 
 def test_connect_mutation_replay_and_password_logout_routes_are_closed(connect_site):

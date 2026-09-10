@@ -20,15 +20,17 @@ from .contracts import ObservatoryError, digest, identifier, validate_values
 from . import runtime_candidates
 
 
-_KINDS = frozenset({"serve", "profile", "configuration", "recipe", "experiment"})
+_KINDS = frozenset({"serve", "service", "profile", "configuration", "recipe", "experiment"})
 _SAFE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}\Z")
+_SERVICE_IDENTITY = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,191}\Z")
 _FIXED_PROBE_PROMPT = "Reply with the single word READY."
 _TOOLS = frozenset(
     {
         "serves_status", "serves_manage", "serves_probe", "serves_profile", "serves_logs",
-        "router_transition", "router_configuration", "recipe_settings",
+        "router_transition", "router_configuration", "recipe_settings", "recipe_manage",
         "recipe_containers", "benchmark_job_preflight", "benchmark_job_submit",
-        "benchmark_job_status", "runtime_experiment",
+        "benchmark_job_status", "runtime_experiment", "host_services_status",
+        "host_services_logs", "host_services_manage", "container_exec",
     }
 )
 
@@ -96,6 +98,9 @@ class ControllerAdapter:
             item["id"] = resource_id
             item["host_id"] = _safe(item.get("host_id", expected_node), "host_id")
             item["label"] = str(item.get("label", resource_id))[:128]
+            if kind == "recipe":
+                item["command_host"] = self._context["execution_host"]
+                item["command_runtime"] = self._context["execution_runtime"]
             self._validate_resource(item)
             self._resources[resource_id] = item
         self._transport = transport_factory(
@@ -126,8 +131,35 @@ class ControllerAdapter:
                 value = item.get(key, default)
                 if type(value) is not int or not 1 <= value <= maximum:
                     raise ValueError(f"{key} is outside its supported range")
+            exec_fields = ("container_id", "execution_runtime", "exec_commands")
+            if any(key in item for key in exec_fields):
+                if not all(key in item for key in exec_fields):
+                    raise ValueError("serve container diagnostics require an exact container, runtime, and command catalog")
+                if type(item["container_id"]) is not str or re.fullmatch(r"[a-f0-9]{64}", item["container_id"]) is None:
+                    raise ValueError("serve diagnostic container identity is invalid")
+                _safe(item["execution_runtime"], "serve execution_runtime")
+                commands = item["exec_commands"]
+                if (not isinstance(commands, list) or not commands or len(commands) > 32
+                        or len(set(commands)) != len(commands)
+                        or any(type(command) is not str or _SAFE.fullmatch(command) is None for command in commands)):
+                    raise ValueError("serve diagnostic command IDs are invalid")
         elif kind == "profile":
             _safe(item.get("profile"), "profile")
+        elif kind == "service":
+            _safe(item.get("service"), "service")
+            if item.get("manager") not in {"docker", "launchd"}:
+                raise ValueError("service resource requires a declared manager")
+            identity = item.get("container") if item["manager"] == "docker" else item.get("process")
+            if type(identity) is not str or not _SERVICE_IDENTITY.fullmatch(identity):
+                raise ValueError("service identity must be a declared bounded identity")
+            _safe(item.get("execution_runtime"), "service execution_runtime")
+            commands = item.get("exec_commands", [])
+            if (not isinstance(commands, list) or len(commands) > 32
+                    or len(set(commands)) != len(commands)
+                    or any(type(command) is not str or _SAFE.fullmatch(command) is None for command in commands)):
+                raise ValueError("service exec command IDs are invalid")
+            if commands and item["manager"] != "docker":
+                raise ValueError("native services cannot declare container exec")
         elif kind == "configuration":
             if type(item.get("config")) is not str:
                 raise ValueError("configuration resource requires config")
@@ -142,6 +174,10 @@ class ControllerAdapter:
                 raise ValueError("recipe resource requires registry")
             if type(item.get("model")) is not str or not item["model"] or len(item["model"]) > 512:
                 raise ValueError("recipe model selector is invalid")
+            if item.get("container") is not None and (
+                type(item["container"]) is not str or not _SERVICE_IDENTITY.fullmatch(item["container"])
+            ):
+                raise ValueError("recipe container must be a declared bounded identity")
         elif kind == "experiment":
             if runtime_candidates.is_runtime(item):
                 runtime_candidates.validate(item)
@@ -225,14 +261,17 @@ class ControllerAdapter:
                 )
                 ownership = ("conflict" if row.get("compose_ownership_mismatch") or row.get("port_conflicts")
                              else "owned" if row else "unknown")
+                exec_status = self._serve_exec_status(resource, tools)
                 serves.append({
                     "id": resource["id"], "host_id": resource["host_id"],
                     "display_name": resource["label"], "model": row.get("model"),
                     "observed_model": observed_model, "engine": row.get("engine"),
+                    "container": row.get("container") if type(row.get("container")) is str and _SAFE.fullmatch(row["container"]) else None,
                     "aliases": list(resource.get("aliases", [])),
                     "runtime_state": "running" if running is True else ("stopped" if running is False else "unknown"),
                     "readiness": "ready" if healthy else ("not_ready" if row.get("running") is True else "unknown"),
                     "admission": admission, "gpu_ids": list(resource.get("gpu_ids", [])),
+                    "exec": exec_status,
                     "observed_at": self._clock(), "metrics": {}, "ownership_status": ownership,
                 })
             except ObservatoryError:
@@ -241,8 +280,10 @@ class ControllerAdapter:
                     "model": None, "observed_model": None, "engine": None,
                     "aliases": list(resource.get("aliases", [])), "runtime_state": "unknown",
                     "readiness": "unknown", "admission": "unknown", "gpu_ids": list(resource.get("gpu_ids", [])),
+                    "exec": {"status": "unavailable", "commands": []},
                     "observed_at": self._clock(), "metrics": {}, "ownership_status": "unavailable",
                 })
+        services = self.read_services()
         hosts = []
         for host_id in dict.fromkeys(item["host_id"] for item in self._resources.values()):
             gpu_ids = dict.fromkeys(
@@ -264,9 +305,102 @@ class ControllerAdapter:
             })
         return {
             "status": "unavailable" if self._catalog_error else "available",
-            "resources": resources, "hosts": hosts, "serves": serves,
+            "resources": resources, "hosts": hosts, "serves": serves, "services": services,
             "observed_at_epoch_seconds": self._clock(),
         }
+
+    def _serve_exec_status(self, resource: Mapping[str, Any], tools: frozenset[str]) -> dict[str, Any]:
+        """Publish diagnostics only after the owner confirms the pinned identity."""
+        commands = resource.get("exec_commands")
+        unavailable = {"status": "unavailable", "commands": []}
+        if "container_exec" not in tools or not isinstance(commands, list) or not commands:
+            return unavailable
+        try:
+            payload = self._call("container_exec", {
+                "resource_id": resource["id"], "command_id": commands[0],
+                "command_host": resource["host_id"],
+                "command_runtime": resource["execution_runtime"],
+                "dry_run": True, "confirm": False,
+            })
+        except ObservatoryError:
+            return unavailable
+        if self._container_preview(resource, commands[0], payload) is None:
+            return unavailable
+        return {"status": "available", "commands": list(commands)}
+
+    @staticmethod
+    def _container_preview(resource: Mapping[str, Any], command: str, payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
+        reviewed = payload.get("preview")
+        if not isinstance(reviewed, Mapping):
+            return None
+        expected = {
+            "resource_id": resource.get("id"), "host_id": resource.get("host_id"),
+            "execution_runtime": resource.get("execution_runtime"),
+            "container_id": resource.get("container_id", resource.get("container")),
+            "command_id": command,
+        }
+        if any(reviewed.get(key) != value for key, value in expected.items()):
+            return None
+        if any(type(reviewed.get(key)) is not str or re.fullmatch(r"[a-f0-9]{64}", reviewed[key]) is None
+               for key in ("policy_digest", "candidate_digest")):
+            return None
+        if any(type(reviewed.get(key)) is not int or not 1 <= reviewed[key] <= maximum
+               for key, maximum in (("timeout_seconds", 30), ("max_output_bytes", 65536))):
+            return None
+        return reviewed
+
+    def read_services(self, resource_id: str | None = None) -> list[dict[str, Any]]:
+        """Return declared native/Docker service identities and bounded owner state."""
+        selected = [self._resource(resource_id)] if resource_id else self._resources.values()
+        rows = []
+        for resource in selected:
+            if resource["kind"] != "service":
+                continue
+            identity = resource.get("container") if resource["manager"] == "docker" else resource.get("process")
+            result = {"id": resource["id"], "host_id": resource["host_id"], "display_name": resource["label"],
+                      "manager": resource["manager"], "identity": identity, "service": resource["service"],
+                      "runtime_state": "unknown", "logs": {"status": "unavailable"}, "exec": {"status": "unsupported"}}
+            try:
+                payload = self._call("host_services_status", {"service": resource["service"]})
+                observed = next((item for item in payload.get("services", []) if isinstance(item, Mapping) and item.get("id") == resource["service"]), {})
+                supervisor = observed.get("supervisor", {}) if isinstance(observed, Mapping) else {}
+                if isinstance(supervisor, Mapping) and supervisor.get("identity") == identity:
+                    result["runtime_state"] = "running" if supervisor.get("running") is True else "stopped" if supervisor.get("running") is False else "unknown"
+                    result["identity"] = supervisor["identity"]
+                    result["logs"] = {"status": "available" if "host_services_logs" in self._tools() else "unavailable"}
+                    if resource["manager"] == "docker" and resource.get("exec_commands") and "container_exec" in self._tools():
+                        result["exec"] = {"status": "available", "commands": list(resource["exec_commands"])}
+            except ObservatoryError:
+                pass
+            rows.append(result)
+        return rows
+
+    def workload_logs(self, resource_id: str) -> dict[str, Any]:
+        """Read one declared owner's fixed, bounded log tail."""
+        from ...operator_output import redact
+        resource = self._resource(resource_id)
+        if resource["kind"] == "service":
+            observed = self.read_services(resource_id)[0]
+            if observed["logs"]["status"] != "available":
+                raise _public_error("The declared service identity or log source is unavailable.")
+            payload = self._call("host_services_logs", {"service": resource["service"], "tail": 200})
+            lines = payload.get("lines")
+            if not isinstance(lines, list) or any(type(line) is not str for line in lines):
+                raise _public_error("The owner returned no valid log tail.")
+            text = "\n".join(lines[:200])
+            truncated = len(lines) > 200
+        elif resource["kind"] == "serve" and "serves_logs" in self._tools():
+            payload = self._call("serves_logs", {"manifest": resource["manifest"], "names": [resource["serve"]],
+                "tail": 200, "max_output_bytes": 65536, "timeout_seconds": 10, "follow": False})
+            if type(payload.get("stdout")) is not str or type(payload.get("stderr")) is not str:
+                raise _public_error("The owner returned no valid log tail.")
+            text = payload["stdout"] + payload["stderr"]
+            truncated = bool(payload.get("stdout_truncated") or payload.get("stderr_truncated"))
+        else:
+            raise ObservatoryError("logs_unavailable", "No bounded workload log source is declared.", 409)
+        encoded = redact(text).encode("utf-8")
+        return {"resource_id": resource_id, "text": encoded[:65536].decode("utf-8", errors="ignore"),
+                "truncated": truncated or len(encoded) > 65536, "tail": 200, "observed_at": self._clock()}
 
     def _summary(self, resource: dict[str, Any], tools: frozenset[str]) -> dict[str, Any]:
         actions = self._action_specs(resource)
@@ -297,7 +431,8 @@ class ControllerAdapter:
         specs = self._action_specs(resource)
         actions = []
         for action_id, spec in specs.items():
-            supported = self._supported(spec, tools) and not settings_unavailable
+            settings_required = action_id == "configuration.apply"
+            supported = self._supported(spec, tools) and not (settings_required and settings_unavailable)
             actions.append({
                 "id": action_id,
                 "label": spec["label"],
@@ -307,7 +442,9 @@ class ControllerAdapter:
                     None
                     if supported
                     else "The owner could not verify the installed configuration."
-                    if settings_unavailable
+                    if settings_required and settings_unavailable
+                    else spec["unsupported_reason"]
+                    if spec.get("unsupported_reason")
                     else "Declare the profile mode, members, GPU owners, and admission postconditions."
                     if spec.get("postcondition_supported") is False
                     else "The owner does not declare this operation."
@@ -350,7 +487,7 @@ class ControllerAdapter:
         preview_args = dict(arguments)
         if runtime_candidates.is_runtime(resource):
             preview_args["action"] = "status" if action_id == "operation.recover" else "preview"
-        elif resource["kind"] in {"configuration", "recipe"}:
+        elif resource["kind"] == "configuration" or action_id == "configuration.apply":
             preview_args["action"] = "preview"
         if spec.get("gated", True):
             preview_args.update({"dry_run": True, "confirm": False})
@@ -362,11 +499,37 @@ class ControllerAdapter:
                 preview_args.pop("confirm", None)
                 preview_args.pop("detach", None)
             owner_preview = self._call(preview_tool, preview_args)
+        if action_id == "container.exec":
+            # The typed owner returns a read-only envelope.  Its inner preview
+            # pins the exact container, private argv and execution bounds. The
+            # transport deliberately redacts argv; the owner digests bind it.
+            command = arguments.get("command_id")
+            reviewed = self._container_preview(resource, command, owner_preview) if isinstance(command, str) else None
+            if reviewed is None:
+                raise ObservatoryError("owner_preview_invalid", "The container owner did not return a reviewable diagnostic identity.")
+            policy = reviewed.get("policy_digest")
+            candidate = reviewed.get("candidate_digest")
+            if not isinstance(policy, str) or not isinstance(candidate, str):
+                raise ObservatoryError("owner_preview_invalid", "The container owner did not return a reviewable diagnostic identity.")
+            arguments["expected_policy_digest"] = policy
+            arguments["expected_candidate_digest"] = candidate
+            owner_preview = dict(reviewed)
+        if action_id in {"recipe.load", "recipe.unload"}:
+            expected = {
+                "expected_registry_sha256": owner_preview.get("registry_sha256"),
+                "expected_recipe_sha256": owner_preview.get("recipe_sha256"),
+                "expected_inventory_sha256": owner_preview.get("inventory_sha256"),
+            }
+            if action_id == "recipe.load":
+                expected["expected_admission_sha256"] = owner_preview.get("admission_sha256")
+            if any(not isinstance(value, str) or re.fullmatch(r"[a-f0-9]{64}", value) is None for value in expected.values()):
+                raise ObservatoryError("owner_preview_invalid", "The recipe owner did not return an exact lifecycle baseline.")
+            arguments.update(expected)
         if (resource["kind"] in {"configuration", "recipe"} or runtime_candidates.is_runtime(resource)) and owner_preview.get("baseline_sha256"):
             arguments["expected_baseline_sha256"] = owner_preview["baseline_sha256"]
         baseline_state = ({"baseline_sha256": owner_preview.get("baseline_sha256"), "state": owner_preview.get("state")}
             if runtime_candidates.is_runtime(resource) else self._baseline(resource))
-        baseline_digest = digest(baseline_state)
+        baseline_digest = digest({"state": baseline_state, "owner_preview": owner_preview})
         candidate_digest = digest({"baseline": baseline_digest, "action": action_id,
                                    "values": candidate_values, "parameters": parameters,
                                    "arguments": arguments})
@@ -392,6 +555,12 @@ class ControllerAdapter:
                         "verify_arguments": self._verify_arguments(resource, action_id, arguments),
                         "owner_candidate_sha256": owner_preview.get("candidate_sha256")},
         }
+        if action_id == "container.exec":
+            result["diagnostic"] = {
+                key: copy.deepcopy(owner_preview[key])
+                for key in ("command_id", "container_id", "timeout_seconds", "max_output_bytes")
+                if key in owner_preview
+            }
         return result
 
     def execute(self, preview: Mapping[str, Any], intent_key: str) -> dict[str, Any]:
@@ -425,6 +594,9 @@ class ControllerAdapter:
             return {"ok": False, "owner_operation_id": intent_key,
                     "native_state": "unknown", "execution_outcome": "unknown",
                     "verification": {"status": "unavailable", "message": "The owner returned no typed result."}}
+        typed = self._typed_completion(action_id, payload, intent_key)
+        if typed is not None:
+            return typed
         if action_id == "serve.probe" and payload.get("passed") is not True:
             return {"ok": False, "owner_operation_id": intent_key,
                     "native_state": "completed", "execution_outcome": "failed",
@@ -486,6 +658,9 @@ class ControllerAdapter:
                     "evidence": self._evidence(job_payload)}
         response = record.get("response")
         payload = self._payload(response) if isinstance(response, Mapping) else {}
+        typed = self._typed_completion(preview.get("action_id"), payload, intent_key)
+        if typed is not None:
+            return typed
         return {"ok": True, "owner_operation_id": intent_key, "native_state": "succeeded",
                 "execution_outcome": "succeeded", "evidence": self._evidence(payload)}
 
@@ -507,6 +682,17 @@ class ControllerAdapter:
             return {"status": "passed" if passed else "failed", "message": "Exact runtime baseline and admissions restored; experiment correctness remains separate."}
         if result.get("execution_outcome") == "failed":
             return {"status": "failed", "message": "The owner reported a failed operation."}
+        if preview.get("action_id") == "container.exec":
+            evidence = result.get("evidence")
+            passed = (isinstance(evidence, Mapping) and evidence.get("kind") == "container_exec"
+                      and evidence.get("status") == "completed" and evidence.get("exit_code") == 0)
+            return {"status": "passed" if passed else "failed",
+                    "message": "The declared container diagnostic completed." if passed else "The declared container diagnostic did not complete successfully."}
+        if preview.get("action_id") in {"recipe.load", "recipe.unload"}:
+            evidence = result.get("evidence")
+            postcondition = evidence.get("postcondition") if isinstance(evidence, Mapping) else None
+            return {"status": "passed" if isinstance(postcondition, Mapping) and postcondition.get("status") == "passed" else "failed",
+                    "message": "The declared recipe lifecycle postcondition passed." if isinstance(postcondition, Mapping) and postcondition.get("status") == "passed" else "The declared recipe lifecycle postcondition failed."}
         if preview.get("action_id") == "serve.probe":
             evidence = result.get("evidence")
             verification = evidence.get("verification") if isinstance(evidence, Mapping) else None
@@ -538,6 +724,16 @@ class ControllerAdapter:
                 passed = row.get("running") is True and type(health) is int and 200 <= health < 400
             return {"status": "passed" if passed else "failed",
                     "message": "The declared serve postcondition passed." if passed else "The declared serve postcondition failed."}
+        if action in {"service.start", "service.stop"}:
+            row = next((item for item in verified.get("services", [])
+                        if isinstance(item, Mapping) and item.get("id") == resource.get("service")), None)
+            supervisor = row.get("supervisor") if isinstance(row, Mapping) else None
+            expected_running = action == "service.start"
+            passed = isinstance(supervisor, Mapping) and supervisor.get("identity") == (
+                resource.get("container") if resource.get("manager") == "docker" else resource.get("process")
+            ) and supervisor.get("running") is expected_running
+            return {"status": "passed" if passed else "failed",
+                    "message": "The declared service postcondition passed." if passed else "The declared service postcondition failed."}
         if action in {"tier.quiesce", "tier.drain", "tier.readmit"}:
             row = next((item for item in verified.get("tiers", [])
                         if isinstance(item, Mapping) and item.get("tier_id") == resource.get("tier")), None)
@@ -634,6 +830,37 @@ class ControllerAdapter:
             return {"status": "unavailable", "message": "Evaluation completion alone does not establish a passing quality result."}
         return {"status": "passed", "message": "The owner postcondition check passed."}
 
+    @staticmethod
+    def _typed_completion(action_id: object, payload: Mapping[str, Any], intent_key: str) -> dict[str, Any] | None:
+        """Project typed owner completions identically after delivery or recovery."""
+        if action_id == "container.exec":
+            execution = payload.get("result")
+            if not isinstance(execution, Mapping) or execution.get("status") not in {
+                "completed", "failed", "timeout", "unavailable",
+            }:
+                return {"ok": False, "owner_operation_id": intent_key,
+                        "native_state": "unknown", "execution_outcome": "unknown"}
+            output = execution.get("output") if isinstance(execution.get("output"), str) else ""
+            evidence = {
+                "kind": "container_exec", "status": execution["status"],
+                "exit_code": execution.get("exit_code"), "output": output[:65536],
+                "truncated": execution.get("truncated") is True,
+            }
+            succeeded = execution["status"] == "completed" and execution.get("exit_code") == 0
+            return {"ok": succeeded, "owner_operation_id": intent_key,
+                    "native_state": execution["status"],
+                    "execution_outcome": "succeeded" if succeeded else "failed",
+                    "evidence": evidence}
+        if action_id in {"recipe.load", "recipe.unload"}:
+            postcondition = payload.get("postcondition")
+            passed = isinstance(postcondition, Mapping) and postcondition.get("status") == "passed"
+            return {"ok": passed, "owner_operation_id": intent_key,
+                    "native_state": "completed" if passed else "unknown",
+                    "execution_outcome": "succeeded" if passed else "unknown",
+                    "evidence": {"kind": "recipe_lifecycle",
+                                 "postcondition": copy.deepcopy(postcondition)}}
+        return None
+
     def _resource(self, resource_id: object) -> dict[str, Any]:
         try:
             return self._resources[identifier(resource_id)]
@@ -668,7 +895,21 @@ class ControllerAdapter:
                     result["tier." + action] = {"label": action.title(), "tool": "router_transition",
                                       "effect": impact, "workload_impact": impact, "verify_tool": "router_transition",
                                       "stop_semantics": "drain" if action == "drain" else None}
+            if resource.get("exec_commands"):
+                result["container.exec"] = {
+                    "label": "Run container diagnostic", "tool": "container_exec",
+                    "effect": "Runs one declared bounded diagnostic in the exact reviewed container.",
+                    "parameters": frozenset({"command_id"}), "verify_tool": None,
+                }
             return result
+        if kind == "service":
+            actions = {
+                "service.start": {"label": "Start", "tool": "host_services_manage", "effect": "Starts the declared supervised service.", "verify_tool": "host_services_status"},
+                "service.stop": {"label": "Stop", "tool": "host_services_manage", "effect": "Stops the declared supervised service.", "verify_tool": "host_services_status"},
+            }
+            if resource.get("exec_commands"):
+                actions["container.exec"] = {"label": "Run container diagnostic", "tool": "container_exec", "effect": "Runs one declared bounded diagnostic in the exact reviewed container.", "parameters": frozenset({"command_id"}), "verify_tool": None}
+            return actions
         if kind == "profile":
             return {"profile.apply": {"label": "Apply profile", "tool": "serves_profile",
                               "effect": "Applies the declared managed serve profile.", "human_gate": True,
@@ -681,9 +922,24 @@ class ControllerAdapter:
                               "effect": "Installs bounded tier settings through the canonical router transaction.",
                               "human_gate": True, "verify_tool": "router_configuration", "workload_impact": "tier drain and readmission"}}
         if kind == "recipe":
-            return {"configuration.apply": {"label": "Apply recipe settings", "tool": "recipe_settings",
-                              "effect": "Updates bounded runtime settings in the managed recipe registry.",
-                              "human_gate": True, "verify_tool": "recipe_settings"}}
+            actions = {
+                "configuration.apply": {"label": "Apply recipe settings", "tool": "recipe_settings",
+                                        "effect": "Updates bounded runtime settings in the managed recipe registry.",
+                                        "human_gate": True, "verify_tool": "recipe_settings"},
+            }
+            if resource.get("container"):
+                actions.update({"recipe.load": {"label": "Load recipe", "tool": "recipe_manage",
+                                "effect": "Starts the declared recipe container without changing route or promotion policy.",
+                                "verify_tool": "recipe_manage",
+                                "postcondition_supported": all(resource.get(key) for key in ("manifest", "serve", "topology", "command_host", "command_runtime")) and resource.get("host_id") == resource.get("command_host"),
+                                "unsupported_reason": "Declare this controller's manifest owner, serve, topology and full-card recipe reservations.",
+                                "workload_impact": "Requires a declared manifest owner and full-card capacity admission before starting the recipe."},
+                "recipe.unload": {"label": "Unload recipe", "tool": "recipe_manage",
+                                  "effect": "Stops and removes the exact declared recipe container.",
+                                  "verify_tool": "recipe_manage", "stop_semantics": "stop_remove",
+                                  "workload_impact": "Interrupts and removes the declared recipe container."},
+                })
+            return actions
         return {"experiment.start": {"label": "Run experiment", "tool": "benchmark_job_submit",
                           "effect": "Submits the declared bounded durable evaluation job.",
                           "gated": False, "preview_tool": "benchmark_job_preflight",
@@ -749,6 +1005,15 @@ class ControllerAdapter:
         if runtime_candidates.is_runtime(resource):
             return runtime_candidates.arguments(resource, action, parameters)
         if kind == "serve":
+            if action == "container.exec":
+                command = _safe(parameters.get("command_id"), "command_id")
+                if command not in resource.get("exec_commands", []):
+                    raise ObservatoryError("invalid_parameters", "Select a declared container diagnostic.")
+                return {
+                    "resource_id": resource["id"], "command_id": command,
+                    "command_host": resource["host_id"],
+                    "command_runtime": resource["execution_runtime"],
+                }
             if action in {"serve.start", "serve.stop", "serve.restart"}:
                 result = {"action": "down" if action == "serve.stop" else "up", "manifest": resource["manifest"], "names": [resource["serve"]]}
                 if action == "serve.restart":
@@ -762,6 +1027,15 @@ class ControllerAdapter:
                 }
             transition = action.removeprefix("tier.")
             return {"action": transition, "tier": resource["tier"], **({"timeout": int(resource["drain_timeout"])} if transition == "drain" and resource.get("drain_timeout") else {})}
+        if kind == "service":
+            if action == "container.exec":
+                command = _safe(parameters.get("command_id"), "command_id")
+                if command not in resource.get("exec_commands", []):
+                    raise ObservatoryError("invalid_parameters", "Select a declared container diagnostic.")
+                return {"resource_id": resource["id"], "command_id": command,
+                        "command_host": resource["host_id"],
+                        "command_runtime": resource["execution_runtime"]}
+            return {"action": "up" if action == "service.start" else "down", "service": resource["service"]}
         if kind == "profile":
             result = {"action": "apply", "manifest": resource["manifest"], "profile": resource["profile"]}
             for key in ("profiles", "config"):
@@ -776,6 +1050,10 @@ class ControllerAdapter:
                     result[key] = resource[key]
             return result
         if kind == "recipe":
+            if action in {"recipe.load", "recipe.unload"}:
+                return {"action": action.removeprefix("recipe."), "registry": resource["registry"],
+                        "model": resource["model"], "container": resource["container"],
+                        **{key: resource[key] for key in ("manifest", "serve", "topology", "command_host", "command_runtime") if resource.get(key)}}
             return {"action": "apply", "registry": resource["registry"], "model": resource["model"], "values": dict(values)}
         spec = copy.deepcopy(dict(resource["spec"]))
         if "run_id" in parameters:
@@ -800,7 +1078,14 @@ class ControllerAdapter:
                 ), None)
                 baseline["admission"] = self._stable_admission_baseline(tier_row)
             return baseline
+        if resource["kind"] == "service":
+            return self._call("host_services_status", {"service": resource["service"]})
         if resource["kind"] == "recipe":
+            if resource.get("container") and "recipe_manage" in self._tools():
+                return self._call("recipe_manage", {
+                    "action": "status", "registry": resource["registry"], "model": resource["model"],
+                    "container": resource["container"],
+                })
             arguments = self._arguments(resource, "configuration.apply", {}, {})
             arguments["action"] = "status"
             arguments.pop("values", None)
@@ -921,6 +1206,18 @@ class ControllerAdapter:
         try:
             result = self._transport.execute(Operation(tool, arguments, tool_name=tool)).data
         except TransportError as exc:
+            error = exc.details.get("controller_error", {})
+            messages = {
+                "recipe_capacity_denied": "Current GPU reservations or operating mode block this recipe. Review Compute before changing deployment.",
+                "recipe_owner_required": "Declare a managed manifest owner and topology before loading this recipe.",
+                "recipe_owner_mismatch": "The manifest does not own this exact recipe, container and port.",
+                "recipe_reservation_required": "The recipe owner must declare matching full-card GPU reservations.",
+                "recipe_placement_mismatch": "The recipe GPU placement does not match this controller's declared roles.",
+                "recipe_owner_unavailable": "Current reservation ownership could not be verified. Refresh Compute before retrying.",
+            }
+            code = error.get("code") if isinstance(error, Mapping) else None
+            if tool == "recipe_manage" and code in messages:
+                raise ObservatoryError(code, messages[code], 409) from None
             raise _public_error() from exc
         return self._payload(result)
 

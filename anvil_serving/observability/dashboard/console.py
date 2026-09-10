@@ -20,8 +20,8 @@ from .contracts import (ObservatoryError, canonical, digest, fields, identifier,
                         preview_is_current, strict_json, validate_values)
 from .intents import IntentStore
 
-PREVIEW_FIELDS = frozenset({"id", "host_id", "resource_id", "action_id", "label", "baseline_digest", "candidate_digest", "policy_digest", "expires_at_epoch_seconds", "effect", "diff", "affected_aliases", "workload_impact", "gpu_ids", "stop_semantics", "recovery", "planned_steps", "actor", "service_identity", "acknowledgement_required"})
-_SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings", "logs", "access"})
+PREVIEW_FIELDS = frozenset({"id", "host_id", "resource_id", "action_id", "label", "baseline_digest", "candidate_digest", "policy_digest", "expires_at_epoch_seconds", "effect", "diff", "affected_aliases", "workload_impact", "gpu_ids", "stop_semantics", "recovery", "planned_steps", "actor", "service_identity", "acknowledgement_required", "diagnostic"})
+_SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings", "logs", "access", "bench", "playground", "models", "work", "observability", "compute", "docs"})
 
 
 def load_config(path: str) -> dict:
@@ -30,7 +30,7 @@ def load_config(path: str) -> dict:
         raise ValueError("use an absolute bounded private Observatory config")
     config = strict_json(source.read_bytes())
     fields(config, required=("schema", "origin", "base_path", "users", "authentication", "inventory", "prometheus_url", "state_path"),
-           optional=("operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence", "logs", "connect_access"))
+           optional=("operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence", "logs", "connect_access", "workbench"))
     if config["schema"] != "anvil-observatory/config/v1":
         raise ValueError("unsupported Observatory configuration")
     if type(config.get("operate", False)) is not bool or type(config.get("fixture", False)) is not bool:
@@ -104,8 +104,12 @@ class Console:
                 self.workload_service = WorkloadHTTPService(binding["controller_url"], binding["expected_node"], policy)
         self.policy_digest = digest({"users": config["users"], "operate": config.get("operate", False),
                                      "controller": config.get("controller", {}), "authentication": authentication})
+        from ...workbench_app.service import WorkbenchService
+        workbench = config.get("workbench", {"state_path": str(Path(config["state_path"]).with_name("workbench.sqlite3"))})
+        self.workbench = WorkbenchService(workbench, self.access, env, adapter=self.adapter)
 
     def close(self):
+        self.workbench.close()
         self._workers.shutdown(wait=True)
         self.store.close()
 
@@ -137,13 +141,14 @@ class Console:
         if self.adapter:
             try:
                 owner = self.adapter.snapshot()
+                fleet["services"] = [item for item in owner.get("services", []) if session.principal.can_read(item["id"])]
                 for kind in ("hosts", "serves"):
                     updates = {item["id"]: item for item in owner.get(kind, [])}
                     for item in fleet.get(kind, []):
                         if item["id"] in updates:
                             observation = updates[item["id"]]
                             allowed = ({"controller", "profiles", "mode", "ownership_status", "maintenance"}
-                                       if kind == "hosts" else {"runtime_state", "readiness", "admission", "observed_model", "observed_at", "ownership_status", "operation_id", "configuration"})
+                                       if kind == "hosts" else {"runtime_state", "readiness", "admission", "observed_model", "observed_at", "ownership_status", "operation_id", "configuration", "container", "exec"})
                             item.update({key: value for key, value in observation.items() if key in allowed})
                             if kind == "hosts":
                                 for gpu in item.get("gpus", []):
@@ -155,7 +160,7 @@ class Console:
             except Exception:
                 # Telemetry is independent. A failed owner read cannot erase it.
                 pass
-        fleet["hosts"] = [h for h in fleet.get("hosts", []) if session.principal.can_read(h["id"]) or any(session.principal.can_read(s["id"]) and s["host_id"] == h["id"] for s in fleet.get("serves", []))]
+        fleet["hosts"] = [h for h in fleet.get("hosts", []) if session.principal.can_read(h["id"]) or any(session.principal.can_read(s["id"]) and s["host_id"] == h["id"] for s in fleet.get("serves", []) + fleet.get("services", []))]
         fleet["serves"] = [s for s in fleet.get("serves", []) if session.principal.can_read(s["id"])]
         coverage = dict(fleet.get("coverage", {}))
         owner_missing = sum(host.get("controller", {}).get("status") not in {"available", "complete", "fresh"} for host in fleet["hosts"])
@@ -427,10 +432,12 @@ def attach_console(server, console: Console):
     # Only packaged assets, never a user-supplied path or general file reader.
     def collect(directory, prefix=""):
         for path in directory.iterdir():
-            if path.is_dir() and path.name == "views":
-                collect(path, "views/")
+            if path.is_dir() and path.name in {"views", "fonts"}:
+                collect(path, prefix + path.name + "/")
             elif path.is_file() and path.name.endswith((".js", ".css")) and path.name != "workloads.js":
                 assets[prefix + path.name] = (mimetypes.guess_type(path.name)[0] or "text/javascript", path.read_bytes())
+            elif path.is_file() and prefix == "fonts/" and path.name.endswith((".ttf", "-OFL.txt")):
+                assets[prefix + path.name] = ("font/ttf" if path.name.endswith(".ttf") else "text/plain", path.read_bytes())
     collect(root)
 
     class Handler(legacy):
@@ -449,6 +456,19 @@ def attach_console(server, console: Console):
             if len(raw) > 4 * 1024 * 1024:
                 status, raw = 413, b'{"ok":false,"error":{"code":"response_limit","message":"The response exceeded its safe bound."}}'
             self._asset(status, "application/json", raw, cookie=cookie)
+
+        def _workbench_route(self, route):
+            # Decode identifiers only after identity checks against the exact raw
+            # request target. Separators, traversal and double encoding stay invalid.
+            try:
+                parts = [urllib.parse.unquote(part, errors="strict") for part in route.split("/")]
+            except UnicodeError:
+                raise ObservatoryError("invalid_path", "Use a valid application route.") from None
+            for part in parts:
+                identifier(part)
+                if part in {".", ".."}:
+                    raise ObservatoryError("invalid_path", "Use a valid application route.")
+            return "/".join(parts)
 
         def _asset(self, status, content_type, raw, *, cookie=None):
             self.send_response(status)
@@ -484,7 +504,8 @@ def attach_console(server, console: Console):
             relative, raw_query = self._relative()
             if relative is None:
                 return False
-            if not relative.startswith("api/observatory/v1/"):
+            workbench_route = relative.startswith("api/workbench/v1/")
+            if not relative.startswith("api/observatory/v1/") and not workbench_route:
                 if method != "GET":
                     return False
                 if relative in assets and not raw_query:
@@ -499,7 +520,9 @@ def attach_console(server, console: Console):
                     return True
                 return False
             console.access.check_host(self.headers)
-            route = relative[len("api/observatory/v1/"):]
+            prefix = "api/workbench/v1/" if workbench_route else "api/observatory/v1/"
+            route = relative[len(prefix):]
+            session_route = route == "session" and not workbench_route
             query = {}
             for key, value in urllib.parse.parse_qsl(raw_query, keep_blank_values=True, max_num_fields=10):
                 if key in query:
@@ -508,22 +531,26 @@ def attach_console(server, console: Console):
             if method == "GET":
                 if self.headers.get_all("Transfer-Encoding") or self.headers.get_all("Content-Length") not in (None, ["0"]):
                     raise ObservatoryError("invalid_framing", "Read requests cannot carry a body.")
-                if route == "session":
+                if session_route:
                     fields(query)
                 cookie = None
                 if console.access.connect is not None:
                     session, issued = console.access.connect_session(
-                        self.headers, method=method, target=self.path, bootstrap=route == "session"
+                        self.headers, method=method, target=self.path, bootstrap=session_route
                     )
                     cookie = console.access.cookie(session) if issued else None
                 else:
-                    session = console.access.session(self.headers, required=route != "session")
-                data = console.session_view(session) if route == "session" else console.read(route, query, session)
+                    session = console.access.session(self.headers, required=not session_route)
+                if workbench_route:
+                    console._require_readable(session)
+                    data = console.workbench.read(self._workbench_route(route), query, session)
+                else:
+                    data = console.session_view(session) if session_route else console.read(route, query, session)
                 self._respond(200, {"ok": True, "data": data}, cookie=cookie)
                 return True
             if query:
                 raise ObservatoryError("invalid_query", "Mutations do not accept URL parameters.")
-            if route == "session" and method == "POST":
+            if session_route and method == "POST":
                 console.access.require_origin(self.headers)
                 if console.access.connect is not None:
                     raise ObservatoryError("connect_login_disabled", "Sign in through Anvil Connect.", 405)
@@ -532,7 +559,7 @@ def attach_console(server, console: Console):
                 session = console.access.login(body["username"], body["password"], client=self.client_address[0], previous=console.access.session(self.headers, required=False))
                 self._respond(200, {"ok": True, "data": console.session_view(session)}, cookie=console.access.cookie(session))
                 return True
-            if route == "session" and method == "DELETE" and console.access.connect is not None:
+            if session_route and method == "DELETE" and console.access.connect is not None:
                 console.access.require_origin(self.headers)
                 raise ObservatoryError("connect_logout_required", "Sign out through Anvil Connect.", 405)
             if console.access.connect is not None:
@@ -542,9 +569,16 @@ def attach_console(server, console: Console):
                 session = console.access.mutation(self.headers, session=session)
             else:
                 session = console.access.mutation(self.headers)
-            if route == "session" and method == "DELETE":
+            if session_route and method == "DELETE":
                 console.access.logout(session)
                 self._respond(200, {"ok": True, "data": {"authenticated": False}}, cookie=console.access.cookie(None))
+                return True
+            if workbench_route:
+                console._require_readable(session)
+                if method != "POST":
+                    raise ObservatoryError("method_denied", "This Workbench route does not accept this method.", 405)
+                data = console.workbench.mutate(self._workbench_route(route), self._body(), session)
+                self._respond(200, {"ok": True, "data": data})
                 return True
             if method != "POST" or route not in {"drafts", "previews", "operations"}:
                 raise ObservatoryError("method_denied", "This route does not accept mutations.", 405)

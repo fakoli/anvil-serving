@@ -7,6 +7,9 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`anvil_serving/observability/dashboard/static/documents/benchmarks.md`
+(packaged Workbench copy of the benchmark methodology; no additional measurement);
+
 `docs/BENCHMARKS.md`; `docs/benchmarks/comparison.md`;
 `docs/benchmarks/configurations.md`;
 `docs/benchmarks/recipe-results.md`;
@@ -154,6 +157,9 @@ local measurement).
 `docs/findings/2026-07-voice-tts-ab.md`.
 
 ## `topology-only`
+
+`anvil_serving/observability/dashboard/static/documents/serving.md`
+(packaged Workbench copy of the product README);
 
 `README.md`; `START_HERE.md`; `CLAUDE.md`; `docs/ARCHITECTURE.md`;
 `docs/COMFYUI-MIGRATION-RUNBOOK.md`; `docs/CONFIGURATION.md`;

@@ -1,8 +1,8 @@
-"""Lifecycle wrapper for the optional, separate Anvil Workbench hub.
+"""Managed Pi runner setup and lifecycle of the optional companion hub.
 
-This module owns only Docker Compose lifecycle invocation. Workbench's API,
-database schema, bridge, UI, and delivery logic live in the standalone
-``anvil-workbench`` product and never load into the router process.
+The integrated portal lives in ``workbench_app`` and the Observatory facade,
+separate from the inference router process. The standalone companion hub is
+an optional integration with its own Compose lifecycle.
 """
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from .guard import confirmation_authorized
 DEFAULT_COMPOSE = Path(__file__).with_name("_scaffold_templates") / "docker-compose.workbench.yml"
 DEFAULT_SOURCE = Path.home() / "ai-code" / "anvil-workbench"
 DEFAULT_IMAGE = "anvil-workbench:local"
+PI_IMAGE = "anvil-pi-runner:0.85.1"
 _MAX_LOG_TAIL = 5_000
 DEFAULT_WAIT_TIMEOUT_SECONDS = 180
 
@@ -50,9 +51,10 @@ def _bounded_wait_timeout(value: str) -> int:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="anvil-serving workbench", description="Manage the optional private Anvil Workbench hub.")
+    parser = argparse.ArgumentParser(prog="anvil-serving workbench", description="Manage Pi runner setup and the optional private companion hub.")
     subparsers = parser.add_subparsers(dest="action", required=True)
     build = subparsers.add_parser("build")
+    build.add_argument("--runner", choices=("hub", "pi"), default="hub", help="Build the companion hub or packaged isolated Pi runner.")
     build.add_argument(
         "--source",
         type=Path,
@@ -66,6 +68,16 @@ def _parser() -> argparse.ArgumentParser:
     )
     build.add_argument("--confirm", action="store_true", help="Confirm the local image build.")
     build.add_argument("--dry-run", action="store_true", help="Print the exact Docker build command without running it.")
+    egress = subparsers.add_parser("pi-egress", help="Set up and verify an exact-provider Pi egress proxy.")
+    egress.add_argument("--config", type=Path, required=True, help="Private Workbench JSON configuration.")
+    egress.add_argument("--provider", required=True, help="Declared Pi provider identity.")
+    egress.add_argument("--confirm", action="store_true")
+    egress.add_argument("--remove", action="store_true", help="Remove the proven proxy/network after all Pi runners stop.")
+    egress.add_argument("--dry-run", action="store_true")
+    storage = subparsers.add_parser("pi-storage", help="Provision the fixed, bounded Pi runner storage pool.")
+    storage.add_argument("--config", type=Path, required=True, help="Absolute private Workbench JSON configuration.")
+    storage.add_argument("--confirm", action="store_true", help="Confirm creation and systemd installation of the configured pool.")
+    storage.add_argument("--dry-run", action="store_true", help="Print the exact bounded storage plan without changing the host.")
     for name in ("up", "down", "status", "logs"):
         child = subparsers.add_parser(name)
         child.add_argument("--compose", type=Path, default=DEFAULT_COMPOSE, help="Workbench Compose file.")
@@ -94,13 +106,14 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def build_command(args: argparse.Namespace) -> list[str]:
-    source = args.source.expanduser().resolve()
-    dockerfile = source / "deploy" / "Dockerfile.hub"
+    pi = args.runner == "pi"
+    source = Path(__file__).with_name("_pi_runner") if pi else args.source.expanduser().resolve()
+    dockerfile = source / "Dockerfile" if pi else source / "deploy" / "Dockerfile.hub"
     if not source.is_dir():
         raise ValueError(f"Workbench source directory does not exist: {source}")
     if not dockerfile.is_file():
         raise ValueError(f"Workbench hub Dockerfile does not exist: {dockerfile}")
-    image = args.image.strip()
+    image = PI_IMAGE if pi and args.image == DEFAULT_IMAGE else args.image.strip()
     if not image or any(char.isspace() for char in image):
         raise ValueError("Workbench image tag must be non-empty and contain no whitespace")
     return [
@@ -142,6 +155,42 @@ def compose_command(args: argparse.Namespace) -> list[str]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.action == "pi-storage":
+        from .workbench_app.config import validate_config
+        from .workbench_app.pi_storage import PiStorageError, PiStorageManager
+        try:
+            if not args.config.is_absolute():
+                raise PiStorageError("--config must be an absolute private path")
+            config = json.loads(args.config.read_text(encoding="utf-8"))
+            config = config.get("workbench", config)
+            config = validate_config(config)
+            confirmed = confirmation_authorized() and not args.dry_run
+            if args.confirm and not args.dry_run and not confirmed:
+                print(json.dumps({"ok": False, "error": "confirmation required; invoke through anvil-serving workbench with --confirm"}), file=sys.stderr)
+                return 3
+            result = PiStorageManager(config).provision(confirm=confirmed)
+            print(json.dumps({"ok": True, **result}))
+            return 0
+        except (ValueError, OSError, KeyError, PiStorageError) as exc:
+            print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
+            return 2
+    if args.action == "pi-egress":
+        from .workbench_app.config import validate_config
+        from .workbench_app.pi_egress import PiEgress, PiEgressError
+        try:
+            config = json.loads(args.config.read_text())
+            config = config.get("workbench", config)
+            if "state_root" in config and "state_path" not in config:
+                config = {"state_path": str(Path(config["state_root"]).parent / "workbench.sqlite"), "pi": config}
+            config = validate_config(config)
+            confirmed = confirmation_authorized() and not args.dry_run
+            operation = PiEgress(config["pi"]).remove if args.remove else PiEgress(config["pi"]).setup
+            result = operation(args.provider, confirm=confirmed)
+            print(json.dumps({"ok": True, **result}))
+            return 0
+        except (ValueError, OSError, KeyError, PiEgressError) as exc:
+            print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
+            return 2
     try:
         command = build_command(args) if args.action == "build" else compose_command(args)
     except ValueError as exc:
