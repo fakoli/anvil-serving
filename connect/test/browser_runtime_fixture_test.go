@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/admin"
 	"github.com/fakoli/anvil-serving/connect/internal/client"
@@ -43,8 +44,8 @@ const (
 )
 
 // runtimeCaddyConfig is the same public split used by the managed renderer:
-// only the tunnel upgrade takes HTTP/1.1, while browser and control use h2c
-// over the gateway's same-UID ingress socket.
+// the tunnel and resource upgrades take HTTP/1.1, while ordinary browser, API,
+// and control requests use h2c over the gateway's same-UID ingress socket.
 func runtimeCaddyConfig(listen, authListen, socket, certificate, key string) map[string]any {
 	headers := []string{"Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP", "X-Anvil-Connect-User", "X-Anvil-Connect-Groups", "X-Auth-Request-User", "X-Auth-Request-Email", "X-Authenticated-User", "X-Authenticated-Groups", "Remote-User", "Remote-Groups", "Remote-Email", "Remote-Name", "Cf-Access-Jwt-Assertion", "X-Goog-Authenticated-User", "X-Goog-Authenticated-User-Email", "X-Amzn-Oidc-Data", "X-Amzn-Oidc-Identity", "X-Amzn-Oidc-Accesstoken", "Tailscale-User-Login"}
 	clean := map[string]any{"handler": "headers", "request": map[string]any{"delete": headers}}
@@ -57,6 +58,7 @@ func runtimeCaddyConfig(listen, authListen, socket, certificate, key string) map
 	upgrade := map[string]any{"Connection": map[string]any{"pattern": `(?i)(^|,)[\t ]*upgrade[\t ]*(,|$)`}, "Upgrade": map[string]any{"pattern": `(?i)^websocket$`}}
 	tunnelMatch := map[string]any{"host": []string{edgeTunnelHost}, "method": []string{"GET"}, "path": []string{"/acv1/events"}, "header_regexp": upgrade}
 	browserUpgrade := map[string]any{"host": []string{dashHost}, "path": []string{"/", "/*"}, "header_regexp": upgrade}
+	apiUpgrade := map[string]any{"host": []string{edgeAPIHost}, "path": []string{"/v1", "/v1/*"}, "header_regexp": upgrade}
 	return map[string]any{
 		"admin": map[string]any{"disabled": true},
 		"apps": map[string]any{
@@ -68,6 +70,7 @@ func runtimeCaddyConfig(listen, authListen, socket, certificate, key string) map
 					route(tunnelMatch, []string{"1.1"}),
 					route(browserUpgrade, []string{"1.1"}),
 					route(map[string]any{"host": []string{dashHost}, "path": []string{"/", "/*"}, "method": []string{"GET", "POST"}}, []string{"h2c"}),
+					route(apiUpgrade, []string{"1.1"}),
 					route(map[string]any{"host": []string{edgeAPIHost}, "path": []string{"/v1", "/v1/*"}, "method": []string{"GET", "POST"}}, []string{"h2c"}),
 					route(map[string]any{"host": []string{edgeControlHost}}, []string{"h2c"}),
 					map[string]any{"handle": []any{map[string]any{"handler": "static_response", "status_code": 404}}},
@@ -392,18 +395,39 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		nativeFixture.nativeDashboard(w, r)
 	}))
 	defer native.Close()
-	var apiRequests, apiPosts atomic.Int64
+	var apiRequests, apiPosts, apiEventsStarted, apiEventsClosed, apiWSStarted, apiWSClosed atomic.Int64
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiRequests.Add(1)
 		if r.Method == http.MethodPost {
 			apiPosts.Add(1)
 		}
-		if r.Method != http.MethodGet || r.URL.Path != "/v1/models" || r.Header.Get("Authorization") != "Bearer fixture-native-api-token" {
+		if !runtimeNativeAPIRequest(r) {
 			http.Error(w, "fixture API denied", http.StatusUnauthorized)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"object":"list","data":[{"id":"fixture-model"}]}`)
+		switch r.URL.Path {
+		case "/v1/models":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"object":"list","data":[{"id":"fixture-model"}]}`)
+		case "/v1/events":
+			apiEventsStarted.Add(1)
+			defer apiEventsClosed.Add(1)
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = io.WriteString(w, "data: ready\n\n")
+			w.(http.Flusher).Flush()
+			<-r.Context().Done()
+		case "/v1/ws":
+			connection, err := websocket.Accept(w, r, nil)
+			if err != nil {
+				return
+			}
+			apiWSStarted.Add(1)
+			defer apiWSClosed.Add(1)
+			defer connection.CloseNow()
+			_, _, _ = connection.Read(r.Context())
+		default:
+			http.NotFound(w, r)
+		}
 	}))
 	defer api.Close()
 	proxyObserver := &runtimeProxyObserver{counts: map[string]int{}}
@@ -539,6 +563,11 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			response["events_closed"] = strconv.FormatInt(eventsClosed.Load(), 10)
 			response["ws_started"] = strconv.FormatInt(wsStarted.Load(), 10)
 			response["ws_closed"] = strconv.FormatInt(wsClosed.Load(), 10)
+		case "api stream counts":
+			response["events_started"] = strconv.FormatInt(apiEventsStarted.Load(), 10)
+			response["events_closed"] = strconv.FormatInt(apiEventsClosed.Load(), 10)
+			response["ws_started"] = strconv.FormatInt(apiWSStarted.Load(), 10)
+			response["ws_closed"] = strconv.FormatInt(apiWSClosed.Load(), 10)
 		default:
 			response["error"] = "unknown fixture command"
 		}
@@ -546,6 +575,22 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			return
 		}
 	}
+}
+
+// runtimeNativeAPIRequest verifies the header surface guaranteed by the API
+// origin proxy: it keeps only API protocol headers, then installs exactly one
+// connector-owned native bearer. Local and Connect authority material must not
+// reach the fixture origin.
+func runtimeNativeAPIRequest(r *http.Request) bool {
+	if r.Method != http.MethodGet || r.Host != edgeAPIHost || r.Header.Get("Authorization") != "Bearer fixture-native-api-token" || len(r.Header.Values("Authorization")) != 1 {
+		return false
+	}
+	for _, name := range []string{"X-Api-Key", "Cookie", "Origin", "Proxy-Authorization", "X-Anvil-Connect-Resource", "X-Anvil-Connect-Identity", "X-Anvil-Connect-Assertion", "X-Anvil-Connect-Authorization"} {
+		if len(r.Header.Values(name)) != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // runtimeAutheliaConfig keeps the baseline TOTP selection unchanged. The
@@ -659,5 +704,64 @@ func TestRuntimeFixtureElevationCodeIsNewestAndClosed(t *testing.T) {
 	}
 	if _, err := runtimeFixtureElevationCode(path); err == nil {
 		t.Fatal("unlabeled notifier content was accepted")
+	}
+}
+
+func TestRuntimeCaddyConfigRoutesAPIUpgradeBeforeH2C(t *testing.T) {
+	declaration := runtimeCaddyConfig(":443", "127.0.0.1:9091", "/tmp/ingress.sock", "certificate", "key")
+	apps := declaration["apps"].(map[string]any)
+	httpApp := apps["http"].(map[string]any)
+	servers := httpApp["servers"].(map[string]any)
+	server := servers["anvil_connect"].(map[string]any)
+	routes := server["routes"].([]any)
+
+	upgradeIndex, h2cIndex := -1, -1
+	for index, entry := range routes {
+		route := entry.(map[string]any)
+		matchers, ok := route["match"].([]any)
+		if !ok || len(matchers) != 1 {
+			continue
+		}
+		match := matchers[0].(map[string]any)
+		hosts, ok := match["host"].([]string)
+		if !ok || len(hosts) != 1 || hosts[0] != edgeAPIHost {
+			continue
+		}
+		versions := route["handle"].([]any)[1].(map[string]any)["transport"].(map[string]any)["versions"].([]string)
+		switch {
+		case match["header_regexp"] != nil && len(versions) == 1 && versions[0] == "1.1":
+			upgradeIndex = index
+		case match["method"] != nil && len(versions) == 1 && versions[0] == "h2c":
+			h2cIndex = index
+		}
+	}
+	if upgradeIndex < 0 || h2cIndex < 0 || upgradeIndex >= h2cIndex {
+		t.Fatal("API upgrade route does not precede the API h2c route")
+	}
+}
+
+func TestRuntimeNativeAPIRequestClosedHeaders(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "http://"+edgeAPIHost+"/v1/events", nil)
+	request.Host = edgeAPIHost
+	request.Header.Set("Authorization", "Bearer fixture-native-api-token")
+	if !runtimeNativeAPIRequest(request) {
+		t.Fatal("native API request rejected")
+	}
+	for _, name := range []string{"X-Api-Key", "Cookie", "Origin", "Proxy-Authorization", "X-Anvil-Connect-Resource", "X-Anvil-Connect-Identity", "X-Anvil-Connect-Assertion", "X-Anvil-Connect-Authorization"} {
+		candidate := request.Clone(context.Background())
+		candidate.Header.Set(name, "fixture-leak")
+		if runtimeNativeAPIRequest(candidate) {
+			t.Fatalf("leaked header %q reached native API", name)
+		}
+	}
+	request.Header.Add("Authorization", "Bearer fixture-native-api-token")
+	if runtimeNativeAPIRequest(request) {
+		t.Fatal("duplicate native bearer accepted")
+	}
+	request.Header.Del("Authorization")
+	request.Header.Set("Authorization", "Bearer fixture-native-api-token")
+	request.Host = "wrong.example.test"
+	if runtimeNativeAPIRequest(request) {
+		t.Fatal("wrong native API host accepted")
 	}
 }
