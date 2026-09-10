@@ -129,6 +129,8 @@ def _guest_result(raw: bytes) -> tuple[list[dict[str, str]], dict[str, dict[str,
         if data["ok"] and any(
             sample["memory_current_bytes"] > sample["memory_max_bytes"]
             or sample["memory_peak_bytes"] > sample["memory_max_bytes"]
+            or sample["memory_peak_bytes"] == 0
+            or sample["tasks_current"] == 0
             for values in normalized.values() for sample in values.values()
         ):
             raise ValueError
