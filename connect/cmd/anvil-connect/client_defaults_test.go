@@ -78,7 +78,7 @@ func TestLoginLocalSecretScopeAndOverride(t *testing.T) {
 	}
 	c := clientconfig.Config{LocalKeyEnv: "TEST_LOCAL_KEY", RemoteKeyEnv: "TEST_REMOTE_KEY"}
 	path := filepath.Join(directory, "client.json")
-	lookup, err := loginSecrets(path, c, func(name string) (string, bool) {
+	lookup, location, err := loginSecrets(path, c, func(name string) (string, bool) {
 		if name != c.LocalKeyEnv {
 			t.Fatal("unexpected environment read")
 		}
@@ -87,6 +87,9 @@ func TestLoginLocalSecretScopeAndOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if location.file != filepath.Join(directory, "local-key") || location.env != "" {
+		t.Fatal("selected file reference missing")
+	}
 	if got, ok := lookup(c.LocalKeyEnv); !ok || got != key {
 		t.Fatal("installed local key not loaded")
 	}
@@ -94,7 +97,7 @@ func TestLoginLocalSecretScopeAndOverride(t *testing.T) {
 		t.Fatal("secret exposed under another name")
 	}
 	for _, value := range []string{"", "invalid-test-key"} {
-		if _, err := loginSecrets(path, c, func(string) (string, bool) { return value, true }); err == nil {
+		if _, _, err := loginSecrets(path, c, func(string) (string, bool) { return value, true }); err == nil {
 			t.Fatal("invalid explicit key fell back to disk")
 		}
 	}
@@ -102,9 +105,12 @@ func TestLoginLocalSecretScopeAndOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lookup, err = loginSecrets(path, c, func(string) (string, bool) { return other, true })
+	lookup, location, err = loginSecrets(path, c, func(string) (string, bool) { return other, true })
 	if err != nil {
 		t.Fatal(err)
+	}
+	if location.env != c.LocalKeyEnv || location.file != "" {
+		t.Fatal("selected environment reference missing")
 	}
 	if got, ok := lookup(c.LocalKeyEnv); !ok || got != other {
 		t.Fatal("explicit local key ignored")

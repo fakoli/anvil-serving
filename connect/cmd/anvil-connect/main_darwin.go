@@ -141,9 +141,10 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 			return json.NewEncoder(out).Encode(map[string]string{"mode": "client", "status": "running"})
 		})
 	case "login":
-		lookup, err = loginSecrets(file, local, lookup)
+		var keyLocation loginKeyLocation
+		lookup, keyLocation, err = loginSecrets(file, local, lookup)
 		if err == nil {
-			err = loginClient(ctx, local, lookup, out, jsonOutput)
+			err = loginClient(ctx, local, lookup, out, jsonOutput, keyLocation)
 		}
 	default:
 		return invalid()

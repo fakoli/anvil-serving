@@ -269,9 +269,10 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	if command == "client" {
 		err = serveClient(ctx, local, lookup, func() error { return json.NewEncoder(out).Encode(map[string]string{"mode": mode, "status": "running"}) })
 	} else if command == "login" {
-		lookup, err = loginSecrets(file, local, lookup)
+		var keyLocation loginKeyLocation
+		lookup, keyLocation, err = loginSecrets(file, local, lookup)
 		if err == nil {
-			err = loginClient(ctx, local, lookup, out, jsonOutput)
+			err = loginClient(ctx, local, lookup, out, jsonOutput, keyLocation)
 		}
 	} else {
 		var process interface {

@@ -222,6 +222,8 @@ func forwardFailure(w http.ResponseWriter, status int) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if status == http.StatusUnauthorized {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="anvil-connect-local"`)
+		http.Error(w, "Unauthorized: missing or invalid local API key. Set your SDK API key or send Authorization: Bearer <local-key>. Browser sign-in authorizes the remote connection; local requests still require this key.", status)
+		return
 	}
 	if status == http.StatusTooManyRequests {
 		w.Header().Set("Retry-After", "1")
