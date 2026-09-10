@@ -13,7 +13,8 @@ anvil-serving connect migration --manifest /etc/anvil-connect/deployment.json --
 The selected rule must use browser access and native authentication passthrough.
 Its HTTPS hostname must equal Observatory's existing canonical origin. Its
 canonical path prefix must exactly map the application's base path, without
-prefix stripping. GET and POST must be admitted. The matching connector envelope
+prefix stripping. GET, POST and DELETE must be admitted: native logout deletes
+the Observatory session. The matching connector envelope
 names one fixed loopback HTTP origin and independently enforces the same rule.
 
 A hostname change requires an explicit application-origin and re-login migration;

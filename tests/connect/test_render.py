@@ -216,6 +216,7 @@ def test_plan_and_staging_preserve_drift_and_are_idempotent(tmp_path: Path) -> N
 
 def test_systemd_units_have_real_argv_and_reject_unsafe_paths() -> None:
     files = render(manifest())["files"]
+    caddy = json.loads(files["caddy.json"])
     assert "${CONFIG_ROOT}" not in "\n".join(files.values())
     assert "--adapter json" not in files["systemd/anvil-connect-caddy.service"]
     assert "--config.experimental.filters template" in files["systemd/anvil-connect-authelia.service"]
@@ -224,6 +225,8 @@ def test_systemd_units_have_real_argv_and_reject_unsafe_paths() -> None:
     assert "EnvironmentFile=/etc/anvil-connect/secrets/gateway.env" in files["systemd/anvil-connect-gateway.service"]
     assert "EnvironmentFile=/etc/anvil-connect/secrets/connectors/dashboard.env" in files["systemd/anvil-connect-connector-dashboard.service"]
     assert "EnvironmentFile=/etc/anvil-connect/secrets/clients/dashboard-api.env" in files["systemd/anvil-connect-client-dashboard-api.service"]
+    assert caddy["apps"]["http"]["grace_period"] == "15s"
+    assert "TimeoutStopSec=20" in files["systemd/anvil-connect-caddy.service"]
     value = manifest()
     value["config_root"] = "/etc/anvil connect"
     with pytest.raises(ManifestError, match="ExecStart argument"):
@@ -348,4 +351,24 @@ def test_environment_file_bindings_and_client_rules_are_closed() -> None:
     value = manifest()
     value["caddy"]["service_name"] = "ignored-name"
     with pytest.raises(ManifestError, match="must equal anvil-connect-caddy"):
+        validate_manifest(value)
+
+
+def test_loopback_edge_keeps_tls_without_implicit_public_listeners() -> None:
+    value = manifest()
+    value['caddy']['listen'] = '127.0.0.1:19443'
+    value['caddy']['tls'] = {'mode': 'provided', 'certificate_file': '/etc/connect/tls.pem', 'key_file': '/etc/connect/tls.key'}
+    generated = render(value)
+    edge = json.loads(generated['files']['caddy.json'])['apps']['http']['servers']['anvil_connect']
+    assert edge['listen'] == ['127.0.0.1:19443']
+    assert edge['tls_connection_policies'] == [{}]
+    assert edge['automatic_https'] == {'disable_certificates': True, 'disable_redirects': True}
+    assert 'CAP_NET_BIND_SERVICE' not in generated['files']['systemd/anvil-connect-caddy.service']
+    for bad in ('0.0.0.0:19443', 'localhost:19443', ':19443', value['authelia']['listen'], value['gateway']['tunnel_listen']):
+        value['caddy']['listen'] = bad
+        with pytest.raises(ManifestError):
+            validate_manifest(value)
+    value['caddy']['listen'] = '127.0.0.1:19443'
+    value['caddy']['tls'] = {'mode': 'acme', 'certificate_file': '', 'key_file': ''}
+    with pytest.raises(ManifestError, match='provided TLS'):
         validate_manifest(value)

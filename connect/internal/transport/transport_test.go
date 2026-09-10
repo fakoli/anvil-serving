@@ -3,6 +3,7 @@ package transport
 import (
 	"crypto/tls"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,8 +13,10 @@ import (
 	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
+	"github.com/fakoli/anvil-serving/connect/internal/browseridentity"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/origin"
+	"github.com/fakoli/anvil-serving/connect/internal/session"
 	"github.com/fakoli/anvil-serving/connect/internal/testidentity"
 	"github.com/fakoli/anvil-serving/connect/internal/testpki"
 )
@@ -147,5 +150,59 @@ func TestDispatcherRejectsMissingOrWrongGatewayIdentity(t *testing.T) {
 			d.Close()
 			t.Fatal("invalid client identity accepted")
 		}
+	}
+}
+
+func TestBrowserDispatchInjectsOnlyContextIdentity(t *testing.T) {
+	const assertion = "acai1.e30.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	ca := testpki.New(t)
+	g := config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: "127.0.0.1:17890", MaxConcurrent: 2, Resources: []config.Resource{{Rule: config.Rule{ID: "dash", Host: "dash.example.test", PathPrefix: "/", Methods: []string{"GET"}, Access: "browser", NativeAuth: "signed-identity", Limits: config.Limits{RequestBytes: 4096, Concurrent: 1, BufferBytes: 4096, IdleSeconds: 1, DurationSeconds: 10}}, Connector: "origin-a", TunnelAddress: "127.0.0.1:17891", IdentityKeyEnv: "ANVIL_CONNECT_DASH_IDENTITY_KEY", IdentityKeyID: "dash-v1"}}}
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.Resources[0].TunnelAddress = listener.Addr().String()
+	authority := testidentity.New(t, g, ca)
+	var calls atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if r.Header.Get(browseridentity.Header) != assertion || len(r.Header.Values(browseridentity.Header)) != 1 || r.Header.Get("X-Forwarded-Host") != "" {
+			t.Error("dispatcher did not inject exactly its context identity")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	server.TLS = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{authority.Certificates["dash"]}, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: ca.Roots}
+	server.EnableHTTP2 = true
+	server.Listener = listener
+	server.StartTLS()
+	defer server.Close()
+	d, err := NewDispatcher(g, ca.Roots, ca.Leaf(t, GatewayPeer, true), authority.Issuer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	request := httptest.NewRequest(http.MethodGet, "http://dash.example.test/", nil)
+	request.Host = "dash.example.test"
+	request.RequestURI = "/"
+	request.URL.Scheme, request.URL.Host = "", ""
+	request.Header.Set(browseridentity.Header, "forged")
+	request.Header.Set("X-Forwarded-Host", "forged.example.test")
+	request = request.WithContext(browseridentity.WithAssertion(request.Context(), assertion))
+	if !g.Resources[0].Rule.Allows(request.Host, request.URL.Path, request.Method) {
+		t.Fatal("invalid signed browser test request")
+	}
+	response := httptest.NewRecorder()
+	d.BrowserDispatch(response, request, g.Resources[0], session.Admission{Resource: "dash", Host: "dash.example.test"})
+	if response.Code != http.StatusNoContent || calls.Load() != 1 {
+		t.Fatalf("context identity was not dispatched: status=%d body=%q calls=%d", response.Code, response.Body.String(), calls.Load())
+	}
+	response = httptest.NewRecorder()
+	request = httptest.NewRequest(http.MethodGet, "http://dash.example.test/", nil)
+	request.Host = "dash.example.test"
+	request.RequestURI = "/"
+	request.URL.Scheme, request.URL.Host = "", ""
+	d.BrowserDispatch(response, request, g.Resources[0], session.Admission{Resource: "dash", Host: "dash.example.test"})
+	if response.Code != http.StatusForbidden || calls.Load() != 1 {
+		t.Fatal("caller header substituted for signed context identity")
 	}
 }

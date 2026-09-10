@@ -1,5 +1,9 @@
 # Anvil Connect native component
 
+Connect can be installed independently using its own versioned role-specific
+bundle. See [standalone installation](../docs/ANVIL-CONNECT-INSTALL.md) for Linux
+gateway/connector and macOS local-client installation, verification and rollback.
+
 The separate Go module contains the gateway,
 outbound origin connector, browser access gateway, scoped API keys, and optional
 loopback SDK forwarder. Isolated process and browser tests are available;
@@ -144,4 +148,5 @@ Dependencies are pinned in go.mod/go.sum: [bbolt](https://github.com/etcd-io/bbo
 [Go OAuth2](https://pkg.go.dev/golang.org/x/oauth2) (BSD-3-Clause),
 [coder/websocket](https://github.com/coder/websocket) (ISC), and
 [Go system interfaces](https://pkg.go.dev/golang.org/x/sys) (BSD-3-Clause).
-The initial runtime and transport qualification target Linux amd64.
+Gateway and origin transport target Linux amd64. The macOS local client has a
+separate command entrypoint and does not import the Linux server/runtime code.

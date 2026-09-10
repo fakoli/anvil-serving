@@ -98,6 +98,19 @@ jobs:
         # Linux-owned lifecycle contracts without live systemd.
         run: python scripts/run_tests.py tests/connect/ -x -q
 
+  connect-macos-client:
+    name: Connect standalone client (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.0"
+      - name: Test native client and secure local key output
+        run: go -C connect test ./cmd/anvil-connect ./internal/clientconfig ./internal/client -count=1
+      - name: Build standalone client
+        run: go -C connect build -trimpath -o "$RUNNER_TEMP/anvil-connect" ./cmd/anvil-connect
+
   lint:
     name: lint (ruff)
     runs-on: ubuntu-latest

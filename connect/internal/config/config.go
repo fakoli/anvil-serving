@@ -4,6 +4,7 @@ package config
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 const MaxConfigBytes = 1024 * 1024
@@ -55,16 +57,36 @@ type Rule struct {
 }
 
 type Resource struct {
-	Rule          Rule   `json:"rule"`
-	Connector     string `json:"connector"`
-	TunnelAddress string `json:"tunnel_address"`
+	Rule           Rule   `json:"rule"`
+	Connector      string `json:"connector"`
+	TunnelAddress  string `json:"tunnel_address"`
+	IdentityKeyEnv string `json:"identity_key_env,omitempty"`
+	IdentityKeyID  string `json:"identity_key_id,omitempty"`
 }
 
 type Gateway struct {
-	Schema        string     `json:"schema"`
-	Listen        string     `json:"listen"`
-	MaxConcurrent int        `json:"max_concurrent"`
-	Resources     []Resource `json:"resources"`
+	Schema                string                 `json:"schema"`
+	Listen                string                 `json:"listen"`
+	MaxConcurrent         int                    `json:"max_concurrent"`
+	Resources             []Resource             `json:"resources"`
+	DeviceAuthorizations  []DeviceAuthorization  `json:"device_authorizations,omitempty"`
+	BrowserAdministration *BrowserAdministration `json:"browser_administration,omitempty"`
+}
+type BrowserAdministration struct {
+	BrowserResource string   `json:"browser_resource"`
+	Operators       []string `json:"operators"`
+}
+
+// DeviceAuthorization is the one explicit browser-to-API authority bridge.
+// Principals are Connect's opaque human IDs, never IdP subjects or display
+// names. The device protocol derives its reserved approval path from the
+// browser rule so callers cannot choose a route or wider API scope.
+type DeviceAuthorization struct {
+	BrowserResource string            `json:"browser_resource"`
+	APIResource     string            `json:"api_resource"`
+	Methods         []string          `json:"methods"`
+	Label           string            `json:"label"`
+	Principals      map[string]string `json:"principals"`
 }
 
 type Envelope struct {
@@ -82,6 +104,14 @@ type Connector struct {
 
 func ValidID(value string) bool  { return identifier.MatchString(value) }
 func ValidEnv(value string) bool { return environment.MatchString(value) }
+
+func ValidHumanID(value string) bool {
+	if !strings.HasPrefix(value, "human:") || len(value) != len("human:")+64 {
+		return false
+	}
+	decoded, err := hex.DecodeString(strings.TrimPrefix(value, "human:"))
+	return err == nil && len(decoded) == 32 && hex.EncodeToString(decoded) == strings.TrimPrefix(value, "human:")
+}
 
 func ValidHost(value string) bool {
 	if len(value) > 253 || !strings.Contains(value, ".") || net.ParseIP(value) != nil {
@@ -127,7 +157,7 @@ func (r Rule) Validate() error {
 	if r.Access != "api" && r.Access != "browser" {
 		return errors.New("unknown access profile")
 	}
-	if (r.Access == "api" && r.NativeAuth != "delegate-bearer") || (r.Access == "browser" && r.NativeAuth != "none" && r.NativeAuth != "passthrough") {
+	if (r.Access == "api" && r.NativeAuth != "delegate-bearer") || (r.Access == "browser" && r.NativeAuth != "none" && r.NativeAuth != "passthrough" && r.NativeAuth != "signed-identity") {
 		return errors.New("unsupported access and native-auth combination")
 	}
 	if len(r.Methods) < 1 || len(r.Methods) > 7 {
@@ -169,6 +199,8 @@ func (g Gateway) Validate() error {
 		return errors.New("invalid gateway declaration")
 	}
 	ids, hosts, addresses := map[string]bool{}, map[string]bool{}, map[string]bool{g.Listen: true}
+	resources := map[string]Resource{}
+	identityEnvs, identityIDs := map[string]bool{}, map[string]bool{}
 	for _, resource := range g.Resources {
 		if err := resource.Rule.Validate(); err != nil {
 			return err
@@ -176,9 +208,71 @@ func (g Gateway) Validate() error {
 		if !ValidID(resource.Connector) || !LoopbackAddress(resource.TunnelAddress) || ids[resource.Rule.ID] || hosts[resource.Rule.Host] || addresses[resource.TunnelAddress] || resource.Rule.Limits.Concurrent > g.MaxConcurrent {
 			return errors.New("duplicate or invalid gateway resource binding")
 		}
+		if resource.Rule.NativeAuth == "signed-identity" {
+			if !ValidEnv(resource.IdentityKeyEnv) || !ValidID(resource.IdentityKeyID) || identityEnvs[resource.IdentityKeyEnv] || identityIDs[resource.IdentityKeyID] {
+				return errors.New("signed identity requires an environment key reference and key id")
+			}
+			identityEnvs[resource.IdentityKeyEnv], identityIDs[resource.IdentityKeyID] = true, true
+		} else if resource.IdentityKeyEnv != "" || resource.IdentityKeyID != "" {
+			return errors.New("identity key reference is allowed only for signed identity")
+		}
 		ids[resource.Rule.ID], hosts[resource.Rule.Host], addresses[resource.TunnelAddress] = true, true, true
+		resources[resource.Rule.ID] = resource
+	}
+	if g.DeviceAuthorizations != nil && (len(g.DeviceAuthorizations) < 1 || len(g.DeviceAuthorizations) > 64) {
+		return errors.New("too many device authorizations")
+	}
+	if g.BrowserAdministration != nil {
+		admin := g.BrowserAdministration
+		browser, ok := resources[admin.BrowserResource]
+		if !ok || browser.Rule.Access != "browser" || len(admin.Operators) < 1 || len(admin.Operators) > 64 || !browser.Rule.Allows(browser.Rule.Host, browser.Rule.PathPrefix, "GET") || !browser.Rule.Allows(browser.Rule.Host, browser.Rule.PathPrefix, "POST") {
+			return errors.New("invalid browser administration")
+		}
+		seen := map[string]bool{}
+		for _, operator := range admin.Operators {
+			if !ValidHumanID(operator) || seen[operator] {
+				return errors.New("invalid browser administration operators")
+			}
+			seen[operator] = true
+		}
+	}
+	browsers, apis := map[string]bool{}, map[string]bool{}
+	for _, device := range g.DeviceAuthorizations {
+		browser, browserOK := resources[device.BrowserResource]
+		api, apiOK := resources[device.APIResource]
+		if !browserOK || !apiOK || browser.Rule.Access != "browser" || api.Rule.Access != "api" || device.BrowserResource == device.APIResource || browsers[device.BrowserResource] || apis[device.APIResource] || !validDeviceLabel(device.Label) || len(device.Methods) < 1 || len(device.Methods) > 7 || len(device.Principals) < 1 || len(device.Principals) > 64 {
+			return errors.New("invalid device authorization binding")
+		}
+		methodSeen := map[string]bool{}
+		for _, method := range device.Methods {
+			if methodSeen[method] || !ValidMethod(method) || !browser.Rule.Allows(browser.Rule.Host, browser.Rule.PathPrefix, method) || !api.Rule.Allows(api.Rule.Host, api.Rule.PathPrefix, method) {
+				return errors.New("invalid device authorization methods")
+			}
+			methodSeen[method] = true
+		}
+		if !browser.Rule.Allows(browser.Rule.Host, browser.Rule.PathPrefix, "GET") || !browser.Rule.Allows(browser.Rule.Host, browser.Rule.PathPrefix, "POST") {
+			return errors.New("device authorization browser requires GET and POST")
+		}
+		for human, principal := range device.Principals {
+			if !ValidHumanID(human) || !ValidID(principal) {
+				return errors.New("invalid device authorization principal mapping")
+			}
+		}
+		browsers[device.BrowserResource], apis[device.APIResource] = true, true
 	}
 	return nil
+}
+
+func validDeviceLabel(value string) bool {
+	if len(value) < 1 || len(value) > 128 || !utf8.ValidString(value) {
+		return false
+	}
+	for _, c := range value {
+		if c <= 31 || c == 127 {
+			return false
+		}
+	}
+	return true
 }
 
 func (c Connector) Validate() error {
@@ -258,7 +352,7 @@ func Decode(reader io.Reader, target any) error {
 		return errors.New("invalid configuration target")
 	}
 	data, err := io.ReadAll(io.LimitReader(reader, MaxConfigBytes+1))
-	if err != nil || len(data) > MaxConfigBytes {
+	if err != nil || len(data) > MaxConfigBytes || !utf8.Valid(data) || !validUnicodeEscapes(data) {
 		return errors.New("configuration unreadable or too large")
 	}
 	d := json.NewDecoder(bytes.NewReader(data))
@@ -275,6 +369,78 @@ func Decode(reader io.Reader, target any) error {
 	return nil
 }
 
+// encoding/json replaces malformed UTF-8 and unpaired UTF-16 surrogate
+// escapes with U+FFFD. Declarations are security policy, so that lossy repair
+// could make Go accept text rejected by the renderer. Validate raw strings
+// before shape/decode instead.
+func validUnicodeEscapes(data []byte) bool {
+	inString := false
+	for i := 0; i < len(data); i++ {
+		if !inString {
+			if data[i] == '"' {
+				inString = true
+			}
+			continue
+		}
+		if data[i] == '"' {
+			inString = false
+			continue
+		}
+		if data[i] != '\\' {
+			continue
+		}
+		i++
+		if i >= len(data) {
+			return false
+		}
+		if data[i] != 'u' {
+			continue
+		}
+		if i+4 >= len(data) {
+			return false
+		}
+		value, ok := unicodeEscape(data[i+1 : i+5])
+		if !ok {
+			return false
+		}
+		i += 4
+		if value >= 0xD800 && value <= 0xDBFF {
+			if i+6 >= len(data) || data[i+1] != '\\' || data[i+2] != 'u' {
+				return false
+			}
+			low, ok := unicodeEscape(data[i+3 : i+7])
+			if !ok || low < 0xDC00 || low > 0xDFFF {
+				return false
+			}
+			i += 6
+		} else if value >= 0xDC00 && value <= 0xDFFF {
+			return false
+		}
+	}
+	return !inString
+}
+
+func unicodeEscape(value []byte) (rune, bool) {
+	if len(value) != 4 {
+		return 0, false
+	}
+	var result rune
+	for _, b := range value {
+		result <<= 4
+		switch {
+		case b >= '0' && b <= '9':
+			result += rune(b - '0')
+		case b >= 'a' && b <= 'f':
+			result += rune(b-'a') + 10
+		case b >= 'A' && b <= 'F':
+			result += rune(b-'A') + 10
+		default:
+			return 0, false
+		}
+	}
+	return result, true
+}
+
 func shape(d *json.Decoder, kind reflect.Type, depth int) error {
 	if depth > 16 {
 		return errors.New("configuration nesting limit")
@@ -282,6 +448,9 @@ func shape(d *json.Decoder, kind reflect.Type, depth int) error {
 	token, err := d.Token()
 	if err != nil || token == nil {
 		return errors.New("missing value")
+	}
+	for kind.Kind() == reflect.Pointer {
+		kind = kind.Elem()
 	}
 	switch kind.Kind() {
 	case reflect.Struct:
@@ -325,6 +494,29 @@ func shape(d *json.Decoder, kind reflect.Type, depth int) error {
 		end, err := d.Token()
 		if err != nil || end != json.Delim(']') {
 			return errors.New("array not closed")
+		}
+	case reflect.Map:
+		if kind.Key().Kind() != reflect.String || token != json.Delim('{') {
+			return errors.New("object required")
+		}
+		seen := map[string]bool{}
+		for d.More() {
+			key, err := d.Token()
+			if err != nil {
+				return err
+			}
+			name, ok := key.(string)
+			if !ok || seen[name] {
+				return errors.New("duplicate map key")
+			}
+			seen[name] = true
+			if err := shape(d, kind.Elem(), depth+1); err != nil {
+				return err
+			}
+		}
+		end, err := d.Token()
+		if err != nil || end != json.Delim('}') {
+			return errors.New("object not closed")
 		}
 	default:
 		if _, delimiter := token.(json.Delim); delimiter {

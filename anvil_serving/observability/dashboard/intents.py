@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import hashlib
 import sqlite3
 import threading
 import time
@@ -29,6 +30,9 @@ class IntentStore:
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
+        # ``connect_profiles`` is an additive table. Keep the established v1
+        # journal marker so an operator can roll back to the prior Observatory
+        # binary without replacing, resetting, or downgrading intent state.
         if version not in (0, 1):
             self.db.close()
             raise ValueError("unsupported journal schema; use the recorded recovery procedure")
@@ -38,6 +42,8 @@ class IntentStore:
             CREATE TABLE IF NOT EXISTS intents(id TEXT PRIMARY KEY, intent_key TEXT UNIQUE NOT NULL, fingerprint TEXT NOT NULL,
                 actor TEXT NOT NULL, resource TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL, updated REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS evidence(id TEXT PRIMARY KEY, resource TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS connect_profiles(subject_digest TEXT PRIMARY KEY, profile_id TEXT UNIQUE NOT NULL,
+                body TEXT NOT NULL, created REAL NOT NULL, updated REAL NOT NULL);
             PRAGMA user_version=1;
         """)
         # A web process dying is ambiguous delivery. Never re-dispatch these
@@ -53,6 +59,41 @@ class IntentStore:
     def close(self):
         with self._lock:
             self.db.close()
+
+    def connect_profile(self, subject: str) -> dict:
+        """Create one empty local workspace profile for one verified opaque subject.
+
+        The journal retains only a digest of the Connect subject. It does not
+        copy IdP attributes, grants, or session credentials into Observatory.
+        """
+        if type(subject) is not str or "\x00" in subject or "\r" in subject or "\n" in subject or "\t" in subject:
+            raise ValueError("invalid Connect subject")
+        try:
+            raw_subject = subject.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise ValueError("invalid Connect subject") from exc
+        if not 1 <= len(raw_subject) <= 192:
+            raise ValueError("invalid Connect subject")
+        subject_digest = hashlib.sha256(raw_subject).hexdigest()
+        with self._lock:
+            self.db.execute("BEGIN IMMEDIATE")
+            try:
+                row = self.db.execute("SELECT body FROM connect_profiles WHERE subject_digest=?", (subject_digest,)).fetchone()
+                if row is not None:
+                    self.db.execute("COMMIT")
+                    return json.loads(row["body"])
+                count = self.db.execute("SELECT count(*) FROM connect_profiles").fetchone()[0]
+                if count >= 256:
+                    raise ObservatoryError("connect_profile_limit", "Anvil Connect workspace enrollment is temporarily unavailable.", 503)
+                now = self.clock()
+                profile = {"schema": "anvil-observatory/connect-profile/v1", "id": "connect-" + subject_digest[:32],
+                           "preferences": {}, "workspace": {}}
+                self.db.execute("INSERT INTO connect_profiles VALUES(?,?,?,?,?)", (subject_digest, profile["id"], canonical(profile).decode(), now, now))
+                self.db.execute("COMMIT")
+                return profile
+            except BaseException:
+                self.db.execute("ROLLBACK")
+                raise
 
     def save_draft(self, actor: str, body: dict, *, previous=None) -> dict:
         with self._lock:
