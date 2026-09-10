@@ -1,6 +1,6 @@
 # Anvil Workbench — design proposal
 
-September 10, 2026 · Concept 02 · Working name · For human design review
+September 10, 2026 · Concept 03 · Working name · For human design review
 
 This is a proposal and interactive design study, not a shipped product contract.
 The current Observatory, router, controllers, and project state are unchanged.
@@ -25,15 +25,33 @@ The navigation follows jobs, not CLI command families:
 | Workbench | Does this model behave correctly under this workload? | Create an experiment; follow deterministic phases; inspect, compare and retain evidence |
 | Playground | What happens when I ask this exact model? | Select connector, recipe/model and preset; send and inspect |
 | Models & recipes | Which reproducible setup can I use? | Inspect availability; review managed loading/configuration |
-| Anvil work | Which project requirement does this work satisfy? | Read PRDs, inspect ready tasks, attach evidence |
-| Pi workspace | What is the coding agent doing in this conversation? | Chat, choose operator model/thinking, resume or branch, inspect tool events, steer and stop |
-| System & logs | Why is a request or machine behaving this way? | Inspect owners, resources, correlated logs and Grafana |
-| Connect access | Who can use which resources? | Review grants, enable/disable access and revoke issued sessions |
+| Anvil work | Which project requirement does this work satisfy? | Read PRDs, open a task, use its Pi conversation and inspect evidence |
+| Observability | Why is a model or machine behaving this way? | Inspect fleet, models, GPUs, hosts, benchmark history, logs and monitoring health |
+| Compute | What is running on each host, and how do I operate it? | Select a workload; inspect runtime identity, logs and configuration; review start/stop or open scoped exec |
+| Settings | How is this workspace configured and administered? | Workspace preferences, service connections, Pi environment defaults, Connect access and data ownership |
 | Documentation | How does this part of Anvil work? | Read contextual concepts and versioned source documentation |
 
 The production shell also needs a project selector, workspace search, and
-connection settings. Concept 02 shows one fixed sample project. Connect access
-is a dedicated administrator-only destination, using the existing owner contract.
+connection settings. Concept 03 shows one fixed sample project. Settings sits
+at the bottom of the main rail; Connect access is its administrator-only
+**Access & sessions** section. Pi is an embedded component of Anvil work, not a
+separate top-level destination.
+
+### Settings composition
+
+The Settings page has a local section rail and one main content column. General
+contains workspace name, starting page, density and HUD visibility. Connections
+shows service ownership and configured/unconfigured state. Pi environments holds
+defaults for the next reviewed session proposal. Access & sessions retains the
+existing Connect grants, disable/enable and cascading revocation controls. Data
+& evidence describes record ownership and future owner-backed retention settings.
+
+Editable sections keep drafts across navigation, with explicit Save/Discard and
+unsaved indicators. General preferences affect the preview shell; Pi resource
+defaults appear in the task environment review. Connections and retention are
+read-only until their real owner adapters exist. No saved preference implicitly
+changes an active serve, session, claim or access grant. Settings omits the HUD
+and uses the same single document scroll owner as the rest of the portal.
 
 ## Visual direction
 
@@ -52,7 +70,7 @@ observations, deterministic runner activity and Pi activity. A moving light
 indicates a known active demo operation, never arbitrary background animation.
 Reduced motion disables the pulse; text carries the same meaning.
 
-Detailed fleet metrics live in System & logs. Historical run charts retain their
+Detailed fleet metrics live in Observability; workload controls live in Compute. Historical run charts retain their
 own target and time window as the compute selector changes. NVIDIA devices and
 Apple Silicon unified memory need different labels; MacBook is a first-class
 compute location. All capacities and deployments in the concept are synthetic.
@@ -151,9 +169,17 @@ PRD. A draft PRD stays readable but is not executable until approved. A newly
 selected checkout reporting uninitialized state must trigger identity/recovery
 inspection, never automatic creation of competing project state.
 
-Pi needs a conversation first, with model/thinking menus, resume and branching,
-inline tools and extension dialogs, plus changes, tests, artifacts and environment
-detail. Reuse the matching Pi Web surfaces where the integration spike proves them. Provide steering, cancellation, reconnection and explicit
+Pi appears inside **Anvil work → selected task → Agent session**. The embedded
+panel follows Pi Web's project/folder and conversation-thread layout: a compact
+conversation rail beside the chat, model/thinking controls, inline collapsed tools,
+and a message composer. Thread creation, selection and branching preserve separate
+transcripts and drafts. Folder grouping is task-scoped conversation organization,
+not an editable host filesystem. Secondary session/extension/change controls belong
+in menus, not a second dashboard of environment and activity cards.
+
+Anvil supplies the task's Overview and Evidence views around that panel. Reuse
+the corresponding Pi Web surfaces where the integration spike proves them.
+Provide steering, cancellation, reconnection and explicit
 recovery. Closing a browser tab does not stop the runner. Agent text saying
 “tests passed” is not evidence; capture actual test output and exit state, and
 use Anvil's independent review/acceptance process.
@@ -173,6 +199,44 @@ Anvil/Serving README, benchmark documentation and Connect access guide. Producti
 should render versioned packaged documents through a safe markdown renderer, with
 search, source version, code-copy controls and normal deep links. Keep recipe/run
 context while opening help. Curated prototype text is not a live documentation sync.
+
+### 5. Observe the fleet and operate its compute
+
+Observability and Compute are separate workspaces. Compute is the last operational
+navigation item, followed by the separated Documentation utility and Settings.
+The legacy `#system` bookmark resolves to Observability / Fleet.
+
+Observability composes seven dashboard groups from the existing Grafana dashboard
+inventory: Fleet overview, Model performance, Physical GPUs, Host resources,
+Benchmark history, Container logs and Monitoring health. Existing provisioned
+panel titles informed this grouping; private queries, network identities and
+Grafana credentials were not copied into the public prototype. It provides the
+important operational projections, not complete Grafana panel or alert-rule parity.
+
+The dashboard shell retains location, sample time range, source and collection
+state. Fleet and monitoring are explicitly fleet-wide; model/GPU/host/log detail
+follows the selected location. Benchmarks retain independent run windows. Missing
+series never inherit another host's measurements. The demo time control switches
+illustrative fixture series and filters fixture log records; it does not query
+Grafana. Its context dialog proposes the destination/filters without inventing a
+configured Grafana URL. Live embedding must preserve Grafana authorization.
+
+Compute projects the owner's declared workloads, including stopped candidates and
+unavailable owners, and distinguishes Docker containers from native processes.
+Each workload exposes its exact container/process name, state, Logs, Configuration
+and Exec. Model lifecycle uses the same recipe/deployment records as Models and
+Playground. Saving a recipe changes a candidate; starting requires a separate
+review of the exact recipe revision and owner. Stops update deployment state,
+not retained historical benchmark observations.
+
+The concept console accepts literal text, retains drafts/output per host and
+workload, and labels submissions as not executed. The production exec contract
+must resolve an authorized workload ID at its resource owner, constrain session
+lifetime and output buffering, audit admission and distinguish container exec
+from native-process facilities. The browser does not gain raw Docker control or
+arbitrary host administration. Workloads without an exec capability should expose
+that unavailability. Start/stop remain managed lifecycle intents through Serving;
+model promotion and project acceptance keep their independent gates.
 
 ## Ownership and architecture
 
