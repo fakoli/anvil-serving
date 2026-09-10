@@ -17,6 +17,7 @@ import signal
 import selectors
 import sys
 import stat
+import tempfile
 import subprocess
 import time
 import tomllib
@@ -323,15 +324,48 @@ def _require_linux_pidfds() -> None:
     os.close(descriptor)
 
 
-def _environment(config: QualificationConfig, run_dir: Path) -> dict[str, str]:
+def _fixture_temp_root() -> Path:
+    """Create the short private root owned by the qualification lifecycle."""
+    root: Path | None = None
+    try:
+        root = Path(tempfile.mkdtemp(prefix="acq-", dir="/tmp"))
+        os.chmod(root, 0o700)
+        _private_directory(root)
+        return root
+    except (OSError, QualificationError, KeyboardInterrupt) as exc:
+        if root is not None:
+            try:
+                if root.is_symlink():
+                    root.unlink()
+                else:
+                    shutil.rmtree(root)
+            except OSError:
+                pass
+        if isinstance(exc, (QualificationError, KeyboardInterrupt)):
+            raise
+        raise _error("staging-failed", "qualification fixture temporary root is unavailable") from exc
+
+
+def _remove_fixture_temp_root(root: Path) -> None:
+    try:
+        _private_directory(root)
+        shutil.rmtree(root)
+        if root.exists() or root.is_symlink():
+            raise OSError("fixture temporary root remains")
+    except OSError as exc:
+        raise _error("staging-failed", "qualification fixture temporary cleanup failed") from exc
+
+
+def _environment(config: QualificationConfig, run_dir: Path, *, fixture_tmp: Path) -> dict[str, str]:
     home = run_dir / "home"
     for path in (home, home / ".pki", home / ".pki/nssdb", run_dir / "tmp", run_dir / "xdg-config", run_dir / "xdg-cache", run_dir / "xdg-data", run_dir / "go-cache"):
         path.mkdir(mode=0o700, exist_ok=True)
         _private_directory(path)
+    _private_directory(fixture_tmp)
     return {
         "PATH": str(config.tools["go"].parent) + ":" + str(config.tools["certutil"].parent) + ":/usr/bin:/bin",
         "LANG": "C", "LC_ALL": "C",
-        "HOME": str(home), "TMPDIR": str(run_dir / "tmp"),
+        "HOME": str(home), "TMPDIR": str(fixture_tmp),
         "XDG_CONFIG_HOME": str(run_dir / "xdg-config"), "XDG_CACHE_HOME": str(run_dir / "xdg-cache"), "XDG_DATA_HOME": str(run_dir / "xdg-data"),
         "GOTOOLCHAIN": "local", "GOPROXY": "off", "GOSUMDB": "off", "GOMAXPROCS": "2", "GOFLAGS": "-p=2",
         "GOMODCACHE": str(config.go_module_cache), "GOCACHE": str(run_dir / "go-cache"),
@@ -348,11 +382,18 @@ def _environment(config: QualificationConfig, run_dir: Path) -> dict[str, str]:
 def _supervisor_status(output: bytes) -> tuple[str, bool]:
     try:
         value = json.loads(output.decode("utf-8", "strict"))
-        if set(value) != {"status", "escalated"} or value["status"] not in {"passed", "runner-timeout", "runner-interrupted", "runner-failed"} or type(value["escalated"]) is not bool:
+        stages = {"build", "fixture-startup", "browser-launch-cert", "browser-assertion", "report-parsing", "timeout", "interrupted", "supervisor"}
+        marker = value.get("fixture_marker")
+        if set(value) != {"status", "escalated", "failure_stage", "fixture_marker"} or value["status"] not in {"passed", "runner-timeout", "runner-interrupted", "runner-failed"} or type(value["escalated"]) is not bool or value["failure_stage"] not in stages | {None} or (marker is not None and not re.fullmatch(r"browser_edge_fixture_test\.go:[1-9][0-9]{0,4}", marker)):
             raise ValueError
-        return ("runner-failed" if value["escalated"] else value["status"], value["escalated"])
+        status = "runner-failed" if value["escalated"] else value["status"]
+        if status == "runner-failed" and value["failure_stage"]:
+            status += "-" + value["failure_stage"]
+            if marker is not None:
+                status += "@" + marker
+        return status, value["escalated"]
     except (UnicodeError, TypeError, ValueError, json.JSONDecodeError):
-        return "runner-failed", True
+        return "runner-failed-supervisor", True
 
 
 def _run_test(argv: list[str], *, cwd: Path, env: dict[str, str], timeout: float, expected_name: str, supervisor: Path | None = None) -> tuple[str, float, bool]:
@@ -456,10 +497,12 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
             raise _error("tool-invalid", "qualification component digest does not match its lock")
     run_dir = config.artifact_root / ("run-" + uuid.uuid4().hex)
     run_dir.mkdir(mode=0o700)
+    fixture_tmp: Path | None = None
     try:
+        fixture_tmp = _fixture_temp_root()
         tracked = _tracked_connect_files(config.source_root)
         stage = _copy_stage(config, run_dir, tracked)
-        environment = _environment(config, run_dir)
+        environment = _environment(config, run_dir, fixture_tmp=fixture_tmp)
         source_files = {
             relative.as_posix(): _sha256(stage / relative)
             for relative in tracked
@@ -483,12 +526,22 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
                 result, duration, escalated = "runner-timeout", 0.0, False
             else:
                 result, duration, escalated = _run_test(
-                    [str(config.tools["node"]), str(runner), "test", "test/browser_edge.spec.mjs", "--reporter=json", "--grep", "^" + re.escape(name) + "$"],
+                    [str(config.tools["node"]), str(runner), "test", "test/browser_edge.spec.mjs", "--reporter=json", "--grep", re.escape(name) + "$"],
                     cwd=stage / "connect", env=environment, timeout=remaining, expected_name=name, supervisor=run_dir / "supervisor.py",
                 )
-            evidence["tests"].append({"name": name, "status": result, "duration_seconds": round(duration, 3)})
+            failure_stage = result.removeprefix("runner-failed-") if result.startswith("runner-failed-") else None
+            fixture_marker = None
+            if failure_stage is not None and "@" in failure_stage:
+                failure_stage, fixture_marker = failure_stage.split("@", 1)
+            status = "runner-failed" if failure_stage else result
+            item = {"name": name, "status": status, "duration_seconds": round(duration, 3)}
+            if failure_stage is not None:
+                item["failure_stage"] = failure_stage
+            if fixture_marker is not None:
+                item["fixture_marker"] = fixture_marker
+            evidence["tests"].append(item)
             evidence["cleanup"]["escalation_required"] |= escalated
-            if result != "passed":
+            if status != "passed":
                 break
         _junit(run_dir / "junit.xml", evidence["tests"])
         evidence["cleanup"]["fixture_graceful_eof"] = all(item["status"] == "passed" for item in evidence["tests"])
@@ -504,6 +557,8 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
             (run_dir / "supervisor.py").unlink()
             for volatile in volatile_paths[1:]:
                 shutil.rmtree(volatile, ignore_errors=True)
+            _remove_fixture_temp_root(fixture_tmp)
+            fixture_tmp = None
         except OSError as exc:
             raise _error("staging-failed", "qualification private cleanup failed") from exc
         removed = not stage.exists() and all(not path.exists() for path in volatile_paths)
@@ -527,9 +582,27 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
         ), encoding="ascii")
         os.chmod(manifest, 0o600)
         return {"schema": _SCHEMA, "ok": passed, "state": evidence["state"], "error_code": error_code, "artifact_dir": str(run_dir), "counts": evidence["counts"]}
+    except KeyboardInterrupt:
+        if fixture_tmp is not None:
+            try:
+                _remove_fixture_temp_root(fixture_tmp)
+            except QualificationError:
+                pass
+        shutil.rmtree(run_dir, ignore_errors=True)
+        raise _error("runner-interrupted", "qualification interrupted during preparation") from None
     except QualificationError:
+        if fixture_tmp is not None:
+            try:
+                _remove_fixture_temp_root(fixture_tmp)
+            except QualificationError:
+                pass
         shutil.rmtree(run_dir, ignore_errors=True)
         raise
     except (OSError, ValueError, subprocess.SubprocessError):
+        if fixture_tmp is not None:
+            try:
+                _remove_fixture_temp_root(fixture_tmp)
+            except QualificationError:
+                pass
         shutil.rmtree(run_dir, ignore_errors=True)
         raise _error("staging-failed", "qualification preparation failed") from None

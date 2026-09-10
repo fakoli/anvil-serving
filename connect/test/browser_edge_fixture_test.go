@@ -57,6 +57,25 @@ type edgeFixture struct {
 	resource      config.Resource
 }
 
+// edgeSocketPath reserves enough space for Linux sockaddr_un and turns an
+// otherwise opaque net.Listen error into a fixed fixture-stage diagnostic.
+func edgeSocketPath(directory string) (string, error) {
+	path := filepath.Join(directory, "ingress.sock")
+	if len(path) >= 104 {
+		return "", errors.New("fixture socket path exceeds unix limit")
+	}
+	return path, nil
+}
+
+func TestEdgeSocketPathBounded(t *testing.T) {
+	if _, err := edgeSocketPath(filepath.Join("/tmp", strings.Repeat("x", 110))); err == nil {
+		t.Fatal("overlong fixture socket path accepted")
+	}
+	if path, err := edgeSocketPath("/tmp/ace-123"); err != nil || path != "/tmp/ace-123/ingress.sock" {
+		t.Fatal("safe fixture socket path rejected")
+	}
+}
+
 func (f *edgeFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Host != dashHost {
 		http.NotFound(w, r)
@@ -544,7 +563,10 @@ func TestBrowserEdgeFixture(t *testing.T) {
 	}
 	defer dispatcher.Close()
 	fixture.dispatcher, fixture.resource = dispatcher, gateway.Resources[0]
-	socket := filepath.Join(directory, "ingress.sock")
+	socket, err := edgeSocketPath(directory)
+	if err != nil {
+		t.Fatal("fixture socket path is unsafe")
+	}
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
 		t.Fatal(err)

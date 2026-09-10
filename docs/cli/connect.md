@@ -29,6 +29,30 @@ separate test configuration: it contains source, artifact, dependency-cache and
 preinstalled tool paths, without production identities or credentials. It does
 not select a deployment manifest or contact a model endpoint.
 
+Save these settings once, replacing the example paths with prepared local
+paths. `playwright_root` contains the pinned `node_modules` directory;
+`go_module_cache` contains the already downloaded Go modules. Select actual
+executables, not symlinks. The artifact directory must be owned by the test
+user and mode 0700; the command can create it beneath a writable parent.
+
+```toml
+schema = "anvil-connect.qualification-config/v1"
+source_root = "/srv/anvil-serving"
+artifact_root = "/srv/connect-qualification/results"
+playwright_root = "/srv/connect-qualification/dependencies"
+go_module_cache = "/srv/connect-qualification/go-modules"
+timeout_seconds = 600
+
+[tools]
+go = "/opt/go/bin/go"
+node = "/opt/node/bin/node"
+chromium = "/opt/chromium/chrome"
+certutil = "/usr/bin/certutil"
+caddy = "/opt/connect-tools/caddy"
+authelia = "/opt/connect-tools/authelia"
+wstunnel = "/opt/connect-tools/wstunnel"
+```
+
 The baseline runs the existing Caddy, Authelia, wstunnel and Chromium fixtures
 with synthetic accounts and isolated state. It checks certificate rejection
 before trusting the fixture CA, authenticated browser access, and the fixture's
@@ -39,6 +63,10 @@ Results distinguish a failed test, a failed preflight and incomplete cleanup.
 The private result artifact records revisions, tool identity, test outcomes and
 cleanup evidence. A failed qualification exits nonzero. Raw authentication
 responses and credential-bearing browser diagnostics are excluded from output.
+Failed test evidence includes a safe failure-stage label. Each run keeps
+`result.json`, `evidence.json`, `junit.xml` and `SHA256SUMS` after removing its
+temporary source copy, profiles and caches. The source checksum binds the
+tracked Connect files actually staged for that run; untracked files are excluded.
 
 This baseline does not qualify virtual passkeys, terminal browser approval,
 physical biometrics, 1Password, host systemd isolation or the public deployment.

@@ -115,6 +115,11 @@ def test_qualify_stages_privately_and_records_only_safe_evidence(tmp_path: Path,
     assert evidence["cleanup"]["private_stage_removed"] is True
     assert all("SECRET" not in env and "HOME" in env for _, env in seen)
     assert all(env["GOPROXY"] == "off" and env["GOFLAGS"] == "-p=2" for _, env in seen)
+    fixture_roots = {Path(env["TMPDIR"]) for _, env in seen}
+    assert len(fixture_roots) == 1
+    fixture_root = fixture_roots.pop()
+    assert fixture_root.parent == Path("/tmp") and fixture_root.name.startswith("acq-")
+    assert not fixture_root.exists()
 
 
 def test_json_report_requires_the_expected_non_skipped_test() -> None:
@@ -135,7 +140,7 @@ def _wait_for(path: Path) -> None:
 
 def test_supervisor_accepts_only_a_verified_report() -> None:
     report = json.dumps({"errors": [], "suites": [{"specs": [{"title": subject._TESTS[0], "ok": True, "tests": [{"status": "expected", "results": [{"status": "passed"}]}]}]}]})
-    code = "print(%r)" % report
+    code = "import sys; sys.stderr.write('synthetic-warning-secret'); print(%r)" % report
     result, _, escalated = subject._run_test(
         [sys.executable, "-c", code], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
         timeout=2, expected_name=subject._TESTS[0],
@@ -185,7 +190,7 @@ def test_valid_report_cannot_hide_detached_listener(tmp_path: Path) -> None:
     trigger.start()
     result, _, escalated = subject._run_test([sys.executable, "-c", leader], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"}, timeout=1, expected_name=subject._TESTS[0])
     trigger.join(timeout=1)
-    assert marker.exists() and result == "runner-failed" and escalated is True
+    assert marker.exists() and result.startswith("runner-failed-") and escalated is True
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", port))
 
@@ -207,7 +212,7 @@ def test_setsiddescendant_listener_is_reaped_after_leader_exit(tmp_path: Path) -
         timeout=0.2, expected_name=subject._TESTS[0],
     )
     trigger.join(timeout=1)
-    assert marker.exists() and result == "runner-failed" and escalated is True
+    assert marker.exists() and result.startswith("runner-failed-") and escalated is True
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", port))
 
@@ -219,7 +224,7 @@ def test_child_flood_is_bounded_and_fails_closed() -> None:
         [sys.executable, "-c", code], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
         timeout=0.2, expected_name=subject._TESTS[0],
     )
-    assert result == "runner-failed" and escalated is True
+    assert result.startswith("runner-failed-") and escalated is True
     assert time.monotonic() - started < 5
 
 
@@ -283,7 +288,7 @@ def test_finite_tree_over_two_small_batches_is_reaped(capsys: pytest.CaptureFixt
     code = "import subprocess,sys; c=\"import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); time.sleep(5)\"; [subprocess.Popen([sys.executable,'-c',c]) for _ in range(5)]"
     assert supervisor.run([sys.executable, "-c", code], 0.2, subject._TESTS[0], batch_size=2) == 0
     result = json.loads(capsys.readouterr().out)
-    assert result == {"status": "runner-failed", "escalated": True}
+    assert result == {"status": "runner-failed", "escalated": True, "failure_stage": "supervisor", "fixture_marker": None}
 
 
 def test_pidfd_preflight_refuses_unavailable_kernel_support(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -291,3 +296,87 @@ def test_pidfd_preflight_refuses_unavailable_kernel_support(monkeypatch: pytest.
     with pytest.raises(subject.QualificationError) as caught:
         subject._require_linux_pidfds()
     assert caught.value.code == "runner-unavailable"
+
+
+def test_static_failure_stage_redacts_report_content(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    sentinel = "synthetic-credential-DO-NOT-PERSIST"
+    failed = {"errors": [], "suites": [{"specs": [{"title": subject._TESTS[0], "ok": False, "tests": [{"status": "unexpected", "results": [{"status": "failed", "error": {"message": "expect failed " + sentinel}}]}]}]}]}
+    assert supervisor._failure_stage(json.dumps(failed).encode(), subject._TESTS[0]) == "browser-assertion"
+    config, _ = _config(tmp_path)
+    monkeypatch.setattr(subject, "_source_metadata", lambda _: {"revision": "d01d36ae" + "0" * 32, "dirty": False})
+    monkeypatch.setattr(subject, "_tracked_connect_files", lambda root: [Path("connect/lab/edge-tools.json"), Path("connect/transport.lock.json"), Path("connect/test/browser_edge.spec.mjs"), Path("connect/package-lock.json")])
+    (config.parent / "source/connect/package-lock.json").write_text('{"packages":{"node_modules/playwright":{"version":"1.63.0"}}}')
+    monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
+    monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
+    monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
+    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed-browser-assertion", 0.01, False))
+    result = subject.qualify(config)
+    evidence = (Path(result["artifact_dir"]) / "evidence.json").read_text(encoding="utf-8")
+    assert result["ok"] is False
+    assert json.loads(evidence)["tests"][0]["failure_stage"] == "browser-assertion"
+    assert sentinel not in evidence
+
+
+def test_fixture_marker_is_closed_and_persisted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    failed = {"errors": [{"message": "browser_edge_fixture_test.go:586: redacted"}], "suites": []}
+    assert supervisor._failure_stage(json.dumps(failed).encode(), subject._TESTS[0]) == "fixture-startup"
+    assert supervisor._fixture_marker(failed) == "browser_edge_fixture_test.go:586"
+    config, _ = _config(tmp_path)
+    monkeypatch.setattr(subject, "_source_metadata", lambda _: {"revision": "d01d36ae" + "0" * 32, "dirty": False})
+    monkeypatch.setattr(subject, "_tracked_connect_files", lambda root: [Path("connect/lab/edge-tools.json"), Path("connect/transport.lock.json"), Path("connect/test/browser_edge.spec.mjs"), Path("connect/package-lock.json")])
+    (config.parent / "source/connect/package-lock.json").write_text('{"packages":{"node_modules/playwright":{"version":"1.63.0"}}}')
+    monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
+    monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
+    monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
+    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed-fixture-startup@browser_edge_fixture_test.go:586", 0.01, False))
+    result = subject.qualify(config)
+    evidence = json.loads((Path(result["artifact_dir"]) / "evidence.json").read_text())
+    assert evidence["tests"][0]["failure_stage"] == "fixture-startup"
+    assert evidence["tests"][0]["fixture_marker"] == "browser_edge_fixture_test.go:586"
+
+
+def test_fixture_temp_root_is_removed_when_staging_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config, _ = _config(tmp_path)
+    fixture_root = tmp_path / "acq-test"
+    fixture_root.mkdir(mode=0o700)
+    monkeypatch.setattr(subject, "_fixture_temp_root", lambda: fixture_root)
+    monkeypatch.setattr(subject, "_source_metadata", lambda _: {"revision": "d01d36ae" + "0" * 32, "dirty": False})
+    monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
+    monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
+    monkeypatch.setattr(subject, "_tracked_connect_files", lambda _: [Path("connect/test/browser_edge.spec.mjs")])
+    monkeypatch.setattr(subject, "_copy_stage", lambda *args: (_ for _ in ()).throw(OSError("staging")))
+    with pytest.raises(subject.QualificationError) as caught:
+        subject.qualify(config)
+    assert caught.value.code == "staging-failed"
+    assert not fixture_root.exists()
+
+
+def test_interrupted_staging_removes_runner_and_fixture_roots(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config, paths = _config(tmp_path)
+    fixture_root = tmp_path / "acq-test"
+    fixture_root.mkdir(mode=0o700)
+    monkeypatch.setattr(subject, "_fixture_temp_root", lambda: fixture_root)
+    monkeypatch.setattr(subject, "_source_metadata", lambda _: {"revision": "d01d36ae" + "0" * 32, "dirty": False})
+    monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
+    monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
+    monkeypatch.setattr(subject, "_tracked_connect_files", lambda _: [Path("connect/test/browser_edge.spec.mjs")])
+    monkeypatch.setattr(subject, "_copy_stage", lambda *args: (_ for _ in ()).throw(KeyboardInterrupt()))
+    with pytest.raises(subject.QualificationError) as caught:
+        subject.qualify(config)
+    assert caught.value.code == "runner-interrupted"
+    assert not fixture_root.exists()
+    assert not any(paths["artifacts"].iterdir())
+
+
+@pytest.mark.parametrize("failure", [OSError("chmod"), KeyboardInterrupt()])
+def test_fixture_temp_root_cleans_a_partial_creation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: BaseException) -> None:
+    partial = tmp_path / "acq-partial"
+    partial.mkdir(mode=0o700)
+    monkeypatch.setattr(subject.tempfile, "mkdtemp", lambda **_kwargs: str(partial))
+    monkeypatch.setattr(subject.os, "chmod", lambda *_args: (_ for _ in ()).throw(failure))
+    expected = KeyboardInterrupt if isinstance(failure, KeyboardInterrupt) else subject.QualificationError
+    with pytest.raises(expected) as caught:
+        subject._fixture_temp_root()
+    if expected is subject.QualificationError:
+        assert caught.value.code == "staging-failed"
+    assert not partial.exists()
