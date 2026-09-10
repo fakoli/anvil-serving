@@ -72,6 +72,42 @@ def remove_root_fixture(root: Path) -> None:
     subprocess.run(['sudo', '-n', '/bin/rm', '-rf', '--', str(root)], check=True)
 
 
+ROOT_FIXTURE_DIAGNOSTIC = '''import importlib.util
+import sys
+
+installer_path = sys.argv[1]
+spec = importlib.util.spec_from_file_location("connect_fixture_install", installer_path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+original_install = module.install
+
+def diagnostic_install(*args, **kwargs):
+    try:
+        return original_install(*args, **kwargs)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        message = str(error).replace("\\n", " ")[:256]
+        print(f"root fixture installer error: {type(error).__name__}: {message}", file=sys.stderr)
+        raise
+
+module.install = diagnostic_install
+sys.argv = [installer_path, *sys.argv[2:]]
+module.main()
+'''
+
+
+def stage_root_fixture_diagnostic(destination: Path) -> None:
+    # Stream fixed test bytes into the already root-owned fixture so sudo never
+    # reads a mutable wrapper path before Python executes it.
+    subprocess.run(
+        ['sudo', '-n', '/usr/bin/tee', '--', str(destination)],
+        input=ROOT_FIXTURE_DIAGNOSTIC,
+        text=True,
+        stdout=subprocess.DEVNULL,
+        check=True,
+    )
+    subprocess.run(['sudo', '-n', '/bin/chmod', '0700', '--', str(destination)], check=True)
+
+
 def root_owned_path(path: Path, *, directory: bool) -> Path | None:
     """Resolve a test interpreter target before it is ever passed to sudo."""
     try:
@@ -276,14 +312,20 @@ def test_root_install_under_umask_keeps_commands_traversable_by_service_user(tmp
     try:
         staged_bundle = fixture / 'bundle'
         staged_installer = fixture / 'install.py'
+        staged_diagnostic = fixture / 'diagnostic.py'
         subprocess.run(['sudo', '-n', '/bin/cp', '-R', '--', str(source), str(staged_bundle)], check=True)
         subprocess.run(['sudo', '-n', '/usr/bin/install', '-o', 'root', '-g', 'root', '-m', '0700', '--', str(ROOT / 'connect/packaging/install.py'), str(staged_installer)], check=True)
+        stage_root_fixture_diagnostic(staged_diagnostic)
+        diagnostic_info = staged_diagnostic.lstat()
+        assert stat.S_ISREG(diagnostic_info.st_mode)
+        assert diagnostic_info.st_uid == 0 and diagnostic_info.st_gid == 0
+        assert diagnostic_info.st_mode & 0o7777 == 0o700
         command = [
             # Resolve and validate this exact interpreter before sudo.  -I -S
             # excludes user site startup files and environment configuration.
             'sudo', '-n', '/bin/sh', '-c', 'umask 077; exec "$@"', 'sh',
             interpreter, '-I', '-S',
-            str(staged_installer), '--bundle', str(staged_bundle), '--prefix', str(fixture / 'prefix'),
+            str(staged_diagnostic), str(staged_installer), '--bundle', str(staged_bundle), '--prefix', str(fixture / 'prefix'),
             '--role', 'client', '--manifest-sha256', digest, '--confirm',
         ]
         first = subprocess.run(command, capture_output=True, text=True)
