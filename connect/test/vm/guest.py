@@ -239,7 +239,7 @@ def _provision_identity(name: str, uid: int, gid: int, *, ingress: bool = False)
 
 def assert_guest_prerequisites() -> None:
     """Fail before provisioning when the closed offline guest base is incomplete."""
-    for value in ("/usr/sbin/groupadd", "/usr/sbin/useradd", "/usr/bin/openssl", "/usr/bin/systemctl", "/usr/bin/curl", "/usr/bin/setpriv", "/usr/bin/python3"):
+    for value in ("/usr/sbin/groupadd", "/usr/sbin/useradd", "/usr/bin/openssl", "/usr/bin/systemctl", "/usr/bin/curl", "/usr/bin/setpriv", "/usr/bin/python3", "/usr/sbin/update-ca-certificates"):
         try:
             if not os.access(value, os.X_OK):
                 raise OSError
@@ -445,6 +445,29 @@ def provision_secrets() -> None:
     _provision_hosts()
 
 
+def _install_guest_trust() -> None:
+    """Install only the generated public CA into this disposable guest's roots."""
+    source = Path("/etc/anvil-test/tls/root.pem")
+    destination = Path("/usr/local/share/ca-certificates/anvil-connect-fixture.crt")
+    parent = destination.parent.lstat()
+    if not stat.S_ISDIR(parent.st_mode) or parent.st_uid != 0 or parent.st_mode & 0o022:
+        raise GuestFailure
+    certificate = _read_regular(source, 64 * 1024)
+    try:
+        existing = destination.lstat()
+    except FileNotFoundError:
+        _write_file(destination, certificate, 0, 0, 0o644)
+    else:
+        if (not stat.S_ISREG(existing.st_mode) or existing.st_uid != 0
+                or existing.st_gid != 0 or existing.st_nlink != 1
+                or stat.S_IMODE(existing.st_mode) != 0o644
+                or _read_regular(destination, 64 * 1024) != certificate):
+            raise GuestFailure
+    _command(["/usr/sbin/update-ca-certificates"], timeout=30)
+    _command(["/usr/bin/openssl", "verify", "-CAfile", "/etc/ssl/certs/ca-certificates.crt",
+              "-verify_hostname", "auth.example.test", "/etc/anvil-test/tls/service.pem"])
+
+
 def _manager_target(value: str) -> Any:
     return _manager().Target.parse(value)
 
@@ -552,6 +575,7 @@ def _role_read_probes() -> None:
 
 def _managed_readiness(manifest: Path) -> None:
     _role_read_probes()
+    _install_guest_trust()
     manager = _manager()
     gateway = _manager_target("gateway")
     connector = _manager_target("connector:dashboard")
