@@ -802,6 +802,8 @@ def _within_fixture_headroom(sample: dict[str, dict[str, int]]) -> bool:
         values["memory_current_bytes"] <= values["memory_max_bytes"]
         and values["memory_peak_bytes"] <= values["memory_max_bytes"]
         and values["tasks_current"] <= values["tasks_max"]
+        and values["memory_peak_bytes"] > 0
+        and values["tasks_current"] > 0
         for values in sample.values()
     )
 

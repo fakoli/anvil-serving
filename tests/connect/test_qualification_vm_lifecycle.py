@@ -51,7 +51,7 @@ def _guest_result() -> bytes:
             "cases": [{"name": name, "status": "passed"} for name in subject._CASES],
             "service_samples": {
                 phase: {
-                    role: {"memory_current_bytes": 0, "memory_peak_bytes": 0, "tasks_current": 0,
+                    role: {"memory_current_bytes": 1, "memory_peak_bytes": 2, "tasks_current": 1,
                            "memory_max_bytes": limits[0], "tasks_max": limits[1]}
                     for role, limits in subject._SERVICE_SAMPLE_LIMITS.items()
                 }

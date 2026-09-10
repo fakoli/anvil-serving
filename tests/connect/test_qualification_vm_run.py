@@ -11,7 +11,7 @@ def result():
             "cases": [{"name": name, "status": "passed"} for name in subject._CASES],
             "service_samples": {
                 phase: {
-                    role: {"memory_current_bytes": 0, "memory_peak_bytes": 0, "tasks_current": 0,
+                    role: {"memory_current_bytes": 1, "memory_peak_bytes": 2, "tasks_current": 1,
                            "memory_max_bytes": limits[0], "tasks_max": limits[1]}
                     for role, limits in subject._SERVICE_SAMPLE_LIMITS.items()
                 }
@@ -39,11 +39,32 @@ def test_service_samples_require_full_headroom_only_for_passing_packets():
     assert samples["before_restart"]["gateway"]["memory_peak_bytes"] == 268435457
 
 
+@pytest.mark.parametrize("mutation", ["zero-peak", "zero-tasks", "missing-phase", "missing-role", "bool", "oversized"])
+def test_passing_service_samples_reject_nonactive_or_incomplete_values(mutation):
+    value = result()
+    sample = value["service_samples"]["before_restart"]["gateway"]
+    if mutation == "zero-peak":
+        sample["memory_peak_bytes"] = 0
+    elif mutation == "zero-tasks":
+        sample["tasks_current"] = 0
+    elif mutation == "missing-phase":
+        del value["service_samples"]["before_stop"]
+    elif mutation == "missing-role":
+        del value["service_samples"]["before_stop"]["connector"]
+    elif mutation == "bool":
+        sample["tasks_current"] = True
+    else:
+        sample["memory_peak_bytes"] = 2 ** 63
+    with pytest.raises(QualificationError):
+        subject._guest_result(json.dumps(value).encode())
+
+
 def test_failed_packet_allows_only_closed_partial_samples_and_labels_absence_unverified():
     value = result()
     value["ok"] = False
     value["cases"][0]["status"] = "failed"
     value["service_samples"] = {"before_restart": {"gateway": value["service_samples"]["before_restart"]["gateway"]}}
+    value["service_samples"]["before_restart"]["gateway"].update(memory_current_bytes=0, memory_peak_bytes=0, tasks_current=0)
     _cases, samples = subject._guest_result(json.dumps(value).encode())
     limits = subject._service_limit_evidence(samples)
     assert limits["gateway"]["enforcement"] == "validated"
