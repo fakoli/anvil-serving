@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 from subprocess import CompletedProcess
 import sys
 from types import SimpleNamespace
@@ -71,7 +72,7 @@ def _claim_expected_owners(monkeypatch, config: dict[str, object]) -> None:
         if Path(path) == image:
             return SimpleNamespace(st_mode=result.st_mode, st_size=result.st_size, st_uid=0, st_gid=0)
         if Path(path) == pool:
-            return SimpleNamespace(st_mode=result.st_mode, st_size=result.st_size, st_uid=pi["uid"], st_gid=pi["gid"])
+            return SimpleNamespace(st_mode=result.st_mode, st_size=result.st_size, st_uid=pi["uid"], st_gid=pi["gid"], st_dev=os.makedev(7, 7))
         return result
 
     monkeypatch.setattr(pi_storage.os, "stat", fake_stat)
@@ -89,6 +90,57 @@ def test_validate_pool_proves_exact_loop_mount_and_writable_roots(tmp_path, monk
     assert proof["mount_options"] == ["nodev", "nosuid"]
     assert proof["runner_storage_root"].endswith("/pool/pi")
     assert proof["runner_roots"][-1].endswith("/pool/tasks")
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage mount proof is Linux-only")
+def test_validate_pool_accepts_identical_systemd_namespace_bind_mounts(tmp_path, monkeypatch):
+    config = _config(tmp_path)
+    mountinfo, sys_block = _mount_fixture(tmp_path, config)
+    first = mountinfo.read_text(encoding="utf-8")
+    mountinfo.write_text(first + first.replace("41 23", "52 41"), encoding="utf-8")
+    _claim_expected_owners(monkeypatch, config)
+
+    assert validate_pool(config, mountinfo_path=mountinfo, sys_block=sys_block)["filesystem"] == "ext4"
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage mount proof is Linux-only")
+@pytest.mark.parametrize("before,after", [
+    ("7:7", "7:8"),
+    (" / ", " /subdirectory "),
+    ("/dev/loop7", "/dev/loop8"),
+    (" - ext4 ", " - tmpfs "),
+    ("rw,nosuid,nodev -", "rw,nodev -"),
+    ("rw,nosuid,nodev -", "ro,nosuid,nodev -"),
+    ("/dev/loop7 rw,", "/dev/loop7 ro,"),
+])
+def test_validate_pool_rejects_conflicting_stacked_mounts(tmp_path, monkeypatch, before, after):
+    config = _config(tmp_path)
+    mountinfo, sys_block = _mount_fixture(tmp_path, config)
+    first = mountinfo.read_text(encoding="utf-8")
+    overlay = first.replace("41 23", "52 41").replace(before, after)
+    mountinfo.write_text(first + overlay, encoding="utf-8")
+    _claim_expected_owners(monkeypatch, config)
+
+    with pytest.raises(PiStorageError, match="overlay"):
+        validate_pool(config, mountinfo_path=mountinfo, sys_block=sys_block)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Pi storage mount proof is Linux-only")
+@pytest.mark.parametrize("before,after,reason", [
+    ("7:7", "7:8", "device"),
+    (" / ", " /subdirectory ", "overlay"),
+    ("rw,nosuid,nodev -", "ro,nosuid,nodev -", "writable"),
+    ("rw,nosuid,nodev -", "rw,nodev -", "writable"),
+    ("/dev/loop7 rw,", "/dev/loop7 ro,", "writable"),
+])
+def test_validate_pool_rejects_wrong_device_partial_root_and_readonly_mount(tmp_path, monkeypatch, before, after, reason):
+    config = _config(tmp_path)
+    mountinfo, sys_block = _mount_fixture(tmp_path, config)
+    mountinfo.write_text(mountinfo.read_text(encoding="utf-8").replace(before, after), encoding="utf-8")
+    _claim_expected_owners(monkeypatch, config)
+
+    with pytest.raises(PiStorageError, match=reason):
+        validate_pool(config, mountinfo_path=mountinfo, sys_block=sys_block)
 
 
 @pytest.mark.parametrize("mutator", [

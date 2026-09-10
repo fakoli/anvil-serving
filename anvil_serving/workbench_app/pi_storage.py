@@ -52,6 +52,9 @@ class MountRecord:
     source: str
     filesystem: str
     options: frozenset[str]
+    root: Path = Path("/")
+    device: tuple[int, int] | None = None
+    super_options: frozenset[str] = frozenset()
 
 
 def _absolute_path(value: object, label: str) -> Path:
@@ -157,8 +160,15 @@ def read_mounts(path: Path = Path("/proc/self/mountinfo")) -> tuple[MountRecord,
         right_fields = right.split()
         if not separator or len(fields) < 6 or len(right_fields) < 3:
             continue
-        options = frozenset(fields[5].split(",")) | frozenset(right_fields[2].split(","))
-        records.append(MountRecord(Path(_unescape_mount(fields[4])), _unescape_mount(right_fields[1]), right_fields[0], options))
+        options = frozenset(fields[5].split(","))
+        try:
+            major, minor = (int(part) for part in fields[2].split(":"))
+        except ValueError:
+            raise PiStorageError("active mount table has an invalid device identity") from None
+        records.append(MountRecord(
+            Path(_unescape_mount(fields[4])), _unescape_mount(right_fields[1]), right_fields[0], options,
+            Path(_unescape_mount(fields[3])), (major, minor), frozenset(right_fields[2].split(",")),
+        ))
     return tuple(records)
 
 
@@ -214,11 +224,17 @@ def validate_pool(
         raise PiStorageError("configured Pi image is not the exact fixed-size regular file")
     if image_stat.st_uid != 0 or stat.S_IMODE(image_stat.st_mode) != 0o600:
         raise PiStorageError("configured Pi image must be root-owned mode 0600")
-    matching = [row for row in read_mounts(mountinfo_path) if row.mountpoint == config.pool_path]
-    if len(matching) != 1:
-        raise PiStorageError("configured Pi pool is not mounted exactly once")
+    mounts = read_mounts(mountinfo_path)
+    matching = [row for row in mounts if row.mountpoint == config.pool_path]
+    if not matching:
+        raise PiStorageError("configured Pi pool is not mounted")
     mount = matching[0]
-    for row in read_mounts(mountinfo_path):
+    # systemd filesystem isolation can stack identical bind mounts. Every
+    # visible record must prove the same whole, fixed-size filesystem; choosing
+    # an arbitrary overlay or merely comparing its display path is unsafe.
+    if any(row != mount for row in matching) or mount.root != Path("/"):
+        raise PiStorageError("configured Pi pool has a foreign or partial filesystem overlay")
+    for row in mounts:
         if row.mountpoint == config.pool_path:
             continue
         try:
@@ -226,8 +242,9 @@ def validate_pool(
         except ValueError:
             continue
         raise PiStorageError("Pi storage pool contains a nested mountpoint")
-    if mount.filesystem != "ext4" or not {"nodev", "nosuid"} <= mount.options:
-        raise PiStorageError("Pi pool must be an ext4 mount with nodev,nosuid")
+    if (mount.filesystem != "ext4" or not {"rw", "nodev", "nosuid"} <= mount.options
+            or "ro" in mount.options or "rw" not in mount.super_options or "ro" in mount.super_options):
+        raise PiStorageError("Pi pool must be a writable ext4 mount with nodev,nosuid")
     backing = _loop_backing(mount.source, sys_block)
     if backing != config.image_path:
         raise PiStorageError("Pi loop device does not use the configured image")
@@ -235,6 +252,8 @@ def validate_pool(
         pool_stat = os.stat(config.pool_path, follow_symlinks=False)
     except OSError as exc:
         raise PiStorageError("configured Pi pool is unavailable") from exc
+    if mount.device != (os.major(pool_stat.st_dev), os.minor(pool_stat.st_dev)):
+        raise PiStorageError("Pi pool device does not match the proven mount identity")
     if not stat.S_ISDIR(pool_stat.st_mode) or pool_stat.st_uid != config.uid or pool_stat.st_gid != config.gid or stat.S_IMODE(pool_stat.st_mode) != 0o700:
         raise PiStorageError("Pi pool ownership or mode is not the configured 0700 boundary")
     for writable in config.runner_roots:
