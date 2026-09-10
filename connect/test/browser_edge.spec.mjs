@@ -930,7 +930,7 @@ function openCLISSE(baseURL, localKey, resources) {
       }
       let marker = '';
       const closed = new Promise(done => {
-        const finish = () => done(true);
+        const finish = () => done({ monotonic: performance.now() });
         response.once('close', finish);
         response.once('end', finish);
         response.once('error', finish);
@@ -996,7 +996,7 @@ function openCLIWebSocket(baseURL, localKey, resources) {
         return;
       }
       const closed = new Promise(done => {
-        const finish = () => done(true);
+        const finish = () => done({ monotonic: performance.now() });
         socket.once('close', finish);
         socket.once('end', finish);
         socket.once('error', finish);
@@ -1095,6 +1095,158 @@ async function expectCLIStreamClosure(started, clientClosed) {
   return closureMs;
 }
 
+async function expiryAuthorityDeadline(page, terminalSessionID) {
+  const sampleClock = () => {
+    const monotonicBefore = performance.now();
+    const wall = Date.now();
+    const monotonicAfter = performance.now();
+    return { wall, monotonicBefore, monotonicAfter, monotonicMidpoint: (monotonicBefore + monotonicAfter) / 2 };
+  };
+  const before = sampleClock();
+  const inventory = await page.evaluate(async () => {
+    const response = await fetch('/_anvil-connect/access?kind=sessions&limit=50', { redirect: 'manual' });
+    if (response.status !== 200) throw new Error('expiry-access-inventory-denied');
+    return response.json();
+  });
+  const after = sampleClock();
+  const wallElapsed = after.wall - before.wall;
+  const monotonicElapsed = after.monotonicMidpoint - before.monotonicMidpoint;
+  if (!Number.isFinite(wallElapsed) || wallElapsed < 0 || wallElapsed > 500
+    || !Number.isFinite(monotonicElapsed) || monotonicElapsed < 0 || monotonicElapsed > 500
+    || Math.abs(monotonicElapsed - wallElapsed) > 100) {
+    throw new Error('expiry-deadline-sampling-invalid');
+  }
+  if (!inventory || inventory.schema !== 'anvil-connect.access/v1' || inventory.kind !== 'sessions'
+    || inventory.next_cursor !== null || !Array.isArray(inventory.items)
+    || typeof inventory.current_session !== 'string') {
+    throw new Error('expiry-access-inventory-invalid');
+  }
+  const terminal = inventory.items.filter(item => item && item.type === 'terminal' && item.id === terminalSessionID);
+  if (terminal.length !== 1 || typeof terminal[0].source_session !== 'string') {
+    throw new Error('expiry-terminal-session-missing');
+  }
+  const browser = inventory.items.filter(item => item && item.type === 'browser' && item.id === terminal[0].source_session);
+  if (browser.length !== 1 || browser[0].id !== inventory.current_session || browser[0].status !== 'issued'
+    || terminal[0].status !== 'issued' || browser[0].principal !== terminal[0].principal || typeof browser[0].expires_at !== 'string') {
+    throw new Error('expiry-browser-session-missing');
+  }
+  const deadlineWall = Date.parse(browser[0].expires_at);
+  if (!Number.isFinite(deadlineWall)) throw new Error('expiry-browser-deadline-invalid');
+  // Date.now is millisecond-granular. Each sample brackets its wall-clock read
+  // with monotonic time, and the lower mapping includes the one-millisecond
+  // truncation uncertainty. Early-close checks use this lower bound; timing
+  // resolution is milliseconds, not sub-millisecond precision.
+  const deadline = Math.min(
+    before.monotonicBefore + deadlineWall - before.wall - 1,
+    after.monotonicBefore + deadlineWall - after.wall - 1,
+  );
+  if (!Number.isFinite(deadline) || deadline - after.monotonicMidpoint < 2_000) {
+    throw new Error('expiry-browser-deadline-too-soon');
+  }
+  return { monotonic: deadline, wall: deadlineWall, clock: after };
+}
+
+function waitUntilMonotonic(deadline) {
+  const remaining = deadline - performance.now();
+  if (remaining <= 0) return Promise.resolve();
+  return new Promise(resolve => setTimeout(resolve, remaining));
+}
+
+function observeStreamClosure(promise) {
+  const observed = { closed: false };
+  observed.promise = Promise.resolve(promise).then(value => {
+    observed.closed = true;
+    return value;
+  }, () => {
+    observed.closed = true;
+    return false;
+  });
+  return observed;
+}
+
+function browserStreamClosureTimes(page) {
+  return page.evaluate(() => {
+    const records = [];
+    window.__browserStreamClosureTimes = records;
+    const events = window.__browserStreamReader.closed.then(
+      () => { records.push({ stream: 'events', wall: Date.now() }); return true; },
+      () => { records.push({ stream: 'events', wall: Date.now() }); return true; },
+    );
+    const websocket = new Promise(resolve => {
+      const socket = window.__browserStreamSocket;
+      if (socket.readyState === WebSocket.CLOSED) {
+        records.push({ stream: 'ws', wall: Date.now() });
+        resolve(true);
+        return;
+      }
+      socket.addEventListener('close', () => {
+        records.push({ stream: 'ws', wall: Date.now() });
+        resolve(true);
+      }, { once: true });
+    });
+    return Promise.all([events, websocket]).then(() => records);
+  }).catch(() => null);
+}
+
+function browserStreamsStillOpen(page) {
+  return page.evaluate(() => Array.isArray(window.__browserStreamClosureTimes) && window.__browserStreamClosureTimes.length === 0).catch(() => false);
+}
+
+function assertExpiryClockDrift(reference) {
+  const monotonicBefore = performance.now();
+  const wall = Date.now();
+  const monotonicAfter = performance.now();
+  const elapsedWall = wall - reference.wall;
+  const elapsedMonotonic = (monotonicBefore + monotonicAfter) / 2 - reference.monotonicMidpoint;
+  if (!Number.isFinite(elapsedWall) || elapsedWall < 0 || !Number.isFinite(elapsedMonotonic)
+    || elapsedMonotonic < 0 || Math.abs(elapsedWall - elapsedMonotonic) > 100) {
+    throw new Error('expiry-clock-drift-invalid');
+  }
+}
+
+async function expectExpiryStreamClosure(deadline, page, browser, cliSSE, cliWS) {
+  const beforeExpiry = deadline.monotonic - 250;
+  if (beforeExpiry <= performance.now()) throw new Error('expiry-streams-not-established-in-time');
+  await waitUntilMonotonic(beforeExpiry);
+  expect(await browserStreamsStillOpen(page)).toBe(true);
+  expect(cliSSE.closed).toBe(false);
+  expect(cliWS.closed).toBe(false);
+  expect(await browserStreamCounts()).toMatchObject({
+    events_started: '1', events_closed: '0', ws_started: '1', ws_closed: '0',
+  });
+  expect(await apiStreamCounts()).toMatchObject({
+    events_started: '1', events_closed: '0', ws_started: '1', ws_closed: '0',
+  });
+  const remaining = 1_000 - (performance.now() - deadline.monotonic);
+  if (remaining <= 0) throw new Error('expiry-stream-closure-exceeded-bound');
+  const bounded = action => new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('expiry-stream-closure-exceeded-bound')), Math.max(1, deadline.monotonic + 1_000 - performance.now()));
+    Promise.resolve().then(action).then(
+      value => { clearTimeout(timer); resolve(value); },
+      error => { clearTimeout(timer); reject(error); },
+    );
+  });
+  const [browserRecords, sse, websocket] = await bounded(async () => Promise.all([browser.promise, cliSSE.promise, cliWS.promise]));
+  const browserStreams = Array.isArray(browserRecords) ? new Set(browserRecords.map(record => record?.stream)) : new Set();
+  if (!Array.isArray(browserRecords) || browserRecords.length !== 2 || browserStreams.size !== 2 || !browserStreams.has('events') || !browserStreams.has('ws')
+    || !browserRecords.every(record => record && Number.isInteger(record.wall) && record.wall >= deadline.wall)
+    || !sse || !Number.isFinite(sse.monotonic) || sse.monotonic < deadline.monotonic
+    || !websocket || !Number.isFinite(websocket.monotonic) || websocket.monotonic < deadline.monotonic) {
+    throw new Error('expiry-stream-closed-early');
+  }
+  await bounded(async () => {
+    await expect.poll(async () => {
+      const [browser, api] = await Promise.all([browserStreamCounts(500), apiStreamCounts(500)]);
+      return [browser, api].map(counts => browserStreamCountFields.map(field => counts[field]).join(',')).join(';');
+    }, { timeout: Math.max(1, deadline.monotonic + 1_000 - performance.now()), intervals: [20, 50] }).toBe('1,1,1,1;1,1,1,1');
+  });
+  assertExpiryClockDrift(deadline.clock);
+  const closureMs = Math.ceil(performance.now() - deadline.monotonic);
+  expect(closureMs).toBeGreaterThanOrEqual(0);
+  expect(closureMs).toBeLessThanOrEqual(1_000);
+  return closureMs;
+}
+
 async function exerciseCLIStreamRevocation(mutate) {
   const edgeFixture = fixture;
   let loginSession;
@@ -1169,6 +1321,93 @@ test('container-gated CLI streams close on browser logout', async () => {
     expect(response).not.toBeNull();
     expect(response.status()).toBe(303);
   });
+});
+
+test('container-gated browser and CLI streams close on session expiry', async () => {
+  test.setTimeout(210_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_EXPIRY_FIXTURE !== '1', 'requires the disposable 120-second session-expiry fixture');
+  const edgeFixture = fixture;
+  let loginSession;
+  let streams;
+  const streamResources = new Set();
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_EXPIRY_FIXTURE');
+  try {
+    const page = await freshPage();
+    await login(page, 'allowed', 401);
+    // In this dedicated expiry profile, this ordinary authority grant
+    // provisions the same admitted human as the configured Access operator.
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+
+    const cli = await buildDeviceCLI(fixture.dir);
+    loginSession = await startDeviceCLI(cli, fixture);
+    const challenge = await waitForDeviceEvent(loginSession.challenge);
+    await page.goto(challenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(challenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const ready = await waitForDeviceEvent(loginSession.ready);
+    const localKey = (await readFile(fixture.local_key, 'utf8')).trim();
+    expect(validFixtureLocalKey(localKey)).toBe(true);
+
+    const deadline = await expiryAuthorityDeadline(page, ready.sessionID);
+    const cookie = (await fixture.context.cookies(fixture.url)).find(value => value.name === '__Host-anvil-connect');
+    expect(cookie).toBeTruthy();
+
+    const [sse, websocket] = await Promise.all([
+      openCLISSE(ready.baseURL, localKey, streamResources),
+      openCLIWebSocket(ready.baseURL, localKey, streamResources),
+    ]);
+    streams = { sse, websocket };
+    await openBrowserStreams(page);
+    expect(await browserStreamCounts()).toMatchObject({
+      events_started: '1', events_closed: '0', ws_started: '1', ws_closed: '0',
+    });
+    expect(await apiStreamCounts()).toMatchObject({
+      events_started: '1', events_closed: '0', ws_started: '1', ws_closed: '0',
+    });
+
+    const browserClosed = observeStreamClosure(browserStreamClosureTimes(page));
+    const cliSSEClosed = observeStreamClosure(sse.closed);
+    const cliWSClosed = observeStreamClosure(websocket.closed);
+    const closureMs = await expectExpiryStreamClosure(deadline, page, browserClosed, cliSSEClosed, cliWSClosed);
+    test.info().annotations.push({ type: 'closure_ms', description: String(closureMs) });
+
+    // Replay only the previous opaque Connect cookie in memory, beyond the
+    // browser-managed cookie lifetime. The expired server session must deny it
+    // before the native SSE origin is reached.
+    const beforeBrowserDenied = await browserStreamCounts();
+    await fixture.context.clearCookies({ name: cookie.name, domain: dashHost });
+    await fixture.context.addCookies([{
+      name: cookie.name, value: cookie.value, url: fixture.url,
+      httpOnly: cookie.httpOnly, secure: true, sameSite: cookie.sameSite,
+      expires: -1,
+    }]);
+    const replayed = (await fixture.context.cookies(fixture.url)).find(value => value.name === cookie.name);
+    expect(replayed?.value === cookie.value).toBe(true);
+    await expectFreshBrowserStreamsDenied(page);
+    expect(await browserStreamCounts()).toEqual(beforeBrowserDenied);
+
+    const beforeCLIDenied = await apiStreamCounts();
+    const denialResources = new Set();
+    try {
+      expect(await streamHTTPStatus(ready.baseURL, '/events', localKey, false, denialResources)).toBe(401);
+      expect(await streamHTTPStatus(ready.baseURL, '/ws', localKey, true, denialResources)).toBe(401);
+    } finally {
+      destroyOwned(denialResources);
+    }
+    expect(await apiStreamCounts()).toEqual(beforeCLIDenied);
+
+    await stopDeviceCLI(loginSession);
+    loginSession = undefined;
+    await assertLoopbackReleased(ready.baseURL);
+  } finally {
+    closeCLIStreams(streams, streamResources);
+    try { await stopDeviceCLI(loginSession); } finally {
+      const expiryFixture = fixture;
+      fixture = edgeFixture;
+      await cleanup(expiryFixture);
+    }
+  }
 });
 
 
