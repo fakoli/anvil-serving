@@ -1671,7 +1671,7 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
     canonical = _command_name(path)
     # These metadata surfaces accept private origins and manifest paths. Their
     # family labels remain operand-free even when a leaf is missing/misspelled.
-    protected_family = bool(path) and path[0].name in ("router", "edge")
+    protected_family = bool(path) and path[0].name in ("router", "edge", "connect")
     protected_leaf = canonical in {
         "router diagnose", "edge bundle validate", "edge bundle render",
         "topology validate-router-config",
