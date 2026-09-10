@@ -147,8 +147,13 @@ and authorization checks, not validation of a production security audit log.
 
 Device-approval expiry and single-use redemption after a lost response are covered separately by
 authority and CLI unit tests, using an injected clock where appropriate. The
-device lane does not claim those are browser end-to-end tests. Active-stream
-revocation, authority recovery and physical passkeys require separate coverage.
+device lane does not claim those are browser end-to-end tests. Two browser stream
+scenarios hold SSE and WebSocket connections open across human disable and logout.
+They require client closure and native-handler return within one second measured
+from before the authority mutation, then fresh denial without another origin
+dispatch. This is a synthetic fixture target, not a production latency guarantee.
+Terminal stream revocation, other authority events, authority recovery and
+physical passkeys require separate coverage.
 
 ## Validate
 
