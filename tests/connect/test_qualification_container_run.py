@@ -137,23 +137,25 @@ def test_revocation_lane_uses_the_pinned_container_and_retains_only_stream_measu
     monkeypatch.setattr(subject, "_attached", attached)
     monkeypatch.setattr(image, "_docker", lambda *args, **kwargs: (0, b""))
     result = subject.qualify(config, lane="revocation")
-    assert result["ok"] is True and result["counts"] == {"passed": 5, "failed": 0, "skipped": 0, "not_run": 0}
+    assert result["ok"] is True and result["counts"] == {"passed": 6, "failed": 0, "skipped": 0, "not_run": 0}
     evidence = json.loads((Path(result["artifact_dir"]) / "evidence.json").read_text())
     assert [case["name"] for case in evidence["tests"]] == list(subject._REVOCATION_TESTS)
-    assert [case["closure_ms"] for case in evidence["tests"]] == [1, 1, 1, 1, 1]
+    assert [case["closure_ms"] for case in evidence["tests"]] == [1, 1, 1, 1, 1, 1]
     assert "scope_limitations" not in evidence
     assert observed["args"][-1] == "revocation"
 
 
 def test_revocation_registry_and_unknown_lane_are_closed():
     assert subject._REVOCATION_TESTS[:4] == subject._DEVICE_TESTS[6:]
-    assert subject._REVOCATION_TESTS[-1] == subject._SESSION_EXPIRY_TEST
+    assert subject._REVOCATION_TESTS[-2:] == (subject._SESSION_EXPIRY_TEST, subject._RESTART_TEST)
     assert subject._SESSION_EXPIRY_TEST in subject._STREAM_CLOSURE_TESTS
+    assert subject._RESTART_TEST in subject._STREAM_CLOSURE_TESTS
     assert len(subject._DEVICE_TESTS) == 10
     assert subject._lane_tests("revocation", runner._TESTS) == subject._REVOCATION_TESTS
     assert subject._fixture_flags("revocation") == {
         "ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE": "1",
         "ANVIL_CONNECT_BROWSER_EXPIRY_FIXTURE": "1",
+        "ANVIL_CONNECT_BROWSER_RESTART_FIXTURE": "1",
     }
     assert subject._fixture_flags("device") == {
         "ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE": "1",
