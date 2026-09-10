@@ -30,6 +30,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -135,8 +136,39 @@ func (f *edgeFixture) nativeDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 type edgeChild struct {
-	cmd  *exec.Cmd
-	done chan error
+	cmd       *exec.Cmd
+	done      chan error
+	closeOnce sync.Once
+	closeErr  error
+}
+
+// Close stops the owned child once, so a fixture can replace a listener before
+// its testing cleanup without racing the original cleanup's wait channel.
+func (child *edgeChild) Close() error {
+	child.closeOnce.Do(func() {
+		if child.cmd.Process == nil {
+			return
+		}
+		if err := child.cmd.Process.Signal(syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			child.closeErr = errors.New("owned edge child stop failed")
+			return
+		}
+		select {
+		case err := <-child.done:
+			if err != nil {
+				child.closeErr = errors.New("owned edge child exited unsuccessfully")
+			}
+		case <-time.After(5 * time.Second):
+			_ = child.cmd.Process.Kill()
+			select {
+			case <-child.done:
+				child.closeErr = errors.New("owned edge child required forced termination")
+			case <-time.After(2 * time.Second):
+				child.closeErr = errors.New("owned edge child did not exit")
+			}
+		}
+	})
+	return child.closeErr
 }
 
 func edgeEnvironment(home string) []string {
@@ -165,26 +197,8 @@ func startEdgeChild(t *testing.T, home, binary string, args ...string) *edgeChil
 	child := &edgeChild{cmd: cmd, done: make(chan error, 1)}
 	go func() { child.done <- cmd.Wait() }()
 	t.Cleanup(func() {
-		if cmd.Process == nil {
-			return
-		}
-		if err := cmd.Process.Signal(syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
-			t.Error("owned edge child stop failed")
-			return
-		}
-		select {
-		case err := <-child.done:
-			if err != nil {
-				t.Error("owned edge child exited unsuccessfully")
-			}
-		case <-time.After(5 * time.Second):
-			_ = cmd.Process.Kill()
-			select {
-			case <-child.done:
-				t.Error("owned edge child required forced termination")
-			case <-time.After(2 * time.Second):
-				t.Error("owned edge child did not exit")
-			}
+		if err := child.Close(); err != nil {
+			t.Error(err)
 		}
 	})
 	return child

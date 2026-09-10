@@ -1691,6 +1691,166 @@ test('container-gated browser and CLI streams close on authority reset', async (
   }
 });
 
+test('container-gated browser and CLI credentials fail closed after restore', async () => {
+  test.setTimeout(180_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_RESTART_FIXTURE !== '1', 'requires the disposable authority-restore fixture');
+  const edgeFixture = fixture;
+  let loginSession;
+  let freshLogin;
+  let streams;
+  const streamResources = new Set();
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_RESTART_FIXTURE');
+  try {
+    let page = await freshPage();
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+
+    const cli = await buildDeviceCLI(fixture.dir);
+    loginSession = await startDeviceCLI(cli, fixture);
+    const challenge = await waitForDeviceEvent(loginSession.challenge);
+    await page.goto(challenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(challenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const ready = await waitForDeviceEvent(loginSession.ready);
+    const localKey = (await readFile(fixture.local_key, 'utf8')).trim();
+    expect(validFixtureLocalKey(localKey)).toBe(true);
+    expect(fixture.restart_fixture).toBe('enabled');
+    expect(fixture.restart_post_path).toBe('/restart-blocked-post');
+    const restoredCookie = (await fixture.context.cookies(fixture.url)).find(value => value.name === '__Host-anvil-connect');
+    expect(restoredCookie).toBeTruthy();
+
+    const [sse, websocket] = await Promise.all([
+      openCLISSE(ready.baseURL, localKey, streamResources),
+      openCLIWebSocket(ready.baseURL, localKey, streamResources),
+    ]);
+    streams = { sse, websocket };
+    await openBrowserStreams(page);
+    const browserClosed = observeStreamClosure(browserStreamClosureTimes(page));
+    const postClosed = observeStreamClosure(openRestartBlockedPost(page, fixture.restart_post_path));
+    const cliSSEClosed = observeStreamClosure(sse.closed);
+    const cliWSClosed = observeStreamClosure(websocket.closed);
+    await expect.poll(() => restartPostCounts().then(counts => `${counts.started},${counts.closed}`), { timeout: 5_000, intervals: [20, 50] }).toBe('1,0');
+    expect(await browserStreamsStillOpen(page)).toBe(true);
+    expect(postClosed.closed).toBe(false);
+    expect(cliSSEClosed.closed).toBe(false);
+    expect(cliWSClosed.closed).toBe(false);
+
+    // This is the sole closure measurement for the restore case: it measures
+    // supported normal stop cancellation, not backup/restore duration.
+    const started = restartStartSample();
+    const stopped = await fixture.command('stop runtime');
+    expect(stopped.ack).toBe('stop runtime');
+    const closureMs = await expectRestartStreamClosure(started, browserClosed, postClosed, cliSSEClosed, cliWSClosed);
+    test.info().annotations.push({ type: 'closure_ms', description: String(closureMs) });
+
+    const restored = await fixture.command('backup restore authority', 60_000);
+    expect(restored).toEqual({ ack: 'backup restore authority', epoch_changed: 'true' });
+
+    // Restore creates fresh authority state with no connector or admissions.
+    // Replay only the old browser cookie and retain the old local forwarder
+    // long enough to prove both boundaries deny before owner reapproval.
+    const beforeBrowserDenied = await browserStreamCounts();
+    await fixture.context.clearCookies({ name: restoredCookie.name, domain: dashHost });
+    await fixture.context.addCookies([{
+      name: restoredCookie.name, value: restoredCookie.value, url: fixture.url,
+      httpOnly: restoredCookie.httpOnly, secure: true, sameSite: restoredCookie.sameSite,
+      expires: -1,
+    }]);
+    const restoreReplay = (await fixture.context.cookies(fixture.url)).find(value => value.name === restoredCookie.name);
+    expect(restoreReplay?.value === restoredCookie.value).toBe(true);
+    await expectFreshBrowserStreamsDenied(page);
+    expect(await browserStreamCounts()).toEqual(beforeBrowserDenied);
+
+    const beforeCLIDenied = await apiStreamCounts();
+    const denialResources = new Set();
+    try {
+      expect(await streamHTTPStatus(ready.baseURL, '/events', localKey, false, denialResources)).toBe(401);
+      expect(await streamHTTPStatus(ready.baseURL, '/ws', localKey, true, denialResources)).toBe(401);
+    } finally {
+      destroyOwned(denialResources);
+    }
+    expect(await apiStreamCounts()).toEqual(beforeCLIDenied);
+    expect(await restartPostCounts()).toMatchObject({ started: '1', closed: '1' });
+
+    const reapproved = await fixture.command('reapprove restored access');
+    expect(reapproved.ack).toBe('reapprove restored access');
+    const reenrolled = await fixture.command('reenroll restored connector', 45_000);
+    expect(reenrolled.ack).toBe('reenroll restored connector');
+
+    // The IdP SSO session survives, but the browser and device credentials are
+    // newly admitted after the owner's explicit human and API-principal reapproval plus reenrollment.
+    page = await freshPage({ domain: dashHost });
+    await resumeGrantedAuthorization(page);
+    expect(typeof fixture.client_home_secondary).toBe('string');
+    expect(typeof fixture.local_key_secondary).toBe('string');
+    freshLogin = await startDeviceCLI(cli, { ...fixture, client_home: fixture.client_home_secondary });
+    const freshChallenge = await waitForDeviceEvent(freshLogin.challenge);
+    await page.goto(freshChallenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(freshChallenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const freshReady = await waitForDeviceEvent(freshLogin.ready);
+    const freshKey = (await readFile(fixture.local_key_secondary, 'utf8')).trim();
+    expect(validFixtureLocalKey(freshKey)).toBe(true);
+    expect(await page.evaluate(() => fetch('/', { redirect: 'manual' }).then(response => response.status, () => 0))).toBe(200);
+    expect((await loopbackResponse(freshReady.baseURL, 'GET', freshKey)).status).toBe(200);
+    expect(await restartPostCounts()).toMatchObject({ started: '1', closed: '1' });
+
+    // The first forwarder remains alive on its distinct loopback port. Its
+    // original remote credential must stay denied after fresh authority has
+    // issued the secondary client's new one.
+    const beforeOldCLIDenied = await apiStreamCounts();
+    const oldDenialResources = new Set();
+    try {
+      expect(await streamHTTPStatus(ready.baseURL, '/events', localKey, false, oldDenialResources)).toBe(401);
+      expect(await streamHTTPStatus(ready.baseURL, '/ws', localKey, true, oldDenialResources)).toBe(401);
+    } finally {
+      destroyOwned(oldDenialResources);
+    }
+    expect(await apiStreamCounts()).toEqual(beforeOldCLIDenied);
+
+    // Fresh authority must not revive the pre-restore opaque browser session.
+    const beforeOldReplay = await browserStreamCounts();
+    await fixture.context.clearCookies({ name: restoredCookie.name, domain: dashHost });
+    await fixture.context.addCookies([{
+      name: restoredCookie.name, value: restoredCookie.value, url: fixture.url,
+      httpOnly: restoredCookie.httpOnly, secure: true, sameSite: restoredCookie.sameSite,
+      expires: -1,
+    }]);
+    const oldReplay = (await fixture.context.cookies(fixture.url)).find(value => value.name === restoredCookie.name);
+    expect(oldReplay?.value === restoredCookie.value).toBe(true);
+    await expectFreshBrowserStreamsDenied(page);
+    expect(await browserStreamCounts()).toEqual(beforeOldReplay);
+
+    await stopDeviceCLI(loginSession);
+    loginSession = undefined;
+    await assertLoopbackReleased(ready.baseURL);
+    await stopDeviceCLI(freshLogin);
+    freshLogin = undefined;
+    await assertLoopbackReleased(freshReady.baseURL);
+  } finally {
+    closeCLIStreams(streams, streamResources);
+    try {
+      let stopError;
+      try {
+        await stopDeviceCLI(freshLogin);
+      } catch (error) {
+        stopError = error;
+      }
+      try {
+        await stopDeviceCLI(loginSession);
+      } catch (error) {
+        if (!stopError) stopError = error;
+      }
+      if (stopError) throw stopError;
+    } finally {
+      const restoreFixture = fixture;
+      fixture = edgeFixture;
+      await cleanup(restoreFixture);
+    }
+  }
+});
+
 
 async function virtualAuthenticator(page, credential, overrides = {}) {
   const session = await fixture.context.newCDPSession(page);

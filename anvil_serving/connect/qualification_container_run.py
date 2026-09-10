@@ -31,7 +31,8 @@ _DEVICE_TESTS = (
 _SESSION_EXPIRY_TEST = "container-gated browser and CLI streams close on session expiry"
 _RESTART_TEST = "container-gated browser and CLI streams close on normal restart"
 _AUTHORITY_RESET_TEST = "container-gated browser and CLI streams close on authority reset"
-_STREAM_CLOSURE_TESTS = frozenset((*_DEVICE_TESTS[6:], _SESSION_EXPIRY_TEST, _RESTART_TEST, _AUTHORITY_RESET_TEST))
+_RESTORE_TEST = "container-gated browser and CLI credentials fail closed after restore"
+_STREAM_CLOSURE_TESTS = frozenset((*_DEVICE_TESTS[6:], _SESSION_EXPIRY_TEST, _RESTART_TEST, _AUTHORITY_RESET_TEST, _RESTORE_TEST))
 _REVOCATION_TESTS = (
     "container-gated browser streams close on human disable",
     "container-gated browser streams close on logout",
@@ -40,6 +41,7 @@ _REVOCATION_TESTS = (
     _SESSION_EXPIRY_TEST,
     _RESTART_TEST,
     _AUTHORITY_RESET_TEST,
+    _RESTORE_TEST,
 )
 _LANES = frozenset({"container-baseline", "device", "revocation"})
 

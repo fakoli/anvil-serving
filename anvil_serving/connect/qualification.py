@@ -43,6 +43,7 @@ _STREAM_CLOSURE_TESTS = frozenset({
     "container-gated browser and CLI streams close on session expiry",
     "container-gated browser and CLI streams close on normal restart",
     "container-gated browser and CLI streams close on authority reset",
+    "container-gated browser and CLI credentials fail closed after restore",
 })
 _SAFE_CODES = frozenset({
     "config-invalid", "config-missing", "source-invalid", "source-version",
