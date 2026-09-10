@@ -299,7 +299,7 @@ func (f fixture) seedKey(t *testing.T, human session.Human, source session.Admis
 		for candidate := range f.a.bindings {
 			hash = candidate
 		}
-		_, key, err = f.keys.IssueDevice("sdk-principal", grants, 30*time.Minute, access.DeviceCredential{HumanID: human.ID, HumanGeneration: human.Generation, MappingHash: hash, Session: source.SessionID, SessionGeneration: source.SessionGeneration})
+		_, key, err = f.keys.IssueDevice("sdk-principal", grants, 30*time.Minute, source.ExpiresAt, access.DeviceCredential{HumanID: human.ID, HumanGeneration: human.Generation, MappingHash: hash, Session: source.SessionID, SessionGeneration: source.SessionGeneration})
 	} else {
 		_, key, err = f.keys.Issue("sdk-principal", grants, time.Hour)
 	}

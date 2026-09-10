@@ -1126,10 +1126,12 @@ async function expiryAuthorityDeadline(page, terminalSessionID) {
     throw new Error('expiry-terminal-session-missing');
   }
   const browser = inventory.items.filter(item => item && item.type === 'browser' && item.id === terminal[0].source_session);
-  if (browser.length !== 1 || browser[0].id !== inventory.current_session || browser[0].status !== 'issued'
-    || terminal[0].status !== 'issued' || browser[0].principal !== terminal[0].principal || typeof browser[0].expires_at !== 'string') {
-    throw new Error('expiry-browser-session-missing');
-  }
+  if (browser.length !== 1) throw new Error('expiry-browser-source-missing');
+  if (browser[0].id !== inventory.current_session) throw new Error('expiry-browser-source-not-current');
+  if (browser[0].status !== 'issued') throw new Error('expiry-browser-source-not-issued');
+  if (terminal[0].status !== 'issued') throw new Error('expiry-terminal-not-issued');
+  if (browser[0].principal !== terminal[0].principal) throw new Error('expiry-source-principal-mismatch');
+  if (typeof browser[0].expires_at !== 'string') throw new Error('expiry-source-deadline-missing');
   const deadlineWall = Date.parse(browser[0].expires_at);
   if (!Number.isFinite(deadlineWall)) throw new Error('expiry-browser-deadline-invalid');
   // Date.now is millisecond-granular. Each sample brackets its wall-clock read
