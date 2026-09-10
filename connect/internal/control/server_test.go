@@ -33,9 +33,16 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) fixture {
+	return newFixtureWithClock(t, nil)
+}
+
+func newFixtureWithClock(t *testing.T, clock func() time.Time) fixture {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
-	state, err := store.Open(filepath.Join(t.TempDir(), "authority"), func() time.Time { return now })
+	if clock == nil {
+		clock = func() time.Time { return now }
+	}
+	state, err := store.Open(filepath.Join(t.TempDir(), "authority"), clock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,11 +66,11 @@ func newFixture(t *testing.T) fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	leases, err := tunnelgate.NewLeases(g, m, func() time.Time { return now })
+	leases, err := tunnelgate.NewLeases(g, m, clock)
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := NewServer("connect.example.test", g, m, issuer, leases, func() time.Time { return now })
+	server, err := NewServer("connect.example.test", g, m, issuer, leases, clock)
 	if err != nil {
 		t.Fatal(err)
 	}
