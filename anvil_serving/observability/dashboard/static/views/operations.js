@@ -91,13 +91,18 @@ export async function evidenceDialog(id, ctx) {
     const data = await request(`evidence/${encodeURIComponent(id)}`, {
       signal,
     });
-    if (!signal.aborted)
+    if (!signal.aborted) {
       body.replaceChildren(
         notice(
           "A successful check proves its stated test only. Missing dimensions remain unknown.",
         ),
         jsonDetails(data, "Evidence metadata"),
       );
+      if (data.kind === "container_exec") {
+        body.prepend(kv([["Diagnostic status", data.status], ["Exit code", data.exit_code], ["Output truncated", data.truncated ? "Yes" : "No"]]),
+          el("pre", { class: "code-block", text: data.output || "The diagnostic returned no output." }));
+      }
+    }
   } catch (error) {
     if (error.name !== "AbortError")
       body.replaceChildren(notice(error.message, "danger"));
@@ -141,6 +146,13 @@ export async function previewAction(resource, action, ctx, extra = {}) {
         ["Recovery", show(preview.recovery)],
       ]),
     );
+    if (preview.diagnostic) body.append(kv([
+      ["Container", preview.diagnostic.container_id],
+      ["Diagnostic", preview.diagnostic.command_id],
+      ["Command arguments", el("code", { text: JSON.stringify(preview.diagnostic.argv) })],
+      ["Timeout (seconds)", preview.diagnostic.timeout_seconds],
+      ["Maximum output (bytes)", preview.diagnostic.max_output_bytes],
+    ]));
     if (list(preview.diff).length)
       body.append(
         el(

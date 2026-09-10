@@ -22,10 +22,10 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "061659c9052a6e576da0b090feb81df7fa65cf5f786726fe1a96c21d4f558912"
+    "72f954d3c37d5561ae116167efd9a54fb89e7de46ea1b16c6d042fbaee21bd77"
 )
 HANDLER_MAP_SHA256 = (
-    "e0a91809acc6495a5683819e3e441f7250ce7188003b3f7f4a8a53434f414f16"
+    "dc25ef88f384ee53b0747a8f1fbd9b31f991bc0151de25d2eeaab469da5d1b5b"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -74,10 +74,12 @@ TOOL_NAMES = [
     "host_services_capabilities",
     "host_services_logs",
     "host_services_manage",
+    "container_exec",
     "models_inventory",
     "model_cache_inventory",
     "recipe_containers",
     "recipe_settings",
+    "recipe_manage",
     "cache_prune_plan",
     "openclaw_sync",
     "openclaw_gateway_restart",
@@ -166,8 +168,9 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     public_tools = [
         tool for tool in public_tools
         if tool["name"] not in {
-            "controller_inspect", "controller_logs", "router_configuration",
-            "serves_probe", "serves_profile", "recipe_settings", "runtime_experiment",
+                "controller_inspect", "controller_logs", "router_configuration",
+                "serves_probe", "serves_profile", "recipe_settings", "recipe_manage", "runtime_experiment",
+                "container_exec",
         }
     ]
     assert _canonical_sha256(public_tools) == (

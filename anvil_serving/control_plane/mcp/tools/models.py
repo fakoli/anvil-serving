@@ -5,6 +5,10 @@ from __future__ import annotations
 import os
 import sys
 import copy
+import contextlib
+import hashlib
+import io
+import json
 
 from ..arguments import (
     arg_bool as _arg_bool,
@@ -265,6 +269,124 @@ def tool_recipe_settings(args: dict) -> dict:
         return _tool_recipe_settings(args, lock_held=args.get("action") == "apply")
 
 
+def _recipe_manage_snapshot(registry_path: str, model: str, container: str) -> tuple[dict, dict, dict | None]:
+    """Read the exact registry recipe and bounded running-container inventory."""
+    from .... import serve_recipes
+
+    registry = serve_recipes.load_registry(registry_path)
+    recipe = serve_recipes.find_recipe(registry, model)
+    if recipe is None:
+        raise serve_recipes.RecipeError("no serve recipe for %r" % model)
+    inventory = serve_recipes.discover_recipe_containers()
+    selected = None
+    for row in inventory.get("containers", []):
+        if row.get("container") == container:
+            selected = row
+            break
+    inventory_digest = hashlib.sha256(
+        json.dumps(inventory, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return ({
+        "registry_sha256": serve_recipes.registry_digest(registry_path),
+        "recipe_sha256": serve_recipes.recipe_digest(recipe),
+        "inventory_sha256": inventory_digest,
+        "model": recipe["model"],
+        "container": container,
+    }, recipe, selected)
+
+
+def _recipe_manage_expected(args: dict, snapshot: dict) -> None:
+    expected = {
+        "expected_registry_sha256": "registry_sha256",
+        "expected_recipe_sha256": "recipe_sha256",
+        "expected_inventory_sha256": "inventory_sha256",
+    }
+    if "admission_sha256" in snapshot:
+        expected["expected_admission_sha256"] = "admission_sha256"
+    missing = [key for key in expected if not _str_arg(args, key, "")]
+    if missing:
+        raise ToolError("stale_preview", "Review the current recipe lifecycle operation before execution.")
+    if any(_str_arg(args, key) != snapshot[value] for key, value in expected.items()):
+        raise ToolError("stale_preview", "Recipe registry, selected recipe, or running inventory changed; review again.")
+
+
+def tool_recipe_manage(args: dict) -> dict:
+    """Preview or run one declared recipe load/unload through the canonical CLI."""
+    from .... import models, serve_recipes
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"status", "load", "unload"}:
+        raise ToolError("bad_action", "action must be one of: status, load, unload")
+    registry_path = os.path.abspath(os.path.expanduser(_str_arg(args, "registry", required=True)))
+    model = _str_arg(args, "model", required=True)
+    container = _str_arg(args, "container", required=True)
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    try:
+        # The same lock used by registry editing protects the recheck and the
+        # managed lifecycle dispatch from a concurrent registry replacement.
+        with serve_recipes.registry_lock(registry_path):
+            snapshot, recipe, selected = _recipe_manage_snapshot(registry_path, model, container)
+            if action == "status":
+                return _ok({"applied": False, "dry_run": True, **snapshot,
+                            "container_state": selected})
+            if action == "load" and selected is not None:
+                raise ToolError("recipe_container_conflict", "The declared recipe container already exists; unload or choose another declared container.")
+            admission = None
+            if action == "load":
+                from ....workbench_app.recipe_admission import load_plan
+                admission = load_plan(args, recipe, serve_recipes.discover_recipe_containers())
+                snapshot["admission_sha256"] = admission["admission_sha256"]
+            if action == "unload":
+                if selected is None:
+                    raise ToolError("recipe_container_unavailable", "The declared recipe container is not currently owned by this recipe.")
+                if selected.get("model") != recipe["model"] or selected.get("recipe_digest") != snapshot["recipe_sha256"]:
+                    raise ToolError("recipe_container_conflict", "The declared container does not match the current selected recipe.")
+            plan = {
+                "kind": "recipe_" + action,
+                "target": container,
+                "model": recipe["model"],
+                "registry_sha256": snapshot["registry_sha256"],
+                "recipe_sha256": snapshot["recipe_sha256"],
+                "inventory_sha256": snapshot["inventory_sha256"],
+            }
+            if admission:
+                plan.update(gpu_roles=admission["gpu_roles"], reservation=admission["reservation"])
+            if dry_run:
+                return _ok({"applied": False, "dry_run": True, **snapshot, "plan": [plan]})
+            if not confirm:
+                raise ToolError("confirmation_required", "Recipe lifecycle requires a reviewed confirmed operation.")
+            _recipe_manage_expected(args, snapshot)
+            argv = [action, recipe["model"], "--registry", registry_path, "--container", container, "--confirm"]
+            # Keep legacy CLI output out of the MCP response; it can contain
+            # environment-derived detail and is not the typed postcondition.
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                if admission:
+                    from .serves import tool_serves_manage
+                    result = tool_serves_manage({"action": "up", "manifest": admission["manifest"], "names": [admission["serve"]], "dry_run": False, "confirm": True, "timeout_seconds": 1800})
+                    returncode = result.get("data", {}).get("returncode", 1)
+                else:
+                    returncode = models._recipe_main(argv)
+            if returncode:
+                raise ToolError("recipe_lifecycle_failed", "The managed recipe lifecycle operation did not complete.", {"action": action, "returncode": returncode})
+            post, current_recipe, current = _recipe_manage_snapshot(registry_path, recipe["model"], container)
+            if action == "load":
+                passed = (current is not None and current.get("model") == current_recipe["model"]
+                          and current.get("recipe_digest") == post["recipe_sha256"]
+                          and current.get("registry_digest") == post["registry_sha256"])
+            else:
+                passed = current is None
+            if not passed:
+                raise ToolError("recipe_postcondition_failed", "The managed recipe lifecycle postcondition could not be verified.")
+            return _ok({"applied": True, "dry_run": False, **snapshot,
+                        "postcondition": {"status": "passed", "action": action,
+                                          "container": container, "model": recipe["model"]}})
+    except ToolError:
+        raise
+    except (OSError, serve_recipes.RecipeError) as exc:
+        raise ToolError("recipe_unavailable", str(exc)) from exc
+
+
 def _cache_prune_plan_argv(mixture: list[str], *, include_servable: bool) -> list[str]:
     argv = [sys.executable, "-m", "anvil_serving.cli", "models", "cache", "prune", "--json"]
     if mixture:
@@ -380,6 +502,24 @@ FAMILY = ToolFamily(
                 }, required=["action", "registry", "model"],
             ),
             "handler": tool_recipe_settings,
+        },
+        "recipe_manage": {
+            "description": "Read, preview, or run one confirmed declared recipe container load or unload.",
+            "inputSchema": _schema(
+                {
+                    "action": {"type": "string", "enum": ["status", "load", "unload"]},
+                    "registry": {"type": "string"}, "model": {"type": "string"},
+                    "container": {"type": "string", "minLength": 1, "maxLength": 128},
+                    "manifest": {"type": "string"}, "serve": {"type": "string"}, "topology": {"type": "string"},
+                    "command_host": {"type": "string"}, "command_runtime": {"type": "string"},
+                    "expected_registry_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                    "expected_recipe_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                    "expected_inventory_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                    "expected_admission_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                    "dry_run": {"type": "boolean"}, "confirm": {"type": "boolean"},
+                }, required=["action", "registry", "model", "container"],
+            ),
+            "handler": tool_recipe_manage,
         },
         "cache_prune_plan": {
             "description": "Return a JSON model-cache prune plan and dry-run report; deletion is not available through MCP.",
