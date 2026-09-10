@@ -217,7 +217,7 @@ evidence. SWE resolution is complete only when the pinned official SWE-bench
 grader emits a report for the exact explicitly selected instance. Agent,
 dataset, image, prediction, grader, and model reasoning-control identities
 remain bound in the artifact.
-See [the durable job workflow](context-agentic-swe.md).
+See [the durable job workflow](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/context-agentic-swe.md).
 
 ## Evaluation pipeline
 
@@ -254,7 +254,7 @@ for a later, separately authorized real-hardware qualification. It does not
 authorize a recipe load, router change, benchmark, promotion, or deployment.
 
 1. **Prepare and pin.** Use the managed [recipe load and lifecycle
-   surfaces](../cli/models.md#load-a-recipe), not an ad hoc launcher. Before
+   surfaces](https://github.com/fakoli/anvil-serving/blob/main/docs/cli/models.md#load-a-recipe), not an ad hoc launcher. Before
    the first request, retain the repository revision, router and topology
    inputs, recipe and registry digests, image and software identities, declared
    tier/member ceilings, scheduler strategy, and an admission/transition
@@ -282,11 +282,11 @@ authorize a recipe load, router change, benchmark, promotion, or deployment.
    retry, implicit fallback, or second-member selection.
 4. **Restore and decide.** Restore the captured admission, member-intent,
    recipe, router, and topology starting state with the managed
-   [router lifecycle](../cli/router.md#lifecycle) and
-   [tier transition](../cli/router.md#tier-transitions) procedures. Retain post-restoration
+   [router lifecycle](https://github.com/fakoli/anvil-serving/blob/main/docs/cli/router.md#lifecycle) and
+   [tier transition](https://github.com/fakoli/anvil-serving/blob/main/docs/cli/router.md#tier-transitions) procedures. Retain post-restoration
    status/log evidence and the separately authorized real-client gates. Keep
    raw evidence, failures, configuration/identity, and restoration records in
-   the [campaign artifact set](repeatable-campaigns.md) and
+   the [campaign artifact set](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/repeatable-campaigns.md) and
    publish only sanitized derived claims. Human review may then decide whether
    promotion is warranted; a complete qualification artifact never promotes a
    route by itself.
@@ -382,9 +382,9 @@ Then:
 1. Put raw evidence in a dated `docs/findings/YYYY-MM-DD-topic-evidence/`
    directory and retain immutable source revisions.
 2. Add the dated narrative and update `docs/findings/README.md`.
-3. Update the appropriate table in [the benchmark guide](index.md) and the
-   recipe notes in [the model guide](models.md).
-4. Update the [chronological archive](../BENCHMARKS.md) if the reference
+3. Update the appropriate table in [the benchmark guide](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/index.md) and the
+   recipe notes in [the model guide](https://github.com/fakoli/anvil-serving/blob/main/docs/benchmarks/models.md).
+4. Update the [chronological archive](https://github.com/fakoli/anvil-serving/blob/main/docs/BENCHMARKS.md) if the reference
    deployment, recommendation, or comparison history changed.
 5. Run the strict documentation build and link checker, then request an
    adversarial review before publication.

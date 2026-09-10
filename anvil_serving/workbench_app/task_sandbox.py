@@ -349,7 +349,8 @@ class TaskSandbox(TaskArtifactSandbox):
         """Make only server-created/private mounts writable by the pinned UID."""
         if path.stat().st_uid == self.uid:
             return
-        if not change_owner or os.geteuid() != 0:
+        geteuid = getattr(os, "geteuid", None)
+        if not change_owner or geteuid is None or geteuid() != 0:
             raise self._error("sandbox_owner_mismatch", "The configured sandbox user cannot write its private workspace.")
         os.chown(path, self.uid, self.gid)
 
