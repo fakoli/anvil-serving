@@ -572,3 +572,69 @@ def test_failed_output_build_closes_its_retained_descriptor(tmp_path, monkeypatc
             close(base_fd)
 
     assert closed
+
+
+@pytest.mark.parametrize("reason", ["record-incomplete", _PRIVATE])
+def test_failed_execution_preserves_boot_provenance_and_closed_diagnostics(tmp_path, monkeypatch, reason):
+    config = _config(tmp_path)
+
+    def guest(_argv, _kwargs):
+        failure = _error("runner-failed", "VM child failed", execution_started=True, stage="execution")
+        failure.reason = reason
+        failure.measurements = {"elapsed_ms": 12, "peak_rss_bytes": 4096, "output_bytes": 100,
+                                "returncode": None, "console": _PRIVATE}
+        raise failure
+
+    _install_boundaries(monkeypatch, config, guest=guest)
+    with pytest.raises(QualificationError):
+        subject.qualify()
+    evidence, _ = _closed(_artifact_root(config))
+    assert evidence["image"]["sha256"] == "c" * 64
+    assert evidence["payload"]["files"] == {"payload.json": "e" * 64}
+    assert set(evidence["boot_inputs"]) == {"seed_iso", "payload_iso", "firmware"}
+    assert "tools" in evidence
+    assert evidence["measurements"] == {"elapsed_ms": 12, "peak_rss_bytes": 4096,
+                                         "output_bytes": 100, "returncode": None}
+    assert evidence.get("failure_reason") == (reason if reason == "record-incomplete" else None)
+
+
+def test_abnormal_qemu_exit_keeps_guest_report_but_fails_infrastructure(tmp_path, monkeypatch):
+    config = _config(tmp_path)
+    _install_boundaries(monkeypatch, config, guest=lambda *args: ProcessResult(1, _guest_result(), 7, 1024, 99))
+    with pytest.raises(QualificationError):
+        subject.qualify()
+    evidence, summary = _closed(_artifact_root(config))
+    assert evidence["counts"]["passed"] == 8
+    assert summary["ok"] is False
+    assert evidence["failure_reason"] == "child-exit"
+    assert evidence["measurements"]["returncode"] == 1
+    suite = ET.parse(_artifact_root(config) / "junit.xml").getroot()
+    assert suite.get("errors") == "1"
+
+
+def test_invalid_guest_record_has_closed_failure_reason(tmp_path, monkeypatch):
+    config = _config(tmp_path)
+    raw = json.dumps({"unexpected": _PRIVATE}).encode()
+    _install_boundaries(monkeypatch, config, guest=lambda *args: ProcessResult(0, raw, 7, 1024, len(raw)))
+    with pytest.raises(QualificationError):
+        subject.qualify()
+    evidence, _ = _closed(_artifact_root(config))
+    assert evidence["failure_reason"] == "record-invalid"
+    assert evidence["counts"]["unavailable"] == 8
+
+
+def test_process_cleanup_uncertainty_cannot_claim_complete_cleanup(tmp_path, monkeypatch):
+    config = _config(tmp_path)
+
+    def guest(*args):
+        failure = _error("runner-failed", "VM child cleanup failed", execution_started=True, stage="cleanup")
+        failure.reason = "cleanup-failure"
+        failure.measurements = {"elapsed_ms": 7, "peak_rss_bytes": 1024, "output_bytes": 0, "returncode": None}
+        raise failure
+
+    _install_boundaries(monkeypatch, config, guest=guest)
+    with pytest.raises(QualificationError):
+        subject.qualify()
+    evidence, _ = _closed(_artifact_root(config))
+    assert evidence["cleanup"] == {"complete": False, "filesystem_complete": True, "process_complete": False}
+    assert evidence["measurements"]["returncode"] is None

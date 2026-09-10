@@ -80,7 +80,9 @@ def _cases(raw: bytes) -> list[dict[str, str]]:
             raise ValueError
         return data["cases"]
     except (UnicodeError, TypeError, ValueError, KeyError) as exc:
-        raise _error("runner-failed", "VM guest result is invalid", execution_started=True, stage="execution") from exc
+        failure = _error("runner-failed", "VM guest result is invalid", execution_started=True, stage="execution")
+        failure.reason = "record-invalid"
+        raise failure from exc
 
 
 def _capacity(root: Path) -> tuple[int, ...]:
@@ -637,11 +639,13 @@ def qualify(config_path: str | os.PathLike[str] | None = None) -> dict[str, Any]
     execution_started = False
     interrupted = None
     cases = None
+    details: dict[str, Any] = {"image": {"sha256": digest, "bytes": image_bytes, "virtual_size": virtual_size}, "tools": tools}
     try:
         source_stage = _stage_source(config.source_root, run_dir, source, deadline=deadline, cpus=cpus)
         if _locks(source_stage) != locks:
             raise _error("source-invalid", "qualification tracked source changed during staging")
         payload, files, build = _payload(config, run_dir, source, source_root=source_stage, cpus=cpus, deadline=deadline)
+        details["payload"] = {"files": files, "build": build}
         _seed(seed_tree, uuid.uuid4().hex)
         base_fd = _open_pinned(cache / _CACHE_NAME)
         descriptors.append(base_fd)
@@ -661,6 +665,7 @@ def qualify(config_path: str | os.PathLike[str] | None = None) -> dict[str, Any]
                 ("firmware", descriptors[4], 0, 0o644, 64 * 1024 * 1024, tools["firmware"]["sha256"])):
             value, size = _verify_fd(fd, owner=owner, mode=mode, maximum=maximum, deadline=deadline, expected=expected)
             input_hashes[name] = {"sha256": value, "bytes": size}
+        details["boot_inputs"] = input_hashes
         cpus = _capacity(config.artifact_root)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -670,15 +675,17 @@ def qualify(config_path: str | os.PathLike[str] | None = None) -> dict[str, Any]
                           pass_fds=tuple(descriptors), maximum_output=1024 * 1024, retained_prefix=_MARKER,
                           maximum_record=_MAX_RESULT, watched_file=Path(f"/proc/self/fd/{descriptors[1]}"))
         execution_started = True
-        if process.returncode != 0:
-            raise _error("runner-failed", "VM guest did not shut down cleanly", execution_started=True, stage="execution")
+        details["measurements"] = {"elapsed_ms": process.elapsed_ms, "peak_rss_bytes": process.peak_rss_bytes,
+                                   "output_bytes": process.output_bytes, "returncode": process.returncode}
         cases = _cases(process.output)
+        if process.returncode != 0:
+            details["failure_reason"] = "child-exit"
+            raise _error("runner-failed", "VM guest did not shut down cleanly", execution_started=True, stage="execution")
         _cleanup_owned(owned, descriptors)
         if _cleanup_residuals(run_dir):
             raise _error("staging-failed", "VM private cleanup found unexpected files", stage="cleanup")
         _closed_artifacts(run_dir, source=source, state="passed" if all(item["status"] == "passed" for item in cases) else "failed", code=None,
-                          cases=cases, details={"payload": {"files": files, "build": build}, "image": {"sha256": digest, "bytes": image_bytes, "virtual_size": virtual_size}, "tools": tools, "boot_inputs": input_hashes,
-                                                "measurements": {"elapsed_ms": process.elapsed_ms, "peak_rss_bytes": process.peak_rss_bytes, "serial_bytes": process.output_bytes}, "cleanup": {"complete": True}})
+                          cases=cases, details={**details, "cleanup": {"complete": True}})
         return {"schema": _SCHEMA, "ok": all(item["status"] == "passed" for item in cases), "artifact_dir": str(run_dir), "counts": _counts(cases)}
     except KeyboardInterrupt as exc:
         interrupted = exc
@@ -687,13 +694,26 @@ def qualify(config_path: str | os.PathLike[str] | None = None) -> dict[str, Any]
         failure = exc
     except (OSError, ValueError, TypeError, shutil.Error):
         failure = _error("staging-failed", "VM qualification preparation failed", execution_started=execution_started, stage="staging")
+    reason = getattr(failure, "reason", None)
+    if isinstance(reason, str) and reason in {"timeout", "rss-limit", "file-limit", "output-limit", "line-limit", "record-duplicate",
+                  "record-oversized", "record-incomplete", "record-invalid", "child-exit", "process-error", "cleanup-failure"}:
+        details["failure_reason"] = reason
+    measurements = getattr(failure, "measurements", None)
+    if isinstance(measurements, dict):
+        safe = {key: value for key, value in measurements.items()
+                if key in {"elapsed_ms", "peak_rss_bytes", "output_bytes", "returncode"}
+                and ((value is None and key == "returncode") or (type(value) is int
+                     and (-(2 ** 31) if key == "returncode" else 0) <= value < 2 ** 63))}
+        if safe:
+            details["measurements"] = safe
     try:
         _cleanup_owned(owned, descriptors)
         _cleanup_residuals(run_dir)
         if cases is None:
             cases = [{"name": name, "status": "unavailable" if execution_started else "not-run"}
                      for name in _CASES]
-        _closed_artifacts(run_dir, source=source, state="failed", code=failure.code, cases=cases, details={"cleanup": {"complete": True}})
+        _closed_artifacts(run_dir, source=source, state="failed", code=failure.code, cases=cases, details={**details, "cleanup": {"complete": reason != "cleanup-failure",
+                          "filesystem_complete": True, "process_complete": reason != "cleanup-failure"}})
     except QualificationError as cleanup:
         raise cleanup from None
     failure.execution_started = execution_started
