@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -122,6 +123,41 @@ func TestDeviceWireValuesAreCanonical(t *testing.T) {
 	for _, token := range []string{strings.Replace(good, "acd1.", "ac1.", 1), good + "=", strings.Replace(good, ".", "_", 1)} {
 		if usableDeviceToken(token) {
 			t.Fatal("malformed token accepted")
+		}
+	}
+}
+
+func TestLoginOutputSupportsPeopleAndAutomation(t *testing.T) {
+	const uri = "https://dashboard.example.test/observatory/_anvil-connect/device"
+	const code = "ABCDEFGH"
+	const base = "http://127.0.0.1:8787/v1"
+	expires := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
+	for _, jsonOutput := range []bool{false, true} {
+		var output strings.Builder
+		if err := writeLoginChallenge(&output, jsonOutput, uri, code); err != nil {
+			t.Fatal(err)
+		}
+		challenge := output.String()
+		if !strings.Contains(challenge, uri) || !strings.Contains(challenge, code) || strings.Contains(challenge, "device_code") || strings.Contains(challenge, "access_token") {
+			t.Fatal("challenge contract changed")
+		}
+		output.Reset()
+		if err := writeLoginReady(&output, jsonOutput, base, "test-session", expires); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(output.String(), base) || !strings.Contains(output.String(), expires.Format(time.RFC3339)) {
+			t.Fatal("connection details missing")
+		}
+		if jsonOutput {
+			var value map[string]string
+			if err := json.Unmarshal([]byte(challenge), &value); err != nil || value["verification_uri"] != uri || value["user_code"] != code {
+				t.Fatal("invalid challenge JSON")
+			}
+			if err := json.Unmarshal([]byte(output.String()), &value); err != nil || value["status"] != "running" || value["local_base_url"] != base {
+				t.Fatal("invalid ready JSON")
+			}
+		} else if !strings.Contains(challenge, "Waiting for browser approval") || !strings.Contains(output.String(), "Ctrl+C") {
+			t.Fatal("human instructions missing")
 		}
 	}
 }

@@ -50,7 +50,7 @@ type deviceApproval struct {
 // loginClient obtains one short-lived remote key through the fixed browser
 // approval endpoint and passes it directly to the existing loopback server.
 // The device code and bearer never reach argv, environment, a file, or output.
-func loginClient(ctx context.Context, declaration clientconfig.Config, lookup func(string) (string, bool), out io.Writer) error {
+func loginClient(ctx context.Context, declaration clientconfig.Config, lookup func(string) (string, bool), out io.Writer, jsonOutput bool) error {
 	device := declaration.DeviceAuthorization
 	if ctx == nil || device == nil || lookup == nil {
 		return errDeviceLoginUnavailable
@@ -83,11 +83,7 @@ func loginClient(ctx context.Context, declaration clientconfig.Config, lookup fu
 	if err != nil || start.Status != "pending" || !canonicalDeviceCode(start.DeviceCode) || !canonicalUserCode(start.UserCode) || start.ExpiresIn < 1 || start.ExpiresIn > int((10*time.Minute).Seconds()) || start.Interval != int((5*time.Second).Seconds()) {
 		return errDeviceLoginUnavailable
 	}
-	if json.NewEncoder(out).Encode(map[string]string{
-		"verification_uri": base.String(),
-		"user_code":        start.UserCode,
-		"instruction":      "Open verification_uri in a browser, sign in, and enter user_code to approve this login.",
-	}) != nil {
+	if err := writeLoginChallenge(out, jsonOutput, base.String(), start.UserCode); err != nil {
 		return errDeviceLoginUnavailable
 	}
 	deviceCode := start.DeviceCode
@@ -119,7 +115,7 @@ func loginClient(ctx context.Context, declaration clientconfig.Config, lookup fu
 			return "", false
 		}
 	}, func() error {
-		return json.NewEncoder(out).Encode(map[string]string{"mode": "client", "status": "running", "session_id": strings.Split(remoteKey, ".")[1], "local_base_url": "http://" + declaration.Listen, "expires_at": approval.expiresAt.UTC().Format(time.RFC3339)})
+		return writeLoginReady(out, jsonOutput, "http://"+declaration.Listen+declaration.Rule.PathPrefix, strings.Split(remoteKey, ".")[1], approval.expiresAt)
 	})
 }
 
@@ -200,6 +196,8 @@ func loginFailure(diagnostics io.Writer, err error) int {
 		return 1
 	}
 	switch {
+	case errors.Is(err, errLocalKey):
+		_, _ = fmt.Fprintln(diagnostics, "anvil-connect: local key unavailable; check the protected local-key file or explicit local-key environment override")
 	case errors.Is(err, errDeviceApprovalDenied):
 		_, _ = fmt.Fprintln(diagnostics, "anvil-connect: device approval was denied")
 	case errors.Is(err, errDeviceApprovalExpired):
@@ -276,4 +274,24 @@ func usableDeviceToken(value string) bool {
 	}
 	secret, err := base64.RawURLEncoding.DecodeString(parts[2])
 	return err == nil && len(secret) == 32 && base64.RawURLEncoding.EncodeToString(secret) == parts[2]
+}
+
+func writeLoginChallenge(out io.Writer, jsonOutput bool, uri, code string) error {
+	if jsonOutput {
+		return json.NewEncoder(out).Encode(map[string]string{
+			"verification_uri": uri,
+			"user_code":        code,
+			"instruction":      "Open verification_uri in a browser, sign in, and enter user_code to approve this login.",
+		})
+	}
+	_, err := fmt.Fprintf(out, "Open this link and sign in with your passkey:\n  %s\n\nEnter code: %s\nWaiting for browser approval...\n", uri, code)
+	return err
+}
+
+func writeLoginReady(out io.Writer, jsonOutput bool, base, sessionID string, expires time.Time) error {
+	if jsonOutput {
+		return json.NewEncoder(out).Encode(map[string]string{"mode": "client", "status": "running", "session_id": sessionID, "local_base_url": base, "expires_at": expires.UTC().Format(time.RFC3339)})
+	}
+	_, err := fmt.Fprintf(out, "\nConnected. Local API: %s\nSession: %s\nExpires: %s\nKeep this terminal open. Press Ctrl+C to disconnect.\n", base, sessionID, expires.UTC().Format(time.RFC3339))
+	return err
 }
