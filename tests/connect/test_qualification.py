@@ -104,7 +104,7 @@ def test_qualify_stages_privately_and_records_only_safe_evidence(tmp_path: Path,
     monkeypatch.setattr(subject, "_run_test", fake_run)
     result = subject.qualify(config)
     assert result["schema"] == "anvil-connect.qualification/v1"
-    assert result["ok"] is True and result["counts"] == {"passed": 2, "failed": 0}
+    assert result["ok"] is True and result["counts"] == {"passed": 2, "failed": 0, "skipped": 0, "not_run": 0}
     evidence = json.loads((Path(result["artifact_dir"]) / "evidence.json").read_text())
     assert evidence["network"] == {"fixture_loopback": True, "network_isolation": "not_enforced"}
     assert [case["name"] for case in evidence["tests"]] == list(subject._TESTS)
@@ -127,6 +127,22 @@ def test_json_report_requires_the_expected_non_skipped_test() -> None:
     assert supervisor._valid_report(json.dumps(good).encode(), subject._TESTS[0]) is True
     good["suites"][0]["specs"][0]["tests"][0]["status"] = "skipped"
     assert supervisor._valid_report(json.dumps(good).encode(), subject._TESTS[0]) is False
+    assert supervisor._skipped_report(json.dumps(good).encode(), subject._TESTS[0]) is True
+    assert supervisor._skipped_report(json.dumps({"errors": [], "suites": []}).encode(), subject._TESTS[0]) is False
+
+
+def test_supervisor_classifies_only_explicit_expected_skip() -> None:
+    skipped = json.dumps({"errors": [], "suites": [{"specs": [{"title": subject._TESTS[0], "ok": True, "tests": [{"status": "skipped", "results": []}]}]}]})
+    result, _, escalated = subject._run_test(
+        [sys.executable, "-c", "print(%r)" % skipped], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
+        timeout=2, expected_name=subject._TESTS[0],
+    )
+    assert result == "skipped" and escalated is False
+    empty, _, _ = subject._run_test(
+        [sys.executable, "-c", "print(%r)" % json.dumps({"errors": [], "suites": []})], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
+        timeout=2, expected_name=subject._TESTS[0],
+    )
+    assert empty == "runner-failed-report-parsing"
 
 
 def _wait_for(path: Path) -> None:
@@ -380,3 +396,92 @@ def test_fixture_temp_root_cleans_a_partial_creation(tmp_path: Path, monkeypatch
     if expected is subject.QualificationError:
         assert caught.value.code == "staging-failed"
     assert not partial.exists()
+
+
+def test_preflight_errors_are_not_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    missing = tmp_path / "missing.toml"
+    with pytest.raises(subject.QualificationError) as caught:
+        subject.qualify(missing)
+    assert caught.value.code == "config-missing"
+    assert caught.value.execution_started is False and caught.value.stage == "preflight"
+    config, paths = _config(tmp_path / "binary")
+    monkeypatch.setattr(subject, "_source_metadata", lambda _: {"revision": "d01d36ae" + "0" * 32, "dirty": False})
+    monkeypatch.setattr(subject, "_locks", lambda _: {"files": {}, "binaries": {}})
+    paths["node"].unlink()
+    with pytest.raises(subject.QualificationError) as caught:
+        subject.qualify(config)
+    assert caught.value.code == "tool-invalid"
+    assert caught.value.execution_started is False and caught.value.stage == "preflight"
+
+
+def test_early_result_marks_remaining_test_not_run_and_junit_skipped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config, _ = _config(tmp_path)
+    monkeypatch.setattr(subject, "_source_metadata", lambda _: {"revision": "d01d36ae" + "0" * 32, "dirty": False})
+    monkeypatch.setattr(subject, "_tracked_connect_files", lambda _: [Path("connect/lab/edge-tools.json"), Path("connect/transport.lock.json"), Path("connect/test/browser_edge.spec.mjs"), Path("connect/package-lock.json")])
+    (config.parent / "source/connect/package-lock.json").write_text('{"packages":{"node_modules/playwright":{"version":"1.63.0"}}}')
+    monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
+    monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
+    monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
+    calls: list[str] = []
+    def fail_first(_argv, *, expected_name, **_kwargs):
+        calls.append(expected_name)
+        return "runner-failed-browser-assertion", 0.01, False
+    monkeypatch.setattr(subject, "_run_test", fail_first)
+    result = subject.qualify(config)
+    evidence_path = Path(result["artifact_dir"]) / "evidence.json"
+    evidence = json.loads(evidence_path.read_text())
+    assert calls == [subject._TESTS[0]]
+    assert result["state"] == "failed" and result["error_code"] == "runner-failed"
+    assert result["counts"] == {"passed": 0, "failed": 1, "skipped": 0, "not_run": 1}
+    assert [item["status"] for item in evidence["tests"]] == ["runner-failed", "not-run"]
+    root = __import__("xml.etree.ElementTree", fromlist=["ElementTree"]).parse(Path(result["artifact_dir"]) / "junit.xml").getroot()
+    assert root.attrib["failures"] == "1" and root.attrib["skipped"] == "1"
+    assert root.findall("testcase")[1].find("skipped").attrib["type"] == "not-run"
+
+
+def test_skipped_result_is_non_success_and_marks_remaining_not_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config, _ = _config(tmp_path)
+    monkeypatch.setattr(subject, "_source_metadata", lambda _: {"revision": "d01d36ae" + "0" * 32, "dirty": False})
+    monkeypatch.setattr(subject, "_tracked_connect_files", lambda _: [Path("connect/lab/edge-tools.json"), Path("connect/transport.lock.json"), Path("connect/test/browser_edge.spec.mjs"), Path("connect/package-lock.json")])
+    (config.parent / "source/connect/package-lock.json").write_text('{"packages":{"node_modules/playwright":{"version":"1.63.0"}}}')
+    monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
+    monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
+    monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
+    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("skipped", 0.01, False))
+    result = subject.qualify(config)
+    assert result["ok"] is False and result["state"] == "skipped" and result["error_code"] == "skipped"
+    assert result["counts"] == {"passed": 0, "failed": 0, "skipped": 1, "not_run": 1}
+
+
+@pytest.mark.parametrize("launch_fails", [False, True])
+def test_execution_error_preserves_only_known_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launch_fails: bool) -> None:
+    config, _ = _config(tmp_path)
+    fixture_root = tmp_path / "acq-test"
+    fixture_root.mkdir(mode=0o700)
+    monkeypatch.setattr(subject, "_fixture_temp_root", lambda: fixture_root)
+    monkeypatch.setattr(subject, "_source_metadata", lambda _: {"revision": "d01d36ae" + "0" * 32, "dirty": False})
+    monkeypatch.setattr(subject, "_tracked_connect_files", lambda _: [Path("connect/lab/edge-tools.json"), Path("connect/transport.lock.json"), Path("connect/test/browser_edge.spec.mjs"), Path("connect/package-lock.json")])
+    (config.parent / "source/connect/package-lock.json").write_text('{"packages":{"node_modules/playwright":{"version":"1.63.0"}}}')
+    monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
+    monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
+    monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
+    def run_test(*args, **kwargs):
+        if launch_fails:
+            raise subject._error("runner-unavailable", "safe launch error")
+        return ("passed", 0.01, False)
+    monkeypatch.setattr(subject, "_run_test", run_test)
+    calls = 0
+    def fail_once(root: Path) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 1 and not launch_fails:
+            raise subject._error("staging-failed", "safe cleanup error")
+        shutil.rmtree(root)
+    monkeypatch.setattr(subject, "_remove_fixture_temp_root", fail_once)
+    from anvil_serving.connect.cli import dispatch
+    result = dispatch(["qualify", "--config", str(config)])
+    assert result.error is not None
+    assert result.data["state"] == "failed"
+    assert result.data["stage"] == ("execution" if launch_fails else "cleanup")
+    assert result.data["counts"] == (None if launch_fails else {"passed": 2, "failed": 0, "skipped": 0, "not_run": 0})
+    assert calls == (1 if launch_fails else 2) and not fixture_root.exists()

@@ -269,6 +269,17 @@ def _failure_stage(output: bytes, expected_name: str) -> str:
     return "browser-assertion" if _matching_spec(value, expected_name) is not None else "report-parsing"
 
 
+def _skipped_report(output: bytes, expected_name: str) -> bool:
+    value = _report_value(output)
+    if value is None or value.get("errors") not in ([], None):
+        return False
+    matched = _matching_spec(value, expected_name)
+    if matched is None or matched.get("ok") is not True:
+        return False
+    tests = matched.get("tests")
+    return isinstance(tests, list) and len(tests) == 1 and tests[0].get("status") == "skipped"
+
+
 def _valid_report(output: bytes, expected_name: str) -> bool:
     value = _report_value(output)
     if value is None or value.get("errors") not in ([], None):
@@ -370,7 +381,9 @@ def run(argv: list[str], timeout: float, expected_name: str, *, batch_size: int 
             status = "runner-failed"
             failure_stage = "supervisor"
         escalated |= cleanup_escalated
-        if status == "passed" and not _valid_report(bytes(output), expected_name):
+        if status == "passed" and _skipped_report(bytes(output), expected_name):
+            status = "skipped"
+        elif status == "passed" and not _valid_report(bytes(output), expected_name):
             status = "runner-failed"
             failure_stage = _failure_stage(bytes(output), expected_name)
         return _finish(status, escalated=escalated, failure_stage=failure_stage, fixture_marker=fixture_marker)

@@ -65,8 +65,14 @@ def _qualify(args: argparse.Namespace) -> CommandResult:
     try:
         result = qualify(args.config, lane=args.lane or "baseline")
     except QualificationError as exc:
-        return CommandResult(error=OperatorError(
-            "Connect qualification preflight failed; check the saved qualification settings and pinned prerequisites.",
+        started = bool(getattr(exc, "execution_started", False))
+        state = "failed" if started else "not-run"
+        counts = getattr(exc, "case_counts", None) if started else {"passed": 0, "failed": 0, "skipped": 0, "not_run": 2}
+        return CommandResult(data={
+            "schema": "anvil-connect.qualification/v1", "ok": False, "state": state,
+            "error_code": exc.code, "counts": counts, "stage": getattr(exc, "stage", "preflight"),
+        }, error=OperatorError(
+            "Connect qualification failed during execution or cleanup." if started else "Connect qualification preflight failed; check the saved qualification settings and pinned prerequisites.",
             code=exc.code,
         ))
     if result.get("ok") is not True:
