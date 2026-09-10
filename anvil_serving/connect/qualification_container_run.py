@@ -23,6 +23,8 @@ _DEVICE_TESTS = (
     "container-gated UV passkey registers and approves CLI device login",
     "container-gated passkey rejects UV, RP, expiry, replay, and disabled subject",
     "container-gated spare passkey restores least-privilege access",
+    "container-gated browser streams close on human disable",
+    "container-gated browser streams close on logout",
 )
 
 def _load_runner(path: Path):

@@ -363,6 +363,92 @@ async function resumeGrantedAuthorization(page) {
   await expect(page.locator('#dashboard')).toHaveText('native dashboard');
 }
 
+const browserStreamCountFields = ['events_started', 'events_closed', 'ws_started', 'ws_closed'];
+
+async function browserStreamCounts(timeout = 5_000) {
+  const counts = await fixture.command('browser stream counts', timeout);
+  expect(Object.keys(counts).sort()).toEqual(['ack', ...browserStreamCountFields].sort());
+  expect(counts.ack).toBe('browser stream counts');
+  for (const field of browserStreamCountFields) expect(counts[field]).toMatch(/^\d+$/);
+  return counts;
+}
+
+async function openBrowserStreams(page) {
+  await page.evaluate(async () => {
+    const events = (async () => {
+      const response = await fetch('/events', { redirect: 'error' });
+      if (response.status !== 200 || !response.body) throw new Error('browser-stream-events-open-failed');
+      const reader = response.body.getReader();
+      window.__browserStreamReader = reader;
+      const decoder = new TextDecoder();
+      let marker = '';
+      while (!marker.includes('data: ready\n\n') && marker.length < 64) {
+        const first = await reader.read();
+        if (first.done || !first.value?.byteLength) throw new Error('browser-stream-events-first-data-failed');
+        marker += decoder.decode(first.value, { stream: true });
+      }
+      if (!marker.includes('data: ready\n\n')) throw new Error('browser-stream-events-marker-failed');
+    })();
+    const websocket = new Promise((resolve, reject) => {
+      const socket = new WebSocket(`wss://${location.host}/ws`);
+      window.__browserStreamSocket = socket;
+      socket.addEventListener('open', () => resolve(), { once: true });
+      socket.addEventListener('error', () => reject(new Error('browser-stream-websocket-open-failed')), { once: true });
+    });
+    await Promise.all([events, websocket]);
+  });
+}
+
+function closedBrowserStreams(page) {
+  return page.evaluate(() => Promise.all([
+    window.__browserStreamReader.closed.then(() => true, () => true),
+    new Promise(resolve => {
+      const socket = window.__browserStreamSocket;
+      if (socket.readyState === WebSocket.CLOSED) {
+        resolve(true);
+        return;
+      }
+      socket.addEventListener('close', () => resolve(true), { once: true });
+    }),
+  ]).then(() => true, () => false)).catch(() => false);
+}
+
+async function expectBrowserStreamClosure(started, clientClosed) {
+  const withinBound = action => {
+    const remaining = 1_000 - (performance.now() - started);
+    if (remaining <= 0) throw new Error('browser-stream-closure-exceeded-bound');
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('browser-stream-closure-exceeded-bound')), remaining);
+      Promise.resolve().then(action).then(
+        value => { clearTimeout(timer); resolve(value); },
+        error => { clearTimeout(timer); reject(error); },
+      );
+    });
+  };
+  expect(await withinBound(async () => clientClosed)).toBe(true);
+  await withinBound(async () => {
+    await expect.poll(async () => {
+      const remaining = Math.max(1, 1_000 - (performance.now() - started));
+      const counts = await browserStreamCounts(remaining);
+      return browserStreamCountFields.map(field => counts[field]).join(',');
+    }, { timeout: Math.max(1, 1_000 - (performance.now() - started)), intervals: [20, 50] }).toBe('1,1,1,1');
+  });
+  expect(performance.now() - started).toBeLessThanOrEqual(1_000);
+}
+
+async function expectFreshBrowserStreamsDenied(page) {
+  expect(await page.evaluate(() => fetch('/events', { redirect: 'manual' }).then(response => response.status, () => 0))).toBe(401);
+  const websocket = await page.evaluate(() => new Promise(resolve => {
+    const socket = new WebSocket(`wss://${location.host}/ws`);
+    const timer = setTimeout(() => resolve('timeout'), 5_000);
+    const finish = result => { clearTimeout(timer); resolve(result); };
+    socket.addEventListener('open', () => finish('opened'), { once: true });
+    socket.addEventListener('error', () => finish('failed'), { once: true });
+    socket.addEventListener('close', () => finish('failed'), { once: true });
+  }));
+  expect(websocket).toBe('failed');
+}
+
 // The runtime and device cases own a separate fixture stack. Starting the
 // simple edge fixture globally would leave an unused Caddy/Authelia pair alive
 // for those cases and exhaust the deliberately small container PID budget.
@@ -709,6 +795,55 @@ test('container-gated CLI device login revokes on human disable and browser logo
   }
 });
 
+async function exerciseBrowserStreamRevocation(mutate) {
+  const edgeFixture = fixture;
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE');
+  try {
+    const page = await freshPage();
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+
+    await openBrowserStreams(page);
+    expect(await browserStreamCounts()).toMatchObject({
+      events_started: '1', events_closed: '0', ws_started: '1', ws_closed: '0',
+    });
+    const clientClosed = closedBrowserStreams(page);
+    const started = performance.now();
+    await mutate(page);
+    await expectBrowserStreamClosure(started, clientClosed);
+
+    const beforeDenied = await browserStreamCounts();
+    await expectFreshBrowserStreamsDenied(page);
+    expect(await browserStreamCounts()).toEqual(beforeDenied);
+  } finally {
+    const deviceFixture = fixture;
+    fixture = edgeFixture;
+    await cleanup(deviceFixture);
+  }
+}
+
+test('container-gated browser streams close on human disable', async () => {
+  test.setTimeout(90_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE !== '1', 'requires the disposable P02 container loopback DNS and port 443');
+  await exerciseBrowserStreamRevocation(async () => {
+    await fixture.command('disable allowed');
+  });
+});
+
+test('container-gated browser streams close on logout', async () => {
+  test.setTimeout(90_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE !== '1', 'requires the disposable P02 container loopback DNS and port 443');
+  await exerciseBrowserStreamRevocation(async page => {
+    const logout = page.waitForResponse(response => response.url().startsWith(`https://${dashHost}/_anvil-connect/logout`) && response.request().method() === 'POST').catch(() => null);
+    await page.evaluate(() => fetch('/_anvil-connect/logout', { method: 'POST', redirect: 'manual' }));
+    const response = await logout;
+    expect(response).not.toBeNull();
+    expect(response.status()).toBe(303);
+  });
+});
+
+
 async function virtualAuthenticator(page, credential, overrides = {}) {
   const session = await fixture.context.newCDPSession(page);
   await session.send('WebAuthn.enable');
@@ -796,11 +931,12 @@ async function registerPasskey(page, description) {
 async function passkeyLogin(page, credential, expectedCallbackStatus = 303) {
   await page.goto(fixture.url, { waitUntil: 'domcontentloaded' });
   const authenticator = await virtualAuthenticator(page, credential);
-  const options = page.waitForResponse(response => new URL(response.url()).pathname === '/api/firstfactor/passkey' && response.request().method() === 'GET', { timeout: 10_000 });
+  const options = page.waitForResponse(response => new URL(response.url()).pathname === '/api/firstfactor/passkey' && response.request().method() === 'GET', { timeout: 10_000 }).then(response => response.json()).catch(() => null);
   const signedIn = page.waitForResponse(response => new URL(response.url()).pathname === '/api/firstfactor/passkey' && response.request().method() === 'POST', { timeout: 15_000 }).catch(() => null);
   const callback = page.waitForResponse(response => new URL(response.url()).pathname === '/_anvil-connect/callback', { timeout: 15_000 }).catch(() => null);
   await page.getByRole('button', { name: 'Sign in with a passkey', exact: true }).click();
-  const assertion = await (await options).json();
+  const assertion = await options;
+  expect(assertion).not.toBeNull();
   expect(assertion.data.publicKey.userVerification).toBe('required');
   const signedInResponse = await signedIn;
   expect(signedInResponse).not.toBeNull();

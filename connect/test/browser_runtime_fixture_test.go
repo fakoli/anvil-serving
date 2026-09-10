@@ -379,7 +379,18 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		}
 	}
 	nativeFixture := &edgeFixture{}
-	native := httptest.NewServer(http.HandlerFunc(nativeFixture.nativeDashboard))
+	var eventsStarted, eventsClosed, wsStarted, wsClosed atomic.Int64
+	native := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/events":
+			eventsStarted.Add(1)
+			defer eventsClosed.Add(1)
+		case "/ws":
+			wsStarted.Add(1)
+			defer wsClosed.Add(1)
+		}
+		nativeFixture.nativeDashboard(w, r)
+	}))
 	defer native.Close()
 	var apiRequests, apiPosts atomic.Int64
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -523,6 +534,11 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			response["count"] = strconv.FormatInt(apiRequests.Load(), 10)
 		case "api post count":
 			response["count"] = strconv.FormatInt(apiPosts.Load(), 10)
+		case "browser stream counts":
+			response["events_started"] = strconv.FormatInt(eventsStarted.Load(), 10)
+			response["events_closed"] = strconv.FormatInt(eventsClosed.Load(), 10)
+			response["ws_started"] = strconv.FormatInt(wsStarted.Load(), 10)
+			response["ws_closed"] = strconv.FormatInt(wsClosed.Load(), 10)
 		default:
 			response["error"] = "unknown fixture command"
 		}
