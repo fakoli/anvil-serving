@@ -174,6 +174,52 @@ def test_guest_prerequisites_are_closed_offline_base_tools(monkeypatch: pytest.M
     ]
 
 
+def test_role_read_probes_open_without_reading_or_host_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    commands: list[list[str]] = []
+    monkeypatch.setattr(guest, "_command", lambda argv, **kwargs: commands.append(argv))
+
+    guest._role_read_probes()
+
+    assert commands == [
+        ["/usr/bin/setpriv", "--reuid=21002", "--regid=21002", "--clear-groups", "/usr/bin/python3", "-c",
+         "import os; f=os.open('/etc/anvil-test/tls/service-key.pem', os.O_RDONLY); os.close(f)"],
+        ["/usr/bin/setpriv", "--reuid=21004", "--regid=21004", "--clear-groups", "/usr/bin/python3", "-c",
+         "import os; f=os.open('/etc/anvil-test/trust/public.pem', os.O_RDONLY); os.close(f)"],
+    ]
+    assert all("os.read" not in command[-1] for command in commands)
+
+
+def test_private_denials_cover_idp_and_tls_private_material_without_reads(monkeypatch: pytest.MonkeyPatch) -> None:
+    commands: list[list[str]] = []
+    monkeypatch.setattr(guest, "_command", lambda argv, **kwargs: commands.append(argv))
+    monkeypatch.setattr(guest.Path, "stat", lambda self: SimpleNamespace(st_mode=stat.S_IFSOCK | 0o600, st_uid=21001))
+
+    guest._private_denials()
+
+    actions = [command[-1] for command in commands if command[-2] == "-c"]
+    assert any("oidc-rs256-private-key" in action for action in actions)
+    assert any("tls/service-key.pem" in action for action in actions)
+    assert all("os.read" not in action for action in actions)
+    assert all("--clear-groups" in command for command in commands)
+
+
+def test_role_read_probes_precede_managed_readiness(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(guest, "_role_read_probes", lambda: calls.append("probes"))
+
+    def manager() -> SimpleNamespace:
+        calls.append("manager")
+        return SimpleNamespace(
+            Target=SimpleNamespace(parse=lambda value: value),
+            native_init=lambda *args, **kwargs: (_ for _ in ()).throw(guest.GuestFailure()),
+        )
+
+    monkeypatch.setattr(guest, "_manager", manager)
+    with pytest.raises(guest.GuestFailure):
+        guest._managed_readiness(Path("synthetic-manifest"))
+    assert calls[:2] == ["probes", "manager"]
+
+
 def test_result_line_is_one_closed_json_record() -> None:
     result = {
         "schema": guest.RESULT_SCHEMA,

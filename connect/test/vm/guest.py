@@ -29,6 +29,7 @@ MAX_PAYLOAD_FILE = 64 * 1024 * 1024
 MAX_PAYLOAD_ENTRIES = 4096
 MAX_PAYLOAD_BYTES = 512 * 1024 * 1024
 COMMAND_TIMEOUT = 20
+_ROLE_TRAVERSABLE_DIRECTORY_MODE = 0o711
 SERVICE_UNITS = (
     "anvil-connect-gateway.service",
     "anvil-connect-caddy.service",
@@ -423,8 +424,8 @@ def provision_secrets() -> None:
     _mkdir(secrets_root, 0, 0, 0o711)
     _mkdir(connector_root, 0, 0, 0o711)
     _mkdir(client_root, 0, 0, 0o711)
-    _mkdir(tls, 0, 0, 0o750)
-    _mkdir(trust, 0, 0, 0o750)
+    _mkdir(tls, 0, 0, _ROLE_TRAVERSABLE_DIRECTORY_MODE)
+    _mkdir(trust, 0, 0, _ROLE_TRAVERSABLE_DIRECTORY_MODE)
     client_secret, client_digest = _hash_pair()
     _, user_digest = _hash_pair()
     _write_file(root / "users.yml", ("users:\n  fixture-guest:\n    displayname: Fixture Guest\n    password: " + json.dumps(user_digest) + "\n    email: fixture-guest@example.test\n    groups: []\n").encode("utf-8"), 0, 21003, 0o640)
@@ -521,7 +522,34 @@ def _initialize_authelia_storage() -> None:
     ], timeout=30)
 
 
+def _role_open(path: Path, uid: int) -> None:
+    """Prove one declared role can open a required file without reading it."""
+    action = "import os; f=os.open(" + repr(str(path)) + ", os.O_RDONLY); os.close(f)"
+    _command([
+        "/usr/bin/setpriv", f"--reuid={uid}", f"--regid={uid}", "--clear-groups",
+        "/usr/bin/python3", "-c", action,
+    ])
+
+
+def _role_denied(path: Path, uid: int) -> None:
+    """Prove one non-owner role receives EACCES without reading the file."""
+    action = (
+        "import errno,os,sys\ntry: f=os.open(" + repr(str(path)) + ", os.O_RDONLY); os.close(f)"
+        "\nexcept OSError as e: raise SystemExit(0 if e.errno == errno.EACCES else 1)\nraise SystemExit(1)"
+    )
+    _command([
+        "/usr/bin/setpriv", f"--reuid={uid}", f"--regid={uid}", "--clear-groups",
+        "/usr/bin/python3", "-c", action,
+    ])
+
+
+def _role_read_probes() -> None:
+    _role_open(Path("/etc/anvil-test/tls/service-key.pem"), 21002)
+    _role_open(Path("/etc/anvil-test/trust/public.pem"), 21004)
+
+
 def _managed_readiness(manifest: Path) -> None:
+    _role_read_probes()
     manager = _manager()
     gateway = _manager_target("gateway")
     connector = _manager_target("connector:dashboard")
@@ -571,12 +599,17 @@ def _socket_ownership() -> None:
 
 
 def _private_denials() -> None:
-    authority = "/var/lib/anvil-test/gateway/authorities.json"
-    owner_read = "import os; f=os.open(" + repr(authority) + ", os.O_RDONLY); os.read(f, 1); os.close(f)"
-    _command(["/usr/bin/setpriv", "--reuid=21001", "--regid=21001", "--clear-groups", "/usr/bin/python3", "-c", owner_read])
-    denied = "import errno,os,sys\ntry: os.open(" + repr(authority) + ", os.O_RDONLY)\nexcept OSError as e: raise SystemExit(0 if e.errno == errno.EACCES else 1)\nraise SystemExit(1)"
-    for uid in (21002, 21003, 21004, 21005):
-        _command(["/usr/bin/setpriv", f"--reuid={uid}", f"--regid={uid}", "--clear-groups", "/usr/bin/python3", "-c", denied])
+    private_files = (
+        (Path("/var/lib/anvil-test/gateway/authorities.json"), 21001),
+        (Path("/etc/anvil-test/secrets/oidc-rs256-private-key"), 21003),
+        (Path("/etc/anvil-test/tls/service-key.pem"), 21002),
+    )
+    roles = (21001, 21002, 21003, 21004, 21005)
+    for path, owner in private_files:
+        _role_open(path, owner)
+        for uid in roles:
+            if uid != owner:
+                _role_denied(path, uid)
     admin_socket = Path("/var/lib/anvil-test/gateway/admin.sock")
     info = admin_socket.stat()
     if not stat.S_ISSOCK(info.st_mode) or info.st_uid != 21001 or stat.S_IMODE(info.st_mode) != 0o600:
