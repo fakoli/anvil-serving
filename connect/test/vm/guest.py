@@ -23,6 +23,8 @@ RESULT_PATH = Path("/var/lib/anvil-test/isolation-results.json")
 PAYLOAD_SCHEMA = "anvil-connect.isolation-guest-payload/v1"
 RESULT_SCHEMA = "anvil-connect.isolation-guest/v1"
 MARKER = "ANVIL_CONNECT_ISOLATION_GUEST_RESULT"
+SERIAL_DEVICE = "/dev/ttyS0"
+MAX_RESULT_FRAME = 64 * 1024
 MAX_PAYLOAD_FILE = 64 * 1024 * 1024
 MAX_PAYLOAD_ENTRIES = 4096
 MAX_PAYLOAD_BYTES = 512 * 1024 * 1024
@@ -722,6 +724,38 @@ def _result_line(result: dict[str, Any]) -> str:
     return MARKER + " " + json.dumps(result, sort_keys=True, separators=(",", ":"))
 
 
+def _write_serial_result(result: dict[str, Any]) -> None:
+    """Write one bounded canonical result frame directly to the guest serial port."""
+    try:
+        frame = ("\n" + _result_line(result) + "\n").encode("ascii")
+    except UnicodeEncodeError as exc:
+        raise GuestFailure from exc
+    if not 0 < len(frame) <= MAX_RESULT_FRAME:
+        raise GuestFailure
+    descriptor: int | None = None
+    try:
+        descriptor = os.open(
+            SERIAL_DEVICE,
+            os.O_WRONLY | os.O_NOFOLLOW | os.O_NOCTTY | os.O_CLOEXEC,
+        )
+        if not stat.S_ISCHR(os.fstat(descriptor).st_mode):
+            raise GuestFailure
+        pending = memoryview(frame)
+        while pending:
+            written = os.write(descriptor, pending)
+            if written <= 0:
+                raise GuestFailure
+            pending = pending[written:]
+    except OSError as exc:
+        raise GuestFailure from exc
+    finally:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
 def main() -> int:
     if os.geteuid() != 0 or not Path("/run/systemd/system").is_dir():
         return 1
@@ -749,7 +783,7 @@ def main() -> int:
         if not _cleanup() and cases:
             cases[-1] = {"name": cases[-1]["name"], "status": "failed"}
         result = _write_result(cases)
-    print(_result_line(result))
+    _write_serial_result(result)
     return 0 if result["ok"] else 1
 
 
