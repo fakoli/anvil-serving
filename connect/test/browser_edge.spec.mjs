@@ -1,6 +1,7 @@
 import { test, expect, chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
-import { chmod, lstat, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { chmod, lstat, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,7 @@ import readline from 'node:readline';
 const dashHost = 'dash.example.test';
 const authHost = 'auth.example.test';
 const connectRoot = join(fileURLToPath(new URL('.', import.meta.url)), '..');
+const defaultFixtureTest = 'pinned Caddy and Authelia browser edge retains Connect and native controls';
 let fixture;
 
 async function waitForExit(child, milliseconds) {
@@ -28,8 +30,8 @@ function cleanExit(result) {
 }
 
 function fixtureMarker(line) {
-  const match = /\bbrowser_edge_fixture_test\.go:(\d+):/.exec(line);
-  return match ? `browser_edge_fixture_test.go:${match[1]}` : '';
+  const match = /\b(browser_(?:edge|runtime)_fixture_test\.go):(\d+):/.exec(line);
+  return match ? `${match[1]}:${match[2]}` : '';
 }
 
 async function stopChild(child) {
@@ -54,9 +56,9 @@ async function stopChild(child) {
   throw new Error(`owned edge fixture did not cleanly exit after EOF (${afterEOF.error ? 'spawn error' : afterEOF.code ?? afterEOF.signal ?? 'timeout'})`);
 }
 
-function run(command, args, timeout = 10_000) {
+function run(command, args, timeout = 10_000, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], ...options });
     let output = '';
     const append = data => { output = (output + data).slice(-8192); };
     child.stdout.on('data', append); child.stderr.on('data', append);
@@ -66,6 +68,76 @@ function run(command, args, timeout = 10_000) {
       clearTimeout(timer);
       code === 0 ? resolve() : reject(new Error(`${command} exited (${code}): ${output}`));
     });
+  });
+}
+
+async function buildDeviceCLI(directory) {
+  const binary = join(directory, 'anvil-connect');
+  await run(process.env.ANVIL_CONNECT_GO || 'go', ['build', '-o', binary, './cmd/anvil-connect'], 60_000, { cwd: connectRoot });
+  return binary;
+}
+
+async function startDeviceCLI(binary, value) {
+  const trustDirectory = join(value.dir, 'cli-empty-ca');
+  await mkdir(trustDirectory, { mode: 0o700 });
+  const env = {
+    PATH: process.env.PATH,
+    HOME: value.client_home,
+    XDG_CONFIG_HOME: join(value.client_home, '.config'),
+    XDG_CACHE_HOME: join(value.client_home, '.cache'),
+    XDG_DATA_HOME: join(value.client_home, '.data'),
+    SSL_CERT_FILE: value.ca,
+    SSL_CERT_DIR: trustDirectory,
+  };
+  const child = spawn(binary, ['login', '--json'], { cwd: connectRoot, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  child.stderr.resume();
+  const lines = readline.createInterface({ input: child.stdout });
+  let settleChallenge;
+  let settleReady;
+  const challenge = new Promise((resolve, reject) => { settleChallenge = { resolve, reject }; });
+  const ready = new Promise((resolve, reject) => { settleReady = { resolve, reject }; });
+  // Either wait is consumed by the test, but startup failure can occur before
+  // it reaches the second one. Mark both rejections handled without retaining
+  // the child diagnostic stream.
+  void challenge.catch(() => {});
+  void ready.catch(() => {});
+  const fail = () => {
+    settleChallenge.reject(new Error('device-cli-exited'));
+    settleReady.reject(new Error('device-cli-exited'));
+  };
+  child.once('error', fail);
+  child.once('exit', fail);
+  lines.on('line', line => {
+    let message;
+    try { message = JSON.parse(line); } catch { return; }
+    if (message.verification_uri && message.user_code) {
+      settleChallenge.resolve({ verificationURI: message.verification_uri, userCode: message.user_code });
+    }
+    if (message.status === 'running' && message.local_base_url && message.session_id && message.expires_at) {
+      settleReady.resolve({ baseURL: message.local_base_url, sessionID: message.session_id, expiresAt: message.expires_at });
+    }
+  });
+  return { child, challenge, ready };
+}
+
+async function stopDeviceCLI(value) {
+  if (value?.child?.exitCode === null && value.child.signalCode === null) value.child.kill('SIGINT');
+  const result = await waitForExit(value?.child, 8_000);
+  if (!cleanExit(result)) throw new Error('device-cli-did-not-stop-cleanly');
+}
+
+async function loopbackResponse(baseURL, method, key) {
+  const headers = key ? { Authorization: `Bearer ${key}` } : {};
+  return fetch(`${baseURL}/models`, { method, headers, redirect: 'error' });
+}
+
+async function assertLoopbackReleased(baseURL) {
+  const url = new URL(baseURL);
+  const port = Number(url.port);
+  await new Promise((resolve, reject) => {
+    const listener = net.createServer();
+    listener.once('error', reject);
+    listener.listen({ host: '127.0.0.1', port }, () => listener.close(error => error ? reject(error) : resolve()));
   });
 }
 
@@ -83,7 +155,17 @@ async function verifyUntrustedCertificate(resolver, home) {
   try {
     const page = await browser.newPage();
     let rejected = false;
-    try { await page.goto(`https://${dashHost}`, { waitUntil: 'commit', timeout: 10_000 }); } catch (error) { rejected = /ERR_CERT|certificate/i.test(String(error)); }
+    try {
+      await page.goto(`https://${dashHost}`, { waitUntil: 'commit', timeout: 10_000 });
+    } catch (error) {
+      const detail = String(error);
+      if (/ERR_CERT|certificate/i.test(detail)) {
+        rejected = true;
+      } else {
+        const networkClass = ['net::ERR_CONNECTION_REFUSED', 'net::ERR_CONNECTION_CLOSED', 'net::ERR_NAME_NOT_RESOLVED', 'net::ERR_CONNECTION_TIMED_OUT'].find(value => detail.includes(value));
+        throw new Error(networkClass || 'browser-navigation-failed');
+      }
+    }
     if (!rejected) throw new Error('unknown fixture certificate was accepted by an untrusted Chromium child');
   } finally {
     await browser.close();
@@ -248,10 +330,20 @@ async function resumeGrantedAuthorization(page) {
   await expect(page.locator('#dashboard')).toHaveText('native dashboard');
 }
 
-test.beforeAll(async () => { fixture = await startFixture(); });
-test.afterAll(async () => { if (fixture) await cleanup(fixture); });
+// The runtime and device cases own a separate fixture stack. Starting the
+// simple edge fixture globally would leave an unused Caddy/Authelia pair alive
+// for those cases and exhaust the deliberately small container PID budget.
+test.beforeEach(async ({}, testInfo) => {
+  if (testInfo.title === defaultFixtureTest) fixture = await startFixture();
+});
+test.afterEach(async ({}, testInfo) => {
+  if (testInfo.title !== defaultFixtureTest || !fixture) return;
+  const defaultFixture = fixture;
+  fixture = undefined;
+  await cleanup(defaultFixture);
+});
 
-test('pinned Caddy and Authelia browser edge retains Connect and native controls', async () => {
+test(defaultFixtureTest, async () => {
   // Authelia intentionally issues an opaque public UUID for the file user.
   // The first real OIDC response proves Connect default-denies an ungranted
   // subject; the fixture then grants the exported opaque subject exactly.
@@ -335,5 +427,62 @@ test('managed gateway and connector lifecycle retain the real browser edge', asy
     const runtimeFixture = fixture;
     fixture = edgeFixture;
     await cleanup(runtimeFixture);
+  }
+});
+
+test('container-gated CLI device login reaches only its declared API resource', async () => {
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE !== '1', 'requires the disposable P02 container loopback DNS and port 443');
+  const edgeFixture = fixture;
+  let loginSession;
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE');
+  try {
+    // The ordinary browser admission remains real: the fixture grants only the
+    // opaque subject returned by Authelia, then the device form binds its
+    // one-time code to that authenticated browser session.
+    const page = await freshPage();
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+
+    const cli = await buildDeviceCLI(fixture.dir);
+    loginSession = await startDeviceCLI(cli, fixture);
+    const challenge = await loginSession.challenge;
+    expect(challenge.verificationURI).toBe(`https://${dashHost}/_anvil-connect/device`);
+    expect(challenge.userCode).toMatch(/^[A-Z2-7]{8}$/);
+
+    await page.goto(challenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Approve device' })).toBeVisible();
+    await page.getByLabel('Code').fill(challenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    await expect(page.locator('body')).toContainText('Device decision recorded');
+
+    const ready = await loginSession.ready;
+    expect(ready.baseURL).toBe(fixture.local_base_url);
+    expect(ready.sessionID).toMatch(/^[0-9a-f]{32}$/);
+    expect(Number.isNaN(Date.parse(ready.expiresAt))).toBe(false);
+
+    // The local credential remains an independent boundary after browser
+    // approval. It is loaded only from the owner-only sibling fixture file
+    // and never placed in an argv, test message, or retained artifact.
+    expect((await loopbackResponse(ready.baseURL, 'GET')).status).toBe(401);
+    expect((await loopbackResponse(ready.baseURL, 'GET', 'acl1.invalid')).status).toBe(401);
+    const localKey = (await readFile(fixture.local_key, 'utf8')).trim();
+    const models = await loopbackResponse(ready.baseURL, 'GET', localKey);
+    expect(models.status).toBe(200);
+    expect((await models.json()).data).toEqual([{ id: 'fixture-model' }]);
+    // The local rule permits POST structurally, but this device credential was
+    // issued for GET only. The remote API authority must still reject it.
+    expect((await loopbackResponse(ready.baseURL, 'POST', localKey)).status).toBe(401);
+    expect((await fixture.command('api post count')).count).toBe('0');
+
+    await stopDeviceCLI(loginSession);
+    loginSession = undefined;
+    await assertLoopbackReleased(ready.baseURL);
+  } finally {
+    try { await stopDeviceCLI(loginSession); } finally {
+      const deviceFixture = fixture;
+      fixture = edgeFixture;
+      await cleanup(deviceFixture);
+    }
   }
 });

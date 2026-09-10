@@ -39670,11 +39670,20 @@
         },
         {
           "flags": [
+            "--prepare-container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicitly download public pinned dependencies and prepare the local test image; exclusive with --lane.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--lane"
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Qualification lane; defaults to baseline.",
+          "summary": "baseline, container-baseline or device; defaults to baseline.",
           "value_name": "LANE"
         },
         {

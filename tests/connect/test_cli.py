@@ -264,3 +264,38 @@ assert cli.main(['connect', '--help']) == 0
 """
     result = subprocess.run([sys.executable, "-c", script, str(installed)], cwd=tmp_path, env=os.environ | {"PYTHONPATH": str(installed)}, check=True, capture_output=True, text=True, timeout=20)
     assert "Anvil Connect" in result.stdout
+
+
+def test_qualification_container_preparation_is_explicit(monkeypatch, capsys):
+    calls = []
+    def prepare(config):
+        calls.append(config)
+        return {"schema": "anvil-connect.qualification-container/v1", "reused": True}
+    monkeypatch.setitem(sys.modules, "anvil_serving.connect.qualification_container", SimpleNamespace(prepare=prepare))
+    assert cli.main(["connect", "qualify", "--prepare-container", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["data"]["reused"] is True
+    assert calls == [None]
+    assert dispatch(["qualify", "--prepare-container", "--lane", "baseline"]).error is not None
+    assert calls == [None]
+
+
+def test_qualification_container_error_does_not_echo_build_output(monkeypatch, capsys):
+    from anvil_serving.connect.qualification import QualificationError
+    def prepare(config):
+        raise QualificationError("runner-failed", "private-build-sentinel")
+    monkeypatch.setitem(sys.modules, "anvil_serving.connect.qualification_container", SimpleNamespace(prepare=prepare))
+    assert cli.main(["connect", "qualify", "--prepare-container", "--json"]) != 0
+    output = capsys.readouterr().out
+    assert "private-build-sentinel" not in output
+    assert json.loads(output)["data"]["error_code"] == "runner-failed"
+
+
+def test_container_baseline_dispatch_uses_saved_configuration(monkeypatch, capsys):
+    calls = []
+    def qualify(config, *, lane):
+        calls.append((config, lane))
+        return {"ok":True,"state":"passed","counts":{"passed":2,"failed":0,"skipped":0,"not_run":0}}
+    monkeypatch.setitem(sys.modules,"anvil_serving.connect.qualification_container_run",SimpleNamespace(qualify=qualify))
+    assert cli.main(["connect","qualify","--lane","container-baseline","--config","/private/settings.toml","--json"]) == 0
+    assert calls == [("/private/settings.toml", "container-baseline")]
+    assert json.loads(capsys.readouterr().out)["data"]["counts"]["passed"] == 2
