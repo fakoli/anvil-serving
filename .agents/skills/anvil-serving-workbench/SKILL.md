@@ -61,8 +61,9 @@ narration.
   `gpu_inventory`, `host_shared_memory`, `operator_config_inventory`,
   `operator_config_export`, `observability_collect`, `host_manage`,
   `host_services_status`, `host_services_discover`, `host_services_capabilities`,
-  `host_services_logs`, `host_services_manage`,
-  `models_inventory`, `recipe_containers`, `recipe_settings`, `model_cache_inventory`, and
+  `host_services_logs`, `host_services_manage`, `container_exec`,
+  `models_inventory`, `recipe_containers`, `recipe_settings`, `recipe_manage`,
+  `model_cache_inventory`, and
   `cache_prune_plan`.
 - Harness: `openclaw_sync`, `client_catalog_sync`, `routed_eval`, `hermes_media_sync`,
   `openclaw_gateway_status`, and `openclaw_gateway_restart`.

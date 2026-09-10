@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Anvil Workbench · Design concept</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="workbench.css" />
+    <link rel="stylesheet" href="pi-surface.css" />
+    <link rel="stylesheet" href="settings.css" />
+    <link rel="stylesheet" href="observability.css" />
+    <link rel="stylesheet" href="compute-surface.css" />
+    <script defer src="pi-surface.js"></script>
+    <script defer src="settings.js"></script>
+    <script defer src="observability.js"></script>
+    <script defer src="compute-surface.js"></script>
+    <script defer src="workbench.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to workspace</a>
+    <aside class="sidebar">
+      <a class="brand" href="#bench"
+        ><svg viewBox="0 0 36 36" aria-hidden="true">
+          <path
+            d="M3 8h30l-8 9H14l-5-4H3zm12 12h10l3 8H11z"
+            fill="currentColor"
+          /></svg
+        ><span>ANVIL<small>WORKBENCH</small></span></a
+      >
+      <div class="workspace-label">
+        <span class="workspace-icon">L</span
+        ><span
+          ><span id="workspace-name">Local research</span
+          ><small>Personal workspace</small></span
+        >
+      </div>
+      <p class="nav-label">WORKSPACE</p>
+      <nav aria-label="Main navigation">
+        <a href="#bench" data-page="bench"
+          ><span aria-hidden="true">◫</span>Workbench</a
+        >
+        <a href="#playground" data-page="playground"
+          ><span aria-hidden="true">›_</span>Playground</a
+        >
+        <a href="#models" data-page="models"
+          ><span aria-hidden="true">◇</span>Models & recipes</a
+        >
+        <a href="#work" data-page="work"
+          ><span aria-hidden="true">☷</span>Anvil work</a
+        >
+        <a href="#observability/fleet" data-page="observability"
+          ><span aria-hidden="true">⌁</span>Observability</a
+        >
+        <a href="#compute" data-page="compute"
+          ><span aria-hidden="true">⊞</span>Compute</a
+        >
+        <a href="#docs" data-page="docs" class="nav-utility"
+          ><span aria-hidden="true">▤</span>Documentation</a
+        >
+        <a href="#settings" data-page="settings" class="mobile-settings"
+          ><span aria-hidden="true">⚙</span>Settings</a
+        >
+      </nav>
+      <div class="sidebar-bottom">
+        <a href="#settings" data-page="settings" class="settings-entry"
+          ><span aria-hidden="true">⚙</span>Settings</a
+        >
+        <a href="#architecture">Design & architecture <span>↗</span></a>
+        <div class="identity">
+          <span class="avatar">OP</span
+          ><span>Operator<small>Design review</small></span
+          ><span class="dot"></span>
+        </div>
+      </div>
+    </aside>
+    <div class="shell">
+      <header class="topbar">
+        <div class="breadcrumb">
+          <span id="breadcrumb-workspace" style="margin: 0; color: inherit"
+            >Local research</span
+          >
+          <span>/</span> <b id="crumb">Workbench</b>
+        </div>
+        <button class="search-button" id="command-open">
+          Find a model, run, or action <kbd>Ctrl K</kbd></button
+        ><span class="concept">CONCEPT 03</span>
+      </header>
+      <div class="demo-banner">
+        <span class="dot amber"></span> Interactive design study
+        <span class="muted"
+          >All models, metrics, and actions are simulated.</span
+        ><button id="scenario-toggle">Show stale telemetry</button>
+      </div>
+      <section
+        class="status-strip"
+        aria-label="System status and compute selection"
+        id="hud"
+      ></section>
+      <div class="content-layout">
+        <main id="main" tabindex="-1"></main>
+      </div>
+      <footer>
+        <span><span class="dot amber"></span> SAMPLE ENVIRONMENT</span
+        ><span>Serving · Telemetry · Anvil State</span
+        ><span>Working name / design proposal</span>
+      </footer>
+    </div>
+    <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+    <div
+      id="announcer"
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+  </body>
+</html>

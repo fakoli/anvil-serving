@@ -1,5 +1,9 @@
 # Anvil Workbench integration
 
+For the integrated workspace that replaces the Observatory shell, see
+[Anvil Workbench portal](WORKBENCH-PORTAL.md). This page describes the earlier,
+separately installed companion hub and its retained Compose lifecycle.
+
 Anvil Workbench is an optional, separate private-tailnet product. It is not a router component and is not an Anvil State authority.
 
 - Anvil State remains the canonical owner of PRDs, task claims, evidence, and acceptance.

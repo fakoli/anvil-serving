@@ -64,5 +64,4 @@ def test_connect_access_view_uses_text_only_metadata_manual_refresh_and_no_accou
 def test_access_route_skips_fleet_reads_and_auto_refresh() -> None:
     source = (STATIC / "observatory.js").read_text(encoding="utf-8")
     assert 'if (target.page !== "access") {' in source
-    assert '!["configuration", "experiments", "settings", "logs", "access"].includes(target.page)' in source
-    assert '!["configuration", "experiments", "settings", "access"].includes(parseRoute().page)' in source
+    assert '"access","workbench","playground","models","work","compute","documentation"' in "".join(source.split())

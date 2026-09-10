@@ -365,11 +365,11 @@ def commands() -> tuple[CommandNode, ...]:
         ),
         _node(
             "dashboard",
-            "Serve the read-only system observability dashboard.",
+            "Serve the authenticated Workbench or local telemetry dashboard.",
             children=(
                 _resource_node(
                     "serve",
-                    "Serve the packaged local dashboard.",
+                    "Serve the configured Anvil Workbench or packaged local dashboard.",
                     "anvil_serving.observability.dashboard.app",
                     role="host",
                     options=(
@@ -411,7 +411,7 @@ def commands() -> tuple[CommandNode, ...]:
                         ),
                         _option(
                             "--observatory-config",
-                            summary="Absolute private Observatory integration/session policy; control remains explicitly opt-in.",
+                            summary="Absolute private integration/session policy; defaults to operator-home workbench.json when installed.",
                             value_name="PATH",
                         ),
                     ),
