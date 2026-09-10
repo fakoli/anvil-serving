@@ -1107,6 +1107,30 @@ async function apiStreamCounts(timeout = 5_000) {
   return counts;
 }
 
+async function apiRequestCount(timeout = 5_000) {
+  const result = await fixture.command('api request count', timeout);
+  expect(Object.keys(result).sort()).toEqual(['ack', 'count']);
+  expect(result.ack).toBe('api request count');
+  expect(result.count).toMatch(/^(0|[1-9]\d*)$/);
+  return result.count;
+}
+
+async function expectFreshCLIStreamsDenied(baseURL, localKey) {
+  // The native fixture counts every API arrival before header/auth checks. Both
+  // this total and the post-auth stream counters must remain unchanged: a 401
+  // alone would not prove the denied loopback request stopped at Connect.
+  const [beforeRequests, beforeStreams] = await Promise.all([apiRequestCount(), apiStreamCounts()]);
+  const resources = new Set();
+  try {
+    expect(await streamHTTPStatus(baseURL, '/events', localKey, false, resources)).toBe(401);
+    expect(await streamHTTPStatus(baseURL, '/ws', localKey, true, resources)).toBe(401);
+  } finally {
+    destroyOwned(resources);
+  }
+  expect(await apiStreamCounts()).toEqual(beforeStreams);
+  expect(await apiRequestCount()).toBe(beforeRequests);
+}
+
 async function expectCLIStreamClosure(started, clientClosed) {
   const withinBound = action => {
     const remaining = 1_000 - (performance.now() - started);
@@ -1379,15 +1403,7 @@ async function exerciseCLIStreamRevocation(mutate) {
     const closureMs = await expectCLIStreamClosure(started, clientClosed);
     test.info().annotations.push({ type: 'closure_ms', description: String(closureMs) });
 
-    const beforeDenied = await apiStreamCounts();
-    const denialResources = new Set();
-    try {
-      expect(await streamHTTPStatus(ready.baseURL, '/events', localKey, false, denialResources)).toBe(401);
-      expect(await streamHTTPStatus(ready.baseURL, '/ws', localKey, true, denialResources)).toBe(401);
-    } finally {
-      destroyOwned(denialResources);
-    }
-    expect(await apiStreamCounts()).toEqual(beforeDenied);
+    await expectFreshCLIStreamsDenied(ready.baseURL, localKey);
 
     await stopDeviceCLI(loginSession);
     loginSession = undefined;
@@ -1486,15 +1502,7 @@ test('container-gated browser and CLI streams close on session expiry', async ()
     await expectFreshBrowserStreamsDenied(page);
     expect(await browserStreamCounts()).toEqual(beforeBrowserDenied);
 
-    const beforeCLIDenied = await apiStreamCounts();
-    const denialResources = new Set();
-    try {
-      expect(await streamHTTPStatus(ready.baseURL, '/events', localKey, false, denialResources)).toBe(401);
-      expect(await streamHTTPStatus(ready.baseURL, '/ws', localKey, true, denialResources)).toBe(401);
-    } finally {
-      destroyOwned(denialResources);
-    }
-    expect(await apiStreamCounts()).toEqual(beforeCLIDenied);
+    await expectFreshCLIStreamsDenied(ready.baseURL, localKey);
 
     await stopDeviceCLI(loginSession);
     loginSession = undefined;
@@ -1668,15 +1676,7 @@ test('container-gated browser and CLI streams close on authority reset', async (
     await expectFreshBrowserStreamsDenied(page);
     expect(await browserStreamCounts()).toEqual(beforeBrowserDenied);
 
-    const beforeCLIDenied = await apiStreamCounts();
-    const denialResources = new Set();
-    try {
-      expect(await streamHTTPStatus(ready.baseURL, '/events', localKey, false, denialResources)).toBe(401);
-      expect(await streamHTTPStatus(ready.baseURL, '/ws', localKey, true, denialResources)).toBe(401);
-    } finally {
-      destroyOwned(denialResources);
-    }
-    expect(await apiStreamCounts()).toEqual(beforeCLIDenied);
+    await expectFreshCLIStreamsDenied(ready.baseURL, localKey);
     expect(await restartPostCounts()).toMatchObject({ started: '1', closed: '1' });
 
     await stopDeviceCLI(loginSession);
@@ -1799,15 +1799,7 @@ test('container-gated browser and CLI credentials fail closed after restore', as
     await expectFreshBrowserStreamsDenied(page);
     expect(await browserStreamCounts()).toEqual(beforeBrowserDenied);
 
-    const beforeCLIDenied = await apiStreamCounts();
-    const denialResources = new Set();
-    try {
-      expect(await streamHTTPStatus(ready.baseURL, '/events', localKey, false, denialResources)).toBe(401);
-      expect(await streamHTTPStatus(ready.baseURL, '/ws', localKey, true, denialResources)).toBe(401);
-    } finally {
-      destroyOwned(denialResources);
-    }
-    expect(await apiStreamCounts()).toEqual(beforeCLIDenied);
+    await expectFreshCLIStreamsDenied(ready.baseURL, localKey);
     expect(await restartPostCounts()).toMatchObject({ started: '1', closed: '1' });
 
     const reapproved = await fixture.command('reapprove restored access');
@@ -1836,15 +1828,7 @@ test('container-gated browser and CLI credentials fail closed after restore', as
     // The first forwarder remains alive on its distinct loopback port. Its
     // original remote credential must stay denied after fresh authority has
     // issued the secondary client's new one.
-    const beforeOldCLIDenied = await apiStreamCounts();
-    const oldDenialResources = new Set();
-    try {
-      expect(await streamHTTPStatus(ready.baseURL, '/events', localKey, false, oldDenialResources)).toBe(401);
-      expect(await streamHTTPStatus(ready.baseURL, '/ws', localKey, true, oldDenialResources)).toBe(401);
-    } finally {
-      destroyOwned(oldDenialResources);
-    }
-    expect(await apiStreamCounts()).toEqual(beforeOldCLIDenied);
+    await expectFreshCLIStreamsDenied(ready.baseURL, localKey);
 
     // Fresh authority must not revive the pre-restore opaque browser session.
     const beforeOldReplay = await browserStreamCounts();
@@ -1944,15 +1928,7 @@ test('container-gated CLI key revocation preserves other sessions', async () => 
     const closureMs = await expectCLIStreamClosure(started, primaryClosed);
     test.info().annotations.push({ type: 'closure_ms', description: String(closureMs) });
 
-    const beforePrimaryDenial = await apiStreamCounts();
-    const denialResources = new Set();
-    try {
-      expect(await streamHTTPStatus(primaryReady.baseURL, '/events', primaryKey, false, denialResources)).toBe(401);
-      expect(await streamHTTPStatus(primaryReady.baseURL, '/ws', primaryKey, true, denialResources)).toBe(401);
-    } finally {
-      destroyOwned(denialResources);
-    }
-    expect(await apiStreamCounts()).toEqual(beforePrimaryDenial);
+    await expectFreshCLIStreamsDenied(primaryReady.baseURL, primaryKey);
     expect((await loopbackResponse(secondaryReady.baseURL, 'GET', secondaryKey)).status).toBe(200);
 
     const stopped = await fixture.command('stop runtime');
@@ -1960,15 +1936,7 @@ test('container-gated CLI key revocation preserves other sessions', async () => 
     const restarted = await fixture.command('start runtime', 60_000);
     expect(restarted).toEqual({ ack: 'start runtime', epoch_equal: 'true' });
 
-    const afterRestartDenial = await apiStreamCounts();
-    const restartedDenialResources = new Set();
-    try {
-      expect(await streamHTTPStatus(primaryReady.baseURL, '/events', primaryKey, false, restartedDenialResources)).toBe(401);
-      expect(await streamHTTPStatus(primaryReady.baseURL, '/ws', primaryKey, true, restartedDenialResources)).toBe(401);
-    } finally {
-      destroyOwned(restartedDenialResources);
-    }
-    expect(await apiStreamCounts()).toEqual(afterRestartDenial);
+    await expectFreshCLIStreamsDenied(primaryReady.baseURL, primaryKey);
     expect((await loopbackResponse(secondaryReady.baseURL, 'GET', secondaryKey)).status).toBe(200);
     expect(await restartPostCounts()).toMatchObject({ started: '0', closed: '0' });
 
