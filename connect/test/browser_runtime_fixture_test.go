@@ -120,9 +120,11 @@ func runtimeFixtureBrowserAdministration(profile runtimeFixtureProfile, deviceHu
 	}
 }
 
-// runtimeCaddyConfig is the same public split used by the managed renderer:
-// the tunnel and resource upgrades take HTTP/1.1, while ordinary browser, API,
-// and control requests use h2c over the gateway's same-UID ingress socket.
+// runtimeCaddyConfig is the same public split used by the managed renderer.
+// This fixture remains protocol-only: the tunnel and resource upgrades take
+// HTTP/1.1, while ordinary browser, API, and control requests use h2c over its
+// same-UID ingress socket. Managed activation uses the declared cross-UID
+// ingress policy.
 func runtimeCaddyConfig(listen, authListen, socket, certificate, key string, browserHosts []string) map[string]any {
 	headers := []string{"Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP", "X-Anvil-Connect-User", "X-Anvil-Connect-Groups", "X-Auth-Request-User", "X-Auth-Request-Email", "X-Authenticated-User", "X-Authenticated-Groups", "Remote-User", "Remote-Groups", "Remote-Email", "Remote-Name", "Cf-Access-Jwt-Assertion", "X-Goog-Authenticated-User", "X-Goog-Authenticated-User-Email", "X-Amzn-Oidc-Data", "X-Amzn-Oidc-Identity", "X-Amzn-Oidc-Accesstoken", "Tailscale-User-Login"}
 	clean := map[string]any{"handler": "headers", "request": map[string]any{"delete": headers}}
@@ -531,7 +533,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	t.Cleanup(func() { http.DefaultTransport = originalDefault; issuerTransport.CloseIdleConnections() })
 	gatewaySecrets := func(name string) (string, bool) { return clientSecret, name == "OIDC_CLIENT_SECRET" }
 	gatewayContext, gatewayCancel := context.WithCancel(context.Background())
-	gateway, err := connectruntime.StartGateway(gatewayContext, gatewayCfg, gatewaySecrets)
+	gateway, err := connectruntime.ComposeGatewayForProtocolFixture(gatewayContext, gatewayCfg, gatewaySecrets)
 	if err != nil {
 		gatewayCancel()
 		t.Fatal(err)
@@ -881,7 +883,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 				break
 			}
 			restoredContext, restoredCancel := context.WithCancel(context.Background())
-			restoredGateway, startErr := connectruntime.StartGateway(restoredContext, restoredCfg, gatewaySecrets)
+			restoredGateway, startErr := connectruntime.ComposeGatewayForProtocolFixture(restoredContext, restoredCfg, gatewaySecrets)
 			if startErr != nil {
 				restoredCancel()
 				_ = caddyChild.Close()
@@ -980,7 +982,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			connector = nil
 			priorTunnels := proxyObserver.count(edgeTunnelHost + ":443")
 			restartedContext, restartedCancel := context.WithCancel(context.Background())
-			restartedGateway, startErr := connectruntime.StartGateway(restartedContext, gatewayCfg, gatewaySecrets)
+			restartedGateway, startErr := connectruntime.ComposeGatewayForProtocolFixture(restartedContext, gatewayCfg, gatewaySecrets)
 			if startErr != nil {
 				restartedCancel()
 				response["error"] = "gateway restart failed"

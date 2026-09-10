@@ -23,6 +23,7 @@ import (
 	"github.com/fakoli/anvil-serving/connect/internal/device"
 	"github.com/fakoli/anvil-serving/connect/internal/httpedge"
 	"github.com/fakoli/anvil-serving/connect/internal/identity"
+	"github.com/fakoli/anvil-serving/connect/internal/ingresshttp"
 	"github.com/fakoli/anvil-serving/connect/internal/localhttp"
 	"github.com/fakoli/anvil-serving/connect/internal/privatefiles"
 	"github.com/fakoli/anvil-serving/connect/internal/session"
@@ -118,10 +119,37 @@ func (g *Gateway) serve(server *http.Server, listener net.Listener) {
 	}()
 }
 
-// StartGateway starts only validated, explicitly initialized private state.
-// All public traffic must arrive over its same-UID Unix ingress behind the
-// managed TLS edge. No TCP application/admin listener is opened here.
+// StartGateway is the shipped activation boundary. It requires a separate edge
+// identity and verifies its ingress directory before opening authority state.
+// Administration remains owner-only; no TCP application/admin listener opens.
 func StartGateway(parent context.Context, declaration GatewayConfig, secrets SecretSource) (_ *Gateway, result error) {
+	if parent == nil || parent.Err() != nil || declaration.Validate() != nil || declaration.Ingress == nil || secrets == nil {
+		return nil, ErrConfiguration
+	}
+	listener, err := ingresshttp.Listen(*declaration.Ingress)
+	if err != nil {
+		return nil, ErrUnavailable
+	}
+	defer func() {
+		if result != nil {
+			_ = listener.Close()
+		}
+	}()
+	return composeGateway(parent, declaration, secrets, listener)
+}
+
+// ComposeGatewayForProtocolFixture assembles trusted, same-UID protocol tests.
+// It is internal Go composition, never a CLI/configuration/environment option.
+// It supplies no service-isolation proof and rejects isolated declarations;
+// those must exercise StartGateway and its actual peer/ownership checks.
+func ComposeGatewayForProtocolFixture(parent context.Context, declaration GatewayConfig, secrets SecretSource) (*Gateway, error) {
+	if declaration.Ingress != nil {
+		return nil, ErrConfiguration
+	}
+	return composeGateway(parent, declaration, secrets, nil)
+}
+
+func composeGateway(parent context.Context, declaration GatewayConfig, secrets SecretSource, ingressListener net.Listener) (_ *Gateway, result error) {
 	if parent == nil || parent.Err() != nil || declaration.Validate() != nil || secrets == nil {
 		return nil, ErrConfiguration
 	}
@@ -316,11 +344,13 @@ func StartGateway(parent context.Context, declaration GatewayConfig, secrets Sec
 			}
 		}
 	})
-	listener, err := localhttp.Listen(directory, "ingress.sock")
-	if err != nil {
-		return nil, ErrUnavailable
+	if ingressListener == nil {
+		ingressListener, err = localhttp.Listen(directory, "ingress.sock")
+		if err != nil {
+			return nil, ErrUnavailable
+		}
 	}
-	g.serve(nativeServer(ctx, ingress), listener)
+	g.serve(nativeServer(ctx, ingress), ingressListener)
 	// A managed supervisor restarts the whole owned generation before the
 	// ephemeral gateway/backend service certificates expire. This bounded
 	// lifetime is explicit; it never silently serves with expired identities.
