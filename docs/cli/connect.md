@@ -195,6 +195,38 @@ This documents the bounded fixture scope; it does not claim an executed
 qualification result, reboot behavior or external-supervisor recovery. Virtual
 and physical passkeys and component-level authority checks have separate evidence.
 
+Prepare the pinned systemd guest image, then run service-isolation qualification:
+
+```sh
+anvil-serving connect qualify --prepare-vm
+anvil-serving connect qualify --lane isolation
+```
+
+Both commands use the same saved qualification settings. Preparation verifies
+the signed image checksum and pinned image bytes, then stores an owner-only
+receipt. Repeating preparation verifies and reuses the cache. The isolation lane
+requires that prepared image and never downloads it implicitly. It also requires
+the pinned local component tools, cached Go modules, QEMU, KVM, xorriso and the
+declared firmware on Linux amd64.
+
+The runner uses a disposable guest with two CPUs and 2 GiB of guest RAM. It has
+no guest network interface, GPU, shared host directory or host service socket.
+The payload contains a verified source snapshot and synthetic configuration;
+accounts, keys and certificates are generated only inside the guest. The host
+runner remains unprivileged. Host memory, disk, time and output checks bound the
+run; guest RAM is not a claim of a host cgroup memory limit.
+
+This lane checks actual installed service identities and unit bytes, Unix peer
+authorization, private-file and administration denials, TLS/provider discovery,
+certificate replacement, restart, failed-activation rollback and CLI shutdown
+cleanup. It retains the same four evidence files after removing guest staging.
+A missing final guest report has unavailable per-case outcomes and cannot pass;
+it is not evidence that the cases were never attempted. Full browser sign-in and
+physical passkeys retain their separate qualification scopes. Command availability
+does not establish that a guest run or production deployment has passed. An
+interrupted isolation run returns a nonzero, redacted result with its safe
+execution state and available case counts.
+
 ## Validate
 
 `connect validate` checks declarations and component prerequisites. An optional
