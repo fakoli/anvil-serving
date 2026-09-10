@@ -73,9 +73,25 @@ def _cases(raw: bytes) -> list[dict[str, str]]:
                 or len(data["cases"]) != len(_CASES)):
             raise ValueError
         for case, name in zip(data["cases"], _CASES, strict=True):
-            if (not isinstance(case, dict) or set(case) != {"name", "status"}
+            if (not isinstance(case, dict) or set(case) not in ({"name", "status"}, {"name", "status", "failure"})
                     or case["name"] != name or case["status"] not in {"passed", "failed"}):
                 raise ValueError
+            if "failure" in case:
+                failure = case["failure"]
+                if (case["status"] != "failed" or not isinstance(failure, dict)
+                        or set(failure) != {"kind", "errno", "returncode", "frames"}
+                        or failure["kind"] not in {"fixture", "os", "timeout", "other"}
+                        or not isinstance(failure["frames"], list) or len(failure["frames"]) > 8):
+                    raise ValueError
+                for key, low, high in (("errno", 1, 4096), ("returncode", -(2 ** 31), 2 ** 31)):
+                    value = failure[key]
+                    if value is not None and (type(value) is not int or not low <= value < high):
+                        raise ValueError
+                for frame in failure["frames"]:
+                    if (not isinstance(frame, dict) or set(frame) != {"source", "line"}
+                            or frame["source"] not in {"guest", "manage", "config", "render"}
+                            or type(frame["line"]) is not int or not 0 < frame["line"] < 100_000):
+                        raise ValueError
         if data["ok"] != all(case["status"] == "passed" for case in data["cases"]):
             raise ValueError
         return data["cases"]

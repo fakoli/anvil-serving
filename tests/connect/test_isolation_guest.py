@@ -331,3 +331,24 @@ def test_write_file_retries_short_writes(tmp_path: Path, monkeypatch: pytest.Mon
     guest._write_file(path, b"three", 0, 0, 0o600)
     assert calls == 5
     assert path.read_bytes() == b"three"
+
+
+def test_failure_location_never_retains_exception_text_arguments_or_foreign_paths():
+    namespace = {}
+    exec(compile("def fail():\n    raise PermissionError(13, 'SECRET_MARKER', '/private/SECRET_MARKER')\n", '/private/SECRET_MARKER.py', 'exec'), namespace)
+    case = guest._case(guest.CASES[2], namespace['fail'])
+    assert case['status'] == 'failed'
+    failure = case['failure']
+    assert failure['kind'] == 'os' and failure['errno'] == 13
+    assert failure['frames'] and all(frame['source'] == 'guest' for frame in failure['frames'])
+    assert 'SECRET_MARKER' not in json.dumps(case)
+    assert '/private' not in json.dumps(case)
+
+
+def test_failed_command_retains_only_bounded_returncode_and_source_locations(monkeypatch):
+    monkeypatch.setattr(guest.subprocess, 'run', lambda *args, **kwargs: SimpleNamespace(returncode=7))
+    case = guest._case(guest.CASES[2], lambda: guest._command(['/private/SECRET_MARKER', 'SECRET_ARGUMENT']))
+    assert case['failure']['returncode'] == 7
+    assert case['failure']['kind'] == 'fixture'
+    assert len(case['failure']['frames']) <= 8
+    assert 'SECRET' not in json.dumps(case)
