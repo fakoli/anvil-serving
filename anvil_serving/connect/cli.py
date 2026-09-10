@@ -28,7 +28,7 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
     qualification = actions.add_parser("qualify", allow_abbrev=False)
     qualify_mode = qualification.add_mutually_exclusive_group()
-    qualify_mode.add_argument("--lane", choices=("baseline", "container-baseline", "device"), action=_Once)
+    qualify_mode.add_argument("--lane", choices=("baseline", "container-baseline", "device", "revocation"), action=_Once)
     qualify_mode.add_argument("--prepare-container", action="store_true")
     qualification.add_argument("--config", action=_Once)
     for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration"):
@@ -75,11 +75,11 @@ def _qualify(args: argparse.Namespace) -> CommandResult:
                 "error_code": exc.code,
             }, error=OperatorError("Connect qualification container preparation failed.", code=exc.code))
     expected_count = 2
-    if args.lane == "device":
-        from .qualification_container_run import _DEVICE_TESTS
-        expected_count = len(_DEVICE_TESTS)
+    if args.lane in {"device", "revocation"}:
+        from .qualification_container_run import _DEVICE_TESTS, _REVOCATION_TESTS
+        expected_count = len(_DEVICE_TESTS if args.lane == "device" else _REVOCATION_TESTS)
     try:
-        if args.lane in {"container-baseline", "device"}:
+        if args.lane in {"container-baseline", "device", "revocation"}:
             from .qualification_container_run import qualify as container_qualify
             result = container_qualify(args.config, lane=args.lane)
         else:

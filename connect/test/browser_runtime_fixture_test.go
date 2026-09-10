@@ -43,6 +43,60 @@ const (
 	edgeAPIHost     = "api.example.test"
 )
 
+const (
+	runtimeFixtureDefaultIdleSeconds     = 5
+	runtimeFixtureDefaultDurationSeconds = 20
+	runtimeFixtureExpiryIdleSeconds      = 150
+	runtimeFixtureExpiryDurationSeconds  = 180
+	runtimeFixtureExpirySessionSeconds   = 120
+)
+
+type runtimeFixtureProfile struct {
+	device                        bool
+	passkey                       bool
+	expiry                        bool
+	browserSessionLifetimeSeconds int
+	limits                        config.Limits
+}
+
+func newRuntimeFixtureProfile(device, passkey, expiry bool) (runtimeFixtureProfile, bool) {
+	if expiry && passkey {
+		return runtimeFixtureProfile{}, false
+	}
+	profile := runtimeFixtureProfile{
+		device:  device || passkey || expiry,
+		passkey: passkey,
+		expiry:  expiry,
+		limits: config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096,
+			IdleSeconds: runtimeFixtureDefaultIdleSeconds, DurationSeconds: runtimeFixtureDefaultDurationSeconds},
+	}
+	if expiry {
+		profile.browserSessionLifetimeSeconds = runtimeFixtureExpirySessionSeconds
+		profile.limits.IdleSeconds = runtimeFixtureExpiryIdleSeconds
+		profile.limits.DurationSeconds = runtimeFixtureExpiryDurationSeconds
+	}
+	return profile, true
+}
+
+func runtimeFixtureBrowserAdministration(profile runtimeFixtureProfile, deviceHuman, passkeyOperator string) (*config.BrowserAdministration, bool) {
+	switch {
+	case profile.passkey:
+		if passkeyOperator == "" || passkeyOperator == deviceHuman {
+			return nil, false
+		}
+		return &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{passkeyOperator}}, true
+	case profile.expiry:
+		if deviceHuman == "" {
+			return nil, false
+		}
+		// The expiry lane provisions this designated operator only through the
+		// ordinary fixture grant command after browser admission.
+		return &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{deviceHuman}}, true
+	default:
+		return nil, true
+	}
+}
+
 // runtimeCaddyConfig is the same public split used by the managed renderer:
 // the tunnel and resource upgrades take HTTP/1.1, while ordinary browser, API,
 // and control requests use h2c over the gateway's same-UID ingress socket.
@@ -181,8 +235,15 @@ func runtimeTunnelBinary(t *testing.T) string {
 // the actual gateway and connector lifecycle. It is isolated in one Go test
 // process because it temporarily supplies the gateway's strict OIDC transport.
 func TestBrowserRuntimeEdgeFixture(t *testing.T) {
-	passkeyFixture := os.Getenv("ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE") == "1"
-	deviceFixture := passkeyFixture || os.Getenv("ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE") == "1"
+	profile, validProfile := newRuntimeFixtureProfile(
+		os.Getenv("ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE") == "1",
+		os.Getenv("ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE") == "1",
+		os.Getenv("ANVIL_CONNECT_BROWSER_EXPIRY_FIXTURE") == "1",
+	)
+	if !validProfile {
+		t.Fatal("expiry fixture may not combine with passkey fixture")
+	}
+	passkeyFixture, deviceFixture, expiryFixture := profile.passkey, profile.device, profile.expiry
 	if os.Getenv("ANVIL_CONNECT_BROWSER_RUNTIME_EDGE_FIXTURE") != "1" && !deviceFixture {
 		t.Skip("launched only by the runtime-edge Playwright test")
 	}
@@ -255,9 +316,9 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		}
 	}
 
-	resources := []config.Resource{{Rule: config.Rule{ID: "dash", Host: dashHost, PathPrefix: "/", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 5, DurationSeconds: 20}}, Connector: "connector-a", TunnelAddress: edgeReserve(t)}}
+	resources := []config.Resource{{Rule: config.Rule{ID: "dash", Host: dashHost, PathPrefix: "/", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: profile.limits}, Connector: "connector-a", TunnelAddress: edgeReserve(t)}}
 	if deviceFixture {
-		resources = append(resources, config.Resource{Rule: config.Rule{ID: "router", Host: edgeAPIHost, PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 5, DurationSeconds: 20}}, Connector: "connector-a", TunnelAddress: edgeReserve(t)})
+		resources = append(resources, config.Resource{Rule: config.Rule{ID: "router", Host: edgeAPIHost, PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: profile.limits}, Connector: "connector-a", TunnelAddress: edgeReserve(t)})
 	}
 	gatewayDeclaration := config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: edgeReserve(t), MaxConcurrent: 4, Resources: resources}
 	operatorHuman := ""
@@ -266,12 +327,19 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	}
 	if passkeyFixture {
 		operatorHuman = runtimeFixtureHumanID("https://"+edgeAuthHost, "fixture-operator")
-		if operatorHuman == "" || operatorHuman == deviceHuman {
-			t.Fatal("fixture browser administrator is unavailable")
-		}
-		gatewayDeclaration.BrowserAdministration = &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{operatorHuman}}
+	}
+	administration, administrationOK := runtimeFixtureBrowserAdministration(profile, deviceHuman, operatorHuman)
+	if !administrationOK {
+		t.Fatal("fixture browser administrator is unavailable")
+	}
+	if administration != nil {
+		gatewayDeclaration.BrowserAdministration = administration
 	}
 	gatewayCfg := connectruntime.GatewayConfig{Schema: "anvil-connect.gateway-runtime/v1", Gateway: gatewayDeclaration, ControlHost: edgeControlHost, TunnelHost: edgeTunnelHost, StateDirectory: filepath.Join(directory, "gateway"), TunnelBinary: binary, TunnelListen: edgeReserve(t), OIDC: connectruntime.OIDC{Issuer: "https://" + edgeAuthHost, ClientID: "connect-browser", ClientSecretEnv: "OIDC_CLIENT_SECRET"}}
+	if expiryFixture {
+		lifetime := profile.browserSessionLifetimeSeconds
+		gatewayCfg.BrowserSessionLifetimeSeconds = &lifetime
+	}
 	caddyConfig, err := json.Marshal(runtimeCaddyConfig(caddyListen, authListen, filepath.Join(gatewayCfg.StateDirectory, "ingress.sock"), certificatePath, keyPath))
 	if err != nil {
 		t.Fatal(err)
@@ -495,13 +563,16 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 
 	ready := map[string]string{"url": "https://" + dashHost, "resolver": caddyListen, "ca": rootPath, "allowed_user": "fixture-allowed", "allowed_password": allowedPassword}
 	if deviceFixture {
-		clientHome, localKeyPath := runtimeFixtureClient(t, directory)
+		clientHome, localKeyPath := runtimeFixtureClient(t, directory, profile.limits)
 		ready["client_home"] = clientHome
 		ready["local_key"] = localKeyPath
 		ready["local_base_url"] = "http://127.0.0.1:8787/v1"
 	}
 	if passkeyFixture {
 		ready["passkey_fixture"] = "enabled"
+	}
+	if expiryFixture {
+		ready["session_lifetime_seconds"] = strconv.Itoa(profile.browserSessionLifetimeSeconds)
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(ready); err != nil {
 		t.Fatal(err)
@@ -634,10 +705,14 @@ func runtimeFixtureHumanID(issuer, subject string) string {
 	return "human:" + hex.EncodeToString(digest[:])
 }
 
+func runtimeFixtureClientDeclaration(limits config.Limits) clientconfig.Config {
+	return clientconfig.Config{Schema: "anvil-connect.client-runtime/v1", Rule: config.Rule{ID: "router", Host: edgeAPIHost, PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: limits}, Listen: "127.0.0.1:8787", LocalKeyEnv: "ANVIL_CONNECT_LOCAL_KEY", RemoteKeyEnv: "ANVIL_CONNECT_REMOTE_KEY", DeviceAuthorization: &clientconfig.DeviceAuthorization{BrowserHost: dashHost, ApprovalPath: "/_anvil-connect/device", APIResource: "router", Methods: []string{"GET"}}}
+}
+
 // runtimeFixtureClient writes only a closed declaration and a sibling local
 // key. The Playwright lane gives this private HOME exclusively to the actual
 // CLI; no remote credential or approval code is written to disk.
-func runtimeFixtureClient(t *testing.T, directory string) (string, string) {
+func runtimeFixtureClient(t *testing.T, directory string, limits config.Limits) (string, string) {
 	t.Helper()
 	home := filepath.Join(directory, "device-client-home")
 	configDir := filepath.Join(home, ".config", "anvil-connect")
@@ -648,7 +723,7 @@ func runtimeFixtureClient(t *testing.T, directory string) (string, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declaration := clientconfig.Config{Schema: "anvil-connect.client-runtime/v1", Rule: config.Rule{ID: "router", Host: edgeAPIHost, PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 5, DurationSeconds: 20}}, Listen: "127.0.0.1:8787", LocalKeyEnv: "ANVIL_CONNECT_LOCAL_KEY", RemoteKeyEnv: "ANVIL_CONNECT_REMOTE_KEY", DeviceAuthorization: &clientconfig.DeviceAuthorization{BrowserHost: dashHost, ApprovalPath: "/_anvil-connect/device", APIResource: "router", Methods: []string{"GET"}}}
+	declaration := runtimeFixtureClientDeclaration(limits)
 	encoded, err := json.Marshal(declaration)
 	if err != nil {
 		t.Fatal(err)
@@ -671,6 +746,44 @@ func runtimeWebSocketKey(t *testing.T) string {
 func jsonString(value string) string {
 	encoded, _ := json.Marshal(value)
 	return string(encoded)
+}
+
+func TestRuntimeFixtureProfilesKeepExpirySeparateAndStreamsLive(t *testing.T) {
+	baseline, ok := newRuntimeFixtureProfile(false, false, false)
+	if !ok || baseline.device || baseline.passkey || baseline.expiry || baseline.browserSessionLifetimeSeconds != 0 || baseline.limits.IdleSeconds != runtimeFixtureDefaultIdleSeconds || baseline.limits.DurationSeconds != runtimeFixtureDefaultDurationSeconds {
+		t.Fatal("baseline fixture profile changed")
+	}
+	device, ok := newRuntimeFixtureProfile(true, false, false)
+	if !ok || !device.device || device.passkey || device.expiry || device.limits != baseline.limits {
+		t.Fatal("device fixture profile changed")
+	}
+	passkey, ok := newRuntimeFixtureProfile(false, true, false)
+	if !ok || !passkey.device || !passkey.passkey || passkey.expiry || passkey.limits != baseline.limits {
+		t.Fatal("passkey fixture profile changed")
+	}
+	expiry, ok := newRuntimeFixtureProfile(false, false, true)
+	if !ok || !expiry.device || expiry.passkey || !expiry.expiry || expiry.browserSessionLifetimeSeconds != runtimeFixtureExpirySessionSeconds || expiry.limits.IdleSeconds != runtimeFixtureExpiryIdleSeconds || expiry.limits.DurationSeconds != runtimeFixtureExpiryDurationSeconds {
+		t.Fatal("expiry fixture profile did not retain its bounded session and stream limits")
+	}
+	if _, ok := newRuntimeFixtureProfile(false, true, true); ok {
+		t.Fatal("expiry and passkey fixture profiles combined")
+	}
+	client := runtimeFixtureClientDeclaration(expiry.limits)
+	if client.Rule.Limits != expiry.limits || client.Validate() != nil {
+		t.Fatal("expiry local client did not retain the API stream limits")
+	}
+	if administration, valid := runtimeFixtureBrowserAdministration(baseline, "human:device", "human:operator"); !valid || administration != nil {
+		t.Fatal("baseline fixture unexpectedly configured browser administration")
+	}
+	if administration, valid := runtimeFixtureBrowserAdministration(expiry, "human:device", ""); !valid || administration == nil || administration.BrowserResource != "dash" || len(administration.Operators) != 1 || administration.Operators[0] != "human:device" {
+		t.Fatal("expiry fixture did not bind browser administration to its device human")
+	}
+	if administration, valid := runtimeFixtureBrowserAdministration(passkey, "human:device", "human:operator"); !valid || administration == nil || administration.Operators[0] != "human:operator" {
+		t.Fatal("passkey fixture did not retain its separate browser administrator")
+	}
+	if _, valid := runtimeFixtureBrowserAdministration(expiry, "", ""); valid {
+		t.Fatal("expiry fixture accepted a missing device human")
+	}
 }
 
 func TestRuntimeAutheliaPasskeyProfile(t *testing.T) {

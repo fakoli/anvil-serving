@@ -28,7 +28,40 @@ _DEVICE_TESTS = (
     "container-gated CLI streams close on human disable",
     "container-gated CLI streams close on browser logout",
 )
-_STREAM_CLOSURE_TESTS = frozenset(_DEVICE_TESTS[6:])
+_SESSION_EXPIRY_TEST = "container-gated browser and CLI streams close on session expiry"
+_STREAM_CLOSURE_TESTS = frozenset((*_DEVICE_TESTS[6:], _SESSION_EXPIRY_TEST))
+_REVOCATION_TESTS = (
+    "container-gated browser streams close on human disable",
+    "container-gated browser streams close on logout",
+    "container-gated CLI streams close on human disable",
+    "container-gated CLI streams close on browser logout",
+    _SESSION_EXPIRY_TEST,
+)
+_LANES = frozenset({"container-baseline", "device", "revocation"})
+
+
+def _lane_tests(lane: str, baseline_tests: tuple[str, ...]) -> tuple[str, ...]:
+    if lane == "container-baseline":
+        return baseline_tests
+    if lane == "device":
+        return _DEVICE_TESTS
+    if lane == "revocation":
+        return _REVOCATION_TESTS
+    raise ValueError("unsupported qualification lane")
+
+
+def _fixture_flags(lane: str) -> dict[str, str]:
+    if lane not in _LANES:
+        raise ValueError("unsupported qualification lane")
+    flags: dict[str, str] = {}
+    if lane in {"device", "revocation"}:
+        flags["ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE"] = "1"
+    if lane == "revocation":
+        flags["ANVIL_CONNECT_BROWSER_EXPIRY_FIXTURE"] = "1"
+    if lane == "device":
+        flags["ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE"] = "1"
+    return flags
+
 
 def _load_runner(path: Path):
     spec = importlib.util.spec_from_file_location("connect_qualification_runner", path)
@@ -41,9 +74,10 @@ def _load_runner(path: Path):
 def _entry() -> None:
     """Container-only execution; stdout contains closed metadata, never reports."""
     runner = _load_runner(Path("/source/qualification.py"))
-    tests = _DEVICE_TESTS if sys.argv[3] == "device" else runner._TESTS
     cases = []
     try:
+        lane = sys.argv[3]
+        tests = _lane_tests(lane, runner._TESTS)
         shutil.copytree("/source/connect", "/work/connect")
         Path("/work/connect/node_modules").symlink_to("/opt/connect-browser/node_modules")
         shutil.copytree("/opt/go-modules", "/work/go-modules")
@@ -59,9 +93,7 @@ def _entry() -> None:
         config = runner.QualificationConfig(Path("/work"), Path("/work"), Path("/opt/connect-browser"), Path("/work/go-modules"), tools)
         fixture = Path(tempfile.mkdtemp(prefix="acq-", dir="/tmp"))
         environment = runner._environment(config, Path("/work"), fixture_tmp=fixture)
-        if sys.argv[3] == "device":
-            environment["ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE"] = "1"
-            environment["ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE"] = "1"
+        environment.update(_fixture_flags(lane))
         deadline = time.monotonic() + int(sys.argv[2])
         escalated = False
         for index, name in enumerate(tests):
@@ -166,9 +198,9 @@ def _cases(raw: bytes, names: tuple[str, ...]) -> tuple[list[dict], bool]:
 def qualify(config_path=None, *, lane="container-baseline") -> dict:
     from . import qualification as runner
     from . import qualification_container as image
-    if lane not in {"container-baseline", "device"}:
+    if lane not in _LANES:
         raise runner._error("config-invalid", "container qualification lane is unsupported")
-    names = _DEVICE_TESTS if lane == "device" else runner._TESTS
+    names = _lane_tests(lane, runner._TESTS)
     if os.geteuid() == 0 or os.getegid() == 0:
         raise runner._error("config-invalid", "container qualification requires a non-root user and group")
     path = Path(config_path) if config_path else Path.home() / ".config/anvil-connect/qualification.toml"
@@ -244,5 +276,8 @@ def qualify(config_path=None, *, lane="container-baseline") -> dict:
     return {"schema": evidence["schema"], "ok": passed, "state": evidence["state"], "error_code": error, "counts": counts, "artifact_dir": str(run_dir)}
 
 
-if __name__ == "__main__" and len(sys.argv) == 4 and sys.argv[1] == "--entry" and sys.argv[3] in {"container-baseline", "device"}:
-    _entry()
+if __name__ == "__main__":
+    if len(sys.argv) == 4 and sys.argv[1] == "--entry" and sys.argv[3] in _LANES:
+        _entry()
+    else:
+        raise SystemExit(2)

@@ -163,6 +163,24 @@ fixture bound. Fresh requests with the formerly approved local key must return
 Other authority events, authority recovery and physical passkeys require
 separate coverage.
 
+Run the bounded stream-revocation subset in the same prepared container:
+
+```sh
+anvil-serving connect qualify --lane revocation
+```
+
+This uses the saved qualification settings, the pinned image, disabled downloads,
+the same configured timeout (600 seconds by default), and the existing CPU,
+memory and cleanup bounds. It runs exactly five browser and CLI stream cases:
+human disable, browser logout, and synthetic session expiry. The expiry fixture
+uses a full-precision inventory deadline across browser SSE and WebSocket plus
+CLI SSE and WebSocket transports, then denies fresh use of the old browser
+cookie and CLI key. Each passed case retains its validated `closure_ms`
+observation. This documents the bounded fixture scope; it does not claim an
+executed qualification result. It does not cover virtual or physical passkeys,
+restart recovery, or the remaining P04 authority scenarios; those require
+separate evidence.
+
 ## Validate
 
 `connect validate` checks declarations and component prerequisites. An optional
