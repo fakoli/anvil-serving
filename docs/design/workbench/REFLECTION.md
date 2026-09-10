@@ -48,6 +48,15 @@ legacy replay defects. Those repairs belong in Anvil State and use its normal
 event and backup mechanisms. The Workbench does not synthesize a competing
 project or repair its database directly.
 
+The installed service exposed a storage-proof assumption that host-level tests
+missed. Systemd isolation can show identical stacked bind mounts for one bounded
+filesystem. Validation now compares the whole filesystem root, device identity,
+source, separate mount and superblock flags, and the configured loop image;
+foreign overlays and nested mounts remain rejected. The task's frozen Python
+verification command also exposed a missing runner toolchain. Python and pinned
+pytest are now built into the runner, and the actual command passed in the
+networkless verifier without installing dependencies at task runtime.
+
 Remaining limits are intentional operational boundaries. A private Workbench
 policy supplies exact projects, resource grants, image digest,
 provider/model endpoint, protected credential file and controller availability.
