@@ -46,12 +46,17 @@ _VERSION_TOKEN = re.compile(r"(?<![A-Za-z0-9])v?[0-9]+(?:\.[0-9]+){1,3}(?:[-+._A
 class QualificationError(RuntimeError):
     """Safe preflight failure.  ``safe_message`` never includes child output."""
 
-    def __init__(self, code: str, safe_message: str) -> None:
+    def __init__(self, code: str, safe_message: str, *, execution_started: bool = False, stage: str = "preflight", case_counts: dict[str, int] | None = None) -> None:
         if code not in _SAFE_CODES:
             code = "config-invalid"
+        if stage not in {"preflight", "staging", "execution", "cleanup"}:
+            stage = "preflight"
         super().__init__(safe_message)
         self.code = code
         self.safe_message = safe_message
+        self.execution_started = execution_started
+        self.stage = stage
+        self.case_counts = case_counts
 
 
 @dataclass(frozen=True)
@@ -64,8 +69,13 @@ class QualificationConfig:
     timeout_seconds: int = _DEFAULT_TIMEOUT
 
 
-def _error(code: str, message: str) -> QualificationError:
-    return QualificationError(code, message)
+def _error(code: str, message: str, *, execution_started: bool = False, stage: str = "preflight", case_counts: dict[str, int] | None = None) -> QualificationError:
+    return QualificationError(code, message, execution_started=execution_started, stage=stage, case_counts=case_counts)
+
+
+def _execution_error(error: QualificationError, *, execution_started: bool, stage: str, case_counts: dict[str, int] | None) -> QualificationError:
+    """Preserve a safe code while attaching the point at which it occurred."""
+    return _error(error.code, error.safe_message, execution_started=execution_started, stage=stage, case_counts=case_counts)
 
 
 def _absolute_path(value: Any, name: str) -> Path:
@@ -384,7 +394,7 @@ def _supervisor_status(output: bytes) -> tuple[str, bool]:
         value = json.loads(output.decode("utf-8", "strict"))
         stages = {"build", "fixture-startup", "browser-launch-cert", "browser-assertion", "report-parsing", "timeout", "interrupted", "supervisor"}
         marker = value.get("fixture_marker")
-        if set(value) != {"status", "escalated", "failure_stage", "fixture_marker"} or value["status"] not in {"passed", "runner-timeout", "runner-interrupted", "runner-failed"} or type(value["escalated"]) is not bool or value["failure_stage"] not in stages | {None} or (marker is not None and not re.fullmatch(r"browser_edge_fixture_test\.go:[1-9][0-9]{0,4}", marker)):
+        if set(value) != {"status", "escalated", "failure_stage", "fixture_marker"} or value["status"] not in {"passed", "skipped", "runner-timeout", "runner-interrupted", "runner-failed"} or type(value["escalated"]) is not bool or value["failure_stage"] not in stages | {None} or (marker is not None and not re.fullmatch(r"browser_edge_fixture_test\.go:[1-9][0-9]{0,4}", marker)):
             raise ValueError
         status = "runner-failed" if value["escalated"] else value["status"]
         if status == "runner-failed" and value["failure_stage"]:
@@ -463,13 +473,25 @@ def _playwright_version(stage: Path) -> str:
     return expected
 
 
+def _counts(cases: Iterable[dict[str, Any]]) -> dict[str, int]:
+    entries = list(cases)
+    return {
+        "passed": sum(case["status"] == "passed" for case in entries),
+        "failed": sum(case["status"] not in {"passed", "skipped", "not-run"} for case in entries),
+        "skipped": sum(case["status"] == "skipped" for case in entries),
+        "not_run": sum(case["status"] == "not-run" for case in entries),
+    }
+
+
 def _junit(path: Path, cases: Iterable[dict[str, Any]]) -> None:
     entries = list(cases)
-    failures = sum(case["status"] != "passed" for case in entries)
-    root = ET.Element("testsuite", name="anvil-connect.browser-edge", tests=str(len(entries)), failures=str(failures))
+    counts = _counts(entries)
+    root = ET.Element("testsuite", name="anvil-connect.browser-edge", tests=str(len(entries)), failures=str(counts["failed"]), skipped=str(counts["skipped"] + counts["not_run"]))
     for case in entries:
         node = ET.SubElement(root, "testcase", name=case["name"], time=f"{case['duration_seconds']:.3f}")
-        if case["status"] != "passed":
+        if case["status"] in {"skipped", "not-run"}:
+            ET.SubElement(node, "skipped", type=case["status"], message="qualification browser edge was not executed")
+        elif case["status"] != "passed":
             ET.SubElement(node, "failure", type=case["status"], message="qualification browser edge failed")
     ET.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)
     os.chmod(path, 0o600)
@@ -498,6 +520,9 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
     run_dir = config.artifact_root / ("run-" + uuid.uuid4().hex)
     run_dir.mkdir(mode=0o700)
     fixture_tmp: Path | None = None
+    execution_started = False
+    phase = "staging"
+    cases: list[dict[str, Any]] = []
     try:
         fixture_tmp = _fixture_temp_root()
         tracked = _tracked_connect_files(config.source_root)
@@ -514,13 +539,15 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
             "schema": _SCHEMA, "lane": lane, "source": metadata, "locks": locks["files"],
             "tools": _tool_metadata(config.tools),
             "network": {"fixture_loopback": True, "network_isolation": "not_enforced"},
-            "tests": [], "cleanup": {"owned_process_group": True, "escalation_required": False},
+            "tests": cases, "cleanup": {"owned_process_group": True, "escalation_required": False},
         }
         runner = stage / "connect/node_modules/playwright/cli.js"
         _regular(runner)
         evidence["playwright_version"] = _playwright_version(stage)
+        phase = "execution"
+        execution_started = True
         run_deadline = time.monotonic() + config.timeout_seconds
-        for name in _TESTS:
+        for index, name in enumerate(_TESTS):
             remaining = run_deadline - time.monotonic()
             if remaining <= 0:
                 result, duration, escalated = "runner-timeout", 0.0, False
@@ -542,15 +569,20 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
             evidence["tests"].append(item)
             evidence["cleanup"]["escalation_required"] |= escalated
             if status != "passed":
+                evidence["tests"].extend(
+                    {"name": later, "status": "not-run", "duration_seconds": 0.0}
+                    for later in _TESTS[index + 1:]
+                )
                 break
         _junit(run_dir / "junit.xml", evidence["tests"])
         evidence["cleanup"]["fixture_graceful_eof"] = all(item["status"] == "passed" for item in evidence["tests"])
-        passed = len(evidence["tests"]) == len(_TESTS) and all(item["status"] == "passed" for item in evidence["tests"])
+        passed = all(item["status"] == "passed" for item in evidence["tests"])
         error_code = None if passed else next(item["status"] for item in evidence["tests"] if item["status"] != "passed")
         evidence["ok"] = passed
-        evidence["state"] = "passed" if passed else "failed"
+        evidence["state"] = "passed" if passed else ("skipped" if error_code == "skipped" else "failed")
         evidence["error_code"] = error_code
-        evidence["counts"] = {"passed": sum(item["status"] == "passed" for item in evidence["tests"]), "failed": sum(item["status"] != "passed" for item in evidence["tests"])}
+        evidence["counts"] = _counts(evidence["tests"])
+        phase = "cleanup"
         volatile_paths = (run_dir / "supervisor.py", run_dir / "home", run_dir / "tmp", run_dir / "xdg-config", run_dir / "xdg-cache", run_dir / "xdg-data", run_dir / "go-cache")
         try:
             shutil.rmtree(stage)
@@ -589,15 +621,15 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
             except QualificationError:
                 pass
         shutil.rmtree(run_dir, ignore_errors=True)
-        raise _error("runner-interrupted", "qualification interrupted during preparation") from None
-    except QualificationError:
+        raise _error("runner-interrupted", "qualification interrupted during preparation", execution_started=execution_started, stage=phase, case_counts=_counts(cases) if len(cases) == len(_TESTS) else None) from None
+    except QualificationError as exc:
         if fixture_tmp is not None:
             try:
                 _remove_fixture_temp_root(fixture_tmp)
             except QualificationError:
                 pass
         shutil.rmtree(run_dir, ignore_errors=True)
-        raise
+        raise _execution_error(exc, execution_started=execution_started, stage=phase, case_counts=_counts(cases) if len(cases) == len(_TESTS) else None) from None
     except (OSError, ValueError, subprocess.SubprocessError):
         if fixture_tmp is not None:
             try:
@@ -605,4 +637,4 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
             except QualificationError:
                 pass
         shutil.rmtree(run_dir, ignore_errors=True)
-        raise _error("staging-failed", "qualification preparation failed") from None
+        raise _error("staging-failed", "qualification preparation failed", execution_started=execution_started, stage=phase, case_counts=_counts(cases) if len(cases) == len(_TESTS) else None) from None
