@@ -126,6 +126,7 @@
     "gateway": "/etc/anvil-connect/secrets/gateway.env"
   },
   "gateway": {
+    "browser_session_lifetime_seconds": 28800,
     "control_host": "control.example.test",
     "gateway": {
       "listen": "127.0.0.1:17080",
