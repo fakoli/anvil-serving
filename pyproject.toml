@@ -84,8 +84,11 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
     "_benchmark_profiles/*.json",
     "_media_workflows/*.json",
     "_hermes_skills/*/*.md",
+    "_pi_runner/Dockerfile",
+    "_pi_runner/*.json",
+    "_pi_runner/*.cjs",
 ]
-"anvil_serving.observability.dashboard.static" = ["*.html", "*.js", "*.css", "views/*.js"]
+"anvil_serving.observability.dashboard.static" = ["*.html", "*.js", "*.css", "views/*.js", "documents/*.md", "fonts/*.ttf", "fonts/*-OFL.txt"]
 "anvil_serving.connect" = ["components.lock.json"]
 
 [tool.pytest.ini_options]

@@ -1,4 +1,4 @@
-"""Serve the packaged read-only observability dashboard."""
+"""Serve the local dashboard or authenticated Anvil Workbench."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import time
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from importlib.resources import files
+from pathlib import Path
 
 from ..api import TelemetryRegistry, build_default_registry, create_server
 from ...control_plane.authorization import load_authorization_policy
@@ -263,9 +264,11 @@ class DashboardSampler:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from ...paths import config_path
+    configured = Path(config_path("workbench.json"))
     parser = argparse.ArgumentParser(
         prog="anvil-serving dashboard serve",
-        description="Serve Anvil's read-only local observability dashboard.",
+        description="Serve the configured Anvil Workbench or packaged local dashboard.",
     )
     parser.add_argument(
         "--host", default="127.0.0.1", help="Explicit bind IP (default: 127.0.0.1)."
@@ -289,7 +292,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--observatory-config",
-        help="Absolute private Observatory integration/session policy; control remains explicitly opt-in.",
+        default=str(configured) if configured.is_file() else None,
+        help="Absolute private integration/session policy; defaults to operator-home workbench.json when installed.",
     )
     return parser
 
