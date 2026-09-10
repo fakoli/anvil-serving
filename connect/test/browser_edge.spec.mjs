@@ -278,7 +278,15 @@ async function startFixture(testPattern = '^TestBrowserEdgeFixture$', fixtureFla
           replies.push(message => {
             clearTimeout(timer);
             if (message.ack !== command) reject(new Error('unexpected actual-edge acknowledgement'));
-            else if (message.error) reject(new Error('fixture-command-failed'));
+            else if (message.error) {
+              // Retain only a public fixture basename and source line. Never
+              // copy the command error, credential, or private path to reports.
+              if (diagnostic && typeof message.error_location === 'string'
+                && /^browser_runtime_fixture_test\.go:[1-9][0-9]{0,4}$/.test(message.error_location)) {
+                diagnostic.description = message.error_location;
+              }
+              reject(new Error('fixture-command-failed'));
+            }
             else {
               const index = annotations.indexOf(diagnostic);
               if (index >= 0) annotations.splice(index, 1);
