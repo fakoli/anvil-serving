@@ -103,6 +103,51 @@ func TestApprovalRedeemsOnceAndLogoutRevokesAPIAdmission(t *testing.T) {
 	}
 }
 
+func TestPollCapsDeviceCredentialAtSourceDeadlineAcrossTransactions(t *testing.T) {
+	base := time.Date(2026, 9, 10, 1, 2, 3, 0, time.UTC)
+	now, advance := base, false
+	state, err := store.Open(filepath.Join(t.TempDir(), "authority"), func() time.Time {
+		current := now
+		if advance {
+			now = now.Add(30 * time.Second)
+		}
+		return current
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = state.Close() })
+	gateway := deviceGateway()
+	keys, err := access.NewKeys(state, []config.Rule{gateway.Resources[1].Rule})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := keys.SetPrincipal("owner", []access.Grant{{Resource: "router", Methods: []string{"POST"}}}, false); err != nil {
+		t.Fatal(err)
+	}
+	humans := &humanFixture{generation: 1}
+	authority, err := New(state, gateway, humans, keys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admitted := session.Admission{SessionID: strings.Repeat("1", 32), SessionGeneration: 1, Principal: "human:" + strings.Repeat("a", 64), PrincipalGeneration: 1, Resource: "dash", Host: "dash.example.test", Epoch: strings.Repeat("b", 64), ExpiresAt: base.Add(2 * time.Minute)}
+	started, err := authority.Start("dash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := authority.Approve(admitted, started.UserCode, true); err != nil {
+		t.Fatal(err)
+	}
+	advance = true
+	issued, err := authority.Poll(started.DeviceCode)
+	if err != nil || issued.Status != "approved" || issued.Secret == "" {
+		t.Fatalf("device credential was not issued: status=%q secret_present=%t err=%v", issued.Status, issued.Secret != "", err)
+	}
+	if !issued.ExpiresAt.Equal(admitted.ExpiresAt) {
+		t.Fatalf("device credential escaped source deadline: got=%s source=%s", issued.ExpiresAt, admitted.ExpiresAt)
+	}
+}
+
 func TestMappingDriftInvalidatesExistingDeviceAdmission(t *testing.T) {
 	authority, keys, _, _, admitted := fixture(t)
 	started, err := authority.Start("dash")
