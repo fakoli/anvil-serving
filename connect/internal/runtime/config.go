@@ -8,9 +8,11 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/clientconfig"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/session"
 )
 
 var ErrConfiguration = errors.New("invalid native runtime declaration")
@@ -22,14 +24,15 @@ type OIDC struct {
 }
 
 type GatewayConfig struct {
-	Schema         string         `json:"schema"`
-	Gateway        config.Gateway `json:"gateway"`
-	ControlHost    string         `json:"control_host"`
-	TunnelHost     string         `json:"tunnel_host"`
-	StateDirectory string         `json:"state_directory"`
-	TunnelBinary   string         `json:"tunnel_binary"`
-	TunnelListen   string         `json:"tunnel_listen"`
-	OIDC           OIDC           `json:"oidc"`
+	Schema                        string         `json:"schema"`
+	Gateway                       config.Gateway `json:"gateway"`
+	ControlHost                   string         `json:"control_host"`
+	TunnelHost                    string         `json:"tunnel_host"`
+	StateDirectory                string         `json:"state_directory"`
+	TunnelBinary                  string         `json:"tunnel_binary"`
+	TunnelListen                  string         `json:"tunnel_listen"`
+	BrowserSessionLifetimeSeconds *int           `json:"browser_session_lifetime_seconds,omitempty"`
+	OIDC                          OIDC           `json:"oidc"`
 }
 
 type ConnectorResource struct {
@@ -58,7 +61,7 @@ func absolutePath(value string) bool {
 }
 
 func (c GatewayConfig) Validate() error {
-	if c.Schema != "anvil-connect.gateway-runtime/v1" || c.Gateway.Validate() != nil || !config.ValidHost(c.ControlHost) || !config.ValidHost(c.TunnelHost) || c.ControlHost == c.TunnelHost || !absolutePath(c.StateDirectory) || !absolutePath(c.TunnelBinary) || !config.LoopbackAddress(c.TunnelListen) || c.TunnelListen == c.Gateway.Listen {
+	if c.Schema != "anvil-connect.gateway-runtime/v1" || c.Gateway.Validate() != nil || !config.ValidHost(c.ControlHost) || !config.ValidHost(c.TunnelHost) || c.ControlHost == c.TunnelHost || !absolutePath(c.StateDirectory) || !absolutePath(c.TunnelBinary) || !config.LoopbackAddress(c.TunnelListen) || c.TunnelListen == c.Gateway.Listen || (c.BrowserSessionLifetimeSeconds != nil && (*c.BrowserSessionLifetimeSeconds < 60 || *c.BrowserSessionLifetimeSeconds > int(session.MaximumSessionLifetime/time.Second))) {
 		return ErrConfiguration
 	}
 	browser := false
@@ -69,7 +72,7 @@ func (c GatewayConfig) Validate() error {
 		browser = browser || r.Rule.Access == "browser"
 	}
 	if !browser {
-		if c.OIDC != (OIDC{}) {
+		if c.OIDC != (OIDC{}) || c.BrowserSessionLifetimeSeconds != nil {
 			return ErrConfiguration
 		}
 		return nil
@@ -87,6 +90,15 @@ func (c GatewayConfig) Validate() error {
 		}
 	}
 	return nil
+}
+
+// BrowserSessionLifetime resolves the optional public declaration to the
+// established session authority default. Validate must succeed before startup.
+func (c GatewayConfig) BrowserSessionLifetime() time.Duration {
+	if c.BrowserSessionLifetimeSeconds == nil {
+		return session.DefaultSessionLifetime
+	}
+	return time.Duration(*c.BrowserSessionLifetimeSeconds) * time.Second
 }
 
 func (c ConnectorConfig) Validate() error {

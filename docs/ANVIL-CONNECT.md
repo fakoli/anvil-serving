@@ -96,6 +96,11 @@ references. A resource has an exact hostname, canonical path prefix, allowed
 methods, concurrency/body/duration limits and native-auth mode. The connector's
 local envelope independently rejects destinations or permissions outside it.
 
+The optional `gateway.browser_session_lifetime_seconds` controls the lifetime
+of Connect's opaque browser admission session. It accepts whole seconds from
+60 through 86400 and defaults to 28800 (eight hours) when omitted. It neither
+changes the IdP login lifetime nor native application cookies.
+
 The managed manifest currently requires at least one browser resource and
 renders one Authelia OIDC client with all declared callback URLs. Standalone
 native API-only declarations are supported by the Go runtime; an API-only
