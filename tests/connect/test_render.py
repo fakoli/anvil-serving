@@ -216,6 +216,7 @@ def test_plan_and_staging_preserve_drift_and_are_idempotent(tmp_path: Path) -> N
 
 def test_systemd_units_have_real_argv_and_reject_unsafe_paths() -> None:
     files = render(manifest())["files"]
+    caddy = json.loads(files["caddy.json"])
     assert "${CONFIG_ROOT}" not in "\n".join(files.values())
     assert "--adapter json" not in files["systemd/anvil-connect-caddy.service"]
     assert "--config.experimental.filters template" in files["systemd/anvil-connect-authelia.service"]
@@ -224,6 +225,8 @@ def test_systemd_units_have_real_argv_and_reject_unsafe_paths() -> None:
     assert "EnvironmentFile=/etc/anvil-connect/secrets/gateway.env" in files["systemd/anvil-connect-gateway.service"]
     assert "EnvironmentFile=/etc/anvil-connect/secrets/connectors/dashboard.env" in files["systemd/anvil-connect-connector-dashboard.service"]
     assert "EnvironmentFile=/etc/anvil-connect/secrets/clients/dashboard-api.env" in files["systemd/anvil-connect-client-dashboard-api.service"]
+    assert caddy["apps"]["http"]["grace_period"] == "15s"
+    assert "TimeoutStopSec=20" in files["systemd/anvil-connect-caddy.service"]
     value = manifest()
     value["config_root"] = "/etc/anvil connect"
     with pytest.raises(ManifestError, match="ExecStart argument"):

@@ -13,6 +13,13 @@ from .config import ManifestError, canonical_manifest, validate_manifest
 
 _RENDER_SCHEMA = "anvil-connect.render/v1"
 _OWNERSHIP = "anvil-connect.ownership/v1"
+# Caddy defaults to an eternal HTTP shutdown grace period. Connect carries
+# long-lived WebSocket tunnels, so make that drain finite before systemd's
+# hard stop deadline while still giving ordinary in-flight requests time to
+# complete.
+_CADDY_GRACE_PERIOD_SECONDS = 15
+_CADDY_GRACE_PERIOD = f"{_CADDY_GRACE_PERIOD_SECONDS}s"
+_SERVICE_STOP_TIMEOUT_SECONDS = 20
 _DROP_IDENTITY_HEADERS = [
     "Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP",
     "X-Anvil-Connect-User", "X-Anvil-Connect-Groups", "X-Auth-Request-User",
@@ -41,7 +48,7 @@ def _unit(description: str, command: list[str], user: str, *, environment_file: 
         "[Unit]", f"Description={description}", "After=network-online.target", "Wants=network-online.target", "",
         "[Service]", "Type=simple", f"User={_unit_argument(user)}", f"Group={_unit_argument(user)}", *environment, f"ExecStart={escaped}",
         *(["AmbientCapabilities=CAP_NET_BIND_SERVICE", "CapabilityBoundingSet=CAP_NET_BIND_SERVICE"] if bind_public_tls else []),
-        "Restart=on-failure", "RestartSec=5", "TimeoutStopSec=20", "KillSignal=SIGTERM", "",
+        "Restart=on-failure", "RestartSec=5", f"TimeoutStopSec={_SERVICE_STOP_TIMEOUT_SECONDS}", "KillSignal=SIGTERM", "",
         "[Install]", "WantedBy=multi-user.target", "",
     ))
 
@@ -112,7 +119,7 @@ def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
             # port-80 redirect listener, and TLS even on a nonstandard port.
             server["automatic_https"]["disable_redirects"] = True
             server["tls_connection_policies"] = [{}]
-    return {"admin": {"disabled": True}, "apps": {"http": {"servers": {"anvil_connect": server}}, "tls": tls}}
+    return {"admin": {"disabled": True}, "apps": {"http": {"grace_period": _CADDY_GRACE_PERIOD, "servers": {"anvil_connect": server}}, "tls": tls}}
 
 
 def _quote(value: str) -> str:
