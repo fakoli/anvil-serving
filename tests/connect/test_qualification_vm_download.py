@@ -21,6 +21,7 @@ class Response(io.BytesIO):
         return URL
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux file custody controls")
 def test_download_completes_short_writes_before_hashing(tmp_path, monkeypatch):
     data = b"synthetic-download" * 100
     monkeypatch.setattr(child, "build_opener", lambda *args: SimpleNamespace(open=lambda *args, **kw: Response(data)))
@@ -31,6 +32,7 @@ def test_download_completes_short_writes_before_hashing(tmp_path, monkeypatch):
     assert target.read_bytes() == data
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux file custody controls")
 def test_parent_rejects_child_digest_that_does_not_match_completed_bytes(tmp_path, monkeypatch):
     target = tmp_path / "download"
     target.write_bytes(b"actual")

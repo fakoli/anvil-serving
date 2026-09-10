@@ -184,6 +184,8 @@ def _install_boundaries(
 
     monkeypatch.setattr(subject, "_stage_source", stage)
     monkeypatch.setattr(subject, "_require_linux_execution", lambda: None)
+    monkeypatch.setattr(subject, "_private_directory", lambda path, **_kwargs: path.mkdir(parents=True, exist_ok=True))
+    monkeypatch.setattr(subject, "_safe_cache", lambda _path: None)
     monkeypatch.setattr(subject, "_payload", payload)
     monkeypatch.setattr(subject, "_iso", iso)
     monkeypatch.setattr(subject, "_overlay", overlay)
