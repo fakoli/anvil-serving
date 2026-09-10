@@ -266,25 +266,28 @@ assert cli.main(['connect', '--help']) == 0
     assert "Anvil Connect" in result.stdout
 
 
-def test_qualification_container_preparation_is_explicit(monkeypatch, capsys):
+@pytest.mark.parametrize("kind", ["container", "vm"])
+def test_qualification_preparation_is_explicit(monkeypatch, capsys, kind):
     calls = []
     def prepare(config):
         calls.append(config)
-        return {"schema": "anvil-connect.qualification-container/v1", "reused": True}
-    monkeypatch.setitem(sys.modules, "anvil_serving.connect.qualification_container", SimpleNamespace(prepare=prepare))
-    assert cli.main(["connect", "qualify", "--prepare-container", "--json"]) == 0
+        return {"schema": f"anvil-connect.qualification-{kind}/v1", "reused": True}
+    monkeypatch.setitem(sys.modules, f"anvil_serving.connect.qualification_{kind}", SimpleNamespace(prepare=prepare))
+    assert cli.main(["connect", "qualify", f"--prepare-{kind}", "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["data"]["reused"] is True
     assert calls == [None]
-    assert dispatch(["qualify", "--prepare-container", "--lane", "baseline"]).error is not None
+    assert dispatch(["qualify", f"--prepare-{kind}", "--lane", "baseline"]).error is not None
+    assert dispatch(["qualify", "--prepare-container", "--prepare-vm"]).error is not None
     assert calls == [None]
 
 
-def test_qualification_container_error_does_not_echo_build_output(monkeypatch, capsys):
+@pytest.mark.parametrize("kind", ["container", "vm"])
+def test_qualification_preparation_error_does_not_echo_output(monkeypatch, capsys, kind):
     from anvil_serving.connect.qualification import QualificationError
     def prepare(config):
         raise QualificationError("runner-failed", "private-build-sentinel")
-    monkeypatch.setitem(sys.modules, "anvil_serving.connect.qualification_container", SimpleNamespace(prepare=prepare))
-    assert cli.main(["connect", "qualify", "--prepare-container", "--json"]) != 0
+    monkeypatch.setitem(sys.modules, f"anvil_serving.connect.qualification_{kind}", SimpleNamespace(prepare=prepare))
+    assert cli.main(["connect", "qualify", f"--prepare-{kind}", "--json"]) != 0
     output = capsys.readouterr().out
     assert "private-build-sentinel" not in output
     assert json.loads(output)["data"]["error_code"] == "runner-failed"
