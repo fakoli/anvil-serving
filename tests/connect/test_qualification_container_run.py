@@ -109,7 +109,7 @@ def test_root_invocation_is_refused_before_discovery(monkeypatch, uid, gid):
         subject.qualify()
 
 
-def test_device_lane_requires_positive_negative_revocation_passkey_and_browser_stream_results():
+def test_device_lane_requires_positive_negative_revocation_passkey_and_all_stream_results():
     positive = {"name":subject._DEVICE_TESTS[0],"status":"passed","duration_seconds":1.0}
     with pytest.raises(runner.QualificationError):
         subject._cases(json.dumps({"tests":[positive],"escalated":False}).encode(),subject._DEVICE_TESTS)
@@ -122,10 +122,10 @@ def test_device_lane_requires_positive_negative_revocation_passkey_and_browser_s
     recovery = {"name":subject._DEVICE_TESTS[5],"status":"not-run","duration_seconds":0.0}
     streams = [{"name": name, "status": "not-run", "duration_seconds": 0.0}
                for name in subject._DEVICE_TESTS[6:]]
-    assert len(streams) == 2
+    assert len(streams) == 4
     complete = [positive,negative,revocation,passkey,passkey_negative,recovery,*streams]
     for omitted in range(len(complete)):
         with pytest.raises(runner.QualificationError):
             subject._cases(json.dumps({"tests":complete[:omitted]+complete[omitted+1:],"escalated":False}).encode(),subject._DEVICE_TESTS)
     cases, escalated = subject._cases(json.dumps({"tests":complete,"escalated":False}).encode(),subject._DEVICE_TESTS)
-    assert runner._counts(cases) == {"passed":2,"failed":0,"skipped":0,"not_run":6}
+    assert runner._counts(cases) == {"passed":2,"failed":0,"skipped":0,"not_run":8}

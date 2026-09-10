@@ -152,8 +152,14 @@ scenarios hold SSE and WebSocket connections open across human disable and logou
 They require client closure and native-handler return within one second measured
 from before the authority mutation, then fresh denial without another origin
 dispatch. This is a synthetic fixture target, not a production latency guarantee.
-Terminal stream revocation, other authority events, authority recovery and
-physical passkeys require separate coverage.
+Two further scenarios exercise SSE and WebSocket through the actual standalone
+CLI after browser approval. They validate the native bearer and host, wait for
+an SSE marker and a complete WebSocket handshake, then disable the user or log
+out. Both clients and native handlers must close within the same one-second
+fixture bound. Fresh requests with the formerly approved local key must return
+401 without another native stream, and the CLI must exit and release its port.
+Other authority events, authority recovery and physical passkeys require
+separate coverage.
 
 ## Validate
 

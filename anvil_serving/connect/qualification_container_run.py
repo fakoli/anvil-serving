@@ -25,6 +25,8 @@ _DEVICE_TESTS = (
     "container-gated spare passkey restores least-privilege access",
     "container-gated browser streams close on human disable",
     "container-gated browser streams close on logout",
+    "container-gated CLI streams close on human disable",
+    "container-gated CLI streams close on browser logout",
 )
 
 def _load_runner(path: Path):
