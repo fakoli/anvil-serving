@@ -142,6 +142,9 @@ def test_stream_closure_measurement_is_exact_and_closed() -> None:
     assert reset in supervisor._STREAM_CLOSURE_TESTS
     assert restore in subject._STREAM_CLOSURE_TESTS
     assert restore in supervisor._STREAM_CLOSURE_TESTS
+    for case in ("container-gated CLI key revocation preserves other sessions", "container-gated browser grant removal persists after restart"):
+        assert case in subject._STREAM_CLOSURE_TESTS
+        assert case in supervisor._STREAM_CLOSURE_TESTS
     stream = next(iter(subject._STREAM_CLOSURE_TESTS))
     report = {"errors": [], "suites": [{"specs": [{"title": stream, "ok": True, "tests": [{
         "status": "expected", "results": [{"status": "passed"}],

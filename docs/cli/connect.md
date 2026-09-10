@@ -171,11 +171,11 @@ anvil-serving connect qualify --lane revocation
 
 This uses the saved qualification settings, the pinned image, disabled downloads,
 the same configured timeout (600 seconds by default), and the existing CPU,
-memory and cleanup bounds. It runs exactly eight browser and CLI lifecycle cases:
+memory and cleanup bounds. It runs exactly ten browser and CLI lifecycle cases:
 human disable, browser logout, synthetic session expiry, normal restart,
-authority reset and restore. The expiry fixture uses a full-precision inventory
-deadline
-across browser SSE and WebSocket plus CLI SSE and WebSocket transports, then
+authority reset, restore, selective key revocation and browser grant removal.
+The expiry fixture uses a full-precision inventory deadline across browser SSE
+and WebSocket plus CLI SSE and WebSocket transports, then
 denies fresh use of the old browser cookie and CLI key. The restart fixture
 stops and starts the runtime, retains a valid browser cookie and CLI credential,
 rejects an old revoked cookie, and checks that an interrupted POST has exactly
@@ -186,13 +186,14 @@ the normal flows; its interrupted POST also has one origin execution. Restore
 uses the supported backup and fresh-destination restore APIs, denies old
 credentials before explicit human/API-principal reapproval and connector
 reenrollment, then checks fresh access while the original browser cookie and
-still-running old CLI remain denied. Its
-`closure_ms` measures the preceding runtime stop, not backup or restore latency.
-Each passed case retains its validated `closure_ms` observation. This documents the
-bounded fixture scope; it does not claim an executed qualification result,
-reboot behavior or external-supervisor recovery. It does not
-cover virtual or physical passkeys or the remaining P04 authority scenarios;
-those require separate evidence.
+still-running old CLI remain denied. Its `closure_ms` measures the preceding runtime stop, not backup or restore latency.
+The key-revocation case keeps a second CLI credential usable while the revoked
+one remains denied across restart. The grant-removal case denies the removed
+dashboard resource across restart while fresh login to the retained resource
+succeeds. Each passed case retains its validated `closure_ms` observation.
+This documents the bounded fixture scope; it does not claim an executed
+qualification result, reboot behavior or external-supervisor recovery. Virtual
+and physical passkeys and component-level authority checks have separate evidence.
 
 ## Validate
 
