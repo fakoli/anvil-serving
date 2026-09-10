@@ -1249,6 +1249,66 @@ async function expectExpiryStreamClosure(deadline, page, browser, cliSSE, cliWS)
   return closureMs;
 }
 
+const restartPostCountFields = ['started', 'closed'];
+
+async function restartPostCounts(timeout = 5_000) {
+  const counts = await fixture.command('restart post counts', timeout);
+  expect(Object.keys(counts).sort()).toEqual(['ack', ...restartPostCountFields].sort());
+  expect(counts.ack).toBe('restart post counts');
+  for (const field of restartPostCountFields) expect(counts[field]).toMatch(/^\d+$/);
+  return counts;
+}
+
+function openRestartBlockedPost(page, path) {
+  return page.evaluate(value => {
+    if (value !== '/restart-blocked-post') throw new Error('restart-post-path-invalid');
+    window.__restartPostClosure = fetch(value, { method: 'POST', redirect: 'error' }).then(
+      () => ({ wall: Date.now() }),
+      () => ({ wall: Date.now() }),
+    );
+    return true;
+  }, path).then(() => page.evaluate(() => window.__restartPostClosure)).catch(() => null);
+}
+
+function restartStartSample() {
+  const monotonicBefore = performance.now();
+  const wall = Date.now();
+  const monotonicAfter = performance.now();
+  return { monotonicBefore, monotonicAfter, wall };
+}
+
+async function expectRestartStreamClosure(start, browser, post, cliSSE, cliWS) {
+  const bounded = action => new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('restart-stream-closure-exceeded-bound')), Math.max(1, start.monotonicBefore + 1_000 - performance.now()));
+    Promise.resolve().then(action).then(
+      value => { clearTimeout(timer); resolve(value); },
+      error => { clearTimeout(timer); reject(error); },
+    );
+  });
+  const [browserRecords, postRecord, sse, websocket] = await bounded(async () => Promise.all([browser.promise, post.promise, cliSSE.promise, cliWS.promise]));
+  const browserStreams = Array.isArray(browserRecords) ? new Set(browserRecords.map(record => record?.stream)) : new Set();
+  if (!Array.isArray(browserRecords) || browserRecords.length !== 2 || browserStreams.size !== 2 || !browserStreams.has('events') || !browserStreams.has('ws')
+    || !browserRecords.every(record => record && Number.isInteger(record.wall) && record.wall >= start.wall && record.wall - start.wall <= 1_000)
+    || !postRecord || !Number.isInteger(postRecord.wall) || postRecord.wall < start.wall || postRecord.wall - start.wall > 1_000
+    || !sse || !Number.isFinite(sse.monotonic) || sse.monotonic < start.monotonicAfter || sse.monotonic - start.monotonicBefore > 1_000
+    || !websocket || !Number.isFinite(websocket.monotonic) || websocket.monotonic < start.monotonicAfter || websocket.monotonic - start.monotonicBefore > 1_000) {
+    throw new Error('restart-stream-closed-outside-bound');
+  }
+  await bounded(async () => {
+    await expect.poll(async () => {
+      const [browserCounts, apiCounts, postCounts] = await Promise.all([browserStreamCounts(500), apiStreamCounts(500), restartPostCounts(500)]);
+      return [
+        browserStreamCountFields.map(field => browserCounts[field]).join(','),
+        apiStreamCountFields.map(field => apiCounts[field]).join(','),
+        restartPostCountFields.map(field => postCounts[field]).join(','),
+      ].join(';');
+    }, { timeout: Math.max(1, start.monotonicBefore + 1_000 - performance.now()), intervals: [20, 50] }).toBe('1,1,1,1;1,1,1,1;1,1');
+  });
+  const closureMs = Math.ceil(performance.now() - start.monotonicBefore);
+  expect(closureMs).toBeLessThanOrEqual(1_000);
+  return closureMs;
+}
+
 async function exerciseCLIStreamRevocation(mutate) {
   const edgeFixture = fixture;
   let loginSession;
@@ -1408,6 +1468,101 @@ test('container-gated browser and CLI streams close on session expiry', async ()
       const expiryFixture = fixture;
       fixture = edgeFixture;
       await cleanup(expiryFixture);
+    }
+  }
+});
+
+test('container-gated browser and CLI streams close on normal restart', async () => {
+  test.setTimeout(120_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_RESTART_FIXTURE !== '1', 'requires the disposable normal-restart fixture');
+  const edgeFixture = fixture;
+  let loginSession;
+  let streams;
+  const streamResources = new Set();
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_RESTART_FIXTURE');
+  try {
+    let page = await freshPage();
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+    const revokedCookie = (await fixture.context.cookies(fixture.url)).find(value => value.name === '__Host-anvil-connect');
+    expect(revokedCookie).toBeTruthy();
+
+    const logout = page.waitForResponse(response => response.url().startsWith(`https://${dashHost}/_anvil-connect/logout`) && response.request().method() === 'POST').catch(() => null);
+    await page.evaluate(() => fetch('/_anvil-connect/logout', { method: 'POST', redirect: 'manual' }));
+    const logoutResponse = await logout;
+    expect(logoutResponse).not.toBeNull();
+    expect(logoutResponse.status()).toBe(303);
+
+    // Retain the IdP SSO session, but establish a fresh Connect admission for
+    // the credential that must survive this normal state-preserving restart.
+    page = await freshPage({ domain: dashHost });
+    await resumeGrantedAuthorization(page);
+
+    const cli = await buildDeviceCLI(fixture.dir);
+    loginSession = await startDeviceCLI(cli, fixture);
+    const challenge = await waitForDeviceEvent(loginSession.challenge);
+    await page.goto(challenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(challenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const ready = await waitForDeviceEvent(loginSession.ready);
+    const localKey = (await readFile(fixture.local_key, 'utf8')).trim();
+    expect(validFixtureLocalKey(localKey)).toBe(true);
+    expect(fixture.restart_fixture).toBe('enabled');
+    expect(fixture.restart_post_path).toBe('/restart-blocked-post');
+
+    const [sse, websocket] = await Promise.all([
+      openCLISSE(ready.baseURL, localKey, streamResources),
+      openCLIWebSocket(ready.baseURL, localKey, streamResources),
+    ]);
+    streams = { sse, websocket };
+    await openBrowserStreams(page);
+    const browserClosed = observeStreamClosure(browserStreamClosureTimes(page));
+    const postClosed = observeStreamClosure(openRestartBlockedPost(page, fixture.restart_post_path));
+    const cliSSEClosed = observeStreamClosure(sse.closed);
+    const cliWSClosed = observeStreamClosure(websocket.closed);
+    await expect.poll(() => restartPostCounts().then(counts => `${counts.started},${counts.closed}`), { timeout: 5_000, intervals: [20, 50] }).toBe('1,0');
+    expect(await browserStreamsStillOpen(page)).toBe(true);
+    expect(postClosed.closed).toBe(false);
+    expect(cliSSEClosed.closed).toBe(false);
+    expect(cliWSClosed.closed).toBe(false);
+
+    const started = restartStartSample();
+    const stopped = await fixture.command('stop runtime');
+    expect(stopped.ack).toBe('stop runtime');
+    const closureMs = await expectRestartStreamClosure(started, browserClosed, postClosed, cliSSEClosed, cliWSClosed);
+    test.info().annotations.push({ type: 'closure_ms', description: String(closureMs) });
+
+    const restarted = await fixture.command('start runtime', 45_000);
+    expect(restarted).toEqual({ ack: 'start runtime', epoch_equal: 'true' });
+    expect(await page.evaluate(() => fetch('/', { redirect: 'manual' }).then(response => response.status, () => 0))).toBe(200);
+    expect((await loopbackResponse(ready.baseURL, 'GET', localKey)).status).toBe(200);
+    expect(await restartPostCounts()).toMatchObject({ started: '1', closed: '1' });
+
+    // The first browser admission was explicitly revoked before the restart.
+    // Replaying only that opaque cookie must remain a gateway denial and never
+    // create a new native browser stream dispatch.
+    const beforeRevokedReplay = await browserStreamCounts();
+    await fixture.context.clearCookies({ name: revokedCookie.name, domain: dashHost });
+    await fixture.context.addCookies([{
+      name: revokedCookie.name, value: revokedCookie.value, url: fixture.url,
+      httpOnly: revokedCookie.httpOnly, secure: true, sameSite: revokedCookie.sameSite,
+      expires: -1,
+    }]);
+    const replayed = (await fixture.context.cookies(fixture.url)).find(value => value.name === revokedCookie.name);
+    expect(replayed?.value === revokedCookie.value).toBe(true);
+    await expectFreshBrowserStreamsDenied(page);
+    expect(await browserStreamCounts()).toEqual(beforeRevokedReplay);
+
+    await stopDeviceCLI(loginSession);
+    loginSession = undefined;
+    await assertLoopbackReleased(ready.baseURL);
+  } finally {
+    closeCLIStreams(streams, streamResources);
+    try { await stopDeviceCLI(loginSession); } finally {
+      const restartFixture = fixture;
+      fixture = edgeFixture;
+      await cleanup(restartFixture);
     }
   }
 });

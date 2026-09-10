@@ -29,13 +29,15 @@ _DEVICE_TESTS = (
     "container-gated CLI streams close on browser logout",
 )
 _SESSION_EXPIRY_TEST = "container-gated browser and CLI streams close on session expiry"
-_STREAM_CLOSURE_TESTS = frozenset((*_DEVICE_TESTS[6:], _SESSION_EXPIRY_TEST))
+_RESTART_TEST = "container-gated browser and CLI streams close on normal restart"
+_STREAM_CLOSURE_TESTS = frozenset((*_DEVICE_TESTS[6:], _SESSION_EXPIRY_TEST, _RESTART_TEST))
 _REVOCATION_TESTS = (
     "container-gated browser streams close on human disable",
     "container-gated browser streams close on logout",
     "container-gated CLI streams close on human disable",
     "container-gated CLI streams close on browser logout",
     _SESSION_EXPIRY_TEST,
+    _RESTART_TEST,
 )
 _LANES = frozenset({"container-baseline", "device", "revocation"})
 
@@ -58,6 +60,7 @@ def _fixture_flags(lane: str) -> dict[str, str]:
         flags["ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE"] = "1"
     if lane == "revocation":
         flags["ANVIL_CONNECT_BROWSER_EXPIRY_FIXTURE"] = "1"
+        flags["ANVIL_CONNECT_BROWSER_RESTART_FIXTURE"] = "1"
     if lane == "device":
         flags["ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE"] = "1"
     return flags
