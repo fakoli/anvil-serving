@@ -699,11 +699,80 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		}
 	}()
 	restartEpoch := ""
+	resetPending := false
 	for command := range commands {
 		response := map[string]string{"ack": command}
 		switch command {
+		case "reset authority":
+			if !restartFixture || gateway == nil || connector == nil || restartEpoch != "" || resetPending {
+				response["error"] = "reset fixture is unavailable"
+				break
+			}
+			before, statusErr := adminCall(admin.Request{Operation: "status"})
+			if statusErr != nil || len(before.Epoch) != 64 {
+				response["error"] = "reset status is unavailable"
+				break
+			}
+			reset, resetErr := adminCall(admin.Request{Operation: "authority-reset"})
+			after, afterErr := adminCall(admin.Request{Operation: "status"})
+			if resetErr != nil || afterErr != nil || len(reset.Epoch) != 64 || len(after.Epoch) != 64 || reset.Epoch != after.Epoch || before.Epoch == after.Epoch {
+				response["error"] = "authority reset failed"
+				break
+			}
+			// The old connector remains live until the browser harness observes
+			// cancellation through its existing streams and native handlers.
+			resetPending = true
+			response["epoch_changed"] = "true"
+		case "reenroll connector":
+			// The ack correlates both success and failure; the command client
+			// rejects any error before accepting a successful replacement.
+			if !restartFixture || !resetPending || gateway == nil || connector == nil || restartEpoch != "" {
+				response["error"] = "connector reenrollment is unavailable"
+				break
+			}
+			nextConnectorCfg := connectorCfg
+			nextConnectorCfg.StateDirectory = filepath.Join(directory, "connector-reset")
+			if _, stateErr := os.Lstat(nextConnectorCfg.StateDirectory); !os.IsNotExist(stateErr) {
+				response["error"] = "connector reenrollment state is unavailable"
+				break
+			}
+			priorTunnels := proxyObserver.count(edgeTunnelHost + ":443")
+			connector.Close()
+			connector = nil
+			invite, inviteErr := adminCall(admin.Request{Operation: "invite", Installation: nextConnectorCfg.ID, Role: "connector", Resources: inviteResources, LifetimeSeconds: 60})
+			if inviteErr != nil {
+				response["error"] = "connector reenrollment invitation failed"
+				break
+			}
+			if initErr := connectruntime.InitializeConnector(context.Background(), nextConnectorCfg, invite); initErr != nil {
+				response["error"] = "connector reenrollment initialization failed"
+				break
+			}
+			identity, identityErr := connectruntime.ConnectorIdentity(nextConnectorCfg)
+			if identityErr != nil {
+				response["error"] = "connector reenrollment identity failed"
+				break
+			}
+			if _, approveErr := adminCall(admin.Request{Operation: "approve", Installation: nextConnectorCfg.ID, Fingerprint: identity.Fingerprint}); approveErr != nil {
+				response["error"] = "connector reenrollment approval failed"
+				break
+			}
+			nextConnector, startErr := connectruntime.StartConnector(context.Background(), nextConnectorCfg, connectorSecrets)
+			if startErr != nil {
+				response["error"] = "connector reenrollment start failed"
+				break
+			}
+			if !runtimeConnectorReady(nextConnector, proxyObserver, priorTunnels, gatewayCfg.Gateway.Resources) {
+				nextConnector.Close()
+				response["error"] = "connector reenrollment readiness failed"
+				break
+			}
+			connectorCfg = nextConnectorCfg
+			connector = nextConnector
+			resetPending = false
+			response["ack"] = "reenroll connector"
 		case "stop runtime":
-			if !restartFixture || gateway == nil || connector == nil || restartEpoch != "" {
+			if !restartFixture || gateway == nil || connector == nil || restartEpoch != "" || resetPending {
 				response["error"] = "restart fixture is disabled"
 				break
 			}
@@ -718,7 +787,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			restartEpoch = before.Epoch
 			gatewayCancel()
 		case "start runtime":
-			if !restartFixture || gateway == nil || connector == nil || len(restartEpoch) != 64 {
+			if !restartFixture || gateway == nil || connector == nil || len(restartEpoch) != 64 || resetPending {
 				response["error"] = "restart fixture is unavailable"
 				break
 			}
