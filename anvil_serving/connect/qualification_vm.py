@@ -16,7 +16,7 @@ import tempfile
 import time
 from typing import Any
 
-from ._qualification_vm_process import execute
+from ._qualification_vm_process import _require_linux_execution, execute
 from .qualification import QualificationConfig, QualificationError, _error, _private_directory, _read_config
 
 _SCHEMA = "anvil-connect.qualification-vm/v1"
@@ -349,6 +349,7 @@ def _remove_invalid_cache(image: Path) -> None:
 
 def prepare(config_path: str | os.PathLike[str] | None = None) -> dict[str, Any]:
     """Verify and cache the sole pinned base image for a later isolated guest."""
+    _require_linux_execution()
     path = Path(config_path) if config_path is not None else Path.home() / ".config/anvil-connect/qualification.toml"
     config = _read_config(path)
     deadline = time.monotonic() + min(_DOWNLOAD_TIMEOUT, config.timeout_seconds)

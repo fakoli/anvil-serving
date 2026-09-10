@@ -8,6 +8,9 @@ from anvil_serving.connect import _qualification_vm_process as subject
 from anvil_serving.connect.qualification import QualificationError
 
 
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="requires Linux process controls")
+
+
 def run(tmp_path, script, **kwargs):
     return subject.execute([sys.executable, "-I", "-c", script], home=tmp_path,
                            cpus=(min(os.sched_getaffinity(0)),), timeout=kwargs.pop("timeout", 3),
