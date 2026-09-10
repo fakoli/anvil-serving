@@ -22,7 +22,7 @@ flowchart LR
   O[Origin connector] -->|Outbound authenticated WSS| E
   T --> O
   O -->|Fixed loopback origin| A[Native application]
-  B <-->|Password and TOTP login| I[Authelia through Caddy]
+  B <-->|Passkey or configured login| I[Authelia through Caddy]
 ```
 
 The outer tunnel uses WSS. Its authenticated Upgrade gate is in Connect; Caddy
@@ -55,6 +55,11 @@ own installation and TLS keys in its private service directory. A caller's
 Connect API key is removed before the connector supplies an explicitly declared
 native application token. Native tokens are environment-backed and remain at
 the origin. Controller delegation is outside the initial profile.
+
+For one browser identity across Connect and Observatory, explicitly enable
+[signed identity handoff](ANVIL-CONNECT-IDENTITY.md). This preserves native
+permissions while removing a second dashboard password. That guide also covers
+passkeys, profile provisioning and signing-key rotation.
 
 The browser gateway uses state, nonce and PKCE and verifies OIDC signature,
 issuer, audience and time claims. It checks the authorization-response issuer

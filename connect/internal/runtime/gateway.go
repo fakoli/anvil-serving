@@ -15,6 +15,7 @@ import (
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/admin"
+	"github.com/fakoli/anvil-serving/connect/internal/browseridentity"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/control"
 	"github.com/fakoli/anvil-serving/connect/internal/credential"
@@ -31,6 +32,25 @@ import (
 var ErrUnavailable = errors.New("native runtime unavailable")
 
 type SecretSource func(string) (string, bool)
+
+func identitySigners(resources []config.Resource, secrets SecretSource) (map[string]*browseridentity.Signer, error) {
+	result := map[string]*browseridentity.Signer{}
+	for _, resource := range resources {
+		if resource.Rule.NativeAuth != "signed-identity" {
+			continue
+		}
+		secret, ok := secrets(resource.IdentityKeyEnv)
+		if !ok {
+			return nil, ErrUnavailable
+		}
+		signer, err := browseridentity.NewSigner(secret, resource.IdentityKeyID)
+		if err != nil {
+			return nil, ErrUnavailable
+		}
+		result[resource.Rule.ID] = signer
+	}
+	return result, nil
+}
 
 // Gateway owns the Unix ingress/admin listeners, authority database, and its
 // pinned private tunnel child. Running is process state, not origin readiness.
@@ -187,7 +207,11 @@ func StartGateway(parent context.Context, declaration GatewayConfig, secrets Sec
 			return nil, ErrUnavailable
 		}
 		g.cleanup = append(g.cleanup, sessions.Close)
-		browserHandler, err = httpedge.NewBrowser(declaration.Gateway, sessions, dispatcher.BrowserDispatch)
+		signers, signerErr := identitySigners(declaration.Gateway.Resources, secrets)
+		if signerErr != nil {
+			return nil, ErrUnavailable
+		}
+		browserHandler, err = httpedge.NewBrowserWithIdentity(declaration.Gateway, sessions, signers, dispatcher.BrowserDispatch)
 		if err != nil {
 			return nil, ErrUnavailable
 		}

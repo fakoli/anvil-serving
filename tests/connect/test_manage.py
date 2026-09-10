@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import re
+import stat
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -547,6 +548,44 @@ def test_environment_file_requires_exact_owner_only_mode_before_activation(tmp_p
     with pytest.raises(manage.ManageError, match="EnvironmentFile"):
         manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=tmp_path)
     assert runner.calls == []
+
+
+def test_signed_gateway_identity_environment_file_is_gateway_only_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    resource = next(item for item in value["gateway"]["gateway"]["resources"] if item["rule"]["access"] == "browser")
+    resource["rule"]["native_auth"] = "signed-identity"
+    resource.update(identity_key_env="ANVIL_DASHBOARD_IDENTITY_KEY", identity_key_id="dashboard-v1")
+    for connector in value["connectors"]:
+        for item in connector["resources"]:
+            if item["envelope"]["rule"]["id"] == resource["rule"]["id"]:
+                item["envelope"]["rule"]["native_auth"] = "signed-identity"
+    identity = tmp_path / "gateway-identity.env"
+    identity.write_bytes(b"")
+    identity.chmod(0o600)
+    value["environment_files"]["gateway_identity"] = str(identity)
+    manifest.write_text(json.dumps(value), encoding="utf-8")
+    original_lstat = Path.lstat
+
+    def root_owned_lstat(path):
+        info = original_lstat(path)
+        if path == identity:
+            return os.stat_result((info.st_mode, info.st_ino, info.st_dev, info.st_nlink,
+                                   0, info.st_gid, info.st_size, info.st_atime, info.st_mtime, info.st_ctime))
+        return info
+
+    monkeypatch.setattr(Path, "lstat", root_owned_lstat)
+
+    assert manage.validate(manifest, manage.Target("gateway"), runner=SyntheticRunner())["targets"] == ["gateway"]
+    identity.chmod(0o640)
+    runner = SyntheticRunner()
+    with pytest.raises(manage.ManageError, match="EnvironmentFile"):
+        manage.validate(manifest, manage.Target("gateway"), runner=runner)
+    assert runner.calls == []
+    identity.chmod(0o600)
+    identity.unlink()
+    assert manage.validate(manifest, manage.Target("connector", "dashboard"), runner=SyntheticRunner())["targets"] == ["connector:dashboard"]
+    with pytest.raises(manage.ManageError, match="EnvironmentFile"):
+        manage.validate(manifest, manage.Target("gateway"), runner=SyntheticRunner())
 
 
 @pytest.mark.parametrize("native_status", ("pending", "enrolled"))
