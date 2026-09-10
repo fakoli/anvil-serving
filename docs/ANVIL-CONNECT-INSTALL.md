@@ -93,6 +93,13 @@ starting the process. The first macOS release supports this foreground process;
 it does not silently install a LaunchAgent or embed keys in a plist. Gateway
 availability remains independent of any client laptop.
 
+For interactive use from SSH or a terminal, provision the optional
+`device_authorization` declaration and run `anvil-connect login --config
+/absolute/client.json`. It displays a browser verification URL and short code,
+then starts the same local listener after approval. Only the local caller key
+is supplied beforehand; the short-lived remote key stays in memory. Follow
+the [terminal sign-in guide](ANVIL-CONNECT-DEVICE-LOGIN.md).
+
 ## Repeat, upgrade, and rollback
 
 Repeating the same installation validates the installed bytes and reports

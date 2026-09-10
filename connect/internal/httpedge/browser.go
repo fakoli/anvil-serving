@@ -57,16 +57,17 @@ type browserResource struct {
 // Browser independently admits declared browser resources. Gateway wiring is
 // intentionally separate so API and browser authentication cannot be confused.
 type Browser struct {
-	authority   BrowserAuthority
-	active      *access.Active
-	resources   map[string]browserResource
-	slots       chan struct{}
-	control     chan struct{}
-	logoutSlots chan struct{}
-	deviceSlots chan struct{}
-	identities  map[string]*browseridentity.Signer
-	devices     *device.Authority
-	dispatch    BrowserDispatch
+	authority      BrowserAuthority
+	active         *access.Active
+	resources      map[string]browserResource
+	slots          chan struct{}
+	control        chan struct{}
+	logoutSlots    chan struct{}
+	deviceSlots    chan struct{}
+	identities     map[string]*browseridentity.Signer
+	devices        *device.Authority
+	administration *AccessAdministration
+	dispatch       BrowserDispatch
 }
 
 func NewBrowser(declaration config.Gateway, authority BrowserAuthority, dispatch BrowserDispatch) (*Browser, error) {
@@ -134,6 +135,20 @@ func (b *Browser) Close() {
 	if b != nil && b.active != nil {
 		b.active.Close()
 	}
+}
+
+// SetAccessAdministration mounts one constructor-validated fixed endpoint on
+// its declared browser resource before the Browser becomes reachable.
+func (b *Browser) SetAccessAdministration(administration *AccessAdministration) error {
+	if b == nil || administration == nil || b.administration != nil {
+		return ErrBrowserConfiguration
+	}
+	resource, ok := b.resources[administration.host]
+	if !ok || !administration.matches(resource, administration.path) {
+		return ErrBrowserConfiguration
+	}
+	b.administration = administration
+	return nil
 }
 
 type browserCookies struct {
@@ -313,6 +328,14 @@ func (b *Browser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			b.deviceRoute(w, r, resource, cookies, approvalPath)
 			return
 		}
+	}
+	if b.administration != nil && b.administration.reserves(resource, r.URL.Path) {
+		if b.administration.matches(resource, r.URL.Path) {
+			b.administrationRoute(w, r, resource, cookies)
+		} else {
+			accessFailure(w, http.StatusNotFound)
+		}
+		return
 	}
 	switch r.URL.Path {
 	case BrowserLoginPath:
@@ -678,7 +701,7 @@ func (b *Browser) deviceRoute(w http.ResponseWriter, r *http.Request, resource b
 	}
 }
 
-func (b *Browser) deviceAdmission(w http.ResponseWriter, r *http.Request, resource browserResource, cookies browserCookies) (session.Admission, bool) {
+func (b *Browser) browserAdmission(r *http.Request, resource browserResource, cookies browserCookies) (session.Admission, bool) {
 	admitted, err := b.authority.Authenticate(cookies.session, r.Host)
 	if err != nil || admitted.Resource != resource.declaration.Rule.ID || admitted.Host != r.Host || admitted.SessionID == "" || admitted.Principal == "" || admitted.ExpiresAt.IsZero() || b.authority.Check(admitted) != nil {
 		return session.Admission{}, false
@@ -686,9 +709,22 @@ func (b *Browser) deviceAdmission(w http.ResponseWriter, r *http.Request, resour
 	return admitted, true
 }
 
+func (b *Browser) administrationRoute(w http.ResponseWriter, r *http.Request, resource browserResource, cookies browserCookies) {
+	if b.administration == nil || browserUpgrade(r) {
+		accessFailure(w, http.StatusNotFound)
+		return
+	}
+	admitted, ok := b.browserAdmission(r, resource, cookies)
+	if !ok {
+		accessFailure(w, http.StatusUnauthorized)
+		return
+	}
+	b.administration.ServeHTTP(w, r, admitted)
+}
+
 func (b *Browser) deviceApproval(w http.ResponseWriter, r *http.Request, resource browserResource, cookies browserCookies, binding device.Binding) {
 	if r.Method == http.MethodGet && r.URL.RawQuery == "" && !r.URL.ForceQuery && !browserUpgrade(r) {
-		admitted, ok := b.deviceAdmission(w, r, resource, cookies)
+		admitted, ok := b.browserAdmission(r, resource, cookies)
 		if !ok {
 			if browserDocument(r) {
 				browserRedirect(w, r, BrowserLoginPath+"?"+url.Values{"return": []string{r.URL.Path}}.Encode(), http.StatusFound)
@@ -708,7 +744,7 @@ func (b *Browser) deviceApproval(w http.ResponseWriter, r *http.Request, resourc
 		browserFailure(w, http.StatusForbidden)
 		return
 	}
-	admitted, ok := b.deviceAdmission(w, r, resource, cookies)
+	admitted, ok := b.browserAdmission(r, resource, cookies)
 	if !ok {
 		browserFailure(w, http.StatusUnauthorized)
 		return

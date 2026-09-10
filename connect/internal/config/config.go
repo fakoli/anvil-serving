@@ -65,11 +65,16 @@ type Resource struct {
 }
 
 type Gateway struct {
-	Schema               string                `json:"schema"`
-	Listen               string                `json:"listen"`
-	MaxConcurrent        int                   `json:"max_concurrent"`
-	Resources            []Resource            `json:"resources"`
-	DeviceAuthorizations []DeviceAuthorization `json:"device_authorizations,omitempty"`
+	Schema                string                 `json:"schema"`
+	Listen                string                 `json:"listen"`
+	MaxConcurrent         int                    `json:"max_concurrent"`
+	Resources             []Resource             `json:"resources"`
+	DeviceAuthorizations  []DeviceAuthorization  `json:"device_authorizations,omitempty"`
+	BrowserAdministration *BrowserAdministration `json:"browser_administration,omitempty"`
+}
+type BrowserAdministration struct {
+	BrowserResource string   `json:"browser_resource"`
+	Operators       []string `json:"operators"`
 }
 
 // DeviceAuthorization is the one explicit browser-to-API authority bridge.
@@ -216,6 +221,20 @@ func (g Gateway) Validate() error {
 	}
 	if g.DeviceAuthorizations != nil && (len(g.DeviceAuthorizations) < 1 || len(g.DeviceAuthorizations) > 64) {
 		return errors.New("too many device authorizations")
+	}
+	if g.BrowserAdministration != nil {
+		admin := g.BrowserAdministration
+		browser, ok := resources[admin.BrowserResource]
+		if !ok || browser.Rule.Access != "browser" || len(admin.Operators) < 1 || len(admin.Operators) > 64 || !browser.Rule.Allows(browser.Rule.Host, browser.Rule.PathPrefix, "GET") || !browser.Rule.Allows(browser.Rule.Host, browser.Rule.PathPrefix, "POST") {
+			return errors.New("invalid browser administration")
+		}
+		seen := map[string]bool{}
+		for _, operator := range admin.Operators {
+			if !ValidHumanID(operator) || seen[operator] {
+				return errors.New("invalid browser administration operators")
+			}
+			seen[operator] = true
+		}
 	}
 	browsers, apis := map[string]bool{}, map[string]bool{}
 	for _, device := range g.DeviceAuthorizations {
@@ -429,6 +448,9 @@ func shape(d *json.Decoder, kind reflect.Type, depth int) error {
 	token, err := d.Token()
 	if err != nil || token == nil {
 		return errors.New("missing value")
+	}
+	for kind.Kind() == reflect.Pointer {
+		kind = kind.Elem()
 	}
 	switch kind.Kind() {
 	case reflect.Struct:
