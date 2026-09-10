@@ -300,7 +300,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
                                     if "gateway_identity" in environment_raw else None)
     service_user = _ident(raw["service_user"], "$.service_user")
 
-    gateway_raw = _mapping(raw["gateway"], "$.gateway", {"schema", "gateway", "control_host", "tunnel_host", "state_directory", "tunnel_binary", "tunnel_listen", "oidc"})
+    gateway_fields = {"schema", "gateway", "control_host", "tunnel_host", "state_directory", "tunnel_binary", "tunnel_listen", "oidc"}
+    if isinstance(raw["gateway"], dict) and "browser_session_lifetime_seconds" in raw["gateway"]:
+        gateway_fields.add("browser_session_lifetime_seconds")
+    gateway_raw = _mapping(raw["gateway"], "$.gateway", gateway_fields)
     if gateway_raw["schema"] != "anvil-connect.gateway-runtime/v1":
         raise _error("$.gateway.schema", "must equal anvil-connect.gateway-runtime/v1")
     embedded_fields = {"schema", "listen", "max_concurrent", "resources"}
@@ -414,6 +417,11 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         "tunnel_listen": _loopback(gateway_raw["tunnel_listen"], "$.gateway.tunnel_listen"),
         "oidc": {"issuer": _issuer(oidc["issuer"], "$.gateway.oidc.issuer"), "client_id": _client_id(oidc["client_id"], "$.gateway.oidc.client_id"), "client_secret_env": _env(oidc["client_secret_env"], "$.gateway.oidc.client_secret_env")},
     }
+    if "browser_session_lifetime_seconds" in gateway_raw:
+        lifetime = gateway_raw["browser_session_lifetime_seconds"]
+        if isinstance(lifetime, bool) or not isinstance(lifetime, int) or not 60 <= lifetime <= 86400:
+            raise _error("$.gateway.browser_session_lifetime_seconds", "must be an integer between 60 and 86400")
+        gateway["browser_session_lifetime_seconds"] = lifetime
     if any(item["rule"]["limits"]["concurrent"] > gateway["gateway"]["max_concurrent"] for item in resources):
         raise _error("$.gateway.gateway.resources", "resource concurrent limit exceeds gateway max_concurrent")
     if gateway["control_host"] == gateway["tunnel_host"]:

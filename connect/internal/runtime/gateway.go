@@ -206,7 +206,7 @@ func StartGateway(parent context.Context, declaration GatewayConfig, secrets Sec
 		if !ok || len(secret) < 1 || len(secret) > 4096 {
 			return nil, ErrUnavailable
 		}
-		sessions, err = session.New(ctx, state, browserRules, session.Config{Issuer: declaration.OIDC.Issuer, ClientID: declaration.OIDC.ClientID, ClientSecret: secret, CallbackPath: httpedge.BrowserCallbackPath, TransactionLifetime: session.DefaultTransactionLifetime, SessionLifetime: session.DefaultSessionLifetime, MaxTransactions: 128, MaxPerBrowser: 8})
+		sessions, err = session.New(ctx, state, browserRules, session.Config{Issuer: declaration.OIDC.Issuer, ClientID: declaration.OIDC.ClientID, ClientSecret: secret, CallbackPath: httpedge.BrowserCallbackPath, TransactionLifetime: session.DefaultTransactionLifetime, SessionLifetime: declaration.BrowserSessionLifetime(), MaxTransactions: 128, MaxPerBrowser: 8})
 		if err != nil {
 			return nil, ErrUnavailable
 		}
