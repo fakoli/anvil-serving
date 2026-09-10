@@ -1,6 +1,7 @@
 // One same-origin facade. Browser state never contains an upstream credential.
 const assetBase = new URL("../", import.meta.url);
 export const apiBase = new URL("api/observatory/v1/", assetBase);
+export const workbenchBase = new URL("api/workbench/v1/", assetBase);
 let session = null;
 export const getSession = () => session;
 export const setSession = (value) => {
@@ -17,7 +18,7 @@ export class APIError extends Error {
 }
 export async function request(
   path,
-  { method = "GET", body, signal, timeout = 10000 } = {},
+  { method = "GET", body, signal, timeout = 10000, base = apiBase } = {},
 ) {
   if (
     !/^[a-z][a-zA-Z0-9/._%-]*(?:\?[^#]*)?$/.test(path) ||
@@ -37,7 +38,7 @@ export async function request(
   if (method !== "GET" && session?.csrf_token)
     headers["X-CSRF-Token"] = session.csrf_token;
   try {
-    const response = await fetch(new URL(path, apiBase), {
+    const response = await fetch(new URL(path, base), {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -105,6 +106,9 @@ export async function request(
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
   }
+}
+export async function workbenchRequest(path, options = {}) {
+  return request(path, { ...options, base: workbenchBase });
 }
 export function query(path, values) {
   const params = new URLSearchParams();
