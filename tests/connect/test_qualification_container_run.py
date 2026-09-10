@@ -39,6 +39,7 @@ def test_container_result_refuses_non_mapping_case_items():
         subject._cases(raw, runner._TESTS)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux process groups and pipe selectors")
 def test_attached_output_is_bounded_and_return_code_matters():
     environment = {"PATH": "/usr/bin:/bin"}
     assert subject._attached([sys.executable, "-c", 'print("safe")'], environment, 2) == b"safe\n"
@@ -48,6 +49,7 @@ def test_attached_output_is_bounded_and_return_code_matters():
 
 
 @pytest.mark.parametrize("execution_fails,cleanup_fails", [(False, False), (True, False), (False, True)])
+@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux container and artifact custody")
 def test_container_lane_is_offline_private_and_always_removes_owned_container(tmp_path, monkeypatch, execution_fails, cleanup_fails):
     config, paths = _inputs(tmp_path)
     for filename in ("qualification.py", "_qualification_supervisor.py", "qualification_container_run.py"):
@@ -103,6 +105,7 @@ def test_container_lane_is_offline_private_and_always_removes_owned_container(tm
     assert stages and all(not path.exists() for path in stages)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux qualification inputs")
 def test_missing_image_receipt_never_downloads_or_executes(tmp_path, monkeypatch):
     config, _ = _inputs(tmp_path)
     monkeypatch.setattr(runner, "_source_metadata", lambda _: {})
@@ -113,6 +116,7 @@ def test_missing_image_receipt_never_downloads_or_executes(tmp_path, monkeypatch
         subject.qualify(config)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux container and artifact custody")
 def test_revocation_lane_uses_the_pinned_container_and_retains_only_stream_measurements(tmp_path, monkeypatch):
     config, paths = _inputs(tmp_path)
     for filename in ("qualification.py", "_qualification_supervisor.py", "qualification_container_run.py"):
@@ -175,6 +179,7 @@ def test_revocation_registry_and_unknown_lane_are_closed():
 
 
 @pytest.mark.parametrize("uid,gid", [(0,1000),(1000,0),(0,0)])
+@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux user and group identities")
 def test_root_invocation_is_refused_before_discovery(monkeypatch, uid, gid):
     monkeypatch.setattr(subject.os, "geteuid", lambda: uid)
     monkeypatch.setattr(subject.os, "getegid", lambda: gid)
