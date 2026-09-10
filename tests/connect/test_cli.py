@@ -305,4 +305,4 @@ def test_device_preflight_reports_all_required_scenarios_not_run(tmp_path):
     result = dispatch(["qualify", "--lane", "device", "--config", str(tmp_path / "missing.toml")])
     assert result.error is not None
     assert result.data["state"] == "not-run"
-    assert result.data["counts"] == {"passed":0,"failed":0,"skipped":0,"not_run":6}
+    assert result.data["counts"] == {"passed":0,"failed":0,"skipped":0,"not_run":8}
