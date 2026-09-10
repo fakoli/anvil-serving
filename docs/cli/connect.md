@@ -77,6 +77,53 @@ physical biometrics, 1Password, host systemd isolation or the public deployment.
 Those require their own lanes and evidence. Fixture loopback listeners alone
 are not proof of operating-system-enforced network isolation.
 
+Prepare the separate pinned Linux amd64 browser toolchain image explicitly:
+
+```sh
+anvil-serving connect qualify --prepare-container
+```
+
+This preparation uses the same saved settings and the local Docker engine. It
+may download public dependencies during the image build. Only nine named public
+build and dependency files enter the build context; it does not copy the checkout,
+home directory, Docker account configuration or deployment secrets. An owner-only
+receipt binds the build-input digest to the immutable image ID. Repeating the
+command reuses that image when its receipt and metadata match. Routine baseline
+runs remain download-free. Preparation alone does not run or qualify the terminal
+login flow.
+
+Run the existing browser baseline in the prepared container:
+
+```sh
+anvil-serving connect qualify --lane container-baseline
+```
+
+This lane refuses root users and groups. It uses the recorded immutable image
+with downloads disabled, no external networking, no published ports, no GPUs,
+and no Docker socket or writable host mount inside the container. Its only host
+mount contains the staged public source read-only. Runtime state uses private
+container temporary files; CPU, memory and process counts are bounded. The runner
+removes its named container after success, failure or interruption and records
+cleanup and source/image identity with the test results. This qualifies the same
+two browser fixtures under container isolation. Terminal approval, virtual and
+physical passkeys, host service identities and production routes need separate
+evidence.
+
+Run the terminal-login scenario in the same isolated image:
+
+```sh
+anvil-serving connect qualify --lane device
+```
+
+This drives the actual standalone CLI, synthetic Authelia browser sign-in and
+approval form, then makes keyed requests through the CLI's loopback listener.
+Only the CLI child trusts its fixture CA; normal HTTPS hostname and certificate
+verification stay enabled. The lane checks absent/wrong local keys, declared
+models access, GET-only grant enforcement, and CLI exit/port release. Codes and
+credentials stay in transient fixture state, outside retained evidence. Denial,
+expiry, cancellation, replay and broader revocation scenarios require additional
+coverage; a passing positive scenario is not full device-flow qualification.
+
 ## Validate
 
 `connect validate` checks declarations and component prerequisites. An optional

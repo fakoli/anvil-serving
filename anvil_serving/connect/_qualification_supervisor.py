@@ -201,8 +201,8 @@ class Children:
         return not active and not exceeded, escalated, limited | exceeded
 
 
-_FIXTURE_MARKER = __import__("re").compile(r"browser_edge_fixture_test\.go:[1-9][0-9]{0,4}")
-_FAILURE_STAGES = frozenset({"build", "fixture-startup", "browser-launch-cert", "browser-assertion", "report-parsing", "timeout", "interrupted", "supervisor"})
+_FIXTURE_MARKER = __import__("re").compile(r"browser_(?:edge|runtime)_fixture_test\.go:[1-9][0-9]{0,4}")
+_FAILURE_STAGES = frozenset({"build", "fixture-startup", "browser-launch-cert", "browser-connection", "browser-dns", "browser-navigation", "browser-assertion", "report-parsing", "timeout", "interrupted", "supervisor"})
 
 
 def _report_value(output: bytes) -> dict[str, Any] | None:
@@ -260,6 +260,12 @@ def _failure_stage(output: bytes, expected_name: str) -> str:
     if _fixture_marker(value) is not None:
         return "fixture-startup"
     text = "\n".join(_report_strings(value)).lower()
+    if "err_name_not_resolved" in text:
+        return "browser-dns"
+    if any(code in text for code in ("err_connection_refused", "err_connection_closed", "err_connection_timed_out")):
+        return "browser-connection"
+    if "browser-navigation-failed" in text:
+        return "browser-navigation"
     if "fixture build" in text or "go test -c" in text:
         return "build"
     if any(token in text for token in ("fixture did not become ready", "fixture exited", "reverse listener", "tunnel child", "wstunnel")):

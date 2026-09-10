@@ -27,7 +27,9 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     parser = _Parser(prog=prog, allow_abbrev=False)
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
     qualification = actions.add_parser("qualify", allow_abbrev=False)
-    qualification.add_argument("--lane", choices=("baseline",), action=_Once)
+    qualify_mode = qualification.add_mutually_exclusive_group()
+    qualify_mode.add_argument("--lane", choices=("baseline", "container-baseline", "device"), action=_Once)
+    qualify_mode.add_argument("--prepare-container", action="store_true")
     qualification.add_argument("--config", action=_Once)
     for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration"):
         leaf = actions.add_parser(action, allow_abbrev=False)
@@ -62,12 +64,26 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
 def _qualify(args: argparse.Namespace) -> CommandResult:
     from .qualification import QualificationError, qualify
 
+    if args.prepare_container:
+        from .qualification_container import prepare
+
+        try:
+            return CommandResult(data=prepare(args.config))
+        except QualificationError as exc:
+            return CommandResult(data={
+                "schema": "anvil-connect.qualification-container/v1", "ok": False,
+                "error_code": exc.code,
+            }, error=OperatorError("Connect qualification container preparation failed.", code=exc.code))
     try:
-        result = qualify(args.config, lane=args.lane or "baseline")
+        if args.lane in {"container-baseline", "device"}:
+            from .qualification_container_run import qualify as container_qualify
+            result = container_qualify(args.config, lane=args.lane)
+        else:
+            result = qualify(args.config, lane=args.lane or "baseline")
     except QualificationError as exc:
         started = bool(getattr(exc, "execution_started", False))
         state = "failed" if started else "not-run"
-        counts = getattr(exc, "case_counts", None) if started else {"passed": 0, "failed": 0, "skipped": 0, "not_run": 2}
+        counts = getattr(exc, "case_counts", None) if started else {"passed": 0, "failed": 0, "skipped": 0, "not_run": 1 if args.lane == "device" else 2}
         return CommandResult(data={
             "schema": "anvil-connect.qualification/v1", "ok": False, "state": state,
             "error_code": exc.code, "counts": counts, "stage": getattr(exc, "stage", "preflight"),

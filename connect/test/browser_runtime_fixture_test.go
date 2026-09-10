@@ -19,12 +19,17 @@ import (
 	"os"
 	"path/filepath"
 	stdruntime "runtime"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/admin"
+	"github.com/fakoli/anvil-serving/connect/internal/client"
+	"github.com/fakoli/anvil-serving/connect/internal/clientconfig"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/privatefiles"
 	connectruntime "github.com/fakoli/anvil-serving/connect/internal/runtime"
@@ -33,6 +38,7 @@ import (
 const (
 	edgeControlHost = "control.example.test"
 	edgeTunnelHost  = "tunnel.example.test"
+	edgeAPIHost     = "api.example.test"
 )
 
 // runtimeCaddyConfig is the same public split used by the managed renderer:
@@ -61,6 +67,7 @@ func runtimeCaddyConfig(listen, authListen, socket, certificate, key string) map
 					route(tunnelMatch, []string{"1.1"}),
 					route(browserUpgrade, []string{"1.1"}),
 					route(map[string]any{"host": []string{dashHost}, "path": []string{"/", "/*"}, "method": []string{"GET", "POST"}}, []string{"h2c"}),
+					route(map[string]any{"host": []string{edgeAPIHost}, "path": []string{"/v1", "/v1/*"}, "method": []string{"GET", "POST"}}, []string{"h2c"}),
 					route(map[string]any{"host": []string{edgeControlHost}}, []string{"h2c"}),
 					map[string]any{"handle": []any{map[string]any{"handler": "static_response", "status_code": 404}}},
 				},
@@ -170,7 +177,8 @@ func runtimeTunnelBinary(t *testing.T) string {
 // the actual gateway and connector lifecycle. It is isolated in one Go test
 // process because it temporarily supplies the gateway's strict OIDC transport.
 func TestBrowserRuntimeEdgeFixture(t *testing.T) {
-	if os.Getenv("ANVIL_CONNECT_BROWSER_RUNTIME_EDGE_FIXTURE") != "1" {
+	deviceFixture := os.Getenv("ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE") == "1"
+	if os.Getenv("ANVIL_CONNECT_BROWSER_RUNTIME_EDGE_FIXTURE") != "1" && !deviceFixture {
 		t.Skip("launched only by the runtime-edge Playwright test")
 	}
 	caddy, authelia := edgeTool(t, "caddy"), edgeTool(t, "authelia")
@@ -182,7 +190,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	certificate, key, root, roots := edgeCertificate(t, edgeAuthHost, dashHost, edgeControlHost, edgeTunnelHost)
+	certificate, key, root, roots := edgeCertificate(t, edgeAuthHost, dashHost, edgeAPIHost, edgeControlHost, edgeTunnelHost)
 	certificatePath, keyPath, rootPath := filepath.Join(secrets, "edge.pem"), filepath.Join(secrets, "edge.key"), filepath.Join(secrets, "edge-root.pem")
 	edgeWrite(t, certificatePath, certificate)
 	edgeWrite(t, keyPath, key)
@@ -212,14 +220,44 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	oidcPath := filepath.Join(secrets, "oidc.pem")
 	edgeWrite(t, oidcPath, string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: oidcDER})))
 	authListen, caddyListen := edgeReserve(t), edgeReserve(t)
+	if deviceFixture {
+		// The P02 container owns this loopback-only port. The real CLI has no
+		// dial override, so it must reach the normal HTTPS authority on 443.
+		caddyListen = "127.0.0.1:443"
+	}
 	authConfig := filepath.Join(directory, "authelia.yml")
 	edgeWrite(t, authConfig, edgeConfig(authListen, state, users, clientSecretPath, secretPaths["session"], secretPaths["storage"], secretPaths["validation"], secretPaths["hmac"], oidcPath))
 	edgeRun(t, childHome, authelia, "storage", "migrate", "up", "--config", authConfig, "--config.experimental.filters", "template")
 	allowedTOTP := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(edgeRandom(t, 20)))
 	edgeRun(t, childHome, authelia, "storage", "user", "totp", "generate", "fixture-allowed", "--secret", allowedTOTP, "--issuer", "Anvil Connect Fixture", "--algorithm", "SHA1", "--digits", "6", "--period", "30", "--config", authConfig, "--config.experimental.filters", "template")
+	if deviceFixture {
+		// The device binding must name the same opaque OIDC subject that the
+		// later browser login presents. Create it through Authelia's storage
+		// authority before exporting it; no gateway map is synthesized.
+		edgeRun(t, childHome, authelia, "storage", "user", "identifiers", "add", "fixture-allowed", "--config", authConfig, "--config.experimental.filters", "template")
+	}
 	startEdgeChild(t, childHome, authelia, "--config", authConfig, "--config.experimental.filters", "template")
+	deviceHuman := ""
+	if deviceFixture {
+		deviceSubject, exportErr := edgeGrantedSubject(childHome, authelia, authConfig, filepath.Join(directory, "device-identifiers.yml"))
+		if exportErr != nil {
+			t.Fatal("fixture device subject export failed")
+		}
+		deviceHuman = runtimeFixtureHumanID("https://"+edgeAuthHost, deviceSubject)
+		if deviceHuman == "" {
+			t.Fatal("fixture device human id unavailable")
+		}
+	}
 
-	gatewayCfg := connectruntime.GatewayConfig{Schema: "anvil-connect.gateway-runtime/v1", Gateway: config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: edgeReserve(t), MaxConcurrent: 4, Resources: []config.Resource{{Rule: config.Rule{ID: "dash", Host: dashHost, PathPrefix: "/", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 5, DurationSeconds: 20}}, Connector: "connector-a", TunnelAddress: edgeReserve(t)}}}, ControlHost: edgeControlHost, TunnelHost: edgeTunnelHost, StateDirectory: filepath.Join(directory, "gateway"), TunnelBinary: binary, TunnelListen: edgeReserve(t), OIDC: connectruntime.OIDC{Issuer: "https://" + edgeAuthHost, ClientID: "connect-browser", ClientSecretEnv: "OIDC_CLIENT_SECRET"}}
+	resources := []config.Resource{{Rule: config.Rule{ID: "dash", Host: dashHost, PathPrefix: "/", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 5, DurationSeconds: 20}}, Connector: "connector-a", TunnelAddress: edgeReserve(t)}}
+	if deviceFixture {
+		resources = append(resources, config.Resource{Rule: config.Rule{ID: "router", Host: edgeAPIHost, PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 5, DurationSeconds: 20}}, Connector: "connector-a", TunnelAddress: edgeReserve(t)})
+	}
+	gatewayDeclaration := config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: edgeReserve(t), MaxConcurrent: 4, Resources: resources}
+	if deviceFixture {
+		gatewayDeclaration.DeviceAuthorizations = []config.DeviceAuthorization{{BrowserResource: "dash", APIResource: "router", Methods: []string{"GET"}, Label: "Fixture terminal", Principals: map[string]string{deviceHuman: "fixture-sdk"}}}
+	}
+	gatewayCfg := connectruntime.GatewayConfig{Schema: "anvil-connect.gateway-runtime/v1", Gateway: gatewayDeclaration, ControlHost: edgeControlHost, TunnelHost: edgeTunnelHost, StateDirectory: filepath.Join(directory, "gateway"), TunnelBinary: binary, TunnelListen: edgeReserve(t), OIDC: connectruntime.OIDC{Issuer: "https://" + edgeAuthHost, ClientID: "connect-browser", ClientSecretEnv: "OIDC_CLIENT_SECRET"}}
 	caddyConfig, err := json.Marshal(runtimeCaddyConfig(caddyListen, authListen, filepath.Join(gatewayCfg.StateDirectory, "ingress.sock"), certificatePath, keyPath))
 	if err != nil {
 		t.Fatal(err)
@@ -318,14 +356,38 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer adminPin.Close()
+	if deviceFixture {
+		if _, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "principal-set", Principal: "fixture-sdk", Grants: []access.Grant{{Resource: "router", Methods: []string{"GET"}}}}); err != nil {
+			t.Fatal("fixture API principal setup failed")
+		}
+	}
 	nativeFixture := &edgeFixture{}
 	native := httptest.NewServer(http.HandlerFunc(nativeFixture.nativeDashboard))
 	defer native.Close()
+	var apiPosts atomic.Int64
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			apiPosts.Add(1)
+		}
+		if r.Method != http.MethodGet || r.URL.Path != "/v1/models" || r.Header.Get("Authorization") != "Bearer fixture-native-api-token" {
+			http.Error(w, "fixture API denied", http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"object":"list","data":[{"id":"fixture-model"}]}`)
+	}))
+	defer api.Close()
 	proxyObserver := &runtimeProxyObserver{counts: map[string]int{}}
 	proxyServer := httptest.NewServer(runtimeConnectProxy(caddyListen, map[string]bool{edgeControlHost + ":443": true, edgeTunnelHost + ":443": true}, proxyObserver))
 	defer proxyServer.Close()
-	connectorCfg := connectruntime.ConnectorConfig{Schema: "anvil-connect.connector-runtime/v1", ID: "connector-a", ControlHost: edgeControlHost, TunnelHost: edgeTunnelHost, StateDirectory: filepath.Join(directory, "connector"), TunnelBinary: binary, PublicTrustFile: rootPath, HTTPProxyURL: proxyServer.URL, Resources: []connectruntime.ConnectorResource{{Envelope: config.Envelope{Rule: gatewayCfg.Gateway.Resources[0].Rule, Listen: edgeReserve(t), OriginURL: native.URL}, ReverseAddress: gatewayCfg.Gateway.Resources[0].TunnelAddress}}}
-	invite, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "invite", Installation: "connector-a", Role: "connector", Resources: []string{"dash"}, LifetimeSeconds: 60})
+	connectorResources := []connectruntime.ConnectorResource{{Envelope: config.Envelope{Rule: gatewayCfg.Gateway.Resources[0].Rule, Listen: edgeReserve(t), OriginURL: native.URL}, ReverseAddress: gatewayCfg.Gateway.Resources[0].TunnelAddress}}
+	inviteResources := []string{"dash"}
+	if deviceFixture {
+		connectorResources = append(connectorResources, connectruntime.ConnectorResource{Envelope: config.Envelope{Rule: gatewayCfg.Gateway.Resources[1].Rule, Listen: edgeReserve(t), OriginURL: api.URL, TokenEnv: "ANVIL_CONNECT_FIXTURE_API_TOKEN"}, ReverseAddress: gatewayCfg.Gateway.Resources[1].TunnelAddress})
+		inviteResources = append(inviteResources, "router")
+	}
+	connectorCfg := connectruntime.ConnectorConfig{Schema: "anvil-connect.connector-runtime/v1", ID: "connector-a", ControlHost: edgeControlHost, TunnelHost: edgeTunnelHost, StateDirectory: filepath.Join(directory, "connector"), TunnelBinary: binary, PublicTrustFile: rootPath, HTTPProxyURL: proxyServer.URL, Resources: connectorResources}
+	invite, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "invite", Installation: "connector-a", Role: "connector", Resources: inviteResources, LifetimeSeconds: 60})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,7 +401,9 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	if _, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "approve", Installation: "connector-a", Fingerprint: identity.Fingerprint}); err != nil {
 		t.Fatal(err)
 	}
-	connector, err := connectruntime.StartConnector(context.Background(), connectorCfg, func(string) (string, bool) { return "", false })
+	connector, err := connectruntime.StartConnector(context.Background(), connectorCfg, func(name string) (string, bool) {
+		return "fixture-native-api-token", deviceFixture && name == "ANVIL_CONNECT_FIXTURE_API_TOKEN"
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,6 +441,12 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	}
 
 	ready := map[string]string{"url": "https://" + dashHost, "resolver": caddyListen, "ca": rootPath, "allowed_user": "fixture-allowed", "allowed_password": allowedPassword}
+	if deviceFixture {
+		clientHome, localKeyPath := runtimeFixtureClient(t, directory)
+		ready["client_home"] = clientHome
+		ready["local_key"] = localKeyPath
+		ready["local_base_url"] = "http://127.0.0.1:8787/v1"
+	}
 	if err := json.NewEncoder(os.Stdout).Encode(ready); err != nil {
 		t.Fatal(err)
 	}
@@ -410,6 +480,8 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			}
 		case "totp allowed":
 			response["code"] = edgeStableTOTP(allowedTOTP)
+		case "api post count":
+			response["count"] = strconv.FormatInt(apiPosts.Load(), 10)
 		default:
 			response["error"] = "unknown fixture command"
 		}
@@ -417,6 +489,39 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			return
 		}
 	}
+}
+
+func runtimeFixtureHumanID(issuer, subject string) string {
+	if issuer == "" || subject == "" {
+		return ""
+	}
+	digest := sha256.Sum256([]byte(issuer + "\x00" + subject))
+	return "human:" + hex.EncodeToString(digest[:])
+}
+
+// runtimeFixtureClient writes only a closed declaration and a sibling local
+// key. The Playwright lane gives this private HOME exclusively to the actual
+// CLI; no remote credential or approval code is written to disk.
+func runtimeFixtureClient(t *testing.T, directory string) (string, string) {
+	t.Helper()
+	home := filepath.Join(directory, "device-client-home")
+	configDir := filepath.Join(home, ".config", "anvil-connect")
+	if err := os.MkdirAll(configDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	localKey, err := client.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaration := clientconfig.Config{Schema: "anvil-connect.client-runtime/v1", Rule: config.Rule{ID: "router", Host: edgeAPIHost, PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 5, DurationSeconds: 20}}, Listen: "127.0.0.1:8787", LocalKeyEnv: "ANVIL_CONNECT_LOCAL_KEY", RemoteKeyEnv: "ANVIL_CONNECT_REMOTE_KEY", DeviceAuthorization: &clientconfig.DeviceAuthorization{BrowserHost: dashHost, ApprovalPath: "/_anvil-connect/device", APIResource: "router", Methods: []string{"GET"}}}
+	encoded, err := json.Marshal(declaration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edgeWrite(t, filepath.Join(configDir, "client.json"), string(encoded))
+	localKeyPath := filepath.Join(configDir, "local-key")
+	edgeWrite(t, localKeyPath, localKey+"\n")
+	return home, localKeyPath
 }
 
 func runtimeWebSocketKey(t *testing.T) string {
