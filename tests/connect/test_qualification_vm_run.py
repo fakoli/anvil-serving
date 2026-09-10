@@ -88,3 +88,46 @@ def test_private_cleanup_refuses_substituted_symlink(tmp_path):
 def test_guest_result_bound_is_closed():
     with pytest.raises(QualificationError):
         subject._cases(b"x" * (subject._MAX_RESULT + 1))
+
+
+def failure_result():
+    value = result()
+    value['ok'] = False
+    value['cases'][2].update(status='failed', failure={
+        'kind': 'os', 'errno': 13, 'returncode': None,
+        'frames': [{'source': 'guest', 'line': 123}, {'source': 'manage', 'line': 456}],
+    })
+    return value
+
+
+def test_closed_failure_coordinates_are_retained_without_changing_case_counts():
+    value = failure_result()
+    cases = subject._cases(json.dumps(value).encode())
+    assert cases == value['cases']
+    assert subject._counts(cases)['failed'] == 1
+    assert subject._counts(cases)['passed'] == 7
+
+
+@pytest.mark.parametrize('mutation', [
+    'text', 'path', 'kind', 'extra_frame', 'bool_line', 'large_line',
+    'bool_errno', 'large_errno', 'large_returncode', 'too_many_frames', 'passed',
+])
+def test_failure_coordinates_reject_unbounded_or_untrusted_fields(mutation):
+    value = failure_result()
+    case = value['cases'][2]
+    failure = case['failure']
+    if mutation == 'text': failure['message'] = 'SECRET'
+    elif mutation == 'path': failure['frames'][0]['source'] = '/private/SECRET'
+    elif mutation == 'kind': failure['kind'] = 'SECRET'
+    elif mutation == 'extra_frame': failure['frames'][0]['text'] = 'SECRET'
+    elif mutation == 'bool_line': failure['frames'][0]['line'] = True
+    elif mutation == 'large_line': failure['frames'][0]['line'] = 100_000
+    elif mutation == 'bool_errno': failure['errno'] = True
+    elif mutation == 'large_errno': failure['errno'] = 4096
+    elif mutation == 'large_returncode': failure['returncode'] = 2 ** 31
+    elif mutation == 'too_many_frames': failure['frames'] *= 5
+    else:
+        case['status'] = 'passed'
+        value['ok'] = True
+    with pytest.raises(QualificationError):
+        subject._cases(json.dumps(value).encode())

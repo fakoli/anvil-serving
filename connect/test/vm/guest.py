@@ -65,7 +65,7 @@ _REQUIRED = frozenset({
 
 
 class GuestFailure(RuntimeError):
-    """A fixture failure whose public result deliberately has no diagnostics."""
+    """A fixture failure whose public result never includes exception text."""
 
 
 def _limits() -> dict[str, int]:
@@ -223,7 +223,9 @@ def _command(argv: list[str], *, timeout: int = COMMAND_TIMEOUT, check: bool = T
     except (OSError, subprocess.SubprocessError) as exc:
         raise GuestFailure from exc
     if check and result.returncode != 0:
-        raise GuestFailure
+        failure = GuestFailure()
+        failure.returncode = result.returncode
+        raise failure
     return result.returncode
 
 
@@ -735,16 +737,56 @@ def _cleanup() -> bool:
         return False
 
 
-def _case(name: str, operation: Callable[[], None]) -> dict[str, str]:
+def _failure_location(exc: Exception) -> dict[str, Any]:
+    """Return only bounded source coordinates and numeric process/OS outcomes."""
+    sources = {
+        str(Path(__file__)): "guest",
+        str(PAYLOAD_ROOT / "python/anvil_serving/connect/manage.py"): "manage",
+        str(PAYLOAD_ROOT / "python/anvil_serving/connect/config.py"): "config",
+        str(PAYLOAD_ROOT / "python/anvil_serving/connect/render.py"): "render",
+    }
+    frames: list[dict[str, Any]] = []
+    result: dict[str, Any] = {"kind": "other", "errno": None, "returncode": None, "frames": frames}
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    for _ in range(4):
+        if current is None or id(current) in seen:
+            break
+        seen.add(id(current))
+        if isinstance(current, subprocess.TimeoutExpired):
+            result["kind"] = "timeout"
+        elif isinstance(current, OSError):
+            result["kind"] = "os"
+            if type(current.errno) is int and 0 < current.errno < 4096:
+                result["errno"] = current.errno
+        elif isinstance(current, GuestFailure) and result["kind"] == "other":
+            result["kind"] = "fixture"
+        code = getattr(current, "returncode", None)
+        if type(code) is int and -(2 ** 31) <= code < 2 ** 31:
+            result["returncode"] = code
+        trace = current.__traceback__
+        for _ in range(64):
+            if trace is None:
+                break
+            source = sources.get(trace.tb_frame.f_code.co_filename)
+            if source is not None and 0 < trace.tb_lineno < 100_000:
+                frames.append({"source": source, "line": trace.tb_lineno})
+            trace = trace.tb_next
+        current = current.__cause__
+    result["frames"] = frames[-8:]
+    return result
+
+
+def _case(name: str, operation: Callable[[], None]) -> dict[str, Any]:
     try:
         operation()
         return {"name": name, "status": "passed"}
-    except Exception:
-        return {"name": name, "status": "failed"}
+    except Exception as exc:
+        return {"name": name, "status": "failed", "failure": _failure_location(exc)}
 
 
 def _write_result(cases: list[dict[str, str]]) -> dict[str, Any]:
-    if tuple(item.get("name") for item in cases) != CASES or any(item.get("status") not in {"passed", "failed"} or set(item) != {"name", "status"} for item in cases):
+    if tuple(item.get("name") for item in cases) != CASES or any(item.get("status") not in {"passed", "failed"} or set(item) not in ({"name", "status"}, {"name", "status", "failure"}) or ("failure" in item and item["status"] != "failed") for item in cases):
         raise GuestFailure
     RESULT_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     data = {"schema": RESULT_SCHEMA, "cases": cases, "ok": all(item["status"] == "passed" for item in cases)}
