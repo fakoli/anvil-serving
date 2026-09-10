@@ -1023,6 +1023,57 @@ def _started_units(runner: Runner | None, unit_root: Path, units: tuple[str, ...
     raise ManageError("managed units did not stabilize after startup")
 
 
+def _closed_gateway_status(raw: bytes) -> None:
+    """Accept only the secret-free response from the native admin status RPC."""
+    value = _strict_json(raw, "gateway readiness response is invalid")
+    fields = {
+        "operation", "epoch", "secret", "key_id", "principal", "grants",
+        "invitation", "installation", "role", "resources", "generation",
+        "fingerprint", "status",
+    }
+    if set(value) != fields or value.get("operation") != "status":
+        raise ManageError("gateway readiness response is invalid")
+    epoch = value.get("epoch")
+    empty = ("secret", "key_id", "principal", "invitation", "installation", "role", "fingerprint")
+    status = value.get("status")
+    if (not isinstance(epoch, str) or len(epoch) != 64 or any(char not in "0123456789abcdef" for char in epoch)
+            or any(value.get(name) != "" for name in empty)
+            or value.get("grants") != [] or value.get("resources") != []
+            or type(value.get("generation")) is not int or value["generation"] != 0
+            or not isinstance(status, dict)
+            or set(status) != {"id", "status", "fingerprint", "epoch", "generation", "resources"}
+            or status.get("id") != "" or status.get("status") != "" or status.get("fingerprint") != ""
+            or status.get("epoch") != "" or type(status.get("generation")) is not int or status["generation"] != 0
+            or status.get("resources") != []):
+        raise ManageError("gateway readiness response is invalid")
+
+
+def _gateway_ready(data: dict[str, Any], runner: Runner | None) -> None:
+    """Require the restarted gateway's own same-user admin socket before dependents."""
+    root = Path(data["config_root"])
+    _safe_dir(root.parent)
+    with tempfile.TemporaryDirectory(prefix=".anvil-connect-status-", dir=root.parent) as temporary:
+        request = Path(temporary) / "status.json"
+        _write_atomic(request, b'{"operation":"status"}\n')
+        # The status request has no credentials or mutating fields.  The parent
+        # remains non-writable, while the service identity can read this exact
+        # declaration and its owner-only admin socket.
+        os.chmod(request.parent, 0o755)
+        command = (
+            data["binary"], "admin", "--socket",
+            str(Path(data["gateway"]["state_directory"]) / "admin.sock"),
+            "--request", str(request),
+        )
+        for attempt in range(6):
+            observed = _run(runner, command, _VALIDATE_TIMEOUT, _service_identity(data))
+            if observed.returncode == 0:
+                _closed_gateway_status(observed.stdout)
+                return
+            if attempt < 5:
+                time.sleep(1)
+    raise ManageError("gateway did not become ready before dependent activation")
+
+
 def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bool, upgrade: bool, runner: Runner | None, unit_root: str | Path, action: str) -> dict[str, Any]:
     """Activate one closed role set in a single reversible transaction."""
     _require_supported_platform()
@@ -1063,7 +1114,17 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                 _verify_unit(system_root, unit, sources.get(unit))
                 _unit_metadata(runner, system_root, (unit,), present=True)
                 prior[unit] = _unit_state(runner, unit)
-            for unit in units:
+            gateway_units = _target_units((Target("gateway"),)) if selected_gateway else ()
+            dependent_units = tuple(unit for unit in units if unit not in gateway_units)
+            for unit in gateway_units:
+                active, enabled = prior[unit]
+                if active:
+                    _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
+                else:
+                    _action(runner, (_SYSTEMCTL, "enable", "--now", unit), _SYSTEMD_TIMEOUT, "managed unit failed to start")
+            if selected_gateway:
+                _gateway_ready(data, runner)
+            for unit in dependent_units:
                 active, enabled = prior[unit]
                 if active:
                     _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
