@@ -25,6 +25,8 @@ _DEVICE_HUMAN = re.compile(r"human:[0-9a-f]{64}$")
 _LITERAL_SECRET = re.compile(r"(?:password|secret|credential|private[_-]?key)", re.I)
 _MAX_MANIFEST_BYTES = 1024 * 1024
 _MAX_LINUX_ID = 2147483647
+_MAX_MEMORY_MAX_BYTES = (1 << 63) - 1
+_MAX_TASKS_MAX = 2147483647
 
 
 class ManifestError(ValueError):
@@ -166,10 +168,40 @@ def _service_identities(value: Any, path: str) -> dict[str, Any]:
     return normalized
 
 
+def _service_limit(value: Any, path: str) -> dict[str, int]:
+    raw = _mapping(value, path, {"memory_max_bytes", "tasks_max"})
+    return {
+        "memory_max_bytes": _positive(raw["memory_max_bytes"], path + ".memory_max_bytes", _MAX_MEMORY_MAX_BYTES),
+        "tasks_max": _positive(raw["tasks_max"], path + ".tasks_max", _MAX_TASKS_MAX),
+    }
+
+
+def _service_limit_map(value: Any, path: str) -> dict[str, dict[str, int]]:
+    if not isinstance(value, dict) or len(value) > _MAX_ITEMS or any(item is None for item in value.values()):
+        raise _error(path, f"must contain at most {_MAX_ITEMS} service limit mappings")
+    normalized: dict[str, dict[str, int]] = {}
+    for name, limit in value.items():
+        normalized[_ident(name, path + ".key")] = _service_limit(limit, path + "." + str(name))
+    return {name: normalized[name] for name in sorted(normalized)}
+
+
+def _service_limits(value: Any, path: str) -> dict[str, Any]:
+    raw = _mapping(value, path, {"gateway", "edge", "idp", "connectors", "clients"})
+    return {
+        "gateway": _service_limit(raw["gateway"], path + ".gateway"),
+        "edge": _service_limit(raw["edge"], path + ".edge"),
+        "idp": _service_limit(raw["idp"], path + ".idp"),
+        "connectors": _service_limit_map(raw["connectors"], path + ".connectors"),
+        "clients": _service_limit_map(raw["clients"], path + ".clients"),
+    }
+
+
 def require_isolated(data: dict[str, Any]) -> None:
     """Reject a legacy declaration at a publishing or activation boundary."""
     if not isinstance(data, dict) or "service_identities" not in data:
         raise ManifestError("$.service_identities: isolated service identities are required")
+    if "service_limits" not in data:
+        raise ManifestError("$.service_limits: isolated service limits are required")
 
 
 def role_identity(data: dict[str, Any], role: str, identifier: str | None = None) -> tuple[int, int]:
@@ -186,6 +218,22 @@ def role_identity(data: dict[str, Any], role: str, identifier: str | None = None
     else:
         raise ManifestError("$.service_identities: invalid role identity lookup")
     return identity["uid"], identity["gid"]
+
+
+def role_limits(data: dict[str, Any], role: str, identifier: str | None = None) -> tuple[int, int]:
+    """Return one normalized isolated role limit pair without host discovery."""
+    require_isolated(data)
+    limits = data["service_limits"]
+    if role in {"gateway", "edge", "idp"} and identifier is None:
+        limit = limits[role]
+    elif role in {"connector", "client"} and isinstance(identifier, str):
+        collection = "connectors" if role == "connector" else "clients"
+        limit = limits[collection].get(identifier)
+        if limit is None:
+            raise ManifestError(f"$.service_limits.{collection}: unknown role identifier")
+    else:
+        raise ManifestError("$.service_limits: invalid role limit lookup")
+    return limit["memory_max_bytes"], limit["tasks_max"]
 
 
 def _paths_disjoint(paths: dict[str, str], path: str) -> None:
@@ -358,7 +406,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     _reject_literal_credentials(value)
     root_fields = {"schema", "binary", "components", "config_root", "environment_files", "gateway", "connectors", "clients", "caddy", "authelia"}
     if isinstance(value, dict):
-        root_fields.update({"service_user", "service_identities"}.intersection(value))
+        root_fields.update({"service_user", "service_identities", "service_limits"}.intersection(value))
     raw = _mapping(value, "$", root_fields)
     if raw["schema"] != SCHEMA:
         raise _error("$.schema", f"must equal {SCHEMA}")
@@ -375,10 +423,14 @@ def validate_manifest(value: Any) -> dict[str, Any]:
                                     if "gateway_identity" in environment_raw else None)
     has_legacy_user = "service_user" in raw
     has_identities = "service_identities" in raw
+    has_limits = "service_limits" in raw
     if has_legacy_user == has_identities:
         raise _error("$", "must contain exactly one of service_user or service_identities")
+    if has_identities != has_limits:
+        raise _error("$", "service_limits must be present exactly with service_identities")
     service_user = _ident(raw["service_user"], "$.service_user") if has_legacy_user else None
     service_identities = _service_identities(raw["service_identities"], "$.service_identities") if has_identities else None
+    service_limits = _service_limits(raw["service_limits"], "$.service_limits") if has_limits else None
 
     gateway_fields = {"schema", "gateway", "control_host", "tunnel_host", "state_directory", "tunnel_binary", "tunnel_listen", "oidc"}
     if isinstance(raw["gateway"], dict) and "browser_session_lifetime_seconds" in raw["gateway"]:
@@ -748,6 +800,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         raise _error("$.service_identities.connectors", "must exactly match declared connector ids")
     if set(service_identities["clients"]) != {client["rule"]["id"] for client in clients}:
         raise _error("$.service_identities.clients", "must exactly match declared client rule ids")
+    if set(service_limits["connectors"]) != set(connector_index):
+        raise _error("$.service_limits.connectors", "must exactly match declared connector ids")
+    if set(service_limits["clients"]) != {client["rule"]["id"] for client in clients}:
+        raise _error("$.service_limits.clients", "must exactly match declared client rule ids")
     state_paths = {
         "gateway": gateway["state_directory"],
         "edge": caddy["state_directory"],
@@ -757,6 +813,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     }
     _paths_disjoint(state_paths, "$.service_identities")
     result["service_identities"] = service_identities
+    result["service_limits"] = service_limits
     return result
 
 

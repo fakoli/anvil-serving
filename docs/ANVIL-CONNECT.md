@@ -96,6 +96,13 @@ references. A resource has an exact hostname, canonical path prefix, allowed
 methods, concurrency/body/duration limits and native-auth mode. The connector's
 local envelope independently rejects destinations or permissions outside it.
 
+New isolated deployments declare `service_identities` and a matching
+`service_limits` map. Each gateway, edge, IdP, connector, and client role has
+an exact positive `memory_max_bytes` and `tasks_max` limit; rendered systemd
+units apply them as `MemoryMax` and `TasksMax`. The legacy single-service-user
+shape remains readable for recovery inspection and shutdown, but cannot be
+activated as an isolated deployment.
+
 The optional `gateway.browser_session_lifetime_seconds` controls the lifetime
 of Connect's opaque browser admission session. It accepts whole seconds from
 60 through 86400 and defaults to 28800 (eight hours) when omitted. It neither

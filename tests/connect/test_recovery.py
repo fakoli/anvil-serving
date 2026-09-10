@@ -61,6 +61,13 @@ def declaration(tmp_path, monkeypatch):
         "clients": {"dashboard-api": {"uid": 1205, "gid": 2205}},
         "ingress": {"group_id": 2290, "directory": str(tmp_path / "ingress")},
     }
+    data["service_limits"] = {
+        "gateway": {"memory_max_bytes": 805306368, "tasks_max": 128},
+        "edge": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "idp": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "connectors": {"dashboard": {"memory_max_bytes": 402653184, "tasks_max": 64}},
+        "clients": {"dashboard-api": {"memory_max_bytes": 268435456, "tasks_max": 32}},
+    }
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps(data))
     backup = tmp_path / "backup"
