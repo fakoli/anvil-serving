@@ -5,6 +5,8 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import platform
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -22,7 +24,7 @@ def load_module(name: str):
     return module
 
 
-def bundle(tmp_path: Path):
+def bundle(tmp_path: Path, *, platform_name: str = 'darwin-arm64', roles: list[str] | None = None, executable: bytes = b'fixture bytes'):
     installer = load_module('install')
     root = tmp_path / 'bundle'
     root.mkdir()
@@ -30,13 +32,43 @@ def bundle(tmp_path: Path):
     for name in ('bin/anvil-connect', 'share/LICENSE', 'share/THIRD-PARTY.json', 'share/THIRD-PARTY-LICENSES.txt'):
         path = root / name
         path.parent.mkdir(exist_ok=True)
-        path.write_bytes(b'fixture bytes')
-        path.chmod(0o644)
+        path.write_bytes(executable if name == 'bin/anvil-connect' else b'fixture bytes')
+        path.chmod(0o755 if name.startswith('bin/') else 0o644)
         files[name] = {'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'size': path.stat().st_size, 'mode': 0o755 if name.startswith('bin/') else 0o644}
-    value = {'schema': installer.SCHEMA, 'version': '0.1.0', 'source_revision': 'a' * 40, 'platform': 'darwin-arm64', 'roles': ['client'], 'files': files}
+    value = {'schema': installer.SCHEMA, 'version': '0.1.0', 'source_revision': 'a' * 40, 'platform': platform_name, 'roles': roles or ['client'], 'files': files}
     raw = json.dumps(value).encode()
     (root / 'bundle.json').write_bytes(raw)
     return installer, root, hashlib.sha256(raw).hexdigest()
+
+
+def private_test_directory(path: Path, create: bool = False) -> None:
+    """Model only the installer-owned paths below a private pytest fixture."""
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+        path.chmod(0o755)
+
+
+def root_fixture_directory() -> Path:
+    if platform.system() != 'Linux' or shutil.which('sudo') is None:
+        pytest.skip('requires Linux sudo for the root/service installer contract')
+    created = subprocess.run(
+        ['sudo', '-n', '/usr/bin/mktemp', '-d', '-p', '/opt', 'anvil-connect-install-test.XXXXXXXX'],
+        capture_output=True,
+        text=True,
+    )
+    if created.returncode != 0:
+        pytest.skip('requires passwordless sudo and an isolated /opt test directory')
+    root = Path(created.stdout.strip())
+    if root.parent != Path('/opt') or not root.name.startswith('anvil-connect-install-test.'):
+        raise AssertionError('sudo fixture allocation returned an unsafe path')
+    subprocess.run(['sudo', '-n', '/bin/chmod', '0755', str(root)], check=True)
+    return root
+
+
+def remove_root_fixture(root: Path) -> None:
+    if root.parent != Path('/opt') or not root.name.startswith('anvil-connect-install-test.'):
+        raise AssertionError('refusing to remove an unexpected root fixture')
+    subprocess.run(['sudo', '-n', '/bin/rm', '-rf', '--', str(root)], check=True)
 
 
 def test_standalone_manager_contains_no_router_or_third_party_runtime(tmp_path: Path) -> None:
@@ -62,10 +94,7 @@ def test_installer_preview_repeat_and_drift_preserve_existing_files(tmp_path: Pa
     monkeypatch.setattr(installer, 'host_platform', lambda: 'darwin-arm64')
     # The harness lives below pytest's temporary tree. Validate prefix safety
     # separately; the install behavior uses a private synthetic ancestry here.
-    def directory(path, create=False):
-        if create:
-            path.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr(installer, 'checked_directory', directory)
+    monkeypatch.setattr(installer, 'checked_directory', private_test_directory)
     prefix = tmp_path / 'installed'
     result = installer.install(root, prefix, role='client', expected=digest, apply=False)
     assert result['state'] == 'planned'
@@ -117,7 +146,7 @@ def test_installer_rejects_symlink_ancestry(tmp_path: Path) -> None:
 def test_atomic_upgrade_rollback_and_interrupted_first_install(tmp_path: Path, monkeypatch) -> None:
     installer, root, digest = bundle(tmp_path)
     monkeypatch.setattr(installer, 'host_platform', lambda: 'darwin-arm64')
-    monkeypatch.setattr(installer, 'checked_directory', lambda path, create=False: path.mkdir(parents=True, exist_ok=True) if create else None)
+    monkeypatch.setattr(installer, 'checked_directory', private_test_directory)
     prefix = tmp_path / 'prefix'
     original_rename = installer.os.rename
 
@@ -150,7 +179,7 @@ def test_atomic_upgrade_rollback_and_interrupted_first_install(tmp_path: Path, m
 def test_installed_receipt_and_selected_file_closure_cannot_drift(tmp_path: Path, monkeypatch) -> None:
     installer, root, digest = bundle(tmp_path)
     monkeypatch.setattr(installer, 'host_platform', lambda: 'darwin-arm64')
-    monkeypatch.setattr(installer, 'checked_directory', lambda path, create=False: path.mkdir(parents=True, exist_ok=True) if create else None)
+    monkeypatch.setattr(installer, 'checked_directory', private_test_directory)
     with pytest.raises(ValueError, match='members are missing'):
         installer.load_bundle(root, digest, installed_names={'bin/anvil-connect', 'bin/caddy'})
     prefix = tmp_path / 'prefix'
@@ -161,6 +190,68 @@ def test_installed_receipt_and_selected_file_closure_cannot_drift(tmp_path: Path
     receipt.write_text(json.dumps(data))
     with pytest.raises(ValueError, match='receipt drifted'):
         installer.install(root, prefix, role='client', expected=digest, apply=True)
+
+
+@requires_posix
+def test_installer_release_modes_ignore_umask_and_current_rejects_inaccessible_command_tree(tmp_path: Path, monkeypatch) -> None:
+    installer, root, digest = bundle(tmp_path)
+    monkeypatch.setattr(installer, 'host_platform', lambda: 'darwin-arm64')
+    # pytest's temporary parent is intentionally private. It is not part of an
+    # installed command path, so model only the installer-owned fixture paths.
+    monkeypatch.setattr(installer, 'checked_directory', private_test_directory)
+    prefix = tmp_path / 'prefix'
+    previous_umask = os.umask(0o077)
+    try:
+        installer.install(root, prefix, role='client', expected=digest, apply=True)
+    finally:
+        os.umask(previous_umask)
+    release = prefix / 'releases' / ('0.1.0-' + 'a' * 12)
+    for directory in (prefix, prefix / 'bin', prefix / 'releases', release, release / 'bin', release / 'share'):
+        assert directory.stat().st_mode & 0o7777 == 0o755
+    assert (release / 'bin/anvil-connect').stat().st_mode & 0o7777 == 0o755
+    assert (release / 'share/LICENSE').stat().st_mode & 0o7777 == 0o644
+    assert installer.install(root, prefix, role='client', expected=digest, apply=True)['state'] == 'current'
+
+    (release / 'bin').chmod(0o700)
+    with pytest.raises(ValueError, match='metadata drifted'):
+        installer.install(root, prefix, role='client', expected=digest, apply=True)
+    (release / 'bin').chmod(0o755)
+    (release / 'bin/anvil-connect').chmod(0o700)
+    with pytest.raises(ValueError, match='Unsafe release member'):
+        installer.install(root, prefix, role='client', expected=digest, apply=True)
+
+
+@requires_posix
+def test_root_install_under_umask_keeps_commands_traversable_by_service_user(tmp_path: Path) -> None:
+    installer, source, digest = bundle(
+        tmp_path,
+        platform_name='linux-amd64',
+        roles=['gateway', 'connector', 'client'],
+        executable=b'#!/bin/sh\nexit 0\n',
+    )
+    fixture = root_fixture_directory()
+    try:
+        staged_bundle = fixture / 'bundle'
+        staged_installer = fixture / 'install.py'
+        subprocess.run(['sudo', '-n', '/bin/cp', '-R', '--', str(source), str(staged_bundle)], check=True)
+        subprocess.run(['sudo', '-n', '/usr/bin/install', '-o', 'root', '-g', 'root', '-m', '0700', '--', str(ROOT / 'connect/packaging/install.py'), str(staged_installer)], check=True)
+        command = [
+            'sudo', '-n', '/bin/sh', '-c', 'umask 077; exec /usr/bin/python3 "$@"', 'sh',
+            str(staged_installer), '--bundle', str(staged_bundle), '--prefix', str(fixture / 'prefix'),
+            '--role', 'client', '--manifest-sha256', digest, '--confirm',
+        ]
+        first = subprocess.run(command, capture_output=True, text=True, check=True)
+        assert json.loads(first.stdout)['state'] == 'installed'
+        release = fixture / 'prefix/releases' / ('0.1.0-' + 'a' * 12)
+        for directory in (fixture / 'prefix', fixture / 'prefix/bin', fixture / 'prefix/releases', release, release / 'bin', release / 'share'):
+            assert directory.stat().st_mode & 0o7777 == 0o755
+        assert (release / 'bin/anvil-connect').stat().st_mode & 0o7777 == 0o755
+        service_user = 'anvil-connect' if subprocess.run(['getent', 'passwd', 'anvil-connect']).returncode == 0 else 'nobody'
+        subprocess.run(['sudo', '-n', '-u', service_user, '--', str(fixture / 'prefix/bin/anvil-connect')], check=True)
+        repeated = subprocess.run(command, capture_output=True, text=True, check=True)
+        assert json.loads(repeated.stdout)['state'] == 'current'
+    finally:
+        remove_root_fixture(fixture)
 
 
 @pytest.mark.parametrize('target', ['windows-amd64', 'linux-arm64'])
