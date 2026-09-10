@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	stdruntime "runtime"
 	"strconv"
 	"strings"
@@ -177,7 +178,8 @@ func runtimeTunnelBinary(t *testing.T) string {
 // the actual gateway and connector lifecycle. It is isolated in one Go test
 // process because it temporarily supplies the gateway's strict OIDC transport.
 func TestBrowserRuntimeEdgeFixture(t *testing.T) {
-	deviceFixture := os.Getenv("ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE") == "1"
+	passkeyFixture := os.Getenv("ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE") == "1"
+	deviceFixture := passkeyFixture || os.Getenv("ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE") == "1"
 	if os.Getenv("ANVIL_CONNECT_BROWSER_RUNTIME_EDGE_FIXTURE") != "1" && !deviceFixture {
 		t.Skip("launched only by the runtime-edge Playwright test")
 	}
@@ -226,7 +228,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		caddyListen = "127.0.0.1:443"
 	}
 	authConfig := filepath.Join(directory, "authelia.yml")
-	edgeWrite(t, authConfig, edgeConfig(authListen, state, users, clientSecretPath, secretPaths["session"], secretPaths["storage"], secretPaths["validation"], secretPaths["hmac"], oidcPath))
+	edgeWrite(t, authConfig, runtimeAutheliaConfig(authListen, state, users, clientSecretPath, secretPaths["session"], secretPaths["storage"], secretPaths["validation"], secretPaths["hmac"], oidcPath, passkeyFixture))
 	edgeRun(t, childHome, authelia, "storage", "migrate", "up", "--config", authConfig, "--config.experimental.filters", "template")
 	allowedTOTP := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(edgeRandom(t, 20)))
 	edgeRun(t, childHome, authelia, "storage", "user", "totp", "generate", "fixture-allowed", "--secret", allowedTOTP, "--issuer", "Anvil Connect Fixture", "--algorithm", "SHA1", "--digits", "6", "--period", "30", "--config", authConfig, "--config.experimental.filters", "template")
@@ -255,8 +257,16 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		resources = append(resources, config.Resource{Rule: config.Rule{ID: "router", Host: edgeAPIHost, PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 5, DurationSeconds: 20}}, Connector: "connector-a", TunnelAddress: edgeReserve(t)})
 	}
 	gatewayDeclaration := config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: edgeReserve(t), MaxConcurrent: 4, Resources: resources}
+	operatorHuman := ""
 	if deviceFixture {
 		gatewayDeclaration.DeviceAuthorizations = []config.DeviceAuthorization{{BrowserResource: "dash", APIResource: "router", Methods: []string{"GET"}, Label: "Fixture terminal", Principals: map[string]string{deviceHuman: "fixture-sdk"}}}
+	}
+	if passkeyFixture {
+		operatorHuman = runtimeFixtureHumanID("https://"+edgeAuthHost, "fixture-operator")
+		if operatorHuman == "" || operatorHuman == deviceHuman {
+			t.Fatal("fixture browser administrator is unavailable")
+		}
+		gatewayDeclaration.BrowserAdministration = &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{operatorHuman}}
 	}
 	gatewayCfg := connectruntime.GatewayConfig{Schema: "anvil-connect.gateway-runtime/v1", Gateway: gatewayDeclaration, ControlHost: edgeControlHost, TunnelHost: edgeTunnelHost, StateDirectory: filepath.Join(directory, "gateway"), TunnelBinary: binary, TunnelListen: edgeReserve(t), OIDC: connectruntime.OIDC{Issuer: "https://" + edgeAuthHost, ClientID: "connect-browser", ClientSecretEnv: "OIDC_CLIENT_SECRET"}}
 	caddyConfig, err := json.Marshal(runtimeCaddyConfig(caddyListen, authListen, filepath.Join(gatewayCfg.StateDirectory, "ingress.sock"), certificatePath, keyPath))
@@ -362,6 +372,12 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			t.Fatal("fixture API principal setup failed")
 		}
 	}
+	if passkeyFixture {
+		operator, operatorErr := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "human-set", Issuer: "https://" + edgeAuthHost, Subject: "fixture-operator", Resources: []string{"dash"}})
+		if operatorErr != nil || operator.Principal != operatorHuman || operator.Principal == deviceHuman {
+			t.Fatal("fixture browser administrator setup failed")
+		}
+	}
 	nativeFixture := &edgeFixture{}
 	native := httptest.NewServer(http.HandlerFunc(nativeFixture.nativeDashboard))
 	defer native.Close()
@@ -449,6 +465,9 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		ready["local_key"] = localKeyPath
 		ready["local_base_url"] = "http://127.0.0.1:8787/v1"
 	}
+	if passkeyFixture {
+		ready["passkey_fixture"] = "enabled"
+	}
 	if err := json.NewEncoder(os.Stdout).Encode(ready); err != nil {
 		t.Fatal(err)
 	}
@@ -489,6 +508,17 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			}
 		case "totp allowed":
 			response["code"] = edgeStableTOTP(allowedTOTP)
+		case "elevation code":
+			if !passkeyFixture {
+				response["error"] = "passkey fixture is disabled"
+				break
+			}
+			code, codeErr := runtimeFixtureElevationCode(filepath.Join(state, "notifications.txt"))
+			if codeErr != nil {
+				response["error"] = "fixture elevation code is unavailable"
+			} else {
+				response["code"] = code
+			}
 		case "api request count":
 			response["count"] = strconv.FormatInt(apiRequests.Load(), 10)
 		case "api post count":
@@ -500,6 +530,39 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			return
 		}
 	}
+}
+
+// runtimeAutheliaConfig keeps the baseline TOTP selection unchanged. The
+// passkey-only profile supplies the pinned Authelia WebAuthn policy used by
+// P03; users still select the passkey flow explicitly in the browser.
+func runtimeAutheliaConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey string, passkey bool) string {
+	configuration := edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey)
+	if !passkey {
+		return configuration
+	}
+	return configuration + "webauthn:\n  disable: false\n  enable_passkey_login: true\n  experimental_enable_passkey_uv_two_factors: true\n  timeout: '5 seconds'\n  selection_criteria:\n    discoverability: required\n    user_verification: required\n"
+}
+
+var runtimeElevationCodePattern = regexp.MustCompile(`(?ms)^A ONE-TIME CODE HAS BEEN GENERATED TO COMPLETE A REQUESTED ACTION\r?\n.*?^----------------------------------------\r?\n\r?\n([ABCDEFGHJKLMNPQRTUVWYXZ2346789]{8})\r?\n\r?\n----------------------------------------(?:\r?\n|$)`)
+
+// runtimeFixtureElevationCode is intentionally closed over the fixture's
+// filesystem notifier. It accepts only the pinned IdentityVerificationOTC
+// title-and-delimiter form and returns its eight-character code, never a
+// notifier path, recipient, or URL.
+func runtimeFixtureElevationCode(path string) (string, error) {
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&077 != 0 || info.Size() < 1 || info.Size() > 32*1024 {
+		return "", os.ErrNotExist
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil || len(contents) != int(info.Size()) {
+		return "", os.ErrNotExist
+	}
+	matches := runtimeElevationCodePattern.FindAllStringSubmatch(string(contents), -1)
+	if len(matches) == 0 {
+		return "", os.ErrNotExist
+	}
+	return matches[len(matches)-1][1], nil
 }
 
 func runtimeFixtureHumanID(issuer, subject string) string {
@@ -547,4 +610,38 @@ func runtimeWebSocketKey(t *testing.T) string {
 func jsonString(value string) string {
 	encoded, _ := json.Marshal(value)
 	return string(encoded)
+}
+
+func TestRuntimeAutheliaPasskeyProfile(t *testing.T) {
+	base := runtimeAutheliaConfig("127.0.0.1:1234", t.TempDir(), "users.yml", "client", "session", "storage", "validation", "hmac", "rsa", false)
+	if strings.Contains(base, "webauthn:") || strings.Contains(base, "default_2fa_method") {
+		t.Fatal("baseline fixture changed its TOTP-first selection")
+	}
+	passkey := runtimeAutheliaConfig("127.0.0.1:1234", t.TempDir(), "users.yml", "client", "session", "storage", "validation", "hmac", "rsa", true)
+	for _, field := range []string{"enable_passkey_login: true", "experimental_enable_passkey_uv_two_factors: true", "discoverability: required", "user_verification: required", "timeout: '5 seconds'"} {
+		if !strings.Contains(passkey, field) {
+			t.Fatalf("passkey fixture missing %q", field)
+		}
+	}
+	if strings.Contains(passkey, "default_2fa_method") {
+		t.Fatal("passkey fixture must not force a WebAuthn bootstrap login")
+	}
+}
+
+func TestRuntimeFixtureElevationCodeIsNewestAndClosed(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "notifications.txt")
+	contents := "To: fixture-allowed@example.test\n\nA ONE-TIME CODE HAS BEEN GENERATED TO COMPLETE A REQUESTED ACTION\n\nHi Fixture Allowed,\n\n----------------------------------------\n\nWXYZ6789\n\n----------------------------------------\n"
+	if err := os.WriteFile(path, []byte(contents), 0600); err != nil {
+		t.Fatal(err)
+	}
+	code, err := runtimeFixtureElevationCode(path)
+	if err != nil || code != "WXYZ6789" {
+		t.Fatal("newest fixture elevation code was not selected")
+	}
+	if err := os.WriteFile(path, []byte("A ONE-TIME CODE HAS BEEN GENERATED TO COMPLETE A REQUESTED ACTION\n\n----------------------------------------\n\nSECRETS1\n\n----------------------------------------"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtimeFixtureElevationCode(path); err == nil {
+		t.Fatal("unlabeled notifier content was accepted")
+	}
 }

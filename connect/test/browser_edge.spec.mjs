@@ -305,7 +305,7 @@ async function login(page, identity, expectedCallbackStatus = 303) {
   await page.goto(fixture.url, { waitUntil: 'domcontentloaded' });
   await page.getByLabel(/username/i).fill(fixture[`${identity}_user`]);
   await page.getByRole('textbox', { name: 'Password', exact: true }).fill(fixture[`${identity}_password`]);
-  await page.getByRole('button', { name: /sign in|login/i }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   const digits = page.getByRole('textbox', { name: /Please enter verification code|Digit [1-6]/i });
   const accept = page.getByRole('button', { name: 'Accept', exact: true });
   const alert = page.getByRole('alert');
@@ -705,6 +705,138 @@ test('container-gated CLI device login revokes on human disable and browser logo
       const deviceFixture = fixture;
       fixture = edgeFixture;
       await cleanup(deviceFixture);
+    }
+  }
+});
+
+async function virtualAuthenticator(page, credential) {
+  const session = await fixture.context.newCDPSession(page);
+  await session.send('WebAuthn.enable');
+  const { authenticatorId } = await session.send('WebAuthn.addVirtualAuthenticator', { options: {
+    protocol: 'ctap2', transport: 'internal', hasResidentKey: true,
+    hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true,
+  } });
+  if (credential) await session.send('WebAuthn.addCredential', { authenticatorId, credential });
+  return { session, authenticatorId };
+}
+
+async function registerPasskey(page, description) {
+  await page.goto(`https://${authHost}/settings/two-factor-authentication`, { waitUntil: 'domcontentloaded' });
+  const enrolled = await virtualAuthenticator(page);
+  await page.locator('#webauthn-credential-add').click();
+  const codeDialog = page.locator('#dialog-verify-one-time-code');
+  const descriptionField = page.locator('#webauthn-credential-description');
+  const emailMethod = page.getByRole('button', { name: 'Email One-Time Code', exact: true });
+  let stage;
+  const waitForEnrollmentStage = async () => {
+    await expect.poll(async () => {
+      stage = await descriptionField.isVisible() ? 'description'
+        : await codeDialog.isVisible() ? 'code'
+          : await emailMethod.isVisible() ? 'email' : 'pending';
+      return stage;
+    }, { timeout: 10_000 }).not.toBe('pending');
+  };
+  await waitForEnrollmentStage();
+  if (stage === 'email') {
+    await emailMethod.click();
+    await expect(codeDialog).toBeVisible();
+    stage = 'code';
+  }
+  if (stage === 'code') {
+    const { code } = await fixture.command('elevation code');
+    await codeDialog.getByRole('textbox', { name: 'One-Time Code', exact: true }).fill(code);
+    await codeDialog.getByRole('button', { name: 'Verify', exact: true }).click();
+  }
+  await expect(descriptionField).toBeVisible();
+  await descriptionField.fill(description);
+  const options = page.waitForResponse(response => new URL(response.url()).pathname === '/api/secondfactor/webauthn/credential/register' && response.request().method() === 'PUT', { timeout: 10_000 });
+  const registered = page.waitForResponse(response => new URL(response.url()).pathname === '/api/secondfactor/webauthn/credential/register' && response.request().method() === 'POST', { timeout: 15_000 }).catch(() => null);
+  await page.getByRole('dialog').filter({ has: descriptionField }).getByRole('button', { name: 'Next', exact: true }).click();
+  const creation = await (await options).json();
+  expect(creation.data.publicKey.authenticatorSelection.residentKey).toBe('required');
+  expect(creation.data.publicKey.authenticatorSelection.userVerification).toBe('required');
+  const registrationResponse = await registered;
+  expect(registrationResponse).not.toBeNull();
+  expect([200, 201]).toContain(registrationResponse.status());
+  await expect(descriptionField).not.toBeVisible();
+  return enrolled;
+}
+
+async function passkeyLogin(page, credential, expectedCallbackStatus = 303) {
+  await page.goto(fixture.url, { waitUntil: 'domcontentloaded' });
+  const authenticator = await virtualAuthenticator(page, credential);
+  const options = page.waitForResponse(response => new URL(response.url()).pathname === '/api/firstfactor/passkey' && response.request().method() === 'GET', { timeout: 10_000 });
+  const signedIn = page.waitForResponse(response => new URL(response.url()).pathname === '/api/firstfactor/passkey' && response.request().method() === 'POST', { timeout: 15_000 }).catch(() => null);
+  const callback = page.waitForResponse(response => new URL(response.url()).pathname === '/_anvil-connect/callback', { timeout: 15_000 }).catch(() => null);
+  await page.getByRole('button', { name: 'Sign in with a passkey', exact: true }).click();
+  const assertion = await (await options).json();
+  expect(assertion.data.publicKey.userVerification).toBe('required');
+  const signedInResponse = await signedIn;
+  expect(signedInResponse).not.toBeNull();
+  expect(signedInResponse.status()).toBe(200);
+  const accept = page.getByRole('button', { name: 'Accept', exact: true });
+  const transition = await Promise.race([
+    callback.then(response => ({ kind: 'callback', response })),
+    accept.waitFor({ state: 'visible', timeout: 5_000 }).then(() => ({ kind: 'consent' })).catch(() => ({ kind: 'timeout' })),
+  ]);
+  expect(transition.kind).not.toBe('timeout');
+  if (transition.kind === 'consent') await accept.click();
+  const admitted = await callback;
+  expect(admitted).not.toBeNull();
+  expect(admitted.status()).toBe(expectedCallbackStatus);
+  expect(new URL(admitted.url()).searchParams.get('iss')).toBe(`https://${authHost}`);
+  expect(new URL(admitted.url()).searchParams.get('scope')).toBe('openid');
+  if (expectedCallbackStatus === 303) {
+    await page.waitForURL(fixture.url, { waitUntil: 'domcontentloaded', timeout: 10_000 });
+    await expect(page.locator('#dashboard')).toHaveText('native dashboard');
+  } else {
+    await page.waitForURL(url => url.pathname === '/_anvil-connect/callback', { waitUntil: 'domcontentloaded', timeout: 10_000 });
+    await expect(page.locator('#dashboard')).toHaveCount(0);
+  }
+  return authenticator;
+}
+
+test('container-gated UV passkey registers and approves CLI device login', async () => {
+  test.setTimeout(120_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE !== '1', 'requires the disposable virtual WebAuthn fixture');
+  const edgeFixture = fixture;
+  let loginSession;
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE');
+  try {
+    let page = await freshPage();
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+    const enrolled = await registerPasskey(page, 'Synthetic primary passkey');
+    const { credentials } = await enrolled.session.send('WebAuthn.getCredentials', { authenticatorId: enrolled.authenticatorId });
+    expect(credentials.length).toBe(1);
+    expect(credentials[0].rpId).toBe(authHost);
+    expect(credentials[0].isResidentCredential).toBe(true);
+
+    // The synthetic private key stays only in this fixture process. A new
+    // page/authenticator models using the enrolled key after browser logout.
+    page = await freshPage();
+    await passkeyLogin(page, credentials[0]);
+    const cli = await buildDeviceCLI(fixture.dir);
+    loginSession = await startDeviceCLI(cli, fixture);
+    const challenge = await waitForDeviceEvent(loginSession.challenge);
+    await page.goto(challenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(challenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const ready = await waitForDeviceEvent(loginSession.ready);
+    const localKey = (await readFile(fixture.local_key, 'utf8')).trim();
+    const models = await loopbackResponse(ready.baseURL, 'GET', localKey);
+    expect(models.status).toBe(200);
+    expect((await models.json()).data).toEqual([{ id: 'fixture-model' }]);
+    expect((await fixture.command('api request count')).count).toBe('1');
+    await stopDeviceCLI(loginSession);
+    loginSession = undefined;
+    await assertLoopbackReleased(ready.baseURL);
+  } finally {
+    try { await stopDeviceCLI(loginSession); } finally {
+      const passkeyFixture = fixture;
+      fixture = edgeFixture;
+      await cleanup(passkeyFixture);
     }
   }
 });
