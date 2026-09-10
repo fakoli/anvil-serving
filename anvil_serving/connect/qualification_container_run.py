@@ -16,7 +16,11 @@ import time
 import uuid
 
 
-_DEVICE_TESTS = ("container-gated CLI device login reaches only its declared API resource",)
+_DEVICE_TESTS = (
+    "container-gated CLI device login reaches only its declared API resource",
+    "container-gated CLI device login denies, cancels, and rejects unauthenticated approval",
+    "container-gated CLI device login revokes on human disable and browser logout",
+)
 
 def _load_runner(path: Path):
     spec = importlib.util.spec_from_file_location("connect_qualification_runner", path)
@@ -132,7 +136,7 @@ def _cases(raw: bytes, names: tuple[str, ...]) -> tuple[list[dict], bool]:
             if set(case) != {"name", "status", "duration_seconds"} or case["name"] != name:
                 raise ValueError
             status = case["status"]
-            if not isinstance(status, str) or not re.fullmatch(r"passed|skipped|not-run|runner-timeout|runner-interrupted|runner-failed(?:-(?:pids-limit|memory-limit|build|fixture-startup|browser-launch-cert|browser-connection|browser-dns|browser-navigation|browser-assertion|report-parsing|timeout|interrupted|supervisor)(?:@browser_(?:edge|runtime)_fixture_test\.go:[1-9][0-9]{0,4})?)?", status):
+            if not isinstance(status, str) or not re.fullmatch(r"passed|skipped|not-run|runner-timeout|runner-interrupted|runner-failed(?:-(?:pids-limit|memory-limit|build|fixture-startup|browser-launch-cert|browser-connection|browser-dns|browser-navigation|browser-assertion|report-parsing|timeout|interrupted|supervisor)(?:@(?:browser_(?:edge|runtime)_fixture_test\.go|browser_edge\.spec\.mjs):[1-9][0-9]{0,4})?)?", status):
                 raise ValueError
             if type(case["duration_seconds"]) not in (int, float) or not 0 <= case["duration_seconds"] <= 1000:
                 raise ValueError

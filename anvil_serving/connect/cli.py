@@ -74,6 +74,10 @@ def _qualify(args: argparse.Namespace) -> CommandResult:
                 "schema": "anvil-connect.qualification-container/v1", "ok": False,
                 "error_code": exc.code,
             }, error=OperatorError("Connect qualification container preparation failed.", code=exc.code))
+    expected_count = 2
+    if args.lane == "device":
+        from .qualification_container_run import _DEVICE_TESTS
+        expected_count = len(_DEVICE_TESTS)
     try:
         if args.lane in {"container-baseline", "device"}:
             from .qualification_container_run import qualify as container_qualify
@@ -83,7 +87,7 @@ def _qualify(args: argparse.Namespace) -> CommandResult:
     except QualificationError as exc:
         started = bool(getattr(exc, "execution_started", False))
         state = "failed" if started else "not-run"
-        counts = getattr(exc, "case_counts", None) if started else {"passed": 0, "failed": 0, "skipped": 0, "not_run": 1 if args.lane == "device" else 2}
+        counts = getattr(exc, "case_counts", None) if started else {"passed": 0, "failed": 0, "skipped": 0, "not_run": expected_count}
         return CommandResult(data={
             "schema": "anvil-connect.qualification/v1", "ok": False, "state": state,
             "error_code": exc.code, "counts": counts, "stage": getattr(exc, "stage", "preflight"),

@@ -394,7 +394,7 @@ def _supervisor_status(output: bytes) -> tuple[str, bool]:
         value = json.loads(output.decode("utf-8", "strict"))
         stages = {"build", "fixture-startup", "browser-launch-cert", "browser-connection", "browser-dns", "browser-navigation", "browser-assertion", "report-parsing", "timeout", "interrupted", "supervisor"}
         marker = value.get("fixture_marker")
-        if set(value) != {"status", "escalated", "failure_stage", "fixture_marker"} or value["status"] not in {"passed", "skipped", "runner-timeout", "runner-interrupted", "runner-failed"} or type(value["escalated"]) is not bool or value["failure_stage"] not in stages | {None} or (marker is not None and not re.fullmatch(r"browser_(?:edge|runtime)_fixture_test\.go:[1-9][0-9]{0,4}", marker)):
+        if set(value) != {"status", "escalated", "failure_stage", "fixture_marker"} or value["status"] not in {"passed", "skipped", "runner-timeout", "runner-interrupted", "runner-failed"} or type(value["escalated"]) is not bool or value["failure_stage"] not in stages | {None} or (marker is not None and not re.fullmatch(r"(?:browser_(?:edge|runtime)_fixture_test\.go|browser_edge\.spec\.mjs):[1-9][0-9]{0,4}", marker)):
             raise ValueError
         status = "runner-failed" if value["escalated"] else value["status"]
         if status == "runner-failed" and value["failure_stage"]:

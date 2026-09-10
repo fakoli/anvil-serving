@@ -9,6 +9,7 @@ import readline from 'node:readline';
 
 const dashHost = 'dash.example.test';
 const authHost = 'auth.example.test';
+const controlHost = 'control.example.test';
 const connectRoot = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const defaultFixtureTest = 'pinned Caddy and Authelia browser edge retains Connect and native controls';
 let fixture;
@@ -78,8 +79,7 @@ async function buildDeviceCLI(directory) {
 }
 
 async function startDeviceCLI(binary, value) {
-  const trustDirectory = join(value.dir, 'cli-empty-ca');
-  await mkdir(trustDirectory, { mode: 0o700 });
+  const trustDirectory = await mkdtemp(join(value.dir, 'cli-empty-ca-'));
   const env = {
     PATH: process.env.PATH,
     HOME: value.client_home,
@@ -118,6 +118,19 @@ async function startDeviceCLI(binary, value) {
     }
   });
   return { child, challenge, ready };
+}
+
+async function waitForDeviceEvent(promise) {
+  const error = new Error('device-cli-event-timeout');
+  Error.captureStackTrace(error, waitForDeviceEvent);
+  let timer;
+  try {
+    return await Promise.race([promise, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(error), 15_000);
+    })]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function stopDeviceCLI(value) {
@@ -248,9 +261,28 @@ async function startFixture(testPattern = '^TestBrowserEdgeFixture$', fixtureFla
     return {
       ...value, ...ready,
       command(command, timeout = 5_000) {
+        const timeoutError = new Error('actual-edge fixture command timed out');
+        Error.captureStackTrace(timeoutError, this.command);
+        const caller = timeoutError.stack.match(/browser_edge\.spec\.mjs:[1-9][0-9]{0,4}/)?.[0];
+        const annotations = test.info().annotations;
+        const diagnostic = caller ? { type: 'diagnostic-location', description: caller } : null;
+        if (caller) {
+          annotations.push(diagnostic);
+          timeoutError.message = caller;
+          timeoutError.stack = caller;
+        }
         return new Promise((resolve, reject) => {
-          const timer = setTimeout(() => reject(new Error('actual-edge fixture command timed out')), timeout);
-          replies.push(message => { clearTimeout(timer); if (message.ack !== command) reject(new Error('unexpected actual-edge acknowledgement')); else if (message.error) reject(new Error('fixture-command-failed')); else resolve(message); });
+          const timer = setTimeout(() => reject(timeoutError), timeout);
+          replies.push(message => {
+            clearTimeout(timer);
+            if (message.ack !== command) reject(new Error('unexpected actual-edge acknowledgement'));
+            else if (message.error) reject(new Error('fixture-command-failed'));
+            else {
+              const index = annotations.indexOf(diagnostic);
+              if (index >= 0) annotations.splice(index, 1);
+              resolve(message);
+            }
+          });
           child.stdin.write(`${command}\n`);
         });
       },
@@ -263,8 +295,8 @@ async function startFixture(testPattern = '^TestBrowserEdgeFixture$', fixtureFla
   }
 }
 
-async function freshPage() {
-  await fixture.context.clearCookies();
+async function freshPage(cookieFilter) {
+  await fixture.context.clearCookies(cookieFilter);
   for (const page of fixture.context.pages()) await page.close();
   return fixture.context.newPage();
 }
@@ -303,6 +335,7 @@ async function login(page, identity, expectedCallbackStatus = 303) {
   expect(new URL(callbackResponse.url()).searchParams.get('iss')).toBe(`https://${authHost}`);
   expect(callbackResponse.status()).toBe(expectedCallbackStatus);
   if (expectedCallbackStatus === 303) await expect(page.locator('#dashboard')).toHaveText('native dashboard');
+  else await page.waitForURL(callbackResponse.url(), { waitUntil: 'domcontentloaded', timeout: 10_000 });
 }
 
 async function resumeGrantedAuthorization(page) {
@@ -431,6 +464,7 @@ test('managed gateway and connector lifecycle retain the real browser edge', asy
 });
 
 test('container-gated CLI device login reaches only its declared API resource', async () => {
+  test.setTimeout(90_000);
   test.skip(process.env.ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE !== '1', 'requires the disposable P02 container loopback DNS and port 443');
   const edgeFixture = fixture;
   let loginSession;
@@ -446,7 +480,7 @@ test('container-gated CLI device login reaches only its declared API resource', 
 
     const cli = await buildDeviceCLI(fixture.dir);
     loginSession = await startDeviceCLI(cli, fixture);
-    const challenge = await loginSession.challenge;
+    const challenge = await waitForDeviceEvent(loginSession.challenge);
     expect(challenge.verificationURI).toBe(`https://${dashHost}/_anvil-connect/device`);
     expect(challenge.userCode).toMatch(/^[A-Z2-7]{8}$/);
 
@@ -456,7 +490,7 @@ test('container-gated CLI device login reaches only its declared API resource', 
     await page.getByRole('button', { name: 'Approve', exact: true }).click();
     await expect(page.locator('body')).toContainText('Device decision recorded');
 
-    const ready = await loginSession.ready;
+    const ready = await waitForDeviceEvent(loginSession.ready);
     expect(ready.baseURL).toBe(fixture.local_base_url);
     expect(ready.sessionID).toMatch(/^[0-9a-f]{32}$/);
     expect(Number.isNaN(Date.parse(ready.expiresAt))).toBe(false);
@@ -480,6 +514,194 @@ test('container-gated CLI device login reaches only its declared API resource', 
     await assertLoopbackReleased(ready.baseURL);
   } finally {
     try { await stopDeviceCLI(loginSession); } finally {
+      const deviceFixture = fixture;
+      fixture = edgeFixture;
+      await cleanup(deviceFixture);
+    }
+  }
+});
+
+test('container-gated CLI device login denies, cancels, and rejects unauthenticated approval', async () => {
+  test.setTimeout(90_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE !== '1', 'requires the disposable P02 container loopback DNS and port 443');
+  const edgeFixture = fixture;
+  let deniedLogin;
+  let cancelledLogin;
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE');
+  try {
+    const cli = await buildDeviceCLI(fixture.dir);
+    deniedLogin = await startDeviceCLI(cli, fixture);
+    const deniedChallenge = await waitForDeviceEvent(deniedLogin.challenge);
+
+    // A device code is not browser authority. With no Connect session, the
+    // reserved approval path must enter the ordinary OIDC login flow instead
+    // of rendering an approval form.
+    let page = await freshPage();
+    await page.goto(deniedChallenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByLabel(/username/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Approve device' })).toHaveCount(0);
+    // GET /start is reserved but intentionally rejects without an active
+    // session. Its dash-origin error document lets this browser make the
+    // actual same-origin form POST below without manufacturing an Origin.
+    expect((await page.goto(`${deniedChallenge.verificationURI}/start`, { waitUntil: 'domcontentloaded' })).status()).toBe(403);
+    const unauthenticated = page.waitForResponse(response => response.url() === deniedChallenge.verificationURI && response.request().method() === 'POST', { timeout: 5_000 });
+    await page.evaluate(({ uri, userCode }) => fetch(uri, {
+      method: 'POST',
+      signal: AbortSignal.timeout(5_000),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ user_code: userCode, decision: 'approve', csrf: '0'.repeat(64) }).toString(),
+    }), { uri: deniedChallenge.verificationURI, userCode: deniedChallenge.userCode });
+    expect((await unauthenticated).status()).toBe(401);
+
+    // Establish a real browser session only after that denial, then prove a
+    // forged same-origin CSRF field cannot make a decision.
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+    await page.goto(deniedChallenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Approve device' })).toBeVisible();
+    const forged = page.waitForResponse(response => response.url() === deniedChallenge.verificationURI && response.request().method() === 'POST', { timeout: 5_000 });
+    await page.getByLabel('Code').fill(deniedChallenge.userCode);
+    await page.locator('input[name=csrf]').evaluate(input => { input.value = '0'.repeat(64); });
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    expect((await forged).status()).toBe(400);
+
+    // A dashboard session cookie alone does not make a cross-origin request a
+    // valid approval. Submit a real foreign-origin form; fetch response events
+    // can be hidden by CORS before Playwright observes the server rejection.
+    const foreign = await fixture.context.newPage();
+    try {
+      // Authelia's own document intentionally has a restrictive connect-src
+      // policy. The fixture control host is TLS-covered but has no browser
+      // CSP, so this remains a normal browser-originated foreign request.
+      await foreign.goto(`https://${controlHost}/`, { waitUntil: 'domcontentloaded', timeout: 10_000 });
+      const foreignResponse = foreign.waitForResponse(response => response.url() === deniedChallenge.verificationURI && response.request().method() === 'POST', { timeout: 5_000 });
+      await foreign.evaluate(({ uri, userCode }) => {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = uri;
+        for (const [name, value] of Object.entries({ user_code: userCode, decision: 'approve', csrf: '0'.repeat(64) })) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = name;
+          input.value = value;
+          form.append(input);
+        }
+        document.body.append(form);
+        form.requestSubmit();
+      }, { uri: deniedChallenge.verificationURI, userCode: deniedChallenge.userCode });
+      const rejected = await foreignResponse;
+      expect(rejected.request().headers().origin).toBe(`https://${controlHost}`);
+      expect(rejected.request().headers()['content-type']).toBe('application/x-www-form-urlencoded');
+      expect(rejected.status()).toBe(403);
+      await foreign.waitForURL(deniedChallenge.verificationURI, { waitUntil: 'domcontentloaded', timeout: 5_000 });
+    } finally {
+      await foreign.close();
+    }
+
+    // The actual authenticated operator denies this exact pending request.
+    await page.goto(deniedChallenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    const denied = page.waitForResponse(response => response.url() === deniedChallenge.verificationURI && response.request().method() === 'POST', { timeout: 5_000 });
+    await page.getByLabel('Code').fill(deniedChallenge.userCode);
+    await page.getByRole('button', { name: 'Deny', exact: true }).click();
+    expect((await denied).status()).toBe(200);
+    const deniedExit = await waitForExit(deniedLogin.child, 10_000);
+    expect(deniedExit).toEqual({ done: true, code: 1, signal: null });
+    await expect(deniedLogin.ready).rejects.toThrow('device-cli-exited');
+    deniedLogin = undefined;
+    await assertLoopbackReleased(fixture.local_base_url);
+
+    // The terminal can cancel before the browser makes any decision. Its
+    // best-effort cancel request is completed before the CLI exits, so a later
+    // authenticated approval is denied and cannot create a listener.
+    cancelledLogin = await startDeviceCLI(cli, fixture);
+    const cancelledChallenge = await waitForDeviceEvent(cancelledLogin.challenge);
+    await stopDeviceCLI(cancelledLogin);
+    await expect(cancelledLogin.ready).rejects.toThrow('device-cli-exited');
+    cancelledLogin = undefined;
+    await assertLoopbackReleased(fixture.local_base_url);
+    await page.goto(cancelledChallenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    const cancelled = page.waitForResponse(response => response.url() === cancelledChallenge.verificationURI && response.request().method() === 'POST', { timeout: 5_000 });
+    await page.getByLabel('Code').fill(cancelledChallenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    expect((await cancelled).status()).toBe(401);
+  } finally {
+    try {
+      await stopDeviceCLI(deniedLogin);
+      await stopDeviceCLI(cancelledLogin);
+    } finally {
+      const deviceFixture = fixture;
+      fixture = edgeFixture;
+      await cleanup(deviceFixture);
+    }
+  }
+});
+
+test('container-gated CLI device login revokes on human disable and browser logout', async () => {
+  test.setTimeout(90_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE !== '1', 'requires the disposable P02 container loopback DNS and port 443');
+  const edgeFixture = fixture;
+  let firstLogin;
+  let secondLogin;
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE');
+  try {
+    const cli = await buildDeviceCLI(fixture.dir);
+    let page = await freshPage();
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+
+    firstLogin = await startDeviceCLI(cli, fixture);
+    const firstChallenge = await waitForDeviceEvent(firstLogin.challenge);
+    await page.goto(firstChallenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(firstChallenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const firstReady = await waitForDeviceEvent(firstLogin.ready);
+    const firstKey = (await readFile(fixture.local_key, 'utf8')).trim();
+    expect((await loopbackResponse(firstReady.baseURL, 'GET', firstKey)).status).toBe(200);
+    expect((await fixture.command('api request count')).count).toBe('1');
+
+    // human-set is the closed native authority path. Changing its generation
+    // invalidates the browser session and the device-derived API credential.
+    await fixture.command('disable allowed');
+    expect((await loopbackResponse(firstReady.baseURL, 'GET', firstKey)).status).toBe(401);
+    expect((await fixture.command('api request count')).count).toBe('1');
+    await stopDeviceCLI(firstLogin);
+    firstLogin = undefined;
+    await assertLoopbackReleased(firstReady.baseURL);
+
+    // Re-enable and create a fresh Connect session through ordinary OIDC SSO.
+    // Retain the IdP session; repeating TOTP is a separate authentication test.
+    await fixture.command('grant allowed');
+    page = await freshPage({ domain: dashHost });
+    await resumeGrantedAuthorization(page);
+    secondLogin = await startDeviceCLI(cli, fixture);
+    const secondChallenge = await waitForDeviceEvent(secondLogin.challenge);
+    await page.goto(secondChallenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(secondChallenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const secondReady = await waitForDeviceEvent(secondLogin.ready);
+    expect(secondReady.sessionID).not.toBe(firstReady.sessionID);
+    const secondKey = (await readFile(fixture.local_key, 'utf8')).trim();
+    expect((await loopbackResponse(secondReady.baseURL, 'GET', secondKey)).status).toBe(200);
+    expect((await fixture.command('api request count')).count).toBe('2');
+
+    // A real top-level browser logout revokes the admitted source session.
+    // The existing local forwarder remains up, but its next keyed request is
+    // denied before the connector's API origin sees it.
+    const loggedOut = page.waitForResponse(response => response.url().startsWith(`https://${dashHost}/_anvil-connect/logout`) && response.request().method() === 'POST');
+    await page.evaluate(() => fetch('/_anvil-connect/logout', { method: 'POST', redirect: 'manual' }));
+    expect((await loggedOut).status()).toBe(303);
+    expect((await loopbackResponse(secondReady.baseURL, 'GET', secondKey)).status).toBe(401);
+    expect((await fixture.command('api request count')).count).toBe('2');
+    await stopDeviceCLI(secondLogin);
+    secondLogin = undefined;
+    await assertLoopbackReleased(secondReady.baseURL);
+  } finally {
+    try {
+      await stopDeviceCLI(firstLogin);
+      await stopDeviceCLI(secondLogin);
+    } finally {
       const deviceFixture = fixture;
       fixture = edgeFixture;
       await cleanup(deviceFixture);

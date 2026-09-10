@@ -333,11 +333,12 @@ def test_static_failure_stage_redacts_report_content(tmp_path: Path, monkeypatch
     assert sentinel not in evidence
 
 
-@pytest.mark.parametrize("filename", ["browser_edge_fixture_test.go", "browser_runtime_fixture_test.go"])
+@pytest.mark.parametrize("filename", ["browser_edge_fixture_test.go", "browser_runtime_fixture_test.go", "browser_edge.spec.mjs"])
 def test_fixture_marker_is_closed_and_persisted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, filename: str) -> None:
     marker = filename + ":586"
+    stage = "browser-assertion" if filename.endswith("mjs") else "fixture-startup"
     failed = {"errors": [{"message": marker + ": redacted"}], "suites": []}
-    assert supervisor._failure_stage(json.dumps(failed).encode(), subject._TESTS[0]) == "fixture-startup"
+    assert supervisor._failure_stage(json.dumps(failed).encode(), subject._TESTS[0]) == stage
     assert supervisor._fixture_marker(failed) == marker
     config, _ = _config(tmp_path)
     monkeypatch.setattr(subject, "_source_metadata", lambda _: {"revision": "d01d36ae" + "0" * 32, "dirty": False})
@@ -346,10 +347,10 @@ def test_fixture_marker_is_closed_and_persisted(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
     monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
     monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
-    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed-fixture-startup@" + marker, 0.01, False))
+    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed-" + stage + "@" + marker, 0.01, False))
     result = subject.qualify(config)
     evidence = json.loads((Path(result["artifact_dir"]) / "evidence.json").read_text())
-    assert evidence["tests"][0]["failure_stage"] == "fixture-startup"
+    assert evidence["tests"][0]["failure_stage"] == stage
     assert evidence["tests"][0]["fixture_marker"] == marker
 
 
@@ -495,3 +496,35 @@ def test_browser_network_errors_keep_static_diagnostics(code, stage):
     assert supervisor._failure_stage(json.dumps({"errors":[{"message":code+" private-sentinel"}]}).encode(), subject._TESTS[0]) == stage
     output = json.dumps({"status":"runner-failed","escalated":False,"failure_stage":stage,"fixture_marker":None}).encode()
     assert subject._supervisor_status(output) == ("runner-failed-"+stage,False)
+
+
+def test_browser_error_location_keeps_only_public_basename_and_line():
+    value = {"suites":[{"tests":[{"results":[{"error":{"message":"private-sentinel","location":{"file":"/private/source/browser_edge.spec.mjs","line":551,"column":19}}}]}]}]}
+    assert supervisor._fixture_marker(value) == "browser_edge.spec.mjs:551"
+    assert supervisor._failure_stage(json.dumps(value).encode(),subject._TESTS[0]) == "browser-assertion"
+    value["suites"][0]["tests"][0]["results"][0]["error"]["location"]["file"] = "/private/unknown.js"
+    assert supervisor._fixture_marker(value) is None
+
+
+@pytest.mark.parametrize("message,stage", [
+    ("fixture did not become ready", "fixture-startup"),
+    ("net::ERR_NAME_NOT_RESOLVED", "browser-dns"),
+    ("net::ERR_CONNECTION_REFUSED", "browser-connection"),
+    ("net::ERR_CERT_AUTHORITY_INVALID", "browser-launch-cert"),
+    ("fixture build failed", "build"),
+])
+def test_browser_location_does_not_mask_failure_stage(message, stage):
+    value = {"errors": [{"message": message, "location": {
+        "file": "/private/source/browser_edge.spec.mjs", "line": 495,
+    }}]}
+    assert supervisor._fixture_marker(value) == "browser_edge.spec.mjs:495"
+    assert supervisor._failure_stage(json.dumps(value).encode(), subject._TESTS[0]) == stage
+
+
+def test_closed_phase_annotation_identifies_timeout_before_helper_location():
+    value = {"errors": [{"message": "private-sentinel", "location": {
+        "file": "/private/source/browser_edge.spec.mjs", "line": 255,
+    }}], "annotations": [{"type": "diagnostic-location", "description": "browser_edge.spec.mjs:580"}]}
+    assert supervisor._fixture_marker(value) == "browser_edge.spec.mjs:580"
+    value["annotations"][0]["description"] = "/private/secret"
+    assert supervisor._fixture_marker(value) == "browser_edge.spec.mjs:255"
