@@ -43,6 +43,8 @@ class SyntheticRunner:
 
     def __call__(self, argv: tuple[str, ...], timeout: float, identity: manage.ServiceIdentity | None) -> manage.RunResult:
         self.calls.append(argv)
+        if len(argv) >= 2 and argv[1] == "admin":
+            return manage.RunResult(0, _gateway_status())
         if argv == ("/usr/bin/systemctl", "daemon-reload") and self.fail_daemon_reload:
             self.fail_daemon_reload = False
             return manage.RunResult(1, b"sensitive failed output")
@@ -61,6 +63,15 @@ class SyntheticRunner:
         if self.fail_start is not None and argv[-1] == self.fail_start and argv[1] in {"enable", "restart"}:
             return manage.RunResult(1)
         return manage.RunResult(0)
+
+
+def _gateway_status() -> bytes:
+    return json.dumps({
+        "operation": "status", "epoch": "a" * 64, "secret": "", "key_id": "", "principal": "", "grants": [],
+        "invitation": "", "installation": "", "role": "", "resources": [], "generation": 0,
+        "fingerprint": "",
+        "status": {"id": "", "status": "", "fingerprint": "", "epoch": "", "generation": 0, "resources": []},
+    }).encode()
 
 
 def _executable(path: Path, content: bytes) -> str:
@@ -113,6 +124,45 @@ def deployment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, d
     manifest.write_text(json.dumps(value), encoding="utf-8")
     monkeypatch.setattr(manage, "_component_lock", lambda: {"caddy": caddy_digest, "authelia": authelia_digest})
     return manifest, value, native
+
+
+def test_gateway_status_parser_accepts_native_omitted_field_shape() -> None:
+    manage._closed_gateway_status(_gateway_status())
+
+
+@pytest.mark.parametrize("mutation", ("false-generation", "false-nested-generation", "unknown", "secret"))
+def test_gateway_status_parser_rejects_non_native_output(mutation: str) -> None:
+    value = json.loads(_gateway_status())
+    if mutation == "false-generation":
+        value["generation"] = False
+    elif mutation == "false-nested-generation":
+        value["status"]["generation"] = False
+    elif mutation == "unknown":
+        value["control_host"] = ""
+    else:
+        value["secret"] = "unexpected"
+    with pytest.raises(manage.ManageError, match="gateway readiness response"):
+        manage._closed_gateway_status(json.dumps(value).encode())
+
+
+@pytest.mark.parametrize("raw", (
+    _gateway_status().rstrip(b"}") + b',"operation":"status"}',
+    _gateway_status() + b"trailing",
+))
+def test_gateway_status_parser_rejects_duplicate_or_trailing_data(raw: bytes) -> None:
+    with pytest.raises(manage.ManageError, match="gateway readiness response"):
+        manage._closed_gateway_status(raw)
+
+
+def test_gateway_readiness_rejects_limited_native_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _, value, native = deployment(tmp_path, monkeypatch)
+
+    def limited(argv, timeout, identity):  # type: ignore[no-untyped-def]
+        assert argv[:2] == (str(native), "admin")
+        return manage.RunResult(0, b"", output_limited=True)
+
+    with pytest.raises(manage.ManageError, match="output bound"):
+        manage._gateway_ready(value, limited)
 
 
 def test_target_is_closed_and_declared(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -243,6 +293,68 @@ def test_up_many_upgrade_requires_prior_bytes_and_new_paths(tmp_path: Path, monk
     assert record["native_sha256"] == native_digest
     assert record["components"] == {"caddy": caddy_digest, "authelia": authelia_digest}
     assert hashlib.sha256(native.read_bytes()).hexdigest() == hashlib.sha256(b"native-v1").hexdigest()
+
+
+def test_up_many_waits_for_gateway_admin_before_starting_connector(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, native = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    initial = SyntheticRunner(); initial.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=initial, unit_root=units)
+    changed = copy.deepcopy(value)
+    changed["gateway"]["gateway"]["max_concurrent"] = 63
+    changed["connectors"][0]["resources"][0]["envelope"]["origin_url"] = "http://127.0.0.1:19082"
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+
+    class DelayedGatewayRunner(SyntheticRunner):
+        def __init__(self) -> None:
+            super().__init__()
+            self.status_calls = 0
+
+        def __call__(self, argv, timeout, identity):  # type: ignore[no-untyped-def]
+            if argv[:2] == (str(native), "admin"):
+                self.calls.append(argv)
+                self.status_calls += 1
+                if self.status_calls == 1:
+                    return manage.RunResult(1)
+                return manage.RunResult(0, _gateway_status())
+            return super().__call__(argv, timeout, identity)
+
+    runner = DelayedGatewayRunner(); runner.unit_root = units
+    manage.up_many(manifest, (manage.Target("gateway"), manage.Target("connector", "dashboard")), apply=True, runner=runner, unit_root=units)
+    gateway_start = next(index for index, call in enumerate(runner.calls) if call[-1] == "anvil-connect-gateway.service" and call[1] in {"enable", "restart"})
+    second_status = [index for index, call in enumerate(runner.calls) if call[:2] == (str(native), "admin")][1]
+    connector_start = next(index for index, call in enumerate(runner.calls) if call[-1] == "anvil-connect-connector-dashboard.service" and call[1] in {"enable", "restart"})
+    assert runner.status_calls == 2
+    assert gateway_start < second_status < connector_start
+
+
+def test_gateway_readiness_failure_rolls_back_without_starting_connector(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, native = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    initial = SyntheticRunner(); initial.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=initial, unit_root=units)
+    root = Path(value["config_root"])
+    previous_gateway = (root / "gateway.json").read_bytes()
+    changed = copy.deepcopy(value)
+    changed["gateway"]["gateway"]["max_concurrent"] = 63
+    changed["connectors"][0]["resources"][0]["envelope"]["origin_url"] = "http://127.0.0.1:19082"
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+
+    class UnreadyGatewayRunner(SyntheticRunner):
+        def __call__(self, argv, timeout, identity):  # type: ignore[no-untyped-def]
+            if argv[:2] == (str(native), "admin"):
+                self.calls.append(argv)
+                return manage.RunResult(1)
+            return super().__call__(argv, timeout, identity)
+
+    runner = UnreadyGatewayRunner(); runner.unit_root = units
+    with pytest.raises(manage.ManageError, match="gateway did not become ready") as caught:
+        manage.up_many(manifest, (manage.Target("gateway"), manage.Target("connector", "dashboard")), apply=True, runner=runner, unit_root=units)
+    assert caught.value.may_have_executed is True
+    assert (root / "gateway.json").read_bytes() == previous_gateway
+    assert not any(call[-1] == "anvil-connect-connector-dashboard.service" and call[1] in {"enable", "restart"} for call in runner.calls)
 
 
 def test_up_many_refuses_same_path_binary_replacement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
