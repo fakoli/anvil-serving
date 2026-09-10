@@ -35,7 +35,7 @@ def test_artifacts_bind_one_source_snapshot_and_result_bytes(tmp_path, monkeypat
         name: hashlib.sha256(paths[name].read_bytes()).hexdigest()
         for name in ("caddy", "authelia", "wstunnel")}})
     monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
-    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("passed", 0.01, False))
+    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("passed", 0.01, False, None))
     result = subject.qualify(config)
     assert len(calls) == 1
     directory = Path(result["artifact_dir"])

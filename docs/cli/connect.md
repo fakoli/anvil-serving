@@ -151,7 +151,9 @@ device lane does not claim those are browser end-to-end tests. Two browser strea
 scenarios hold SSE and WebSocket connections open across human disable and logout.
 They require client closure and native-handler return within one second measured
 from before the authority mutation, then fresh denial without another origin
-dispatch. This is a synthetic fixture target, not a production latency guarantee.
+dispatch. Passed stream cases retain integer `closure_ms` in evidence and JUnit; missing
+or invalid measurements fail qualification. This is a synthetic fixture target,
+not a production latency guarantee.
 Two further scenarios exercise SSE and WebSocket through the actual standalone
 CLI after browser approval. They validate the native bearer and host, wait for
 an SSE marker and a complete WebSocket handshake, then disable the user or log

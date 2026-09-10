@@ -35,6 +35,12 @@ _TESTS = (
     "pinned Caddy and Authelia browser edge retains Connect and native controls",
     "managed gateway and connector lifecycle retain the real browser edge",
 )
+_STREAM_CLOSURE_TESTS = frozenset({
+    "container-gated browser streams close on human disable",
+    "container-gated browser streams close on logout",
+    "container-gated CLI streams close on human disable",
+    "container-gated CLI streams close on browser logout",
+})
 _SAFE_CODES = frozenset({
     "config-invalid", "config-missing", "source-invalid", "source-version",
     "artifact-root-invalid", "tool-invalid", "lock-invalid", "staging-failed",
@@ -389,24 +395,28 @@ def _environment(config: QualificationConfig, run_dir: Path, *, fixture_tmp: Pat
     }
 
 
-def _supervisor_status(output: bytes) -> tuple[str, bool]:
+def _supervisor_status(output: bytes, expected_name: str) -> tuple[str, bool, int | None]:
     try:
         value = json.loads(output.decode("utf-8", "strict"))
+        if not isinstance(value, dict):
+            raise ValueError
         stages = {"build", "fixture-startup", "browser-launch-cert", "browser-connection", "browser-dns", "browser-navigation", "browser-assertion", "report-parsing", "timeout", "interrupted", "supervisor"}
         marker = value.get("fixture_marker")
-        if set(value) != {"status", "escalated", "failure_stage", "fixture_marker"} or value["status"] not in {"passed", "skipped", "runner-timeout", "runner-interrupted", "runner-failed"} or type(value["escalated"]) is not bool or value["failure_stage"] not in stages | {None} or (marker is not None and not re.fullmatch(r"(?:browser_(?:edge|runtime)_fixture_test\.go|browser_edge\.spec\.mjs):[1-9][0-9]{0,4}", marker)):
+        closure_ms = value.get("closure_ms")
+        requires_measurement = expected_name in _STREAM_CLOSURE_TESTS
+        if set(value) != {"status", "escalated", "failure_stage", "fixture_marker", "closure_ms"} or value["status"] not in {"passed", "skipped", "runner-timeout", "runner-interrupted", "runner-failed"} or type(value["escalated"]) is not bool or value["failure_stage"] not in stages | {None} or (marker is not None and not re.fullmatch(r"(?:browser_(?:edge|runtime)_fixture_test\.go|browser_edge\.spec\.mjs):[1-9][0-9]{0,4}", marker)) or (value["status"] == "passed" and requires_measurement and (type(closure_ms) is not int or not 0 <= closure_ms <= 1000)) or (value["status"] != "passed" and closure_ms is not None) or (value["status"] == "passed" and not requires_measurement and closure_ms is not None):
             raise ValueError
         status = "runner-failed" if value["escalated"] else value["status"]
         if status == "runner-failed" and value["failure_stage"]:
             status += "-" + value["failure_stage"]
             if marker is not None:
                 status += "@" + marker
-        return status, value["escalated"]
-    except (UnicodeError, TypeError, ValueError, json.JSONDecodeError):
-        return "runner-failed-supervisor", True
+        return status, value["escalated"], closure_ms if status == "passed" else None
+    except (UnicodeError, TypeError, ValueError, KeyError, AttributeError, json.JSONDecodeError):
+        return "runner-failed-supervisor", True, None
 
 
-def _run_test(argv: list[str], *, cwd: Path, env: dict[str, str], timeout: float, expected_name: str, supervisor: Path | None = None) -> tuple[str, float, bool]:
+def _run_test(argv: list[str], *, cwd: Path, env: dict[str, str], timeout: float, expected_name: str, supervisor: Path | None = None) -> tuple[str, float, bool, int | None]:
     """Ask an isolated supervisor to run one fixture and return its safe status."""
     started = time.monotonic()
     supervisor = supervisor or Path(__file__).with_name("_qualification_supervisor.py")
@@ -423,6 +433,7 @@ def _run_test(argv: list[str], *, cwd: Path, env: dict[str, str], timeout: float
     sent_stop = False
     supervisor_escalated = False
     status = "runner-failed"
+    closure_ms: int | None = None
     try:
         while selector.get_map() and time.monotonic() < deadline:
             for key, _ in selector.select(min(0.05, max(0.0, deadline - time.monotonic()))):
@@ -442,23 +453,23 @@ def _run_test(argv: list[str], *, cwd: Path, env: dict[str, str], timeout: float
             except subprocess.TimeoutExpired:
                 os.killpg(process.pid, signal.SIGKILL)
                 process.wait(timeout=1)
-                return "runner-failed", time.monotonic() - started, True
-        status, supervisor_escalated = _supervisor_status(bytes(captured)) if process.returncode == 0 else ("runner-failed", True)
+                return "runner-failed", time.monotonic() - started, True, None
+        status, supervisor_escalated, closure_ms = _supervisor_status(bytes(captured), expected_name) if process.returncode == 0 else ("runner-failed", True, None)
     except KeyboardInterrupt:
         process.send_signal(signal.SIGTERM)
         sent_stop = True
         try:
             process.wait(timeout=4)
             captured.extend(process.stdout.read(max(0, 4096 - len(captured))))
-            status, supervisor_escalated = _supervisor_status(bytes(captured)) if process.returncode == 0 else ("runner-failed", True)
+            status, supervisor_escalated, closure_ms = _supervisor_status(bytes(captured), expected_name) if process.returncode == 0 else ("runner-failed", True, None)
         except subprocess.TimeoutExpired:
             os.killpg(process.pid, signal.SIGKILL)
             process.wait(timeout=1)
-            status = "runner-failed"
+            status, closure_ms = "runner-failed", None
     finally:
         selector.close()
         process.stdout.close()
-    return status, time.monotonic() - started, supervisor_escalated or (sent_stop and status == "runner-failed")
+    return status, time.monotonic() - started, supervisor_escalated or (sent_stop and status == "runner-failed"), closure_ms if status == "passed" else None
 
 
 def _playwright_version(stage: Path) -> str:
@@ -489,6 +500,12 @@ def _junit(path: Path, cases: Iterable[dict[str, Any]]) -> None:
     root = ET.Element("testsuite", name="anvil-connect.browser-edge", tests=str(len(entries)), failures=str(counts["failed"]), skipped=str(counts["skipped"] + counts["not_run"]))
     for case in entries:
         node = ET.SubElement(root, "testcase", name=case["name"], time=f"{case['duration_seconds']:.3f}")
+        if "closure_ms" in case:
+            closure_ms = case["closure_ms"]
+            if type(closure_ms) is not int or not 0 <= closure_ms <= 1000:
+                raise ValueError("invalid closure measurement")
+            properties = ET.SubElement(node, "properties")
+            ET.SubElement(properties, "property", name="closure_ms", value=str(closure_ms))
         if case["status"] in {"skipped", "not-run"}:
             ET.SubElement(node, "skipped", type=case["status"], message="qualification browser edge was not executed")
         elif case["status"] != "passed":
@@ -550,9 +567,9 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
         for index, name in enumerate(_TESTS):
             remaining = run_deadline - time.monotonic()
             if remaining <= 0:
-                result, duration, escalated = "runner-timeout", 0.0, False
+                result, duration, escalated, closure_ms = "runner-timeout", 0.0, False, None
             else:
-                result, duration, escalated = _run_test(
+                result, duration, escalated, closure_ms = _run_test(
                     [str(config.tools["node"]), str(runner), "test", "test/browser_edge.spec.mjs", "--reporter=json", "--grep", re.escape(name) + "$"],
                     cwd=stage / "connect", env=environment, timeout=remaining, expected_name=name, supervisor=run_dir / "supervisor.py",
                 )
@@ -562,6 +579,8 @@ def qualify(config_path: str | os.PathLike[str] | None = None, *, lane: str = "b
                 failure_stage, fixture_marker = failure_stage.split("@", 1)
             status = "runner-failed" if failure_stage else result
             item = {"name": name, "status": status, "duration_seconds": round(duration, 3)}
+            if closure_ms is not None:
+                item["closure_ms"] = closure_ms
             if failure_stage is not None:
                 item["failure_stage"] = failure_stage
             if fixture_marker is not None:
