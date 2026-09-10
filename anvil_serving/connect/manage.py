@@ -576,7 +576,6 @@ def _validate_closed_memberships(data: dict[str, Any]) -> None:
 
 def _validate_target_memberships(data: dict[str, Any], targets: tuple[Target, ...]) -> None:
     """Validate NSS-resolved supplementary groups for every selected role."""
-    ingress_gid = data["service_identities"]["ingress"]["group_id"]
     for target in targets:
         for role, identifier in _target_roles(data, target):
             uid, gid, account = _role_account(data, role, identifier)
