@@ -424,12 +424,19 @@ func edgeStableTOTP(secret string) string {
 	return edgeTOTP(secret, now)
 }
 
-func edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey string) string {
+func edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey string, redirectURIs ...string) string {
 	q := func(value string) string { encoded, _ := json.Marshal(value); return string(encoded) }
 	template := func(path string, indent int) string {
 		return fmt.Sprintf("{{- fileContent %s | nindent %d }}", q(path), indent)
 	}
-	return strings.Join([]string{
+	if len(redirectURIs) == 0 {
+		redirectURIs = []string{"https://" + dashHost + "/_anvil-connect/callback"}
+	}
+	redirectLines := []string{"        redirect_uris:"}
+	for _, uri := range redirectURIs {
+		redirectLines = append(redirectLines, "          - "+q(uri))
+	}
+	lines := []string{
 		"server:", "  address: " + q("tcp://"+authListen),
 		"authentication_backend:", "  file:", "    path: " + q(users),
 		"access_control:", "  default_policy: two_factor",
@@ -438,8 +445,9 @@ func edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKe
 		"session:", "  secret: |-", "    " + template(sessionSecret, 4), "  cookies:", "    - domain: " + q(edgeAuthHost), "      authelia_url: " + q("https://"+edgeAuthHost),
 		"storage:", "  encryption_key: |-", "    " + template(storageKey, 4), "  local:", "    path: " + q(filepath.Join(state, "authelia.sqlite3")),
 		"identity_providers:", "  oidc:", "    hmac_secret: |-", "      " + template(hmacSecret, 6), "    jwks:", "      - key_id: 'anvil-connect-rs256'", "        algorithm: RS256", "        use: sig", "        key: |-", "          " + template(rsaKey, 10),
-		"    clients:", "      - client_id: 'connect-browser'", "        client_secret: |-", "          " + template(clientSecret, 10), "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256", "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:", "          - openid", "        id_token_signed_response_alg: RS256", "        token_endpoint_auth_method: client_secret_basic", "        redirect_uris:", "          - 'https://dash.example.test/_anvil-connect/callback'",
-	}, "\n") + "\n"
+		"    clients:", "      - client_id: 'connect-browser'", "        client_secret: |-", "          " + template(clientSecret, 10), "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256", "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:", "          - openid", "        id_token_signed_response_alg: RS256", "        token_endpoint_auth_method: client_secret_basic",
+	}
+	return strings.Join(append(lines, redirectLines...), "\n") + "\n"
 }
 
 func edgeCaddyConfig(listen, authListen, socket, certificate, key string) map[string]any {
