@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import threading
 import time
 
@@ -128,7 +129,8 @@ def test_cancel_is_retained_and_deletion_does_not_resurrect(chat):
     assert wait_terminal(playground, first["id"])["status"] == "cancelled"
     playground.delete(identity(), first["id"])
     assert playground.conversations(identity())["items"] == []
-    assert store.path.stat().st_mode & 0o777 == 0o600
+    if os.name == "posix":
+        assert store.path.stat().st_mode & 0o777 == 0o600
 
 
 def test_restart_marks_inflight_interrupted_without_replay(tmp_path):
