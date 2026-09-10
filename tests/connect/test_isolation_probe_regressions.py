@@ -9,6 +9,9 @@ import threading
 
 import pytest
 
+
+pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='requires Linux Unix-socket guest probes')
+
 _PATH = Path(__file__).parents[2] / 'connect/test/vm/guest.py'
 _SPEC = importlib.util.spec_from_file_location('guest_probe_regression', _PATH)
 assert _SPEC and _SPEC.loader

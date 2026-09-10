@@ -6,9 +6,13 @@ import importlib.util
 import json
 from pathlib import Path
 import stat
+import sys
 from types import SimpleNamespace
 
 import pytest
+
+
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="requires Linux isolation guest controls")
 
 
 _GUEST = Path(__file__).parents[2] / "connect/test/vm/guest.py"
