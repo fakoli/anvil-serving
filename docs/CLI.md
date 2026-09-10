@@ -363,8 +363,8 @@ required operands, choices, and defaults.
 | `collectors validate` | Validate adapter configuration without network access. | `read` / `bounded` | - |
 | `collectors capabilities` | Report configured adapter capabilities offline. | `read` / `bounded` | - |
 | `collectors inspect` | Perform one bounded read-only adapter inspection. | `read` / `bounded` | - |
-| `dashboard` | Serve the read-only system observability dashboard. | `read` / `bounded` | - |
-| `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | `--host`<br>`--port`<br>`--auth-env`<br>`--workload-controller-url`<br>`--workload-expected-node`<br>`--workload-authorization-policy`<br>`--observatory-config` |
+| `dashboard` | Serve the authenticated Workbench or local telemetry dashboard. | `read` / `bounded` | - |
+| `dashboard serve` | Serve the configured Anvil Workbench or packaged local dashboard. | `process` / `foreground` | `--host`<br>`--port`<br>`--auth-env`<br>`--workload-controller-url`<br>`--workload-expected-node`<br>`--workload-authorization-policy`<br>`--observatory-config` |
 | `edge` | Own the Tailscale tailnet edge in front of the unchanged router. | `read` / `bounded` | - |
 | `edge bundle` | Plan a portable tailnet model endpoint offline. | `read` / `bounded` | - |
 | `edge bundle validate` | Validate a portable endpoint manifest offline. | `read` / `bounded` | `--manifest` |
@@ -389,8 +389,10 @@ required operands, choices, and defaults.
 | `connect backup` | Back up the stopped gateway authority to a private file. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `connect restore` | Restore fenced authority into a fresh private directory. | `mutate` / `bounded` | `--manifest`<br>`--input`<br>`--destination`<br>`--sha256`<br>`--native-sha256`<br>`--dry-run`<br>`--confirm` |
 | `connect migration` | Preview Observatory access at one canonical origin. | `read` / `bounded` | `--manifest`<br>`--observatory-config`<br>`--resource` |
-| `workbench` | Manage the optional private Anvil Workbench hub stack. | `read` / `bounded` | - |
-| `workbench build` | Build the Workbench hub image from the local companion checkout. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--source`<br>`--image` |
+| `workbench` | Build Workbench runners and manage the optional companion hub. | `read` / `bounded` | - |
+| `workbench build` | Build the Workbench hub image from the local companion checkout. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--source`<br>`--image`<br>`--runner` |
+| `workbench pi-egress` | Approve or remove the isolated Pi provider gateway policy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--provider`<br>`--remove` |
+| `workbench pi-storage` | Provision and verify the bounded Pi runner storage pool. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
 | `workbench up` | Start the private Workbench hub, Postgres, and Neo4j projection. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `workbench down` | Stop the Workbench hub stack while preserving its named data volumes. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `workbench status` | Show the bounded Docker Compose service status for Workbench. | `read` / `bounded` | - |

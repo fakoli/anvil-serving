@@ -248,7 +248,7 @@ def commands() -> tuple[CommandNode, ...]:
         ),
         _node(
             "workbench",
-            "Manage the optional private Anvil Workbench hub stack.",
+            "Build Workbench runners and manage the optional companion hub.",
             children=(
                 _resource_node(
                     "build",
@@ -259,10 +259,37 @@ def commands() -> tuple[CommandNode, ...]:
                     + (
                         _option("--source", summary="Workbench source checkout.", value_name="PATH"),
                         _option("--image", summary="Local image tag.", value_name="TAG"),
+                        _option("--runner", summary="Build the companion hub or packaged Pi runner (hub or pi).", value_name="KIND"),
                     ),
                     mutation="mutate",
                     argv_prefix=("build",),
                     docs_anchor="docs/WORKBENCH.md#lifecycle",
+                ),
+                _resource_node(
+                    "pi-egress",
+                    "Approve or remove the isolated Pi provider gateway policy.",
+                    "anvil_serving.workbench",
+                    role="host",
+                    options=CONFIRM_OPTIONS + (
+                        _option("--config", summary="Private Workbench or Pi configuration.", value_name="PATH"),
+                        _option("--provider", summary="Declared Pi provider identity.", value_name="ID"),
+                        _option("--remove", summary="Remove the exact owned proxy and empty isolated network."),
+                    ),
+                    mutation="mutate",
+                    argv_prefix=("pi-egress",),
+                    docs_anchor="docs/WORKBENCH-PORTAL.md#pi-runner",
+                ),
+                _resource_node(
+                    "pi-storage",
+                    "Provision and verify the bounded Pi runner storage pool.",
+                    "anvil_serving.workbench",
+                    role="host",
+                    options=CONFIRM_OPTIONS + (
+                        _option("--config", summary="Absolute private Workbench configuration.", value_name="PATH"),
+                    ),
+                    mutation="mutate",
+                    argv_prefix=("pi-storage",),
+                    docs_anchor="docs/WORKBENCH-PORTAL.md#pi-runner",
                 ),
                 _resource_node(
                     "up",
