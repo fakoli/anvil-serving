@@ -709,15 +709,46 @@ test('container-gated CLI device login revokes on human disable and browser logo
   }
 });
 
-async function virtualAuthenticator(page, credential) {
+async function virtualAuthenticator(page, credential, overrides = {}) {
   const session = await fixture.context.newCDPSession(page);
   await session.send('WebAuthn.enable');
   const { authenticatorId } = await session.send('WebAuthn.addVirtualAuthenticator', { options: {
     protocol: 'ctap2', transport: 'internal', hasResidentKey: true,
     hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true,
+    ...overrides,
   } });
   if (credential) await session.send('WebAuthn.addCredential', { authenticatorId, credential });
   return { session, authenticatorId };
+}
+
+async function rejectedPasskeyLogin(page, credential, overrides) {
+  let assertions = 0;
+  let callbacks = 0;
+  const countRequest = request => {
+    if (new URL(request.url()).pathname === '/api/firstfactor/passkey' && request.method() === 'POST') assertions++;
+  };
+  const countResponse = response => {
+    if (new URL(response.url()).pathname === '/_anvil-connect/callback') callbacks++;
+  };
+  page.on('request', countRequest);
+  page.on('response', countResponse);
+  try {
+    await page.goto(fixture.url, { waitUntil: 'domcontentloaded' });
+    const authenticator = await virtualAuthenticator(page, credential, overrides);
+    const options = page.waitForResponse(response => new URL(response.url()).pathname === '/api/firstfactor/passkey' && response.request().method() === 'GET', { timeout: 10_000 });
+    await page.getByRole('button', { name: 'Sign in with a passkey', exact: true }).click();
+    const response = await options;
+    expect(response.status()).toBe(200);
+    expect((await response.json()).data.publicKey.userVerification).toBe('required');
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 10_000 });
+    expect(assertions).toBe(0);
+    expect(callbacks).toBe(0);
+    await expect(page.locator('#dashboard')).toHaveCount(0);
+    return authenticator;
+  } finally {
+    page.off('request', countRequest);
+    page.off('response', countResponse);
+  }
 }
 
 async function registerPasskey(page, description) {
@@ -838,5 +869,197 @@ test('container-gated UV passkey registers and approves CLI device login', async
       fixture = edgeFixture;
       await cleanup(passkeyFixture);
     }
+  }
+});
+
+test('container-gated spare passkey restores least-privilege access', async () => {
+  test.setTimeout(120_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE !== '1', 'requires the disposable virtual WebAuthn fixture');
+  const edgeFixture = fixture;
+  let loginSession;
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE');
+  try {
+    let page = await freshPage();
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+
+    const primary = await registerPasskey(page, 'Synthetic primary passkey');
+    const primaryKeys = await primary.session.send('WebAuthn.getCredentials', { authenticatorId: primary.authenticatorId });
+    expect(primaryKeys.credentials.length).toBe(1);
+    const primaryID = primaryKeys.credentials[0].credentialId;
+    // Unplug the primary while enrolling an independent spare authenticator.
+    // Retain its key only in memory until spare enrollment is complete.
+    await primary.session.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId: primary.authenticatorId });
+    await primary.session.detach();
+    const spare = await registerPasskey(page, 'Synthetic spare passkey');
+    const spareKeys = await spare.session.send('WebAuthn.getCredentials', { authenticatorId: spare.authenticatorId });
+    expect(spareKeys.credentials.length).toBe(1);
+    expect(spareKeys.credentials[0].credentialId).not.toBe(primaryID);
+    expect(spareKeys.credentials[0].rpId).toBe(authHost);
+
+    // Model losing the primary only after the spare has been pre-enrolled.
+    primaryKeys.credentials.length = 0;
+    page = await freshPage();
+    await passkeyLogin(page, spareKeys.credentials[0]);
+    spareKeys.credentials.length = 0;
+    const cli = await buildDeviceCLI(fixture.dir);
+    loginSession = await startDeviceCLI(cli, fixture);
+    const challenge = await waitForDeviceEvent(loginSession.challenge);
+    await page.goto(challenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(challenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const ready = await waitForDeviceEvent(loginSession.ready);
+    const localKey = (await readFile(fixture.local_key, 'utf8')).trim();
+    expect((await loopbackResponse(ready.baseURL, 'GET', localKey)).status).toBe(200);
+    expect((await fixture.command('api request count')).count).toBe('1');
+
+    await page.goto(fixture.url, { waitUntil: 'domcontentloaded' });
+    const denied = await page.evaluate(async () => {
+      const path = '/_anvil-connect/access';
+      const inventory = await fetch(`${path}?kind=users&limit=10`, { redirect: 'manual' });
+      const mutation = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', redirect: 'manual' });
+      return [inventory.status, mutation.status];
+    });
+    expect(denied).toEqual([403, 403]);
+    // Reuse the original sessions after the forbidden admin requests. A
+    // successful human-generation change would invalidate these admissions.
+    expect(await page.evaluate(() => fetch('/', { redirect: 'manual' }).then(response => response.status))).toBe(200);
+    expect((await loopbackResponse(ready.baseURL, 'GET', localKey)).status).toBe(200);
+    expect((await fixture.command('api request count')).count).toBe('2');
+    await stopDeviceCLI(loginSession);
+    loginSession = undefined;
+    await assertLoopbackReleased(ready.baseURL);
+  } finally {
+    try { await stopDeviceCLI(loginSession); } finally {
+      const passkeyFixture = fixture;
+      fixture = edgeFixture;
+      await cleanup(passkeyFixture);
+    }
+  }
+});
+
+test('container-gated passkey rejects UV, RP, expiry, replay, and disabled subject', async () => {
+  test.setTimeout(180_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE !== '1', 'requires the disposable virtual WebAuthn fixture');
+  const edgeFixture = fixture;
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE');
+  try {
+    // Register once through the provider's real UI, then retain the virtual
+    // credential only in this test process. Every assertion case uses a fresh
+    // browser page and exactly one authenticator.
+    let page = await freshPage();
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+    const enrolled = await registerPasskey(page, 'Synthetic negative passkey');
+    const { credentials } = await enrolled.session.send('WebAuthn.getCredentials', { authenticatorId: enrolled.authenticatorId });
+    expect(credentials).toHaveLength(1);
+    let credential = credentials[0];
+    const retainCredential = async authenticator => {
+      const snapshot = await authenticator.session.send('WebAuthn.getCredentials', { authenticatorId: authenticator.authenticatorId });
+      expect(snapshot.credentials).toHaveLength(1);
+      // Carry the actual authenticator counter forward across fresh pages.
+      // Resetting it would test cloned-key rejection instead of the next case.
+      credential = snapshot.credentials[0];
+    };
+
+    page = await freshPage();
+    await rejectedPasskeyLogin(page, credential, { isUserVerified: false });
+    page = await freshPage();
+    await retainCredential(await passkeyLogin(page, credential));
+
+    // A credential scoped to another RP must not be selected for the actual
+    // provider options. This is a browser/RP boundary check, not a forged
+    // assertion signature test.
+    page = await freshPage();
+    await rejectedPasskeyLogin(page, { ...credential, rpId: 'wrong.example.test' });
+    page = await freshPage();
+    await retainCredential(await passkeyLogin(page, credential));
+
+    // Hold a real browser-produced assertion beyond the fixture-only five
+    // second server timeout, then continue the original request. No route
+    // fetch or copied transport is used.
+    page = await freshPage();
+    let expiryCallbacks = 0;
+    const countExpiryCallback = response => {
+      if (new URL(response.url()).pathname === '/_anvil-connect/callback') expiryCallbacks++;
+    };
+    page.on('response', countExpiryCallback);
+    try {
+      await page.goto(fixture.url, { waitUntil: 'domcontentloaded' });
+      const expiringAuthenticator = await virtualAuthenticator(page, credential);
+      const options = page.waitForResponse(response => new URL(response.url()).pathname === '/api/firstfactor/passkey' && response.request().method() === 'GET', { timeout: 10_000 }).catch(() => null);
+      const assertion = page.waitForResponse(response => new URL(response.url()).pathname === '/api/firstfactor/passkey' && response.request().method() === 'POST', { timeout: 15_000 }).catch(() => null);
+      await page.route('**/api/firstfactor/passkey', async route => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 6_000));
+        await route.continue();
+      });
+      await page.getByRole('button', { name: 'Sign in with a passkey', exact: true }).click();
+      const optionResponse = await options;
+      expect(optionResponse).not.toBeNull();
+      expect((await optionResponse.json()).data.publicKey.userVerification).toBe('required');
+      const expired = await assertion;
+      expect(expired).not.toBeNull();
+      expect(expired.status()).toBe(403);
+      await expect(page.getByRole('alert')).toBeVisible({ timeout: 10_000 });
+      expect(expiryCallbacks).toBe(0);
+      await expect(page.locator('#dashboard')).toHaveCount(0);
+      await retainCredential(expiringAuthenticator);
+    } finally {
+      await page.unroute('**/api/firstfactor/passkey');
+      page.off('response', countExpiryCallback);
+    }
+
+    // Capture the first successful browser assertion only in memory. Replay
+    // its exact bytes from a separately loaded auth-origin page. The resulting
+    // authenticated session must reject replay without a new Connect callback;
+    // this does not isolate challenge consumption or concurrent replay safety.
+    page = await freshPage();
+    const firstAssertion = page.waitForRequest(request => new URL(request.url()).pathname === '/api/firstfactor/passkey' && request.method() === 'POST', { timeout: 15_000 }).catch(() => null);
+    await retainCredential(await passkeyLogin(page, credential));
+    const firstAssertionRequest = await firstAssertion;
+    expect(firstAssertionRequest).not.toBeNull();
+    let assertionBody = firstAssertionRequest.postData();
+    expect(assertionBody).toBeTruthy();
+    const replayPage = await fixture.context.newPage();
+    try {
+      await replayPage.goto(`https://${authHost}/`, { waitUntil: 'domcontentloaded' });
+      let replayCallbacks = 0;
+      const countReplayCallback = response => {
+        if (new URL(response.url()).pathname === '/_anvil-connect/callback') replayCallbacks++;
+      };
+      replayPage.on('response', countReplayCallback);
+      const replayed = await replayPage.evaluate(async body => {
+        const response = await fetch('/api/firstfactor/passkey', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        });
+        return response.status;
+      }, assertionBody);
+      expect(replayed).toBe(403);
+      expect(replayCallbacks).toBe(0);
+      replayPage.off('response', countReplayCallback);
+    } finally {
+      assertionBody = undefined;
+      await replayPage.close();
+    }
+
+    // Connect authorization remains distinct from the IdP passkey. A valid
+    // provider assertion may complete, but the disabled opaque human cannot
+    // obtain a dashboard or device approval session.
+    await fixture.command('disable allowed');
+    page = await freshPage();
+    await passkeyLogin(page, credential, 401);
+    expect(await page.evaluate(() => fetch('/_anvil-connect/device', { redirect: 'manual' }).then(response => response.status))).toBe(401);
+  } finally {
+    const passkeyFixture = fixture;
+    fixture = edgeFixture;
+    await cleanup(passkeyFixture);
   }
 });

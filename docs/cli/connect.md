@@ -135,7 +135,17 @@ identity keeps the tested user unprivileged. Evidence labels this coverage
 `virtual-webauthn-only`: it does not verify physical presence, biometrics,
 Touch ID, Face ID, 1Password integration, or credential sync and backup.
 
-Expiry and single-use redemption after a lost response are covered separately by
+The remaining passkey scenarios check missing user verification, a credential
+for the wrong relying party, an expired signed assertion, sequential replay,
+and a disabled Connect user. UV and relying-party failures are browser policy
+checks; replay checks rejection in the resulting authenticated session, without
+claiming concurrent replay resistance. A pre-enrolled spare credential restores
+dashboard and CLI access while user administration remains forbidden. The
+existing browser session and CLI key must remain usable after those forbidden
+requests; recovery does not grant an operator role. These are synthetic recovery
+and authorization checks, not validation of a production security audit log.
+
+Device-approval expiry and single-use redemption after a lost response are covered separately by
 authority and CLI unit tests, using an injected clock where appropriate. The
 device lane does not claim those are browser end-to-end tests. Active-stream
 revocation, authority recovery and physical passkeys require separate coverage.

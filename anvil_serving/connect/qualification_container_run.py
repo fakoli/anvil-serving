@@ -21,6 +21,8 @@ _DEVICE_TESTS = (
     "container-gated CLI device login denies, cancels, and rejects unauthenticated approval",
     "container-gated CLI device login revokes on human disable and browser logout",
     "container-gated UV passkey registers and approves CLI device login",
+    "container-gated passkey rejects UV, RP, expiry, replay, and disabled subject",
+    "container-gated spare passkey restores least-privilege access",
 )
 
 def _load_runner(path: Path):
