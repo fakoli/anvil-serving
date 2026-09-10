@@ -13,7 +13,7 @@ from anvil_serving.connect import qualification_vm as subject
 
 
 _IMAGE = b"synthetic-qcow2-image"
-_SUMS = hashlib.sha256(_IMAGE).hexdigest().encode("ascii") + b"  ubuntu-24.04-server-cloudimg-amd64.img\n"
+_SUMS = hashlib.sha256(_IMAGE).hexdigest().encode("ascii") + b" *ubuntu-24.04-server-cloudimg-amd64.img\n"
 _SIGNATURE = b"synthetic-signature"
 _KEYRING = "a" * 64
 
@@ -213,3 +213,23 @@ def test_whole_preparation_budget_includes_non_download_stages(tmp_path, monkeyp
     assert failure.value.code == "runner-timeout"
     if not phase.startswith("cached"):
         assert not (artifacts / "vm-image.json").exists()
+
+
+@pytest.mark.parametrize("marker", [" ", "*"])
+def test_gnu_checksum_modes_are_accepted_exactly_once(tmp_path, monkeypatch, marker):
+    import sys
+    line = hashlib.sha256(_IMAGE).hexdigest() + " " + marker + subject._CACHE_NAME + "\n"
+    monkeypatch.setattr(sys.modules[__name__], "_SUMS", line.encode("ascii"))
+    config, _ = _config(tmp_path)
+    _prepare_fakes(monkeypatch, config)
+    assert subject.prepare(tmp_path / "settings.toml")["ok"] is True
+
+
+def test_duplicate_matching_signed_checksum_entries_are_rejected(tmp_path, monkeypatch):
+    import sys
+    monkeypatch.setattr(sys.modules[__name__], "_SUMS", _SUMS * 2)
+    config, artifacts = _config(tmp_path)
+    _prepare_fakes(monkeypatch, config)
+    with pytest.raises(qualification.QualificationError, match="absent from signed checksums"):
+        subject.prepare(tmp_path / "settings.toml")
+    assert not (artifacts / "vm-image.json").exists()
