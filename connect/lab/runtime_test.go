@@ -1,8 +1,9 @@
 package lab
 
 // This is an owned-process smoke behind a synthetic TLS/CONNECT front. It is
-// intentionally not a Caddy qualification: it only proves Connect's runtime
-// contracts over loopback, pinned wstunnel, and an opaque CONNECT bridge.
+// intentionally not a Caddy qualification: it only proves the protocol-only
+// same-UID fixture contracts over loopback, pinned wstunnel, and an opaque
+// CONNECT bridge. Managed activation uses the declared cross-UID ingress.
 
 import (
 	"context"
@@ -82,7 +83,7 @@ func TestRuntimeOwnedProcessAPISmoke(t *testing.T) {
 	if err := connectruntime.InitializeGateway(gatewayCfg); err != nil {
 		t.Fatal(err)
 	}
-	gateway, err := connectruntime.StartGateway(context.Background(), gatewayCfg, func(string) (string, bool) { return "", false })
+	gateway, err := connectruntime.ComposeGatewayForProtocolFixture(context.Background(), gatewayCfg, func(string) (string, bool) { return "", false })
 	if err != nil {
 		t.Fatal(err)
 	}

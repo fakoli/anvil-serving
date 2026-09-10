@@ -8,15 +8,37 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.connect.config import ManifestError, validate_manifest
-from anvil_serving.connect.render import render
+from anvil_serving.connect.render import render, render_for_inspection
 
 
 def declaration():
     return json.loads((Path(__file__).parents[2] / "connect/examples/deployment.json").read_text())
 
 
-def signed_declaration():
+def isolated_declaration():
     value = declaration()
+    del value["service_user"]
+    value["service_identities"] = {
+        "gateway": {"uid": 1201, "gid": 1201},
+        "edge": {"uid": 1202, "gid": 1202},
+        "idp": {"uid": 1203, "gid": 1203},
+        "connectors": {"dashboard": {"uid": 1204, "gid": 1204}},
+        "clients": {"dashboard-api": {"uid": 1205, "gid": 1205}},
+        "ingress": {"group_id": 1290, "directory": "/run/anvil-connect/ingress"},
+    }
+    value["service_limits"] = {
+        "gateway": {"memory_max_bytes": 805306368, "tasks_max": 128},
+        "edge": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "idp": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "connectors": {"dashboard": {"memory_max_bytes": 402653184, "tasks_max": 64}},
+        "clients": {"dashboard-api": {"memory_max_bytes": 268435456, "tasks_max": 32}},
+    }
+    value["caddy"]["state_directory"] = "/var/lib/anvil-connect/caddy"
+    return value
+
+
+def signed_declaration(*, isolated: bool = False):
+    value = isolated_declaration() if isolated else declaration()
     resource = next(r for r in value["gateway"]["gateway"]["resources"] if r["rule"]["access"] == "browser")
     resource["rule"]["native_auth"] = "signed-identity"
     resource.update(identity_key_env="ANVIL_DASHBOARD_IDENTITY_KEY", identity_key_id="dashboard-v1")
@@ -29,7 +51,7 @@ def signed_declaration():
 
 
 def test_signing_reference_reaches_only_gateway_and_mode_matches_both_hops():
-    value, resource = signed_declaration()
+    value, resource = signed_declaration(isolated=True)
     files = render(value)["files"]
     gateway = json.loads(files["gateway.json"])
     signed = next(r for r in gateway["gateway"]["resources"] if r["rule"]["id"] == resource["rule"]["id"])
@@ -66,7 +88,7 @@ def test_gateway_identity_environment_file_is_exactly_signed_mode_scoped():
 def test_legacy_gateway_render_remains_single_environment_file():
     data = validate_manifest(declaration())
     assert "gateway_identity" not in data["environment_files"]
-    unit = render(declaration())["files"]["systemd/anvil-connect-gateway.service"]
+    unit = render_for_inspection(declaration())["files"]["systemd/anvil-connect-gateway.service"]
     assert unit.count("EnvironmentFile=") == 1
 
 
@@ -133,7 +155,7 @@ def passkeys():
 
 
 def test_passkey_policy_requires_explicit_opt_in_and_keeps_two_factor():
-    value = declaration()
+    value = isolated_declaration()
     assert "webauthn" not in validate_manifest(value)["authelia"]
     assert "enable_passkey_login" not in render(value)["files"]["authelia/configuration.yml"]
     value["authelia"]["webauthn"] = passkeys()

@@ -326,24 +326,7 @@ func TestBrowserFixture(t *testing.T) {
 	if err := json.NewEncoder(os.Stdout).Encode(ready); err != nil {
 		t.Fatal(err)
 	}
-	commands := make(chan string)
-	go func() {
-		defer close(commands)
-		buffer := make([]byte, 256)
-		for {
-			n, err := os.Stdin.Read(buffer)
-			if n > 0 {
-				for _, line := range strings.Split(string(buffer[:n]), "\n") {
-					if strings.TrimSpace(line) != "" {
-						commands <- strings.TrimSpace(line)
-					}
-				}
-			}
-			if err != nil {
-				return
-			}
-		}
-	}()
+	commands := fixtureCommands(os.Stdin)
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, syscall.SIGTERM, os.Interrupt)
 	defer signal.Stop(interrupt)
@@ -351,10 +334,15 @@ func TestBrowserFixture(t *testing.T) {
 		select {
 		case <-interrupt:
 			return
-		case command, open := <-commands:
+		case received, open := <-commands:
 			if !open {
 				return
 			}
+			if received.err != nil {
+				t.Error(errFixtureCommandInput)
+				return
+			}
+			command := received.command
 			switch command {
 			case "subject allowed":
 				idp.mu.Lock()

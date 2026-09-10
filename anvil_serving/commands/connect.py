@@ -32,6 +32,17 @@ def commands() -> CommandNode:
     return _node(
         "connect", "Manage authenticated API and browser access with Anvil Connect.",
         children=(
+            _node(
+                "qualify", "Run an isolated Connect qualification lane using saved local settings.",
+                handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("qualify",)),
+                options=(
+                    _option("--prepare-container", summary="Explicitly download public pinned dependencies and prepare the local test image; exclusive with --lane."),
+                    _option("--lane", summary="baseline, container-baseline or device; defaults to baseline.", value_name="LANE"),
+                    _option("--config", summary="Private qualification TOML; defaults to ~/.config/anvil-connect/qualification.toml.", value_name="PATH"),
+                ),
+                mutation_class="process", execution_policy="offline",
+                docs_anchor="docs/cli/connect.md#qualify",
+            ),
             _command("validate", "Validate declarations and selected native components."),
             _command("render", "Preview or stage an owned configuration generation.", service=False, mutation=True),
             _command("up", "Preview or activate only the selected owned services.", mutation=True, extra=(

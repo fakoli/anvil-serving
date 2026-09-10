@@ -24,8 +24,8 @@ import time
 from typing import Any, Callable, Iterator, Literal
 from contextlib import contextmanager
 
-from .config import read_manifest
-from .render import plan, render as render_config, stage
+from .config import read_manifest, require_isolated, role_identity
+from .render import plan, plan_for_inspection, render as render_config, stage
 
 # The package and command help remain portable.  The actual ownership model
 # below deliberately depends on Linux uid/gid, openat-style flags, flock and
@@ -390,6 +390,255 @@ def _mode(target: Target) -> str:
     return {"gateway": "gateway", "connector": "connector", "client": "client"}[target.kind]
 
 
+def _inspection_plan(data: dict[str, Any]) -> dict[str, Any]:
+    """Inspect an owned legacy or isolated generation without publishing either."""
+    return plan_for_inspection(data, data["config_root"])
+
+
+def _target_identity(data: dict[str, Any], target: Target) -> ServiceIdentity | None:
+    role = target.kind
+    identifier = target.name if role in {"connector", "client"} else None
+    return _role_service_identity(data, role, identifier)
+
+
+def _role_account(data: dict[str, Any], role: str, identifier: str | None = None) -> tuple[int, int, str]:
+    """Resolve one declared numeric identity through NSS at a manager boundary."""
+    uid, gid = role_identity(data, role, identifier)
+    try:
+        account = pwd.getpwuid(uid)
+        group = grp.getgrgid(gid)
+        account_uid, account_gid, account_name = account.pw_uid, account.pw_gid, account.pw_name
+        group_gid = group.gr_gid
+    except (AttributeError, KeyError, OSError, TypeError, ValueError) as exc:
+        raise ManageError("declared service identity is unavailable") from exc
+    if (type(account_uid) is not int or type(account_gid) is not int or type(group_gid) is not int
+            or account_uid != uid or account_gid != gid or group_gid != gid
+            or uid == 0 or gid == 0 or not isinstance(account_name, str) or not account_name):
+        raise ManageError("declared service identity is unsafe")
+    return uid, gid, account_name
+
+
+def _role_supplementary_groups(data: dict[str, Any], role: str) -> set[int]:
+    """Return the sole allowed supplementary group set for a declared role."""
+    if role == "edge":
+        return {data["service_identities"]["ingress"]["group_id"]}
+    return set()
+
+
+def _role_service_identity(data: dict[str, Any], role: str, identifier: str | None = None) -> ServiceIdentity | None:
+    """Return an exact numeric service identity, or verify current-role execution."""
+    uid, gid, _ = _role_account(data, role, identifier)
+    if os.geteuid() == uid:
+        try:
+            effective_gid = os.getegid()
+            groups = os.getgroups()
+        except (AttributeError, OSError, TypeError, ValueError) as exc:
+            raise ManageError("current service credentials are unavailable") from exc
+        expected = _role_supplementary_groups(data, role)
+        if (type(effective_gid) is not int or effective_gid != gid
+                or not isinstance(groups, list) or any(type(value) is not int for value in groups)
+                or len(groups) != len(set(groups)) or set(groups) != expected):
+            raise ManageError("current service credentials are unsafe")
+        return None
+    if os.geteuid() != 0:
+        raise ManageError("native authority command must run as its declared service user")
+    return ServiceIdentity(uid, gid)
+
+
+def _legacy_recovery_identity(data: dict[str, Any]) -> ServiceIdentity | None:
+    """Resolve the retired shared identity only for legacy offline recovery."""
+    service_user = data.get("service_user")
+    if not isinstance(service_user, str) or not service_user:
+        raise ManageError("declared legacy recovery identity is unavailable")
+    try:
+        account = pwd.getpwnam(service_user)
+        group = grp.getgrnam(service_user)
+        uid, gid, group_gid = account.pw_uid, account.pw_gid, group.gr_gid
+    except (AttributeError, KeyError, OSError, TypeError, ValueError) as exc:
+        raise ManageError("declared legacy recovery identity is unavailable") from exc
+    if (type(uid) is not int or type(gid) is not int or type(group_gid) is not int
+            or uid == 0 or gid == 0 or group_gid != gid):
+        raise ManageError("declared legacy recovery identity is unsafe")
+    if os.geteuid() == uid:
+        return None
+    if os.geteuid() != 0:
+        raise ManageError("native authority command must run as its declared service user")
+    return ServiceIdentity(uid, gid)
+
+
+def _role_private_paths(data: dict[str, Any], target: Target) -> tuple[tuple[str, str, str | None], ...]:
+    if target.kind == "gateway":
+        return (
+            ("gateway", data["gateway"]["state_directory"], None),
+            ("edge", data["caddy"]["state_directory"], None),
+            ("idp", data["authelia"]["state_directory"], None),
+        )
+    assert target.name is not None
+    if target.kind == "connector":
+        connector = next(item for item in data["connectors"] if item["id"] == target.name)
+        return (("connector", connector["state_directory"], target.name),)
+    return ()
+
+
+def _target_roles(data: dict[str, Any], target: Target) -> tuple[tuple[str, str | None], ...]:
+    if target.kind == "gateway":
+        return (("gateway", None), ("edge", None), ("idp", None))
+    assert target.name is not None
+    return ((target.kind, target.name),)
+
+
+def _safe_root_ancestors(path: Path) -> None:
+    """Require a root-owned, non-writable path to a role-owned leaf.
+
+    Role-owned parents are intentionally not accepted: a role state or secret
+    leaf is isolated only when no role can replace a directory above it.
+    """
+    current = path.parent
+    while True:
+        try:
+            info = current.lstat()
+        except OSError as exc:
+            raise ManageError("managed runtime directory is unavailable") from exc
+        if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or info.st_uid != 0 or info.st_mode & 0o022):
+            raise ManageError("managed runtime directory is unsafe")
+        if current == current.parent:
+            return
+        current = current.parent
+
+
+def _safe_private_runtime_directory(path: Path, uid: int, gid: int) -> None:
+    _safe_root_ancestors(path)
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        raise ManageError("managed runtime directory is unavailable") from exc
+    if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+            or info.st_uid != uid or info.st_gid != gid or stat.S_IMODE(info.st_mode) != 0o700):
+        raise ManageError("managed runtime directory is unsafe")
+
+
+def _safe_ingress_directory(data: dict[str, Any]) -> None:
+    policy = data["service_identities"]["ingress"]
+    gateway_uid, _ = role_identity(data, "gateway")
+    path = Path(policy["directory"])
+    _safe_root_ancestors(path)
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        raise ManageError("managed ingress directory is unavailable") from exc
+    if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+            or info.st_uid != gateway_uid or info.st_gid != policy["group_id"]
+            or stat.S_IMODE(info.st_mode) != 0o2710):
+        raise ManageError("managed ingress directory is unsafe")
+
+
+def _validate_closed_memberships(data: dict[str, Any]) -> None:
+    """Permit only the edge account as a declared supplementary group member."""
+    accounts: dict[str, str] = {}
+    for role, identifier in [("gateway", None), ("edge", None), ("idp", None)]:
+        _, _, account = _role_account(data, role, identifier)
+        accounts[role] = account
+    for connector in data["connectors"]:
+        _, _, account = _role_account(data, "connector", connector["id"])
+        accounts["connector:" + connector["id"]] = account
+    for client in data["clients"]:
+        name = client["rule"]["id"]
+        _, _, account = _role_account(data, "client", name)
+        accounts["client:" + name] = account
+    ingress_gid = data["service_identities"]["ingress"]["group_id"]
+    expected = {accounts["edge"]}
+    try:
+        groups = grp.getgrall()
+    except (AttributeError, KeyError, OSError, TypeError, ValueError) as exc:
+        raise ManageError("declared service membership is unavailable") from exc
+    if not isinstance(groups, list):
+        raise ManageError("declared service membership is unavailable")
+    declared = set(accounts.values())
+    ingress_matches = 0
+    for group in groups:
+        try:
+            group_gid, group_members = group.gr_gid, group.gr_mem
+        except AttributeError as exc:
+            raise ManageError("declared service membership is unavailable") from exc
+        if type(group_gid) is not int or not isinstance(group_members, list) or any(not isinstance(member, str) or not member for member in group_members):
+            raise ManageError("declared service membership is unavailable")
+        members = set(group_members)
+        if group_gid == ingress_gid:
+            ingress_matches += 1
+            if members != expected or len(group_members) != len(members):
+                raise ManageError("declared ingress membership is unsafe")
+        elif members.intersection(declared):
+            raise ManageError("declared service membership is unsafe")
+    if ingress_matches != 1:
+        raise ManageError("declared ingress membership is unavailable")
+
+
+def _validate_target_memberships(data: dict[str, Any], targets: tuple[Target, ...]) -> None:
+    """Validate NSS-resolved supplementary groups for every selected role."""
+    for target in targets:
+        for role, identifier in _target_roles(data, target):
+            uid, gid, account = _role_account(data, role, identifier)
+            expected = {gid, *_role_supplementary_groups(data, role)}
+            try:
+                groups = os.getgrouplist(account, gid)
+            except (AttributeError, OSError, TypeError, ValueError) as exc:
+                raise ManageError("declared service membership is unavailable") from exc
+            if (not isinstance(groups, list) or any(type(value) is not int for value in groups)
+                    or len(groups) != len(set(groups)) or set(groups) != expected):
+                raise ManageError("declared service membership is unsafe")
+
+
+def _safe_consumed_file(path: Path, uid: int, gid: int, *, public: bool = False, root_only: bool = False) -> None:
+    """Validate metadata for a role-read file without opening its contents."""
+    _safe_root_ancestors(path)
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        raise ManageError("declared service file is unavailable") from exc
+    if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
+        raise ManageError("declared service file is unsafe")
+    mode = stat.S_IMODE(info.st_mode)
+    if public:
+        if mode & 0o022:
+            raise ManageError("declared service file is unsafe")
+        return
+    root_private = info.st_uid == 0 and mode == 0o600
+    role_private = info.st_uid == uid and info.st_gid == gid and mode == 0o600
+    root_role_readable = info.st_uid == 0 and info.st_gid == gid and mode == 0o640
+    safe = root_private if root_only else role_private or root_role_readable
+    if not safe:
+        raise ManageError("declared service file is unsafe")
+
+
+def _validate_gateway_files(data: dict[str, Any]) -> None:
+    edge_uid, edge_gid = role_identity(data, "edge")
+    idp_uid, idp_gid = role_identity(data, "idp")
+    tls = data["caddy"]["tls"]
+    if tls["mode"] == "provided":
+        _safe_consumed_file(Path(tls["certificate_file"]), edge_uid, edge_gid, public=True)
+        _safe_consumed_file(Path(tls["key_file"]), edge_uid, edge_gid)
+    for name in (
+        "users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file",
+        "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file",
+    ):
+        _safe_consumed_file(Path(data["authelia"][name]), idp_uid, idp_gid)
+
+
+def _validate_isolated_runtime(data: dict[str, Any], targets: tuple[Target, ...]) -> None:
+    """Validate role accounts and their provisioned runtime metadata, never values."""
+    require_isolated(data)
+    _validate_target_memberships(data, targets)
+    for target in targets:
+        for role, path, identifier in _role_private_paths(data, target):
+            uid, gid, _ = _role_account(data, role, identifier)
+            _safe_private_runtime_directory(Path(path), uid, gid)
+    if any(target.kind == "gateway" for target in targets):
+        _validate_closed_memberships(data)
+        _safe_ingress_directory(data)
+        _validate_gateway_files(data)
+
+
 def _materialize(files: dict[str, str], root: Path) -> None:
     for name, content in files.items():
         target = root / name
@@ -400,39 +649,43 @@ def _materialize(files: dict[str, str], root: Path) -> None:
 
 def _validate_environment_files(data: dict[str, Any], target: Target | tuple[Target, ...] | None) -> None:
     """Verify only metadata; credentials are never opened by lifecycle code."""
-    service = _service_identity(data)
-    allowed_uid = os.geteuid() if service is None else service.uid
     selected = _selected_targets(data, target)
     env = data["environment_files"]
-    paths: list[tuple[Path, bool]] = []
+    paths: list[tuple[Path, str, str | None, bool]] = []
     for item in selected:
         if item.kind == "gateway":
-            paths.append((Path(env["gateway"]), False))
+            paths.append((Path(env["gateway"]), "gateway", None, False))
             if "gateway_identity" in env:
                 # The signing material is separately provisioned root-only
-                # state, never a service-user-managed general gateway env file.
-                paths.append((Path(env["gateway_identity"]), True))
+                # state, never a role-managed general gateway env file.
+                paths.append((Path(env["gateway_identity"]), "gateway", None, True))
         elif item.kind == "connector":
             assert item.name is not None
-            paths.append((Path(env["connectors"][item.name]), False))
+            paths.append((Path(env["connectors"][item.name]), "connector", item.name, False))
         else:
             assert item.name is not None
-            paths.append((Path(env["clients"][item.name]), False))
-    for path, root_only in paths:
+            paths.append((Path(env["clients"][item.name]), "client", item.name, False))
+    for path, role, identifier, root_only in paths:
+        uid, gid = role_identity(data, role, identifier)
+        _safe_root_ancestors(path)
         try:
             info = path.lstat()
         except OSError as exc:
             raise ManageError("declared EnvironmentFile is unavailable") from exc
-        owners = {0} if root_only else {0, allowed_uid}
+        root_private = info.st_uid == 0 and stat.S_IMODE(info.st_mode) == 0o600
+        role_private = info.st_uid == uid and info.st_gid == gid and stat.S_IMODE(info.st_mode) == 0o600
+        root_role_readable = info.st_uid == 0 and info.st_gid == gid and stat.S_IMODE(info.st_mode) == 0o640
+        safe_metadata = root_private if root_only else root_private or role_private or root_role_readable
         if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
-                or info.st_uid not in owners or stat.S_IMODE(info.st_mode) != 0o600):
+                or info.st_nlink != 1 or not safe_metadata):
             raise ManageError("declared EnvironmentFile has unsafe ownership or mode")
 
 
 def _validate_data(data: dict[str, Any], target: Target | tuple[Target, ...] | None, runner: Runner | None) -> dict[str, Any]:
+    require_isolated(data)
     selected = _selected_targets(data, target)
+    _validate_isolated_runtime(data, selected)
     _validate_environment_files(data, target)
-    identity = _service_identity(data)
     digests = _verified_binaries(data, target)
     generated = render_config(data)
     with tempfile.TemporaryDirectory(prefix="anvil-connect-validate-") as temporary:
@@ -442,12 +695,12 @@ def _validate_data(data: dict[str, Any], target: Target | tuple[Target, ...] | N
         # declaration must be traversable just like installed rendered config.
         _make_public(root)
         for item in selected:
-            result = _run(runner, (data["binary"], "preflight", "--mode", _mode(item), "--config", str(_config_path({**data, "config_root": str(root)}, item))), _VALIDATE_TIMEOUT, identity)
+            result = _run(runner, (data["binary"], "preflight", "--mode", _mode(item), "--config", str(_config_path({**data, "config_root": str(root)}, item))), _VALIDATE_TIMEOUT, _target_identity(data, item))
             _fail(result, "native declaration validation failed")
         if any(item.kind == "gateway" for item in selected):
-            caddy = _run(runner, (data["components"]["caddy"], "validate", "--config", str(root / "caddy.json")), _VALIDATE_TIMEOUT, identity)
+            caddy = _run(runner, (data["components"]["caddy"], "validate", "--config", str(root / "caddy.json")), _VALIDATE_TIMEOUT, _role_service_identity(data, "edge"))
             _fail(caddy, "Caddy configuration validation failed")
-            authelia = _run(runner, (data["components"]["authelia"], "--config", str(root / "authelia" / "configuration.yml"), "--config.experimental.filters", "template", "config", "validate"), _VALIDATE_TIMEOUT, identity)
+            authelia = _run(runner, (data["components"]["authelia"], "--config", str(root / "authelia" / "configuration.yml"), "--config.experimental.filters", "template", "config", "validate"), _VALIDATE_TIMEOUT, _role_service_identity(data, "idp"))
             _fail(authelia, "Authelia configuration validation failed")
     return {"targets": [item.text() for item in selected], "digests": digests, "generation": generated["generation"]}
 
@@ -456,6 +709,13 @@ def validate(manifest_path: str | Path, target: Target | None = None, *, runner:
     """Validate one declaration without writing a generation or running services."""
     _require_supported_platform()
     data = read_manifest(manifest_path)
+    if "service_identities" not in data:
+        selected = _targets(data, target)
+        return {
+            "schema": "anvil-connect.manage/v1", "action": "validate", "applied": False,
+            "targets": [item.text() for item in selected], "migration_required": True,
+            "plan": _inspection_plan(data),
+        }
     result = _validate_data(data, target, runner)
     result.update({"schema": "anvil-connect.manage/v1", "action": "validate", "applied": False, "plan": plan(data, data["config_root"])})
     return result
@@ -465,6 +725,7 @@ def render_generation(manifest_path: str | Path, *, apply: bool = False, runner:
     """Preview or write only a sibling staged generation; never activate it."""
     _require_supported_platform()
     data = read_manifest(manifest_path)
+    require_isolated(data)
     checked = _validate_data(data, None, runner)
     result: dict[str, Any] = {"schema": "anvil-connect.manage/v1", "action": "render", "applied": bool(apply), "plan": plan(data, data["config_root"]), **checked}
     if apply:
@@ -1001,29 +1262,50 @@ def _unit_state(runner: Runner | None, unit: str) -> tuple[bool, str]:
     return fields["ActiveState"] == "active", state
 
 
-def _restore_running(runner: Runner | None, units: tuple[str, ...], prior: dict[str, tuple[bool, str]]) -> None:
-    """Restore only observed units and report a failed restoration to the caller."""
+def _restore_running(runner: Runner | None, units: tuple[str, ...], prior: dict[str, tuple[bool, str]],
+                     gateway_ready: Callable[[], None] | None = None) -> None:
+    """Restore observed units in dependency order after owned bytes are restored."""
     failure: ManageError | None = None
+    mutated = False
+
+    # Return previously inactive units to their exact enabled/runtime state
+    # before restarting active dependencies.  This avoids leaving a failed new
+    # generation running while preserving a manually running disabled unit.
     for unit in reversed(units):
         state = prior.get(unit)
         if state is None:
             continue
         was_active, unit_file_state = state
         try:
-            if was_active:
-                # Restart under the restored generation but do not turn a
-                # manually running, disabled unit into an enabled unit.
-                _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
-            else:
+            if not was_active:
+                mutated = True
                 _action(runner, (_SYSTEMCTL, "disable", "--now", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
                 if unit_file_state == "enabled":
+                    mutated = True
                     _action(runner, (_SYSTEMCTL, "enable", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
                 elif unit_file_state == "enabled-runtime":
+                    mutated = True
                     _action(runner, (_SYSTEMCTL, "enable", "--runtime", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
         except ManageError as exc:
             failure = exc
+    gateway_units = _units(Target("gateway"))
+    for unit in (*gateway_units, *(item for item in units if item not in gateway_units)):
+        state = prior.get(unit)
+        if state is None or not state[0]:
+            continue
+        try:
+            # Restart under the restored generation but do not turn a manually
+            # running, disabled unit into an enabled unit.
+            mutated = True
+            _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
+            if unit == "anvil-connect-gateway.service" and gateway_ready is not None:
+                gateway_ready()
+        except ManageError as exc:
+            failure = exc
+            if unit == "anvil-connect-gateway.service":
+                break
     if failure is not None:
-        raise ManageError("managed unit restoration failed", may_have_executed=failure.may_have_executed) from failure
+        raise ManageError("managed unit restoration failed", may_have_executed=mutated or failure.may_have_executed) from failure
 
 
 def _started_units(runner: Runner | None, unit_root: Path, units: tuple[str, ...]) -> None:
@@ -1094,7 +1376,7 @@ def _gateway_ready(data: dict[str, Any], runner: Runner | None) -> None:
             "--request", str(request),
         )
         for attempt in range(6):
-            observed = _run(runner, command, _VALIDATE_TIMEOUT, _service_identity(data))
+            observed = _run(runner, command, _VALIDATE_TIMEOUT, _role_service_identity(data, "gateway"))
             if observed.returncode == 0:
                 _closed_gateway_status(observed.stdout)
                 return
@@ -1103,11 +1385,118 @@ def _gateway_ready(data: dict[str, Any], runner: Runner | None) -> None:
     raise ManageError("gateway did not become ready before dependent activation")
 
 
+def _prior_gateway_identity(data: dict[str, Any], source: bytes) -> ServiceIdentity | None:
+    """Resolve only the identity recorded in a restored owned gateway unit."""
+    try:
+        text = source.decode("utf-8", "strict")
+    except UnicodeDecodeError as exc:
+        raise ManageError("owned prior gateway unit is invalid") from exc
+    values = {
+        key: [line.removeprefix(key + "=") for line in text.splitlines() if line.startswith(key + "=")]
+        for key in ("User", "Group")
+    }
+    if any(len(value) != 1 or not value[0] for value in values.values()):
+        raise ManageError("owned prior gateway unit is invalid")
+    user, group = values["User"][0], values["Group"][0]
+    if user.isdecimal() and group.isdecimal():
+        uid, gid = int(user), int(group)
+        if uid <= 0 or gid <= 0:
+            raise ManageError("owned prior gateway identity is unsafe")
+        prior_identities = dict(data["service_identities"])
+        prior_identities["gateway"] = {"uid": uid, "gid": gid}
+        return _role_service_identity({**data, "service_identities": prior_identities}, "gateway")
+    if _ID.fullmatch(user) is None or _ID.fullmatch(group) is None:
+        raise ManageError("owned prior gateway identity is invalid")
+    if user != group:
+        raise ManageError("owned prior gateway identity is invalid")
+    # Legacy units had one service user for every role.  Resolve it through the
+    # existing current-credential checks rather than trusting a rendered name.
+    return _legacy_recovery_identity({**data, "service_user": user})
+
+
+def _restored_gateway_ready(data: dict[str, Any], root: Path, runner: Runner | None) -> None:
+    """Probe a restored gateway using only its prior owned binary and identity."""
+    generation, _ = _verify_owned_tree(root)
+    raw = _read_regular(_activation_record(root), _MAX_OUTPUT)
+    _valid_prior_record(raw, generation)
+    if raw is None:
+        raise ManageError("restored generation has no owned activation record")
+    record = _strict_json(raw, "activation record is not owned")
+    source = _unit_sources(root).get("anvil-connect-gateway.service")
+    if source is None:
+        raise ManageError("owned prior gateway unit is unavailable")
+    binary = _unit_exec_path(source)
+    if _digest(binary) != record["native_sha256"]:
+        raise ManageError("prior gateway executable is unavailable for rollback")
+    gateway = _strict_json(_read_regular(root / "gateway.json", _MAX_OUTPUT) or b"", "owned prior gateway declaration is invalid")
+    state_directory = gateway.get("state_directory")
+    socket = Path(state_directory) / "admin.sock" if isinstance(state_directory, str) else Path()
+    if not socket.is_absolute() or ".." in socket.parts:
+        raise ManageError("owned prior gateway declaration is invalid")
+    identity = _prior_gateway_identity(data, source)
+    _safe_dir(root.parent)
+    with tempfile.TemporaryDirectory(prefix=".anvil-connect-status-", dir=root.parent) as temporary:
+        request = Path(temporary) / "status.json"
+        _write_atomic(request, b'{"operation":"status"}\n')
+        os.chmod(request.parent, 0o755)
+        command = (str(binary), "admin", "--socket", str(socket), "--request", str(request))
+        for attempt in range(6):
+            observed = _run(runner, command, _VALIDATE_TIMEOUT, identity)
+            if observed.returncode == 0:
+                _closed_gateway_status(observed.stdout)
+                return
+            if attempt < 5:
+                time.sleep(1)
+    raise ManageError("restored gateway did not become ready before dependent restoration")
+
+
+def _active_generation_isolated(data: dict[str, Any]) -> bool:
+    """Prove the active owned generation has numeric role units before a partial update."""
+    root = Path(data["config_root"])
+    raw = _read_regular(root / "gateway.json", _MAX_OUTPUT)
+    if raw is None:
+        return False
+    try:
+        gateway = _strict_json(raw, "active declaration is invalid")
+        ingress = gateway.get("ingress")
+        if not isinstance(ingress, dict) or set(ingress) != {"directory", "gateway_uid", "edge_uid", "group_id"}:
+            return False
+        if (not isinstance(ingress["directory"], str)
+                or any(isinstance(ingress[name], bool) or not isinstance(ingress[name], int) or ingress[name] <= 0
+                       for name in ("gateway_uid", "edge_uid", "group_id"))):
+            return False
+        sources = _unit_sources(root)
+    except (ManageError, UnicodeDecodeError):
+        return False
+    declared = _target_units(_targets(data, None))
+    for unit in declared:
+        source = sources.get(unit)
+        if source is None:
+            return False
+        try:
+            text = source.decode("utf-8", "strict")
+        except UnicodeDecodeError:
+            return False
+        if re.search(r"^User=[1-9][0-9]*$", text, flags=re.MULTILINE) is None or re.search(r"^Group=[1-9][0-9]*$", text, flags=re.MULTILINE) is None:
+            return False
+    return True
+
+
+def _require_complete_isolated_migration(data: dict[str, Any], targets: tuple[Target, ...], report: dict[str, Any]) -> None:
+    """Reject an identity migration that would leave an old unit mixed in."""
+    if report.get("state") != "update" or not Path(data["config_root"]).exists() or _active_generation_isolated(data):
+        return
+    if set(targets) != set(_targets(data, None)):
+        raise ManageError("isolated migration requires every declared target")
+
+
 def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bool, upgrade: bool, runner: Runner | None, unit_root: str | Path, action: str) -> dict[str, Any]:
     """Activate one closed role set in a single reversible transaction."""
     _require_supported_platform()
+    require_isolated(data)
     checked = _validate_data(data, targets, runner)
     report = plan(data, data["config_root"])
+    _require_complete_isolated_migration(data, targets, report)
     units = _target_units(targets)
     result: dict[str, Any] = {
         "schema": "anvil-connect.manage/v1", "action": action,
@@ -1121,6 +1510,7 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
         # Re-plan under the lock; a concurrent render must not change what this
         # request decided was target-scoped.
         report = plan(data, data["config_root"])
+        _require_complete_isolated_migration(data, targets, report)
         if report["state"] not in {"absent", "update", "current"}:
             raise ManageError("rendered ownership is not safe to activate")
         transaction: _Activation | None = None
@@ -1179,7 +1569,12 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                     raise rollback_error from exc
                 if prior:
                     try:
-                        _restore_running(runner, units, prior)
+                        _restore_running(
+                            runner,
+                            units,
+                            prior,
+                            (lambda: _restored_gateway_ready(data, root, runner)) if selected_gateway else None,
+                        )
                     except ManageError as restore_error:
                         raise restore_error from exc
             raise _executed_error(exc) from exc
@@ -1218,13 +1613,13 @@ def down(manifest_path: str | Path, target: Target, *, apply: bool = False, runn
     data = read_manifest(manifest_path)
     _targets(data, target)
     root = Path(data["config_root"])
-    report = plan(data, root)
+    report = _inspection_plan(data)
     units = _units(target, start=False)
     result: dict[str, Any] = {"schema": "anvil-connect.manage/v1", "action": "down", "target": target.text(), "applied": bool(apply), "plan": report, "units": list(units)}
     if not apply:
         return result
     with _deployment_lock(root):
-        if plan(data, root)["state"] != "current":
+        if _inspection_plan(data)["state"] != "current":
             raise ManageError("refusing lifecycle mutation while generated configuration drifts")
         digests = _verified_binaries(data, target)
         _bound_active(data, target, digests, allow_unpinned_gateway=target.kind == "gateway")
@@ -1253,7 +1648,7 @@ def status(manifest_path: str | Path, target: Target | None = None, *, runner: R
     _require_supported_platform()
     data = read_manifest(manifest_path)
     selected = _targets(data, target)
-    return {"schema": "anvil-connect.manage/v1", "action": "status", "applied": False, "plan": plan(data, data["config_root"]), "targets": [{"target": item.text(), "units": _unit_status(runner, _units(item))} for item in selected]}
+    return {"schema": "anvil-connect.manage/v1", "action": "status", "applied": False, "plan": _inspection_plan(data), "targets": [{"target": item.text(), "units": _unit_status(runner, _units(item))} for item in selected]}
 
 
 def doctor(manifest_path: str | Path, target: Target | None = None, *, runner: Runner | None = None) -> dict[str, Any]:
@@ -1278,23 +1673,8 @@ def logs(manifest_path: str | Path, target: Target, *, tail: int = 200, runner: 
     return {"schema": "anvil-connect.manage/v1", "action": "logs", "target": target.text(), "applied": False, "events": events}
 
 
-def _service_identity(data: dict[str, Any]) -> ServiceIdentity | None:
-    """Match the exact non-root User= and Group= rendered into every unit."""
-    try:
-        record = pwd.getpwnam(data["service_user"])
-        group = grp.getgrnam(data["service_user"])
-    except KeyError as exc:
-        raise ManageError("declared service user or group is unavailable") from exc
-    if record.pw_uid == 0 or record.pw_gid == 0 or group.gr_gid != record.pw_gid:
-        raise ManageError("declared service identity is unsafe")
-    if os.geteuid() == record.pw_uid:
-        return None
-    if os.geteuid() != 0:
-        raise ManageError("native authority command must run as its declared service user")
-    return ServiceIdentity(record.pw_uid, record.pw_gid)
-
-
 def _current(data: dict[str, Any]) -> None:
+    require_isolated(data)
     if plan(data, data["config_root"])["state"] != "current":
         raise ManageError("native authority command requires the current owned generation")
 
@@ -1302,6 +1682,7 @@ def _current(data: dict[str, Any]) -> None:
 @contextmanager
 def _temporary_declaration(data: dict[str, Any], target: Target) -> Iterator[Path]:
     """Materialize the exact rendered public declaration for bootstrap only."""
+    require_isolated(data)
     generated = render_config(data)
     with tempfile.TemporaryDirectory(prefix="anvil-connect-init-") as temporary:
         root = Path(temporary)
@@ -1318,6 +1699,7 @@ def native_init(manifest_path: str | Path, target: Target, *, bundle: str | Path
     """Initialize a declaration before service activation, using no active root."""
     _require_supported_platform()
     data = read_manifest(manifest_path)
+    require_isolated(data)
     _targets(data, target)
     if target.kind == "client" or (target.kind == "gateway" and bundle is not None) or (target.kind == "connector" and bundle is None):
         raise ManageError("initialization requires gateway without a bundle or connector with a private bundle")
@@ -1333,7 +1715,7 @@ def native_init(manifest_path: str | Path, target: Target, *, bundle: str | Path
     result = {"schema": "anvil-connect.manage/v1", "action": "init", "target": target.text(), "applied": bool(apply), "native_sha256": checked["digests"]["native"]}
     if apply:
         with _temporary_declaration(data, target) as config:
-            _action(runner, tuple([*args, "--config", str(config)]), _SYSTEMD_TIMEOUT, "native initialization failed", _service_identity(data))
+            _action(runner, tuple([*args, "--config", str(config)]), _SYSTEMD_TIMEOUT, "native initialization failed", _target_identity(data, target))
     return result
 
 
@@ -1368,7 +1750,7 @@ def identity(manifest_path: str | Path, target: Target, *, runner: Runner | None
     # identity using a temporary public declaration, without creating an active
     # generation or requiring approval of the identity we are trying to inspect.
     with _temporary_declaration(data, target) as config:
-        result = _run(runner, (data["binary"], "identity", "--config", str(config)), _VALIDATE_TIMEOUT, _service_identity(data))
+        result = _run(runner, (data["binary"], "identity", "--config", str(config)), _VALIDATE_TIMEOUT, _target_identity(data, target))
     _fail(result, "native identity read failed")
     observed = _closed_identity(result.stdout)
     connector = next(item for item in data["connectors"] if item["id"] == target.name)
@@ -1416,7 +1798,7 @@ def admin(manifest_path: str | Path, *, request_path: str | Path, output_path: s
         args.extend(("--output", str(output)))
     result = {"schema": "anvil-connect.manage/v1", "action": "admin", "applied": bool(apply), "native_sha256": native_digest, **preview}
     if apply:
-        _action(runner, tuple(args), _SYSTEMD_TIMEOUT, "native administrative operation failed", _service_identity(data))
+        _action(runner, tuple(args), _SYSTEMD_TIMEOUT, "native administrative operation failed", _role_service_identity(data, "gateway"))
     return result
 
 
@@ -1435,5 +1817,5 @@ def keygen(manifest_path: str | Path, target: Target, *, output_path: str | Path
         raise ManageError("private key output path is invalid")
     result = {"schema": "anvil-connect.manage/v1", "action": "keygen", "target": target.text(), "applied": bool(apply), "native_sha256": native_digest}
     if apply:
-        _action(runner, (data["binary"], "keygen", "--output", str(output)), _SYSTEMD_TIMEOUT, "native client key generation failed", _service_identity(data))
+        _action(runner, (data["binary"], "keygen", "--output", str(output)), _SYSTEMD_TIMEOUT, "native client key generation failed", _target_identity(data, target))
     return result

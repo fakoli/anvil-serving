@@ -9,11 +9,223 @@ This delivery initially targets Linux amd64. Native Connect, Caddy, Authelia,
 and wstunnel run as separate processes. The Python package adds no runtime
 dependencies and does not download or start those binaries when imported.
 
-Every command requires `--manifest /absolute/deployment.json`. `--service` selects
+Deployment commands require `--manifest /absolute/deployment.json`. `--service` selects
 `gateway`, `connector:ID`, or `client:ID` from that manifest. These are local
 deployment selectors; the command does not perform implicit SSH or controller
 dispatch. Mutations preview by default; `--confirm` applies the operation and
 `--dry-run` keeps it a preview even when both flags are supplied.
+
+## Qualify
+
+Run the unattended Linux browser baseline with saved qualification settings:
+
+```sh
+anvil-serving connect qualify --lane baseline
+```
+
+The default settings file is `~/.config/anvil-connect/qualification.toml`.
+Use `--config /absolute/qualification.toml` to select another file. This is a
+separate test configuration: it contains source, artifact, dependency-cache and
+preinstalled tool paths, without production identities or credentials. It does
+not select a deployment manifest or contact a model endpoint.
+
+Save these settings once, replacing the example paths with prepared local
+paths. `playwright_root` contains the pinned `node_modules` directory;
+`go_module_cache` contains the already downloaded Go modules. Select actual
+executables, not symlinks. The artifact directory must be owned by the test
+user and mode 0700; the command can create it beneath a writable parent.
+
+```toml
+schema = "anvil-connect.qualification-config/v1"
+source_root = "/srv/anvil-serving"
+artifact_root = "/srv/connect-qualification/results"
+playwright_root = "/srv/connect-qualification/dependencies"
+go_module_cache = "/srv/connect-qualification/go-modules"
+timeout_seconds = 600
+
+[tools]
+go = "/opt/go/bin/go"
+node = "/opt/node/bin/node"
+chromium = "/opt/chromium/chrome"
+certutil = "/usr/bin/certutil"
+caddy = "/opt/connect-tools/caddy"
+authelia = "/opt/connect-tools/authelia"
+wstunnel = "/opt/connect-tools/wstunnel"
+```
+
+The baseline runs the existing Caddy, Authelia, wstunnel and Chromium fixtures
+with synthetic accounts and isolated state. It checks certificate rejection
+before trusting the fixture CA, authenticated browser access, and the fixture's
+logout/revocation behavior. Required binaries are checked against recorded pins;
+missing prerequisites fail preflight. The command does not install dependencies.
+
+Results distinguish passed, failed, skipped and not-run tests. Preflight failures
+report both tests as not-run. A failure after execution begins reports only known
+counts; `counts: null` means no complete test result is available. Cleanup failure
+keeps any completed test counts but still fails the qualification. Skipped tests
+never qualify the lane, and an unexecuted second test is explicitly not-run.
+The private result artifact records revisions, tool identity, test outcomes and
+cleanup evidence. A failed qualification exits nonzero. Raw authentication
+responses and credential-bearing browser diagnostics are excluded from output.
+Failed test evidence includes a safe failure-stage label. Each run keeps
+`result.json`, `evidence.json`, `junit.xml` and `SHA256SUMS` after removing its
+temporary source copy, profiles and caches. The source checksum binds the
+tracked Connect files actually staged for that run; untracked files are excluded.
+
+This baseline does not qualify virtual passkeys, terminal browser approval,
+physical biometrics, 1Password, host systemd isolation or the public deployment.
+Those require their own lanes and evidence. Fixture loopback listeners alone
+are not proof of operating-system-enforced network isolation.
+
+Prepare the separate pinned Linux amd64 browser toolchain image explicitly:
+
+```sh
+anvil-serving connect qualify --prepare-container
+```
+
+This preparation uses the same saved settings and the local Docker engine. It
+may download public dependencies during the image build. Only nine named public
+build and dependency files enter the build context; it does not copy the checkout,
+home directory, Docker account configuration or deployment secrets. An owner-only
+receipt binds the build-input digest to the immutable image ID. Repeating the
+command reuses that image when its receipt and metadata match. Routine baseline
+runs remain download-free. Preparation alone does not run or qualify the terminal
+login flow.
+
+Run the existing browser baseline in the prepared container:
+
+```sh
+anvil-serving connect qualify --lane container-baseline
+```
+
+This lane refuses root users and groups. It uses the recorded immutable image
+with downloads disabled, no external networking, no published ports, no GPUs,
+and no Docker socket or writable host mount inside the container. Its only host
+mount contains the staged public source read-only. Runtime state uses private
+container temporary files; CPU, memory and process counts are bounded. The runner
+removes its named container after success, failure or interruption and records
+cleanup and source/image identity with the test results. This qualifies the same
+two browser fixtures under container isolation. Terminal approval, virtual and
+physical passkeys, host service identities and production routes need separate
+evidence.
+
+Run the terminal-login scenarios in the same isolated image:
+
+```sh
+anvil-serving connect qualify --lane device
+```
+
+This drives the actual standalone CLI, synthetic Authelia browser sign-in and
+approval form, then makes keyed requests through the CLI's loopback listener.
+Only the CLI child trusts its fixture CA; normal HTTPS hostname and certificate
+verification stay enabled. The lane checks absent/wrong local keys, declared
+models access, GET-only grant enforcement, and CLI exit/port release. Its negative
+scenario also checks unauthenticated approval, forged and foreign-origin CSRF,
+a real browser denial, and terminal cancellation before approval. A third scenario
+checks user disable and browser logout: an approved CLI request must return 401
+without reaching the origin. The logout check uses a fresh Connect session
+through the existing identity-provider SSO session. Codes and credentials stay
+in transient fixture state, outside retained evidence.
+
+A fourth scenario uses Chromium's virtual authenticator to enroll a discoverable
+passkey through the pinned provider's real registration and elevation flows.
+It requires user verification, clears browser cookies, signs in using the
+passkey, and approves an actual CLI request. The fixture's separate operator
+identity keeps the tested user unprivileged. Evidence labels this coverage
+`virtual-webauthn-only`: it does not verify physical presence, biometrics,
+Touch ID, Face ID, 1Password integration, or credential sync and backup.
+
+The remaining passkey scenarios check missing user verification, a credential
+for the wrong relying party, an expired signed assertion, sequential replay,
+and a disabled Connect user. UV and relying-party failures are browser policy
+checks; replay checks rejection in the resulting authenticated session, without
+claiming concurrent replay resistance. A pre-enrolled spare credential restores
+dashboard and CLI access while user administration remains forbidden. The
+existing browser session and CLI key must remain usable after those forbidden
+requests; recovery does not grant an operator role. These are synthetic recovery
+and authorization checks, not validation of a production security audit log.
+
+Device-approval expiry and single-use redemption after a lost response are covered separately by
+authority and CLI unit tests, using an injected clock where appropriate. The
+device lane does not claim those are browser end-to-end tests. Two browser stream
+scenarios hold SSE and WebSocket connections open across human disable and logout.
+They require client closure and native-handler return within one second measured
+from before the authority mutation, then fresh denial without another origin
+dispatch. Passed stream cases retain integer `closure_ms` in evidence and JUnit; missing
+or invalid measurements fail qualification. This is a synthetic fixture target,
+not a production latency guarantee.
+Two further scenarios exercise SSE and WebSocket through the actual standalone
+CLI after browser approval. They validate the native bearer and host, wait for
+an SSE marker and a complete WebSocket handshake, then disable the user or log
+out. Both clients and native handlers must close within the same one-second
+fixture bound. Fresh requests with the formerly approved local key must return
+401 without another native stream, and the CLI must exit and release its port.
+Other authority events, authority recovery and physical passkeys require
+separate coverage.
+
+Run the bounded stream-revocation subset in the same prepared container:
+
+```sh
+anvil-serving connect qualify --lane revocation
+```
+
+This uses the saved qualification settings, the pinned image, disabled downloads,
+the same configured timeout (600 seconds by default), and the existing CPU,
+memory and cleanup bounds. It runs exactly ten browser and CLI lifecycle cases:
+human disable, browser logout, synthetic session expiry, normal restart,
+authority reset, restore, selective key revocation and browser grant removal.
+The expiry fixture uses a full-precision inventory deadline across browser SSE
+and WebSocket plus CLI SSE and WebSocket transports, then
+denies fresh use of the old browser cookie and CLI key. The restart fixture
+stops and starts the runtime, retains a valid browser cookie and CLI credential,
+rejects an old revoked cookie, and checks that an interrupted POST has exactly
+one origin execution. The authority-reset fixture uses the supported local
+reset operation, creates a new epoch, denies the old cookie and CLI key, then
+re-enrolls a fresh connector and admits new browser and CLI credentials through
+the normal flows; its interrupted POST also has one origin execution. Restore
+uses the supported backup and fresh-destination restore APIs, denies old
+credentials before explicit human/API-principal reapproval and connector
+reenrollment, then checks fresh access while the original browser cookie and
+still-running old CLI remain denied. Its `closure_ms` measures the preceding runtime stop, not backup or restore latency.
+The key-revocation case keeps a second CLI credential usable while the revoked
+one remains denied across restart. The grant-removal case denies the removed
+dashboard resource across restart while fresh login to the retained resource
+succeeds. Each passed case retains its validated `closure_ms` observation.
+This documents the bounded fixture scope; it does not claim an executed
+qualification result, reboot behavior or external-supervisor recovery. Virtual
+and physical passkeys and component-level authority checks have separate evidence.
+
+Prepare the pinned systemd guest image, then run service-isolation qualification:
+
+```sh
+anvil-serving connect qualify --prepare-vm
+anvil-serving connect qualify --lane isolation
+```
+
+Both commands use the same saved qualification settings. Preparation verifies
+the signed image checksum and pinned image bytes, then stores an owner-only
+receipt. Repeating preparation verifies and reuses the cache. The isolation lane
+requires that prepared image and never downloads it implicitly. It also requires
+the pinned local component tools, cached Go modules, QEMU, KVM, xorriso and the
+declared firmware on Linux amd64.
+
+The runner uses a disposable guest with two CPUs and 2 GiB of guest RAM. It has
+no guest network interface, GPU, shared host directory or host service socket.
+The payload contains a verified source snapshot and synthetic configuration;
+accounts, keys and certificates are generated only inside the guest. The host
+runner remains unprivileged. Host memory, disk, time and output checks bound the
+run; guest RAM is not a claim of a host cgroup memory limit.
+
+This lane checks actual installed service identities and unit bytes, Unix peer
+authorization, private-file and administration denials, TLS/provider discovery,
+certificate replacement, restart, failed-activation rollback and CLI shutdown
+cleanup. It retains the same four evidence files after removing guest staging.
+A missing final guest report has unavailable per-case outcomes and cannot pass;
+it is not evidence that the cases were never attempted. Full browser sign-in and
+physical passkeys retain their separate qualification scopes. Command availability
+does not establish that a guest run or production deployment has passed. An
+interrupted isolation run returns a nonzero, redacted result with its safe
+execution state and available case counts.
 
 ## Validate
 
