@@ -61,6 +61,14 @@ For one browser identity across Connect and Observatory, explicitly enable
 permissions while removing a second dashboard password. That guide also covers
 passkeys, profile provisioning and signing-key rotation.
 
+For day-to-day user grants and session revocation, see
+[Access administration in Observatory](ANVIL-CONNECT-ACCESS.md).
+
+The standalone client's [terminal sign-in flow](ANVIL-CONNECT-DEVICE-LOGIN.md)
+uses browser approval to obtain a short-lived API grant, including from SSH.
+After approval, ordinary SDKs can use its local HTTP endpoint and local caller
+key. The browser identity and API principal must be explicitly linked.
+
 The browser gateway uses state, nonce and PKCE and verifies OIDC signature,
 issuer, audience and time claims. It checks the authorization-response issuer
 before exchanging a code, and requires it when advertised by provider metadata.

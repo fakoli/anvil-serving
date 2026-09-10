@@ -38,7 +38,7 @@ def test_connect_access_view_disables_malformed_records_without_mutation() -> No
 
 
 def test_connect_access_browser_boundary_is_same_origin_memory_only_and_fail_closed() -> None:
-    source = (STATIC / "views/connect_access_api.js").read_text()
+    source = (STATIC / "views/connect_access_api.js").read_text(encoding="utf-8")
     assert "localStorage" not in source and "sessionStorage" not in source
     assert "candidate.origin !== window.location.origin" in source
     assert 'credentials: "same-origin"' in source
@@ -51,7 +51,7 @@ def test_connect_access_browser_boundary_is_same_origin_memory_only_and_fail_clo
 
 
 def test_connect_access_view_uses_text_only_metadata_manual_refresh_and_no_account_creation() -> None:
-    source = (STATIC / "views/connect_access.js").read_text()
+    source = (STATIC / "views/connect_access.js").read_text(encoding="utf-8")
     assert "innerHTML" not in source
     assert "Refresh access inventory" in source
     assert "Load next page" in source
@@ -62,7 +62,7 @@ def test_connect_access_view_uses_text_only_metadata_manual_refresh_and_no_accou
 
 
 def test_access_route_skips_fleet_reads_and_auto_refresh() -> None:
-    source = (STATIC / "observatory.js").read_text()
+    source = (STATIC / "observatory.js").read_text(encoding="utf-8")
     assert 'if (target.page !== "access") {' in source
     assert '!["configuration", "experiments", "settings", "logs", "access"].includes(target.page)' in source
     assert '!["configuration", "experiments", "settings", "access"].includes(parseRoute().page)' in source

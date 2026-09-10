@@ -278,3 +278,53 @@ func TestDeviceAuthorizationOptionalAndUnicodeClosedGrammar(t *testing.T) {
 		t.Fatal("valid unicode surrogate pair rejected")
 	}
 }
+
+func TestBrowserAdministrationClosedGrammar(t *testing.T) {
+	g := deviceGateway(t, "admin")
+	human := "human:" + strings.Repeat("a", 64)
+	g.BrowserAdministration = &BrowserAdministration{BrowserResource: "dash", Operators: []string{human}}
+	if g.Validate() != nil {
+		t.Fatal("valid browser administration rejected")
+	}
+	g.BrowserAdministration.Operators = []string{human, human}
+	if g.Validate() == nil {
+		t.Fatal("duplicate operator accepted")
+	}
+	g.BrowserAdministration.Operators = []string{human}
+	g.Resources[1].Rule.Methods = []string{"GET"}
+	if g.Validate() == nil {
+		t.Fatal("admin browser without POST accepted")
+	}
+}
+
+func TestBrowserAdministrationDecodeClosed(t *testing.T) {
+	g := deviceGateway(t, "admin")
+	h := "human:" + strings.Repeat("a", 64)
+	g.BrowserAdministration = &BrowserAdministration{BrowserResource: "dash", Operators: []string{h}}
+	data, err := json.Marshal(g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadGateway(bytes.NewReader(data)); err != nil {
+		t.Fatal(err)
+	}
+	var raw map[string]any
+	if json.Unmarshal(data, &raw) != nil {
+		t.Fatal("marshal unreadable")
+	}
+	delete(raw, "browser_administration")
+	omitted, _ := json.Marshal(raw)
+	if _, err := ReadGateway(bytes.NewReader(omitted)); err != nil {
+		t.Fatal("omitted rejected")
+	}
+	raw["browser_administration"] = nil
+	nulled, _ := json.Marshal(raw)
+	if _, err := ReadGateway(bytes.NewReader(nulled)); err == nil {
+		t.Fatal("null accepted")
+	}
+	for _, bad := range [][]byte{bytes.Replace(data, []byte(`"browser_resource":`), []byte(`"unknown":1,"browser_resource":`), 1), bytes.Replace(data, []byte(`"operators":`), []byte(`"operators":[],"operators":`), 1)} {
+		if _, err := ReadGateway(bytes.NewReader(bad)); err == nil {
+			t.Fatal("open admin decode accepted")
+		}
+	}
+}

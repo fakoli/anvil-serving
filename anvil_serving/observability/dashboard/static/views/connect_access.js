@@ -7,10 +7,10 @@ let cursor = null;
 const decimal = (value) => typeof value === "string" && /^[0-9]{1,20}$/.test(value);
 const human = (value) => typeof value === "string" && /^human:[0-9a-f]{64}$/.test(value);
 const sessionId = (value) => typeof value === "string" && /^[A-Za-z0-9._~-]{1,256}$/.test(value);
-const resource = (value) => typeof value === "string" && /^(?:\*|[a-z][a-z0-9-]{0,62})$/.test(value);
+const resource = (value) => typeof value === "string" && /^[a-z][a-z0-9-]{0,62}$/.test(value);
 const resourceList = (value) =>
   Array.isArray(value) &&
-  value.length <= 64 &&
+  value.length >= 1 && value.length <= 64 &&
   value.every(resource) &&
   new Set(value).size === value.length;
 const text = (value, fallback = "Unavailable") =>
@@ -36,7 +36,7 @@ function resourcesEditor(item, ctx) {
       return;
     }
     if (!resourceList(next)) {
-      ctx.announce("Resources must be a bounded unique list of declared resource IDs.");
+      ctx.announce("Enter at least one declared browser resource ID; wildcard grants are not supported.");
       return;
     }
     const target = item.id;

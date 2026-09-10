@@ -184,3 +184,41 @@ def test_device_authorization_principal_and_method_order_is_canonical() -> None:
     normalized = validate_manifest(copy.deepcopy(value))
     assert normalized["gateway"]["gateway"]["device_authorizations"][0]["methods"] == ["GET", "POST"]
     assert list(normalized["gateway"]["gateway"]["device_authorizations"][0]["principals"]) == ["human:" + "a" * 64, "human:" + "b" * 64]
+
+
+def test_browser_administration_closed_parity() -> None:
+    value = device_declaration()
+    human = "human:" + "a" * 64
+    value["gateway"]["gateway"]["browser_administration"] = {
+        "browser_resource": "dashboard",
+        "operators": [human],
+    }
+    assert validate_manifest(value)["gateway"]["gateway"]["browser_administration"]["operators"] == [human]
+    for bad in (
+        None,
+        {"browser_resource": "dashboard", "operators": []},
+        {"browser_resource": "dashboard", "operators": [human, human]},
+        {"browser_resource": "dashboard", "operators": ["human:" + "A" * 64]},
+        {"browser_resource": "dashboard-api", "operators": [human]},
+        {"browser_resource": "dashboard", "operators": [human], "unknown": True},
+    ):
+        value["gateway"]["gateway"]["browser_administration"] = bad
+        with pytest.raises(ManifestError):
+            validate_manifest(value)
+
+    value = device_declaration()
+    value["gateway"]["gateway"]["browser_administration"] = {
+        "browser_resource": "dashboard",
+        "operators": [human],
+    }
+    browser = next(
+        item for item in value["gateway"]["gateway"]["resources"]
+        if item["rule"]["id"] == "dashboard"
+    )
+    browser["rule"]["methods"] = ["GET"]
+    for connector in value["connectors"]:
+        for resource in connector["resources"]:
+            if resource["envelope"]["rule"]["id"] == "dashboard":
+                resource["envelope"]["rule"]["methods"] = ["GET"]
+    with pytest.raises(ManifestError):
+        validate_manifest(value)

@@ -117,6 +117,9 @@ func TestGenerateKeyCanonicalAndForwardingIsFixed(t *testing.T) {
 		if r.Header.Get("Authorization") != "Bearer "+remoteKey {
 			t.Error("remote Connect key missing")
 		}
+		if r.Header.Get("User-Agent") != "anvil-connect/1" {
+			t.Error("public request did not identify the actual Connect client")
+		}
 		for _, header := range []string{"X-Api-Key", "X-Forwarded-Host", "X-Anvil-Connect-Authorization", "X-Anvil-Connect-Authorization-Claim"} {
 			if r.Header.Get(header) != "" {
 				t.Errorf("caller credential or route header reached upstream: %s", header)
@@ -126,6 +129,7 @@ func TestGenerateKeyCanonicalAndForwardingIsFixed(t *testing.T) {
 	}))
 	r := f.request(t, "POST", "/v1/chat/completions?model=declared", strings.NewReader("payload"))
 	r.Header.Set("X-Forwarded-Host", "attacker.example.test")
+	r.Header.Set("User-Agent", "Python-urllib/3.13")
 	r.Header.Set("X-Anvil-Connect-Authorization", "Bearer caller-remote-key")
 	response, err := (&http.Client{Timeout: 2 * time.Second}).Do(r)
 	if err != nil {

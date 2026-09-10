@@ -137,6 +137,9 @@ func New(state *store.Store, gateway config.Gateway, sessions HumanAuthority, ke
 	return a, nil
 }
 
+// BindingHash returns the same immutable mapping identifier used by issued device credentials.
+func BindingHash(binding Binding) string { return bindingHash(binding) }
+
 func bindingHash(binding Binding) string {
 	if binding.Browser.ID == "" || binding.API.ID == "" || len(binding.Methods) == 0 {
 		return ""

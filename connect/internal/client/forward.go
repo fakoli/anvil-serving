@@ -163,6 +163,9 @@ func newForwarder(rule config.Rule, listen, localKey, remoteKeyEnv string, secre
 			request.Out.Host = rule.Host
 			request.Out.GetBody = nil // admitted bodies are never replayable.
 			httpedge.CleanAPIHeaders(request.Out.Header)
+			// Identify the HTTPS client that actually contacts the public edge.
+			// Local SDK metadata must not impersonate a different remote client.
+			request.Out.Header.Set("User-Agent", "anvil-connect/1")
 			// The public API edge uses the ordinary SDK bearer carrier. This
 			// replaces, rather than forwards, the local loopback credential.
 			request.Out.Header.Set("Authorization", "Bearer "+request.In.Context().Value(remoteKeyContext{}).(string))
