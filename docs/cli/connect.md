@@ -171,18 +171,22 @@ anvil-serving connect qualify --lane revocation
 
 This uses the saved qualification settings, the pinned image, disabled downloads,
 the same configured timeout (600 seconds by default), and the existing CPU,
-memory and cleanup bounds. It runs exactly six browser and CLI stream cases:
-human disable, browser logout, synthetic session expiry, and normal restart.
-The expiry fixture uses a full-precision inventory deadline across browser SSE
-and WebSocket plus CLI SSE and WebSocket transports, then denies fresh use of
-the old browser cookie and CLI key. The restart fixture stops and starts the
-runtime, retains a valid browser cookie and CLI credential, rejects an old
-revoked cookie, and checks that an interrupted POST has exactly one origin
-execution. Each passed case retains its validated `closure_ms` observation.
-This documents the bounded fixture scope; it does not claim an executed
-qualification result, reboot behavior, or external-supervisor recovery proof.
-It does not cover virtual or physical passkeys or the remaining P04 authority
-scenarios; those require separate evidence.
+memory and cleanup bounds. It runs exactly seven browser and CLI stream cases:
+human disable, browser logout, synthetic session expiry, normal restart, and
+authority reset. The expiry fixture uses a full-precision inventory deadline
+across browser SSE and WebSocket plus CLI SSE and WebSocket transports, then
+denies fresh use of the old browser cookie and CLI key. The restart fixture
+stops and starts the runtime, retains a valid browser cookie and CLI credential,
+rejects an old revoked cookie, and checks that an interrupted POST has exactly
+one origin execution. The authority-reset fixture uses the supported local
+reset operation, creates a new epoch, denies the old cookie and CLI key, then
+re-enrolls a fresh connector and admits new browser and CLI credentials through
+the normal flows; its interrupted POST also has one origin execution. Each
+passed case retains its validated `closure_ms` observation. This documents the
+bounded fixture scope; it does not claim an executed qualification result,
+reboot behavior, external-supervisor recovery, or restore proof. It does not
+cover virtual or physical passkeys or the remaining P04 authority scenarios;
+those require separate evidence.
 
 ## Validate
 
