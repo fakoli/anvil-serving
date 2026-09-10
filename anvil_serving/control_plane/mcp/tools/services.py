@@ -143,12 +143,54 @@ def tool_host_services_manage(args: dict) -> dict:
     return _ok(_execute(args, action, service_required=True))
 
 
+def tool_container_exec(args: dict) -> dict:
+    """Execute one reviewed, owner-declared diagnostic in its managed container."""
+    _reject_private_inputs(args)
+    resource_id = _str_arg(args, "resource_id", required=True)
+    command_id = _str_arg(args, "command_id", required=True)
+    command_host = _str_arg(args, "command_host", required=True)
+    command_runtime = _str_arg(args, "command_runtime", required=True)
+    expected_policy_digest = _str_arg(args, "expected_policy_digest", "")
+    expected_candidate_digest = _str_arg(args, "expected_candidate_digest", "")
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    try:
+        from ....workbench_app.container_exec import ContainerExecError, load_config
+        executor = load_config(config_path("container-exec.toml"))
+        preview = executor.preview(resource_id, command_id)
+        if dry_run:
+            return _ok({"preview": preview, "applied": False})
+        if not confirm:
+            raise ToolError("confirmation_required", "Container execution requires a reviewed confirmed operation.")
+        # A preview is intentionally read-only and therefore has no earlier
+        # review identity to supply.  Applying always requires both identities
+        # from that preview and rechecks them against the owner configuration.
+        if not expected_policy_digest or not expected_candidate_digest:
+            raise ToolError("stale_preview", "Review the current container diagnostic before execution.")
+        if (preview["policy_digest"] != expected_policy_digest or preview["candidate_digest"] != expected_candidate_digest):
+            raise ToolError("stale_preview", "Container identity or diagnostic policy changed; review again.")
+        result = executor.execute(preview, host_id=command_host, execution_runtime=command_runtime)
+        return _ok({"preview": preview, "result": result})
+    except ContainerExecError as exc:
+        raise ToolError(exc.code, str(exc)) from None
+
+
 _CONTEXT_PROPERTIES = {
     "service": {"type": "string", "minLength": 1, "maxLength": 128},
     "dry_run": {"type": "boolean"},
     "confirm": {"type": "boolean"},
     "tail": {"type": "integer", "minimum": 1, "maximum": 1000},
     "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 7200},
+}
+
+_EXEC_PROPERTIES = {
+    "resource_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "command_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "command_host": {"type": "string", "minLength": 1, "maxLength": 128},
+    "command_runtime": {"type": "string", "minLength": 1, "maxLength": 128},
+    "expected_policy_digest": {"type": "string", "minLength": 64, "maxLength": 64},
+    "expected_candidate_digest": {"type": "string", "minLength": 64, "maxLength": 64},
+    "dry_run": {"type": "boolean"}, "confirm": {"type": "boolean"},
 }
 
 _ADOPT_PROPERTIES = {
@@ -201,6 +243,14 @@ FAMILY = ToolFamily(
                 required=["action", "service"],
             ),
             "handler": tool_host_services_manage,
+        },
+        "container_exec": {
+            "description": "Run one configured bounded diagnostic in its exact managed container after confirmation.",
+            "inputSchema": _schema(
+                _EXEC_PROPERTIES,
+                required=["resource_id", "command_id", "command_host", "command_runtime"],
+            ),
+            "handler": tool_container_exec,
         },
     },
 )
