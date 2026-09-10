@@ -5,12 +5,15 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import sys
 
 import pytest
 
 from anvil_serving.connect import qualification as qualification
-from anvil_serving.connect import _qualification_vm_process as process
 from anvil_serving.connect import qualification_vm as subject
+
+
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="requires Linux VM image custody controls")
 
 
 _IMAGE = b"synthetic-qcow2-image"
@@ -76,14 +79,6 @@ def _prepare_fakes(monkeypatch: pytest.MonkeyPatch, config: qualification.Qualif
     monkeypatch.setattr(subject, "_download", fake_download)
     monkeypatch.setattr(subject, "_command", fake_command)
     return calls
-
-
-def test_prepare_refuses_nonlinux_before_reading_config(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(process.sys, "platform", "win32")
-    monkeypatch.setattr(subject, "_read_config", lambda _: pytest.fail("unexpected config read"))
-    with pytest.raises(qualification.QualificationError) as failure:
-        subject.prepare()
-    assert failure.value.code == "runner-unavailable"
 
 
 def test_prepare_verifies_publishes_receipt_and_reuses_verified_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

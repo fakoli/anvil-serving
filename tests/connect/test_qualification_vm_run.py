@@ -1,9 +1,13 @@
 import json
+from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
 from anvil_serving.connect import qualification_vm_run as subject
 from anvil_serving.connect import _qualification_vm_process as process
+from anvil_serving.connect import qualification_vm as preparation
 from anvil_serving.connect.qualification import QualificationError
 
 
@@ -28,12 +32,42 @@ def test_vm_process_refuses_nonlinux_before_spawning(tmp_path, monkeypatch):
     assert failure.value.code == "runner-unavailable"
 
 
+def test_vm_preparation_refuses_nonlinux_before_reading_config(monkeypatch):
+    monkeypatch.setattr(process.sys, "platform", "win32")
+    monkeypatch.setattr(preparation, "_read_config", lambda _: pytest.fail("unexpected config read"))
+    with pytest.raises(QualificationError) as failure:
+        preparation.prepare()
+    assert failure.value.code == "runner-unavailable"
+
+
 def test_vm_runner_refuses_nonlinux_before_reading_config(monkeypatch):
     monkeypatch.setattr(process.sys, "platform", "win32")
     monkeypatch.setattr(subject, "_read_config", lambda _: pytest.fail("unexpected config read"))
     with pytest.raises(QualificationError) as failure:
         subject.qualify()
     assert failure.value.code == "runner-unavailable"
+
+
+def test_vm_modules_import_without_resource() -> None:
+    source = Path(__file__).parents[2]
+    script = """
+import builtins
+original = builtins.__import__
+def guarded(name, *args, **kwargs):
+    if name == 'resource':
+        raise ModuleNotFoundError(name)
+    return original(name, *args, **kwargs)
+builtins.__import__ = guarded
+import anvil_serving.connect.qualification_vm
+import anvil_serving.connect.qualification_vm_run
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script], cwd=source,
+        env={"PATH": "/usr/bin:/bin", "PYTHONPATH": str(source)},
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        check=False, timeout=5,
+    )
+    assert result.returncode == 0
 
 
 def test_result_requires_every_case_in_fixed_order():
