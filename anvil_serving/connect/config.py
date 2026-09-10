@@ -306,6 +306,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     embedded_fields = {"schema", "listen", "max_concurrent", "resources"}
     if isinstance(gateway_raw["gateway"], dict) and "device_authorizations" in gateway_raw["gateway"]:
         embedded_fields.add("device_authorizations")
+    if isinstance(gateway_raw["gateway"], dict) and "browser_administration" in gateway_raw["gateway"]:
+        embedded_fields.add("browser_administration")
     embedded = _mapping(gateway_raw["gateway"], "$.gateway.gateway", embedded_fields)
     if embedded["schema"] != "anvil-connect.gateway/v1":
         raise _error("$.gateway.gateway.schema", "must equal anvil-connect.gateway/v1")
@@ -388,9 +390,20 @@ def validate_manifest(value: Any) -> dict[str, Any]:
                 "principals": {human: normalized_principals[human] for human in sorted(normalized_principals)},
             })
         device_authorizations.sort(key=lambda item: item["browser_resource"])
+    browser_administration = None
+    if "browser_administration" in embedded:
+        raw_admin = _mapping(embedded["browser_administration"], "$.gateway.gateway.browser_administration", {"browser_resource", "operators"})
+        browser_id = _ident(raw_admin["browser_resource"], "$.gateway.gateway.browser_administration.browser_resource")
+        browser = gateway_resource_index.get(browser_id)
+        operators = _list(raw_admin["operators"], "$.gateway.gateway.browser_administration.operators")
+        if browser is None or browser["rule"]["access"] != "browser" or not {"GET", "POST"}.issubset(browser["rule"]["methods"]) or not 1 <= len(operators) <= _MAX_ITEMS or len(set(operators)) != len(operators) or any(not isinstance(item, str) or not _DEVICE_HUMAN.fullmatch(item) for item in operators):
+            raise _error("$.gateway.gateway.browser_administration", "must name a GET/POST browser resource and unique opaque operators")
+        browser_administration = {"browser_resource": browser_id, "operators": sorted(operators)}
     gateway_embedded = {"schema": embedded["schema"], "listen": gateway_listen, "max_concurrent": _positive(embedded["max_concurrent"], "$.gateway.gateway.max_concurrent", 512), "resources": sorted(resources, key=lambda r: r["rule"]["id"])}
     if "device_authorizations" in embedded:
         gateway_embedded["device_authorizations"] = device_authorizations
+    if browser_administration is not None:
+        gateway_embedded["browser_administration"] = browser_administration
     gateway = {
         "schema": gateway_raw["schema"],
         "gateway": gateway_embedded,
