@@ -75,6 +75,16 @@ def _fixture_flags(lane: str) -> dict[str, str]:
     return flags
 
 
+def _require_linux_execution(runner) -> None:
+    if sys.platform != "linux" or any(
+        not hasattr(os, name) for name in ("geteuid", "getegid", "sched_getaffinity")
+    ):
+        raise runner._error(
+            "runner-unavailable",
+            "container qualification requires Linux process controls",
+        )
+
+
 def _load_runner(path: Path):
     spec = importlib.util.spec_from_file_location("connect_qualification_runner", path)
     module = importlib.util.module_from_spec(spec)
@@ -212,6 +222,7 @@ def qualify(config_path=None, *, lane="container-baseline") -> dict:
     from . import qualification_container as image
     if lane not in _LANES:
         raise runner._error("config-invalid", "container qualification lane is unsupported")
+    _require_linux_execution(runner)
     names = _lane_tests(lane, runner._TESTS)
     if os.geteuid() == 0 or os.getegid() == 0:
         raise runner._error("config-invalid", "container qualification requires a non-root user and group")

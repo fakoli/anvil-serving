@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import stat
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,6 +11,12 @@ import pytest
 
 from anvil_serving.connect import manage
 from anvil_serving.connect.config import ManifestError, validate_manifest
+
+
+pytestmark = pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="requires Linux service ownership and filesystem custody controls",
+)
 
 
 ROOT = Path(__file__).parents[2]

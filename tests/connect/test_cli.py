@@ -327,3 +327,15 @@ def test_revocation_preflight_reports_only_its_ten_scenarios_not_run(tmp_path):
     assert result.error is not None
     assert result.data["state"] == "not-run"
     assert result.data["counts"] == {"passed":0,"failed":0,"skipped":0,"not_run":10}
+
+
+@pytest.mark.parametrize("lane", ["device", "revocation"])
+def test_container_qualification_refuses_nonlinux_before_os_apis(monkeypatch, tmp_path, lane):
+    from anvil_serving.connect import qualification_container_run
+
+    monkeypatch.setattr(qualification_container_run.sys, "platform", "win32")
+    result = dispatch(["qualify", "--lane", lane, "--config", str(tmp_path / "missing.toml")])
+    assert result.error is not None
+    assert result.error.code == "runner-unavailable"
+    assert result.data["state"] == "not-run"
+    assert result.data["counts"] == {"passed": 0, "failed": 0, "skipped": 0, "not_run": 10}
