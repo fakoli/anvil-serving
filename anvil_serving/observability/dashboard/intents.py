@@ -30,7 +30,10 @@ class IntentStore:
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
-        if version not in (0, 1, 2):
+        # ``connect_profiles`` is an additive table. Keep the established v1
+        # journal marker so an operator can roll back to the prior Observatory
+        # binary without replacing, resetting, or downgrading intent state.
+        if version not in (0, 1):
             self.db.close()
             raise ValueError("unsupported journal schema; use the recorded recovery procedure")
         self.db.executescript("""
@@ -41,7 +44,7 @@ class IntentStore:
             CREATE TABLE IF NOT EXISTS evidence(id TEXT PRIMARY KEY, resource TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS connect_profiles(subject_digest TEXT PRIMARY KEY, profile_id TEXT UNIQUE NOT NULL,
                 body TEXT NOT NULL, created REAL NOT NULL, updated REAL NOT NULL);
-            PRAGMA user_version=2;
+            PRAGMA user_version=1;
         """)
         # A web process dying is ambiguous delivery. Never re-dispatch these
         # records on startup. Owner lookups may subsequently resolve them.
