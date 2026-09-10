@@ -333,10 +333,12 @@ def test_static_failure_stage_redacts_report_content(tmp_path: Path, monkeypatch
     assert sentinel not in evidence
 
 
-def test_fixture_marker_is_closed_and_persisted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    failed = {"errors": [{"message": "browser_edge_fixture_test.go:586: redacted"}], "suites": []}
+@pytest.mark.parametrize("filename", ["browser_edge_fixture_test.go", "browser_runtime_fixture_test.go"])
+def test_fixture_marker_is_closed_and_persisted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, filename: str) -> None:
+    marker = filename + ":586"
+    failed = {"errors": [{"message": marker + ": redacted"}], "suites": []}
     assert supervisor._failure_stage(json.dumps(failed).encode(), subject._TESTS[0]) == "fixture-startup"
-    assert supervisor._fixture_marker(failed) == "browser_edge_fixture_test.go:586"
+    assert supervisor._fixture_marker(failed) == marker
     config, _ = _config(tmp_path)
     monkeypatch.setattr(subject, "_source_metadata", lambda _: {"revision": "d01d36ae" + "0" * 32, "dirty": False})
     monkeypatch.setattr(subject, "_tracked_connect_files", lambda root: [Path("connect/lab/edge-tools.json"), Path("connect/transport.lock.json"), Path("connect/test/browser_edge.spec.mjs"), Path("connect/package-lock.json")])
@@ -344,11 +346,11 @@ def test_fixture_marker_is_closed_and_persisted(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
     monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
     monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
-    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed-fixture-startup@browser_edge_fixture_test.go:586", 0.01, False))
+    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed-fixture-startup@" + marker, 0.01, False))
     result = subject.qualify(config)
     evidence = json.loads((Path(result["artifact_dir"]) / "evidence.json").read_text())
     assert evidence["tests"][0]["failure_stage"] == "fixture-startup"
-    assert evidence["tests"][0]["fixture_marker"] == "browser_edge_fixture_test.go:586"
+    assert evidence["tests"][0]["fixture_marker"] == marker
 
 
 def test_fixture_temp_root_is_removed_when_staging_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -485,3 +487,11 @@ def test_execution_error_preserves_only_known_counts(tmp_path: Path, monkeypatch
     assert result.data["stage"] == ("execution" if launch_fails else "cleanup")
     assert result.data["counts"] == (None if launch_fails else {"passed": 2, "failed": 0, "skipped": 0, "not_run": 0})
     assert calls == (1 if launch_fails else 2) and not fixture_root.exists()
+
+
+@pytest.mark.parametrize("code,stage", [("ERR_CONNECTION_REFUSED","browser-connection"),("ERR_NAME_NOT_RESOLVED","browser-dns"),("browser-navigation-failed","browser-navigation")])
+def test_browser_network_errors_keep_static_diagnostics(code, stage):
+    from anvil_serving.connect import _qualification_supervisor as supervisor
+    assert supervisor._failure_stage(json.dumps({"errors":[{"message":code+" private-sentinel"}]}).encode(), subject._TESTS[0]) == stage
+    output = json.dumps({"status":"runner-failed","escalated":False,"failure_stage":stage,"fixture_marker":None}).encode()
+    assert subject._supervisor_status(output) == ("runner-failed-"+stage,False)

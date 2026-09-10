@@ -36,7 +36,8 @@ def commands() -> CommandNode:
                 "qualify", "Run an isolated Connect qualification lane using saved local settings.",
                 handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("qualify",)),
                 options=(
-                    _option("--lane", summary="Qualification lane; defaults to baseline.", value_name="LANE"),
+                    _option("--prepare-container", summary="Explicitly download public pinned dependencies and prepare the local test image; exclusive with --lane."),
+                    _option("--lane", summary="baseline, container-baseline or device; defaults to baseline.", value_name="LANE"),
                     _option("--config", summary="Private qualification TOML; defaults to ~/.config/anvil-connect/qualification.toml.", value_name="PATH"),
                 ),
                 mutation_class="process", execution_policy="offline",
