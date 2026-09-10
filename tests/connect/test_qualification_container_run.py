@@ -26,6 +26,12 @@ def test_container_result_refuses_unknown_or_incomplete_metadata(raw):
     assert "private-sentinel" not in str(caught.value)
 
 
+def test_container_result_refuses_non_mapping_case_items():
+    raw = json.dumps({"tests": [None] * len(runner._TESTS), "escalated": False}).encode()
+    with pytest.raises(runner.QualificationError):
+        subject._cases(raw, runner._TESTS)
+
+
 def test_attached_output_is_bounded_and_return_code_matters():
     environment = {"PATH": "/usr/bin:/bin"}
     assert subject._attached([sys.executable, "-c", 'print("safe")'], environment, 2) == b"safe\n"
@@ -129,3 +135,21 @@ def test_device_lane_requires_positive_negative_revocation_passkey_and_all_strea
             subject._cases(json.dumps({"tests":complete[:omitted]+complete[omitted+1:],"escalated":False}).encode(),subject._DEVICE_TESTS)
     cases, escalated = subject._cases(json.dumps({"tests":complete,"escalated":False}).encode(),subject._DEVICE_TESTS)
     assert runner._counts(cases) == {"passed":2,"failed":0,"skipped":0,"not_run":8}
+
+
+def test_container_result_requires_only_integer_closure_measurements_for_passed_streams():
+    cases = [{"name": name, "status": "not-run", "duration_seconds": 0.0} for name in subject._DEVICE_TESTS]
+    stream_index = 6
+    cases[stream_index] = {"name": subject._DEVICE_TESTS[stream_index], "status": "passed", "duration_seconds": 1.0}
+    with pytest.raises(runner.QualificationError):
+        subject._cases(json.dumps({"tests": cases, "escalated": False}).encode(), subject._DEVICE_TESTS)
+    for value in ("17", True, -1, 1001):
+        cases[stream_index]["closure_ms"] = value
+        with pytest.raises(runner.QualificationError):
+            subject._cases(json.dumps({"tests": cases, "escalated": False}).encode(), subject._DEVICE_TESTS)
+    cases[stream_index]["closure_ms"] = 17
+    parsed, _ = subject._cases(json.dumps({"tests": cases, "escalated": False}).encode(), subject._DEVICE_TESTS)
+    assert parsed[stream_index]["closure_ms"] == 17
+    cases[0]["closure_ms"] = 17
+    with pytest.raises(runner.QualificationError):
+        subject._cases(json.dumps({"tests": cases, "escalated": False}).encode(), subject._DEVICE_TESTS)

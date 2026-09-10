@@ -97,9 +97,9 @@ def test_qualify_stages_privately_and_records_only_safe_evidence(tmp_path: Path,
     monkeypatch.setattr(subject, "_tool_metadata", lambda _: {"go": {"sha256": "c" * 64, "version": "go1"}})
     seen: list[tuple[list[str], dict[str, str]]] = []
 
-    def fake_run(argv: list[str], *, cwd: Path, env: dict[str, str], timeout: float, expected_name: str, supervisor: Path | None = None) -> tuple[str, float, bool]:
+    def fake_run(argv: list[str], *, cwd: Path, env: dict[str, str], timeout: float, expected_name: str, supervisor: Path | None = None) -> tuple[str, float, bool, int | None]:
         seen.append((argv, env))
-        return "passed", 0.01, False
+        return "passed", 0.01, False, None
 
     monkeypatch.setattr(subject, "_run_test", fake_run)
     result = subject.qualify(config)
@@ -125,20 +125,53 @@ def test_qualify_stages_privately_and_records_only_safe_evidence(tmp_path: Path,
 def test_json_report_requires_the_expected_non_skipped_test() -> None:
     good = {"errors": [], "suites": [{"specs": [{"title": subject._TESTS[0], "ok": True, "tests": [{"status": "expected", "results": [{"status": "passed"}]}]}]}]}
     assert supervisor._valid_report(json.dumps(good).encode(), subject._TESTS[0]) is True
+    assert supervisor._closure_ms(good, subject._TESTS[0]) is None
     good["suites"][0]["specs"][0]["tests"][0]["status"] = "skipped"
     assert supervisor._valid_report(json.dumps(good).encode(), subject._TESTS[0]) is False
     assert supervisor._skipped_report(json.dumps(good).encode(), subject._TESTS[0]) is True
     assert supervisor._skipped_report(json.dumps({"errors": [], "suites": []}).encode(), subject._TESTS[0]) is False
 
 
+def test_stream_closure_measurement_is_exact_and_closed() -> None:
+    stream = next(iter(subject._STREAM_CLOSURE_TESTS))
+    report = {"errors": [], "suites": [{"specs": [{"title": stream, "ok": True, "tests": [{
+        "status": "expected", "results": [{"status": "passed"}],
+        "annotations": [{"type": "closure_ms", "description": "17"}],
+    }]}]}]}
+    assert supervisor._valid_report(json.dumps(report).encode(), stream) is True
+    assert supervisor._closure_ms(report, stream) == 17
+    annotations = report["suites"][0]["specs"][0]["tests"][0]["annotations"]
+    for description in (None, True, 17, "-1", "01", "1001", "9" * 10_000):
+        annotations[0]["description"] = description
+        assert supervisor._valid_report(json.dumps(report).encode(), stream) is False
+    annotations[0]["description"] = "17"
+    annotations.append({"type": "closure_ms", "description": "18"})
+    assert supervisor._valid_report(json.dumps(report).encode(), stream) is False
+    report["suites"][0]["specs"][0]["tests"][0]["annotations"] = []
+    assert supervisor._valid_report(json.dumps(report).encode(), stream) is False
+    nonstream = subject._TESTS[0]
+    report["suites"][0]["specs"][0]["title"] = nonstream
+    report["suites"][0]["specs"][0]["tests"][0]["annotations"] = [{"type": "closure_ms", "description": "17"}]
+    assert supervisor._valid_report(json.dumps(report).encode(), nonstream) is False
+
+
+def test_supervisor_envelope_requires_integer_stream_measurement() -> None:
+    stream = next(iter(subject._STREAM_CLOSURE_TESTS))
+    envelope = {"status": "passed", "escalated": False, "failure_stage": None, "fixture_marker": None, "closure_ms": 17}
+    assert subject._supervisor_status(json.dumps(envelope).encode(), stream) == ("passed", False, 17)
+    for value in ("17", True, -1, 1001):
+        envelope["closure_ms"] = value
+        assert subject._supervisor_status(json.dumps(envelope).encode(), stream) == ("runner-failed-supervisor", True, None)
+
+
 def test_supervisor_classifies_only_explicit_expected_skip() -> None:
     skipped = json.dumps({"errors": [], "suites": [{"specs": [{"title": subject._TESTS[0], "ok": True, "tests": [{"status": "skipped", "results": []}]}]}]})
-    result, _, escalated = subject._run_test(
+    result, _, escalated, _ = subject._run_test(
         [sys.executable, "-c", "print(%r)" % skipped], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
         timeout=2, expected_name=subject._TESTS[0],
     )
     assert result == "skipped" and escalated is False
-    empty, _, _ = subject._run_test(
+    empty, _, _, _ = subject._run_test(
         [sys.executable, "-c", "print(%r)" % json.dumps({"errors": [], "suites": []})], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
         timeout=2, expected_name=subject._TESTS[0],
     )
@@ -157,7 +190,7 @@ def _wait_for(path: Path) -> None:
 def test_supervisor_accepts_only_a_verified_report() -> None:
     report = json.dumps({"errors": [], "suites": [{"specs": [{"title": subject._TESTS[0], "ok": True, "tests": [{"status": "expected", "results": [{"status": "passed"}]}]}]}]})
     code = "import sys; sys.stderr.write('synthetic-warning-secret'); print(%r)" % report
-    result, _, escalated = subject._run_test(
+    result, _, escalated, _ = subject._run_test(
         [sys.executable, "-c", code], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
         timeout=2, expected_name=subject._TESTS[0],
     )
@@ -182,7 +215,7 @@ def test_owned_timeout_kills_only_its_process_group(tmp_path: Path) -> None:
     trigger = threading.Thread(target=concurrent_sibling, daemon=True)
     trigger.start()
     try:
-        result, _, escalated = subject._run_test([sys.executable, "-c", code], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"}, timeout=0.2, expected_name=subject._TESTS[0])
+        result, _, escalated, _ = subject._run_test([sys.executable, "-c", code], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"}, timeout=0.2, expected_name=subject._TESTS[0])
         trigger.join(timeout=1)
         assert marker.exists() and result == "runner-timeout"
         assert escalated is False and len(unrelated) == 1 and unrelated[0].poll() is None
@@ -204,7 +237,7 @@ def test_valid_report_cannot_hide_detached_listener(tmp_path: Path) -> None:
     leader = "import subprocess,sys; subprocess.Popen([sys.executable,'-c',%r]); print(%r)" % (child, report)
     trigger = threading.Thread(target=lambda: _wait_for(marker), daemon=True)
     trigger.start()
-    result, _, escalated = subject._run_test([sys.executable, "-c", leader], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"}, timeout=1, expected_name=subject._TESTS[0])
+    result, _, escalated, _ = subject._run_test([sys.executable, "-c", leader], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"}, timeout=1, expected_name=subject._TESTS[0])
     trigger.join(timeout=1)
     assert marker.exists() and result.startswith("runner-failed-") and escalated is True
     with socket.socket() as probe:
@@ -223,7 +256,7 @@ def test_setsiddescendant_listener_is_reaped_after_leader_exit(tmp_path: Path) -
     leader = "import subprocess,sys; subprocess.Popen([sys.executable,'-c',%r])" % child
     trigger = threading.Thread(target=lambda: _wait_for(marker), daemon=True)
     trigger.start()
-    result, _, escalated = subject._run_test(
+    result, _, escalated, _ = subject._run_test(
         [sys.executable, "-c", leader], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
         timeout=0.2, expected_name=subject._TESTS[0],
     )
@@ -236,7 +269,7 @@ def test_setsiddescendant_listener_is_reaped_after_leader_exit(tmp_path: Path) -
 def test_child_flood_is_bounded_and_fails_closed() -> None:
     code = "import subprocess,sys; c=\"import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); time.sleep(5)\"; [subprocess.Popen([sys.executable,'-c',c]) for _ in range(65)]"
     started = time.monotonic()
-    result, _, escalated = subject._run_test(
+    result, _, escalated, _ = subject._run_test(
         [sys.executable, "-c", code], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
         timeout=0.2, expected_name=subject._TESTS[0],
     )
@@ -257,7 +290,7 @@ def test_keyboard_interrupt_cleans_owned_process_group(tmp_path: Path) -> None:
 
     trigger = threading.Thread(target=interrupt_after_ready, daemon=True)
     trigger.start()
-    result, _, escalated = subject._run_test(
+    result, _, escalated, _ = subject._run_test(
         [sys.executable, "-c", child], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
         timeout=2, expected_name=subject._TESTS[0],
     )
@@ -275,7 +308,7 @@ def test_interrupted_or_failed_child_output_never_becomes_evidence(tmp_path: Pat
     monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
     monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
     monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
-    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed", 0.02, False))
+    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed", 0.02, False, None))
     result = subject.qualify(config)
     assert result["ok"] is False and result["error_code"] == "runner-failed"
     evidence = (Path(result["artifact_dir"]) / "evidence.json").read_text(encoding="utf-8")
@@ -304,7 +337,7 @@ def test_finite_tree_over_two_small_batches_is_reaped(capsys: pytest.CaptureFixt
     code = "import subprocess,sys; c=\"import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); time.sleep(5)\"; [subprocess.Popen([sys.executable,'-c',c]) for _ in range(5)]"
     assert supervisor.run([sys.executable, "-c", code], 0.2, subject._TESTS[0], batch_size=2) == 0
     result = json.loads(capsys.readouterr().out)
-    assert result == {"status": "runner-failed", "escalated": True, "failure_stage": "supervisor", "fixture_marker": None}
+    assert result == {"status": "runner-failed", "escalated": True, "failure_stage": "supervisor", "fixture_marker": None, "closure_ms": None}
 
 
 def test_pidfd_preflight_refuses_unavailable_kernel_support(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -325,7 +358,7 @@ def test_static_failure_stage_redacts_report_content(tmp_path: Path, monkeypatch
     monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
     monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
     monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
-    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed-browser-assertion", 0.01, False))
+    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed-browser-assertion", 0.01, False, None))
     result = subject.qualify(config)
     evidence = (Path(result["artifact_dir"]) / "evidence.json").read_text(encoding="utf-8")
     assert result["ok"] is False
@@ -347,7 +380,7 @@ def test_fixture_marker_is_closed_and_persisted(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
     monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
     monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
-    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed-" + stage + "@" + marker, 0.01, False))
+    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("runner-failed-" + stage + "@" + marker, 0.01, False, None))
     result = subject.qualify(config)
     evidence = json.loads((Path(result["artifact_dir"]) / "evidence.json").read_text())
     assert evidence["tests"][0]["failure_stage"] == stage
@@ -428,7 +461,7 @@ def test_early_result_marks_remaining_test_not_run_and_junit_skipped(tmp_path: P
     calls: list[str] = []
     def fail_first(_argv, *, expected_name, **_kwargs):
         calls.append(expected_name)
-        return "runner-failed-browser-assertion", 0.01, False
+        return "runner-failed-browser-assertion", 0.01, False, None
     monkeypatch.setattr(subject, "_run_test", fail_first)
     result = subject.qualify(config)
     evidence_path = Path(result["artifact_dir"]) / "evidence.json"
@@ -450,7 +483,7 @@ def test_skipped_result_is_non_success_and_marks_remaining_not_run(tmp_path: Pat
     monkeypatch.setattr(subject, "_locks", lambda _: {"files": {"edge_tools": "a" * 64, "transport": "b" * 64}, "binaries": {name: "a" * 64 for name in ("caddy", "authelia", "wstunnel")}})
     monkeypatch.setattr(subject, "_sha256", lambda _: "a" * 64)
     monkeypatch.setattr(subject, "_tool_metadata", lambda _: {})
-    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("skipped", 0.01, False))
+    monkeypatch.setattr(subject, "_run_test", lambda *args, **kwargs: ("skipped", 0.01, False, None))
     result = subject.qualify(config)
     assert result["ok"] is False and result["state"] == "skipped" and result["error_code"] == "skipped"
     assert result["counts"] == {"passed": 0, "failed": 0, "skipped": 1, "not_run": 1}
@@ -471,7 +504,7 @@ def test_execution_error_preserves_only_known_counts(tmp_path: Path, monkeypatch
     def run_test(*args, **kwargs):
         if launch_fails:
             raise subject._error("runner-unavailable", "safe launch error")
-        return ("passed", 0.01, False)
+        return ("passed", 0.01, False, None)
     monkeypatch.setattr(subject, "_run_test", run_test)
     calls = 0
     def fail_once(root: Path) -> None:
@@ -494,8 +527,8 @@ def test_execution_error_preserves_only_known_counts(tmp_path: Path, monkeypatch
 def test_browser_network_errors_keep_static_diagnostics(code, stage):
     from anvil_serving.connect import _qualification_supervisor as supervisor
     assert supervisor._failure_stage(json.dumps({"errors":[{"message":code+" private-sentinel"}]}).encode(), subject._TESTS[0]) == stage
-    output = json.dumps({"status":"runner-failed","escalated":False,"failure_stage":stage,"fixture_marker":None}).encode()
-    assert subject._supervisor_status(output) == ("runner-failed-"+stage,False)
+    output = json.dumps({"status":"runner-failed","escalated":False,"failure_stage":stage,"fixture_marker":None,"closure_ms":None}).encode()
+    assert subject._supervisor_status(output, subject._TESTS[0]) == ("runner-failed-"+stage,False, None)
 
 
 def test_browser_error_location_keeps_only_public_basename_and_line():
