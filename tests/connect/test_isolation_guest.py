@@ -45,6 +45,33 @@ def test_build_manifest_is_closed_synthetic_and_service_isolated() -> None:
     assert value["gateway"]["ingress"] == {"directory": "/run/anvil-test/ingress", "gateway_uid": 21001, "edge_uid": 21002, "group_id": 21010}
     assert value["binary"] == "/opt/anvil-test/bin/anvil-connect-ctl"
     assert all(not host.startswith("127.") for host in (value["gateway"]["control_host"], value["gateway"]["tunnel_host"]))
+    assert value["service_limits"]["clients"]["dashboard-api"] == {"memory_max_bytes": 268435456, "tasks_max": 128}
+
+
+def test_service_sample_accepts_unordered_properties_and_requires_cgroup_limits(monkeypatch: pytest.MonkeyPatch) -> None:
+    def capture(argv, **_kwargs):  # type: ignore[no-untyped-def]
+        assert argv[0:2] == ["/usr/bin/systemctl", "show"]
+        return b"TasksMax=128\nMemoryPeak=2\nMemoryCurrent=1\nMemoryMax=268435456\nTasksCurrent=1\n" if argv[-1] != "anvil-connect-authelia.service" else b"TasksCurrent=1\nMemoryMax=536870912\nTasksMax=128\nMemoryCurrent=1\nMemoryPeak=2\n"
+
+    monkeypatch.setattr(guest, "_capture", capture)
+    monkeypatch.setattr(guest, "_read_regular", lambda path, _maximum: (b"536870912\n" if path.parent.name == "anvil-connect-authelia.service" and path.name == "memory.max" else b"268435456\n" if path.name == "memory.max" else b"128\n"))
+    samples = guest._service_sample()
+    assert set(samples) == {"gateway", "edge", "idp", "connector"}
+    assert samples["idp"]["memory_max_bytes"] == 536870912
+
+    monkeypatch.setattr(guest, "_read_regular", lambda _path, _maximum: b"0\n")
+    with pytest.raises(guest.GuestFailure):
+        guest._service_sample()
+
+
+def test_service_sample_rejects_duplicate_properties_and_current_above_peak(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guest, "_read_regular", lambda path, _maximum: b"268435456\n" if path.name == "memory.max" else b"128\n")
+    monkeypatch.setattr(guest, "_capture", lambda *_args, **_kwargs: b"MemoryCurrent=7\nMemoryPeak=3\nTasksCurrent=1\nMemoryMax=268435456\nTasksMax=128\n")
+    with pytest.raises(guest.GuestFailure):
+        guest._service_sample()
+    monkeypatch.setattr(guest, "_capture", lambda *_args, **_kwargs: b"MemoryCurrent=1\nMemoryPeak=2\nTasksCurrent=1\nMemoryMax=268435456\nMemoryMax=268435456\nTasksMax=128\n")
+    with pytest.raises(guest.GuestFailure):
+        guest._service_sample()
 
 
 def test_payload_verification_requires_exact_regular_hashed_file_set(tmp_path: Path) -> None:
@@ -91,12 +118,12 @@ def test_result_schema_is_fixed_and_never_carries_diagnostics(tmp_path: Path, mo
     result = tmp_path / "result.json"
     monkeypatch.setattr(guest, "RESULT_PATH", result)
     cases = [{"name": name, "status": "passed"} for name in guest.CASES]
-    guest._write_result(cases)
+    guest._write_result(cases, {})
     value = json.loads(result.read_text(encoding="utf-8"))
-    assert value == {"schema": guest.RESULT_SCHEMA, "cases": cases, "ok": True}
+    assert value == {"schema": guest.RESULT_SCHEMA, "cases": cases, "ok": True, "service_samples": {}}
     assert result.stat().st_mode & 0o777 == 0o600
     with pytest.raises(guest.GuestFailure):
-        guest._write_result(cases[:-1])
+        guest._write_result(cases[:-1], {})
 
 
 def test_guest_refuses_to_run_outside_a_root_systemd_guest(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -315,6 +342,7 @@ def test_main_wires_all_cases_without_guest_commands(tmp_path: Path, monkeypatch
         "schema": guest.RESULT_SCHEMA,
         "cases": [{"name": name, "status": "passed"} for name in guest.CASES],
         "ok": True,
+        "service_samples": {},
     }]
 
 

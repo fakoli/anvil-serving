@@ -8,7 +8,15 @@ from anvil_serving.connect.qualification import QualificationError
 
 def result():
     return {"schema": "anvil-connect.isolation-guest/v1", "ok": True,
-            "cases": [{"name": name, "status": "passed"} for name in subject._CASES]}
+            "cases": [{"name": name, "status": "passed"} for name in subject._CASES],
+            "service_samples": {
+                phase: {
+                    role: {"memory_current_bytes": 0, "memory_peak_bytes": 0, "tasks_current": 0,
+                           "memory_max_bytes": limits[0], "tasks_max": limits[1]}
+                    for role, limits in subject._SERVICE_SAMPLE_LIMITS.items()
+                }
+                for phase in subject._SERVICE_SAMPLE_PHASES
+            }}
 
 
 def test_result_requires_every_case_in_fixed_order():
@@ -17,6 +25,33 @@ def test_result_requires_every_case_in_fixed_order():
     value["cases"].reverse()
     with pytest.raises(QualificationError):
         subject._cases(json.dumps(value).encode())
+
+
+def test_service_samples_require_full_headroom_only_for_passing_packets():
+    value = result()
+    value["service_samples"]["before_restart"]["gateway"]["memory_peak_bytes"] = 268435457
+    with pytest.raises(QualificationError):
+        subject._guest_result(json.dumps(value).encode())
+    value["ok"] = False
+    value["cases"][0]["status"] = "failed"
+    cases, samples = subject._guest_result(json.dumps(value).encode())
+    assert cases[0]["status"] == "failed"
+    assert samples["before_restart"]["gateway"]["memory_peak_bytes"] == 268435457
+
+
+def test_failed_packet_allows_only_closed_partial_samples_and_labels_absence_unverified():
+    value = result()
+    value["ok"] = False
+    value["cases"][0]["status"] = "failed"
+    value["service_samples"] = {"before_restart": {"gateway": value["service_samples"]["before_restart"]["gateway"]}}
+    _cases, samples = subject._guest_result(json.dumps(value).encode())
+    limits = subject._service_limit_evidence(samples)
+    assert limits["gateway"]["enforcement"] == "validated"
+    assert limits["edge"]["enforcement"] == "unverified"
+    assert limits["client:dashboard-api"]["enforcement"] == "rendered-only"
+    value["service_samples"]["before_restart"]["unknown"] = {}
+    with pytest.raises(QualificationError):
+        subject._guest_result(json.dumps(value).encode())
 
 
 @pytest.mark.parametrize("mutation", ["missing", "extra", "contradiction", "unknown", "skip"])

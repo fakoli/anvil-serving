@@ -52,9 +52,17 @@ _FIRMWARE = Path("/usr/share/seabios/bios.bin")
 _SCHEMA = "anvil-connect.isolation-qualification/v1"
 _PAYLOAD_SCHEMA = "anvil-connect.isolation-guest-payload/v1"
 _BUILD_SCHEMA = "anvil-connect.isolation-guest-build/v1"
+_SERVICE_SAMPLE_PHASES = ("before_restart", "before_stop")
+_SERVICE_SAMPLE_LIMITS = {
+    "gateway": (268435456, 128),
+    "edge": (268435456, 128),
+    "idp": (536870912, 128),
+    "connector": (268435456, 128),
+}
+_CLIENT_LIMIT = (268435456, 128)
 
 
-def _cases(raw: bytes) -> list[dict[str, str]]:
+def _guest_result(raw: bytes) -> tuple[list[dict[str, str]], dict[str, dict[str, dict[str, int]]]]:
     def closed_object(pairs):
         result = {}
         for key, value in pairs:
@@ -67,7 +75,7 @@ def _cases(raw: bytes) -> list[dict[str, str]]:
         if len(raw) > _MAX_RESULT:
             raise ValueError
         data = json.loads(raw, object_pairs_hook=closed_object)
-        if (not isinstance(data, dict) or set(data) != {"schema", "cases", "ok"}
+        if (not isinstance(data, dict) or set(data) != {"schema", "cases", "ok", "service_samples"}
                 or data["schema"] != "anvil-connect.isolation-guest/v1"
                 or type(data["ok"]) is not bool or not isinstance(data["cases"], list)
                 or len(data["cases"]) != len(_CASES)):
@@ -94,11 +102,65 @@ def _cases(raw: bytes) -> list[dict[str, str]]:
                         raise ValueError
         if data["ok"] != all(case["status"] == "passed" for case in data["cases"]):
             raise ValueError
-        return data["cases"]
+        samples = data["service_samples"]
+        if not isinstance(samples, dict) or set(samples) - set(_SERVICE_SAMPLE_PHASES):
+            raise ValueError
+        normalized: dict[str, dict[str, dict[str, int]]] = {}
+        fields = {"memory_current_bytes", "memory_peak_bytes", "tasks_current", "memory_max_bytes", "tasks_max"}
+        for phase, values in samples.items():
+            if not isinstance(values, dict) or set(values) - set(_SERVICE_SAMPLE_LIMITS):
+                raise ValueError
+            roles: dict[str, dict[str, int]] = {}
+            for role, sample in values.items():
+                if not isinstance(sample, dict) or set(sample) != fields:
+                    raise ValueError
+                if any(type(value) is not int or value < 0 or value >= 2 ** 63 for value in sample.values()):
+                    raise ValueError
+                memory_max, tasks_max = _SERVICE_SAMPLE_LIMITS[role]
+                if (sample["memory_max_bytes"] != memory_max or sample["tasks_max"] != tasks_max
+                        or sample["memory_current_bytes"] > sample["memory_peak_bytes"]
+                        or sample["tasks_current"] > tasks_max):
+                    raise ValueError
+                roles[role] = sample
+            normalized[phase] = roles
+        if data["ok"] and (set(normalized) != set(_SERVICE_SAMPLE_PHASES)
+                           or any(set(normalized[phase]) != set(_SERVICE_SAMPLE_LIMITS) for phase in _SERVICE_SAMPLE_PHASES)):
+            raise ValueError
+        if data["ok"] and any(
+            sample["memory_current_bytes"] > sample["memory_max_bytes"]
+            or sample["memory_peak_bytes"] > sample["memory_max_bytes"]
+            for values in normalized.values() for sample in values.values()
+        ):
+            raise ValueError
+        return data["cases"], normalized
     except (UnicodeError, TypeError, ValueError, KeyError) as exc:
         failure = _error("runner-failed", "VM guest result is invalid", execution_started=True, stage="execution")
         failure.reason = "record-invalid"
         raise failure from exc
+
+
+def _cases(raw: bytes) -> list[dict[str, str]]:
+    """Compatibility projection of closed guest evidence for case-only callers."""
+    return _guest_result(raw)[0]
+
+
+def _service_limit_evidence(samples: dict[str, dict[str, dict[str, int]]]) -> dict[str, dict[str, Any]]:
+    """Label declared limits from the samples actually retained in this packet."""
+    evidence: dict[str, dict[str, Any]] = {}
+    for role, (memory_max, tasks_max) in _SERVICE_SAMPLE_LIMITS.items():
+        phases = [phase for phase in _SERVICE_SAMPLE_PHASES if role in samples.get(phase, {})]
+        evidence[role] = {
+            "memory_max_bytes": memory_max,
+            "tasks_max": tasks_max,
+            "enforcement": "validated" if phases else "unverified",
+            "measurement": "measured" if phases else "not-measured",
+            "phases": phases,
+        }
+    evidence["client:dashboard-api"] = {
+        "memory_max_bytes": _CLIENT_LIMIT[0], "tasks_max": _CLIENT_LIMIT[1],
+        "enforcement": "rendered-only", "measurement": "not-measured", "phases": [],
+    }
+    return evidence
 
 
 def _capacity(root: Path) -> tuple[int, ...]:
@@ -693,7 +755,9 @@ def qualify(config_path: str | os.PathLike[str] | None = None) -> dict[str, Any]
         execution_started = True
         details["measurements"] = {"elapsed_ms": process.elapsed_ms, "peak_rss_bytes": process.peak_rss_bytes,
                                    "output_bytes": process.output_bytes, "returncode": process.returncode}
-        cases = _cases(process.output)
+        cases, service_samples = _guest_result(process.output)
+        details["service_limits"] = _service_limit_evidence(service_samples)
+        details["service_samples"] = service_samples
         if process.returncode != 0:
             details["failure_reason"] = "child-exit"
             raise _error("runner-failed", "VM guest did not shut down cleanly", execution_started=True, stage="execution")
