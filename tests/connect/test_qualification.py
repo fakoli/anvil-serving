@@ -18,6 +18,9 @@ from anvil_serving.connect import qualification as subject
 from anvil_serving.connect import _qualification_supervisor as supervisor
 
 
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="requires Linux qualification process controls")
+
+
 def _tool(path: Path, name: str) -> Path:
     target = path / name
     target.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
