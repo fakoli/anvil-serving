@@ -1,0 +1,162 @@
+/* Pi surface: an editorial terminal transcript, using the shared Workbench tokens. */
+.pi-intro {
+  align-items: end;
+}
+.pi-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(290px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+.pi-console .panel-body {
+  padding-top: 12px;
+}
+.pi-topline {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 14px;
+  align-items: end;
+}
+.pi-topline label,
+.pi-side label,
+#pi-form label,
+.pi-steer label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 13px;
+}
+.pi-topline small {
+  font-size: 11px;
+}
+.pi-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  max-width: 235px;
+}
+.pi-session-actions .eyebrow {
+  width: 100%;
+}
+.pi-conversation .panel-body {
+  display: grid;
+  gap: 18px;
+}
+.pi-thread {
+  border-left: 1px solid var(--line);
+  padding-left: 14px;
+  display: grid;
+  gap: 12px;
+}
+.pi-message {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.pi-message .eyebrow {
+  color: var(--accent);
+}
+.pi-message.operator .eyebrow {
+  color: var(--amber);
+}
+.pi-message p {
+  white-space: pre-wrap;
+}
+#pi-form {
+  display: grid;
+  gap: 7px;
+}
+#pi-draft {
+  min-height: 94px;
+  resize: vertical;
+}
+.pi-composer-foot,
+.pi-steer > div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+.pi-composer-foot .section-copy {
+  max-width: 390px;
+  font-size: 12px;
+}
+.pi-steer {
+  border-top: 1px dashed var(--line);
+  padding-top: 15px;
+  display: grid;
+  gap: 7px;
+}
+.pi-steer input {
+  flex: 1;
+}
+.pi-side {
+  display: grid;
+  gap: 18px;
+}
+.pi-tools {
+  display: grid;
+  gap: 8px;
+}
+.pi-tool {
+  border: 1px solid var(--line);
+  background: var(--raised);
+  border-radius: 3px;
+}
+.pi-tool summary {
+  padding: 9px 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.pi-tool pre,
+.pi-diff {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding: 10px;
+  color: var(--muted);
+  font: 12px/1.5 var(--mono);
+  white-space: pre-wrap;
+}
+.pi-diff {
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: color-mix(in srgb, var(--raised) 80%, var(--accent) 5%);
+}
+.pi-context {
+  margin-top: 18px;
+}
+.pi-context .notice {
+  margin-top: 14px;
+}
+@media (max-width: 900px) {
+  .pi-layout {
+    grid-template-columns: 1fr;
+  }
+  .pi-topline {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pi-session-actions {
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+}
+@media (max-width: 540px) {
+  .pi-topline {
+    grid-template-columns: 1fr;
+  }
+  .pi-composer-foot,
+  .pi-steer > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .pi-composer-foot button,
+  .pi-steer button {
+    width: 100%;
+  }
+}

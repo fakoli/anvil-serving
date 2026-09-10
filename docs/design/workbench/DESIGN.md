@@ -1,6 +1,6 @@
 # Anvil Workbench — design proposal
 
-September 10, 2026 · Concept 01 · Working name · For human design review
+September 10, 2026 · Concept 02 · Working name · For human design review
 
 This is a proposal and interactive design study, not a shipped product contract.
 The current Observatory, router, controllers, and project state are unchanged.
@@ -22,33 +22,46 @@ The navigation follows jobs, not CLI command families:
 
 | Area | Primary question | Main action |
 | --- | --- | --- |
-| Workbench | What am I working on, and what needs attention? | Resume a run or create an experiment |
-| Experiments | Does this model behave correctly under this workload? | Configure, run, compare, inspect, retain evidence |
+| Workbench | Does this model behave correctly under this workload? | Create an experiment; follow deterministic phases; inspect, compare and retain evidence |
 | Playground | What happens when I ask this exact model? | Select connector, recipe/model and preset; send and inspect |
 | Models & recipes | Which reproducible setup can I use? | Inspect availability; review managed loading/configuration |
 | Anvil work | Which project requirement does this work satisfy? | Read PRDs, inspect ready tasks, attach evidence |
-| Pi sessions | What is the coding agent doing in its environment? | Review a session, follow tools/diff/tests, steer or stop |
+| Pi workspace | What is the coding agent doing in this conversation? | Chat, choose operator model/thinking, resume or branch, inspect tool events, steer and stop |
 | System & logs | Why is a request or machine behaving this way? | Inspect owners, resources, correlated logs and Grafana |
+| Connect access | Who can use which resources? | Review grants, enable/disable access and revoke issued sessions |
+| Documentation | How does this part of Anvil work? | Read contextual concepts and versioned source documentation |
 
 The production shell also needs a project selector, workspace search, and
-connection/access settings. Concept 01 shows one fixed sample project. These
-settings should not consume the main navigation at the same level as daily work.
+connection settings. Concept 02 shows one fixed sample project. Connect access
+is a dedicated administrator-only destination, using the existing owner contract.
 
 ## Visual direction
 
-A quiet instrument panel: warm graphite, pale text, restrained lime for primary
-actions and traces, amber for uncertainty, and coral for failures. Barlow provides
-the interface text; Barlow Condensed provides compact numeric readouts. Type,
-spacing and thin dividers establish hierarchy. Use charts and actual status to
-convey activity; avoid ornamental blinking or random metric animation.
+A quiet instrument panel using the modern Serving documentation palette:
+navy background `#0b1118`, surfaces `#101923` / `#14202b`, cyan `#28c7d7`,
+light text `#f4f7f9`, muted text `#aab8c2` and amber `#f5ad35`. These are
+adapted from `docs/stylesheets/extra.css`; this is not a MkDocs application.
+The separate Anvil State Material configuration currently uses deep orange;
+the modern Serving documentation theme is the reference selected for this revision.
+Barlow supplies interface text and Barlow Condensed supplies compact readouts.
 
-The desktop composition has three parts: a narrow navigation rail, a task
-workspace, and a persistent system HUD. The HUD contains physical GPU utilization,
-reserved VRAM, queue/admission pressure, resource temperature/power, and owner
-coverage. Run metrics occupy the workspace and follow the selected historical
-window; the HUD follows current owner observations. These two time scopes must be
-explicit. Smaller layouts put navigation into a horizontal strip and stack the
-HUD below the task rather than squeezing controls into an unreadable grid.
+The desktop has a navigation rail, one document scroll owner and a compact
+sticky instrument strip. Remove the independently scrolling right-hand HUD.
+Show compute and target selection, owner availability, timestamped GPU/memory
+observations, deterministic runner activity and Pi activity. A moving light
+indicates a known active demo operation, never arbitrary background animation.
+Reduced motion disables the pulse; text carries the same meaning.
+
+Detailed fleet metrics live in System & logs. Historical run charts retain their
+own target and time window as the compute selector changes. NVIDIA devices and
+Apple Silicon unified memory need different labels; MacBook is a first-class
+compute location. All capacities and deployments in the concept are synthetic.
+The private routing configuration declared laptop speech endpoints at inspection;
+this design did not prove their live health or copy private network identity.
+
+At narrow widths the strip wraps and loses stickiness; the document still owns
+vertical scrolling. Local horizontal scrolling is allowed for dense tables and
+navigation. Dialogs may scroll within the viewport.
 
 Move long explanations into contextual detail. Keep actionable failure reasons
 visible beside their controls. Loading, empty, offline, stale, unsupported,
@@ -98,7 +111,10 @@ sample count, and correctness gates in one run record. The test runner captures
 client-observed TTFT, end-to-end latency, token counts and request errors. Keep
 engine-reported throughput/KV/admission metrics separately attributed.
 
-The run detail has Overview, Compare, Evidence, and Events. Explain why results
+Workbench absorbs experiment detail with Overview, Run flow, Compare, Evidence,
+Events and All runs. There is no separate Experiments navigation destination.
+A new submitted plan retains its own run identity; historical evidence remains
+visibly associated with the retained run. Explain why results
 cannot be directly compared. Show partial and failed runs alongside successful
 ones. Do not rank a faster run that failed correctness. A graph must specify per
 request versus aggregate throughput, observation source, units and sample window.
@@ -107,6 +123,19 @@ Aggregate a TP=2 serve once while displaying both physical GPUs.
 Annotated charts align benchmark phases with logs and resource observations.
 Historical source gaps remain gaps. Data tables supply a readable alternative.
 Grafana opens with the same authorized host, serve and time range for deeper work.
+
+The deterministic runner resolves an exact target, executes independent preflight,
+runs fixed measurement phases, collects evidence and stops for review. It consumes
+no agent tokens to decide routine next steps. Failures stop dependent phases and
+retain partial evidence. A cloud Codex/Claude/Pi operator may help design a plan;
+the target local model must not be its own orchestrator or judge. Scheduling must
+also account for resource contention with any local agent session.
+
+Recipe editing saves a new candidate before a separate managed load review.
+Production editing must round-trip the complete canonical schema, preserve secret
+references, validate runtime/location compatibility and detect revision conflicts.
+The concept edits only context, concurrency and compatible placement; it makes no
+claim to be a full recipe authoring implementation.
 
 ### 3. Open a PRD and execute a task with Pi
 
@@ -122,11 +151,28 @@ PRD. A draft PRD stays readable but is not executable until approved. A newly
 selected checkout reporting uninitialized state must trigger identity/recovery
 inspection, never automatic creation of competing project state.
 
-Pi sessions need a conversation area and Activity, Changes, Tests, Artifacts and
-Environment views. Provide steering, cancellation, reconnection and explicit
+Pi needs a conversation first, with model/thinking menus, resume and branching,
+inline tools and extension dialogs, plus changes, tests, artifacts and environment
+detail. Reuse the matching Pi Web surfaces where the integration spike proves them. Provide steering, cancellation, reconnection and explicit
 recovery. Closing a browser tab does not stop the runner. Agent text saying
 “tests passed” is not evidence; capture actual test output and exit state, and
 use Anvil's independent review/acceptance process.
+
+### 4. Administer access and consult documentation
+
+Connect access uses the existing `/_anvil-connect/access` facade. It edits allowed
+resources for existing users, toggles access while retaining identity, and revokes
+issued browser/terminal sessions. It does not introduce another account database
+or administrator-membership editor. Preserve generation checks, idempotency and
+the final enabled administrator safeguard. Browser-session revocation cascades to
+terminal sessions it approved; already executing upstream work may continue.
+See [the current contract](../../ANVIL-CONNECT-ACCESS.md).
+
+The documentation destination currently renders curated summaries linked to the
+Anvil/Serving README, benchmark documentation and Connect access guide. Production
+should render versioned packaged documents through a safe markdown renderer, with
+search, source version, code-copy controls and normal deep links. Keep recipe/run
+context while opening help. Curated prototype text is not a live documentation sync.
 
 ## Ownership and architecture
 
@@ -194,7 +240,10 @@ study is intentionally disposable UI code, not the production architecture.
 
 ### Pi integration
 
-Use Pi's headless RPC or supported SDK behind a runner adapter. The current
+First test third-party Pi Web reuse for the conversational surface; see
+[PI-REUSE.md](PI-REUSE.md) for inspected sources, remaining seams and the bounded
+spike. Keep its session UI/service ownership explicit. If reuse requires broad
+internal patches, use Pi's headless RPC or supported SDK behind a thin adapter. The current
 [Pi RPC documentation](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/rpc.md)
 describes structured commands, correlated responses, event streaming and steering.
 RPC offers a useful process boundary; its documented JSONL framing needs an
@@ -228,7 +277,7 @@ workflow it replaces, not on whether it already has a polished chat box.
 | Option | What we reuse | What we still build | Assessment |
 | --- | --- | --- | --- |
 | Extend existing Observatory | Auth, metrics/log adapters, controls, intents, deployment | Rich playground, coherent workflow, State/runner adapters | Strong backend starting point; UI needs restructuring |
-| Dedicated Anvil frontend | Existing Anvil backends and scope rules | Focused chat/parameters, run workspace, PRDs and Pi UI | Best match for the primary workflows; recommended direction |
+| Dedicated Anvil frontend + Pi Web | Anvil backends, scope rules and Pi conversation/session UI | Run workspace, recipes, fleet, State correlation and integration glue | Best match for the revised workflows; recommended spike |
 | Workbench + unmodified Open WebUI | Mature conversations, model presets, connector/tool integrations | Cross-app identity/context handoff plus all Anvil work areas | Credible companion; test before forking |
 | Fork Open WebUI | Its existing frontend, backend, chat and settings | Experiment/recipe lifecycle, HUD, Anvil claims, Pi runner, evidence and upstream maintenance | Attractive if rich chat becomes the dominant product; not yet demonstrated |
 
@@ -274,7 +323,10 @@ state. It was read for orientation; no planning, claiming or state mutation ran.
 | Prompt playground | Current experiments explicitly prohibit browser-supplied prompts/models | New bounded authorized model-session contract |
 | Connectors/presets | Serving routes exist; full web preset management is absent from inspected console | Explicit catalog, grants, precedence and revisions |
 | Anvil PRDs/tasks | Separate Anvil CLI/MCP and versioned reads exist | Project adapter; no direct SQLite coupling |
-| Pi environments | Upstream RPC/SDK interfaces documented | Pinned runner service and isolation/claim lifecycle |
+| Pi environments | Upstream RPC/SDK and third-party Pi Web documented | Reuse spike, pinned session service and isolation/claim lifecycle |
+| Connect access | Existing administrator grants/session facade and revocation contract | Compose current controls without duplicating account ownership |
+| Recipe editor | Managed registry/lifecycle exists | Full schema round-trip, candidate revisions, compatible placement and preview |
+| Documentation | README and documentation sources exist | Versioned reader/search; concept has curated summaries |
 
 New contracts should be versioned and independently tested. Include exact
 project/model/recipe identity, operation/run/session IDs, timestamps, source
@@ -378,8 +430,8 @@ promotion and Anvil acceptance gates.
 ## Design decisions still open
 
 - Confirm the default desk and navigation density after using this prototype.
-- Decide whether rich Open WebUI conversations are a companion or part of the
-  first Anvil implementation, using the integration spike above.
+- Prove Pi Web embedding, identity and extension compatibility before choosing
+  reuse versus a thin RPC client. Open WebUI remains an optional companion.
 - Define the initial Pi task/tool grants, runner placement and lifecycle limits.
 - Decide conversation retention and whether presets are personal or project-wide.
 - Keep the final name and repository extraction decision until those choices settle.
