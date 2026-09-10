@@ -21,7 +21,7 @@ def test_pi_chat_keeps_drafts_isolated_and_transcript_ordered() -> None:
       const source = (await readFile({json.dumps(str(SOURCE))}, "utf8"))
         .replace(/^import .*;$/gm, "");
       const module = await import(`data:text/javascript;base64,${{Buffer.from(source).toString("base64")}}`);
-      const {{ conversationDraft, replaceTranscript, sessionPresentationChanged, transcriptItems }} = module;
+      const {{ conversationDraft, pendingTranscriptControlIds, replaceTranscript, sessionPresentationChanged, shouldPreserveTranscriptControls, transcriptItems }} = module;
 
       const drafts = new Map();
       const fresh = conversationDraft(drafts, "project/task");
@@ -59,6 +59,14 @@ def test_pi_chat_keeps_drafts_isolated_and_transcript_ordered() -> None:
 
       const awaitingJournal = transcriptItems(events.slice(0, 13), new Set(["request-1"]));
       assert.equal(awaitingJournal.at(-1).resolved, true);
+      assert.deepEqual(pendingTranscriptControlIds(events.slice(0, 13)), ["request-1"]);
+      assert.equal(shouldPreserveTranscriptControls(events.slice(0, 13), [], []), false);
+      assert.equal(shouldPreserveTranscriptControls(events.slice(0, 13), [], ["request-1"]), true);
+      assert.equal(shouldPreserveTranscriptControls(events, [], ["request-1"]), false);
+      assert.equal(shouldPreserveTranscriptControls(events.slice(0, 13), new Set(["request-1"]), ["request-1"]), false);
+      const unsupported = [{{ cursor: 15, kind: "extension", data: {{ type: "extension_ui_request", id: "notice-1", method: "notify" }} }}];
+      assert.deepEqual(pendingTranscriptControlIds(unsupported), []);
+      assert.equal(shouldPreserveTranscriptControls(unsupported, [], ["notice-1"]), false);
 
       assert.equal(sessionPresentationChanged(
         {{ status: "running", model_id: "a", updated_at: 1 }},
@@ -76,6 +84,8 @@ def test_pi_chat_keeps_drafts_isolated_and_transcript_ordered() -> None:
         replaceChildren(...nodes) {{ this.replacements += 1; this.nodes = nodes; }},
       }};
       assert.equal(replaceTranscript(output, ["new event"], focused), false);
+      assert.equal(output.replacements, 0);
+      assert.equal(replaceTranscript(output, ["new event"], {{ id: "outside" }}, true), false);
       assert.equal(output.replacements, 0);
       assert.equal(replaceTranscript(output, ["new event"], {{ id: "composer" }}), true);
       assert.equal(output.replacements, 1);

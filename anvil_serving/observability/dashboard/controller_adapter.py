@@ -341,7 +341,11 @@ class ControllerAdapter:
         }
         if any(reviewed.get(key) != value for key, value in expected.items()):
             return None
-        if not isinstance(reviewed.get("argv"), list) or not reviewed["argv"]:
+        if any(type(reviewed.get(key)) is not str or re.fullmatch(r"[a-f0-9]{64}", reviewed[key]) is None
+               for key in ("policy_digest", "candidate_digest")):
+            return None
+        if any(type(reviewed.get(key)) is not int or not 1 <= reviewed[key] <= maximum
+               for key, maximum in (("timeout_seconds", 30), ("max_output_bytes", 65536))):
             return None
         return reviewed
 
@@ -497,7 +501,8 @@ class ControllerAdapter:
             owner_preview = self._call(preview_tool, preview_args)
         if action_id == "container.exec":
             # The typed owner returns a read-only envelope.  Its inner preview
-            # pins the exact container, argv and bounds used for confirmation.
+            # pins the exact container, private argv and execution bounds. The
+            # transport deliberately redacts argv; the owner digests bind it.
             command = arguments.get("command_id")
             reviewed = self._container_preview(resource, command, owner_preview) if isinstance(command, str) else None
             if reviewed is None:
@@ -553,7 +558,7 @@ class ControllerAdapter:
         if action_id == "container.exec":
             result["diagnostic"] = {
                 key: copy.deepcopy(owner_preview[key])
-                for key in ("command_id", "container_id", "argv", "timeout_seconds", "max_output_bytes")
+                for key in ("command_id", "container_id", "timeout_seconds", "max_output_bytes")
                 if key in owner_preview
             }
         return result

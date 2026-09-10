@@ -6,8 +6,9 @@ from anvil_serving.workbench_app.task_sandbox import CommandResult, ProductionTa
 BASE = "a" * 40
 
 
-def _config():
-    return {"engine_binary": "/usr/bin/docker", "image": "example/pi@sha256:" + "b" * 64, "uid": 1000, "gid": 1000, "cpus": 2, "memory_bytes": 2 * 1024**3, "pids": 128}
+def _config(owner_path=None):
+    owner = owner_path.stat() if owner_path is not None else None
+    return {"engine_binary": "/usr/bin/docker", "image": "example/pi@sha256:" + "b" * 64, "uid": owner.st_uid if owner else 1000, "gid": owner.st_gid if owner else 1000, "cpus": 2, "memory_bytes": 2 * 1024**3, "pids": 128}
 
 
 def test_capture_uses_only_pinned_unprivileged_networkless_containers(tmp_path):
@@ -54,7 +55,7 @@ def test_failed_verification_retains_results_and_never_marks_transfer(tmp_path):
         (result_root / "0.out").write_text("failed output", encoding="utf-8")
         (result_root / "0.err").write_text("failure", encoding="utf-8")
         return CommandResult(0, b"", b"", 0.1)
-    evidence = ProductionTaskSandbox(_config(), run=run).verify_transfer(runner, verifier, target, BASE, b"diff --git a/x b/x\n", ("false",))
+    evidence = ProductionTaskSandbox(_config(tmp_path), run=run).verify_transfer(runner, verifier, target, BASE, b"diff --git a/x b/x\n", ("false",))
     assert evidence["applied"] is False
     assert evidence["commands"][0]["stdout"] == "failed output"
     argv = next(argv for argv in calls if argv[0] != "git")
@@ -103,7 +104,7 @@ def test_crash_recovery_refuses_target_with_only_an_executable_mode_difference(t
         (result_root / "0.err").write_text("", encoding="utf-8")
         return CommandResult(0, b"", b"", 0.01)
 
-    sandbox = ProductionTaskSandbox(_config(), run=run)
+    sandbox = ProductionTaskSandbox(_config(tmp_path), run=run)
     try:
         sandbox.verify_transfer(runner, verifier, target, BASE, b"diff --git a/x b/x\n", ("true",), already_transferred=True)
     except Exception as exc:

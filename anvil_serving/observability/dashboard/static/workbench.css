@@ -554,6 +554,14 @@ main {
   align-items: center;
   flex-wrap: wrap;
 }
+.pi-chat .form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.pi-chat .form-grid select {
+  width: 100%;
+}
 .tool-event {
   border-left: 3px solid var(--warning);
   background: #0c151e;
@@ -689,6 +697,9 @@ main {
     gap: 18px;
   }
   .pi-chat-layout {
+    grid-template-columns: 1fr;
+  }
+  .pi-chat .form-grid {
     grid-template-columns: 1fr;
   }
   .pi-thread-rail {

@@ -149,7 +149,6 @@ export async function previewAction(resource, action, ctx, extra = {}) {
     if (preview.diagnostic) body.append(kv([
       ["Container", preview.diagnostic.container_id],
       ["Diagnostic", preview.diagnostic.command_id],
-      ["Command arguments", el("code", { text: JSON.stringify(preview.diagnostic.argv) })],
       ["Timeout (seconds)", preview.diagnostic.timeout_seconds],
       ["Maximum output (bytes)", preview.diagnostic.max_output_bytes],
     ]));
