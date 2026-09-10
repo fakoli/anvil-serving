@@ -20,6 +20,7 @@ _DEVICE_TESTS = (
     "container-gated CLI device login reaches only its declared API resource",
     "container-gated CLI device login denies, cancels, and rejects unauthenticated approval",
     "container-gated CLI device login revokes on human disable and browser logout",
+    "container-gated UV passkey registers and approves CLI device login",
 )
 
 def _load_runner(path: Path):
@@ -53,6 +54,7 @@ def _entry() -> None:
         environment = runner._environment(config, Path("/work"), fixture_tmp=fixture)
         if sys.argv[3] == "device":
             environment["ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE"] = "1"
+            environment["ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE"] = "1"
         deadline = time.monotonic() + int(sys.argv[2])
         escalated = False
         for index, name in enumerate(tests):
@@ -215,6 +217,8 @@ def qualify(config_path=None, *, lane="container-baseline") -> dict:
                 "network": {"network_isolation": "docker-none", "published_ports": False},
                 "cleanup": {"container_removed": cleaned, "private_stage_removed": not stage.exists(), "escalation_required": escalated},
                 "ok": passed, "state": "passed" if passed else "failed", "error_code": error}
+    if lane == "device":
+        evidence["scope_limitations"] = ["virtual-webauthn-only", "no-physical-authenticator-or-biometric-evidence"]
     runner._junit(run_dir / "junit.xml", cases)
     for filename, value in (("evidence.json", evidence), ("result.json", {key: evidence[key] for key in ("schema", "lane", "ok", "state", "error_code", "counts")})):
         (run_dir / filename).write_text(json.dumps(value, sort_keys=True) + "\n")

@@ -127,6 +127,14 @@ without reaching the origin. The logout check uses a fresh Connect session
 through the existing identity-provider SSO session. Codes and credentials stay
 in transient fixture state, outside retained evidence.
 
+A fourth scenario uses Chromium's virtual authenticator to enroll a discoverable
+passkey through the pinned provider's real registration and elevation flows.
+It requires user verification, clears browser cookies, signs in using the
+passkey, and approves an actual CLI request. The fixture's separate operator
+identity keeps the tested user unprivileged. Evidence labels this coverage
+`virtual-webauthn-only`: it does not verify physical presence, biometrics,
+Touch ID, Face ID, 1Password integration, or credential sync and backup.
+
 Expiry and single-use redemption after a lost response are covered separately by
 authority and CLI unit tests, using an injected clock where appropriate. The
 device lane does not claim those are browser end-to-end tests. Active-stream
