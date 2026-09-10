@@ -18,6 +18,13 @@ def _result(status="passed"):
     return json.dumps({"tests": [{"name": name, "status": status, "duration_seconds": 0.1} for name in runner._TESTS], "escalated": False}).encode()
 
 
+def _revocation_result() -> bytes:
+    return json.dumps({"tests": [
+        {"name": name, "status": "passed", "duration_seconds": 0.1, "closure_ms": 1}
+        for name in subject._REVOCATION_TESTS
+    ], "escalated": False}).encode()
+
+
 @pytest.mark.parametrize("raw", [b"{}", b"private-sentinel", b'{"tests":[],"escalated":false}', _result("private-sentinel"), _result().replace(b'0.1', b'NaN')])
 def test_container_result_refuses_unknown_or_incomplete_metadata(raw):
     with pytest.raises(runner.QualificationError) as caught:
@@ -104,6 +111,60 @@ def test_missing_image_receipt_never_downloads_or_executes(tmp_path, monkeypatch
     monkeypatch.setattr(image, "_docker", lambda *args, **kwargs: pytest.fail("unexpected Docker operation"))
     with pytest.raises(runner.QualificationError, match="prepare"):
         subject.qualify(config)
+
+
+def test_revocation_lane_uses_the_pinned_container_and_retains_only_stream_measurements(tmp_path, monkeypatch):
+    config, paths = _inputs(tmp_path)
+    for filename in ("qualification.py", "_qualification_supervisor.py", "qualification_container_run.py"):
+        destination = paths["source"] / "anvil_serving/connect" / filename
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(Path(subject.__file__).with_name(filename).read_bytes())
+    monkeypatch.setattr(runner, "_source_metadata", lambda _: {"revision": "a" * 40, "dirty": False})
+    monkeypatch.setattr(runner, "_tracked_connect_files", lambda _: [Path("connect/go.mod")])
+    monkeypatch.setattr(image, "_cached_receipt", lambda *args: "sha256:" + "c" * 64)
+    monkeypatch.setattr(image, "_image", lambda *args, **kwargs: "sha256:" + "c" * 64)
+    observed = {}
+    def attached(args, environment, timeout):
+        observed["args"] = args
+        observed["environment"] = environment
+        observed["timeout"] = timeout
+        assert args[-1] == "revocation"
+        assert args[args.index("--network") + 1] == "none"
+        assert args[args.index("--pull") + 1] == "never"
+        assert "--read-only" in args and "--publish" not in args and "--gpus" not in args
+        assert set(environment) == {"PATH", "LANG", "LC_ALL", "DOCKER_CONFIG"}
+        return _revocation_result()
+    monkeypatch.setattr(subject, "_attached", attached)
+    monkeypatch.setattr(image, "_docker", lambda *args, **kwargs: (0, b""))
+    result = subject.qualify(config, lane="revocation")
+    assert result["ok"] is True and result["counts"] == {"passed": 5, "failed": 0, "skipped": 0, "not_run": 0}
+    evidence = json.loads((Path(result["artifact_dir"]) / "evidence.json").read_text())
+    assert [case["name"] for case in evidence["tests"]] == list(subject._REVOCATION_TESTS)
+    assert [case["closure_ms"] for case in evidence["tests"]] == [1, 1, 1, 1, 1]
+    assert "scope_limitations" not in evidence
+    assert observed["args"][-1] == "revocation"
+
+
+def test_revocation_registry_and_unknown_lane_are_closed():
+    assert subject._REVOCATION_TESTS[:4] == subject._DEVICE_TESTS[6:]
+    assert subject._REVOCATION_TESTS[-1] == subject._SESSION_EXPIRY_TEST
+    assert subject._SESSION_EXPIRY_TEST in subject._STREAM_CLOSURE_TESTS
+    assert len(subject._DEVICE_TESTS) == 10
+    assert subject._lane_tests("revocation", runner._TESTS) == subject._REVOCATION_TESTS
+    assert subject._fixture_flags("revocation") == {
+        "ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE": "1",
+        "ANVIL_CONNECT_BROWSER_EXPIRY_FIXTURE": "1",
+    }
+    assert subject._fixture_flags("device") == {
+        "ANVIL_CONNECT_BROWSER_DEVICE_FIXTURE": "1",
+        "ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE": "1",
+    }
+    with pytest.raises(ValueError):
+        subject._lane_tests("unknown", runner._TESTS)
+    with pytest.raises(ValueError):
+        subject._fixture_flags("unknown")
+    with pytest.raises(runner.QualificationError):
+        subject.qualify(lane="unknown")
 
 
 @pytest.mark.parametrize("uid,gid", [(0,1000),(1000,0),(0,0)])

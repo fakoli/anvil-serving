@@ -301,8 +301,26 @@ def test_container_baseline_dispatch_uses_saved_configuration(monkeypatch, capsy
     assert json.loads(capsys.readouterr().out)["data"]["counts"]["passed"] == 2
 
 
+def test_revocation_dispatch_uses_saved_configuration_and_five_case_contract(monkeypatch, capsys):
+    calls = []
+    def qualify(config, *, lane):
+        calls.append((config, lane))
+        return {"ok": True, "state": "passed", "counts": {"passed": 5, "failed": 0, "skipped": 0, "not_run": 0}}
+    monkeypatch.setitem(sys.modules, "anvil_serving.connect.qualification_container_run", SimpleNamespace(qualify=qualify, _DEVICE_TESTS=("device",), _REVOCATION_TESTS=("one", "two", "three", "four", "five")))
+    assert cli.main(["connect", "qualify", "--lane", "revocation", "--config", "/private/settings.toml", "--json"]) == 0
+    assert calls == [("/private/settings.toml", "revocation")]
+    assert json.loads(capsys.readouterr().out)["data"]["counts"]["passed"] == 5
+
+
 def test_device_preflight_reports_all_required_scenarios_not_run(tmp_path):
     result = dispatch(["qualify", "--lane", "device", "--config", str(tmp_path / "missing.toml")])
     assert result.error is not None
     assert result.data["state"] == "not-run"
     assert result.data["counts"] == {"passed":0,"failed":0,"skipped":0,"not_run":10}
+
+
+def test_revocation_preflight_reports_only_its_five_scenarios_not_run(tmp_path):
+    result = dispatch(["qualify", "--lane", "revocation", "--config", str(tmp_path / "missing.toml")])
+    assert result.error is not None
+    assert result.data["state"] == "not-run"
+    assert result.data["counts"] == {"passed":0,"failed":0,"skipped":0,"not_run":5}
