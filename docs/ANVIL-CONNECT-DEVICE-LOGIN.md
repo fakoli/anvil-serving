@@ -7,18 +7,29 @@ callback listener during sign-in.
 
 ## Use the client
 
-Obtain an approved client declaration that includes `device_authorization` and
-provide its `local_key_env` variable through your private secret mechanism.
-Each loopback HTTP request requires that local caller key. This is not a
-same-user process-isolation boundary: a compromised process running as your
-user may be able to read your files, environment or process memory.
-The remote credential is obtained during login; you do not need to supply the
-declaration's `remote_key_env` variable for this command.
+Once the client has been installed and configured, run:
 
 ```sh
-anvil-connect validate --mode client --config /absolute/client.json
-anvil-connect login --config /absolute/client.json
+anvil-connect login
 ```
+
+Connect loads `~/.config/anvil-connect/client.json` and the protected `local-key`
+file beside it. The declaration must include `device_authorization`. Initial
+setup supplies these files; login never creates or replaces credentials. The
+key directory must be owned by your user with mode `0700`, and the regular,
+non-linked key file must have mode `0600`. No environment setup or key-loading
+script is needed.
+
+Use `--config /absolute/client.json` for an alternate installation; its key is
+loaded from the same directory. An explicitly supplied `local_key_env` value
+has precedence and fails if invalid. `--json` provides machine-readable status;
+the default output is written for interactive terminal use. Login never reads
+the `remote-key` file, shell startup files, or a shared `.env`.
+
+Each loopback HTTP request requires the local caller key. This is not a
+same-user process-isolation boundary: a compromised process running as your
+user may be able to read your files, environment or process memory. The remote
+credential is obtained during browser approval and stays in memory.
 
 1. Open the displayed verification URL in a browser you trust. It can be on
    your laptop or phone while Connect runs in an SSH session.
