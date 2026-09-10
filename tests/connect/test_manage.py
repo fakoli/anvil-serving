@@ -6,7 +6,6 @@ import json
 import os
 import platform
 import re
-import stat
 import sys
 import tempfile
 from types import SimpleNamespace
