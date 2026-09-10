@@ -610,12 +610,32 @@ def _managed_authority_ready(manifest: Path) -> None:
         raise GuestFailure
 
 
+def _ingress_probe_script(*, denied: bool) -> str:
+    request = b"GET /_anvil-connect/login HTTP/1.1\r\nHost: dash.example.test\r\nConnection: close\r\n\r\n"
+    common = (
+        "import http.client,socket\n"
+        "s=socket.socket(socket.AF_UNIX)\ns.settimeout(3)\n"
+        "s.connect('/run/anvil-test/ingress/ingress.sock')\n"
+    )
+    if denied:
+        # Only a completed connect followed by EOF/reset counts as rejection.
+        # Missing sockets, permission errors and timeouts must still fail.
+        return common + (
+            "try:\n s.sendall(" + repr(request) + ")\n data=s.recv(1)\n"
+            "except (ConnectionResetError,BrokenPipeError):\n raise SystemExit(0)\n"
+            "raise SystemExit(0 if not data else 1)\n"
+        )
+    return common + (
+        "s.sendall(" + repr(request) + ")\n"
+        "response=http.client.HTTPResponse(s)\nresponse.begin()\n"
+        "raise SystemExit(0 if response.status == 302 else 1)\n"
+    )
+
+
 def _ingress_checks() -> None:
-    hostile = "import socket; s=socket.socket(socket.AF_UNIX); s.connect('/run/anvil-test/ingress/ingress.sock'); s.sendall(b'GET / HTTP/1.1\\r\\nHost: dash.example.test\\r\\n\\r\\n'); raise SystemExit(0 if not s.recv(1) else 1)"
     for _ in range(2):
-        _command(["/usr/bin/setpriv", "--reuid=21006", "--regid=21006", "--groups=21010", "/usr/bin/python3", "-c", hostile])
-    edge = "import socket; s=socket.socket(socket.AF_UNIX); s.connect('/run/anvil-test/ingress/ingress.sock'); s.sendall(b'GET /_anvil-connect/login HTTP/1.1\\r\\nHost: dash.example.test\\r\\n\\r\\n'); raise SystemExit(0 if s.recv(1) else 1)"
-    _command(["/usr/bin/setpriv", "--reuid=21002", "--regid=21002", "--groups=21010", "/usr/bin/python3", "-c", edge])
+        _command(["/usr/bin/setpriv", "--reuid=21006", "--regid=21006", "--groups=21010", "/usr/bin/python3", "-c", _ingress_probe_script(denied=True)])
+    _command(["/usr/bin/setpriv", "--reuid=21002", "--regid=21002", "--groups=21010", "/usr/bin/python3", "-c", _ingress_probe_script(denied=False)])
 
 
 def _socket_ownership() -> None:
@@ -649,7 +669,7 @@ def _private_denials() -> None:
 
 def _bound_loopback(port: int) -> tuple[subprocess.Popen[bytes], socket.socket]:
     parent, child = socket.socketpair()
-    script = "import os,socket,sys; s=socket.socket(); s.bind(('127.0.0.1',int(sys.argv[1]))); os.write(int(sys.argv[2]),b'1'); sys.stdin.buffer.read(1); s.close()"
+    script = "import os,socket,sys; s=socket.socket(); s.bind(('127.0.0.1',int(sys.argv[1]))); s.listen(1); os.write(int(sys.argv[2]),b'1'); sys.stdin.buffer.read(1); s.close()"
     try:
         process = subprocess.Popen(["/usr/bin/python3", "-c", script, str(port), str(child.fileno())], stdin=subprocess.PIPE,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True, pass_fds=(child.fileno(),),
@@ -709,10 +729,10 @@ def _restart_and_rollback(manifest: Path) -> None:
     before = {unit: _capture(["/usr/bin/systemctl", "show", "--property=ActiveState,FragmentPath", unit], maximum=4096) for unit in SERVICE_UNITS}
     # Keep an unrelated loopback listener open while a valid, new gateway
     # generation is rendered. Preflight succeeds; activation fails only after
-    # manager publication/restart reaches gateway bind, so rollback must restore
+    # manager publication/restart reaches the tunnel bind, so rollback must restore
     # the prior generation and service set.
     rejected = build_manifest()
-    rejected["gateway"]["gateway"]["listen"] = "127.0.0.1:27179"
+    rejected["gateway"]["tunnel_listen"] = "127.0.0.1:27179"
     process, channel = _bound_loopback(27179)
     try:
         with tempfile.TemporaryDirectory(prefix="failed-activation-", dir="/run") as directory:
@@ -720,8 +740,9 @@ def _restart_and_rollback(manifest: Path) -> None:
             bad.write_text(json.dumps(rejected), encoding="utf-8")
             try:
                 manager.up_many(bad, targets, apply=True)
-            except Exception:
-                pass
+            except manager.ManageError as exc:
+                if not exc.may_have_executed:
+                    raise GuestFailure from exc
             else:
                 raise GuestFailure
     finally:
