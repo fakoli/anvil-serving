@@ -30,6 +30,7 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     qualify_mode = qualification.add_mutually_exclusive_group()
     qualify_mode.add_argument("--lane", choices=("baseline", "container-baseline", "device", "revocation"), action=_Once)
     qualify_mode.add_argument("--prepare-container", action="store_true")
+    qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
     for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration"):
         leaf = actions.add_parser(action, allow_abbrev=False)
@@ -64,16 +65,21 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
 def _qualify(args: argparse.Namespace) -> CommandResult:
     from .qualification import QualificationError, qualify
 
-    if args.prepare_container:
-        from .qualification_container import prepare
+    if args.prepare_container or args.prepare_vm:
+        if args.prepare_vm:
+            from .qualification_vm import prepare
+            preparation_kind = "vm"
+        else:
+            from .qualification_container import prepare
+            preparation_kind = "container"
 
         try:
             return CommandResult(data=prepare(args.config))
         except QualificationError as exc:
             return CommandResult(data={
-                "schema": "anvil-connect.qualification-container/v1", "ok": False,
+                "schema": f"anvil-connect.qualification-{preparation_kind}/v1", "ok": False,
                 "error_code": exc.code,
-            }, error=OperatorError("Connect qualification container preparation failed.", code=exc.code))
+            }, error=OperatorError(f"Connect qualification {preparation_kind} preparation failed.", code=exc.code))
     expected_count = 2
     if args.lane in {"device", "revocation"}:
         from .qualification_container_run import _DEVICE_TESTS, _REVOCATION_TESTS
