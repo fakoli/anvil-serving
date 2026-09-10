@@ -190,6 +190,29 @@ func TestForwarderConfinesRedirects(t *testing.T) {
 	}
 }
 
+func TestForwarderExplainsLocalAuthenticationFailureBeforeUpstream(t *testing.T) {
+	f := newForwardFixture(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("unauthorized request reached upstream")
+	}))
+	for _, key := range []string{"", "invalid-local-key"} {
+		r := f.request(t, "GET", "/v1/models", nil)
+		r.URL.Scheme, r.URL.Host = "", "" // incoming origin-form request
+		r.Header.Del("Authorization")
+		if key != "" {
+			r.Header.Set("Authorization", "Bearer "+key)
+		}
+		response := httptest.NewRecorder()
+		f.forwarder.ServeHTTP(response, r)
+		body := response.Body.String()
+		if response.Code != http.StatusUnauthorized || response.Header().Get("WWW-Authenticate") != `Bearer realm="anvil-connect-local"` || !strings.Contains(body, "missing or invalid local API key") || !strings.Contains(body, "Authorization: Bearer <local-key>") {
+			t.Fatal("local authentication failure did not explain the caller remedy")
+		}
+		if strings.Contains(body, f.localKey) || strings.Contains(body, f.remoteKey) || f.lookups.Load() != 0 || f.dials.Load() != 0 {
+			t.Fatal("local denial exposed or used credentials")
+		}
+	}
+}
+
 func TestForwarderAcceptsExactlyOneXAPIKeyCarrier(t *testing.T) {
 	var dispatched atomic.Int32
 	f := newForwardFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -267,6 +290,10 @@ func TestForwarderDoesNotRewriteRemoteAuthenticationFailure(t *testing.T) {
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusUnauthorized {
 		t.Fatal("remote authentication failure was hidden", response.StatusCode)
+	}
+	body, _ := io.ReadAll(response.Body)
+	if string(body) != "remote key denied\n" || response.Header.Get("WWW-Authenticate") == `Bearer realm="anvil-connect-local"` {
+		t.Fatal("upstream denial was relabeled as a local authentication failure")
 	}
 }
 

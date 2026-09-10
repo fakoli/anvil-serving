@@ -14,6 +14,12 @@ import (
 
 var errLocalKey = errors.New("local client key unavailable")
 
+// loginKeyLocation contains only the selected credential reference, never its value.
+type loginKeyLocation struct {
+	file string
+	env  string
+}
+
 func loginConfigPath(file, home string) (string, error) {
 	if file != "" {
 		if !absolute(file) {
@@ -30,27 +36,29 @@ func loginConfigPath(file, home string) (string, error) {
 // loginSecrets consults only the declared local environment reference, then
 // the fixed local-key sibling of the selected configuration. It never loads
 // shell files, unrelated environment files, or a persisted remote credential.
-func loginSecrets(file string, c clientconfig.Config, lookup func(string) (string, bool)) (func(string) (string, bool), error) {
+func loginSecrets(file string, c clientconfig.Config, lookup func(string) (string, bool)) (func(string) (string, bool), loginKeyLocation, error) {
 	if lookup == nil || !absolute(file) {
-		return nil, errLocalKey
+		return nil, loginKeyLocation{}, errLocalKey
 	}
+	location := loginKeyLocation{env: c.LocalKeyEnv}
 	key, present := lookup(c.LocalKeyEnv)
 	if !present {
+		location = loginKeyLocation{file: filepath.Join(filepath.Dir(file), "local-key")}
 		var err error
-		key, err = loginFileKey(filepath.Join(filepath.Dir(file), "local-key"))
+		key, err = loginFileKey(location.file)
 		if err != nil {
-			return nil, errLocalKey
+			return nil, loginKeyLocation{}, errLocalKey
 		}
 	}
 	if !client.ValidLocalKey(key) {
-		return nil, errLocalKey
+		return nil, loginKeyLocation{}, errLocalKey
 	}
 	return func(name string) (string, bool) {
 		if name == c.LocalKeyEnv {
 			return key, true
 		}
 		return "", false
-	}, nil
+	}, location, nil
 }
 
 // The pinned directory and no-follow file descriptor retain the private-file
