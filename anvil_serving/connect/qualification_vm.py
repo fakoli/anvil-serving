@@ -244,8 +244,11 @@ def _signed_sums(cache: Path, pins: dict[str, Any], *, timeout: float) -> None:
         valid = {line.split()[2] for line in statuses if line.startswith("[GNUPG:] VALIDSIG ") and len(line.split()) >= 3}
         if code != 0 or valid != {pins["signer_fingerprint"]}:
             raise _source_error("VM signed checksums have an unexpected signer")
-        expected = f"{pins['image_sha256']}  {_CACHE_NAME}"
-        if expected not in sums.read_text(encoding="ascii", errors="strict").splitlines():
+        # GNU checksum files use a second space for text mode and '*' for
+        # binary mode. Canonical publishes cloud images with the binary marker.
+        expected = {f"{pins['image_sha256']} {mode}{_CACHE_NAME}" for mode in (" ", "*")}
+        matches = [line for line in sums.read_text(encoding="ascii", errors="strict").splitlines() if line in expected]
+        if len(matches) != 1:
             raise _source_error("VM image checksum is absent from signed checksums")
     finally:
         for path in (sums, signature):
