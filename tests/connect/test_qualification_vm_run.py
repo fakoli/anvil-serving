@@ -44,7 +44,7 @@ def test_passing_service_samples_reject_nonactive_or_incomplete_values(mutation)
     value = result()
     sample = value["service_samples"]["before_restart"]["gateway"]
     if mutation == "zero-peak":
-        sample["memory_peak_bytes"] = 0
+        sample.update(memory_current_bytes=0, memory_peak_bytes=0)
     elif mutation == "zero-tasks":
         sample["tasks_current"] = 0
     elif mutation == "missing-phase":
