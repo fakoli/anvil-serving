@@ -42,3 +42,34 @@ func TestReadAcceptsOnlyFixedAPILocalClient(t *testing.T) {
 		t.Fatal("open declaration grammar accepted")
 	}
 }
+
+func TestDeviceAuthorizationIsOptionalButClosed(t *testing.T) {
+	valid := validConfig()
+	valid.DeviceAuthorization = &DeviceAuthorization{BrowserHost: "dash.example.test", ApprovalPath: "/app/_anvil-connect/device", APIResource: "router", Methods: []string{"POST"}}
+	if valid.Validate() != nil {
+		t.Fatal("valid fixed device endpoint rejected")
+	}
+	getOnly := valid
+	getOnly.DeviceAuthorization = &DeviceAuthorization{BrowserHost: valid.DeviceAuthorization.BrowserHost, ApprovalPath: valid.DeviceAuthorization.ApprovalPath, APIResource: valid.DeviceAuthorization.APIResource, Methods: []string{"GET"}}
+	if getOnly.Validate() != nil {
+		t.Fatal("GET-only device grant rejected")
+	}
+	for name, mutate := range map[string]func(*Config){
+		"root-path":      func(c *Config) { c.DeviceAuthorization.ApprovalPath = "/" },
+		"trailing-path":  func(c *Config) { c.DeviceAuthorization.ApprovalPath = "/app/" },
+		"wrong-resource": func(c *Config) { c.DeviceAuthorization.APIResource = "other" },
+		"scope-widen":    func(c *Config) { c.DeviceAuthorization.Methods = []string{"DELETE"} },
+		"empty-methods":  func(c *Config) { c.DeviceAuthorization.Methods = nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := valid
+			copy := *valid.DeviceAuthorization
+			copy.Methods = append([]string(nil), valid.DeviceAuthorization.Methods...)
+			candidate.DeviceAuthorization = &copy
+			mutate(&candidate)
+			if candidate.Validate() == nil {
+				t.Fatal("open or widened device endpoint accepted")
+			}
+		})
+	}
+}

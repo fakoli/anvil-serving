@@ -215,3 +215,66 @@ func TestSignedIdentityGatewayBinding(t *testing.T) {
 		t.Fatal("identity key was reused across resources")
 	}
 }
+
+func deviceGateway(t *testing.T, label string) Gateway {
+	t.Helper()
+	g := gateway(t)
+	api := g.Resources[0]
+	api.Rule.Methods = []string{"GET", "POST"}
+	g.Resources[0] = api
+	browser := api
+	browser.Rule.ID, browser.Rule.Host, browser.Rule.PathPrefix = "dash", "dash.example.test", "/app"
+	browser.Rule.Access, browser.Rule.NativeAuth, browser.Rule.Methods = "browser", "none", []string{"GET", "POST"}
+	browser.Connector, browser.TunnelAddress = "dash-origin", "127.0.0.1:19001"
+	g.Resources = append(g.Resources, browser)
+	g.DeviceAuthorizations = []DeviceAuthorization{{BrowserResource: "dash", APIResource: api.Rule.ID, Methods: []string{"POST"}, Label: label, Principals: map[string]string{"human:" + strings.Repeat("a", 64): "owner"}}}
+	return g
+}
+
+func TestDeviceAuthorizationOptionalAndUnicodeClosedGrammar(t *testing.T) {
+	omitted := gateway(t)
+	if omitted.DeviceAuthorizations != nil || omitted.Validate() != nil {
+		t.Fatal("omitted device authorization default changed")
+	}
+	empty := gateway(t)
+	empty.DeviceAuthorizations = []DeviceAuthorization{}
+	if empty.Validate() == nil {
+		t.Fatal("explicit empty device authorization list accepted")
+	}
+	valid := deviceGateway(t, "ok")
+	getOnly := valid
+	getOnly.DeviceAuthorizations = append([]DeviceAuthorization(nil), valid.DeviceAuthorizations...)
+	getOnly.DeviceAuthorizations[0].Methods = []string{"GET"}
+	if getOnly.Validate() != nil {
+		t.Fatal("GET-only device API grant rejected")
+	}
+	missingBrowserPost := valid
+	missingBrowserPost.Resources = append([]Resource(nil), valid.Resources...)
+	missingBrowserPost.Resources[1].Rule.Methods = []string{"GET"}
+	if missingBrowserPost.Validate() == nil {
+		t.Fatal("device browser without reserved control POST accepted")
+	}
+	data, err := json.Marshal(valid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadGateway(bytes.NewReader(data)); err != nil {
+		t.Fatal("valid device authorization rejected", err)
+	}
+	for name, malformed := range map[string][]byte{
+		"invalid-utf8":   bytes.Replace(data, []byte(`"label":"ok"`), []byte{'"', 'l', 'a', 'b', 'e', 'l', '"', ':', '"', 0xff, '"'}, 1),
+		"high-surrogate": bytes.Replace(data, []byte(`"label":"ok"`), []byte(`"label":"\ud800"`), 1),
+		"low-surrogate":  bytes.Replace(data, []byte(`"label":"ok"`), []byte(`"label":"\udc00"`), 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ReadGateway(bytes.NewReader(malformed)); err == nil {
+				t.Fatal("malformed device label accepted")
+			}
+		})
+	}
+	pair := bytes.Replace(data, []byte(`"label":"ok"`), []byte(`"label":"\ud83d\ude00"`), 1)
+	decoded, err := ReadGateway(bytes.NewReader(pair))
+	if err != nil || decoded.DeviceAuthorizations[0].Label != "😀" {
+		t.Fatal("valid unicode surrogate pair rejected")
+	}
+}

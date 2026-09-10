@@ -433,6 +433,48 @@ func (m *Manager) Check(admitted Admission) error {
 	})
 }
 
+// CheckPrincipal is the narrow device-credential revocation fence. It never
+// returns a subject, session credential, or resource grant: callers can only
+// prove that the opaque human remains enabled at the exact generation that
+// approved a device request.
+func (m *Manager) CheckPrincipal(id string, generation uint64) error {
+	if !config.ValidHumanID(id) || generation == 0 {
+		return ErrDenied
+	}
+	return m.state.View(func(tx *store.Tx) error {
+		var human Human
+		if tx.Get("principals", id, &human) != nil || human.ID != id || human.Disabled || human.Generation != generation {
+			return ErrDenied
+		}
+		return nil
+	})
+}
+
+// CheckDeviceSession rechecks only the opaque approving browser session and its
+// human generation. It does not disclose a host, resource, cookie, or IdP data.
+func (m *Manager) CheckDeviceSession(id string, generation uint64, principal string, principalGeneration uint64) error {
+	if len(id) != 32 || generation == 0 || !config.ValidHumanID(principal) || principalGeneration == 0 {
+		return ErrDenied
+	}
+	for _, c := range id {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			return ErrDenied
+		}
+	}
+	return m.state.View(func(tx *store.Tx) error {
+		var current Session
+		var human Human
+		if tx.Get("sessions", sessionRecord(id), &current) != nil {
+			return ErrDenied
+		}
+		rule, configured := m.rules[current.Resource]
+		if current.ID != id || current.Generation != generation || current.Principal != principal || current.PrincipalGeneration != principalGeneration || !configured || rule.Host != current.Host || current.Revoked || current.Epoch != tx.Epoch() || !tx.Now().Before(current.ExpiresAt) || tx.Now().Before(current.IssuedAt) || tx.Get("principals", principal, &human) != nil || human.Disabled || human.Generation != principalGeneration || !hasResource(human.Resources, current.Resource) {
+			return ErrDenied
+		}
+		return nil
+	})
+}
+
 // Logout invalidates every Connect session for this human across all resource
 // hosts by advancing the human generation. It never touches an
 // application/dashboard cookie or the Authelia federated session.

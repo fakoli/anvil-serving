@@ -23,6 +23,7 @@ import (
 const usage = `anvil-connect validate --mode client --config FILE
 anvil-connect preflight --mode client --config FILE
 anvil-connect client --config FILE
+anvil-connect login --config FILE
 anvil-connect keygen --output PRIVATE_FILE
 `
 
@@ -63,7 +64,7 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	case "validate", "preflight":
 		fs.StringVar(&mode, "mode", "", "native mode")
 		fs.StringVar(&file, "config", "", "closed declaration")
-	case "client":
+	case "client", "login":
 		mode = "client"
 		fs.StringVar(&file, "config", "", "closed declaration")
 	case "keygen":
@@ -114,11 +115,16 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 		err = serveClient(ctx, local, lookup, func() error {
 			return json.NewEncoder(out).Encode(map[string]string{"mode": "client", "status": "running"})
 		})
-		if err != nil {
-			return fail()
-		}
-		return status(map[string]string{"mode": "client", "status": "stopped"})
+	case "login":
+		err = loginClient(ctx, local, lookup, out)
 	default:
 		return invalid()
 	}
+	if err != nil {
+		if command == "login" {
+			return loginFailure(diagnostics, err)
+		}
+		return fail()
+	}
+	return status(map[string]string{"mode": "client", "status": "stopped"})
 }

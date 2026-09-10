@@ -19,6 +19,7 @@ import (
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/control"
 	"github.com/fakoli/anvil-serving/connect/internal/credential"
+	"github.com/fakoli/anvil-serving/connect/internal/device"
 	"github.com/fakoli/anvil-serving/connect/internal/httpedge"
 	"github.com/fakoli/anvil-serving/connect/internal/identity"
 	"github.com/fakoli/anvil-serving/connect/internal/localhttp"
@@ -197,6 +198,7 @@ func StartGateway(parent context.Context, declaration GatewayConfig, secrets Sec
 	}
 	var sessions *session.Manager
 	var browserHandler *httpedge.Browser
+	var devices *device.Authority
 	if len(browserRules) != 0 {
 		secret, ok := secrets(declaration.OIDC.ClientSecretEnv)
 		if !ok || len(secret) < 1 || len(secret) > 4096 {
@@ -207,11 +209,17 @@ func StartGateway(parent context.Context, declaration GatewayConfig, secrets Sec
 			return nil, ErrUnavailable
 		}
 		g.cleanup = append(g.cleanup, sessions.Close)
+		if len(declaration.Gateway.DeviceAuthorizations) != 0 {
+			devices, err = device.New(state, declaration.Gateway, sessions, keys)
+			if err != nil {
+				return nil, ErrUnavailable
+			}
+		}
 		signers, signerErr := identitySigners(declaration.Gateway.Resources, secrets)
 		if signerErr != nil {
 			return nil, ErrUnavailable
 		}
-		browserHandler, err = httpedge.NewBrowserWithIdentity(declaration.Gateway, sessions, signers, dispatcher.BrowserDispatch)
+		browserHandler, err = httpedge.NewBrowserWithIdentityAndDevice(declaration.Gateway, sessions, signers, devices, dispatcher.BrowserDispatch)
 		if err != nil {
 			return nil, ErrUnavailable
 		}

@@ -2,18 +2,24 @@ package httpedge
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/browseridentity"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/device"
 	"github.com/fakoli/anvil-serving/connect/internal/session"
+	"github.com/fakoli/anvil-serving/connect/internal/store"
 )
 
 type browserAuthorityStub struct {
@@ -60,6 +66,19 @@ func (s *browserAuthorityStub) Authenticate(raw, host string) (session.Admission
 
 func (s *browserAuthorityStub) Check(admitted session.Admission) error {
 	if s.revoked.Load() || admitted != s.admitted {
+		return session.ErrDenied
+	}
+	return nil
+}
+
+func (s *browserAuthorityStub) CheckPrincipal(id string, generation uint64) error {
+	if s.revoked.Load() || id != s.admitted.Principal || generation != s.admitted.PrincipalGeneration {
+		return session.ErrDenied
+	}
+	return nil
+}
+func (s *browserAuthorityStub) CheckDeviceSession(id string, generation uint64, principal string, principalGeneration uint64) error {
+	if s.revoked.Load() || id != s.admitted.SessionID || generation != s.admitted.SessionGeneration || principal != s.admitted.Principal || principalGeneration != s.admitted.PrincipalGeneration {
 		return session.ErrDenied
 	}
 	return nil
@@ -514,5 +533,95 @@ func TestSignedIdentityCallbackCompletesBeforeAnyAssertionIsMinted(t *testing.T)
 	}
 	if callbackResponse.Header().Get(browseridentity.Header) != "" || cookieValue(t, callbackResponse, BrowserSessionCookie).Value != "opaque-session" {
 		t.Fatal("callback exposed an identity assertion instead of only a Connect session cookie")
+	}
+}
+
+func TestDeviceApprovalRouteIsReservedAndIssuesOneMemoryOnlyCredential(t *testing.T) {
+	limits := config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 1, DurationSeconds: 30}
+	human := "human:" + strings.Repeat("a", 64)
+	gateway := config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: "127.0.0.1:17890", MaxConcurrent: 4, Resources: []config.Resource{
+		{Rule: config.Rule{ID: "dash", Host: "dash.example.test", PathPrefix: "/app", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: limits}, Connector: "dash-origin", TunnelAddress: "127.0.0.1:17891"},
+		{Rule: config.Rule{ID: "router", Host: "api.example.test", PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: limits}, Connector: "api-origin", TunnelAddress: "127.0.0.1:17892"},
+	}, DeviceAuthorizations: []config.DeviceAuthorization{{BrowserResource: "dash", APIResource: "router", Methods: []string{"POST"}, Label: "Synthetic <device>", Principals: map[string]string{human: "owner"}}}}
+	state, err := store.Open(filepath.Join(t.TempDir(), "authority"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer state.Close()
+	keys, err := access.NewKeys(state, []config.Rule{gateway.Resources[1].Rule})
+	if err != nil || keys.SetPrincipal("owner", []access.Grant{{Resource: "router", Methods: []string{"POST"}}}, false) != nil {
+		t.Fatal("api principal setup failed")
+	}
+	authority := newBrowserAuthorityStub()
+	authority.admitted = session.Admission{SessionID: strings.Repeat("1", 32), SessionGeneration: 1, Principal: human, PrincipalGeneration: 1, Resource: "dash", Host: "dash.example.test", Epoch: strings.Repeat("b", 64), ExpiresAt: time.Now().Add(time.Hour).UTC()}
+	devices, err := device.New(state, gateway, authority, keys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dispatched atomic.Int32
+	browser, err := NewBrowserWithIdentityAndDevice(gateway, authority, nil, devices, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) { dispatched.Add(1) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer browser.Close()
+	path := "/app/_anvil-connect/device"
+	start := browserRequest(http.MethodPost, path+"/start", nil)
+	startResponse := httptest.NewRecorder()
+	browser.ServeHTTP(startResponse, start)
+	var started struct {
+		DeviceCode string `json:"device_code"`
+		UserCode   string `json:"user_code"`
+	}
+	if startResponse.Code != http.StatusOK || json.Unmarshal(startResponse.Body.Bytes(), &started) != nil || len(started.UserCode) != 8 || dispatched.Load() != 0 {
+		t.Fatal("reserved device start reached dashboard or failed")
+	}
+	login := browserRequest(http.MethodGet, path, nil)
+	login.Header.Set("Accept", "text/html")
+	loginResponse := httptest.NewRecorder()
+	browser.ServeHTTP(loginResponse, login)
+	if loginResponse.Code != http.StatusFound || dispatched.Load() != 0 {
+		t.Fatal("unauthenticated approval did not enter Connect login")
+	}
+	binding, ok := devices.Binding("dash")
+	if !ok {
+		t.Fatal("device binding unavailable")
+	}
+	form := url.Values{"user_code": {started.UserCode}, "decision": {"approve"}, "csrf": {devices.CSRF(authority.admitted, binding)}}
+	approve := browserRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+	approve.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	approve.Header.Set("Origin", "https://dash.example.test")
+	approve.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")
+	approved := httptest.NewRecorder()
+	browser.ServeHTTP(approved, approve)
+	if approved.Code != http.StatusOK || strings.Contains(approved.Body.String(), "<device>") || dispatched.Load() != 0 {
+		t.Fatal("approval escaped or reached dashboard origin")
+	}
+	pollPayload, _ := json.Marshal(map[string]string{"device_code": started.DeviceCode})
+	poll := browserRequest(http.MethodPost, path+"/poll", strings.NewReader(string(pollPayload)))
+	poll.Header.Set("Content-Type", "application/json")
+	pollResponse := httptest.NewRecorder()
+	browser.ServeHTTP(pollResponse, poll)
+	var result struct {
+		Status string `json:"status"`
+		Token  string `json:"access_token"`
+	}
+	if pollResponse.Code != http.StatusOK || json.Unmarshal(pollResponse.Body.Bytes(), &result) != nil || result.Status != "approved" || result.Token == "" || dispatched.Load() != 0 {
+		t.Fatal("approved device was not redeemed through reserved route")
+	}
+	if _, err := keys.Authenticate(result.Token, "router", "POST"); err != nil {
+		t.Fatal("device credential did not obey mapped API grant")
+	}
+}
+
+func TestDeviceRequestRejectsDuplicateAndOversizeJSON(t *testing.T) {
+	for _, body := range []string{
+		`{"device_code":"first","device_code":"second"}`,
+		strings.Repeat("x", 513),
+	} {
+		r := httptest.NewRequest(http.MethodPost, "https://dash.example.test/app/_anvil-connect/device/poll", strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		if _, ok := readDeviceRequest(httptest.NewRecorder(), r); ok {
+			t.Fatal("ambiguous or oversized device JSON accepted")
+		}
 	}
 }
