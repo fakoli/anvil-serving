@@ -1252,7 +1252,10 @@ def _closed_identity(raw: bytes) -> dict[str, Any]:
     allowed = {"id", "status", "fingerprint", "epoch", "generation", "resources"}
     if set(value) != allowed or not isinstance(value["id"], str) or _ID.fullmatch(value["id"]) is None or not isinstance(value["status"], str):
         raise ManageError("native identity output is invalid")
-    if (value["status"] not in {"pending", "active", "revoked"}
+    # ConnectorIdentity reports the local connector-state lifecycle.  A
+    # completed local enrollment is "enrolled"; it does not assert that a
+    # gateway operator has approved the installation for any resource.
+    if (value["status"] not in {"pending", "enrolled"}
             or not isinstance(value["fingerprint"], str) or len(value["fingerprint"]) != 43
             or any(char not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for char in value["fingerprint"])
             or not isinstance(value["epoch"], str) or len(value["epoch"]) != 64 or any(char not in "0123456789abcdef" for char in value["epoch"])
