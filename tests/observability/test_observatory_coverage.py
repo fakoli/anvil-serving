@@ -145,3 +145,16 @@ def test_changed_owner_model_metadata_preserves_alias_and_unverified_identity(fa
     assert len(owner.calls) == 3
     assert all(call.name == "serves_status" and call.arguments == {
         "manifest": "/private/fixture/serves.toml", "names": ["chat"]} for call in owner.calls)
+
+
+def test_fleet_exposes_owner_proven_diagnostics_and_withdraws_unavailable_commands(facade, monkeypatch):
+    console, _, session, _ = facade
+    owner_view = console.adapter.snapshot()
+    serve = owner_view["serves"][0]
+    serve.update(exec={"status": "available", "commands": ["gpu-status"]}, private_owner_field="not-public")
+    monkeypatch.setattr(console.adapter, "snapshot", lambda: owner_view)
+    observed = console.fleet(session)["serves"][0]
+    assert observed["exec"] == {"status": "available", "commands": ["gpu-status"]}
+    assert "private_owner_field" not in observed
+    serve["exec"] = {"status": "unavailable", "commands": []}
+    assert console.fleet(session)["serves"][0]["exec"] == {"status": "unavailable", "commands": []}

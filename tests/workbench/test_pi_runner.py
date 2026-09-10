@@ -7,20 +7,20 @@ import pytest
 from anvil_serving.workbench_app.pi_runner import PiRunnerPolicy
 
 
-def test_container_launch_keeps_secret_values_out_of_argv() -> None:
+def test_container_launch_keeps_secret_values_out_of_argv(tmp_path: Path) -> None:
     policy = PiRunnerPolicy(
         engine_argv=("/usr/bin/docker",),
         image="anvil-serving-pi-runner:0.85.1",
-        worktree=Path("/private/worktree"),
-        agent_dir=Path("/private/agent"),
+        worktree=tmp_path / "worktree",
+        agent_dir=tmp_path / "agent",
         uid=12345,
         gid=12346,
         container_name="pi-1",
         session_id="s1",
     )
     with pytest.raises(ValueError, match="trusted gateway"):
-        policy.launch(Path("/private/session"), credential_environment={"PROVIDER_TOKEN": "not-in-runner"})
-    launch = policy.launch(Path("/private/session"), credential_environment={})
+        policy.launch(tmp_path / "session", credential_environment={"PROVIDER_TOKEN": "not-in-runner"})
+    launch = policy.launch(tmp_path / "session", credential_environment={})
     assert launch.environment == {}
     assert "12345:12346" in launch.argv
     assert "--cap-drop" in launch.argv
@@ -32,7 +32,7 @@ def test_linked_git_worktree_is_not_a_runner_checkout(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="isolated full clone"):
         PiRunnerPolicy(
             engine_argv=("/usr/bin/docker",), image="image", worktree=tmp_path,
-            agent_dir=Path("/private/agent"), uid=12345, gid=12345,
+            agent_dir=tmp_path / "agent", uid=12345, gid=12345,
             container_name="pi-1", session_id="s1",
         )
 

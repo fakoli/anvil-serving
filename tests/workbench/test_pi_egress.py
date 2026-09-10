@@ -6,9 +6,11 @@ import json
 from pathlib import Path
 import shutil
 import socket
+import stat
 import subprocess
 import threading
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -121,6 +123,15 @@ def test_gateway_creation_intent_precedes_engine_mutations(tmp_path, monkeypatch
     from subprocess import CompletedProcess
     from anvil_serving.workbench_app import pi_egress
     secret=tmp_path/'credential'; secret.write_text('fixture-secret'); secret.chmod(0o600)
+    original_stat = pi_egress.Path.stat
+
+    def protected_stat(path, *args, **kwargs):
+        value = original_stat(path, *args, **kwargs)
+        if path == secret:
+            return SimpleNamespace(st_mode=stat.S_IFREG | 0o600)
+        return value
+
+    monkeypatch.setattr(pi_egress.Path, "stat", protected_stat)
     config={'state_root':str(tmp_path),'engine_binary':'docker','image':'sha256:'+'a'*64,'uid':1000,'gid':1000,
             'models':{'provider':['model']},'provider_egress':{'provider':['https://provider.example']},
             'provider_endpoints':{'provider':{'base_url':'https://provider.example/v1','api':'openai-completions','credential_env':'KEY'}},

@@ -39,7 +39,7 @@ class FakeTransport:
             if operation.arguments.get("dry_run"):
                 data = {"ok": True, "data": {"preview": {"resource_id": operation.arguments["resource_id"],
                     "host_id": operation.arguments["command_host"], "execution_runtime": operation.arguments["command_runtime"],
-                    "policy_digest": "p" * 64, "candidate_digest": "c" * 64,
+                    "policy_digest": "b" * 64, "candidate_digest": "c" * 64,
                     "container_id": "a" * 64, "command_id": "health", "argv": ["/usr/local/bin/health"],
                     "timeout_seconds": 10, "max_output_bytes": 65536}, "applied": False}}
             else:
@@ -362,11 +362,11 @@ def test_container_exec_is_a_closed_reviewed_controller_action():
     assert preview["binding"]["arguments"] == {
         "resource_id": "service.container", "command_id": "health",
         "command_host": "host-a", "command_runtime": "native",
-        "expected_policy_digest": "p" * 64, "expected_candidate_digest": "c" * 64,
+        "expected_policy_digest": "b" * 64, "expected_candidate_digest": "c" * 64,
     }
     assert preview["diagnostic"] == {
         "command_id": "health", "container_id": "a" * 64,
-        "argv": ["/usr/local/bin/health"], "timeout_seconds": 10,
+        "timeout_seconds": 10,
         "max_output_bytes": 65536,
     }
     value.execute(preview, "intent.exec")
@@ -390,7 +390,7 @@ def test_declared_serve_container_exec_reuses_the_exact_owner_binding():
     assert preview["binding"]["arguments"] == {
         "resource_id": "serve.chat", "command_id": "health",
         "command_host": "host-a", "command_runtime": "native",
-        "expected_policy_digest": "p" * 64, "expected_candidate_digest": "c" * 64,
+        "expected_policy_digest": "b" * 64, "expected_candidate_digest": "c" * 64,
     }
     assert preview["diagnostic"]["container_id"] == "a" * 64
 
