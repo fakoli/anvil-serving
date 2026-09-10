@@ -21,7 +21,7 @@ from .contracts import (ObservatoryError, canonical, digest, fields, identifier,
 from .intents import IntentStore
 
 PREVIEW_FIELDS = frozenset({"id", "host_id", "resource_id", "action_id", "label", "baseline_digest", "candidate_digest", "policy_digest", "expires_at_epoch_seconds", "effect", "diff", "affected_aliases", "workload_impact", "gpu_ids", "stop_semantics", "recovery", "planned_steps", "actor", "service_identity", "acknowledgement_required"})
-_SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings", "logs"})
+_SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings", "logs", "access"})
 
 
 def load_config(path: str) -> dict:
@@ -30,7 +30,7 @@ def load_config(path: str) -> dict:
         raise ValueError("use an absolute bounded private Observatory config")
     config = strict_json(source.read_bytes())
     fields(config, required=("schema", "origin", "base_path", "users", "authentication", "inventory", "prometheus_url", "state_path"),
-           optional=("operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence", "logs"))
+           optional=("operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence", "logs", "connect_access"))
     if config["schema"] != "anvil-observatory/config/v1":
         raise ValueError("unsupported Observatory configuration")
     if type(config.get("operate", False)) is not bool or type(config.get("fixture", False)) is not bool:
@@ -45,6 +45,10 @@ def load_config(path: str) -> dict:
         fields(authentication, required=("mode", "connect"))
     else:
         raise ValueError("unsupported Observatory authentication")
+    if type(config.get("connect_access", False)) is not bool:
+        raise ValueError("invalid Connect access setting")
+    if config.get("connect_access", False) and mode != "connect":
+        raise ValueError("Connect access requires Connect authentication")
     if not Path(config["state_path"]).is_absolute():
         raise ValueError("journal path must be absolute")
     return config
@@ -64,6 +68,10 @@ class Console:
             authenticating = authenticate or (lambda _username, _password: False)
         else:
             authenticating = authenticate or GrafanaLogin(authentication["grafana_url"])
+        if type(config.get("connect_access", False)) is not bool:
+            raise ValueError("invalid Connect access setting")
+        if config.get("connect_access", False) and mode != "connect":
+            raise ValueError("Connect access requires Connect authentication")
         self.store = IntentStore(config["state_path"])
         self.access = Access(config["users"], authenticate=authenticating,
                              origin=config["origin"], base_path=config["base_path"], operate=config.get("operate", False),
@@ -102,12 +110,15 @@ class Console:
         self.store.close()
 
     def session_view(self, session):
-        return {"authenticated": session is not None, "identity": session.principal.identity if session else None,
+        result = {"authenticated": session is not None, "identity": session.principal.identity if session else None,
                 "role": session.principal.role if session else "viewer", "operate": bool(session and self.access.operate and session.principal.actions),
                 "csrf_token": session.csrf if session else None, "expires_at": session.expires_at if session else None,
                 "base_path": self.config["base_path"], "build": self.config.get("build", "development"), "fixture": self.config.get("fixture", False),
                 "authentication_mode": "connect" if self.access.connect is not None else "legacy",
                 "profile_id": session.profile_id if session else None}
+        if self.config.get("connect_access", False):
+            result["connect_access_path"] = self.config["base_path"].rstrip("/") + "/_anvil-connect/access"
+        return result
 
     @staticmethod
     def _require_readable(session):
