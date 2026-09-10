@@ -5,6 +5,8 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import stat
+from types import SimpleNamespace
 
 import pytest
 
@@ -185,6 +187,57 @@ def test_result_line_is_one_closed_json_record() -> None:
     assert json.loads(encoded) == result
 
 
+def test_serial_result_is_one_canonical_frame_and_retries_short_writes(monkeypatch: pytest.MonkeyPatch) -> None:
+    result = {
+        "schema": guest.RESULT_SCHEMA,
+        "cases": [{"name": name, "status": "passed"} for name in guest.CASES],
+        "ok": True,
+    }
+    writes: list[bytes] = []
+    flags: list[int] = []
+    closed: list[int] = []
+
+    def open_serial(path: str, value: int) -> int:
+        assert path == guest.SERIAL_DEVICE
+        flags.append(value)
+        return 71
+
+    def short_write(descriptor: int, data: bytes | memoryview) -> int:
+        assert descriptor == 71
+        block = bytes(data[:7])
+        writes.append(block)
+        return len(block)
+
+    monkeypatch.setattr(guest.os, "open", open_serial)
+    monkeypatch.setattr(guest.os, "fstat", lambda descriptor: SimpleNamespace(st_mode=stat.S_IFCHR | 0o600))
+    monkeypatch.setattr(guest.os, "write", short_write)
+    monkeypatch.setattr(guest.os, "close", lambda descriptor: closed.append(descriptor))
+
+    guest._write_serial_result(result)
+
+    assert b"".join(writes) == ("\n" + guest._result_line(result) + "\n").encode("ascii")
+    assert flags == [guest.os.O_WRONLY | guest.os.O_NOFOLLOW | guest.os.O_NOCTTY | guest.os.O_CLOEXEC]
+    assert closed == [71]
+
+
+def test_serial_result_rejects_invalid_device_and_failed_write(monkeypatch: pytest.MonkeyPatch) -> None:
+    result = {
+        "schema": guest.RESULT_SCHEMA,
+        "cases": [{"name": name, "status": "passed"} for name in guest.CASES],
+        "ok": True,
+    }
+    monkeypatch.setattr(guest.os, "open", lambda *args: 72)
+    monkeypatch.setattr(guest.os, "fstat", lambda descriptor: SimpleNamespace(st_mode=stat.S_IFREG | 0o600))
+    monkeypatch.setattr(guest.os, "close", lambda descriptor: None)
+    with pytest.raises(guest.GuestFailure):
+        guest._write_serial_result(result)
+
+    monkeypatch.setattr(guest.os, "fstat", lambda descriptor: SimpleNamespace(st_mode=stat.S_IFCHR | 0o600))
+    monkeypatch.setattr(guest.os, "write", lambda descriptor, data: 0)
+    with pytest.raises(guest.GuestFailure):
+        guest._write_serial_result(result)
+
+
 def test_main_wires_all_cases_without_guest_commands(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     calls: list[str] = []
     monkeypatch.setattr(guest.os, "geteuid", lambda: 0)
@@ -199,6 +252,8 @@ def test_main_wires_all_cases_without_guest_commands(tmp_path: Path, monkeypatch
     ):
         monkeypatch.setattr(guest, name, lambda *args, _name=name, **kwargs: calls.append(_name))
     monkeypatch.setattr(guest, "_cleanup", lambda: True)
+    reported: list[dict[str, object]] = []
+    monkeypatch.setattr(guest, "_write_serial_result", lambda result: reported.append(result))
 
     assert guest.main() == 0
     assert calls == [
@@ -207,9 +262,12 @@ def test_main_wires_all_cases_without_guest_commands(tmp_path: Path, monkeypatch
         "_managed_readiness", "_caddy_and_authelia", "_ingress_checks", "_socket_ownership",
         "_private_denials", "_restart_and_rollback",
     ]
-    marker, encoded = capsys.readouterr().out.strip().split(" ", 1)
-    assert marker == guest.MARKER
-    assert json.loads(encoded)["ok"] is True
+    assert capsys.readouterr().out == ""
+    assert reported == [{
+        "schema": guest.RESULT_SCHEMA,
+        "cases": [{"name": name, "status": "passed"} for name in guest.CASES],
+        "ok": True,
+    }]
 
 
 def test_write_file_retries_short_writes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
