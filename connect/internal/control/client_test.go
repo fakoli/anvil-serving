@@ -29,7 +29,9 @@ type clientFixture struct {
 
 func newClientFixture(t *testing.T) clientFixture {
 	t.Helper()
-	f := newFixture(t)
+	// Real HTTPS clients sign with time.Now. Keep their test authority on the
+	// same advancing clock so crossing a second never makes a proof future-dated.
+	f := newFixtureWithClock(t, time.Now)
 	installation := f.installation
 	installation.Resources = []string{"router"}
 	ca := testpki.New(t)
@@ -58,6 +60,8 @@ func testClient(gateway string, installation identity.Installation, private ed25
 
 func TestClientRenewUsesCurrentTLSServerAndReturnsConservativeStart(t *testing.T) {
 	f := newClientFixture(t)
+	// Reproduce the former frozen-fixture failure at the next JWT timestamp.
+	time.Sleep(time.Until(time.Now().Truncate(time.Second).Add(time.Second)))
 	_, csr, err := credential.GenerateCSR()
 	if err != nil {
 		t.Fatal(err)
