@@ -1,6 +1,7 @@
 import hashlib
 import io
 import os
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -48,6 +49,7 @@ def test_shared_deadline_cannot_reset_between_downloads(monkeypatch):
     assert failure.value.code == "runner-timeout"
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux process controls")
 def test_isolated_helper_is_killed_on_cumulative_deadline(tmp_path, monkeypatch):
     # Simulate a response that makes small, continual progress. Individual
     # reads need not time out; the process-level cumulative deadline must.

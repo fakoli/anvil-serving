@@ -3,6 +3,7 @@ import json
 import pytest
 
 from anvil_serving.connect import qualification_vm_run as subject
+from anvil_serving.connect import _qualification_vm_process as process
 from anvil_serving.connect.qualification import QualificationError
 
 
@@ -17,6 +18,22 @@ def result():
                 }
                 for phase in subject._SERVICE_SAMPLE_PHASES
             }}
+
+
+def test_vm_process_refuses_nonlinux_before_spawning(tmp_path, monkeypatch):
+    monkeypatch.setattr(process.sys, "platform", "win32")
+    monkeypatch.setattr(process.subprocess, "Popen", lambda *_args, **_kwargs: pytest.fail("unexpected child"))
+    with pytest.raises(QualificationError) as failure:
+        process.execute(["ignored"], home=tmp_path, timeout=1, cpus=(1,))
+    assert failure.value.code == "runner-unavailable"
+
+
+def test_vm_runner_refuses_nonlinux_before_reading_config(monkeypatch):
+    monkeypatch.setattr(process.sys, "platform", "win32")
+    monkeypatch.setattr(subject, "_read_config", lambda _: pytest.fail("unexpected config read"))
+    with pytest.raises(QualificationError) as failure:
+        subject.qualify()
+    assert failure.value.code == "runner-unavailable"
 
 
 def test_result_requires_every_case_in_fixed_order():

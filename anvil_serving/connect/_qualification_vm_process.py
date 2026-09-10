@@ -8,11 +8,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
-import resource
 import selectors
 import signal
 import subprocess
+import sys
 import time
+
+try:
+    import resource
+except ImportError:  # pragma: no cover - exercised by the Windows contract suite.
+    resource = None
 
 from .qualification import _error
 
@@ -31,6 +36,14 @@ class _ProcessFailure(RuntimeError):
         if reason not in _FAILURE_REASONS:
             raise ValueError("invalid process failure reason")
         self.reason = reason
+
+
+def _require_linux_execution() -> None:
+    """Refuse before spawning when the Linux process-control contract is absent."""
+    required_os = ("killpg", "sched_setaffinity", "waitid", "WEXITED", "WNOWAIT")
+    if (sys.platform != "linux" or resource is None
+            or any(not hasattr(os, name) for name in required_os)):
+        raise _error("runner-unavailable", "VM qualification requires Linux process controls")
 
 
 def _failure(code: str, message: str, reason: str, *, execution_started: bool,
@@ -106,6 +119,7 @@ def execute(argv: list[str], *, home: Path, timeout: float, cpus: tuple[int, ...
     All console bytes still count against the total output bound. Normal exit
     is required; a success marker followed by a hung child cannot pass.
     """
+    _require_linux_execution()
     if timeout <= 0 or not cpus or maximum_output < 1 or maximum_record < 1:
         raise _error("config-invalid", "VM process limits are invalid")
     env = {"PATH": "/usr/bin:/bin", "HOME": str(home), "LANG": "C", "LC_ALL": "C",

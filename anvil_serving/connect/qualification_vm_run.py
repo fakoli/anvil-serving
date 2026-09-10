@@ -19,7 +19,7 @@ from typing import Any
 import uuid
 import xml.etree.ElementTree as ET
 
-from ._qualification_vm_process import execute
+from ._qualification_vm_process import _require_linux_execution, execute
 from .qualification import (
     QualificationConfig, QualificationError, _error, _private_directory,
     _read_config, _safe_cache, _source_metadata, _locks,
@@ -685,6 +685,7 @@ def _cleanup_residuals(run_dir: Path) -> bool:
 
 def qualify(config_path: str | os.PathLike[str] | None = None) -> dict[str, Any]:
     """Run the fixed, offline, no-network isolation guest qualification."""
+    _require_linux_execution()
     path = Path(config_path) if config_path is not None else Path.home() / ".config/anvil-connect/qualification.toml"
     config = _read_config(path)
     _private_directory(config.artifact_root, create=True)
