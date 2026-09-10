@@ -4,12 +4,16 @@ import json
 import os
 from pathlib import Path
 import stat
+import sys
 
 import pytest
 
 from anvil_serving.connect import qualification_container as subject
 from anvil_serving.connect.qualification import QualificationError
 from tests.connect.test_qualification import _config
+
+
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="requires Linux qualification container custody controls")
 
 
 def _inputs(tmp_path: Path) -> tuple[Path, dict[str, Path]]:
