@@ -36,6 +36,16 @@ SERVICE_UNITS = (
     "anvil-connect-authelia.service",
     "anvil-connect-connector-dashboard.service",
 )
+_SERVICE_SAMPLE_PHASES = ("before_restart", "before_stop")
+# These are deliberately small synthetic qualification budgets.  They are not
+# a production sizing recommendation.
+_SERVICE_SAMPLE_ROLES = {
+    "gateway": ("anvil-connect-gateway.service", 256 * 1024 * 1024, 128),
+    "edge": ("anvil-connect-caddy.service", 256 * 1024 * 1024, 128),
+    "idp": ("anvil-connect-authelia.service", 512 * 1024 * 1024, 128),
+    "connector": ("anvil-connect-connector-dashboard.service", 256 * 1024 * 1024, 128),
+}
+_SERVICE_SAMPLE_PROPERTIES = ("MemoryCurrent", "MemoryPeak", "TasksCurrent", "MemoryMax", "TasksMax")
 CASES = (
     "legacy_activation_rejected_pre_state",
     "rendered_units_isolated",
@@ -95,6 +105,13 @@ def build_manifest() -> dict[str, Any]:
             "idp": {"uid": 21003, "gid": 21003}, "connectors": {"dashboard": {"uid": 21004, "gid": 21004}},
             "clients": {"dashboard-api": {"uid": 21005, "gid": 21005}},
             "ingress": {"group_id": 21010, "directory": "/run/anvil-test/ingress"},
+        },
+        "service_limits": {
+            "gateway": {"memory_max_bytes": 268435456, "tasks_max": 128},
+            "edge": {"memory_max_bytes": 268435456, "tasks_max": 128},
+            "idp": {"memory_max_bytes": 536870912, "tasks_max": 128},
+            "connectors": {"dashboard": {"memory_max_bytes": 268435456, "tasks_max": 128}},
+            "clients": {"dashboard-api": {"memory_max_bytes": 268435456, "tasks_max": 128}},
         },
         "gateway": {
             "schema": "anvil-connect.gateway-runtime/v1", "control_host": "control.example.test",
@@ -485,6 +502,7 @@ def _legacy_rejected_before_state(_: Path) -> None:
     legacy = build_manifest()
     legacy["service_user"] = "acq-gateway"
     del legacy["service_identities"]
+    del legacy["service_limits"]
     del legacy["gateway"]["ingress"]
     legacy["gateway"]["state_directory"] = "/var/lib/anvil-test/legacy-gateway"
     with tempfile.TemporaryDirectory(prefix="legacy-", dir="/run") as directory:
@@ -719,9 +737,81 @@ def _rotate_tls_leaf() -> None:
                 pass
 
 
-def _restart_and_rollback(manifest: Path) -> None:
+def _decimal_property(value: str) -> int:
+    if not value or not value.isascii() or not value.isdecimal() or (len(value) > 1 and value[0] == "0"):
+        raise GuestFailure
+    parsed = int(value)
+    if not 0 <= parsed < 2 ** 63:
+        raise GuestFailure
+    return parsed
+
+
+def _service_sample(values: dict[str, dict[str, int]] | None = None) -> dict[str, dict[str, int]]:
+    """Return one bounded, per-unit systemd accounting sample.
+
+    ``MemoryPeak`` is systemd's reported peak for each unit's retained
+    accounting lifetime at this query; it is not an aggregate across units.
+    ``TasksCurrent`` is an instantaneous per-unit count.  The recorded limits
+    are accepted only when systemd and the unit's fixed system.slice cgroup
+    report the declared exact values.
+    """
+    values = {} if values is None else values
+    requested = ",".join(_SERVICE_SAMPLE_PROPERTIES)
+    for role, (unit, memory_max, tasks_max) in _SERVICE_SAMPLE_ROLES.items():
+        raw = _capture(["/usr/bin/systemctl", "show", "--property=" + requested, unit], timeout=10, maximum=4096)
+        try:
+            fields = {}
+            for line in raw.decode("ascii").splitlines():
+                key, separator, value = line.partition("=")
+                if not separator or key in fields:
+                    raise ValueError
+                fields[key] = value
+            if set(fields) != set(_SERVICE_SAMPLE_PROPERTIES):
+                raise ValueError
+            parsed = {key: _decimal_property(value) for key, value in fields.items()}
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise GuestFailure from exc
+        cgroup = Path("/sys/fs/cgroup/system.slice") / unit
+        try:
+            cgroup_memory_max = _decimal_property(_read_regular(cgroup / "memory.max", 128).decode("ascii").strip())
+            cgroup_tasks_max = _decimal_property(_read_regular(cgroup / "pids.max", 128).decode("ascii").strip())
+        except (UnicodeDecodeError, GuestFailure) as exc:
+            raise GuestFailure from exc
+        if (parsed["MemoryMax"] != memory_max or parsed["TasksMax"] != tasks_max
+                or cgroup_memory_max != memory_max or cgroup_tasks_max != tasks_max
+                or parsed["MemoryCurrent"] > parsed["MemoryPeak"]
+                or parsed["TasksCurrent"] > tasks_max):
+            raise GuestFailure
+        values[role] = {
+            "memory_current_bytes": parsed["MemoryCurrent"],
+            "memory_peak_bytes": parsed["MemoryPeak"],
+            "tasks_current": parsed["TasksCurrent"],
+            "memory_max_bytes": parsed["MemoryMax"],
+            "tasks_max": parsed["TasksMax"],
+        }
+    return values
+
+
+def _within_fixture_headroom(sample: dict[str, dict[str, int]]) -> bool:
+    """Apply the synthetic qualification headroom gate after preserving samples.
+
+    Kernel memory.max enforcement may allow a temporary overage.  An over-limit
+    peak is valid measured evidence but fails this fixture's small-budget gate.
+    """
+    return all(
+        values["memory_current_bytes"] <= values["memory_max_bytes"]
+        and values["memory_peak_bytes"] <= values["memory_max_bytes"]
+        and values["tasks_current"] <= values["tasks_max"]
+        for values in sample.values()
+    )
+
+
+def _restart_and_rollback(manifest: Path, service_samples: dict[str, dict[str, dict[str, int]]]) -> None:
     manager = _manager()
     targets = (_manager_target("gateway"), _manager_target("connector:dashboard"))
+    service_samples["before_restart"] = _service_sample(service_samples.setdefault("before_restart", {}))
+    if not _within_fixture_headroom(service_samples["before_restart"]):
+        raise GuestFailure
     _rotate_tls_leaf()
     manager.up_many(manifest, targets, apply=True)
     _command(["/usr/bin/systemctl", "is-active", "--quiet", *SERVICE_UNITS], timeout=10)
@@ -753,6 +843,9 @@ def _restart_and_rollback(manifest: Path) -> None:
     if before != {unit: _capture(["/usr/bin/systemctl", "show", "--property=ActiveState,FragmentPath", unit], maximum=4096) for unit in SERVICE_UNITS}:
         raise GuestFailure
     _installed_units_match_payload()
+    service_samples["before_stop"] = _service_sample(service_samples.setdefault("before_stop", {}))
+    if not _within_fixture_headroom(service_samples["before_stop"]):
+        raise GuestFailure
     if not _cleanup():
         raise GuestFailure
     _run_cli_cleanup_regression()
@@ -830,11 +923,11 @@ def _case(name: str, operation: Callable[[], None]) -> dict[str, Any]:
         return {"name": name, "status": "failed", "failure": _failure_location(exc)}
 
 
-def _write_result(cases: list[dict[str, str]]) -> dict[str, Any]:
+def _write_result(cases: list[dict[str, str]], service_samples: dict[str, dict[str, dict[str, int]]]) -> dict[str, Any]:
     if tuple(item.get("name") for item in cases) != CASES or any(item.get("status") not in {"passed", "failed"} or set(item) not in ({"name", "status"}, {"name", "status", "failure"}) or ("failure" in item and item["status"] != "failed") for item in cases):
         raise GuestFailure
     RESULT_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    data = {"schema": RESULT_SCHEMA, "cases": cases, "ok": all(item["status"] == "passed" for item in cases)}
+    data = {"schema": RESULT_SCHEMA, "cases": cases, "ok": all(item["status"] == "passed" for item in cases), "service_samples": service_samples}
     RESULT_PATH.write_text(json.dumps(data, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
     os.chmod(RESULT_PATH, 0o600)
     return data
@@ -880,6 +973,7 @@ def main() -> int:
     if os.geteuid() != 0 or not Path("/run/systemd/system").is_dir():
         return 1
     cases: list[dict[str, str]] = []
+    service_samples: dict[str, dict[str, dict[str, int]]] = {}
     try:
         verify_payload()
         assert_guest_prerequisites()
@@ -896,13 +990,13 @@ def main() -> int:
         cases.append(_case(CASES[4], _ingress_checks))
         cases.append(_case(CASES[5], _socket_ownership))
         cases.append(_case(CASES[6], _private_denials))
-        cases.append(_case(CASES[7], lambda: _restart_and_rollback(manifest)))
+        cases.append(_case(CASES[7], lambda: _restart_and_rollback(manifest, service_samples)))
     except Exception:
         cases.extend({"name": name, "status": "failed"} for name in CASES[len(cases):])
     finally:
         if not _cleanup() and cases:
             cases[-1] = {"name": cases[-1]["name"], "status": "failed"}
-        result = _write_result(cases)
+        result = _write_result(cases, service_samples)
     _write_serial_result(result)
     return 0 if result["ok"] else 1
 

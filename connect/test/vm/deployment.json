@@ -196,6 +196,32 @@
     "tunnel_listen": "127.0.0.1:27181"
   },
   "schema": "anvil-connect.deployment/v1",
+  "service_limits": {
+    "clients": {
+      "dashboard-api": {
+        "memory_max_bytes": 268435456,
+        "tasks_max": 128
+      }
+    },
+    "connectors": {
+      "dashboard": {
+        "memory_max_bytes": 268435456,
+        "tasks_max": 128
+      }
+    },
+    "edge": {
+      "memory_max_bytes": 268435456,
+      "tasks_max": 128
+    },
+    "gateway": {
+      "memory_max_bytes": 268435456,
+      "tasks_max": 128
+    },
+    "idp": {
+      "memory_max_bytes": 536870912,
+      "tasks_max": 128
+    }
+  },
   "service_identities": {
     "clients": {
       "dashboard-api": {

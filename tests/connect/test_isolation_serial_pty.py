@@ -18,7 +18,7 @@ def test_guest_result_crosses_real_tty_as_one_canonical_frame(monkeypatch, capsy
     guest = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(guest)
     result = {"schema": guest.RESULT_SCHEMA, "ok": True,
-              "cases": [{"name": name, "status": "passed"} for name in guest.CASES]}
+              "cases": [{"name": name, "status": "passed"} for name in guest.CASES], "service_samples": {}}
     expected = ("\n" + guest._result_line(result) + "\n").encode("ascii")
     master, slave = pty.openpty()
     try:
