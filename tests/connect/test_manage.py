@@ -582,6 +582,12 @@ def test_bounded_run_kills_grandchild_holding_pipe() -> None:
     assert __import__("time").monotonic() - started < 2
 
 
+def test_bounded_run_waits_for_child_that_closes_output_before_exit() -> None:
+    script = "import os,time; os.close(1); os.close(2); time.sleep(0.05)"
+    result = manage._bounded_run((sys.executable, "-c", script), 0.5)
+    assert result == manage.RunResult(0)
+
+
 def test_environment_file_requires_exact_owner_only_mode_before_activation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manifest, value, _ = deployment(tmp_path, monkeypatch)
     Path(value["environment_files"]["gateway"]).chmod(0o640)
