@@ -1,6 +1,7 @@
 name: Publish to PyPI
 
-# Publishes anvil-serving to PyPI when a GitHub Release is published.
+# Publishes stable Anvil Serving v* releases to PyPI. Standalone Connect
+# releases use connect-v* tags and must never enter this publishing job.
 # Uses PyPI Trusted Publishing (OIDC) — no API token stored anywhere.
 # The matching publisher is registered at pypi.org/manage/account/publishing/:
 #   Owner: fakoli | Repo: anvil-serving | Workflow: publish.yml | Environment: pypi
@@ -8,7 +9,7 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-  workflow_dispatch:   # allow a manual run from the Actions tab if needed
+  workflow_dispatch:   # manual recovery must select the matching v* package tag
 
 permissions:
   contents: read
@@ -16,12 +17,29 @@ permissions:
 jobs:
   build:
     name: Build sdist + wheel
+    if: >-
+      (github.event_name == 'release' && !github.event.release.prerelease &&
+       startsWith(github.event.release.tag_name, 'v')) ||
+      (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+      - name: Verify package release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          if os.environ["RELEASE_TAG"] != f"v{version}":
+              raise SystemExit("Release tag does not match the Anvil Serving package version")
+          PY
       - name: Build
         run: |
           python -m pip install --upgrade build twine

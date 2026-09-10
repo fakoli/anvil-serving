@@ -161,6 +161,8 @@ def test_dashboard_static_assets_are_present_in_package() -> None:
     assert asset.is_file()
     assert asset.read_bytes().startswith(b"<!doctype html>")
     assert workload_asset.is_file() and workload_asset.read_bytes().startswith(b"/* Canonical")
+    for name in ("connect_access.js", "connect_access_api.js"):
+        assert files("anvil_serving.observability.dashboard.static").joinpath("views", name).is_file()
     root = Path(__file__).parents[2]
     import tomllib
     metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))

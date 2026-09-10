@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fakoli/anvil-serving/connect/internal/clientconfig"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 )
 
@@ -48,13 +49,9 @@ type ConnectorConfig struct {
 	Resources       []ConnectorResource `json:"resources"`
 }
 
-type ClientConfig struct {
-	Schema       string      `json:"schema"`
-	Rule         config.Rule `json:"rule"`
-	Listen       string      `json:"listen"`
-	LocalKeyEnv  string      `json:"local_key_env"`
-	RemoteKeyEnv string      `json:"remote_key_env"`
-}
+// ClientConfig remains an alias for the original Linux runtime API. Portable
+// clients use clientconfig directly so they do not import this Linux runtime.
+type ClientConfig = clientconfig.Config
 
 func absolutePath(value string) bool {
 	return filepath.IsAbs(value) && filepath.Clean(value) == value && value != "/" && !strings.ContainsAny(value, "\x00\r\n\t")
@@ -117,13 +114,6 @@ func (c ConnectorConfig) Validate() error {
 	return nil
 }
 
-func (c ClientConfig) Validate() error {
-	if c.Schema != "anvil-connect.client-runtime/v1" || c.Rule.Validate() != nil || c.Rule.Access != "api" || !config.LoopbackAddress(c.Listen) || !config.ValidEnv(c.LocalKeyEnv) || !config.ValidEnv(c.RemoteKeyEnv) || c.LocalKeyEnv == c.RemoteKeyEnv {
-		return ErrConfiguration
-	}
-	return nil
-}
-
 func ReadGateway(reader io.Reader) (GatewayConfig, error) {
 	var c GatewayConfig
 	if config.Decode(reader, &c) != nil || c.Validate() != nil {
@@ -141,8 +131,8 @@ func ReadConnector(reader io.Reader) (ConnectorConfig, error) {
 }
 
 func ReadClient(reader io.Reader) (ClientConfig, error) {
-	var c ClientConfig
-	if config.Decode(reader, &c) != nil || c.Validate() != nil {
+	c, err := clientconfig.Read(reader)
+	if err != nil {
 		return ClientConfig{}, ErrConfiguration
 	}
 	return c, nil

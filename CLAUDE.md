@@ -158,12 +158,19 @@ Public examples and the packaged scaffold contain generic placeholders only.
 
 ## Working rules
 
+User-facing operational workflows should be short, supported commands. If a
+routine needs more than a couple of lines, build a command for it. Move repeated
+options and non-secret environment settings into automatically loaded config;
+load credentials from protected storage. Do not make users execute heredocs or
+write shell wrappers for normal use. Review documentation against this rule.
+
 1. Use only the Python standard library in `anvil_serving/` unless explicitly
    approved. The Mini-side remote MCP bridge is the approved exception: its
    source and lockfile live in `mcp_bridge/`, the official TypeScript MCP SDK is
    bundled into package data, and it requires Node.js 20+ only when remote MCP
    proxy mode is launched.
-2. Secrets are environment-variable references only; never commit a literal.
+2. Secrets use declared environment references or protected, untracked secret
+   files; configuration contains references, never literal credentials.
    Treat the private operator repository the same way: it tracks configuration,
    not credential values.
 3. Return dictionaries from library code; CLI wrappers print.

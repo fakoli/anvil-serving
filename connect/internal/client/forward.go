@@ -69,6 +69,12 @@ func GenerateKey() (string, error) {
 	return localKeyPrefix + base64.RawURLEncoding.EncodeToString(key[:]), nil
 }
 
+// ValidLocalKey validates the canonical credential without exposing its bytes.
+func ValidLocalKey(raw string) bool {
+	_, err := parseLocalKey(raw)
+	return err == nil
+}
+
 func parseLocalKey(raw string) ([32]byte, error) {
 	var key [32]byte
 	if len(raw) != len(localKeyPrefix)+base64.RawURLEncoding.EncodedLen(len(key)) || !strings.HasPrefix(raw, localKeyPrefix) {
@@ -163,6 +169,9 @@ func newForwarder(rule config.Rule, listen, localKey, remoteKeyEnv string, secre
 			request.Out.Host = rule.Host
 			request.Out.GetBody = nil // admitted bodies are never replayable.
 			httpedge.CleanAPIHeaders(request.Out.Header)
+			// Identify the HTTPS client that actually contacts the public edge.
+			// Local SDK metadata must not impersonate a different remote client.
+			request.Out.Header.Set("User-Agent", "anvil-connect/1")
 			// The public API edge uses the ordinary SDK bearer carrier. This
 			// replaces, rather than forwards, the local loopback credential.
 			request.Out.Header.Set("Authorization", "Bearer "+request.In.Context().Value(remoteKeyContext{}).(string))
@@ -213,6 +222,8 @@ func forwardFailure(w http.ResponseWriter, status int) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if status == http.StatusUnauthorized {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="anvil-connect-local"`)
+		http.Error(w, "Unauthorized: missing or invalid local API key. Set your SDK API key or send Authorization: Bearer <local-key>. Browser sign-in authorizes the remote connection; local requests still require this key.", status)
+		return
 	}
 	if status == http.StatusTooManyRequests {
 		w.Header().Set("Retry-After", "1")

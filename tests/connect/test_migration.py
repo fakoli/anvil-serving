@@ -74,6 +74,7 @@ def _forwarder(target, counts, name):
 
         do_GET = _serve
         do_POST = _serve
+        do_DELETE = _serve
 
         def log_message(self, *_):
             pass
@@ -127,6 +128,10 @@ def observatory(tmp_path: Path):
 
 def deployment(tmp_path: Path) -> tuple[Path, Path, dict]:
     data = json.loads((ROOT / "connect/examples/deployment.json").read_text(encoding="utf-8"))
+    # Observatory's native session logout uses DELETE. The generic dashboard
+    # example must explicitly admit this method when used for Observatory.
+    data["gateway"]["gateway"]["resources"][0]["rule"]["methods"].append("DELETE")
+    data["connectors"][0]["resources"][0]["envelope"]["rule"]["methods"].append("DELETE")
     # Preview validates schema only; paths remain generic and have no secrets.
     manifest = tmp_path / "deployment.json"
     manifest.write_text(json.dumps(data), encoding="utf-8")
@@ -206,6 +211,8 @@ def test_real_observatory_session_csrf_and_action_grants_hold_across_route_switc
     # never replaced; this is an app-side fixed-origin forwarding invariant.
     assert owner.preview_calls == 3
     assert counts["route-a"] > 0 and counts["route-b"] > 0
+    assert call("DELETE", "/api/observatory/v1/session")[0] == 200
+    assert call("POST", "/api/observatory/v1/previews", {"resource_id": "dashboard", "action_id": "tier.quiesce"})[0] == 401
 
 
 def test_preview_refuses_symlink_fifo_and_oversized_observatory_config(tmp_path: Path):
@@ -237,7 +244,17 @@ def test_preview_requires_exact_non_stripping_path_and_observatory_methods(tmp_p
     deployment_data["gateway"]["gateway"]["resources"][0]["rule"]["methods"] = ["GET"]
     deployment_data["connectors"][0]["resources"][0]["envelope"]["rule"]["methods"] = ["GET"]
     manifest.write_text(json.dumps(deployment_data), encoding="utf-8")
-    with pytest.raises(MigrationError, match="GET and POST"):
+    with pytest.raises(MigrationError, match="GET, POST and DELETE"):
+        preview_observatory(manifest, config, resource_id="dashboard")
+
+
+def test_preview_refuses_a_route_that_would_block_native_logout(tmp_path: Path):
+    manifest, config, _ = deployment(tmp_path)
+    deployment_data = json.loads(manifest.read_text())
+    deployment_data["gateway"]["gateway"]["resources"][0]["rule"]["methods"] = ["GET", "POST"]
+    deployment_data["connectors"][0]["resources"][0]["envelope"]["rule"]["methods"] = ["GET", "POST"]
+    manifest.write_text(json.dumps(deployment_data), encoding="utf-8")
+    with pytest.raises(MigrationError, match="DELETE for native logout"):
         preview_observatory(manifest, config, resource_id="dashboard")
 
 

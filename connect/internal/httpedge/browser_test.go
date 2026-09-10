@@ -2,17 +2,24 @@ package httpedge
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/fakoli/anvil-serving/connect/internal/access"
+	"github.com/fakoli/anvil-serving/connect/internal/browseridentity"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/device"
 	"github.com/fakoli/anvil-serving/connect/internal/session"
+	"github.com/fakoli/anvil-serving/connect/internal/store"
 )
 
 type browserAuthorityStub struct {
@@ -64,6 +71,19 @@ func (s *browserAuthorityStub) Check(admitted session.Admission) error {
 	return nil
 }
 
+func (s *browserAuthorityStub) CheckPrincipal(id string, generation uint64) error {
+	if s.revoked.Load() || id != s.admitted.Principal || generation != s.admitted.PrincipalGeneration {
+		return session.ErrDenied
+	}
+	return nil
+}
+func (s *browserAuthorityStub) CheckDeviceSession(id string, generation uint64, principal string, principalGeneration uint64) error {
+	if s.revoked.Load() || id != s.admitted.SessionID || generation != s.admitted.SessionGeneration || principal != s.admitted.Principal || principalGeneration != s.admitted.PrincipalGeneration {
+		return session.ErrDenied
+	}
+	return nil
+}
+
 func (s *browserAuthorityStub) Logout(raw, host string) error {
 	if raw != "opaque-session" || host != s.admitted.Host {
 		return session.ErrDenied
@@ -84,6 +104,25 @@ func browserFixture(t *testing.T, nativeAuth string, dispatch BrowserDispatch) (
 	t.Helper()
 	authority := newBrowserAuthorityStub()
 	browser, err := NewBrowser(browserDeclaration(nativeAuth), authority, dispatch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(browser.Close)
+	return browser, authority
+}
+
+func signedBrowserFixture(t *testing.T, dispatch BrowserDispatch) (*Browser, *browserAuthorityStub) {
+	t.Helper()
+	declaration := browserDeclaration("signed-identity")
+	declaration.Resources[0].IdentityKeyEnv = "ANVIL_CONNECT_DASH_IDENTITY_KEY"
+	declaration.Resources[0].IdentityKeyID = "dash-v1"
+	authority := newBrowserAuthorityStub()
+	authority.admitted = session.Admission{SessionID: strings.Repeat("1", 32), SessionGeneration: 1, Principal: "human:" + strings.Repeat("a", 64), PrincipalGeneration: 1, Resource: "dash", Host: "dash.example.test", Epoch: strings.Repeat("b", 64), ExpiresAt: time.Now().Add(time.Minute).UTC()}
+	signer, err := browseridentity.NewSigner("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8", "dash-v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	browser, err := NewBrowserWithIdentity(declaration, authority, map[string]*browseridentity.Signer{"dash": signer}, dispatch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,4 +449,179 @@ func TestBrowserCapacityAndRevocationCancelDispatch(t *testing.T) {
 		t.Fatal("browser stream was not canceled after session revocation")
 	}
 	<-done
+}
+
+func TestSignedIdentityUsesPrivateContextAndRevokes(t *testing.T) {
+	var dispatched atomic.Int32
+	var authority *browserAuthorityStub
+	browser, authority := signedBrowserFixture(t, func(w http.ResponseWriter, r *http.Request, resource config.Resource, admitted session.Admission) {
+		dispatched.Add(1)
+		if resource.Rule.NativeAuth != "signed-identity" || admitted != authority.admitted || r.Header.Get(browseridentity.Header) != "" {
+			t.Error("signed identity header or admission crossed an unsafe boundary")
+		}
+		assertion, ok := browseridentity.Assertion(r.Context())
+		if !ok || !strings.HasPrefix(assertion, "acai1.") {
+			t.Error("signed identity was not retained in private request context")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	request := browserRequest(http.MethodGet, "/api/observatory/v1/session?view=current", nil)
+	request.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")
+	request.Header.Set(browseridentity.Header, "acai1.e30.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	response := httptest.NewRecorder()
+	browser.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent || dispatched.Load() != 1 {
+		t.Fatal("signed browser request was not admitted")
+	}
+	authority.revoked.Store(true)
+	response = httptest.NewRecorder()
+	browser.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized || dispatched.Load() != 1 {
+		t.Fatal("revoked Connect session minted or dispatched an identity")
+	}
+}
+
+func TestSignedIdentityRequiresSignerAndUsesExplicitLogoutLanding(t *testing.T) {
+	declaration := browserDeclaration("signed-identity")
+	declaration.Resources[0].IdentityKeyEnv = "ANVIL_CONNECT_DASH_IDENTITY_KEY"
+	declaration.Resources[0].IdentityKeyID = "dash-v1"
+	authority := newBrowserAuthorityStub()
+	if browser, err := NewBrowser(declaration, authority, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {}); err == nil || browser != nil {
+		t.Fatal("signed identity resource started without its signer")
+	}
+	browser, authority := signedBrowserFixture(t, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {})
+	logout := browserRequest(http.MethodPost, BrowserLogoutPath, nil)
+	logout.Header.Set("Origin", "https://dash.example.test")
+	logout.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")
+	response := httptest.NewRecorder()
+	browser.ServeHTTP(response, logout)
+	if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("Content-Type") != "text/html; charset=utf-8" || !strings.Contains(response.Body.String(), `href="/"`) || !strings.Contains(response.Body.String(), "Sign in again") {
+		t.Fatal("signed identity logout did not render the explicit no-store landing")
+	}
+	if strings.Contains(response.Body.String(), "<script") || authority.logout != 1 {
+		t.Fatal("signed identity logout landing was unsafe or did not revoke")
+	}
+	cleared := cookieValue(t, response, BrowserSessionCookie)
+	if cleared.MaxAge >= 0 || !cleared.Secure || !cleared.HttpOnly {
+		t.Fatal("signed identity logout did not clear Connect cookie")
+	}
+	request := browserRequest(http.MethodGet, "/", nil)
+	request.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")
+	response = httptest.NewRecorder()
+	browser.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatal("revoked signed identity session was still admitted")
+	}
+}
+
+func TestSignedIdentityCallbackCompletesBeforeAnyAssertionIsMinted(t *testing.T) {
+	browser, authority := signedBrowserFixture(t, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {
+		t.Fatal("OIDC callback must not dispatch to the native application")
+	})
+	login := browserRequest(http.MethodGet, BrowserLoginPath+"?return=%2Freport", nil)
+	loginResponse := httptest.NewRecorder()
+	browser.ServeHTTP(loginResponse, login)
+	if loginResponse.Code != http.StatusFound || authority.begin != 1 {
+		t.Fatal("signed identity login did not start the ordinary Connect transaction")
+	}
+	callback := browserRequest(http.MethodGet, BrowserCallbackPath+"?state=state&code=code", nil)
+	callback.Header.Set("Cookie", BrowserTransactionCookie+"="+authority.binding)
+	callbackResponse := httptest.NewRecorder()
+	browser.ServeHTTP(callbackResponse, callback)
+	if callbackResponse.Code != http.StatusSeeOther || callbackResponse.Header().Get("Location") != "/report" || authority.complete != 1 {
+		t.Fatal("signed identity callback did not complete the ordinary Connect session")
+	}
+	if callbackResponse.Header().Get(browseridentity.Header) != "" || cookieValue(t, callbackResponse, BrowserSessionCookie).Value != "opaque-session" {
+		t.Fatal("callback exposed an identity assertion instead of only a Connect session cookie")
+	}
+}
+
+func TestDeviceApprovalRouteIsReservedAndIssuesOneMemoryOnlyCredential(t *testing.T) {
+	limits := config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: 1, DurationSeconds: 30}
+	human := "human:" + strings.Repeat("a", 64)
+	gateway := config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: "127.0.0.1:17890", MaxConcurrent: 4, Resources: []config.Resource{
+		{Rule: config.Rule{ID: "dash", Host: "dash.example.test", PathPrefix: "/app", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: limits}, Connector: "dash-origin", TunnelAddress: "127.0.0.1:17891"},
+		{Rule: config.Rule{ID: "router", Host: "api.example.test", PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: limits}, Connector: "api-origin", TunnelAddress: "127.0.0.1:17892"},
+	}, DeviceAuthorizations: []config.DeviceAuthorization{{BrowserResource: "dash", APIResource: "router", Methods: []string{"POST"}, Label: "Synthetic <device>", Principals: map[string]string{human: "owner"}}}}
+	state, err := store.Open(filepath.Join(t.TempDir(), "authority"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer state.Close()
+	keys, err := access.NewKeys(state, []config.Rule{gateway.Resources[1].Rule})
+	if err != nil || keys.SetPrincipal("owner", []access.Grant{{Resource: "router", Methods: []string{"POST"}}}, false) != nil {
+		t.Fatal("api principal setup failed")
+	}
+	authority := newBrowserAuthorityStub()
+	authority.admitted = session.Admission{SessionID: strings.Repeat("1", 32), SessionGeneration: 1, Principal: human, PrincipalGeneration: 1, Resource: "dash", Host: "dash.example.test", Epoch: strings.Repeat("b", 64), ExpiresAt: time.Now().Add(time.Hour).UTC()}
+	devices, err := device.New(state, gateway, authority, keys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dispatched atomic.Int32
+	browser, err := NewBrowserWithIdentityAndDevice(gateway, authority, nil, devices, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) { dispatched.Add(1) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer browser.Close()
+	path := "/app/_anvil-connect/device"
+	start := browserRequest(http.MethodPost, path+"/start", nil)
+	startResponse := httptest.NewRecorder()
+	browser.ServeHTTP(startResponse, start)
+	var started struct {
+		DeviceCode string `json:"device_code"`
+		UserCode   string `json:"user_code"`
+	}
+	if startResponse.Code != http.StatusOK || json.Unmarshal(startResponse.Body.Bytes(), &started) != nil || len(started.UserCode) != 8 || dispatched.Load() != 0 {
+		t.Fatal("reserved device start reached dashboard or failed")
+	}
+	login := browserRequest(http.MethodGet, path, nil)
+	login.Header.Set("Accept", "text/html")
+	loginResponse := httptest.NewRecorder()
+	browser.ServeHTTP(loginResponse, login)
+	if loginResponse.Code != http.StatusFound || dispatched.Load() != 0 {
+		t.Fatal("unauthenticated approval did not enter Connect login")
+	}
+	binding, ok := devices.Binding("dash")
+	if !ok {
+		t.Fatal("device binding unavailable")
+	}
+	form := url.Values{"user_code": {started.UserCode}, "decision": {"approve"}, "csrf": {devices.CSRF(authority.admitted, binding)}}
+	approve := browserRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+	approve.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	approve.Header.Set("Origin", "https://dash.example.test")
+	approve.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")
+	approved := httptest.NewRecorder()
+	browser.ServeHTTP(approved, approve)
+	if approved.Code != http.StatusOK || strings.Contains(approved.Body.String(), "<device>") || dispatched.Load() != 0 {
+		t.Fatal("approval escaped or reached dashboard origin")
+	}
+	pollPayload, _ := json.Marshal(map[string]string{"device_code": started.DeviceCode})
+	poll := browserRequest(http.MethodPost, path+"/poll", strings.NewReader(string(pollPayload)))
+	poll.Header.Set("Content-Type", "application/json")
+	pollResponse := httptest.NewRecorder()
+	browser.ServeHTTP(pollResponse, poll)
+	var result struct {
+		Status string `json:"status"`
+		Token  string `json:"access_token"`
+	}
+	if pollResponse.Code != http.StatusOK || json.Unmarshal(pollResponse.Body.Bytes(), &result) != nil || result.Status != "approved" || result.Token == "" || dispatched.Load() != 0 {
+		t.Fatal("approved device was not redeemed through reserved route")
+	}
+	if _, err := keys.Authenticate(result.Token, "router", "POST"); err != nil {
+		t.Fatal("device credential did not obey mapped API grant")
+	}
+}
+
+func TestDeviceRequestRejectsDuplicateAndOversizeJSON(t *testing.T) {
+	for _, body := range []string{
+		`{"device_code":"first","device_code":"second"}`,
+		strings.Repeat("x", 513),
+	} {
+		r := httptest.NewRequest(http.MethodPost, "https://dash.example.test/app/_anvil-connect/device/poll", strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		if _, ok := readDeviceRequest(httptest.NewRecorder(), r); ok {
+			t.Fatal("ambiguous or oversized device JSON accepted")
+		}
+	}
 }

@@ -84,6 +84,15 @@ for name, content in render(manifest)["files"].items():
 acme = copy.deepcopy(manifest)
 acme["caddy"]["tls"] = {"mode": "acme", "certificate_file": "", "key_file": ""}
 (work / "rendered" / "caddy-acme.json").write_text(render(acme)["files"]["caddy.json"], encoding="utf-8")
+passkeys = copy.deepcopy(manifest)
+passkeys["authelia"]["webauthn"] = {
+    "enable_passkey_login": True,
+    "experimental_enable_passkey_uv_two_factors": True,
+    "discoverability": "required",
+    "user_verification": "required",
+}
+(work / "rendered" / "authelia-passkeys.yml").write_text(
+    render(passkeys)["files"]["authelia/configuration.yml"], encoding="utf-8")
 (work / "secrets").mkdir()
 (work / "secrets" / "users_file").write_text("users: {}\n", encoding="utf-8")
 PY
@@ -99,6 +108,7 @@ run_timeout "$authelia" crypto hash generate argon2 --random --no-confirm --prof
 run_timeout "$caddy" validate --config "$work/rendered/caddy.json"
 run_timeout "$caddy" validate --config "$work/rendered/caddy-acme.json"
 run_timeout "$authelia" --config "$work/rendered/authelia/configuration.yml" --config.experimental.filters template config validate
+run_timeout "$authelia" --config "$work/rendered/authelia-passkeys.yml" --config.experimental.filters template config validate
 
 # Negative control: upstream syntax/config errors must fail before activation.
 run_timeout python3 - "$work" <<'PY'
@@ -110,12 +120,18 @@ caddy["apps"]["http"]["servers"]["anvil_connect"]["routes"][-1]["handle"][0]["ha
 (work / "invalid-caddy.json").write_text(json.dumps(caddy), encoding="utf-8")
 authelia = (work / "rendered/authelia/configuration.yml").read_text(encoding="utf-8")
 (work / "invalid-authelia.yml").write_text(authelia.replace("default_policy: two_factor", "default_policy: deny", 1), encoding="utf-8")
+passkeys = (work / "rendered/authelia-passkeys.yml").read_text(encoding="utf-8")
+(work / "invalid-passkeys.yml").write_text(
+    passkeys.replace("user_verification: 'required'", "user_verification: 'invalid'", 1), encoding="utf-8")
 PY
 if run_timeout "$caddy" validate --config "$work/invalid-caddy.json" >/dev/null 2>&1; then
   echo "Caddy accepted an invalid negative control" >&2; exit 1
 fi
 if run_timeout "$authelia" --config "$work/invalid-authelia.yml" --config.experimental.filters template config validate >/dev/null 2>&1; then
   echo "Authelia accepted an invalid negative control" >&2; exit 1
+fi
+if run_timeout "$authelia" --config "$work/invalid-passkeys.yml" --config.experimental.filters template config validate >/dev/null 2>&1; then
+  echo "Authelia accepted an invalid passkey negative control" >&2; exit 1
 fi
 printf 'validated Caddy %s and Authelia %s with pinned Linux amd64 artifacts\n' \
   "$(read_lock caddy version)" "$(read_lock authelia version)"

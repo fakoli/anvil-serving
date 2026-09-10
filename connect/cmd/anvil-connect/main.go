@@ -1,3 +1,5 @@
+//go:build linux
+
 // Command anvil-connect is the native data plane. Operator automation lives in
 // anvil-serving connect; this command consumes its closed generated declarations.
 package main
@@ -6,20 +8,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"log"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/admin"
 	"github.com/fakoli/anvil-serving/connect/internal/client"
+	"github.com/fakoli/anvil-serving/connect/internal/clientconfig"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	connectruntime "github.com/fakoli/anvil-serving/connect/internal/runtime"
 	"github.com/fakoli/anvil-serving/connect/internal/transport"
@@ -30,6 +28,7 @@ anvil-connect preflight --mode gateway|connector|client --config FILE
 anvil-connect init --mode gateway --config FILE
 anvil-connect init --mode connector --config FILE --bundle PRIVATE_FILE
 anvil-connect gateway|connector|client --config FILE
+anvil-connect login [--config FILE] [--json]
 anvil-connect identity --config FILE
 anvil-connect admin --socket PATH --request FILE [--output PRIVATE_FILE]
 anvil-connect keygen --output PRIVATE_FILE
@@ -69,6 +68,10 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	command := args[0]
 	fs := flag.NewFlagSet(command, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
+	var jsonOutput bool
+	if command == "login" {
+		fs.BoolVar(&jsonOutput, "json", false, "machine-readable login output")
+	}
 	var mode, file, bundle, socket, request, output, input, digest string
 	switch command {
 	case "validate", "preflight", "init":
@@ -77,9 +80,12 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 		if command == "init" {
 			fs.StringVar(&bundle, "bundle", "", "private enrollment invitation")
 		}
-	case "gateway", "connector", "client", "identity":
+	case "gateway", "connector", "client", "login", "identity":
 		fs.StringVar(&file, "config", "", "closed declaration")
 		mode = command
+		if command == "login" {
+			mode = "client"
+		}
 		if command == "identity" {
 			mode = "connector"
 		}
@@ -166,20 +172,41 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	if command == "init" && ((mode == "gateway" && bundle != "") || (mode == "connector" && bundle == "") || mode == "client") {
 		return invalid()
 	}
+	if command == "login" {
+		explicitConfig := false
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "config" {
+				explicitConfig = true
+			}
+		})
+		if explicitConfig && file == "" {
+			return invalid()
+		}
+		home, _ := os.UserHomeDir()
+		selected, pathErr := loginConfigPath(file, home)
+		if pathErr != nil {
+			return invalid()
+		}
+		file = selected
+	}
 	data, err := readDeclaration(file)
 	if err != nil {
+		if command == "login" {
+			_, _ = fmt.Fprintln(diagnostics, "anvil-connect: client setup unavailable; install the client configuration or use --config FILE")
+			return 2
+		}
 		return invalid()
 	}
 	var gateway connectruntime.GatewayConfig
 	var connector connectruntime.ConnectorConfig
-	var local connectruntime.ClientConfig
+	var local clientconfig.Config
 	switch mode {
 	case "gateway":
 		gateway, err = connectruntime.ReadGateway(bytes.NewReader(data))
 	case "connector":
 		connector, err = connectruntime.ReadConnector(bytes.NewReader(data))
 	case "client":
-		local, err = connectruntime.ReadClient(bytes.NewReader(data))
+		local, err = clientconfig.Read(bytes.NewReader(data))
 	}
 	if err != nil {
 		return invalid()
@@ -241,6 +268,12 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	}
 	if command == "client" {
 		err = serveClient(ctx, local, lookup, func() error { return json.NewEncoder(out).Encode(map[string]string{"mode": mode, "status": "running"}) })
+	} else if command == "login" {
+		var keyLocation loginKeyLocation
+		lookup, keyLocation, err = loginSecrets(file, local, lookup)
+		if err == nil {
+			err = loginClient(ctx, local, lookup, out, jsonOutput, keyLocation)
+		}
 	} else {
 		var process interface {
 			Close()
@@ -264,43 +297,14 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 		process.Close()
 	}
 	if err != nil {
+		if command == "login" {
+			return loginFailure(diagnostics, err)
+		}
 		return fail()
 	}
+	if command == "login" && !jsonOutput {
+		_, _ = fmt.Fprintln(out, "Connect stopped.")
+		return 0
+	}
 	return status(map[string]string{"mode": mode, "status": "stopped"})
-}
-
-func serveClient(ctx context.Context, c connectruntime.ClientConfig, lookup func(string) (string, bool), started func() error) error {
-	key, ok := lookup(c.LocalKeyEnv)
-	if !ok {
-		return client.ErrConfiguration
-	}
-	forwarder, err := client.New(c.Rule, c.Listen, key, c.RemoteKeyEnv, lookup, client.Options{})
-	if err != nil {
-		return err
-	}
-	defer forwarder.Close()
-	listener, err := net.Listen("tcp", c.Listen)
-	if err != nil {
-		return err
-	}
-	defer listener.Close()
-	server := &http.Server{Handler: forwarder, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 65536, ErrorLog: log.New(io.Discard, "", 0), BaseContext: func(net.Listener) context.Context { return ctx }}
-	defer server.Close()
-	exited := make(chan error, 1)
-	go func() { exited <- server.Serve(listener) }()
-	// Every return after Serve starts closes and reaps this owned server.
-	defer func() { _ = server.Close(); <-exited }()
-	if err := started(); err != nil {
-		return err
-	}
-	select {
-	case <-ctx.Done():
-		return nil
-	case err := <-exited:
-		exited <- err
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-		return err
-	}
 }

@@ -12,9 +12,10 @@ import json
 import math
 import re
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .targets import ExecutionPlan
+if TYPE_CHECKING:
+    from .targets import ExecutionPlan
 
 
 EXIT_CODES = {
@@ -184,6 +185,8 @@ class CommandResult:
 
 def context_from_plan(plan: ExecutionPlan | Mapping[str, Any]) -> dict[str, Any]:
     """Return the fixed, redacted execution context shape for CLI envelopes."""
+    from .targets import ExecutionPlan
+
     raw = plan.as_dict() if isinstance(plan, ExecutionPlan) else dict(plan)
     return {field: redact(raw.get(field)) for field in CONTEXT_FIELDS}
 

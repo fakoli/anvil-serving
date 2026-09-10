@@ -28,6 +28,7 @@ var (
 	ErrDenied        = errors.New("browser session denied")
 	ErrConfiguration = errors.New("invalid browser session configuration")
 	ErrUnavailable   = errors.New("browser session authority unavailable")
+	ErrConflict      = errors.New("browser authority changed")
 )
 
 const (
@@ -135,6 +136,7 @@ type transaction struct {
 }
 
 type Manager struct {
+	administration         *config.BrowserAdministration
 	state                  *store.Store
 	rules                  map[string]config.Rule
 	issuer                 string
@@ -281,6 +283,9 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 			return ErrUnavailable
 		}
 		result = Human{ID: id, Generation: old.Generation + 1, Disabled: disabled, Resources: resources}
+		if err := m.preserveAdministrators(tx, result); err != nil {
+			return err
+		}
 		return tx.Put("principals", id, result)
 	})
 	if err != nil {
@@ -419,14 +424,63 @@ func (m *Manager) Check(admitted Admission) error {
 	if admitted.SessionID == "" || admitted.Host == "" {
 		return ErrDenied
 	}
+	return m.state.View(func(tx *store.Tx) error { return m.CheckTx(tx, admitted) })
+}
+
+// CheckTx rechecks a browser admission inside an existing authority transaction.
+func (m *Manager) CheckTx(tx *store.Tx, admitted Admission) error {
+	if tx == nil || admitted.SessionID == "" || admitted.Host == "" {
+		return ErrDenied
+	}
+
+	var session Session
+	rule, configured := m.rules[admitted.Resource]
+	if tx.Get("sessions", sessionRecord(admitted.SessionID), &session) != nil || session.ID != admitted.SessionID || !configured || rule.Host != admitted.Host || session.Generation != admitted.SessionGeneration || session.Principal != admitted.Principal || session.PrincipalGeneration != admitted.PrincipalGeneration || session.Resource != admitted.Resource || session.Host != admitted.Host || session.Epoch != admitted.Epoch || !session.ExpiresAt.Equal(admitted.ExpiresAt) {
+		return ErrDenied
+	}
+	var human Human
+	if session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || !hasResource(human.Resources, session.Resource) {
+		return ErrDenied
+	}
+	return nil
+}
+
+// CheckPrincipal is the narrow device-credential revocation fence. It never
+// returns a subject, session credential, or resource grant: callers can only
+// prove that the opaque human remains enabled at the exact generation that
+// approved a device request.
+func (m *Manager) CheckPrincipal(id string, generation uint64) error {
+	if !config.ValidHumanID(id) || generation == 0 {
+		return ErrDenied
+	}
 	return m.state.View(func(tx *store.Tx) error {
-		var session Session
-		rule, configured := m.rules[admitted.Resource]
-		if tx.Get("sessions", sessionRecord(admitted.SessionID), &session) != nil || !configured || rule.Host != admitted.Host || session.Generation != admitted.SessionGeneration || session.Principal != admitted.Principal || session.PrincipalGeneration != admitted.PrincipalGeneration || session.Resource != admitted.Resource || session.Host != admitted.Host || session.Epoch != admitted.Epoch || !session.ExpiresAt.Equal(admitted.ExpiresAt) {
+		var human Human
+		if tx.Get("principals", id, &human) != nil || human.ID != id || human.Disabled || human.Generation != generation {
 			return ErrDenied
 		}
+		return nil
+	})
+}
+
+// CheckDeviceSession rechecks only the opaque approving browser session and its
+// human generation. It does not disclose a host, resource, cookie, or IdP data.
+func (m *Manager) CheckDeviceSession(id string, generation uint64, principal string, principalGeneration uint64) error {
+	if len(id) != 32 || generation == 0 || !config.ValidHumanID(principal) || principalGeneration == 0 {
+		return ErrDenied
+	}
+	for _, c := range id {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			return ErrDenied
+		}
+	}
+	return m.state.View(func(tx *store.Tx) error {
+		var current Session
 		var human Human
-		if session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || tx.Get("principals", session.Principal, &human) != nil || human.Disabled || human.Generation != session.PrincipalGeneration || !hasResource(human.Resources, session.Resource) {
+		if tx.Get("sessions", sessionRecord(id), &current) != nil {
+			return ErrDenied
+		}
+		rule, configured := m.rules[current.Resource]
+		if current.ID != id || current.Generation != generation || current.Principal != principal || current.PrincipalGeneration != principalGeneration || !configured || rule.Host != current.Host || current.Revoked || current.Epoch != tx.Epoch() || !tx.Now().Before(current.ExpiresAt) || tx.Now().Before(current.IssuedAt) || tx.Get("principals", principal, &human) != nil || human.Disabled || human.Generation != principalGeneration || !hasResource(human.Resources, current.Resource) {
 			return ErrDenied
 		}
 		return nil

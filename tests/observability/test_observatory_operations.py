@@ -2,6 +2,7 @@
 
 import http.client
 import json
+import sqlite3
 import threading
 import time
 
@@ -360,6 +361,57 @@ def test_journal_restart_preserves_ambiguous_intent_and_never_prunes_it(tmp_path
     same, created = restored.accept(preview, "fixture-actor", "fixture-key")
     assert not created and same["id"] == item["id"]
     restored.close()
+
+
+def test_additive_connect_profiles_survive_a_previous_v1_binary_open(tmp_path):
+    """A rollback opens the same journal; it never restores an older database."""
+    path = tmp_path / "journal.sqlite"
+    # Start from the exact previous v1 table set with already-owned state.
+    prior_schema = """
+        CREATE TABLE IF NOT EXISTS drafts(id TEXT PRIMARY KEY, actor TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS previews(id TEXT PRIMARY KEY, actor TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS intents(id TEXT PRIMARY KEY, intent_key TEXT UNIQUE NOT NULL, fingerprint TEXT NOT NULL,
+            actor TEXT NOT NULL, resource TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL, updated REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS evidence(id TEXT PRIMARY KEY, resource TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL);
+        PRAGMA user_version=1;
+    """
+    prior = sqlite3.connect(path)
+    prior.executescript(prior_schema)
+    prior.execute("INSERT INTO drafts VALUES(?,?,?,?)", ("legacy-draft", "fixture-actor", '{"id":"legacy-draft"}', 0))
+    prior.commit()
+    prior.close()
+
+    store = IntentStore(path)
+    assert store.draft("legacy-draft", "fixture-actor") == {"id": "legacy-draft"}
+    preview = {"id": "fixture-preview", "resource_id": "fixture-serve", "host_id": "fixture-host", "action_id": "serve.stop", "label": "Stop fixture", "candidate_digest": "a" * 64, "baseline_digest": "b" * 64}
+    intent, created = store.accept(preview, "fixture-actor", "fixture-key")
+    assert created
+    profile = store.connect_profile("connect-subject")
+    store.close()
+
+    # This is the previous binary's open-time schema setup. Its v1 marker and
+    # table declarations leave unknown additive tables and journal records in
+    # place rather than replacing the state database.
+    prior = sqlite3.connect(path)
+    assert prior.execute("PRAGMA user_version").fetchone()[0] == 1
+    prior.executescript(prior_schema)
+    assert prior.execute("SELECT body FROM drafts WHERE id='legacy-draft'").fetchone()[0] == '{"id":"legacy-draft"}'
+    prior.close()
+
+    restored = IntentStore(path)
+    assert restored.db.execute("PRAGMA user_version").fetchone()[0] == 1
+    assert restored.draft("legacy-draft", "fixture-actor") == {"id": "legacy-draft"}
+    assert restored.get(intent["id"])["id"] == intent["id"]
+    assert restored.connect_profile("connect-subject") == profile
+    assert restored.db.execute("SELECT count(*) FROM connect_profiles").fetchone()[0] == 1
+    restored.close()
+
+    foreign = tmp_path / "future.sqlite"
+    future = sqlite3.connect(foreign)
+    future.execute("PRAGMA user_version=2")
+    future.close()
+    with pytest.raises(ValueError, match="unsupported journal schema"):
+        IntentStore(foreign)
 
 
 @pytest.mark.parametrize("restoration_verified", [True, False])

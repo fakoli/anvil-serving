@@ -228,3 +228,25 @@ func TestConcurrentKeyIssuance(t *testing.T) {
 		t.Fatal("issuance lost a transaction")
 	}
 }
+
+func TestDeviceCredentialUsesRollbackSafeGrammar(t *testing.T) {
+	keys, _, _, _ := keyFixture(t)
+	if err := keys.SetDeviceChecker(func(DeviceCredential, string, string, string, uint64) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	mapping := strings.Repeat("a", 64)
+	session := strings.Repeat("b", 32)
+	raw, _, err := keys.IssueDevice("owner", []Grant{{Resource: "router", Methods: []string{"POST"}}}, time.Hour, DeviceCredential{HumanID: "human:" + strings.Repeat("c", 64), HumanGeneration: 1, MappingHash: mapping, Session: session, SessionGeneration: 1})
+	if err != nil || !strings.HasPrefix(raw, "acd1.") {
+		t.Fatalf("device issue err=%v raw grammar=%q", err, strings.Split(raw, ".")[0])
+	}
+	if _, ok := tokenID(raw); ok {
+		t.Fatal("legacy ac1 parser accepted device credential")
+	}
+	if _, device, ok := parseTokenID(raw); !ok || !device {
+		t.Fatal("current parser rejected device credential")
+	}
+	if _, err := keys.Authenticate(raw, "router", "POST"); err != nil {
+		t.Fatal("current device credential rejected", err)
+	}
+}

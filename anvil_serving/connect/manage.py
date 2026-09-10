@@ -41,7 +41,12 @@ _SYSTEMCTL = "/usr/bin/systemctl"
 _JOURNALCTL = "/usr/bin/journalctl"
 _MAX_OUTPUT = 64 * 1024
 _MAX_BINARY = 512 * 1024 * 1024
-_SYSTEMD_TIMEOUT = 20.0
+# Generated services have a 20-second hard stop deadline. A systemctl restart
+# must also wait for the replacement process to launch, so its command bound
+# carries a fixed margin instead of racing TimeoutStopSec. Caddy's finite
+# 15-second HTTP grace period keeps long-lived WebSocket drains below that
+# supervisor deadline.
+_SYSTEMD_TIMEOUT = 30.0
 _VALIDATE_TIMEOUT = 10.0
 _ID = re.compile(r"[a-z][a-z0-9-]{0,62}\Z")
 
@@ -185,8 +190,22 @@ def _bounded_run(argv: tuple[str, ...], timeout: float, identity: ServiceIdentit
                     value.extend(chunk)
             # A child can exit while a descendant retains stdout/stderr. The
             # original deadline still kills that descendant process group.
-        if process.poll() is None:
-            kill_group()
+        if process.poll() is None and not killed:
+            if limited:
+                kill_group()
+            else:
+                # A short-lived child may close both output descriptors before
+                # the kernel records its exit. Draining those descriptors is
+                # not a completion signal: preserve the original command
+                # deadline before terminating its process group.
+                remaining = deadline - time.monotonic()
+                if remaining > 0:
+                    try:
+                        process.wait(timeout=remaining)
+                    except subprocess.TimeoutExpired:
+                        kill_group()
+                else:
+                    kill_group()
         try:
             process.wait(timeout=1)
         except subprocess.TimeoutExpired:
@@ -385,23 +404,28 @@ def _validate_environment_files(data: dict[str, Any], target: Target | tuple[Tar
     allowed_uid = os.geteuid() if service is None else service.uid
     selected = _selected_targets(data, target)
     env = data["environment_files"]
-    paths: list[Path] = []
+    paths: list[tuple[Path, bool]] = []
     for item in selected:
         if item.kind == "gateway":
-            paths.append(Path(env["gateway"]))
+            paths.append((Path(env["gateway"]), False))
+            if "gateway_identity" in env:
+                # The signing material is separately provisioned root-only
+                # state, never a service-user-managed general gateway env file.
+                paths.append((Path(env["gateway_identity"]), True))
         elif item.kind == "connector":
             assert item.name is not None
-            paths.append(Path(env["connectors"][item.name]))
+            paths.append((Path(env["connectors"][item.name]), False))
         else:
             assert item.name is not None
-            paths.append(Path(env["clients"][item.name]))
-    for path in paths:
+            paths.append((Path(env["clients"][item.name]), False))
+    for path, root_only in paths:
         try:
             info = path.lstat()
         except OSError as exc:
             raise ManageError("declared EnvironmentFile is unavailable") from exc
+        owners = {0} if root_only else {0, allowed_uid}
         if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
-                or info.st_uid not in {0, allowed_uid} or stat.S_IMODE(info.st_mode) != 0o600):
+                or info.st_uid not in owners or stat.S_IMODE(info.st_mode) != 0o600):
             raise ManageError("declared EnvironmentFile has unsafe ownership or mode")
 
 
@@ -556,6 +580,11 @@ def _write_atomic(path: Path, data: bytes, mode: int = 0o644) -> None:
         descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW, mode)
         info = os.fstat(descriptor)
         temporary_inode = (info.st_dev, info.st_ino)
+        # os.open's creation mode is filtered through the caller's umask. The
+        # caller selected this file's public or private contract explicitly,
+        # so apply it to the just-created no-follow descriptor before durable
+        # publication.
+        os.fchmod(descriptor, mode)
         offset = 0
         while offset < len(data):
             count = os.write(descriptor, data[offset:])
@@ -997,6 +1026,83 @@ def _restore_running(runner: Runner | None, units: tuple[str, ...], prior: dict[
         raise ManageError("managed unit restoration failed", may_have_executed=failure.may_have_executed) from failure
 
 
+def _started_units(runner: Runner | None, unit_root: Path, units: tuple[str, ...]) -> None:
+    """Require stable supervised processes before discarding activation rollback.
+
+    This is a bounded process check, not origin or application readiness.
+    """
+    previous: dict[str, str] = {}
+    for attempt in range(6):
+        observed: dict[str, str] = {}
+        for unit in units:
+            result = _run(runner, (_SYSTEMCTL, "show", "--property=ActiveState,SubState,MainPID,FragmentPath,DropInPaths", unit), _VALIDATE_TIMEOUT)
+            _fail(result, "managed unit status failed after startup")
+            fields = dict(line.split("=", 1) for line in result.stdout.decode("utf-8").splitlines() if "=" in line)
+            if (set(fields) != {"ActiveState", "SubState", "MainPID", "FragmentPath", "DropInPaths"}
+                    or fields["FragmentPath"] != str(unit_root / unit) or fields["DropInPaths"]
+                    or fields["ActiveState"] in {"failed", "inactive"}):
+                raise ManageError("managed unit failed after startup")
+            if fields["ActiveState"] == "active" and fields["SubState"] == "running" and fields["MainPID"].isdigit() and int(fields["MainPID"]) > 0:
+                observed[unit] = fields["MainPID"]
+        if len(observed) == len(units) and observed == previous:
+            return
+        previous = observed
+        if attempt < 5:
+            time.sleep(1)
+    raise ManageError("managed units did not stabilize after startup")
+
+
+def _closed_gateway_status(raw: bytes) -> None:
+    """Accept only the secret-free response from the native admin status RPC."""
+    value = _strict_json(raw, "gateway readiness response is invalid")
+    fields = {
+        "operation", "epoch", "secret", "key_id", "principal", "grants",
+        "invitation", "installation", "role", "resources", "generation",
+        "fingerprint", "status",
+    }
+    if set(value) != fields or value.get("operation") != "status":
+        raise ManageError("gateway readiness response is invalid")
+    epoch = value.get("epoch")
+    empty = ("secret", "key_id", "principal", "invitation", "installation", "role", "fingerprint")
+    status = value.get("status")
+    if (not isinstance(epoch, str) or len(epoch) != 64 or any(char not in "0123456789abcdef" for char in epoch)
+            or any(value.get(name) != "" for name in empty)
+            or value.get("grants") != [] or value.get("resources") != []
+            or type(value.get("generation")) is not int or value["generation"] != 0
+            or not isinstance(status, dict)
+            or set(status) != {"id", "status", "fingerprint", "epoch", "generation", "resources"}
+            or status.get("id") != "" or status.get("status") != "" or status.get("fingerprint") != ""
+            or status.get("epoch") != "" or type(status.get("generation")) is not int or status["generation"] != 0
+            or status.get("resources") != []):
+        raise ManageError("gateway readiness response is invalid")
+
+
+def _gateway_ready(data: dict[str, Any], runner: Runner | None) -> None:
+    """Require the restarted gateway's own same-user admin socket before dependents."""
+    root = Path(data["config_root"])
+    _safe_dir(root.parent)
+    with tempfile.TemporaryDirectory(prefix=".anvil-connect-status-", dir=root.parent) as temporary:
+        request = Path(temporary) / "status.json"
+        _write_atomic(request, b'{"operation":"status"}\n')
+        # The status request has no credentials or mutating fields.  The parent
+        # remains non-writable, while the service identity can read this exact
+        # declaration and its owner-only admin socket.
+        os.chmod(request.parent, 0o755)
+        command = (
+            data["binary"], "admin", "--socket",
+            str(Path(data["gateway"]["state_directory"]) / "admin.sock"),
+            "--request", str(request),
+        )
+        for attempt in range(6):
+            observed = _run(runner, command, _VALIDATE_TIMEOUT, _service_identity(data))
+            if observed.returncode == 0:
+                _closed_gateway_status(observed.stdout)
+                return
+            if attempt < 5:
+                time.sleep(1)
+    raise ManageError("gateway did not become ready before dependent activation")
+
+
 def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bool, upgrade: bool, runner: Runner | None, unit_root: str | Path, action: str) -> dict[str, Any]:
     """Activate one closed role set in a single reversible transaction."""
     _require_supported_platform()
@@ -1037,12 +1143,23 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                 _verify_unit(system_root, unit, sources.get(unit))
                 _unit_metadata(runner, system_root, (unit,), present=True)
                 prior[unit] = _unit_state(runner, unit)
-            for unit in units:
+            gateway_units = _target_units((Target("gateway"),)) if selected_gateway else ()
+            dependent_units = tuple(unit for unit in units if unit not in gateway_units)
+            for unit in gateway_units:
                 active, enabled = prior[unit]
                 if active:
                     _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
                 else:
                     _action(runner, (_SYSTEMCTL, "enable", "--now", unit), _SYSTEMD_TIMEOUT, "managed unit failed to start")
+            if selected_gateway:
+                _gateway_ready(data, runner)
+            for unit in dependent_units:
+                active, enabled = prior[unit]
+                if active:
+                    _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
+                else:
+                    _action(runner, (_SYSTEMCTL, "enable", "--now", unit), _SYSTEMD_TIMEOUT, "managed unit failed to start")
+            _started_units(runner, system_root, units)
             if transaction.pending_record is not None:
                 # Do not bless newly supplied artifact bytes until the complete
                 # selected start/restart sequence has succeeded.
@@ -1225,7 +1342,10 @@ def _closed_identity(raw: bytes) -> dict[str, Any]:
     allowed = {"id", "status", "fingerprint", "epoch", "generation", "resources"}
     if set(value) != allowed or not isinstance(value["id"], str) or _ID.fullmatch(value["id"]) is None or not isinstance(value["status"], str):
         raise ManageError("native identity output is invalid")
-    if (value["status"] not in {"pending", "active", "revoked"}
+    # ConnectorIdentity reports the local connector-state lifecycle.  A
+    # completed local enrollment is "enrolled"; it does not assert that a
+    # gateway operator has approved the installation for any resource.
+    if (value["status"] not in {"pending", "enrolled"}
             or not isinstance(value["fingerprint"], str) or len(value["fingerprint"]) != 43
             or any(char not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for char in value["fingerprint"])
             or not isinstance(value["epoch"], str) or len(value["epoch"]) != 64 or any(char not in "0123456789abcdef" for char in value["epoch"])
@@ -1243,10 +1363,12 @@ def identity(manifest_path: str | Path, target: Target, *, runner: Runner | None
         raise ManageError("identity is defined only for a connector")
     data = read_manifest(manifest_path)
     _targets(data, target)
-    _current(data)
     native_digest = _native_verified(data)
-    _bound_active(data, target, {"native": native_digest})
-    result = _run(runner, (data["binary"], "identity", "--config", str(_config_path(data, target))), _VALIDATE_TIMEOUT, _service_identity(data))
+    # Enrollment deliberately precedes activation. Read the declared persisted
+    # identity using a temporary public declaration, without creating an active
+    # generation or requiring approval of the identity we are trying to inspect.
+    with _temporary_declaration(data, target) as config:
+        result = _run(runner, (data["binary"], "identity", "--config", str(config)), _VALIDATE_TIMEOUT, _service_identity(data))
     _fail(result, "native identity read failed")
     observed = _closed_identity(result.stdout)
     connector = next(item for item in data["connectors"] if item["id"] == target.name)

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
+	"github.com/fakoli/anvil-serving/connect/internal/browseridentity"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/httpedge"
 	"github.com/fakoli/anvil-serving/connect/internal/identity"
@@ -137,6 +138,10 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 				} else {
 					// BrowserDispatch validates before the transport is invoked.
 					_ = httpedge.CleanBrowserHeaders(request.Out.Header, resource.Rule.NativeAuth)
+					if resource.Rule.NativeAuth == "signed-identity" {
+						assertion, _ := browseridentity.Assertion(request.In.Context())
+						request.Out.Header.Set(browseridentity.Header, assertion)
+					}
 				}
 				request.Out.Header.Set(origin.ResourceHeader, resource.Rule.ID)
 			},
@@ -191,6 +196,12 @@ func (d *Dispatcher) BrowserDispatch(w http.ResponseWriter, r *http.Request, res
 	if httpedge.CleanBrowserHeaders(clean.Header, resource.Rule.NativeAuth) != nil {
 		http.Error(w, "transport headers denied", http.StatusBadRequest)
 		return
+	}
+	if resource.Rule.NativeAuth == "signed-identity" {
+		if _, ok := browseridentity.Assertion(clean.Context()); !ok {
+			http.Error(w, "transport identity denied", http.StatusForbidden)
+			return
+		}
 	}
 	d.dispatch(w, clean, resource)
 }
