@@ -50,7 +50,7 @@ type deviceApproval struct {
 // loginClient obtains one short-lived remote key through the fixed browser
 // approval endpoint and passes it directly to the existing loopback server.
 // The device code and bearer never reach argv, environment, a file, or output.
-func loginClient(ctx context.Context, declaration clientconfig.Config, lookup func(string) (string, bool), out io.Writer, jsonOutput bool) error {
+func loginClient(ctx context.Context, declaration clientconfig.Config, lookup func(string) (string, bool), out io.Writer, jsonOutput bool, keyLocation loginKeyLocation) error {
 	device := declaration.DeviceAuthorization
 	if ctx == nil || device == nil || lookup == nil {
 		return errDeviceLoginUnavailable
@@ -115,7 +115,7 @@ func loginClient(ctx context.Context, declaration clientconfig.Config, lookup fu
 			return "", false
 		}
 	}, func() error {
-		return writeLoginReady(out, jsonOutput, "http://"+declaration.Listen+declaration.Rule.PathPrefix, strings.Split(remoteKey, ".")[1], approval.expiresAt)
+		return writeLoginReady(out, jsonOutput, "http://"+declaration.Listen+declaration.Rule.PathPrefix, strings.Split(remoteKey, ".")[1], approval.expiresAt, keyLocation)
 	})
 }
 
@@ -288,10 +288,42 @@ func writeLoginChallenge(out io.Writer, jsonOutput bool, uri, code string) error
 	return err
 }
 
-func writeLoginReady(out io.Writer, jsonOutput bool, base, sessionID string, expires time.Time) error {
+func writeLoginReady(out io.Writer, jsonOutput bool, base, sessionID string, expires time.Time, location loginKeyLocation) error {
 	if jsonOutput {
-		return json.NewEncoder(out).Encode(map[string]string{"mode": "client", "status": "running", "session_id": sessionID, "local_base_url": base, "expires_at": expires.UTC().Format(time.RFC3339)})
+		value := map[string]string{"mode": "client", "status": "running", "session_id": sessionID, "local_base_url": base, "expires_at": expires.UTC().Format(time.RFC3339), "local_auth": "bearer"}
+		if location.file != "" {
+			value["local_key_file"] = location.file
+		} else {
+			value["local_key_env"] = location.env
+		}
+		return json.NewEncoder(out).Encode(value)
 	}
-	_, err := fmt.Fprintf(out, "\nConnected. Local API: %s\nSession: %s\nExpires: %s\nKeep this terminal open. Press Ctrl+C to disconnect.\n", base, sessionID, expires.UTC().Format(time.RFC3339))
+	var source string
+	if location.file != "" {
+		source = "Read the local key file: " + location.file
+	} else {
+		source = "Use the value of " + location.env + " (the selected environment override)."
+	}
+	_, err := fmt.Fprintf(out, "\nConnected. Local API: %s\n\nLocal API key required for every curl or SDK request.\n%s\nSet your SDK's API key to that value. Never share the key.\n\nSession: %s\nExpires: %s\nKeep this terminal open. Press Ctrl+C to disconnect.\n", base, source, sessionID, expires.UTC().Format(time.RFC3339))
+	if err != nil {
+		return err
+	}
+	if strings.HasSuffix(base, "/v1") {
+		_, err = fmt.Fprintf(out, "\nRouter model-list example in another terminal:\n  %s\n", loginCurlExample(base+"/models", location))
+	}
 	return err
+}
+
+// The generated POSIX-shell command does not place a key value in curl's argv.
+// Ignore curl configuration and proxies so an inherited trace/proxy cannot
+// capture the Authorization header intended for the numeric loopback listener.
+func loginCurlExample(endpoint string, location loginKeyLocation) string {
+	quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'" }
+	var header string
+	if location.file != "" {
+		header = "/usr/bin/sed 's/^/Authorization: Bearer /' " + quote(location.file)
+	} else {
+		header = "printf 'Authorization: Bearer %s\\n' \"${" + location.env + ":?Set the same local key override in this terminal}\""
+	}
+	return header + " | /usr/bin/curl --disable --noproxy '*' --fail --header @- " + quote(endpoint)
 }

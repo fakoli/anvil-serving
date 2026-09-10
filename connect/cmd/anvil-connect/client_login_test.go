@@ -9,9 +9,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/fakoli/anvil-serving/connect/internal/client"
 )
 
 func TestAwaitDeviceApprovalBacksOffAfterSlowDown(t *testing.T) {
@@ -142,7 +147,7 @@ func TestLoginOutputSupportsPeopleAndAutomation(t *testing.T) {
 			t.Fatal("challenge contract changed")
 		}
 		output.Reset()
-		if err := writeLoginReady(&output, jsonOutput, base, "test-session", expires); err != nil {
+		if err := writeLoginReady(&output, jsonOutput, base, "test-session", expires, loginKeyLocation{file: "/tmp/example/local-key"}); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(output.String(), base) || !strings.Contains(output.String(), expires.Format(time.RFC3339)) {
@@ -153,11 +158,74 @@ func TestLoginOutputSupportsPeopleAndAutomation(t *testing.T) {
 			if err := json.Unmarshal([]byte(challenge), &value); err != nil || value["verification_uri"] != uri || value["user_code"] != code {
 				t.Fatal("invalid challenge JSON")
 			}
-			if err := json.Unmarshal([]byte(output.String()), &value); err != nil || value["status"] != "running" || value["local_base_url"] != base {
+			if err := json.Unmarshal([]byte(output.String()), &value); err != nil || value["status"] != "running" || value["local_base_url"] != base || value["local_auth"] != "bearer" || value["local_key_file"] != "/tmp/example/local-key" {
 				t.Fatal("invalid ready JSON")
 			}
-		} else if !strings.Contains(challenge, "Waiting for browser approval") || !strings.Contains(output.String(), "Ctrl+C") {
+		} else if !strings.Contains(challenge, "Waiting for browser approval") || !strings.Contains(output.String(), "Ctrl+C") || !strings.Contains(output.String(), "Local API key required") || !strings.Contains(output.String(), "--header @-") {
 			t.Fatal("human instructions missing")
 		}
+	}
+}
+
+func TestLoginReadyDescribesEnvironmentOverrideInsteadOfFile(t *testing.T) {
+	for _, jsonOutput := range []bool{false, true} {
+		var output strings.Builder
+		if err := writeLoginReady(&output, jsonOutput, "http://127.0.0.1:8787/v1", "session", time.Now(), loginKeyLocation{env: "TEST_LOCAL_KEY"}); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(output.String(), "TEST_LOCAL_KEY") || strings.Contains(output.String(), "local_key_file") || strings.Contains(output.String(), "/local-key") {
+			t.Fatal("instructions did not identify the selected environment override")
+		}
+	}
+}
+
+func TestLoginCurlExampleConfinesKeyDespiteShellMetacharactersAndCurlConfig(t *testing.T) {
+	if _, err := os.Stat("/usr/bin/curl"); err != nil {
+		t.Skip("system curl unavailable")
+	}
+	for _, fromEnv := range []bool{false, true} {
+		t.Run(map[bool]string{false: "file", true: "environment"}[fromEnv], func(t *testing.T) {
+			directory := t.TempDir()
+			key, err := client.GenerateKey()
+			if err != nil {
+				t.Fatal(err)
+			}
+			file := filepath.Join(directory, "key '$(touch injected)")
+			if err := os.WriteFile(file, []byte(key+"\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			trace := filepath.Join(directory, "trace")
+			if err := os.WriteFile(filepath.Join(directory, ".curlrc"), []byte("trace = "+trace+"\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/v1/models" || r.Header.Get("Authorization") != "Bearer "+key {
+					t.Error("example changed the endpoint or local credential")
+				}
+				_, _ = io.WriteString(w, `{"data":[]}`)
+			}))
+			defer server.Close()
+			location := loginKeyLocation{file: file}
+			if fromEnv {
+				location = loginKeyLocation{env: "TEST_LOCAL_KEY"}
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			command := exec.CommandContext(ctx, "/bin/sh", "-c", loginCurlExample(server.URL+"/v1/models", location))
+			command.Dir = directory
+			command.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + directory, "CURL_HOME=" + directory, "http_proxy=http://127.0.0.1:1", "ALL_PROXY=http://127.0.0.1:1", "NO_PROXY="}
+			if fromEnv {
+				command.Env = append(command.Env, "TEST_LOCAL_KEY="+key)
+			}
+			output, err := command.CombinedOutput()
+			if err != nil || !strings.Contains(string(output), `{"data":[]}`) || strings.Contains(string(output), key) {
+				t.Fatal("generated command failed or exposed the local credential")
+			}
+			for _, name := range []string{trace, filepath.Join(directory, "injected")} {
+				if _, err := os.Stat(name); !os.IsNotExist(err) {
+					t.Fatal("user curl configuration or shell metacharacters executed")
+				}
+			}
+		})
 	}
 }

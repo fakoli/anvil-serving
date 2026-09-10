@@ -41,6 +41,25 @@ credential is obtained during browser approval and stays in memory.
 5. Point your SDK at that local `/v1` base URL and use the local caller key as
    its API key. Stop Connect with Ctrl+C when finished.
 
+For the default installation with the listener configured at `127.0.0.1:8787`,
+login prints the local key requirement, the selected key file (or environment
+override), and a request example. Keep Connect running and test from another
+terminal on the same machine:
+
+```sh
+/usr/bin/sed 's/^/Authorization: Bearer /' ~/.config/anvil-connect/local-key | /usr/bin/curl --disable --noproxy '*' --fail --header @- http://127.0.0.1:8787/v1/models
+```
+
+This passes the installed key through standard input without printing it or
+placing it in curl's process arguments. Curl configuration and proxies are
+disabled for this loopback request. A plain request without the key returns
+`401 Unauthorized` with `WWW-Authenticate: Bearer realm="anvil-connect-local"`.
+The response explains that the local API key is missing or invalid. That local
+rejection does not mean browser login failed. For an SDK, set its
+base URL to the configured loopback `/v1` URL and load the protected local key
+file as its API key; browser approval supplies the separate remote credential.
+An alternate config directory or listener requires the matching file and URL.
+
 The local port belongs to the machine **running Connect**. Connect started
 inside SSH on a server listens on that server's `127.0.0.1`, not your laptop's.
 Run it on the laptop when the SDK runs there. The remote side uses HTTPS even
