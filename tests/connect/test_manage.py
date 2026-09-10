@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import re
+import stat
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -529,6 +530,47 @@ def test_atomic_write_keeps_occupied_foreign_temp(tmp_path: Path, monkeypatch: p
         manage._write_atomic(target, b"new")
     assert sentinel.read_bytes() == b"foreign"
     assert not target.exists()
+
+
+@pytest.mark.parametrize(("mode", "expected"), ((0o644, 0o644), (0o600, 0o600)))
+def test_atomic_write_applies_public_and_private_modes_despite_strict_umask(tmp_path: Path, mode: int, expected: int) -> None:
+    target = tmp_path / ("public.json" if mode == 0o644 else "private.json")
+    previous_umask = os.umask(0o077)
+    try:
+        manage._write_atomic(target, b"managed\n", mode)
+    finally:
+        os.umask(previous_umask)
+    assert target.read_bytes() == b"managed\n"
+    assert stat.S_IMODE(target.stat().st_mode) == expected
+
+
+@pytest.mark.skipif(not _ROOT_WITH_UID_DROP, reason="requires root to exercise real service-UID status read")
+def test_gateway_readiness_status_request_is_readable_by_service_identity_under_strict_umask(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import pwd
+
+    service = pwd.getpwnam(service_account())
+    with tempfile.TemporaryDirectory(prefix="anvil-connect-status-", dir="/tmp") as temporary:
+        root = Path(temporary)
+        root.chmod(0o755)
+        _manifest, value, _native = deployment(root, monkeypatch)
+        value["service_user"] = service.pw_name
+        observed: list[Path] = []
+
+        def service_runner(argv, timeout, identity):  # type: ignore[no-untyped-def]
+            assert identity == manage.ServiceIdentity(service.pw_uid, service.pw_gid)
+            request = Path(argv[-1])
+            observed.append(request)
+            assert stat.S_IMODE(request.stat().st_mode) == 0o644
+            result = manage._bounded_run(("/usr/bin/test", "-r", str(request)), timeout, identity)
+            assert result.returncode == 0
+            return manage.RunResult(0, _gateway_status())
+
+        previous_umask = os.umask(0o077)
+        try:
+            manage._gateway_ready(value, service_runner)
+        finally:
+            os.umask(previous_umask)
+        assert len(observed) == 1
 
 
 def test_bounded_run_kills_grandchild_holding_pipe() -> None:

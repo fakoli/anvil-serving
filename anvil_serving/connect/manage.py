@@ -566,6 +566,11 @@ def _write_atomic(path: Path, data: bytes, mode: int = 0o644) -> None:
         descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW, mode)
         info = os.fstat(descriptor)
         temporary_inode = (info.st_dev, info.st_ino)
+        # os.open's creation mode is filtered through the caller's umask. The
+        # caller selected this file's public or private contract explicitly,
+        # so apply it to the just-created no-follow descriptor before durable
+        # publication.
+        os.fchmod(descriptor, mode)
         offset = 0
         while offset < len(data):
             count = os.write(descriptor, data[offset:])
