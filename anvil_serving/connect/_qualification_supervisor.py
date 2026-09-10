@@ -201,7 +201,7 @@ class Children:
         return not active and not exceeded, escalated, limited | exceeded
 
 
-_FIXTURE_MARKER = __import__("re").compile(r"browser_(?:edge|runtime)_fixture_test\.go:[1-9][0-9]{0,4}")
+_FIXTURE_MARKER = __import__("re").compile(r"(?:browser_(?:edge|runtime)_fixture_test\.go|browser_edge\.spec\.mjs):[1-9][0-9]{0,4}")
 _FAILURE_STAGES = frozenset({"build", "fixture-startup", "browser-launch-cert", "browser-connection", "browser-dns", "browser-navigation", "browser-assertion", "report-parsing", "timeout", "interrupted", "supervisor"})
 
 
@@ -214,6 +214,30 @@ def _report_value(output: bytes) -> dict[str, Any] | None:
 
 
 def _fixture_marker(value: Any) -> str | None:
+    # Playwright keeps assertion locations as structured fields, not always in
+    # its stack string. Retain only an allowlisted public basename and line.
+    pending = [value]
+    visited = 0
+    location_marker = None
+    while pending and visited < 4096:
+        item = pending.pop()
+        visited += 1
+        if isinstance(item, dict):
+            description = item.get("description")
+            if item.get("type") == "diagnostic-location" and isinstance(description, str) and _FIXTURE_MARKER.fullmatch(description):
+                return description
+            location = item.get("location")
+            if "message" in item and isinstance(location, dict):
+                filename, line = location.get("file"), location.get("line")
+                if isinstance(filename, str) and type(line) is int:
+                    marker = filename.replace("\\", "/").rsplit("/", 1)[-1] + ":" + str(line)
+                    if location_marker is None and _FIXTURE_MARKER.fullmatch(marker):
+                        location_marker = marker
+            pending.extend(reversed(list(item.values())))
+        elif isinstance(item, list):
+            pending.extend(reversed(item))
+    if location_marker is not None:
+        return location_marker
     for text in _report_strings(value):
         match = _FIXTURE_MARKER.search(text)
         if match:
@@ -257,7 +281,8 @@ def _failure_stage(output: bytes, expected_name: str) -> str:
     value = _report_value(output)
     if value is None:
         return "report-parsing"
-    if _fixture_marker(value) is not None:
+    marker = _fixture_marker(value)
+    if marker is not None and not marker.startswith("browser_edge.spec.mjs:"):
         return "fixture-startup"
     text = "\n".join(_report_strings(value)).lower()
     if "err_name_not_resolved" in text:
@@ -272,7 +297,7 @@ def _failure_stage(output: bytes, expected_name: str) -> str:
         return "fixture-startup"
     if any(token in text for token in ("chromium.launch", "browsertype.launch", "verifyuntrustedcertificate", "unknown fixture certificate", "err_cert", "certificate")):
         return "browser-launch-cert"
-    return "browser-assertion" if _matching_spec(value, expected_name) is not None else "report-parsing"
+    return "browser-assertion" if marker is not None or _matching_spec(value, expected_name) is not None else "report-parsing"
 
 
 def _skipped_report(output: bytes, expected_name: str) -> bool:

@@ -237,12 +237,13 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		edgeRun(t, childHome, authelia, "storage", "user", "identifiers", "add", "fixture-allowed", "--config", authConfig, "--config.experimental.filters", "template")
 	}
 	startEdgeChild(t, childHome, authelia, "--config", authConfig, "--config.experimental.filters", "template")
-	deviceHuman := ""
+	allowedSubject, deviceHuman := "", ""
 	if deviceFixture {
 		deviceSubject, exportErr := edgeGrantedSubject(childHome, authelia, authConfig, filepath.Join(directory, "device-identifiers.yml"))
 		if exportErr != nil {
 			t.Fatal("fixture device subject export failed")
 		}
+		allowedSubject = deviceSubject
 		deviceHuman = runtimeFixtureHumanID("https://"+edgeAuthHost, deviceSubject)
 		if deviceHuman == "" {
 			t.Fatal("fixture device human id unavailable")
@@ -364,8 +365,9 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	nativeFixture := &edgeFixture{}
 	native := httptest.NewServer(http.HandlerFunc(nativeFixture.nativeDashboard))
 	defer native.Close()
-	var apiPosts atomic.Int64
+	var apiRequests, apiPosts atomic.Int64
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiRequests.Add(1)
 		if r.Method == http.MethodPost {
 			apiPosts.Add(1)
 		}
@@ -471,15 +473,24 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	for command := range commands {
 		response := map[string]string{"ack": command}
 		switch command {
-		case "grant allowed":
-			subject, grantErr := edgeGrantedSubject(childHome, authelia, authConfig, filepath.Join(directory, "identifiers.yml"))
-			if grantErr != nil {
-				response["error"] = "fixture subject export failed"
-			} else if _, grantErr = admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "human-set", Issuer: "https://" + edgeAuthHost, Subject: subject, Resources: []string{"dash"}}); grantErr != nil {
-				response["error"] = "fixture Connect grant failed"
+		case "grant allowed", "disable allowed":
+			if allowedSubject == "" {
+				subject, exportErr := edgeGrantedSubject(childHome, authelia, authConfig, filepath.Join(directory, "identifiers.yml"))
+				if exportErr != nil {
+					response["error"] = "fixture subject export failed"
+				} else {
+					allowedSubject = subject
+				}
+			}
+			if response["error"] == "" {
+				if _, grantErr := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "human-set", Issuer: "https://" + edgeAuthHost, Subject: allowedSubject, Resources: []string{"dash"}, Disabled: command == "disable allowed"}); grantErr != nil {
+					response["error"] = "fixture Connect grant failed"
+				}
 			}
 		case "totp allowed":
 			response["code"] = edgeStableTOTP(allowedTOTP)
+		case "api request count":
+			response["count"] = strconv.FormatInt(apiRequests.Load(), 10)
 		case "api post count":
 			response["count"] = strconv.FormatInt(apiPosts.Load(), 10)
 		default:
