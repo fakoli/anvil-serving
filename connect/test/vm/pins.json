@@ -1,0 +1,12 @@
+{
+  "schema": "anvil-connect.qualification-vm-pins/v1",
+  "image_url": "https://cloud-images.ubuntu.com/releases/noble/release-20260826/ubuntu-24.04-server-cloudimg-amd64.img",
+  "image_sha256": "d0fe84bb5f80853425fa6be28e2c106f30104c3cfe8611933f2e65c9b63f0e30",
+  "max_image_bytes": 805306368,
+  "sums_url": "https://cloud-images.ubuntu.com/releases/noble/release-20260826/SHA256SUMS",
+  "sums_sha256": "ee5d4762c360593bc480ad345cbb78eee0e70dbf6bd2301c8bfc8b2007d4c7b3",
+  "signature_url": "https://cloud-images.ubuntu.com/releases/noble/release-20260826/SHA256SUMS.gpg",
+  "signature_sha256": "303cceab0ff0aa69faa03df5c657c91d84e0e24ceac71b1f1f0b1fb860040242",
+  "signer_fingerprint": "D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81",
+  "keyring_sha256": "c2d40d925557dbe9a0745c12ca0dc98bed593ce9a6652f1b2faa1ff0858dbf2f"
+}

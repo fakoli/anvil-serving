@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from copy import deepcopy
 import hmac
 import os
 import stat
+import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from .config import ManifestError, read_manifest, validate_manifest
+from .render import plan_for_inspection, render_for_inspection
 from . import manage
 
 
@@ -39,8 +42,26 @@ def _private_directory(path: Path, uid: int) -> None:
 
 
 def _recovery_identity(data: dict[str, Any]) -> tuple[manage.ServiceIdentity | None, int]:
-    identity = manage._service_identity(data)
+    identity = (manage._role_service_identity(data, "gateway")
+                if "service_identities" in data else manage._legacy_recovery_identity(data))
     return identity, os.geteuid() if identity is None else identity.uid
+
+
+def _recovery_current(data: dict[str, Any]) -> None:
+    """Check a rendered generation for recovery without permitting activation."""
+    if plan_for_inspection(data, data["config_root"])["state"] != "current":
+        raise manage.ManageError("native authority command requires the current owned generation")
+
+
+@contextmanager
+def _temporary_recovery_declaration(data: dict[str, Any], target: manage.Target) -> Iterator[Path]:
+    """Materialize an inspection-only declaration for offline recovery."""
+    generated = render_for_inspection(data)
+    with tempfile.TemporaryDirectory(prefix="anvil-connect-recovery-") as temporary:
+        root = Path(temporary)
+        manage._materialize(generated["files"], root)
+        manage._make_public(root)
+        yield manage._config_path({**data, "config_root": str(root)}, target)
 
 
 def _response(raw: bytes, *, operation: str) -> dict[str, str]:
@@ -67,7 +88,7 @@ def backup(manifest_path: str | Path, *, output_path: str | Path, apply: bool = 
     if os.path.lexists(output):
         raise manage.ManageError("backup output already exists")
     target = manage.Target("gateway")
-    manage._current(data)
+    _recovery_current(data)
     digests = manage._verified_binaries(data, target)
     manage._bound_active(data, target, digests)
     result: dict[str, Any] = {"schema": "anvil-connect.recovery-plan/v1", "action": "backup", "applied": False,
@@ -76,7 +97,7 @@ def backup(manifest_path: str | Path, *, output_path: str | Path, apply: bool = 
     if not apply:
         return result
     with manage._deployment_lock(Path(data["config_root"])):
-        manage._current(data)
+        _recovery_current(data)
         manage._bound_active(data, target, manage._verified_binaries(data, target))
         try:
             response = manage._run(runner, (data["binary"], "backup", "--config", str(manage._config_path(data, target)), "--output", str(output)), 20, identity)
@@ -123,7 +144,7 @@ def restore(manifest_path: str | Path, *, input_path: str | Path, destination: s
         "activation": "separate", "archive_integrity": "checked-by-native-before-write"}
     if not apply:
         return result
-    with manage._temporary_declaration(changed, manage.Target("gateway")) as config:
+    with _temporary_recovery_declaration(changed, manage.Target("gateway")) as config:
         if not hmac.compare_digest(manage._native_verified(data), expected_native):
             raise manage.ManageError("native binary changed before recovery")
         try:

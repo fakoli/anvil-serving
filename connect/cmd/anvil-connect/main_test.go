@@ -6,11 +6,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	stdruntime "runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -22,6 +28,7 @@ import (
 	"github.com/fakoli/anvil-serving/connect/internal/client"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/identity"
+	"github.com/fakoli/anvil-serving/connect/internal/ingresshttp"
 	"github.com/fakoli/anvil-serving/connect/internal/localhttp"
 	"github.com/fakoli/anvil-serving/connect/internal/privatefiles"
 	connectruntime "github.com/fakoli/anvil-serving/connect/internal/runtime"
@@ -279,6 +286,18 @@ func TestClientCancellationClosesOwnedListener(t *testing.T) {
 }
 
 func TestGatewayStoppedStatusFollowsOwnedCleanup(t *testing.T) {
+	policyFile := os.Getenv("ANVIL_CONNECT_TEST_INGRESS_POLICY_FILE")
+	if policyFile == "" {
+		t.Skip("requires a cross-UID ingress policy fixture")
+	}
+	policyData, err := readPrivate(policyFile)
+	if err != nil {
+		t.Fatal("test ingress policy is not owner-private")
+	}
+	var policy ingresshttp.Policy
+	if config.Decode(bytes.NewReader(policyData), &policy) != nil || policy.Validate() != nil {
+		t.Fatal("test ingress policy is invalid")
+	}
 	binary := os.Getenv("ANVIL_CONNECT_WSTUNNEL")
 	if binary == "" {
 		t.Skip("requires explicit pinned transport artifact")
@@ -293,7 +312,7 @@ func TestGatewayStoppedStatusFollowsOwnedCleanup(t *testing.T) {
 		return result
 	}
 	root := filepath.Join(t.TempDir(), "gateway")
-	c := connectruntime.GatewayConfig{Schema: "anvil-connect.gateway-runtime/v1", Gateway: config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: address(), MaxConcurrent: 2, Resources: []config.Resource{{Rule: cliRule(), Connector: "origin", TunnelAddress: address()}}}, ControlHost: "control.example.test", TunnelHost: "tunnel.example.test", StateDirectory: root, TunnelBinary: binary, TunnelListen: address()}
+	c := connectruntime.GatewayConfig{Schema: "anvil-connect.gateway-runtime/v1", Gateway: config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: address(), MaxConcurrent: 2, Resources: []config.Resource{{Rule: cliRule(), Connector: "origin", TunnelAddress: address()}}}, ControlHost: "control.example.test", TunnelHost: "tunnel.example.test", StateDirectory: root, TunnelBinary: binary, TunnelListen: address(), Ingress: &policy}
 	path := jsonFile(t, "gateway.json", c)
 	if code := run(context.Background(), []string{"init", "--mode", "gateway", "--config", path}, io.Discard, io.Discard, noSecrets(t)); code != 0 {
 		t.Fatal("initialization failed")
@@ -318,7 +337,7 @@ func TestGatewayStoppedStatusFollowsOwnedCleanup(t *testing.T) {
 	if err := decoder.Decode(&state); err != nil || state["status"] != "running" {
 		t.Fatal("gateway failed to start")
 	}
-	if _, err := os.Lstat(filepath.Join(root, "ingress.sock")); err != nil {
+	if _, err := os.Lstat(filepath.Join(policy.Directory, "ingress.sock")); err != nil {
 		t.Fatal("gateway ingress did not open")
 	}
 	cancel()
@@ -327,8 +346,8 @@ func TestGatewayStoppedStatusFollowsOwnedCleanup(t *testing.T) {
 	}
 	// Check immediately when the stopped event is consumed, before waiting for
 	// run to return. A deferred-only Close incorrectly emits this event early.
-	for _, name := range []string{"ingress.sock", "admin.sock"} {
-		if _, err := os.Lstat(filepath.Join(root, name)); !os.IsNotExist(err) {
+	for _, path := range []string{filepath.Join(policy.Directory, "ingress.sock"), filepath.Join(root, "admin.sock")} {
+		if _, err := os.Lstat(path); !os.IsNotExist(err) {
 			t.Fatal("stopped status preceded owned socket cleanup")
 		}
 	}
@@ -342,6 +361,81 @@ func TestGatewayStoppedStatusFollowsOwnedCleanup(t *testing.T) {
 		t.Fatal("gateway cancellation failed")
 	}
 	reader.Close()
+}
+
+func TestGatewayActivationRejectsLegacyIngressBeforeState(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "gateway")
+	c := connectruntime.GatewayConfig{
+		Schema: "anvil-connect.gateway-runtime/v1",
+		Gateway: config.Gateway{
+			Schema:        "anvil-connect.gateway/v1",
+			Listen:        "127.0.0.1:18100",
+			MaxConcurrent: 2,
+			Resources:     []config.Resource{{Rule: cliRule(), Connector: "origin", TunnelAddress: "127.0.0.1:18101"}},
+		},
+		ControlHost: "control.example.test", TunnelHost: "tunnel.example.test",
+		StateDirectory: root, TunnelBinary: "/missing/wstunnel", TunnelListen: "127.0.0.1:18102",
+	}
+	var stdout, stderr bytes.Buffer
+	if code := run(context.Background(), []string{"gateway", "--config", jsonFile(t, "legacy-gateway.json", c)}, &stdout, &stderr, noSecrets(t)); code != 1 {
+		t.Fatalf("legacy activation code = %d, want 1", code)
+	}
+	if stdout.Len() != 0 || strings.Contains(stderr.String(), "wstunnel") {
+		t.Fatal("legacy activation emitted an unsafe diagnostic")
+	}
+	if _, err := os.Lstat(root); !os.IsNotExist(err) {
+		t.Fatal("legacy activation created gateway state")
+	}
+}
+
+func TestShippedProductionDoesNotReachProtocolFixtureCompose(t *testing.T) {
+	_, source, _, ok := stdruntime.Caller(0)
+	if !ok {
+		t.Fatal("command source unavailable")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(source), "..", ".."))
+	for _, subtree := range []string{"cmd", "internal"} {
+		err := filepath.WalkDir(filepath.Join(root, subtree), func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+				return nil
+			}
+			parsed, parseErr := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+			if parseErr != nil {
+				return parseErr
+			}
+			var definition *ast.Ident
+			relative, relativeErr := filepath.Rel(root, path)
+			if relativeErr != nil {
+				return relativeErr
+			}
+			if filepath.ToSlash(relative) == "internal/runtime/gateway.go" {
+				for _, declaration := range parsed.Decls {
+					function, functionOK := declaration.(*ast.FuncDecl)
+					if functionOK && function.Name.Name == "ComposeGatewayForProtocolFixture" {
+						definition = function.Name
+					}
+				}
+			}
+			var found *ast.Ident
+			ast.Inspect(parsed, func(node ast.Node) bool {
+				identifier, identifierOK := node.(*ast.Ident)
+				if identifierOK && identifier.Name == "ComposeGatewayForProtocolFixture" && identifier != definition {
+					found = identifier
+				}
+				return found == nil
+			})
+			if found != nil {
+				return fmt.Errorf("protocol fixture compose reference in %s", filepath.ToSlash(relative))
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 type gatedStoppedWriter struct {

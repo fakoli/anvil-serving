@@ -115,7 +115,23 @@ def deployment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, d
     value["config_root"] = str(tmp_path / "rendered")
     value["gateway"]["state_directory"] = str(tmp_path / "gateway-state")
     value["authelia"]["state_directory"] = str(tmp_path / "authelia-state")
-    value["service_user"] = service_account()
+    value.pop("service_user")
+    value["caddy"]["state_directory"] = str(tmp_path / "caddy-state")
+    value["service_identities"] = {
+        "gateway": {"uid": 1201, "gid": 2201},
+        "edge": {"uid": 1202, "gid": 2202},
+        "idp": {"uid": 1203, "gid": 2203},
+        "connectors": {"dashboard": {"uid": 1204, "gid": 2204}},
+        "clients": {"dashboard-api": {"uid": 1205, "gid": 2205}},
+        "ingress": {"group_id": 2290, "directory": str(tmp_path / "ingress")},
+    }
+    value["service_limits"] = {
+        "gateway": {"memory_max_bytes": 805306368, "tasks_max": 128},
+        "edge": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "idp": {"memory_max_bytes": 536870912, "tasks_max": 64},
+        "connectors": {"dashboard": {"memory_max_bytes": 402653184, "tasks_max": 64}},
+        "clients": {"dashboard-api": {"memory_max_bytes": 268435456, "tasks_max": 32}},
+    }
     for section, name in (("gateway", "gateway.env"),):
         value["environment_files"][section] = str(tmp_path / name)
     for name in value["environment_files"]["connectors"]:
@@ -125,6 +141,20 @@ def deployment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, d
     for env in [value["environment_files"]["gateway"], *value["environment_files"]["connectors"].values(), *value["environment_files"]["clients"].values()]:
         Path(env).write_text("DECLARED_ONLY=1\n", encoding="utf-8")
         Path(env).chmod(0o600)
+    environment_paths = {Path(value["environment_files"]["gateway"]), *(Path(item) for item in value["environment_files"]["connectors"].values()), *(Path(item) for item in value["environment_files"]["clients"].values())}
+    original_lstat = Path.lstat
+
+    def root_owned_environment_lstat(path: Path):
+        info = original_lstat(path)
+        if path in environment_paths:
+            return os.stat_result((info.st_mode, info.st_ino, info.st_dev, info.st_nlink,
+                                   0, info.st_gid, info.st_size, info.st_atime, info.st_mtime, info.st_ctime))
+        return info
+
+    monkeypatch.setattr(Path, "lstat", root_owned_environment_lstat)
+    monkeypatch.setattr(manage, "_validate_isolated_runtime", lambda *_: None)
+    monkeypatch.setattr(manage, "_safe_root_ancestors", lambda *_: None)
+    monkeypatch.setattr(manage, "_role_service_identity", lambda *_: None)
     manifest = tmp_path / "deployment.json"
     manifest.write_text(json.dumps(value), encoding="utf-8")
     monkeypatch.setattr(manage, "_component_lock", lambda: {"caddy": caddy_digest, "authelia": authelia_digest})
@@ -255,6 +285,26 @@ def test_up_refuses_global_change_to_unselected_target(tmp_path: Path, monkeypat
     assert json.loads((Path(value["config_root"]) / "connectors/dashboard.json").read_text())["resources"][0]["envelope"]["origin_url"] == "http://127.0.0.1:18080"
 
 
+def test_service_limit_change_is_target_scoped_and_rolled_into_owned_units(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    runner = SyntheticRunner(); runner.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+
+    changed = copy.deepcopy(value)
+    changed["service_limits"]["connectors"]["dashboard"]["memory_max_bytes"] = 402653185
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+    with pytest.raises(manage.ManageError, match="unselected target"):
+        manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+
+    changed = copy.deepcopy(value)
+    changed["service_limits"]["gateway"]["memory_max_bytes"] = 805306369
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    assert "MemoryMax=805306369" in (units / "anvil-connect-gateway.service").read_text(encoding="utf-8")
+
+
 def test_up_many_coordinates_gateway_and_connector_generation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manifest, value, _ = deployment(tmp_path, monkeypatch)
     units = tmp_path / "units"
@@ -360,6 +410,107 @@ def test_gateway_readiness_failure_rolls_back_without_starting_connector(tmp_pat
     assert caught.value.may_have_executed is True
     assert (root / "gateway.json").read_bytes() == previous_gateway
     assert not any(call[-1] == "anvil-connect-connector-dashboard.service" and call[1] in {"enable", "restart"} for call in runner.calls)
+
+
+def test_rollback_waits_for_prior_gateway_before_restoring_dependents(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, native = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    initial = SyntheticRunner(active=True); initial.unit_root = units
+    targets = manage._targets(value, None)
+    manage.up_many(manifest, targets, apply=True, runner=initial, unit_root=units)
+    root = Path(value["config_root"])
+    old_gateway = (root / "gateway.json").read_bytes()
+    old_state = Path(value["gateway"]["state_directory"])
+    upgraded = tmp_path / "anvil-connect-v2"
+    _executable(upgraded, b"native-v2")
+    changed = copy.deepcopy(value)
+    changed["binary"] = str(upgraded)
+    changed["gateway"]["state_directory"] = str(tmp_path / "gateway-state-v2")
+    changed["service_identities"]["gateway"] = {"uid": 1291, "gid": 2291}
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+    monkeypatch.setattr(
+        manage,
+        "_role_service_identity",
+        lambda data, *_: manage.ServiceIdentity(data["service_identities"]["gateway"]["uid"], data["service_identities"]["gateway"]["gid"]),
+    )
+
+    class DelayedPriorRunner(SyntheticRunner):
+        def __init__(self) -> None:
+            super().__init__(active=True)
+            self.new_probes = 0
+            self.prior_probes = 0
+
+        def __call__(self, argv, timeout, identity):  # type: ignore[no-untyped-def]
+            if argv[:2] == (str(upgraded), "admin"):
+                self.calls.append(argv)
+                self.new_probes += 1
+                assert identity == manage.ServiceIdentity(1291, 2291)
+                return manage.RunResult(1)
+            if argv[:2] == (str(native), "admin"):
+                self.calls.append(argv)
+                self.prior_probes += 1
+                assert identity == manage.ServiceIdentity(1201, 2201)
+                assert argv[argv.index("--socket") + 1] == str(old_state / "admin.sock")
+                return manage.RunResult(1) if self.prior_probes < 3 else manage.RunResult(0, _gateway_status())
+            return super().__call__(argv, timeout, identity)
+
+    runner = DelayedPriorRunner(); runner.unit_root = units
+    with pytest.raises(manage.ManageError, match="gateway did not become ready"):
+        manage.up_many(manifest, (manage.Target("connector", "dashboard"), manage.Target("gateway"), manage.Target("client", "dashboard-api")), upgrade=True, apply=True, runner=runner, unit_root=units)
+    assert (root / "gateway.json").read_bytes() == old_gateway
+    assert runner.new_probes == 6
+    assert runner.prior_probes == 3
+    last_new_probe = max(index for index, call in enumerate(runner.calls) if call[:2] == (str(upgraded), "admin"))
+    restored = [call[-1] for call in runner.calls[last_new_probe + 1:] if call[:2] == ("/usr/bin/systemctl", "restart")]
+    assert restored == [
+        "anvil-connect-authelia.service",
+        "anvil-connect-caddy.service",
+        "anvil-connect-gateway.service",
+        "anvil-connect-connector-dashboard.service",
+        "anvil-connect-client-dashboard-api.service",
+    ]
+    third_prior_probe = [index for index, call in enumerate(runner.calls) if call[:2] == (str(native), "admin")][2]
+    connector_restart = next(index for index, call in enumerate(runner.calls) if call == ("/usr/bin/systemctl", "restart", "anvil-connect-connector-dashboard.service"))
+    assert third_prior_probe < connector_restart
+
+
+def test_rollback_refuses_dependent_restore_when_prior_gateway_never_ready(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, native = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    initial = SyntheticRunner(active=True); initial.unit_root = units
+    targets = manage._targets(value, None)
+    manage.up_many(manifest, targets, apply=True, runner=initial, unit_root=units)
+    root = Path(value["config_root"])
+    old_gateway = (root / "gateway.json").read_bytes()
+    upgraded = tmp_path / "anvil-connect-v2"
+    _executable(upgraded, b"native-v2")
+    changed = copy.deepcopy(value)
+    changed["binary"] = str(upgraded)
+    changed["gateway"]["state_directory"] = str(tmp_path / "gateway-state-v2")
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+
+    class NeverReadyRunner(SyntheticRunner):
+        def __init__(self) -> None:
+            super().__init__(active=True)
+            self.prior_probes = 0
+
+        def __call__(self, argv, timeout, identity):  # type: ignore[no-untyped-def]
+            if argv[:2] in {(str(upgraded), "admin"), (str(native), "admin")}:
+                self.calls.append(argv)
+                if argv[0] == str(native):
+                    self.prior_probes += 1
+                return manage.RunResult(1)
+            return super().__call__(argv, timeout, identity)
+
+    runner = NeverReadyRunner(); runner.unit_root = units
+    with pytest.raises(manage.ManageError, match="restoration failed") as caught:
+        manage.up_many(manifest, targets, upgrade=True, apply=True, runner=runner, unit_root=units)
+    assert caught.value.may_have_executed is True
+    assert (root / "gateway.json").read_bytes() == old_gateway
+    assert runner.prior_probes == 6
+    assert not any(call == ("/usr/bin/systemctl", "restart", "anvil-connect-connector-dashboard.service") for call in runner.calls)
 
 
 def test_up_many_refuses_same_path_binary_replacement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -553,7 +704,7 @@ def test_gateway_readiness_status_request_is_readable_by_service_identity_under_
         root = Path(temporary)
         root.chmod(0o755)
         _manifest, value, _native = deployment(root, monkeypatch)
-        value["service_user"] = service.pw_name
+        monkeypatch.setattr(manage, "_role_service_identity", lambda *_: manage.ServiceIdentity(service.pw_uid, service.pw_gid))
         observed: list[Path] = []
 
         def service_runner(argv, timeout, identity):  # type: ignore[no-untyped-def]
@@ -793,9 +944,7 @@ def test_preflight_temporary_declaration_is_readable_after_real_uid_drop(tmp_pat
         checker.chmod(0o755)
         value["binary"] = str(checker)
         value["components"] = {"caddy": str(checker), "authelia": str(checker)}
-        value["service_user"] = service.pw_name
-        for path in [value["environment_files"]["gateway"], *value["environment_files"]["connectors"].values(), *value["environment_files"]["clients"].values()]:
-            os.chown(path, service.pw_uid, service.pw_gid)
+        monkeypatch.setattr(manage, "_role_service_identity", lambda *_: manage.ServiceIdentity(service.pw_uid, service.pw_gid))
         manifest.write_text(json.dumps(value), encoding="utf-8")
         digest = hashlib.sha256(checker.read_bytes()).hexdigest()
         monkeypatch.setattr(manage, "_component_lock", lambda: {"caddy": digest, "authelia": digest})
@@ -836,16 +985,18 @@ def test_partial_component_activation_record_is_closed_before_binding_or_upgrade
         manage.up_many(manifest, manage._targets(value, None), upgrade=True, apply=True, runner=runner, unit_root=units)
 
 
-def test_service_identity_rejects_root_and_group_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
-    data = {"service_user": "svc"}
-    monkeypatch.setattr(manage.pwd, "getpwnam", lambda _: SimpleNamespace(pw_uid=0, pw_gid=10))
-    monkeypatch.setattr(manage.grp, "getgrnam", lambda _: SimpleNamespace(gr_gid=10))
+def test_role_identity_rejects_root_and_group_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    data = {"service_identities": {}}
+    monkeypatch.setattr(manage, "role_identity", lambda *_: (0, 10))
+    monkeypatch.setattr(manage.pwd, "getpwuid", lambda _: SimpleNamespace(pw_uid=0, pw_gid=10, pw_name="svc"))
+    monkeypatch.setattr(manage.grp, "getgrgid", lambda _: SimpleNamespace(gr_gid=10))
     with pytest.raises(manage.ManageError, match="unsafe"):
-        manage._service_identity(data)
-    monkeypatch.setattr(manage.pwd, "getpwnam", lambda _: SimpleNamespace(pw_uid=10, pw_gid=11))
-    monkeypatch.setattr(manage.grp, "getgrnam", lambda _: SimpleNamespace(gr_gid=12))
+        manage._role_service_identity(data, "gateway")
+    monkeypatch.setattr(manage, "role_identity", lambda *_: (10, 12))
+    monkeypatch.setattr(manage.pwd, "getpwuid", lambda _: SimpleNamespace(pw_uid=10, pw_gid=11, pw_name="svc"))
+    monkeypatch.setattr(manage.grp, "getgrgid", lambda _: SimpleNamespace(gr_gid=12))
     with pytest.raises(manage.ManageError, match="unsafe"):
-        manage._service_identity(data)
+        manage._role_service_identity(data, "gateway")
 
 
 def test_restore_preserves_enabled_runtime_and_partial_failure() -> None:

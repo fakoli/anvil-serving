@@ -9,7 +9,7 @@ import stat
 from pathlib import Path
 from typing import Any
 
-from .config import ManifestError, canonical_manifest, validate_manifest
+from .config import ManifestError, canonical_manifest, require_isolated, role_identity, role_limits, validate_manifest
 
 _RENDER_SCHEMA = "anvil-connect.render/v1"
 _OWNERSHIP = "anvil-connect.ownership/v1"
@@ -84,7 +84,8 @@ def _upgrade_match() -> dict[str, Any]:
 def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
     gateway = manifest["gateway"]
     authelia = manifest["authelia"]
-    socket = gateway["state_directory"] + "/ingress.sock"
+    ingress = gateway.get("ingress")
+    socket = (ingress["directory"] if ingress is not None else gateway["state_directory"]) + "/ingress.sock"
     hosts = [authelia["host"], gateway["control_host"], gateway["tunnel_host"]]
     hosts.extend(resource["rule"]["host"] for resource in gateway["gateway"]["resources"])
     routes: list[dict[str, Any]] = []
@@ -172,31 +173,89 @@ def _authelia(manifest: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render(manifest: dict[str, Any]) -> dict[str, Any]:
-    """Return deterministic content only. It never writes or invokes a service."""
-    data = validate_manifest(manifest)
+def _isolated_unit(description: str, command: list[str], identity: tuple[int, int], limits: tuple[int, int], writable_paths: list[str], *,
+                   environment_file: str | None = None, identity_environment_file: str | None = None,
+                   supplementary_group: int | None = None, bind_public_tls: bool = False,
+                   environment: dict[str, str] | None = None) -> str:
+    escaped = " ".join(_unit_argument(arg) for arg in command)
+    lines = [
+        "[Unit]", f"Description={description}", "After=network-online.target", "Wants=network-online.target", "",
+        "[Service]", "Type=simple", f"User={identity[0]}", f"Group={identity[1]}", "UMask=0077",
+        "NoNewPrivileges=true", "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true",
+        "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6",
+        "MemoryAccounting=true", "TasksAccounting=true",
+        f"MemoryMax={limits[0]}", f"TasksMax={limits[1]}",
+        "ReadWritePaths=" + " ".join(_unit_argument(path) for path in sorted(set(writable_paths))),
+    ]
+    if supplementary_group is not None:
+        lines.append(f"SupplementaryGroups={supplementary_group}")
+    if environment_file is not None:
+        lines.append("EnvironmentFile=" + _unit_argument(environment_file))
+    if identity_environment_file is not None:
+        lines.append("EnvironmentFile=" + _unit_argument(identity_environment_file))
+    for name, value in sorted((environment or {}).items()):
+        lines.append("Environment=" + _unit_argument(name) + "=" + _unit_argument(value))
+    if bind_public_tls:
+        lines.extend(["AmbientCapabilities=CAP_NET_BIND_SERVICE", "CapabilityBoundingSet=CAP_NET_BIND_SERVICE"])
+    else:
+        lines.extend(["AmbientCapabilities=", "CapabilityBoundingSet="])
+    lines.extend([f"ExecStart={escaped}", "Restart=on-failure", "RestartSec=5", f"TimeoutStopSec={_SERVICE_STOP_TIMEOUT_SECONDS}", "KillSignal=SIGTERM", "", "[Install]", "WantedBy=multi-user.target", ""])
+    return "\n".join(lines)
+
+
+def _render(data: dict[str, Any]) -> dict[str, Any]:
     generation = hashlib.sha256(canonical_manifest(data)).hexdigest()
     gateway = data["gateway"]
-    files: dict[str, str] = {
-        "gateway.json": _json(gateway),
-        "caddy.json": _json(_caddy(data)),
-        "authelia/configuration.yml": _authelia(data),
-        "systemd/anvil-connect-gateway.service": _unit("Anvil Connect gateway", [data["binary"], "gateway", "--config", data["config_root"] + "/gateway.json"], data["service_user"], environment_file=data["environment_files"]["gateway"], identity_environment_file=data["environment_files"].get("gateway_identity")),
-        "systemd/anvil-connect-caddy.service": _unit("Anvil Connect Caddy", [data["components"]["caddy"], "run", "--config", data["config_root"] + "/caddy.json"], data["service_user"], bind_public_tls=int(data["caddy"].get("listen", ":443").rsplit(":", 1)[1]) < 1024),
-        "systemd/anvil-connect-authelia.service": _unit("Anvil Connect Authelia", [data["components"]["authelia"], "--config", data["config_root"] + "/authelia/configuration.yml", "--config.experimental.filters", "template"], data["service_user"]),
-    }
+    if "service_identities" not in data:
+        files: dict[str, str] = {
+            "gateway.json": _json(gateway),
+            "caddy.json": _json(_caddy(data)),
+            "authelia/configuration.yml": _authelia(data),
+            "systemd/anvil-connect-gateway.service": _unit("Anvil Connect gateway", [data["binary"], "gateway", "--config", data["config_root"] + "/gateway.json"], data["service_user"], environment_file=data["environment_files"]["gateway"], identity_environment_file=data["environment_files"].get("gateway_identity")),
+            "systemd/anvil-connect-caddy.service": _unit("Anvil Connect Caddy", [data["components"]["caddy"], "run", "--config", data["config_root"] + "/caddy.json"], data["service_user"], bind_public_tls=int(data["caddy"].get("listen", ":443").rsplit(":", 1)[1]) < 1024),
+            "systemd/anvil-connect-authelia.service": _unit("Anvil Connect Authelia", [data["components"]["authelia"], "--config", data["config_root"] + "/authelia/configuration.yml", "--config.experimental.filters", "template"], data["service_user"]),
+        }
+    else:
+        ingress = gateway["ingress"]["directory"]
+        caddy_state = data["caddy"]["state_directory"]
+        files = {
+            "gateway.json": _json(gateway),
+            "caddy.json": _json(_caddy(data)),
+            "authelia/configuration.yml": _authelia(data),
+            "systemd/anvil-connect-gateway.service": _isolated_unit("Anvil Connect gateway", [data["binary"], "gateway", "--config", data["config_root"] + "/gateway.json"], role_identity(data, "gateway"), role_limits(data, "gateway"), [gateway["state_directory"], ingress], environment_file=data["environment_files"]["gateway"], identity_environment_file=data["environment_files"].get("gateway_identity")),
+            "systemd/anvil-connect-caddy.service": _isolated_unit("Anvil Connect Caddy", [data["components"]["caddy"], "run", "--config", data["config_root"] + "/caddy.json"], role_identity(data, "edge"), role_limits(data, "edge"), [caddy_state], supplementary_group=data["service_identities"]["ingress"]["group_id"], bind_public_tls=int(data["caddy"].get("listen", ":443").rsplit(":", 1)[1]) < 1024, environment={"XDG_CONFIG_HOME": caddy_state + "/config", "XDG_DATA_HOME": caddy_state + "/data"}),
+            "systemd/anvil-connect-authelia.service": _isolated_unit("Anvil Connect Authelia", [data["components"]["authelia"], "--config", data["config_root"] + "/authelia/configuration.yml", "--config.experimental.filters", "template"], role_identity(data, "idp"), role_limits(data, "idp"), [data["authelia"]["state_directory"]]),
+        }
     for connector in data["connectors"]:
         name = connector["id"]
         files[f"connectors/{name}.json"] = _json(connector)
-        files[f"systemd/anvil-connect-connector-{name}.service"] = _unit("Anvil Connect connector " + name, [data["binary"], "connector", "--config", data["config_root"] + "/connectors/" + name + ".json"], data["service_user"], environment_file=data["environment_files"]["connectors"][name])
+        if "service_identities" not in data:
+            files[f"systemd/anvil-connect-connector-{name}.service"] = _unit("Anvil Connect connector " + name, [data["binary"], "connector", "--config", data["config_root"] + "/connectors/" + name + ".json"], data["service_user"], environment_file=data["environment_files"]["connectors"][name])
+        else:
+            files[f"systemd/anvil-connect-connector-{name}.service"] = _isolated_unit("Anvil Connect connector " + name, [data["binary"], "connector", "--config", data["config_root"] + "/connectors/" + name + ".json"], role_identity(data, "connector", name), role_limits(data, "connector", name), [connector["state_directory"]], environment_file=data["environment_files"]["connectors"][name])
     for client in data["clients"]:
         name = client["rule"]["id"]
         files[f"clients/{name}.json"] = _json(client)
-        files[f"systemd/anvil-connect-client-{name}.service"] = _unit("Anvil Connect client " + name, [data["binary"], "client", "--config", data["config_root"] + "/clients/" + name + ".json"], data["service_user"], environment_file=data["environment_files"]["clients"][name])
+        if "service_identities" not in data:
+            files[f"systemd/anvil-connect-client-{name}.service"] = _unit("Anvil Connect client " + name, [data["binary"], "client", "--config", data["config_root"] + "/clients/" + name + ".json"], data["service_user"], environment_file=data["environment_files"]["clients"][name])
+        else:
+            files[f"systemd/anvil-connect-client-{name}.service"] = _isolated_unit("Anvil Connect client " + name, [data["binary"], "client", "--config", data["config_root"] + "/clients/" + name + ".json"], role_identity(data, "client", name), role_limits(data, "client", name), [], environment_file=data["environment_files"]["clients"][name])
     files = dict(sorted(files.items()))
     ownership = {"schema": _OWNERSHIP, "generation": generation, "files": {name: hashlib.sha256(content.encode("utf-8")).hexdigest() for name, content in files.items()}}
     files["managed.json"] = _json(ownership)
     return {"schema": _RENDER_SCHEMA, "generation": generation, "files": files, "ownership": ownership}
+
+
+def render_for_inspection(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Return a deterministic read-only plan, including a legacy generation."""
+    return _render(validate_manifest(manifest))
+
+
+def render(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Return an isolated generation suitable for managed publication only."""
+    data = validate_manifest(manifest)
+    require_isolated(data)
+    return _render(data)
 
 
 _MAX_MARKER_BYTES = 64 * 1024
@@ -314,9 +373,9 @@ def _read_marker(marker: Path) -> dict[str, Any] | None:
     return value
 
 
-def plan(manifest: dict[str, Any], destination: str | Path) -> dict[str, Any]:
+def _plan(manifest: dict[str, Any], destination: str | Path, renderer: Any) -> dict[str, Any]:
     """Read-only drift report; it never adopts or overwrites existing files."""
-    result = render(manifest)
+    result = renderer(manifest)
     root = Path(destination)
     _safe_root(root)
     if _lstat(root) is None:
@@ -335,6 +394,16 @@ def plan(manifest: dict[str, Any], destination: str | Path) -> dict[str, Any]:
     changes = sorted(set(changes))
     state = "drift" if unmanaged or corrupt else ("current" if not changes else "update")
     return {"schema": "anvil-connect.render-plan/v1", "generation": result["generation"], "state": state, "destination": str(root), "changes": changes, "unmanaged": unmanaged, "corrupt": corrupt}
+
+
+def plan_for_inspection(manifest: dict[str, Any], destination: str | Path) -> dict[str, Any]:
+    """Read a legacy or isolated generation for permitted status/down inspection."""
+    return _plan(manifest, destination, render_for_inspection)
+
+
+def plan(manifest: dict[str, Any], destination: str | Path) -> dict[str, Any]:
+    """Read an isolated generation plan suitable for managed publication."""
+    return _plan(manifest, destination, render)
 
 
 def _stage_root(root: Path, generation: str) -> Path:

@@ -199,17 +199,19 @@ func (k *Keys) SetDeviceChecker(checker DeviceChecker) error {
 // Issue returns the raw credential only to its administrative caller. It must
 // be delivered once through a secret channel, never printed by request logs.
 func (k *Keys) Issue(principal string, grants []Grant, lifetime time.Duration) (string, Key, error) {
-	return k.issue(principal, grants, lifetime, DeviceCredential{})
+	return k.issue(principal, grants, lifetime, time.Time{}, DeviceCredential{})
 }
 
 // IssueDevice creates a normal API bearer only after the caller has already
-// checked one configured human-to-principal mapping. Every later admission
-// rechecks that mapping and human generation through DeviceChecker.
-func (k *Keys) IssueDevice(principal string, grants []Grant, lifetime time.Duration, device DeviceCredential) (string, Key, error) {
-	if !config.ValidHumanID(device.HumanID) || device.HumanGeneration == 0 || !lowerHex(device.MappingHash, 32) || !lowerHex(device.Session, 16) || device.SessionGeneration == 0 {
+// checked one configured human-to-principal mapping. notAfter is the approved
+// source-session deadline and is enforced in this key-write transaction.
+// Every later admission rechecks that mapping and human generation through
+// DeviceChecker.
+func (k *Keys) IssueDevice(principal string, grants []Grant, lifetime time.Duration, notAfter time.Time, device DeviceCredential) (string, Key, error) {
+	if !config.ValidHumanID(device.HumanID) || device.HumanGeneration == 0 || !lowerHex(device.MappingHash, 32) || !lowerHex(device.Session, 16) || device.SessionGeneration == 0 || notAfter.IsZero() {
 		return "", Key{}, ErrGrant
 	}
-	return k.issue(principal, grants, lifetime, device)
+	return k.issue(principal, grants, lifetime, notAfter.UTC(), device)
 }
 
 func lowerHex(value string, bytes int) bool {
@@ -220,7 +222,7 @@ func lowerHex(value string, bytes int) bool {
 	return err == nil && len(decoded) == bytes && hex.EncodeToString(decoded) == value
 }
 
-func (k *Keys) issue(principal string, grants []Grant, lifetime time.Duration, device DeviceCredential) (string, Key, error) {
+func (k *Keys) issue(principal string, grants []Grant, lifetime time.Duration, notAfter time.Time, device DeviceCredential) (string, Key, error) {
 	if lifetime == 0 {
 		lifetime = DefaultKeyLifetime
 	}
@@ -262,6 +264,12 @@ func (k *Keys) issue(principal string, grants []Grant, lifetime time.Duration, d
 		key.Epoch = tx.Epoch()
 		key.IssuedAt = tx.Now()
 		key.ExpiresAt = key.IssuedAt.Add(lifetime)
+		if !notAfter.IsZero() && notAfter.Before(key.ExpiresAt) {
+			key.ExpiresAt = notAfter
+		}
+		if key.ExpiresAt.Sub(key.IssuedAt) < time.Minute || key.ExpiresAt.Sub(key.IssuedAt) > MaximumKeyLifetime {
+			return ErrDenied
+		}
 		return tx.Put("api_keys", id, key)
 	})
 	if err != nil {
