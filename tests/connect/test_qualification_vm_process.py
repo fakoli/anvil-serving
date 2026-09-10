@@ -1,6 +1,8 @@
 from pathlib import Path
 import os
+import signal
 import sys
+import time
 
 import pytest
 
@@ -137,9 +139,35 @@ def test_timeout_kills_descendant_that_ignores_termination(tmp_path):
         run(tmp_path, script, timeout=0.3)
     pid = int(pid_file.read_text())
     status = Path(f"/proc/{pid}/stat")
-    # Reparented zombies can remain briefly for PID1 to reap; they cannot run.
-    if status.exists():
-        assert status.read_text().split(") ", 1)[1][0] == "Z"
+
+    def wait_terminal(timeout):
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                raw = status.read_text()
+            except FileNotFoundError:
+                return True
+            state = raw.split(") ", 1)[1][:1] if ") " in raw else ""
+            if state == "Z":
+                return True
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            time.sleep(min(0.01, remaining))
+
+    terminal = False
+    try:
+        # SIGKILL delivery to a process group is asynchronous. A reparented
+        # zombie is terminal even when PID1 has not reaped it yet.
+        terminal = wait_terminal(2)
+        assert terminal, "timed out waiting for killed descendant"
+    finally:
+        if not terminal:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            wait_terminal(1)
 
 
 def test_keyboard_interrupt_reaps_owned_child_and_is_preserved(tmp_path, monkeypatch):
