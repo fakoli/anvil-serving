@@ -7,6 +7,7 @@ import http.client
 import json
 import time
 import uuid
+from types import SimpleNamespace
 
 import pytest
 
@@ -132,6 +133,26 @@ def test_encoded_task_identifier_is_decoded_after_exact_target_auth(site):
     console.workbench.projects.task = lambda session, project, task: calls.append((project, task)) or {"task": {"id": task}}
     assert call("GET", "projects/product/tasks/plan%3AT001")[1]["data"]["task"]["id"] == "plan:T001"
     assert calls == [("product", "plan:T001")]
+
+
+def test_pi_storage_failure_is_actionable_and_never_claims_a_task(site, monkeypatch):
+    from anvil_serving.workbench_app import pi_storage
+
+    console, call, _ = site
+    console.workbench.pi = SimpleNamespace(close=lambda: None)
+    console.workbench.config["pi"] = {}
+    monkeypatch.setattr(console.workbench.projects, "prepare", lambda *_: pytest.fail("storage failure acquired a task"))
+
+    def unavailable(_):
+        raise pi_storage.PiStorageError("private pool details")
+
+    monkeypatch.setattr(pi_storage, "validate_pool", unavailable)
+    status, result = call("POST", "pi/sessions", {"project_id": "product", "task_id": "plan:T001",
+        "request_id": "start-a", "provider_id": "selected", "model_id": "model-a", "thinking_level": "off"})
+    assert status == 409
+    assert result["error"]["code"] == "pi_storage_unavailable"
+    assert "managed pool mount" in result["error"]["message"]
+    assert "private pool details" not in json.dumps(result)
 
 
 @pytest.mark.parametrize("component", ["plan%2FT001", "%2e%2e", "plan%253AT001", "plan%5cT001", "%ff", "plan%00T001"])

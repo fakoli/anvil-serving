@@ -12,6 +12,13 @@ own its private state and disposable full task clone. A linked Git worktree is
 not a runner checkout. The server never mounts host Pi authentication or shared
 configuration into a runner.
 
+The image includes an isolated build-time Python verifier at
+`/opt/pi-runner/venv`, with `pytest==9.1.1` on `PATH`. It is available for the
+reviewed task verification command, such as
+`python scripts/run_tests.py tests/workbench/test_service.py -q`; it performs
+no package installation at runner startup and does not change Pi's unprivileged
+entrypoint or network policy.
+
 For model access, declare exact `provider_egress` HTTP(S) origins, then run:
 
 ```sh
