@@ -59,7 +59,11 @@ before trusting the fixture CA, authenticated browser access, and the fixture's
 logout/revocation behavior. Required binaries are checked against recorded pins;
 missing prerequisites fail preflight. The command does not install dependencies.
 
-Results distinguish a failed test, a failed preflight and incomplete cleanup.
+Results distinguish passed, failed, skipped and not-run tests. Preflight failures
+report both tests as not-run. A failure after execution begins reports only known
+counts; `counts: null` means no complete test result is available. Cleanup failure
+keeps any completed test counts but still fails the qualification. Skipped tests
+never qualify the lane, and an unexecuted second test is explicitly not-run.
 The private result artifact records revisions, tool identity, test outcomes and
 cleanup evidence. A failed qualification exits nonzero. Raw authentication
 responses and credential-bearing browser diagnostics are excluded from output.

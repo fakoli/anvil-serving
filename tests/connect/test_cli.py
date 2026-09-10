@@ -91,12 +91,40 @@ def test_qualification_failure_is_nonzero_and_does_not_echo_private_errors(monke
     assert envelope["ok"] is False
     if preflight:
         assert envelope["error"]["code"] == QualificationError.code
+        assert envelope["data"] == {
+            "schema": "anvil-connect.qualification/v1", "ok": False, "state": "not-run",
+            "error_code": QualificationError.code, "stage": "preflight",
+            "counts": {"passed": 0, "failed": 0, "skipped": 0, "not_run": 2},
+        }
     else:
         assert envelope["data"] == {
             "ok": False, "lane": "baseline", "state": "failed",
             "error_code": "browser_failed", "artifact_dir": "/qualification-artifacts/run-synthetic",
         }
         assert envelope["error"]["code"] == "connect_qualification_failed"
+
+
+def test_qualification_executed_error_is_not_labeled_not_run(monkeypatch, capsys):
+    class QualificationError(Exception):
+        code = "staging-failed"
+        execution_started = True
+        stage = "execution"
+
+    def qualify(config_path, *, lane):
+        raise QualificationError("private-sentinel")
+
+    monkeypatch.setitem(sys.modules, "anvil_serving.connect.qualification", SimpleNamespace(
+        qualify=qualify, QualificationError=QualificationError,
+    ))
+    assert cli.main(["connect", "qualify", "--json"]) != 0
+    envelope = json.loads(capsys.readouterr().out)
+    assert envelope["data"] == {
+        "schema": "anvil-connect.qualification/v1", "ok": False, "state": "failed",
+        "error_code": "staging-failed", "stage": "execution",
+        "counts": None,
+    }
+    assert "private-sentinel" not in json.dumps(envelope)
+
 
 
 @pytest.mark.parametrize("args", [
