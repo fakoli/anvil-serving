@@ -15,6 +15,7 @@ import (
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/admin"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/ingresshttp"
 	"github.com/fakoli/anvil-serving/connect/internal/privatefiles"
 )
 
@@ -81,6 +82,33 @@ func TestGatewayInitializationIsExclusiveAndPreservesAuthorities(t *testing.T) {
 	}
 }
 
+func TestStartGatewayRequiresDeclaredIngressBeforeState(t *testing.T) {
+	c := gatewaySettings(t)
+	if c.Ingress != nil {
+		t.Fatal("same-UID test declaration unexpectedly has managed ingress")
+	}
+	if gateway, err := StartGateway(context.Background(), c, func(string) (string, bool) { return "", false }); err == nil || gateway != nil {
+		t.Fatal("legacy same-UID declaration started")
+	}
+	if _, err := os.Lstat(c.StateDirectory); !os.IsNotExist(err) {
+		t.Fatal("legacy same-UID declaration created gateway state")
+	}
+}
+
+func TestProtocolFixtureComposeRejectsManagedIngress(t *testing.T) {
+	c := gatewaySettings(t)
+	c.Ingress = &ingresshttp.Policy{GatewayUID: 1001, EdgeUID: 1002, GroupID: 1003, Directory: "/run/anvil-connect/ingress"}
+	if c.Ingress.Validate() != nil {
+		t.Fatal("managed ingress test policy is invalid")
+	}
+	if gateway, err := ComposeGatewayForProtocolFixture(context.Background(), c, func(string) (string, bool) { return "", false }); err == nil || gateway != nil {
+		t.Fatal("protocol fixture compose accepted managed ingress")
+	}
+	if _, err := os.Lstat(c.StateDirectory); !os.IsNotExist(err) {
+		t.Fatal("protocol fixture compose created gateway state")
+	}
+}
+
 func TestNativeDeclarationsRejectAmbiguityBeforeStartup(t *testing.T) {
 	c := gatewaySettings(t)
 	data, err := json.Marshal(c)
@@ -122,6 +150,8 @@ func unixClient(t *testing.T, directory *privatefiles.Directory, name string) *h
 	return &http.Client{Transport: tr, Timeout: 3 * time.Second}
 }
 
+// This is protocol-only coverage for the historical same-UID ingress model.
+// Managed activation must use StartGateway and the declared cross-UID policy.
 func TestGatewayOwnedLifecycleAndSeparateAdminIngress(t *testing.T) {
 	if os.Getenv("ANVIL_CONNECT_WSTUNNEL") == "" {
 		t.Skip("requires explicit pinned transport artifact")
@@ -143,7 +173,7 @@ func TestGatewayOwnedLifecycleAndSeparateAdminIngress(t *testing.T) {
 	client := unixClient(t, directory, "ingress.sock")
 	var epoch string
 	for generation := range 2 {
-		gateway, err := StartGateway(context.Background(), c, func(string) (string, bool) { t.Error("API-only gateway read an OIDC secret"); return "", false })
+		gateway, err := ComposeGatewayForProtocolFixture(context.Background(), c, func(string) (string, bool) { t.Error("API-only gateway read an OIDC secret"); return "", false })
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -193,6 +223,7 @@ func TestGatewayOwnedLifecycleAndSeparateAdminIngress(t *testing.T) {
 	}
 }
 
+// This is protocol-only coverage for the historical same-UID ingress model.
 func TestGatewayStartupFailurePreservesUnownedSocketName(t *testing.T) {
 	if os.Getenv("ANVIL_CONNECT_WSTUNNEL") == "" {
 		t.Skip("requires explicit pinned transport artifact")
@@ -205,7 +236,7 @@ func TestGatewayStartupFailurePreservesUnownedSocketName(t *testing.T) {
 	if err := os.WriteFile(path, []byte("unowned marker"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if gateway, err := StartGateway(context.Background(), c, func(string) (string, bool) { return "", false }); err == nil {
+	if gateway, err := ComposeGatewayForProtocolFixture(context.Background(), c, func(string) (string, bool) { return "", false }); err == nil {
 		gateway.Close()
 		t.Fatal("occupied socket was replaced")
 	}
