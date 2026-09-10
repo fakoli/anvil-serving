@@ -433,7 +433,10 @@ def test_environment_file_requires_exact_owner_only_mode_before_activation(tmp_p
     assert runner.calls == []
 
 
-def test_identity_before_activation_uses_closed_native_public_status_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("native_status", ("pending", "enrolled"))
+def test_identity_accepts_native_local_status_before_activation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, native_status: str
+) -> None:
     manifest, value, native = deployment(tmp_path, monkeypatch)
     units = tmp_path / "units"
     units.mkdir(); units.chmod(0o755)
@@ -444,12 +447,17 @@ def test_identity_before_activation_uses_closed_native_public_status_shape(tmp_p
                 declaration = json.loads(Path(argv[-1]).read_text())
                 assert declaration["id"] == "dashboard"
                 assert not Path(value["config_root"]).exists()
-                return manage.RunResult(0, json.dumps({"id": "dashboard", "status": "pending", "fingerprint": "A" * 43, "epoch": "a" * 64, "generation": 1, "resources": ["dashboard", "dashboard-api"]}).encode())
+                # Exact public shape emitted by the native `identity` command
+                # from admin.InstallationStatus.  `enrolled` only records that
+                # the connector completed its local enrollment; it is not a
+                # gateway approval assertion.
+                return manage.RunResult(0, json.dumps({"id": "dashboard", "status": native_status, "fingerprint": "A" * 43, "epoch": "a" * 64, "generation": 1, "resources": ["dashboard", "dashboard-api"]}).encode())
             return super().__call__(argv, timeout, identity)
 
     observed = IdentityRunner(); observed.unit_root = units
     result = manage.identity(manifest, manage.Target("connector", "dashboard"), runner=observed)
     assert result["identity"]["fingerprint"] == "A" * 43
+    assert result["identity"]["status"] == native_status
     assert result["native_sha256"] == hashlib.sha256(b"native-v1").hexdigest()
     assert not Path(value["config_root"]).exists()
     assert list(units.iterdir()) == []
@@ -464,6 +472,20 @@ def test_identity_before_activation_uses_closed_native_public_status_shape(tmp_p
     invalid = InvalidIdentityRunner(); invalid.unit_root = units
     with pytest.raises(manage.ManageError, match="identity output"):
         manage.identity(manifest, manage.Target("connector", "dashboard"), runner=invalid)
+
+
+@pytest.mark.parametrize("status", ("active", "revoked", "unknown", "ENROLLED"))
+def test_closed_identity_rejects_non_native_connector_status(status: str) -> None:
+    raw = json.dumps({
+        "id": "dashboard",
+        "status": status,
+        "fingerprint": "A" * 43,
+        "epoch": "a" * 64,
+        "generation": 1,
+        "resources": ["dashboard", "dashboard-api"],
+    }).encode()
+    with pytest.raises(manage.ManageError, match="identity output"):
+        manage._closed_identity(raw)
 
 
 def test_admin_preview_accepts_only_real_fingerprint_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
