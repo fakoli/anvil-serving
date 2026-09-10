@@ -183,7 +183,7 @@ def test_isolated_units_are_numeric_and_role_scoped() -> None:
     assert "User=1203" in authelia and "User=1204" in connector and "User=1205" in client
     assert "SupplementaryGroups=" not in gateway + authelia + connector + client
     for unit in (gateway, caddy, authelia, connector, client):
-        for line in ("UMask=0077", "NoNewPrivileges=true", "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true", "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6"):
+        for line in ("UMask=0077", "NoNewPrivileges=true", "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true", "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6", "MemoryAccounting=true", "TasksAccounting=true"):
             assert line in unit
     assert "MemoryMax=805306368\nTasksMax=128" in gateway
     assert "MemoryMax=536870912\nTasksMax=64" in caddy

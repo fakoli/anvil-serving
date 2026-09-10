@@ -183,6 +183,7 @@ def _isolated_unit(description: str, command: list[str], identity: tuple[int, in
         "[Service]", "Type=simple", f"User={identity[0]}", f"Group={identity[1]}", "UMask=0077",
         "NoNewPrivileges=true", "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true",
         "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6",
+        "MemoryAccounting=true", "TasksAccounting=true",
         f"MemoryMax={limits[0]}", f"TasksMax={limits[1]}",
         "ReadWritePaths=" + " ".join(_unit_argument(path) for path in sorted(set(writable_paths))),
     ]

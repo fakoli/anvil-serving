@@ -49,6 +49,14 @@ def _guest_result() -> bytes:
             "schema": "anvil-connect.isolation-guest/v1",
             "ok": True,
             "cases": [{"name": name, "status": "passed"} for name in subject._CASES],
+            "service_samples": {
+                phase: {
+                    role: {"memory_current_bytes": 0, "memory_peak_bytes": 0, "tasks_current": 0,
+                           "memory_max_bytes": limits[0], "tasks_max": limits[1]}
+                    for role, limits in subject._SERVICE_SAMPLE_LIMITS.items()
+                }
+                for phase in subject._SERVICE_SAMPLE_PHASES
+            },
         },
         separators=(",", ":"),
     ).encode("ascii")
@@ -204,6 +212,10 @@ def test_qualify_whole_lifecycle_publishes_exact_closed_artifacts(tmp_path, monk
     }
     assert evidence["counts"] == result["counts"] == summary["counts"]
     assert evidence["state"] == summary["state"] == "passed"
+    assert evidence["service_limits"]["client:dashboard-api"] == {
+        "memory_max_bytes": 268435456, "tasks_max": 128,
+        "enforcement": "rendered-only", "measurement": "not-measured", "phases": [],
+    }
     assert trace["payload_source"] == root / "source"
     assert trace["iso"] == ["CIDATA", "ANVILTEST"]
     argv, _kwargs = trace["qemu"]
