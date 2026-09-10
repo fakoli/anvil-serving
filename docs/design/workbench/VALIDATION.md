@@ -2,6 +2,45 @@
 
 September 10, 2026 · Interactive prototype only
 
+## Revision 3 observations
+
+Settings, task-attached Pi, Observability and Compute were reviewed in the same
+isolated design preview. All records and actions remain synthetic; production
+Grafana, Pi, Docker, Connect and Anvil State were not exercised.
+
+| Revised journey | Observed result |
+| --- | --- |
+| Navigation | Connect access appears under Settings; Pi under Anvil work → T-04 → Agent session; Observability and Compute are separate workspaces |
+| Settings drafts | Workspace name draft survives section navigation without changing the shell until Save; saved name, compact density and HUD preference apply |
+| Settings environment | Saved 3 CPU / 6 GiB / 45 minute defaults appear in the next task environment review |
+| Settings access | Last-admin disable rejected; browser-session revocation cascades to its terminal session |
+| Settings corrections | Discard restores General heading focus and saved value; its notice does not leak into Pi environment settings |
+| Pi threads | Thread selection restores its own draft; new branch clears draft; new conversation starts with zero messages and blank composer |
+| Pi controls | Whitespace or keyboard deletion disables Send; active turns disable model/thinking; finish restores composer focus; branch/new conversation focus their title |
+| Pi interaction fix | Replacing animation-frame focus scheduling and restricting change handling to selects removed lost focus during composer actions |
+| Observability scope | Fleet is fleet-wide; MacBook model view reports no Atlas sample; Apple GPU view uses unified memory with unsupported temperature/power unknown |
+| Stale and missing sources | Current throughput becomes unknown while current demo deployment count and historical charts stay separate; Harness host/log data is unavailable |
+| Dashboard time | One-hour fixture changes chart samples; benchmark history instead shows All retained run windows, including in Grafana context |
+| Log filtering | Literal WARN query retains matching sample line and input caret/focus |
+| Shared deployment state | Atlas stop disables its Playground target; reviewed restart restores atlas-fp8-r3 |
+| Candidate identity | Finch context 16384 saved as r2; Compute review, active configuration and Playground all retain finch-mlx-r2 |
+| Placement safeguard | Orion Start shows owner-placement requirement, keeps reservations, and offers no confirmation bypass |
+| Compute selection and logs | External HUD location change selects matching Finch row/detail; literal filter preserves caret and returns only readiness record |
+| Compute console | Draft/output remain separate for Atlas and Media; typing does not submit; submission explicitly says command not executed |
+| Keyboard | Compute Home selects/focuses Logs; Ctrl+K from the console opens the global palette and close returns focus to its input |
+| Narrow layouts | At 320px, all seven dashboard groups, Compute workload/configuration, Pi chat and five Settings sections have no document-wide horizontal overflow or nested vertical scrolling |
+
+Desktop screenshots of Observability, Compute and task chat were inspected.
+Viewport overrides were reset. These checks do not establish full accessibility
+conformance or any live service acceptance. The browser automation's empty-string
+fill did not dispatch the expected input change; the user keyboard path (select
+all then Backspace) and whitespace path were checked explicitly instead.
+
+Independent Sol review identified Settings route/notices/focus issues, Pi
+thread/transient/focus issues, Compute input/table/tab/isolation issues and the
+dashboard-window / global-shortcut issues. Corrections were made in the bounded
+components. Final lifecycle identity checks passed. Independent Sol/high final disposition: approved for the bounded Concept 03 revision, with no remaining material findings. All five JavaScript modules passed syntax checks; frontend formatting and diff checks passed. The final browser load had no warnings or errors.
+
 ## Revision 2 observations
 
 The same isolated preview was revised after user feedback. No production sources,

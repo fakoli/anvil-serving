@@ -1,4 +1,4 @@
-# Workbench design study · revision 2
+# Workbench design study · revision 3
 
 Open [index.html](index.html) directly in a browser. It works without a build,
 network connection, credentials, or production services. The fonts are bundled
@@ -19,17 +19,22 @@ Try these interactions:
 2. In Playground, change model, connector, preset and temperature. Send a demo
    request. An offline selection is rejected without substituting another model.
 3. In Workbench, switch between Compare, Evidence, Events and All runs.
-4. Open Pi workspace. Send a simulated turn, steer, finish or stop it; inspect
-   tools, try the session menu and review an extension note. Its cloud operator
-   model is independent of the local compute/model selector.
+4. In Anvil work, open T-04 → Agent session. Pi is a chat with task folders and
+   separate conversation threads. Create a conversation, branch, send a simulated
+   turn, steer, finish or stop. Its operator model is independent of the benchmark.
 5. Edit the Finch recipe, save a candidate and review its simulated MacBook load.
    Inspect the exact active revision in Playground. Saving alone does not load.
-6. Open Connect access. Edit Researcher grants or revoke the browser session;
-   its linked terminal session is revoked too. The last administrator is protected.
-7. Open Documentation to read Anvil/Serving summaries and their source links.
-8. Toggle stale telemetry. Current HUD values become unknown while retained
-   historical run data stays visible.
-9. Filter location-scoped sample logs or use Ctrl/Cmd+K to find a page/action.
+6. Open Settings → Access & sessions. Edit Researcher grants or revoke the browser
+   session; its linked terminal session is revoked too. The last admin is protected.
+   General preferences and Pi environment defaults have separate Save/Discard.
+7. Open Observability and switch between the seven dashboard groups. Change the
+   location and sample window, inspect chart values, filter logs, and try stale
+   telemetry. Missing sources remain visible; benchmark windows remain historical.
+8. Open Compute, select a host and workload, and inspect its container/process name.
+   Filter Logs, review Configuration, or enter an explicitly non-executing Exec
+   command. Start/Stop reviews update the same demo deployments as Playground.
+9. Open Documentation to read Anvil/Serving summaries and their source links.
+   Ctrl/Cmd+K finds pages and actions across the portal.
 
 Everything is simulated. Playground responses are fixed canned text. Reloading
 resets demo state. The prototype does not start containers, call models, change

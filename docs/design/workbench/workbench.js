@@ -381,7 +381,7 @@ function playground() {
     ) +
     panel(
       "From a conversation to an experiment",
-      `<p class="section-copy">Keep the exact request, selected recipe, and configuration together. Turn a useful prompt into a repeatable test case.</p><div class="chips">${btn("Create test from this session", "new-experiment")}${btn("Open Pi workspace", "sessions")}</div>`,
+      `<p class="section-copy">Keep the exact request, selected recipe, and configuration together. Turn a useful prompt into a repeatable test case.</p><div class="chips">${btn("Create test from this session", "new-experiment")}${btn("Open task agent session", "work/task/T-04/agent")}</div>`,
     )
   );
 }
@@ -495,100 +495,79 @@ function reviewLoad(recipe) {
   );
 }
 function work() {
+  if (state.workTask) return taskWorkspace();
   return (
     intro(
       "ANVIL STATE / SELECTED PROJECT",
-      "Work with a reason.",
-      "PRDs, executable tasks, and the evidence that connects them.",
-      btn("Open Pi workspace", "sessions", "primary"),
+      "Work, with its context intact.",
+      "Start from a PRD, open a ready task, and work with Pi inside that task.",
     ) +
-    `<div class="notice">Sample project records. Live integration must resolve the selected checkout through Anvil State.</div>` +
+    `<div class="work-summary"><span><b>02</b> Open PRDs</span><span><b>01</b> Ready task</span><span><b>02 / 06</b> Tasks accepted</span><span class="pill neutral">Sample project state</span></div>` +
+    `<div class="split work-prds"><section class="panel"><div class="panel-head"><div><div class="eyebrow">PRD-017</div><h2>Qualify the research model</h2></div>${pill("Approved")}</div><div class="panel-body"><p class="section-copy">Correct tool behavior at the declared context and concurrency, backed by independent evidence.</p><div class="work-prd-progress"><div class="bar"><span style="width:33.3%"></span></div><small>2 of 6 tasks accepted · 1 ready to start</small></div></div></section><section class="panel"><div class="panel-head"><div><div class="eyebrow">PRD-018</div><h2>Repeatable model experiments</h2></div>${pill("Draft", "neutral")}</div><div class="panel-body"><p class="section-copy">A reusable evaluation plan with explicit targets, comparable results, and retained failure evidence.</p><p class="section-copy" style="margin-top:18px">Waiting for review before tasks become executable.</p></div></section></div>` +
     panel(
-      "Open PRDs",
-      `<div class="task-row"><span class="index-number">017</span><div><h3>Qualify the research model</h3><p>Approved · 6 tasks · 2 complete · 1 ready</p><small>Acceptance: correct tools at the declared context and concurrency.</small></div>${btn("Open ready task", "task-detail", "small quiet")}</div><div class="task-row"><span class="index-number">018</span><div><h3>Repeatable model experiments</h3><p>Draft · waiting for review</p><small>Draft PRDs become executable only after the Anvil approval gate.</small></div>${pill("Draft", "neutral")}</div>`,
+      "Ready to work",
+      `<div class="task-row"><span class="index-number">T-04</span><div><h3>Validate long-context tool behavior</h3><p>PRD-017 · dependencies accepted · unclaimed in sample</p><small>Open the task to review its work packet, talk to Pi, and inspect the resulting evidence.</small></div>${btn("Open task ↗", "work/task/T-04/overview", "primary")}</div>`,
     ) +
-    panel(
-      "Ready to work · T-04",
-      `<h2>Validate long-context tool behavior</h2><p class="section-copy" style="margin:10px 0">Run the approved bounded suite, retain failures, and attach the artifact packet to the task.</p>${kv(
+    `<div class="settings-note"><span aria-hidden="true">↳</span><p>Pi works within the selected task. Anvil keeps the approval, claim, work packet and acceptance record; the agent supplies changes and independently captured execution evidence.</p><a href="#docs" class="text-link">Read about Anvil State ↗</a></div>`
+  );
+}
+function taskWorkspace() {
+  let content = "";
+  if (state.workView === "agent")
+    content = PiSurface.render({ embedded: true });
+  if (state.workView === "overview")
+    content = `<div class="split">${panel("Work packet", `<p class="section-copy">Validate the model’s tool-call behavior across the approved context windows. Use the fixed evaluation suite, preserve malformed responses, and retain the exact recipe and request parameters.</p><div class="task-acceptance"><h3>Acceptance criteria</h3><ul><li>Correct tool name, arguments and finish reason at each declared context.</li><li>Captured process output and raw artifacts, including failed and partial runs.</li><li>Independent review of the evidence before task acceptance.</li></ul></div><div class="action-row">${btn("Open agent session", "work/task/T-04/agent", "primary")}${btn("Review environment", "sandbox")}</div>`)}${panel(
+      "Task record",
+      kv([
+        ["Project", "Selected sample workspace"],
+        ["PRD", "PRD-017 · approved revision 3"],
+        ["Task", "T-04"],
+        ["Dependency", "T-03 · accepted"],
+        ["Claim", "Unclaimed in sample"],
+        ["Environment", "Isolated task checkout"],
         [
-          ["PRD", "PRD-017 · approved"],
-          ["Dependencies", "T-03 accepted"],
-          ["Claim", "Unclaimed in sample"],
-          [
-            "Evidence",
-            state.attached
-              ? "EXP-042 attached in local demo"
-              : "No linked run yet",
-          ],
-          ["Acceptance", "Independent review required"],
+          "Evidence",
+          state.attached ? "EXP-042 attached · incomplete" : "No run linked",
         ],
-      )}<div class="chips">${btn("Review execution plan", "sandbox", "primary")}${btn("Attach run evidence", "attach")}</div>`,
-    ) +
-    panel(
-      "Agent environment",
-      `<p class="section-copy">An isolated checkout and a bounded runner session, with progress, changes, tests, and artifacts in one view. The runner acquires an Anvil claim before execution and submits evidence for independent review.</p><div class="chips">${pill(state.sandbox ? "Previewed locally" : "No session running", "neutral")}${btn("Inspect sandbox proposal", "sandbox", "small quiet")}</div>`,
+        ["Acceptance", "Independent review required"],
+      ]),
+    )}</div>`;
+  if (state.workView === "evidence")
+    content = panel(
+      "Task evidence",
+      `<p class="section-copy">Keep the agent’s conversation alongside independently captured results. An agent response alone does not satisfy the acceptance gate.</p>${kv(
+        [
+          [
+            "Linked run",
+            state.attached ? "EXP-042 · incomplete sample" : "Not attached",
+          ],
+          ["Changes", "No real files changed"],
+          ["Test execution", "No real tests run by this prototype"],
+          ["Review", "Pending independent evidence"],
+        ],
+      )}<div class="action-row">${btn("Attach run evidence", "attach", "primary")}${btn("Inspect sample artifact", "artifact")}${btn("Open Workbench", "bench")}</div>`,
+    );
+  return `<a class="task-back" href="#work">← All Anvil work</a><div class="task-workspace-heading"><div><div class="eyebrow">PRD-017 / TASK T-04</div><h1>Validate long-context tool behavior</h1><p>Qualify the research model · approved work packet · isolated task workspace</p></div><div class="task-heading-actions">${pill("Ready", "neutral")}${state.workView === "agent" ? btn("Review environment", "sandbox", "small quiet") : ""}</div></div><nav class="task-workspace-tabs" aria-label="Task views">${[
+    ["overview", "Overview"],
+    ["agent", "Agent session"],
+    ["evidence", "Evidence"],
+  ]
+    .map(
+      ([id, label]) =>
+        `<a href="#work/task/T-04/${id}" ${state.workView === id ? 'aria-current="page"' : ""}>${id === "agent" ? '<span aria-hidden="true">π</span> ' : ""}${label}</a>`,
     )
-  );
+    .join("")}</nav><div class="task-workspace-content">${content}</div>`;
 }
-function system() {
+
+function access(embedded = false) {
   return (
-    intro(
-      "FLEET / SYSTEM",
-      "Every place you can do the work.",
-      "Owner availability, telemetry, and execution are separate signals.",
-      btn("Preview Grafana context", "grafana"),
-    ) +
-    `<div class="split">${Object.entries(computeLocations)
-      .map(
-        ([id, c]) =>
-          `<section class="panel fleet-card ${state.compute === id ? "selected" : ""}"><div class="panel-head"><div><h2>${c.name}</h2><p>${c.kind}</p></div>${pill(c.ready ? "Owner ready" : "Owner unavailable", c.ready ? "" : "warn")}</div><div class="panel-body">${kv(
-            [
-              ["CPU", state.stale ? "Unknown · telemetry stale" : c.cpu],
-              ["Memory", state.stale ? "Unknown · telemetry stale" : c.memory],
-              [
-                "Compute utilization",
-                state.stale ? "Unknown · telemetry stale" : c.utilization,
-              ],
-              [
-                "Workload",
-                id === "macbook"
-                  ? "Speech services + optional Finch LLM"
-                  : id === "compute"
-                    ? "Atlas model · second GPU reserved"
-                    : "No model declared",
-              ],
-              [
-                "Source",
-                c.ready
-                  ? state.stale
-                    ? "Telemetry: sample 45s old"
-                    : "Telemetry: sample 14:16 UTC"
-                  : "Last owner sample: 7 minutes ago",
-              ],
-            ],
-          )}<div class="action-row">${btn("Select location", `compute-${id}`)}</div></div></section>`,
-      )
-      .join("")}</div>` +
-    panel(
-      "Execution signals",
-      `<p class="section-copy">The compact strip follows the selected compute location. Its execution light follows the demo runner. GPU utilization and memory are timestamped snapshots; a loaded model or reserved memory does not prove active work.</p><div class="action-row">${btn("Open deterministic run flow", "open-flow")}${btn("Open Pi workspace", "sessions")}</div>`,
-    ) +
-    panel(
-      "Logs · " + computeLocations[state.compute].name,
-      `<label>Filter sample logs<input id="log-filter" placeholder="Search message text"></label><div id="log-lines" style="margin-top:18px"></div>`,
-    )
-  );
-}
-function sessions() {
-  return PiSurface.render();
-}
-function access() {
-  return (
-    intro(
-      "ANVIL CONNECT / ADMINISTRATION",
-      "Access, with a clear owner.",
-      "Manage resource grants and issued sessions from the same workspace.",
-    ) +
+    (embedded
+      ? ""
+      : intro(
+          "ANVIL CONNECT / ADMINISTRATION",
+          "Access, with a clear owner.",
+          "Manage resource grants and issued sessions from the same workspace.",
+        )) +
     `<div class="notice">Sample administrator view. Live controls are available only to a configured Connect administrator. These actions update local demo state.</div>` +
     panel(
       "People & resource grants",
@@ -918,7 +897,7 @@ function renderHUD() {
   <div class="instrument"><span>${unknown ? "TELEMETRY · STALE" : "SAMPLE · 14:16 UTC"}</span><strong>${unknown ? "Utilization unknown" : c.utilization}</strong><span>${unknown ? "Memory unknown" : c.memory}</span></div>
   <div class="instrument"><span>RUNNER · DEMO</span><strong><i class="led ${executing ? "active" : ""}"></i>${executing ? flowSteps[state.flowStep] : state.demoRun && state.preview?.target.location === state.compute && state.flowPaused ? "Paused" : "Idle"}</strong></div>
   <div class="instrument"><span>PI · CLOUD OPERATOR</span><strong><i class="led ${pi.busy ? "active" : ""}"></i>${escape(pi.label)}</strong></div>
-  <a class="text-link small" href="#system">Fleet ↗</a>`;
+  <a class="text-link small" href="#compute">Compute ↗</a>`;
   $("#scenario-toggle").textContent = state.stale
     ? "Restore sample freshness"
     : "Show stale telemetry";
@@ -928,18 +907,35 @@ function navigate(page) {
   else location.hash = page;
 }
 function render() {
-  const hash = location.hash.slice(1) || "bench";
-  const page = hash === "experiments" ? "bench" : hash;
+  const prefs = SettingsSurface.preferences();
+  let hash = location.hash.slice(1) || prefs.start;
+  if (hash === "system") hash = "observability/fleet";
+  if (hash === "access") hash = "settings/access";
+  if (hash === "sessions") hash = "work/task/T-04/agent";
+  if (["access", "sessions", "system"].includes(location.hash.slice(1)))
+    history.replaceState(null, "", "#" + hash);
+  const page = hash === "experiments" ? "bench" : hash.split("/")[0];
+  state.settingsSection = hash.split("/")[1] || "general";
+  state.observabilityDashboard = hash.split("/")[1] || "fleet";
+  state.workTask =
+    hash.split("/")[0] === "work" &&
+    hash.split("/")[1] === "task" &&
+    hash.split("/")[2] === "T-04";
+  state.workView = ["overview", "agent", "evidence"].includes(
+    hash.split("/")[3],
+  )
+    ? hash.split("/")[3]
+    : "overview";
   state.page = [
     "bench",
     "experiments",
     "playground",
     "models",
     "work",
-    "system",
-    "sessions",
+    "observability",
+    "compute",
     "architecture",
-    "access",
+    "settings",
     "docs",
   ].includes(page)
     ? page
@@ -950,15 +946,15 @@ function render() {
     playground: "Playground",
     models: "Models & recipes",
     work: "Anvil work",
-    system: "System & logs",
-    sessions: "Pi workspace",
-    access: "Connect access",
+    observability: "Observability",
+    compute: "Compute",
+    settings: "Settings",
     docs: "Documentation",
     architecture: "Design & architecture",
   };
   $("#crumb").textContent = titles[state.page];
   document.title = `${titles[state.page]} · Anvil Workbench concept`;
-  document.querySelectorAll("nav a").forEach((a) => {
+  document.querySelectorAll("[data-page]").forEach((a) => {
     if (a.dataset.page === state.page) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
@@ -968,13 +964,22 @@ function render() {
     playground,
     models,
     work,
-    system,
-    sessions,
+    observability: () => ObservatorySurface.render(observabilityApi()),
+    compute: () => ComputeSurface.render(computeApi()),
     architecture,
-    access,
+    settings: () =>
+      SettingsSurface.render(state.settingsSection, { access, kv, btn }),
     docs,
   };
   $("#main").innerHTML = `<div class="appear">${views[state.page]()}</div>`;
+  document.body.dataset.page = state.page;
+  document.body.dataset.taskView = state.workTask ? state.workView : "";
+  document.body.dataset.density = prefs.density;
+  $("#workspace-name").textContent = prefs.name;
+  $("#breadcrumb-workspace").textContent = prefs.name;
+  $(".brand").href = "#" + prefs.start;
+  $("#hud").hidden = state.page === "settings" || !prefs.showHud;
+  $("#scenario-toggle").hidden = state.page === "settings" || !prefs.showHud;
   renderHUD();
   if (state.page === "playground") {
     for (const [id, key] of [
@@ -984,10 +989,6 @@ function render() {
     ])
       $("#" + id).value = state[key];
     effectiveConfig();
-  }
-  if (state.page === "system") {
-    $("#log-filter").value = state.logQuery;
-    filterLogs(state.logQuery);
   }
 }
 function selectedTarget() {
@@ -1089,44 +1090,25 @@ function openDialog(title, body, foot = "") {
 function closeDialog() {
   $("#dialog").close();
 }
-$("#dialog").addEventListener("close", () =>
-  requestAnimationFrame(() => {
-    const opener = dialogOpener?.isConnected
-      ? dialogOpener
-      : dialogOpenerSelector
-        ? document.querySelector(dialogOpenerSelector)
-        : null;
-    (opener || $("#main"))?.focus({ preventScroll: true });
-  }),
-);
-function filterLogs(query) {
-  const lines =
-    state.compute === "harness"
-      ? []
-      : state.compute === "macbook"
-        ? [
-            "14:16:00 INFO  speech services: sample owner ready",
-            "14:16:01 INFO  resource pool: unified memory",
-            deployments["Finch 8B"]
-              ? "14:16:02 INFO  sample LLM loaded: " +
-                deployments["Finch 8B"].id
-              : "14:16:02 INFO  Finch LLM candidate not loaded",
-          ]
-        : [
-            "14:00:02 INFO  run EXP-042: recipe fingerprint captured",
-            "14:01:08 INFO  protocol preflight passed",
-            "14:08:00 INFO  phase context=32768 concurrency=1",
-            "14:08:03 INFO  request admitted: alias=llm.research",
-            "14:16:00 INFO  checks passed=32 pending=16",
-            "14:16:01 WARN  run incomplete; qualification pending",
-          ];
-  $("#log-lines").innerHTML =
-    lines
-      .filter((l) => l.toLowerCase().includes(query.toLowerCase()))
-      .map((l) => `<pre>${escape(l)}</pre>`)
-      .join("") ||
-    `<p class="muted">${state.compute === "harness" ? "Owner unavailable; sample logs cannot be retrieved." : "No matching sample logs."}</p>`;
-}
+$("#dialog").addEventListener("close", () => {
+  const dialog = $("#dialog");
+  if (dialog.open) return;
+  const active = document.activeElement;
+  // A completed action may already have focused its new page or thread.
+  if (
+    active &&
+    active !== document.body &&
+    active !== $("#main") &&
+    !dialog.contains(active)
+  )
+    return;
+  const opener = dialogOpener?.isConnected
+    ? dialogOpener
+    : dialogOpenerSelector
+      ? document.querySelector(dialogOpenerSelector)
+      : null;
+  (opener || $("#main"))?.focus({ preventScroll: true });
+});
 function commandPalette() {
   openDialog(
     "Find or do something",
@@ -1141,9 +1123,11 @@ function filterCommands(q) {
     ["Create experiment", "new-experiment"],
     ["Browse recipes and models", "models"],
     ["View PRDs and ready tasks", "work"],
-    ["Inspect fleet health and logs", "system"],
-    ["Open Pi workspace", "sessions"],
-    ["Manage Connect grants and sessions", "access"],
+    ["Inspect observability dashboards", "observability/fleet"],
+    ["Manage hosts, workloads and logs", "compute"],
+    ["Open Anvil task agent session", "work/task/T-04/agent"],
+    ["Open workspace settings", "settings/general"],
+    ["Manage Connect grants and sessions", "settings/access"],
     ["Read Anvil documentation", "docs"],
     ["Open deterministic run flow", "open-flow"],
     ["Compare architecture options", "architecture"],
@@ -1154,7 +1138,66 @@ function filterCommands(q) {
       .map(([label, a]) => btn(label + " ↗", a))
       .join("") || '<p class="muted">No matching action.</p>';
 }
+function settingsApi() {
+  return { render, announce, openDialog, closeDialog, btn, kv };
+}
+function observabilityApi() {
+  return {
+    dashboard: state.observabilityDashboard,
+    location: state.compute,
+    stale: state.stale,
+    readyModels: () => Object.keys(deployments).length,
+    render,
+    openDialog,
+    kv,
+    btn,
+  };
+}
+function computeApi() {
+  return {
+    location: state.compute,
+    setLocation: (id) => {
+      state.compute = id;
+    },
+    getDeployment: (model) => deployments[model] || null,
+    getRecipe: (model) =>
+      state.editedRecipe?.model === model
+        ? state.editedRecipe
+        : recipes.find((r) => r.model === model),
+    startModel: (model, reviewedRecipe) => {
+      deployments[model] = { ...reviewedRecipe };
+    },
+    stopModel: (model) => {
+      delete deployments[model];
+    },
+    render,
+    renderHUD,
+    openDialog,
+    closeDialog,
+    announce,
+    btn,
+    kv,
+    pill,
+  };
+}
 function action(name) {
+  if (ComputeSurface.action(name, computeApi())) return;
+  if (ObservatorySurface.action(name, observabilityApi())) return;
+  if (SettingsSurface.action(name, settingsApi())) return;
+  if (
+    name.startsWith("settings/") ||
+    name.startsWith("work/") ||
+    name.startsWith("observability/")
+  ) {
+    closeDialog();
+    navigate(name);
+    return;
+  }
+  if (name === "settings") {
+    closeDialog();
+    navigate("settings/general");
+    return;
+  }
   const api = {
     render,
     renderHUD,
@@ -1215,10 +1258,9 @@ function action(name) {
       "playground",
       "models",
       "work",
-      "system",
-      "sessions",
+      "observability",
+      "compute",
       "architecture",
-      "access",
       "docs",
     ].includes(name)
   ) {
@@ -1233,7 +1275,7 @@ function action(name) {
   if (name === "stale") {
     state.stale = !state.stale;
     renderHUD();
-    if (state.page === "system") render();
+    if (state.page === "observability") render();
     announce(
       state.stale
         ? "Telemetry is stale. Current measurements are unknown."
@@ -1290,7 +1332,10 @@ function action(name) {
         [
           ["Workspace", "Isolated checkout for selected project"],
           ["Execution", "Pi coding agent / ephemeral container"],
-          ["Budget", "2 CPUs · 4 GiB RAM · 30 minutes"],
+          [
+            "Budget",
+            `${SettingsSurface.environment().cpus} CPUs · ${SettingsSurface.environment().memory} GiB RAM · ${SettingsSurface.environment().minutes} minutes`,
+          ],
           ["Model access", "Explicit selected connector and model"],
           ["Network", "Declared services only"],
           ["Host access", "No Docker socket; no GPU devices"],
@@ -1308,7 +1353,7 @@ function action(name) {
   if (name === "sandbox-plan") {
     state.sandbox = true;
     closeDialog();
-    navigate("sessions");
+    navigate("work/task/T-04/agent");
     announce("Local sandbox plan retained. No environment started.");
     return;
   }
@@ -1387,12 +1432,11 @@ document.addEventListener("click", (e) => {
   }
 });
 document.addEventListener("input", (e) => {
+  if (ComputeSurface.input(e, computeApi())) return;
+  if (ObservatorySurface.input(e, observabilityApi())) return;
+  if (SettingsSurface.input(e)) return;
   if (PiSurface.input(e)) return;
   if (e.target.id === "command-search") filterCommands(e.target.value);
-  if (e.target.id === "log-filter") {
-    state.logQuery = e.target.value;
-    filterLogs(state.logQuery);
-  }
   const keys = {
     prompt: "prompt",
     temperature: "temperature",
@@ -1404,6 +1448,8 @@ document.addEventListener("input", (e) => {
   }
 });
 document.addEventListener("change", (e) => {
+  if (ObservatorySurface.change(e, observabilityApi())) return;
+  if (SettingsSurface.input(e)) return;
   if (
     PiSurface.change(e, {
       render,
@@ -1440,6 +1486,8 @@ document.addEventListener("change", (e) => {
   }
 });
 document.addEventListener("submit", (e) => {
+  if (ComputeSurface.submit(e, computeApi())) return;
+  if (SettingsSurface.submit(e, settingsApi())) return;
   if (
     PiSurface.submit(e, {
       render,
@@ -1541,12 +1589,18 @@ $("#command-open").addEventListener("click", commandPalette);
 $("#scenario-toggle").addEventListener("click", () => action("stale"));
 document.addEventListener("keydown", (e) => {
   if (
+    e.target.closest(".compute-surface") &&
+    e.target.matches('[role="tab"]') &&
+    ComputeSurface.input(e, computeApi())
+  )
+    return;
+  if (
     e.target.matches('[role="tab"]') &&
     ["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)
   ) {
     e.preventDefault();
     const all = Array.from(
-      document.querySelectorAll('[role="tablist"] [role="tab"]'),
+      e.target.closest('[role="tablist"]').querySelectorAll('[role="tab"]'),
     );
     const i = all.indexOf(e.target);
     const next =
