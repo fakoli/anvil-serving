@@ -74,7 +74,7 @@ function browserEnvironment(home) {
 
 async function verifyUntrustedCertificate(resolver, home) {
   await mkdir(home, { mode: 0o700 });
-  const browser = await chromium.launch({ executablePath: process.env.ANVIL_CONNECT_CHROMIUM || '/usr/bin/google-chrome', headless: true, timeout: 10_000, env: browserEnvironment(home), args: ['--no-proxy-server', '--disable-quic', resolverRules(resolver)] });
+  const browser = await chromium.launch({ executablePath: process.env.ANVIL_CONNECT_CHROMIUM || '/usr/bin/google-chrome', headless: true, timeout: 10_000, env: browserEnvironment(home), args: ['--no-proxy-server', '--disable-quic', '--disable-gpu', resolverRules(resolver)] });
   try {
     const page = await browser.newPage();
     let rejected = false;
@@ -105,7 +105,7 @@ async function startFixture(testPattern = '^TestBrowserEdgeFixture$', fixtureFla
       build.on('exit', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(`actual-edge fixture build failed (${code}): ${output}`)); });
     });
     const child = value.child = spawn(binary, ['-test.run', testPattern, '-test.v'], {
-      env: { PATH: process.env.PATH, [fixtureFlag]: '1', ANVIL_CONNECT_EDGE_CADDY: process.env.ANVIL_CONNECT_EDGE_CADDY || '/data/cache/anvil-connect/edge-tools/extract/caddy/caddy', ANVIL_CONNECT_EDGE_AUTHELIA: process.env.ANVIL_CONNECT_EDGE_AUTHELIA || '/data/cache/anvil-connect/edge-tools/extract/authelia/authelia', ANVIL_CONNECT_WSTUNNEL: process.env.ANVIL_CONNECT_WSTUNNEL || '/data/cache/anvil-connect/tools/wstunnel/10.7.1/linux-amd64/wstunnel' },
+      env: { PATH: process.env.PATH, TMPDIR: value.dir, [fixtureFlag]: '1', ANVIL_CONNECT_EDGE_CADDY: process.env.ANVIL_CONNECT_EDGE_CADDY || '/data/cache/anvil-connect/edge-tools/extract/caddy/caddy', ANVIL_CONNECT_EDGE_AUTHELIA: process.env.ANVIL_CONNECT_EDGE_AUTHELIA || '/data/cache/anvil-connect/edge-tools/extract/authelia/authelia', ANVIL_CONNECT_WSTUNNEL: process.env.ANVIL_CONNECT_WSTUNNEL || '/data/cache/anvil-connect/tools/wstunnel/10.7.1/linux-amd64/wstunnel' },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     const replies = [];
@@ -140,7 +140,7 @@ async function startFixture(testPattern = '^TestBrowserEdgeFixture$', fixtureFla
     value.context = await chromium.launchPersistentContext(profile, {
       executablePath: process.env.ANVIL_CONNECT_CHROMIUM || '/usr/bin/google-chrome',
       headless: true, timeout: 15_000, env: browserEnvironment(home),
-      args: ['--no-proxy-server', '--disable-quic', resolverRules(ready.resolver)],
+      args: ['--no-proxy-server', '--disable-quic', '--disable-gpu', resolverRules(ready.resolver)],
     });
     return {
       ...value, ...ready,
