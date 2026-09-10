@@ -3,9 +3,15 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+import pytest
 
 from anvil_serving.connect import qualification as subject
 from tests.connect.test_qualification import _config
+
+
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="requires Linux qualification artifact custody")
 
 
 def test_go_version_preserves_major_component(tmp_path, monkeypatch):
