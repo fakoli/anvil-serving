@@ -4,7 +4,7 @@ import urllib.request
 
 import pytest
 
-from anvil_serving import reservations, serves
+from anvil_serving import mcp, reservations, serves
 from anvil_serving.control_plane.mcp.errors import ToolError
 from anvil_serving.control_plane.mcp.tools.models import tool_recipe_settings
 from anvil_serving.control_plane.mcp.tools.router import _tier_candidate
@@ -54,6 +54,64 @@ def test_recipe_preview_never_writes_and_apply_requires_human_gate(tmp_path):
             "values": {"maximum_context": 8192}, "confirm": True, "dry_run": False,
         })
     assert registry.read_bytes() == before
+
+
+def test_registered_recipe_lifecycle_is_preview_only_then_rechecks_exact_baseline(monkeypatch, tmp_path):
+    """The catalog tool never invokes the lifecycle handler for a preview or stale review."""
+    from anvil_serving import models, serve_recipes
+    from anvil_serving.workbench_app import recipe_admission
+    from anvil_serving.control_plane.mcp.tools import serves as serves_tools
+
+    registry = tmp_path / "recipes.toml"
+    registry.write_text('''schema = "anvil-serving/serve-recipes-v1"\n\n[[recipe]]\nmodel = "org/model"\n[recipe.serve]\nimage = "example/image@sha256:abc"\nstartup_timeout_seconds = 60\nflags = ["--max-model-len 4096", "--max-num-seqs 2"]\n''')
+    state = {"containers": []}
+    monkeypatch.setattr(
+        serve_recipes, "discover_recipe_containers",
+        lambda: {"schema": serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA, "containers": list(state["containers"])},
+    )
+    calls = []
+    def lifecycle(argv):
+        calls.append(argv)
+        recipe = serve_recipes.find_recipe(serve_recipes.load_registry(str(registry)), "org/model")
+        if argv[0] == "load":
+            state["containers"] = [{
+                "container": "candidate", "container_id": "a" * 64, "model": "org/model",
+                "recipe_digest": serve_recipes.recipe_digest(recipe),
+                "registry_digest": serve_recipes.registry_digest(str(registry)), "state": "running",
+            }]
+        return 0
+    monkeypatch.setattr(models, "_recipe_main", lifecycle)
+    monkeypatch.setattr(recipe_admission, "load_plan", lambda *args: {"admission_sha256": "e" * 64, "manifest": "/private/serves.toml", "serve": "candidate", "gpu_roles": ["compute"], "reservation": "full-card"})
+    def managed(argv, **kwargs):
+        lifecycle(["load", "org/model"])
+        return {"returncode": 0}
+    monkeypatch.setattr(serves_tools, "_run_argv", managed)
+    monkeypatch.setattr(serves_tools, "_load_serves_for_tool", lambda _: [{"name": "candidate", "container": "candidate", "up": ["managed"]}])
+
+    preview = mcp.call_tool("recipe_manage", {
+        "action": "load", "registry": str(registry), "model": "org/model", "container": "candidate",
+    })
+    assert preview["ok"] and preview["data"]["applied"] is False and calls == []
+    baseline = preview["data"]
+    stale = mcp.call_tool("recipe_manage", {
+        "action": "load", "registry": str(registry), "model": "org/model", "container": "candidate",
+        "dry_run": False, "confirm": True,
+        "expected_registry_sha256": "0" * 64,
+        "expected_recipe_sha256": baseline["recipe_sha256"],
+        "expected_inventory_sha256": baseline["inventory_sha256"],
+        "expected_admission_sha256": baseline["admission_sha256"],
+    })
+    assert stale["ok"] is False and stale["error"]["code"] == "stale_preview" and calls == []
+    applied = mcp.call_tool("recipe_manage", {
+        "action": "load", "registry": str(registry), "model": "org/model", "container": "candidate",
+        "dry_run": False, "confirm": True,
+        "expected_registry_sha256": baseline["registry_sha256"],
+        "expected_recipe_sha256": baseline["recipe_sha256"],
+        "expected_inventory_sha256": baseline["inventory_sha256"],
+        "expected_admission_sha256": baseline["admission_sha256"],
+    })
+    assert applied["ok"] and applied["data"]["postcondition"]["status"] == "passed"
+    assert calls == [["load", "org/model"]]
 
 
 def test_none_engine_is_explicitly_cpu_only_and_not_blocked_by_exclusive_owner(tmp_path):

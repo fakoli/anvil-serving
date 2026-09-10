@@ -1,0 +1,271 @@
+/* Embedded Pi Web study: a narrow control rail and one task transcript. */
+.pi-embedded {
+  overflow: visible;
+}
+.pi-toolbar {
+  display: grid;
+  grid-template-columns: minmax(135px, 1fr) minmax(150px, 0.95fr) 105px auto;
+  gap: 10px;
+  align-items: end;
+}
+.pi-toolbar-model {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-height: 32px;
+}
+.pi-toolbar label,
+#pi-form label,
+.pi-steer label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 13px;
+}
+.pi-toolbar label {
+  font-size: 11px;
+  color: var(--muted);
+}
+.pi-toolbar select {
+  min-width: 0;
+}
+.pi-toolbar-status {
+  justify-content: flex-end;
+}
+.pi-web-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 18px;
+  padding-top: 0;
+}
+.pi-thread-sidebar {
+  margin: 0 -1px -1px -1px;
+  padding: 14px 10px;
+  border-right: 1px solid var(--line);
+  background: color-mix(in srgb, var(--raised) 58%, var(--bg));
+  align-self: stretch;
+  min-height: 420px;
+}
+.pi-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+}
+.pi-sidebar-head button {
+  min-height: 26px;
+  padding: 1px 8px;
+}
+.pi-project-label {
+  padding: 7px 6px 9px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.pi-folder,
+.pi-thread-row {
+  appearance: none;
+  width: 100%;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+  padding: 7px 6px;
+  font: inherit;
+}
+.pi-folder:hover,
+.pi-thread-row:hover {
+  background: color-mix(in srgb, var(--raised) 74%, var(--accent));
+  color: var(--text);
+}
+.pi-folder {
+  font-size: 12px;
+}
+.pi-folder-child {
+  margin: 0 0 8px 9px;
+  padding-left: 7px;
+  border-left: 1px solid var(--line);
+}
+.pi-thread-row {
+  display: grid;
+  gap: 2px;
+  padding-left: 9px;
+  color: var(--text);
+  font-size: 13px;
+}
+.pi-thread-row small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.pi-thread-row.selected {
+  background: color-mix(in srgb, var(--accent) 13%, var(--raised));
+  box-shadow: inset 2px 0 var(--accent);
+}
+.pi-empty-folder {
+  margin: 3px 8px 8px 21px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.pi-conversation {
+  display: grid;
+  gap: 18px;
+}
+.pi-thread-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+.pi-thread-title h2 {
+  margin-top: 3px;
+  font-size: 17px;
+}
+.pi-thread {
+  border-left: 1px solid var(--line);
+  padding-left: 14px;
+  display: grid;
+  gap: 12px;
+}
+.pi-message {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.pi-message .eyebrow {
+  color: var(--accent);
+}
+.pi-message.operator .eyebrow {
+  color: var(--amber);
+}
+.pi-message p {
+  white-space: pre-wrap;
+}
+#pi-form {
+  display: grid;
+  gap: 7px;
+}
+#pi-draft {
+  min-height: 94px;
+  resize: vertical;
+}
+.pi-composer-foot,
+.pi-steer > div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+.pi-composer-foot .section-copy {
+  max-width: 390px;
+  font-size: 12px;
+}
+.pi-steer {
+  border-top: 1px dashed var(--line);
+  padding-top: 15px;
+  display: grid;
+  gap: 7px;
+}
+.pi-steer input {
+  flex: 1;
+}
+.pi-inline-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.pi-tool {
+  border: 1px solid var(--line);
+  background: var(--raised);
+  border-radius: 3px;
+}
+.pi-tool summary {
+  padding: 9px 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.pi-inline-tools .pi-tool {
+  flex: 1 1 230px;
+}
+.pi-tool pre,
+.pi-diff {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding: 10px;
+  color: var(--muted);
+  font: 12px/1.5 var(--mono);
+  white-space: pre-wrap;
+}
+.pi-diff {
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: color-mix(in srgb, var(--raised) 80%, var(--accent) 5%);
+}
+.pi-subtoolbar {
+  border-top: 1px solid var(--line);
+  padding-top: 13px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pi-subtoolbar details {
+  margin-left: auto;
+  position: relative;
+}
+.pi-subtoolbar summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+}
+.pi-subtoolbar details[open] {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  padding: 7px 9px;
+  min-width: 190px;
+}
+.pi-subtoolbar details[open] a {
+  display: block;
+  margin-top: 7px;
+  font-size: 13px;
+}
+@media (max-width: 900px) {
+  .pi-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pi-toolbar-status {
+    justify-content: flex-start;
+  }
+  .pi-web-layout {
+    grid-template-columns: 1fr;
+  }
+  .pi-thread-sidebar {
+    min-height: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+@media (max-width: 540px) {
+  .pi-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .pi-composer-foot,
+  .pi-steer > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .pi-composer-foot button,
+  .pi-steer button {
+    width: 100%;
+  }
+}

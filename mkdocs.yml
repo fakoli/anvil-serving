@@ -9,6 +9,10 @@ edit_uri: edit/main/docs/
 
 docs_dir: docs
 
+# The preserved standalone prototype owns this directory's index.html.
+exclude_docs: |
+  /design/workbench/README.md
+
 theme:
   name: material
   icon:
@@ -109,6 +113,7 @@ nav:
           - Embeddings and reranking: PURPOSE-MODELS.md
       - OpenClaw integration: OPENCLAW-INTEGRATION-SPEC.md
       - Agent workbench: WORKBENCH.md
+      - Workbench portal: WORKBENCH-PORTAL.md
       - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
   - Reference:
       - Product contracts:
