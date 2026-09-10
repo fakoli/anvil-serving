@@ -210,6 +210,40 @@ func runtimeCaddyControlReady(caddyListen string, roots *x509.CertPool) bool {
 	return false
 }
 
+func runtimeCaddyIssuerReady(caddyListen string, roots *x509.CertPool) bool {
+	if caddyListen == "" || roots == nil {
+		return false
+	}
+	transport := &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots.Clone(), ServerName: edgeAuthHost}, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+		if network != "tcp" || address != edgeAuthHost+":443" {
+			return nil, &net.AddrError{Err: "fixture issuer destination denied", Addr: address}
+		}
+		return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "tcp4", caddyListen)
+	}}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{Transport: transport, Timeout: 2 * time.Second}
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		ctx, cancel := context.WithDeadline(context.Background(), deadline)
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://"+edgeAuthHost+"/api/health", nil)
+		if err != nil {
+			cancel()
+			return false
+		}
+		response, err := client.Do(request)
+		if response != nil {
+			io.Copy(io.Discard, response.Body)
+			response.Body.Close()
+		}
+		cancel()
+		if err == nil && response != nil && response.StatusCode == http.StatusOK {
+			return true
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return false
+}
+
 func runtimeConnectorReady(connector *connectruntime.Connector, observer *runtimeProxyObserver, priorTunnels int, resources []config.Resource) bool {
 	if len(resources) == 0 {
 		return false
@@ -469,27 +503,8 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	}
 	caddyChild := startCaddy(gatewayCfg.StateDirectory)
 
-	probeTransport := &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots, ServerName: edgeAuthHost}, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-		if network != "tcp" || address != edgeAuthHost+":443" {
-			return nil, &net.AddrError{Err: "fixture issuer destination denied", Addr: address}
-		}
-		return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "tcp4", caddyListen)
-	}}
-	defer probeTransport.CloseIdleConnections()
-	deadline := time.Now().Add(15 * time.Second)
-	for {
-		response, probeErr := (&http.Client{Transport: probeTransport, Timeout: 2 * time.Second}).Get("https://" + edgeAuthHost + "/api/health")
-		if probeErr == nil && response.StatusCode == http.StatusOK {
-			response.Body.Close()
-			break
-		}
-		if response != nil {
-			response.Body.Close()
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("pinned Authelia and Caddy edge did not become healthy")
-		}
-		time.Sleep(100 * time.Millisecond)
+	if !runtimeCaddyIssuerReady(caddyListen, roots) {
+		t.Fatal("pinned Authelia and Caddy edge did not become healthy")
 	}
 
 	if err := connectruntime.InitializeGateway(gatewayCfg); err != nil {
@@ -872,6 +887,11 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 				break
 			}
 			caddyChild = startCaddy(restoredCfg.StateDirectory)
+			if !runtimeCaddyIssuerReady(caddyListen, roots) {
+				_ = caddyChild.Close()
+				failRestore("authority restore edge readiness failed")
+				break
+			}
 			restoredContext, restoredCancel := context.WithCancel(context.Background())
 			restoredGateway, startErr := connectruntime.StartGateway(restoredContext, restoredCfg, gatewaySecrets)
 			if startErr != nil {
