@@ -28,7 +28,7 @@ anvil-connect preflight --mode gateway|connector|client --config FILE
 anvil-connect init --mode gateway --config FILE
 anvil-connect init --mode connector --config FILE --bundle PRIVATE_FILE
 anvil-connect gateway|connector|client --config FILE
-anvil-connect login --config FILE
+anvil-connect login [--config FILE] [--json]
 anvil-connect identity --config FILE
 anvil-connect admin --socket PATH --request FILE [--output PRIVATE_FILE]
 anvil-connect keygen --output PRIVATE_FILE
@@ -68,6 +68,10 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	command := args[0]
 	fs := flag.NewFlagSet(command, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
+	var jsonOutput bool
+	if command == "login" {
+		fs.BoolVar(&jsonOutput, "json", false, "machine-readable login output")
+	}
 	var mode, file, bundle, socket, request, output, input, digest string
 	switch command {
 	case "validate", "preflight", "init":
@@ -168,8 +172,29 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	if command == "init" && ((mode == "gateway" && bundle != "") || (mode == "connector" && bundle == "") || mode == "client") {
 		return invalid()
 	}
+	if command == "login" {
+		explicitConfig := false
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "config" {
+				explicitConfig = true
+			}
+		})
+		if explicitConfig && file == "" {
+			return invalid()
+		}
+		home, _ := os.UserHomeDir()
+		selected, pathErr := loginConfigPath(file, home)
+		if pathErr != nil {
+			return invalid()
+		}
+		file = selected
+	}
 	data, err := readDeclaration(file)
 	if err != nil {
+		if command == "login" {
+			_, _ = fmt.Fprintln(diagnostics, "anvil-connect: client setup unavailable; install the client configuration or use --config FILE")
+			return 2
+		}
 		return invalid()
 	}
 	var gateway connectruntime.GatewayConfig
@@ -244,7 +269,10 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	if command == "client" {
 		err = serveClient(ctx, local, lookup, func() error { return json.NewEncoder(out).Encode(map[string]string{"mode": mode, "status": "running"}) })
 	} else if command == "login" {
-		err = loginClient(ctx, local, lookup, out)
+		lookup, err = loginSecrets(file, local, lookup)
+		if err == nil {
+			err = loginClient(ctx, local, lookup, out, jsonOutput)
+		}
 	} else {
 		var process interface {
 			Close()
@@ -272,6 +300,10 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 			return loginFailure(diagnostics, err)
 		}
 		return fail()
+	}
+	if command == "login" && !jsonOutput {
+		_, _ = fmt.Fprintln(out, "Connect stopped.")
+		return 0
 	}
 	return status(map[string]string{"mode": mode, "status": "stopped"})
 }

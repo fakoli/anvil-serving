@@ -69,6 +69,13 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
   or any repeatable operator action, integrate it as an `anvil-serving` CLI verb
   and, where appropriate, an MCP/controller tool. Do not create random one-off
   scripts as the operational path.
+- **Make user workflows short commands.** If routine execution needs more than
+  a couple of lines, implement a supported command instead of handing the user
+  a script or heredoc. Put repeated options and non-secret settings in a
+  conventional config file that the command loads automatically. Keep secrets
+  in protected storage with references in configuration. Installation owns
+  initial setup; documentation leads with the tested command, without a long
+  environment-variable preamble. Treat violations as product usability gaps.
 - **Keep routing serving-engine agnostic.** Chat aliases, purpose-model names,
   and audio routes resolve through declared endpoint, dialect, capability,
   readiness, and admission contracts. Do not branch route selection on
@@ -139,8 +146,9 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
 - **Return dicts, not print-side-effects** in library code. CLI wrappers print; modules return.
 - **Never self-verify.** Don't write a check that uses the same model to validate its own
   output. Preflight and benchmark gates must be independent.
-- **Credentials via env vars only.** Never put a key in a config file, a test fixture,
-  a decision record, or a log line.
+- **Credentials through secret references.** Use declared environment references
+  or protected, untracked secret files. Never put a literal key in a settings
+  file, a tracked test fixture, a decision record, or a log line.
 - All new model-calling code MUST use the **Claude Agent SDK** (not the raw `anthropic`
   SDK or a direct `api.anthropic.com` call). See the golden rule in `CLAUDE.md`.
 

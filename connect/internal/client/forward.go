@@ -69,6 +69,12 @@ func GenerateKey() (string, error) {
 	return localKeyPrefix + base64.RawURLEncoding.EncodeToString(key[:]), nil
 }
 
+// ValidLocalKey validates the canonical credential without exposing its bytes.
+func ValidLocalKey(raw string) bool {
+	_, err := parseLocalKey(raw)
+	return err == nil
+}
+
 func parseLocalKey(raw string) ([32]byte, error) {
 	var key [32]byte
 	if len(raw) != len(localKeyPrefix)+base64.RawURLEncoding.EncodedLen(len(key)) || !strings.HasPrefix(raw, localKeyPrefix) {
