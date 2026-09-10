@@ -1,8 +1,8 @@
 # Workbench implementation reflection
 
-This reflection records implementation changes and open operating limits. It is
-not a claim that release, merge, installation, or live browser acceptance has
-completed.
+This reflection records the design decisions, improvements found during review,
+and operating limits of the Workbench. Deployment receipts and current PR checks
+remain the authority for the installed revision and release status.
 
 1. The dashboard moved from a concept-only shell to authenticated workspace
    views backed by declared owner projections. This keeps connector, controller,
@@ -21,14 +21,43 @@ completed.
    loop-backed ext4 pool rather than reformatting it, rejects nested mounts and
    journal overlap, and installs a reviewed systemd mount only after validation.
 
-Remaining limits are intentional operational boundaries. A private full
-Workbench policy must still supply exact projects, resource grants, image digest,
+## Improvements made during acceptance
+
+Testing the real controller transport found a contract error that shaped replies
+had hidden: transport redaction removes raw executable arguments. The diagnostic
+review now uses the exact declared command, owner, container and bounded limits;
+private policy and candidate digests still pin the actual execution. An
+authenticated HTTP regression proves preview, apply and rejection after a policy
+change without weakening global command or credential protections.
+
+Pi polling initially replaced controls while the operator was typing. The chat
+now retains separate drafts, native event order and focused inputs. An actual
+browser check caught a second issue between focus loss and clicking an extension
+response. Keeping already-rendered unresolved controls in place fixed that race
+while allowing new prompts and completed responses to render. The final model
+and thinking selectors share a compact row and collapse on smaller screens.
+
+Cross-platform CI exposed assumptions about POSIX file descriptors, pipe polling,
+absolute paths and file encoding. The private store and bounded CLI adapter now
+use the supported platform boundaries. Linux-only runner provisioning fails
+explicitly on unsupported systems; it no longer prevents importing the product
+or using its portable commands.
+
+Connecting the historical project also exposed missing State registration and
+legacy replay defects. Those repairs belong in Anvil State and use its normal
+event and backup mechanisms. The Workbench does not synthesize a competing
+project or repair its database directly.
+
+Remaining limits are intentional operational boundaries. A private Workbench
+policy supplies exact projects, resource grants, image digest,
 provider/model endpoint, protected credential file and controller availability.
 The current UI cannot configure arbitrary providers, filesystem paths, Docker
 commands, host shells, native service execution, model promotion, or task
 acceptance. Provider gateway setup requires a reachable declared provider and
 engine policy; no networkless fixture proves that external route. Pi task work
-depends on a healthy Anvil State project and a valid exclusive lease. A complete
-delivery record still needs the configured installation, authenticated rendered
-journeys, broad checks, independent review and the maintainer's release/merge
-decision.
+depends on a healthy Anvil State project and a valid exclusive lease. The chat
+uses official Pi RPC with a Pi Web-style thread layout; it does not embed or fork
+Pi Web. Arbitrary project extensions remain disabled in the installed runner.
+The supported extension-dialog renderer does not grant permission to install or
+execute an extension. Benchmark operations remain deterministic owner workflows,
+separate from Pi conversations and independent quality acceptance.
