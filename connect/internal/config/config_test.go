@@ -179,3 +179,39 @@ func TestResourceMatching(t *testing.T) {
 		}
 	}
 }
+
+func TestSignedIdentityGatewayBinding(t *testing.T) {
+	valid := gateway(t)
+	resource := &valid.Resources[0]
+	resource.Rule.Access = "browser"
+	resource.Rule.NativeAuth = "signed-identity"
+	resource.IdentityKeyEnv = "ANVIL_CONNECT_DASH_IDENTITY_KEY"
+	resource.IdentityKeyID = "dash-v1"
+	if valid.Validate() != nil {
+		t.Fatal("valid signed identity resource rejected")
+	}
+	for name, mutate := range map[string]func(*Gateway){
+		"missing-env":    func(g *Gateway) { g.Resources[0].IdentityKeyEnv = "" },
+		"invalid-env":    func(g *Gateway) { g.Resources[0].IdentityKeyEnv = "literal" },
+		"missing-key-id": func(g *Gateway) { g.Resources[0].IdentityKeyID = "" },
+		"api-profile": func(g *Gateway) {
+			g.Resources[0].Rule.Access, g.Resources[0].Rule.NativeAuth = "api", "delegate-bearer"
+		},
+		"ordinary-profile": func(g *Gateway) { g.Resources[0].Rule.NativeAuth = "none" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := valid
+			candidate.Resources = append([]Resource(nil), valid.Resources...)
+			mutate(&candidate)
+			if candidate.Validate() == nil {
+				t.Fatal("invalid identity binding accepted")
+			}
+		})
+	}
+	second := valid.Resources[0]
+	second.Rule.ID, second.Rule.Host, second.TunnelAddress = "dash-two", "dash-two.example.test", "127.0.0.1:19002"
+	valid.Resources = append(valid.Resources, second)
+	if valid.Validate() == nil {
+		t.Fatal("identity key was reused across resources")
+	}
+}

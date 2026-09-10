@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
+	"github.com/fakoli/anvil-serving/connect/internal/browseridentity"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/httpedge"
 	"github.com/fakoli/anvil-serving/connect/internal/relay"
@@ -56,7 +57,7 @@ func NewAPI(envelope config.Envelope, gatewayPeer string, secrets SecretSource, 
 // authority; no delegation secret is loaded or injected on this path.
 func NewBrowser(envelope config.Envelope, gatewayPeer string, lease *access.Lease) (*Proxy, error) {
 	declaration := config.Connector{Schema: "anvil-connect.connector/v1", ID: "local", Resources: []config.Envelope{envelope}}
-	if declaration.Validate() != nil || envelope.Rule.Access != "browser" || (envelope.Rule.NativeAuth != "none" && envelope.Rule.NativeAuth != "passthrough") || envelope.TokenEnv != "" || !config.ValidHost(gatewayPeer) || lease == nil || lease.Binding().Resource != envelope.Rule.ID {
+	if declaration.Validate() != nil || envelope.Rule.Access != "browser" || (envelope.Rule.NativeAuth != "none" && envelope.Rule.NativeAuth != "passthrough" && envelope.Rule.NativeAuth != "signed-identity") || envelope.TokenEnv != "" || !config.ValidHost(gatewayPeer) || lease == nil || lease.Binding().Resource != envelope.Rule.ID {
 		return nil, ErrConfiguration
 	}
 	return newProxy(envelope, gatewayPeer, lease, nil, true)
@@ -102,6 +103,10 @@ func newProxy(envelope config.Envelope, gatewayPeer string, lease *access.Lease,
 				// gateway assertions, and proxy identity never reach the dashboard.
 				if httpedge.CleanBrowserHeaders(request.Out.Header, envelope.Rule.NativeAuth) != nil {
 					request.Out.Header = http.Header{}
+				}
+				if envelope.Rule.NativeAuth == "signed-identity" {
+					assertion, _ := browseridentity.Assertion(request.In.Context())
+					request.Out.Header.Set(browseridentity.Header, assertion)
 				}
 				return
 			}
@@ -158,6 +163,15 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "browser origin denied", http.StatusForbidden)
 		return
 	}
+	assertion := ""
+	if p.browser && p.envelope.Rule.NativeAuth == "signed-identity" {
+		values := r.Header.Values(browseridentity.Header)
+		if len(values) != 1 || !browseridentity.ValidWire(values[0]) {
+			http.Error(w, "browser identity denied", http.StatusForbidden)
+			return
+		}
+		assertion = values[0]
+	}
 	if r.ContentLength > p.envelope.Rule.Limits.RequestBytes {
 		http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
 		return
@@ -185,6 +199,9 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if httpedge.CleanBrowserHeaders(clean.Header, p.envelope.Rule.NativeAuth) != nil {
 			http.Error(w, "browser headers denied", http.StatusBadRequest)
 			return
+		}
+		if p.envelope.Rule.NativeAuth == "signed-identity" {
+			clean = clean.WithContext(browseridentity.WithAssertion(clean.Context(), assertion))
 		}
 	} else {
 		token, ok := p.secrets(p.envelope.TokenEnv)

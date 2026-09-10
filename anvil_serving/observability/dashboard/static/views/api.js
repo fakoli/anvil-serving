@@ -72,7 +72,11 @@ export async function request(
     if (!response.ok || payload?.ok !== true) {
       if (response.status === 401) {
         session = null;
-        window.dispatchEvent(new Event("observatory-session-expired"));
+        window.dispatchEvent(
+          new CustomEvent("observatory-session-expired", {
+            detail: { code: payload?.error?.code || "unauthenticated" },
+          }),
+        );
       }
       // Fixed facade messages only, bounded defensively even for compromised sources.
       const message =

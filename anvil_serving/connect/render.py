@@ -22,7 +22,7 @@ _CADDY_GRACE_PERIOD = f"{_CADDY_GRACE_PERIOD_SECONDS}s"
 _SERVICE_STOP_TIMEOUT_SECONDS = 20
 _DROP_IDENTITY_HEADERS = [
     "Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP",
-    "X-Anvil-Connect-User", "X-Anvil-Connect-Groups", "X-Auth-Request-User",
+    "X-Anvil-Connect-User", "X-Anvil-Connect-Groups", "X-Anvil-Connect-Identity", "X-Auth-Request-User",
     "X-Auth-Request-Email", "X-Authenticated-User", "X-Authenticated-Groups",
     "Remote-User", "Remote-Groups", "Remote-Email", "Remote-Name", "Cf-Access-Jwt-Assertion",
     "X-Goog-Authenticated-User", "X-Goog-Authenticated-User-Email", "X-Amzn-Oidc-Data",
@@ -41,9 +41,12 @@ def _unit_argument(value: str) -> str:
     return value
 
 
-def _unit(description: str, command: list[str], user: str, *, environment_file: str | None = None, bind_public_tls: bool = False) -> str:
+def _unit(description: str, command: list[str], user: str, *, environment_file: str | None = None,
+          identity_environment_file: str | None = None, bind_public_tls: bool = False) -> str:
     escaped = " ".join(_unit_argument(arg) for arg in command)
     environment = [] if environment_file is None else ["EnvironmentFile=" + _unit_argument(environment_file)]
+    if identity_environment_file is not None:
+        environment.append("EnvironmentFile=" + _unit_argument(identity_environment_file))
     return "\n".join((
         "[Unit]", f"Description={description}", "After=network-online.target", "Wants=network-online.target", "",
         "[Service]", "Type=simple", f"User={_unit_argument(user)}", f"Group={_unit_argument(user)}", *environment, f"ExecStart={escaped}",
@@ -154,6 +157,18 @@ def _authelia(manifest: dict[str, Any]) -> str:
         "    clients:", f"      - client_id: {_quote(gateway['oidc']['client_id'])}", "        client_secret: |-", f"          {{{{- fileContent {_template_quote(auth['client_secret_file'])} | nindent 10 }}}}", "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256", "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:", "          - openid", "        id_token_signed_response_alg: RS256", "        token_endpoint_auth_method: client_secret_basic", "        redirect_uris:",
     ]
     lines.extend(f"          - {_quote(callback)}" for callback in callbacks)
+    if "webauthn" in auth:
+        webauthn = auth["webauthn"]
+        lines.extend([
+            "default_2fa_method: webauthn", "webauthn:", "  disable: false",
+            "  display_name: 'Anvil Connect'",
+            f"  enable_passkey_login: {str(webauthn['enable_passkey_login']).lower()}",
+            "  # Explicit opt-in to the pinned Authelia experimental UV policy.",
+            f"  experimental_enable_passkey_uv_two_factors: {str(webauthn['experimental_enable_passkey_uv_two_factors']).lower()}",
+            "  selection_criteria:",
+            f"    discoverability: {_quote(webauthn['discoverability'])}",
+            f"    user_verification: {_quote(webauthn['user_verification'])}",
+        ])
     return "\n".join(lines) + "\n"
 
 
@@ -166,7 +181,7 @@ def render(manifest: dict[str, Any]) -> dict[str, Any]:
         "gateway.json": _json(gateway),
         "caddy.json": _json(_caddy(data)),
         "authelia/configuration.yml": _authelia(data),
-        "systemd/anvil-connect-gateway.service": _unit("Anvil Connect gateway", [data["binary"], "gateway", "--config", data["config_root"] + "/gateway.json"], data["service_user"], environment_file=data["environment_files"]["gateway"]),
+        "systemd/anvil-connect-gateway.service": _unit("Anvil Connect gateway", [data["binary"], "gateway", "--config", data["config_root"] + "/gateway.json"], data["service_user"], environment_file=data["environment_files"]["gateway"], identity_environment_file=data["environment_files"].get("gateway_identity")),
         "systemd/anvil-connect-caddy.service": _unit("Anvil Connect Caddy", [data["components"]["caddy"], "run", "--config", data["config_root"] + "/caddy.json"], data["service_user"], bind_public_tls=int(data["caddy"].get("listen", ":443").rsplit(":", 1)[1]) < 1024),
         "systemd/anvil-connect-authelia.service": _unit("Anvil Connect Authelia", [data["components"]["authelia"], "--config", data["config_root"] + "/authelia/configuration.yml", "--config.experimental.filters", "template"], data["service_user"]),
     }
