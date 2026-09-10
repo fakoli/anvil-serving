@@ -390,23 +390,28 @@ def _validate_environment_files(data: dict[str, Any], target: Target | tuple[Tar
     allowed_uid = os.geteuid() if service is None else service.uid
     selected = _selected_targets(data, target)
     env = data["environment_files"]
-    paths: list[Path] = []
+    paths: list[tuple[Path, bool]] = []
     for item in selected:
         if item.kind == "gateway":
-            paths.append(Path(env["gateway"]))
+            paths.append((Path(env["gateway"]), False))
+            if "gateway_identity" in env:
+                # The signing material is separately provisioned root-only
+                # state, never a service-user-managed general gateway env file.
+                paths.append((Path(env["gateway_identity"]), True))
         elif item.kind == "connector":
             assert item.name is not None
-            paths.append(Path(env["connectors"][item.name]))
+            paths.append((Path(env["connectors"][item.name]), False))
         else:
             assert item.name is not None
-            paths.append(Path(env["clients"][item.name]))
-    for path in paths:
+            paths.append((Path(env["clients"][item.name]), False))
+    for path, root_only in paths:
         try:
             info = path.lstat()
         except OSError as exc:
             raise ManageError("declared EnvironmentFile is unavailable") from exc
+        owners = {0} if root_only else {0, allowed_uid}
         if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
-                or info.st_uid not in {0, allowed_uid} or stat.S_IMODE(info.st_mode) != 0o600):
+                or info.st_uid not in owners or stat.S_IMODE(info.st_mode) != 0o600):
             raise ManageError("declared EnvironmentFile has unsafe ownership or mode")
 
 

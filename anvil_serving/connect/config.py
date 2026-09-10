@@ -191,8 +191,8 @@ def _rule(value: Any, path: str) -> dict[str, Any]:
         raise _error(path + ".access", "must be api or browser")
     if access == "api" and native_auth != "delegate-bearer":
         raise _error(path + ".native_auth", "API resources require delegate-bearer")
-    if access == "browser" and native_auth not in {"none", "passthrough"}:
-        raise _error(path + ".native_auth", "browser resources require none or passthrough")
+    if access == "browser" and native_auth not in {"none", "passthrough", "signed-identity"}:
+        raise _error(path + ".native_auth", "browser resources require none, passthrough, or signed-identity")
     raw_limits = _mapping(raw["limits"], path + ".limits", {"request_bytes", "concurrent", "buffer_bytes", "idle_seconds", "duration_seconds"})
     limits = {
         "request_bytes": _positive(raw_limits["request_bytes"], path + ".limits.request_bytes", 64 * 1024 * 1024),
@@ -256,8 +256,13 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     components_raw = _mapping(raw["components"], "$.components", {"caddy", "authelia"})
     components = {name: _abs_path(components_raw[name], "$.components." + name) for name in ("caddy", "authelia")}
     config_root = _abs_path(raw["config_root"], "$.config_root")
-    environment_raw = _mapping(raw["environment_files"], "$.environment_files", {"gateway", "connectors", "clients"})
+    environment_fields = {"gateway", "connectors", "clients"}
+    if isinstance(raw["environment_files"], dict) and "gateway_identity" in raw["environment_files"]:
+        environment_fields.add("gateway_identity")
+    environment_raw = _mapping(raw["environment_files"], "$.environment_files", environment_fields)
     environment_gateway = _abs_path(environment_raw["gateway"], "$.environment_files.gateway")
+    environment_gateway_identity = (_abs_path(environment_raw["gateway_identity"], "$.environment_files.gateway_identity")
+                                    if "gateway_identity" in environment_raw else None)
     service_user = _ident(raw["service_user"], "$.service_user")
 
     gateway_raw = _mapping(raw["gateway"], "$.gateway", {"schema", "gateway", "control_host", "tunnel_host", "state_directory", "tunnel_binary", "tunnel_listen", "oidc"})
@@ -269,14 +274,33 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     gateway_listen = _loopback(embedded["listen"], "$.gateway.gateway.listen")
     resource_raws = _list(embedded["resources"], "$.gateway.gateway.resources")
     resources: list[dict[str, Any]] = []
+    identity_envs: set[str] = set()
+    identity_ids: set[str] = set()
     for index, resource_raw in enumerate(resource_raws):
         item_path = f"$.gateway.gateway.resources[{index}]"
-        item = _mapping(resource_raw, item_path, {"connector", "tunnel_address", "rule"})
-        resources.append({
+        identity_fields = {"identity_key_env", "identity_key_id"}
+        optional_fields = identity_fields.intersection(resource_raw) if isinstance(resource_raw, dict) else set()
+        item = _mapping(resource_raw, item_path, {"connector", "tunnel_address", "rule"} | optional_fields)
+        resource = {
             "connector": _ident(item["connector"], item_path + ".connector"),
             "tunnel_address": _loopback(item["tunnel_address"], item_path + ".tunnel_address"),
             "rule": _rule(item["rule"], item_path + ".rule"),
-        })
+        }
+        if resource["rule"]["native_auth"] == "signed-identity":
+            if optional_fields != identity_fields:
+                raise _error(item_path, "signed-identity requires identity_key_env and identity_key_id")
+            key_env = _env(item["identity_key_env"], item_path + ".identity_key_env")
+            if key_env in identity_envs:
+                raise _error(item_path + ".identity_key_env", "must be distinct for each signed-identity resource")
+            identity_envs.add(key_env)
+            key_id = _ident(item["identity_key_id"], item_path + ".identity_key_id")
+            if key_id in identity_ids:
+                raise _error(item_path + ".identity_key_id", "must be distinct for each signed-identity resource")
+            identity_ids.add(key_id)
+            resource.update(identity_key_env=key_env, identity_key_id=key_id)
+        elif optional_fields:
+            raise _error(item_path, "identity key references require signed-identity mode")
+        resources.append(resource)
     if len({r["rule"]["id"] for r in resources}) != len(resources):
         raise _error("$.gateway.gateway.resources", "contains duplicate rule ids")
     if len({r["rule"]["host"] for r in resources}) != len(resources):
@@ -391,11 +415,18 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     clients.sort(key=lambda c: c["rule"]["id"])
     connector_env_raw = _mapping(environment_raw["connectors"], "$.environment_files.connectors", set(connector_index))
     client_env_raw = _mapping(environment_raw["clients"], "$.environment_files.clients", {client["rule"]["id"] for client in clients})
+    signed_identity = any(resource["rule"]["native_auth"] == "signed-identity" for resource in resources)
+    if signed_identity and environment_gateway_identity is None:
+        raise _error("$.environment_files.gateway_identity", "is required for signed-identity resources")
+    if not signed_identity and environment_gateway_identity is not None:
+        raise _error("$.environment_files.gateway_identity", "is only allowed for signed-identity resources")
     environment_files = {
         "gateway": environment_gateway,
         "connectors": {name: _abs_path(connector_env_raw[name], "$.environment_files.connectors." + name) for name in sorted(connector_env_raw)},
         "clients": {name: _abs_path(client_env_raw[name], "$.environment_files.clients." + name) for name in sorted(client_env_raw)},
     }
+    if environment_gateway_identity is not None:
+        environment_files["gateway_identity"] = environment_gateway_identity
 
     caddy_fields = {"service_name", "tls"}
     if isinstance(raw["caddy"], dict) and "listen" in raw["caddy"]:
@@ -426,12 +457,30 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if "listen" in caddy_raw:
         caddy["listen"] = caddy_listen
 
-    authelia_raw = _mapping(raw["authelia"], "$.authelia", {"service_name", "host", "listen", "state_directory", "users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file"})
+    authelia_fields = {"service_name", "host", "listen", "state_directory", "users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file"}
+    if isinstance(raw["authelia"], dict) and "webauthn" in raw["authelia"]:
+        authelia_fields.add("webauthn")
+    authelia_raw = _mapping(raw["authelia"], "$.authelia", authelia_fields)
     authelia = {key: _secret_file(authelia_raw[key], "$.authelia." + key) for key in ("users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file")}
     authelia_name = _ident(authelia_raw["service_name"], "$.authelia.service_name")
     if authelia_name != "anvil-connect-authelia":
         raise _error("$.authelia.service_name", "must equal anvil-connect-authelia")
     authelia.update({"service_name": authelia_name, "host": _host(authelia_raw["host"], "$.authelia.host"), "listen": _loopback(authelia_raw["listen"], "$.authelia.listen"), "state_directory": _abs_path(authelia_raw["state_directory"], "$.authelia.state_directory")})
+    if "webauthn" in authelia_raw:
+        webauthn = _mapping(authelia_raw["webauthn"], "$.authelia.webauthn", {
+            "enable_passkey_login", "experimental_enable_passkey_uv_two_factors", "discoverability", "user_verification",
+        })
+        for flag in ("enable_passkey_login", "experimental_enable_passkey_uv_two_factors"):
+            if type(webauthn[flag]) is not bool:
+                raise _error("$.authelia.webauthn." + flag, "must be a boolean")
+        # This opt-in profile always requires device user verification and a
+        # discoverable credential. Synced passkey providers remain compatible.
+        for criterion in ("discoverability", "user_verification"):
+            if webauthn[criterion] != "required":
+                raise _error("$.authelia.webauthn." + criterion, "must equal required")
+        if webauthn["experimental_enable_passkey_uv_two_factors"] and not webauthn["enable_passkey_login"]:
+            raise _error("$.authelia.webauthn", "passkey two-factor acceptance requires passkey login")
+        authelia["webauthn"] = dict(webauthn)
     all_hosts = {gateway["control_host"], gateway["tunnel_host"], *(r["rule"]["host"] for r in gateway["gateway"]["resources"])}
     if authelia["host"] in all_hosts:
         raise _error("$.authelia.host", "must be distinct from public resource, control, and tunnel hosts")

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fakoli/anvil-serving/connect/internal/browseridentity"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/session"
 )
@@ -84,6 +85,25 @@ func browserFixture(t *testing.T, nativeAuth string, dispatch BrowserDispatch) (
 	t.Helper()
 	authority := newBrowserAuthorityStub()
 	browser, err := NewBrowser(browserDeclaration(nativeAuth), authority, dispatch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(browser.Close)
+	return browser, authority
+}
+
+func signedBrowserFixture(t *testing.T, dispatch BrowserDispatch) (*Browser, *browserAuthorityStub) {
+	t.Helper()
+	declaration := browserDeclaration("signed-identity")
+	declaration.Resources[0].IdentityKeyEnv = "ANVIL_CONNECT_DASH_IDENTITY_KEY"
+	declaration.Resources[0].IdentityKeyID = "dash-v1"
+	authority := newBrowserAuthorityStub()
+	authority.admitted = session.Admission{SessionID: strings.Repeat("1", 32), SessionGeneration: 1, Principal: "human:" + strings.Repeat("a", 64), PrincipalGeneration: 1, Resource: "dash", Host: "dash.example.test", Epoch: strings.Repeat("b", 64), ExpiresAt: time.Now().Add(time.Minute).UTC()}
+	signer, err := browseridentity.NewSigner("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8", "dash-v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	browser, err := NewBrowserWithIdentity(declaration, authority, map[string]*browseridentity.Signer{"dash": signer}, dispatch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,4 +430,89 @@ func TestBrowserCapacityAndRevocationCancelDispatch(t *testing.T) {
 		t.Fatal("browser stream was not canceled after session revocation")
 	}
 	<-done
+}
+
+func TestSignedIdentityUsesPrivateContextAndRevokes(t *testing.T) {
+	var dispatched atomic.Int32
+	var authority *browserAuthorityStub
+	browser, authority := signedBrowserFixture(t, func(w http.ResponseWriter, r *http.Request, resource config.Resource, admitted session.Admission) {
+		dispatched.Add(1)
+		if resource.Rule.NativeAuth != "signed-identity" || admitted != authority.admitted || r.Header.Get(browseridentity.Header) != "" {
+			t.Error("signed identity header or admission crossed an unsafe boundary")
+		}
+		assertion, ok := browseridentity.Assertion(r.Context())
+		if !ok || !strings.HasPrefix(assertion, "acai1.") {
+			t.Error("signed identity was not retained in private request context")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	request := browserRequest(http.MethodGet, "/api/observatory/v1/session?view=current", nil)
+	request.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")
+	request.Header.Set(browseridentity.Header, "acai1.e30.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	response := httptest.NewRecorder()
+	browser.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent || dispatched.Load() != 1 {
+		t.Fatal("signed browser request was not admitted")
+	}
+	authority.revoked.Store(true)
+	response = httptest.NewRecorder()
+	browser.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized || dispatched.Load() != 1 {
+		t.Fatal("revoked Connect session minted or dispatched an identity")
+	}
+}
+
+func TestSignedIdentityRequiresSignerAndUsesExplicitLogoutLanding(t *testing.T) {
+	declaration := browserDeclaration("signed-identity")
+	declaration.Resources[0].IdentityKeyEnv = "ANVIL_CONNECT_DASH_IDENTITY_KEY"
+	declaration.Resources[0].IdentityKeyID = "dash-v1"
+	authority := newBrowserAuthorityStub()
+	if browser, err := NewBrowser(declaration, authority, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {}); err == nil || browser != nil {
+		t.Fatal("signed identity resource started without its signer")
+	}
+	browser, authority := signedBrowserFixture(t, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {})
+	logout := browserRequest(http.MethodPost, BrowserLogoutPath, nil)
+	logout.Header.Set("Origin", "https://dash.example.test")
+	logout.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")
+	response := httptest.NewRecorder()
+	browser.ServeHTTP(response, logout)
+	if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("Content-Type") != "text/html; charset=utf-8" || !strings.Contains(response.Body.String(), `href="/"`) || !strings.Contains(response.Body.String(), "Sign in again") {
+		t.Fatal("signed identity logout did not render the explicit no-store landing")
+	}
+	if strings.Contains(response.Body.String(), "<script") || authority.logout != 1 {
+		t.Fatal("signed identity logout landing was unsafe or did not revoke")
+	}
+	cleared := cookieValue(t, response, BrowserSessionCookie)
+	if cleared.MaxAge >= 0 || !cleared.Secure || !cleared.HttpOnly {
+		t.Fatal("signed identity logout did not clear Connect cookie")
+	}
+	request := browserRequest(http.MethodGet, "/", nil)
+	request.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")
+	response = httptest.NewRecorder()
+	browser.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatal("revoked signed identity session was still admitted")
+	}
+}
+
+func TestSignedIdentityCallbackCompletesBeforeAnyAssertionIsMinted(t *testing.T) {
+	browser, authority := signedBrowserFixture(t, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {
+		t.Fatal("OIDC callback must not dispatch to the native application")
+	})
+	login := browserRequest(http.MethodGet, BrowserLoginPath+"?return=%2Freport", nil)
+	loginResponse := httptest.NewRecorder()
+	browser.ServeHTTP(loginResponse, login)
+	if loginResponse.Code != http.StatusFound || authority.begin != 1 {
+		t.Fatal("signed identity login did not start the ordinary Connect transaction")
+	}
+	callback := browserRequest(http.MethodGet, BrowserCallbackPath+"?state=state&code=code", nil)
+	callback.Header.Set("Cookie", BrowserTransactionCookie+"="+authority.binding)
+	callbackResponse := httptest.NewRecorder()
+	browser.ServeHTTP(callbackResponse, callback)
+	if callbackResponse.Code != http.StatusSeeOther || callbackResponse.Header().Get("Location") != "/report" || authority.complete != 1 {
+		t.Fatal("signed identity callback did not complete the ordinary Connect session")
+	}
+	if callbackResponse.Header().Get(browseridentity.Header) != "" || cookieValue(t, callbackResponse, BrowserSessionCookie).Value != "opaque-session" {
+		t.Fatal("callback exposed an identity assertion instead of only a Connect session cookie")
+	}
 }

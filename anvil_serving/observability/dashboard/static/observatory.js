@@ -36,7 +36,8 @@ let fleet = null,
   currentController = null,
   generation = 0,
   refreshTimer = null,
-  lastRoute = "";
+  lastRoute = "",
+  authenticationMode = "legacy";
 let host = "",
   serve = "",
   range = preferences.range;
@@ -169,6 +170,7 @@ document.querySelector(".skip-link").addEventListener("click", (event) => {
   main.focus();
 });
 function sessionChrome(session) {
+  if (session?.authentication_mode === "connect") authenticationMode = "connect";
   document.getElementById("access-mode").textContent = session?.authenticated
     ? session.operate
       ? "Operate"
@@ -196,6 +198,25 @@ document
         !window.confirm("Sign out and discard local configuration edits?")
       )
         return;
+      if (getSession().authentication_mode === "connect") {
+        const endpoint = new URL("/_anvil-connect/logout", window.location.origin);
+        if (
+          endpoint.origin !== window.location.origin ||
+          endpoint.pathname !== "/_anvil-connect/logout" ||
+          endpoint.search ||
+          endpoint.hash
+        ) {
+          announce("The Anvil Connect sign-out endpoint is unavailable.");
+          return;
+        }
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = endpoint.href;
+        form.hidden = true;
+        document.body.append(form);
+        form.submit();
+        return;
+      }
       try {
         await request("session", { method: "DELETE" });
       } catch (error) {
@@ -211,6 +232,24 @@ document
 function login(message) {
   scope.hidden = true;
   sessionChrome(null);
+  if (authenticationMode === "connect") {
+    main.replaceChildren(
+      el(
+        "section",
+        { class: "panel login-card" },
+        el("span", { class: "eyebrow", text: "ANVIL CONNECT" }),
+        el("h1", { text: "Anvil Connect session required" }),
+        el("p", {
+          class: "muted",
+          text: message || "Return through Anvil Connect, then retry this workspace.",
+        }),
+        button("Retry identity check", () => refresh(), "primary"),
+      ),
+    );
+    document.getElementById("connection-status").textContent =
+      "Anvil Connect session required";
+    return;
+  }
   const username = el("input", {
       name: "username",
       autocomplete: "username",
@@ -522,12 +561,18 @@ window.addEventListener("hashchange", () => {
   closeDialog();
   refresh();
 });
-window.addEventListener("observatory-session-expired", () => {
+window.addEventListener("observatory-session-expired", (event) => {
+  if (event.detail?.code === "connect_assertion_denied")
+    authenticationMode = "connect";
   currentController?.abort();
   clearTimeout(refreshTimer);
   clearDrafts();
   closeDialog();
-  login("Your session expired. Sign in to continue.");
+  login(
+    authenticationMode === "connect"
+      ? "Your Anvil Connect session is no longer available."
+      : "Your session expired. Sign in to continue.",
+  );
 });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {

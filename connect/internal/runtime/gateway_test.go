@@ -217,3 +217,34 @@ func TestGatewayStartupFailurePreservesUnownedSocketName(t *testing.T) {
 		t.Fatal("partial startup leaked admin listener", err)
 	}
 }
+
+func TestIdentitySignersRequireExactDeclaredSecrets(t *testing.T) {
+	c := gatewaySettings(t)
+	resource := &c.Gateway.Resources[0]
+	resource.Rule.Access = "browser"
+	resource.Rule.NativeAuth = "signed-identity"
+	resource.IdentityKeyEnv = "ANVIL_CONNECT_DASH_IDENTITY_KEY"
+	resource.IdentityKeyID = "dash-v1"
+	if c.Gateway.Validate() != nil {
+		t.Fatal("invalid signed identity test declaration")
+	}
+	for name, lookup := range map[string]SecretSource{
+		"missing":   func(string) (string, bool) { return "", false },
+		"malformed": func(string) (string, bool) { return "not-a-key", true },
+		"wrong-name": func(name string) (string, bool) {
+			return "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8", name == "OTHER"
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if signers, err := identitySigners(c.Gateway.Resources, lookup); err == nil || signers != nil {
+				t.Fatal("invalid identity signer input was accepted")
+			}
+		})
+	}
+	signers, err := identitySigners(c.Gateway.Resources, func(name string) (string, bool) {
+		return "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8", name == resource.IdentityKeyEnv
+	})
+	if err != nil || len(signers) != 1 || signers[resource.Rule.ID] == nil {
+		t.Fatal("declared identity signer was unavailable")
+	}
+}

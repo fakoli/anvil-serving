@@ -55,9 +55,11 @@ type Rule struct {
 }
 
 type Resource struct {
-	Rule          Rule   `json:"rule"`
-	Connector     string `json:"connector"`
-	TunnelAddress string `json:"tunnel_address"`
+	Rule           Rule   `json:"rule"`
+	Connector      string `json:"connector"`
+	TunnelAddress  string `json:"tunnel_address"`
+	IdentityKeyEnv string `json:"identity_key_env,omitempty"`
+	IdentityKeyID  string `json:"identity_key_id,omitempty"`
 }
 
 type Gateway struct {
@@ -127,7 +129,7 @@ func (r Rule) Validate() error {
 	if r.Access != "api" && r.Access != "browser" {
 		return errors.New("unknown access profile")
 	}
-	if (r.Access == "api" && r.NativeAuth != "delegate-bearer") || (r.Access == "browser" && r.NativeAuth != "none" && r.NativeAuth != "passthrough") {
+	if (r.Access == "api" && r.NativeAuth != "delegate-bearer") || (r.Access == "browser" && r.NativeAuth != "none" && r.NativeAuth != "passthrough" && r.NativeAuth != "signed-identity") {
 		return errors.New("unsupported access and native-auth combination")
 	}
 	if len(r.Methods) < 1 || len(r.Methods) > 7 {
@@ -169,12 +171,21 @@ func (g Gateway) Validate() error {
 		return errors.New("invalid gateway declaration")
 	}
 	ids, hosts, addresses := map[string]bool{}, map[string]bool{}, map[string]bool{g.Listen: true}
+	identityEnvs, identityIDs := map[string]bool{}, map[string]bool{}
 	for _, resource := range g.Resources {
 		if err := resource.Rule.Validate(); err != nil {
 			return err
 		}
 		if !ValidID(resource.Connector) || !LoopbackAddress(resource.TunnelAddress) || ids[resource.Rule.ID] || hosts[resource.Rule.Host] || addresses[resource.TunnelAddress] || resource.Rule.Limits.Concurrent > g.MaxConcurrent {
 			return errors.New("duplicate or invalid gateway resource binding")
+		}
+		if resource.Rule.NativeAuth == "signed-identity" {
+			if !ValidEnv(resource.IdentityKeyEnv) || !ValidID(resource.IdentityKeyID) || identityEnvs[resource.IdentityKeyEnv] || identityIDs[resource.IdentityKeyID] {
+				return errors.New("signed identity requires an environment key reference and key id")
+			}
+			identityEnvs[resource.IdentityKeyEnv], identityIDs[resource.IdentityKeyID] = true, true
+		} else if resource.IdentityKeyEnv != "" || resource.IdentityKeyID != "" {
+			return errors.New("identity key reference is allowed only for signed identity")
 		}
 		ids[resource.Rule.ID], hosts[resource.Rule.Host], addresses[resource.TunnelAddress] = true, true, true
 	}

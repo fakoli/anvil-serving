@@ -3,12 +3,14 @@ package httpedge
 import (
 	"context"
 	"errors"
+	"html"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
+	"github.com/fakoli/anvil-serving/connect/internal/browseridentity"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/relay"
 	"github.com/fakoli/anvil-serving/connect/internal/session"
@@ -56,14 +58,25 @@ type Browser struct {
 	slots       chan struct{}
 	control     chan struct{}
 	logoutSlots chan struct{}
+	identities  map[string]*browseridentity.Signer
 	dispatch    BrowserDispatch
 }
 
 func NewBrowser(declaration config.Gateway, authority BrowserAuthority, dispatch BrowserDispatch) (*Browser, error) {
+	return newBrowser(declaration, authority, nil, dispatch)
+}
+
+// NewBrowserWithIdentity enables explicitly declared signed-identity browser
+// resources. The caller must resolve every declared secret reference first.
+func NewBrowserWithIdentity(declaration config.Gateway, authority BrowserAuthority, identities map[string]*browseridentity.Signer, dispatch BrowserDispatch) (*Browser, error) {
+	return newBrowser(declaration, authority, identities, dispatch)
+}
+
+func newBrowser(declaration config.Gateway, authority BrowserAuthority, identities map[string]*browseridentity.Signer, dispatch BrowserDispatch) (*Browser, error) {
 	if declaration.Validate() != nil || authority == nil || dispatch == nil {
 		return nil, ErrBrowserConfiguration
 	}
-	b := &Browser{authority: authority, resources: map[string]browserResource{}, slots: make(chan struct{}, declaration.MaxConcurrent), dispatch: dispatch}
+	b := &Browser{authority: authority, resources: map[string]browserResource{}, slots: make(chan struct{}, declaration.MaxConcurrent), identities: map[string]*browseridentity.Signer{}, dispatch: dispatch}
 	b.control = make(chan struct{}, min(8, declaration.MaxConcurrent))
 	b.logoutSlots = make(chan struct{}, min(8, declaration.MaxConcurrent))
 	var err error
@@ -76,7 +89,24 @@ func NewBrowser(declaration config.Gateway, authority BrowserAuthority, dispatch
 			continue
 		}
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
+		if resource.Rule.NativeAuth == "signed-identity" {
+			signer := identities[resource.Rule.ID]
+			if signer == nil {
+				b.Close()
+				return nil, ErrBrowserConfiguration
+			}
+			b.identities[resource.Rule.ID] = signer
+		} else if identities != nil && identities[resource.Rule.ID] != nil {
+			b.Close()
+			return nil, ErrBrowserConfiguration
+		}
 		b.resources[resource.Rule.Host] = browserResource{declaration: resource, slots: make(chan struct{}, resource.Rule.Limits.Concurrent), control: make(chan struct{}, min(2, resource.Rule.Limits.Concurrent))}
+	}
+	for resource := range identities {
+		if _, exists := b.identities[resource]; !exists {
+			b.Close()
+			return nil, ErrBrowserConfiguration
+		}
 	}
 	if len(b.resources) == 0 {
 		b.Close()
@@ -201,7 +231,7 @@ func CleanBrowserHeaders(header http.Header, nativeAuth string) error {
 	if err != nil {
 		return ErrRequest
 	}
-	if nativeAuth != "none" && nativeAuth != "passthrough" {
+	if nativeAuth != "none" && nativeAuth != "passthrough" && nativeAuth != "signed-identity" {
 		return ErrRequest
 	}
 	// Browser passthrough carries at most one explicit native credential. This
@@ -215,7 +245,7 @@ func CleanBrowserHeaders(header http.Header, nativeAuth string) error {
 		lower := strings.ToLower(name)
 		switch {
 		case lower == "authorization", lower == "x-api-key":
-			if nativeAuth == "none" {
+			if nativeAuth != "passthrough" {
 				delete(header, name)
 			}
 		case lower == "cookie":
@@ -363,6 +393,14 @@ func (b *Browser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	declaration := resource.declaration
 	declaration.Rule.Methods = append([]string(nil), declaration.Rule.Methods...)
+	if declaration.Rule.NativeAuth == "signed-identity" {
+		assertion, signErr := b.identities[declaration.Rule.ID].Sign(admitted, declaration.Rule, clean)
+		if signErr != nil {
+			browserFailure(w, http.StatusServiceUnavailable)
+			return
+		}
+		clean = clean.WithContext(browseridentity.WithAssertion(clean.Context(), assertion))
+	}
 	b.dispatch(w, clean, declaration, admitted)
 }
 
@@ -455,6 +493,14 @@ func (b *Browser) logout(w http.ResponseWriter, r *http.Request, resource browse
 	}
 	clearBrowserCookie(w, BrowserSessionCookie)
 	clearBrowserCookie(w, BrowserTransactionCookie)
+	if resource.declaration.Rule.NativeAuth == "signed-identity" {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("<!doctype html><title>Signed out</title><p>Signed out.</p><p><a href=\"" + html.EscapeString(resource.declaration.Rule.PathPrefix) + "\">Sign in again</a></p>"))
+		return
+	}
 	browserRedirect(w, r, resource.declaration.Rule.PathPrefix, http.StatusSeeOther)
 }
 
@@ -463,6 +509,9 @@ func (b *Browser) logout(w http.ResponseWriter, r *http.Request, resource browse
 // Callers should turn an error into an upstream failure before copying headers.
 func ValidateBrowserResponse(response *http.Response, rule config.Rule) error {
 	if response == nil || rule.Validate() != nil || rule.Access != "browser" {
+		return ErrRequest
+	}
+	if len(response.Header.Values(browseridentity.Header)) != 0 {
 		return ErrRequest
 	}
 	locations := response.Header.Values("Location")
