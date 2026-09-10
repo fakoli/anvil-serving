@@ -12,6 +12,7 @@ import readline from 'node:readline';
 const dashHost = 'dash.example.test';
 const authHost = 'auth.example.test';
 const controlHost = 'control.example.test';
+const retainHost = 'retain.example.test';
 const connectRoot = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const defaultFixtureTest = 'pinned Caddy and Authelia browser edge retains Connect and native controls';
 let fixture;
@@ -157,7 +158,7 @@ async function assertLoopbackReleased(baseURL) {
 }
 
 function resolverRules(resolver) {
-  return `--host-resolver-rules=MAP ${dashHost}:443 ${resolver},MAP ${authHost}:443 ${resolver}`;
+  return `--host-resolver-rules=MAP ${dashHost}:443 ${resolver},MAP ${authHost}:443 ${resolver},MAP ${retainHost}:443 ${resolver}`;
 }
 
 function browserEnvironment(home) {
@@ -370,6 +371,34 @@ async function resumeGrantedAuthorization(page) {
   // readiness observation rather than an arbitrary delay.
   await expect.poll(() => page.evaluate(() => fetch('/', { redirect: 'manual' }).then(response => response.status)), { timeout: 10_000 }).toBe(200);
   await page.goto(fixture.url, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#dashboard')).toHaveText('native dashboard');
+}
+
+async function resumeGrantedAuthorizationAt(page, targetURL) {
+  const target = new URL(targetURL);
+  const callback = page.waitForResponse(response => {
+    try {
+      const url = new URL(response.url());
+      return url.origin === target.origin && url.pathname === '/_anvil-connect/callback';
+    } catch {
+      return false;
+    }
+  });
+  await page.goto(targetURL, { waitUntil: 'domcontentloaded' });
+  const accept = page.getByRole('button', { name: 'Accept', exact: true });
+  const next = await Promise.race([
+    callback.then(response => ({ response })),
+    accept.waitFor({ state: 'visible', timeout: 5_000 }).then(() => ({ response: null })).catch(() => null),
+  ]);
+  if (!next) throw new Error('Authelia did not resume the retained authorization');
+  if (next.response === null) await accept.click();
+  const callbackResponse = next.response || await callback;
+  expect(new URL(callbackResponse.url()).searchParams.get('scope')).toBe('openid');
+  expect(new URL(callbackResponse.url()).searchParams.get('iss')).toBe(`https://${authHost}`);
+  expect(callbackResponse.status()).toBe(303);
+  await page.waitForURL(targetURL, { waitUntil: 'domcontentloaded' });
+  await expect.poll(() => page.evaluate(() => fetch('/', { redirect: 'manual' }).then(response => response.status)), { timeout: 10_000 }).toBe(200);
+  await page.goto(targetURL, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#dashboard')).toHaveText('native dashboard');
 }
 
@@ -1856,6 +1885,193 @@ test('container-gated browser and CLI credentials fail closed after restore', as
       fixture = edgeFixture;
       await cleanup(restoreFixture);
     }
+  }
+});
+
+
+test('container-gated CLI key revocation preserves other sessions', async () => {
+  test.setTimeout(150_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_RESTART_FIXTURE !== '1', 'requires the disposable key-revocation lifecycle fixture');
+  const edgeFixture = fixture;
+  let primaryLogin;
+  let secondaryLogin;
+  let primaryStreams;
+  const primaryResources = new Set();
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_RESTART_FIXTURE');
+  try {
+    const page = await freshPage();
+    await login(page, 'allowed', 401);
+    await fixture.command('grant allowed');
+    await resumeGrantedAuthorization(page);
+
+    const cli = await buildDeviceCLI(fixture.dir);
+    primaryLogin = await startDeviceCLI(cli, fixture);
+    const primaryChallenge = await waitForDeviceEvent(primaryLogin.challenge);
+    await page.goto(primaryChallenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(primaryChallenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const primaryReady = await waitForDeviceEvent(primaryLogin.ready);
+    const primaryKey = (await readFile(fixture.local_key, 'utf8')).trim();
+    expect(validFixtureLocalKey(primaryKey)).toBe(true);
+    expect(primaryReady.sessionID).toMatch(/^[0-9a-f]{32}$/);
+
+    expect(typeof fixture.client_home_secondary).toBe('string');
+    expect(typeof fixture.local_key_secondary).toBe('string');
+    secondaryLogin = await startDeviceCLI(cli, { ...fixture, client_home: fixture.client_home_secondary });
+    const secondaryChallenge = await waitForDeviceEvent(secondaryLogin.challenge);
+    await page.goto(secondaryChallenge.verificationURI, { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Code').fill(secondaryChallenge.userCode);
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const secondaryReady = await waitForDeviceEvent(secondaryLogin.ready);
+    const secondaryKey = (await readFile(fixture.local_key_secondary, 'utf8')).trim();
+    expect(validFixtureLocalKey(secondaryKey)).toBe(true);
+    expect((await loopbackResponse(secondaryReady.baseURL, 'GET', secondaryKey)).status).toBe(200);
+
+    const [sse, websocket] = await Promise.all([
+      openCLISSE(primaryReady.baseURL, primaryKey, primaryResources),
+      openCLIWebSocket(primaryReady.baseURL, primaryKey, primaryResources),
+    ]);
+    primaryStreams = { sse, websocket };
+    const primaryClosed = Promise.all([sse.closed, websocket.closed]).then(() => true, () => false);
+    expect(await apiStreamCounts()).toMatchObject({
+      events_started: '1', events_closed: '0', ws_started: '1', ws_closed: '0',
+    });
+    expect(await restartPostCounts()).toMatchObject({ started: '0', closed: '0' });
+
+    const started = performance.now();
+    const revoked = await fixture.command(`api-key-revoke ${primaryReady.sessionID}`);
+    expect(revoked.ack).toBe(`api-key-revoke ${primaryReady.sessionID}`);
+    const closureMs = await expectCLIStreamClosure(started, primaryClosed);
+    test.info().annotations.push({ type: 'closure_ms', description: String(closureMs) });
+
+    const beforePrimaryDenial = await apiStreamCounts();
+    const denialResources = new Set();
+    try {
+      expect(await streamHTTPStatus(primaryReady.baseURL, '/events', primaryKey, false, denialResources)).toBe(401);
+      expect(await streamHTTPStatus(primaryReady.baseURL, '/ws', primaryKey, true, denialResources)).toBe(401);
+    } finally {
+      destroyOwned(denialResources);
+    }
+    expect(await apiStreamCounts()).toEqual(beforePrimaryDenial);
+    expect((await loopbackResponse(secondaryReady.baseURL, 'GET', secondaryKey)).status).toBe(200);
+
+    const stopped = await fixture.command('stop runtime');
+    expect(stopped.ack).toBe('stop runtime');
+    const restarted = await fixture.command('start runtime', 60_000);
+    expect(restarted).toEqual({ ack: 'start runtime', epoch_equal: 'true' });
+
+    const afterRestartDenial = await apiStreamCounts();
+    const restartedDenialResources = new Set();
+    try {
+      expect(await streamHTTPStatus(primaryReady.baseURL, '/events', primaryKey, false, restartedDenialResources)).toBe(401);
+      expect(await streamHTTPStatus(primaryReady.baseURL, '/ws', primaryKey, true, restartedDenialResources)).toBe(401);
+    } finally {
+      destroyOwned(restartedDenialResources);
+    }
+    expect(await apiStreamCounts()).toEqual(afterRestartDenial);
+    expect((await loopbackResponse(secondaryReady.baseURL, 'GET', secondaryKey)).status).toBe(200);
+    expect(await restartPostCounts()).toMatchObject({ started: '0', closed: '0' });
+
+    await stopDeviceCLI(primaryLogin);
+    primaryLogin = undefined;
+    await assertLoopbackReleased(primaryReady.baseURL);
+    await stopDeviceCLI(secondaryLogin);
+    secondaryLogin = undefined;
+    await assertLoopbackReleased(secondaryReady.baseURL);
+  } finally {
+    closeCLIStreams(primaryStreams, primaryResources);
+    try {
+      let stopError;
+      try {
+        await stopDeviceCLI(primaryLogin);
+      } catch (error) {
+        stopError = error;
+      }
+      try {
+        await stopDeviceCLI(secondaryLogin);
+      } catch (error) {
+        if (!stopError) stopError = error;
+      }
+      if (stopError) throw stopError;
+    } finally {
+      const restartFixture = fixture;
+      fixture = edgeFixture;
+      await cleanup(restartFixture);
+    }
+  }
+});
+
+test('container-gated browser grant removal persists after restart', async () => {
+  test.setTimeout(150_000);
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_GRANT_FIXTURE !== '1', 'requires the disposable alternate-browser-resource fixture');
+  const edgeFixture = fixture;
+  fixture = await startFixture('^TestBrowserRuntimeEdgeFixture$', 'ANVIL_CONNECT_BROWSER_GRANT_FIXTURE');
+  try {
+    const dashPage = await freshPage();
+    await login(dashPage, 'allowed', 401);
+    const granted = await fixture.command('grant both browser resources');
+    expect(granted.ack).toBe('grant both browser resources');
+    await resumeGrantedAuthorization(dashPage);
+    const removedCookie = (await fixture.context.cookies(fixture.url)).find(value => value.name === '__Host-anvil-connect');
+    expect(removedCookie).toBeTruthy();
+    expect(fixture.grant_fixture).toBe('enabled');
+    expect(typeof fixture.retained_url).toBe('string');
+    expect(new URL(fixture.retained_url).hostname).toBe(retainHost);
+
+    await openBrowserStreams(dashPage);
+    expect(await browserStreamCounts()).toMatchObject({
+      events_started: '1', events_closed: '0', ws_started: '1', ws_closed: '0',
+    });
+    const clientClosed = closedBrowserStreams(dashPage);
+    const started = performance.now();
+    const retained = await fixture.command('retain alternate browser resource');
+    expect(retained.ack).toBe('retain alternate browser resource');
+    const closureMs = await expectBrowserStreamClosure(started, clientClosed);
+    test.info().annotations.push({ type: 'closure_ms', description: String(closureMs) });
+
+    const beforeRemovedDenial = await browserStreamCounts();
+    await expectFreshBrowserStreamsDenied(dashPage);
+    expect(await browserStreamCounts()).toEqual(beforeRemovedDenial);
+
+    const stopped = await fixture.command('stop runtime');
+    expect(stopped.ack).toBe('stop runtime');
+    const restarted = await fixture.command('start runtime', 60_000);
+    expect(restarted).toEqual({ ack: 'start runtime', epoch_equal: 'true' });
+
+    const beforeRestartReplay = await browserStreamCounts();
+    await fixture.context.clearCookies({ name: removedCookie.name, domain: dashHost });
+    await fixture.context.addCookies([{
+      name: removedCookie.name, value: removedCookie.value, url: fixture.url,
+      httpOnly: removedCookie.httpOnly, secure: true, sameSite: removedCookie.sameSite,
+      expires: -1,
+    }]);
+    const replayed = (await fixture.context.cookies(fixture.url)).find(value => value.name === removedCookie.name);
+    expect(replayed?.value === removedCookie.value).toBe(true);
+    await expectFreshBrowserStreamsDenied(dashPage);
+    expect(await browserStreamCounts()).toEqual(beforeRestartReplay);
+
+    // Keep the removed-host page open while independently using the retained
+    // browser resource. This preserves the old opaque cookie for the final
+    // post-admission denial without exposing or serializing it.
+    const retainedPage = await fixture.context.newPage();
+    await resumeGrantedAuthorizationAt(retainedPage, fixture.retained_url);
+    expect(await retainedPage.evaluate(() => fetch('/', { redirect: 'manual' }).then(response => response.status, () => 0))).toBe(200);
+
+    const beforeFreshReplay = await browserStreamCounts();
+    await fixture.context.clearCookies({ name: removedCookie.name, domain: dashHost });
+    await fixture.context.addCookies([{
+      name: removedCookie.name, value: removedCookie.value, url: fixture.url,
+      httpOnly: removedCookie.httpOnly, secure: true, sameSite: removedCookie.sameSite,
+      expires: -1,
+    }]);
+    const replayedAfterRetainedAdmission = (await fixture.context.cookies(fixture.url)).find(value => value.name === removedCookie.name);
+    expect(replayedAfterRetainedAdmission?.value === removedCookie.value).toBe(true);
+    await expectFreshBrowserStreamsDenied(dashPage);
+    expect(await browserStreamCounts()).toEqual(beforeFreshReplay);
+  } finally {
+    const grantFixture = fixture;
+    fixture = edgeFixture;
+    await cleanup(grantFixture);
   }
 });
 

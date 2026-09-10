@@ -38,9 +38,10 @@ import (
 )
 
 const (
-	edgeControlHost = "control.example.test"
-	edgeTunnelHost  = "tunnel.example.test"
-	edgeAPIHost     = "api.example.test"
+	edgeControlHost  = "control.example.test"
+	edgeTunnelHost   = "tunnel.example.test"
+	edgeAPIHost      = "api.example.test"
+	edgeRetainedHost = "retain.example.test"
 )
 
 const (
@@ -58,21 +59,23 @@ type runtimeFixtureProfile struct {
 	passkey                       bool
 	expiry                        bool
 	restart                       bool
+	grant                         bool
 	browserSessionLifetimeSeconds int
 	limits                        config.Limits
 	apiLimits                     config.Limits
 	gatewayMaxConcurrent          int
 }
 
-func newRuntimeFixtureProfile(device, passkey, expiry, restart bool) (runtimeFixtureProfile, bool) {
-	if (expiry && passkey) || (restart && (passkey || expiry)) {
+func newRuntimeFixtureProfile(device, passkey, expiry, restart, grant bool) (runtimeFixtureProfile, bool) {
+	if (expiry && passkey) || (restart && (passkey || expiry)) || (grant && (passkey || expiry || restart)) {
 		return runtimeFixtureProfile{}, false
 	}
 	profile := runtimeFixtureProfile{
-		device:               device || passkey || expiry || restart,
+		device:               device || passkey || expiry || restart || grant,
 		passkey:              passkey,
 		expiry:               expiry,
 		restart:              restart,
+		grant:                grant,
 		limits:               config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: runtimeFixtureDefaultIdleSeconds, DurationSeconds: runtimeFixtureDefaultDurationSeconds},
 		apiLimits:            config.Limits{RequestBytes: 4096, Concurrent: 2, BufferBytes: 4096, IdleSeconds: runtimeFixtureDefaultIdleSeconds, DurationSeconds: runtimeFixtureDefaultDurationSeconds},
 		gatewayMaxConcurrent: 4,
@@ -120,7 +123,7 @@ func runtimeFixtureBrowserAdministration(profile runtimeFixtureProfile, deviceHu
 // runtimeCaddyConfig is the same public split used by the managed renderer:
 // the tunnel and resource upgrades take HTTP/1.1, while ordinary browser, API,
 // and control requests use h2c over the gateway's same-UID ingress socket.
-func runtimeCaddyConfig(listen, authListen, socket, certificate, key string) map[string]any {
+func runtimeCaddyConfig(listen, authListen, socket, certificate, key string, browserHosts []string) map[string]any {
 	headers := []string{"Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP", "X-Anvil-Connect-User", "X-Anvil-Connect-Groups", "X-Auth-Request-User", "X-Auth-Request-Email", "X-Authenticated-User", "X-Authenticated-Groups", "Remote-User", "Remote-Groups", "Remote-Email", "Remote-Name", "Cf-Access-Jwt-Assertion", "X-Goog-Authenticated-User", "X-Goog-Authenticated-User-Email", "X-Amzn-Oidc-Data", "X-Amzn-Oidc-Identity", "X-Amzn-Oidc-Accesstoken", "Tailscale-User-Login"}
 	clean := map[string]any{"handler": "headers", "request": map[string]any{"delete": headers}}
 	proxy := func(destination string, versions []string) map[string]any {
@@ -131,7 +134,7 @@ func runtimeCaddyConfig(listen, authListen, socket, certificate, key string) map
 	}
 	upgrade := map[string]any{"Connection": map[string]any{"pattern": `(?i)(^|,)[\t ]*upgrade[\t ]*(,|$)`}, "Upgrade": map[string]any{"pattern": `(?i)^websocket$`}}
 	tunnelMatch := map[string]any{"host": []string{edgeTunnelHost}, "method": []string{"GET"}, "path": []string{"/acv1/events"}, "header_regexp": upgrade}
-	browserUpgrade := map[string]any{"host": []string{dashHost}, "path": []string{"/", "/*"}, "header_regexp": upgrade}
+	browserUpgrade := map[string]any{"host": browserHosts, "path": []string{"/", "/*"}, "header_regexp": upgrade}
 	apiUpgrade := map[string]any{"host": []string{edgeAPIHost}, "path": []string{"/v1", "/v1/*"}, "header_regexp": upgrade}
 	return map[string]any{
 		"admin": map[string]any{"disabled": true},
@@ -143,7 +146,7 @@ func runtimeCaddyConfig(listen, authListen, socket, certificate, key string) map
 					map[string]any{"match": []any{map[string]any{"host": []string{edgeAuthHost}}}, "handle": []any{clean, proxy(authListen, []string{"1.1"})}},
 					route(tunnelMatch, []string{"1.1"}),
 					route(browserUpgrade, []string{"1.1"}),
-					route(map[string]any{"host": []string{dashHost}, "path": []string{"/", "/*"}, "method": []string{"GET", "POST"}}, []string{"h2c"}),
+					route(map[string]any{"host": browserHosts, "path": []string{"/", "/*"}, "method": []string{"GET", "POST"}}, []string{"h2c"}),
 					route(apiUpgrade, []string{"1.1"}),
 					route(map[string]any{"host": []string{edgeAPIHost}, "path": []string{"/v1", "/v1/*"}, "method": []string{"GET", "POST"}}, []string{"h2c"}),
 					route(map[string]any{"host": []string{edgeControlHost}}, []string{"h2c"}),
@@ -336,24 +339,35 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		os.Getenv("ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE") == "1",
 		os.Getenv("ANVIL_CONNECT_BROWSER_EXPIRY_FIXTURE") == "1",
 		os.Getenv("ANVIL_CONNECT_BROWSER_RESTART_FIXTURE") == "1",
+		os.Getenv("ANVIL_CONNECT_BROWSER_GRANT_FIXTURE") == "1",
 	)
 	if !validProfile {
-		t.Fatal("restart and expiry fixtures may not combine with passkey fixture")
+		t.Fatal("incompatible browser fixture profile")
 	}
-	passkeyFixture, deviceFixture, expiryFixture, restartFixture := profile.passkey, profile.device, profile.expiry, profile.restart
+	passkeyFixture, deviceFixture, expiryFixture, restartFixture, grantFixture := profile.passkey, profile.device, profile.expiry, profile.restart, profile.grant
+	lifecycleFixture := restartFixture || grantFixture
 	if os.Getenv("ANVIL_CONNECT_BROWSER_RUNTIME_EDGE_FIXTURE") != "1" && !deviceFixture {
 		t.Skip("launched only by the runtime-edge Playwright test")
 	}
 	caddy, authelia := edgeTool(t, "caddy"), edgeTool(t, "authelia")
 	binary := runtimeTunnelBinary(t)
 	directory := t.TempDir()
+	// Restore requires an owner-private destination parent. TempDir's final
+	// child follows the process umask, so make this fixture boundary explicit.
+	if err := os.Chmod(directory, 0700); err != nil {
+		t.Fatal("fixture private directory setup failed")
+	}
 	secrets, state, childHome := filepath.Join(directory, "secrets"), filepath.Join(directory, "state"), filepath.Join(directory, "child-home")
 	for _, path := range []string{secrets, state, childHome} {
 		if err := os.Mkdir(path, 0700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	certificate, key, root, roots := edgeCertificate(t, edgeAuthHost, dashHost, edgeAPIHost, edgeControlHost, edgeTunnelHost)
+	certificateNames := []string{edgeAuthHost, dashHost, edgeAPIHost, edgeControlHost, edgeTunnelHost}
+	if grantFixture {
+		certificateNames = append(certificateNames, edgeRetainedHost)
+	}
+	certificate, key, root, roots := edgeCertificate(t, certificateNames...)
 	certificatePath, keyPath, rootPath := filepath.Join(secrets, "edge.pem"), filepath.Join(secrets, "edge.key"), filepath.Join(secrets, "edge-root.pem")
 	edgeWrite(t, certificatePath, certificate)
 	edgeWrite(t, keyPath, key)
@@ -389,7 +403,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		caddyListen = "127.0.0.1:443"
 	}
 	authConfig := filepath.Join(directory, "authelia.yml")
-	edgeWrite(t, authConfig, runtimeAutheliaConfig(authListen, state, users, clientSecretPath, secretPaths["session"], secretPaths["storage"], secretPaths["validation"], secretPaths["hmac"], oidcPath, passkeyFixture))
+	edgeWrite(t, authConfig, runtimeAutheliaConfig(authListen, state, users, clientSecretPath, secretPaths["session"], secretPaths["storage"], secretPaths["validation"], secretPaths["hmac"], oidcPath, passkeyFixture, grantFixture))
 	edgeRun(t, childHome, authelia, "storage", "migrate", "up", "--config", authConfig, "--config.experimental.filters", "template")
 	allowedTOTP := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(edgeRandom(t, 20)))
 	edgeRun(t, childHome, authelia, "storage", "user", "totp", "generate", "fixture-allowed", "--secret", allowedTOTP, "--issuer", "Anvil Connect Fixture", "--algorithm", "SHA1", "--digits", "6", "--period", "30", "--config", authConfig, "--config.experimental.filters", "template")
@@ -414,6 +428,9 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	}
 
 	resources := []config.Resource{{Rule: config.Rule{ID: "dash", Host: dashHost, PathPrefix: "/", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: profile.limits}, Connector: "connector-a", TunnelAddress: edgeReserve(t)}}
+	if grantFixture {
+		resources = append(resources, config.Resource{Rule: config.Rule{ID: "retain", Host: edgeRetainedHost, PathPrefix: "/", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: profile.limits}, Connector: "connector-a", TunnelAddress: edgeReserve(t)})
+	}
 	if deviceFixture {
 		resources = append(resources, config.Resource{Rule: config.Rule{ID: "router", Host: edgeAPIHost, PathPrefix: "/v1", Methods: []string{"GET", "POST"}, Access: "api", NativeAuth: "delegate-bearer", Limits: profile.apiLimits}, Connector: "connector-a", TunnelAddress: edgeReserve(t)})
 	}
@@ -437,9 +454,13 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		lifetime := profile.browserSessionLifetimeSeconds
 		gatewayCfg.BrowserSessionLifetimeSeconds = &lifetime
 	}
+	browserHosts := []string{dashHost}
+	if grantFixture {
+		browserHosts = append(browserHosts, edgeRetainedHost)
+	}
 	caddyConfigPath := filepath.Join(directory, "caddy.json")
 	startCaddy := func(stateDirectory string) *edgeChild {
-		caddyConfig, marshalErr := json.Marshal(runtimeCaddyConfig(caddyListen, authListen, filepath.Join(stateDirectory, "ingress.sock"), certificatePath, keyPath))
+		caddyConfig, marshalErr := json.Marshal(runtimeCaddyConfig(caddyListen, authListen, filepath.Join(stateDirectory, "ingress.sock"), certificatePath, keyPath, browserHosts))
 		if marshalErr != nil {
 			t.Fatal(marshalErr)
 		}
@@ -587,6 +608,12 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 		nativeFixture.nativeDashboard(w, r)
 	}))
 	defer native.Close()
+	var retainedNative *httptest.Server
+	if grantFixture {
+		retainedFixture := &edgeFixture{}
+		retainedNative = httptest.NewServer(http.HandlerFunc(retainedFixture.nativeDashboard))
+		defer retainedNative.Close()
+	}
 	var apiRequests, apiPosts, apiEventsStarted, apiEventsClosed, apiWSStarted, apiWSClosed atomic.Int64
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiRequests.Add(1)
@@ -627,8 +654,14 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	defer proxyServer.Close()
 	connectorResources := []connectruntime.ConnectorResource{{Envelope: config.Envelope{Rule: gatewayCfg.Gateway.Resources[0].Rule, Listen: edgeReserve(t), OriginURL: native.URL}, ReverseAddress: gatewayCfg.Gateway.Resources[0].TunnelAddress}}
 	inviteResources := []string{"dash"}
+	if grantFixture {
+		retainedResource := gatewayCfg.Gateway.Resources[1]
+		connectorResources = append(connectorResources, connectruntime.ConnectorResource{Envelope: config.Envelope{Rule: retainedResource.Rule, Listen: edgeReserve(t), OriginURL: retainedNative.URL}, ReverseAddress: retainedResource.TunnelAddress})
+		inviteResources = append(inviteResources, "retain")
+	}
 	if deviceFixture {
-		connectorResources = append(connectorResources, connectruntime.ConnectorResource{Envelope: config.Envelope{Rule: gatewayCfg.Gateway.Resources[1].Rule, Listen: edgeReserve(t), OriginURL: api.URL, TokenEnv: "ANVIL_CONNECT_FIXTURE_API_TOKEN"}, ReverseAddress: gatewayCfg.Gateway.Resources[1].TunnelAddress})
+		apiResource := gatewayCfg.Gateway.Resources[len(gatewayCfg.Gateway.Resources)-1]
+		connectorResources = append(connectorResources, connectruntime.ConnectorResource{Envelope: config.Envelope{Rule: apiResource.Rule, Listen: edgeReserve(t), OriginURL: api.URL, TokenEnv: "ANVIL_CONNECT_FIXTURE_API_TOKEN"}, ReverseAddress: apiResource.TunnelAddress})
 		inviteResources = append(inviteResources, "router")
 	}
 	connectorCfg := connectruntime.ConnectorConfig{Schema: "anvil-connect.connector-runtime/v1", ID: "connector-a", ControlHost: edgeControlHost, TunnelHost: edgeTunnelHost, StateDirectory: filepath.Join(directory, "connector"), TunnelBinary: binary, PublicTrustFile: rootPath, HTTPProxyURL: proxyServer.URL, Resources: connectorResources}
@@ -686,6 +719,10 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 	if restartFixture {
 		ready["restart_fixture"] = "enabled"
 		ready["restart_post_path"] = "/restart-blocked-post"
+	}
+	if grantFixture {
+		ready["grant_fixture"] = "enabled"
+		ready["retained_url"] = "https://" + edgeRetainedHost
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(ready); err != nil {
 		t.Fatal(err)
@@ -784,7 +821,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			resetPending = false
 			response["ack"] = "reenroll connector"
 		case "stop runtime":
-			if !restartFixture || gateway == nil || connector == nil || restartEpoch != "" || resetPending || restorePending {
+			if !lifecycleFixture || gateway == nil || connector == nil || restartEpoch != "" || resetPending || restorePending {
 				response["error"] = "restart fixture is disabled"
 				break
 			}
@@ -923,7 +960,7 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			restoreApproved = false
 			response["ack"] = "reenroll restored connector"
 		case "start runtime":
-			if !restartFixture || gateway == nil || connector == nil || len(restartEpoch) != 64 || resetPending {
+			if !lifecycleFixture || gateway == nil || connector == nil || len(restartEpoch) != 64 || resetPending {
 				response["error"] = "restart fixture is unavailable"
 				break
 			}
@@ -982,6 +1019,22 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			}
 			response["started"] = strconv.FormatInt(restartPostStarted.Load(), 10)
 			response["closed"] = strconv.FormatInt(restartPostClosed.Load(), 10)
+		case "grant both browser resources":
+			if !grantFixture || gateway == nil || connector == nil || restartEpoch != "" || resetPending || restorePending {
+				response["error"] = "browser resource grant is unavailable"
+				break
+			}
+			if _, grantErr := adminCall(admin.Request{Operation: "human-set", Issuer: "https://" + edgeAuthHost, Subject: allowedSubject, Resources: []string{"dash", "retain"}, Disabled: false}); grantErr != nil {
+				response["error"] = "browser resource grant failed"
+			}
+		case "retain alternate browser resource":
+			if !grantFixture || gateway == nil || connector == nil || restartEpoch != "" || resetPending || restorePending {
+				response["error"] = "browser resource removal is unavailable"
+				break
+			}
+			if _, grantErr := adminCall(admin.Request{Operation: "human-set", Issuer: "https://" + edgeAuthHost, Subject: allowedSubject, Resources: []string{"retain"}, Disabled: false}); grantErr != nil {
+				response["error"] = "browser resource removal failed"
+			}
 		case "grant allowed", "disable allowed":
 			if allowedSubject == "" {
 				subject, exportErr := edgeGrantedSubject(childHome, authelia, authConfig, filepath.Join(directory, "identifiers.yml"))
@@ -1024,12 +1077,31 @@ func TestBrowserRuntimeEdgeFixture(t *testing.T) {
 			response["ws_started"] = strconv.FormatInt(apiWSStarted.Load(), 10)
 			response["ws_closed"] = strconv.FormatInt(apiWSClosed.Load(), 10)
 		default:
-			response["error"] = "unknown fixture command"
+			parts := strings.Split(command, " ")
+			if strings.HasPrefix(command, "api-key-revoke") {
+				if len(parts) != 2 || parts[0] != "api-key-revoke" {
+					response["error"] = "api key revocation denied"
+					break
+				}
+				keyID := parts[1]
+				if !restartFixture || !runtimeCanonicalKeyID(keyID) {
+					response["error"] = "api key revocation denied"
+				} else if _, revokeErr := adminCall(admin.Request{Operation: "api-key-revoke", KeyID: keyID}); revokeErr != nil {
+					response["error"] = "api key revocation denied"
+				}
+			} else {
+				response["error"] = "unknown fixture command"
+			}
 		}
 		if err := json.NewEncoder(os.Stdout).Encode(response); err != nil {
 			return
 		}
 	}
+}
+
+func runtimeCanonicalKeyID(value string) bool {
+	decoded, err := hex.DecodeString(value)
+	return err == nil && len(decoded) == 16 && hex.EncodeToString(decoded) == value
 }
 
 // runtimeNativeAPIRequest verifies the header surface guaranteed by the API
@@ -1051,8 +1123,12 @@ func runtimeNativeAPIRequest(r *http.Request) bool {
 // runtimeAutheliaConfig keeps the baseline TOTP selection unchanged. The
 // passkey-only profile supplies the pinned Authelia WebAuthn policy used by
 // P03; users still select the passkey flow explicitly in the browser.
-func runtimeAutheliaConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey string, passkey bool) string {
-	configuration := edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey)
+func runtimeAutheliaConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey string, passkey, grant bool) string {
+	redirects := []string{"https://" + dashHost + "/_anvil-connect/callback"}
+	if grant {
+		redirects = append(redirects, "https://"+edgeRetainedHost+"/_anvil-connect/callback")
+	}
+	configuration := edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey, redirects...)
 	if !passkey {
 		return configuration
 	}
@@ -1141,31 +1217,35 @@ func jsonString(value string) string {
 }
 
 func TestRuntimeFixtureProfilesKeepExpirySeparateAndStreamsLive(t *testing.T) {
-	baseline, ok := newRuntimeFixtureProfile(false, false, false, false)
-	if !ok || baseline.device || baseline.passkey || baseline.expiry || baseline.restart || baseline.browserSessionLifetimeSeconds != 0 || baseline.limits.IdleSeconds != runtimeFixtureDefaultIdleSeconds || baseline.limits.DurationSeconds != runtimeFixtureDefaultDurationSeconds || baseline.apiLimits != baseline.limits || baseline.gatewayMaxConcurrent != 4 {
+	baseline, ok := newRuntimeFixtureProfile(false, false, false, false, false)
+	if !ok || baseline.device || baseline.passkey || baseline.expiry || baseline.restart || baseline.grant || baseline.browserSessionLifetimeSeconds != 0 || baseline.limits.IdleSeconds != runtimeFixtureDefaultIdleSeconds || baseline.limits.DurationSeconds != runtimeFixtureDefaultDurationSeconds || baseline.apiLimits != baseline.limits || baseline.gatewayMaxConcurrent != 4 {
 		t.Fatal("baseline fixture profile changed")
 	}
-	device, ok := newRuntimeFixtureProfile(true, false, false, false)
-	if !ok || !device.device || device.passkey || device.expiry || device.restart || device.limits != baseline.limits || device.apiLimits != baseline.apiLimits || device.gatewayMaxConcurrent != baseline.gatewayMaxConcurrent {
+	device, ok := newRuntimeFixtureProfile(true, false, false, false, false)
+	if !ok || !device.device || device.passkey || device.expiry || device.restart || device.grant || device.limits != baseline.limits || device.apiLimits != baseline.apiLimits || device.gatewayMaxConcurrent != baseline.gatewayMaxConcurrent {
 		t.Fatal("device fixture profile changed")
 	}
-	passkey, ok := newRuntimeFixtureProfile(false, true, false, false)
-	if !ok || !passkey.device || !passkey.passkey || passkey.expiry || passkey.restart || passkey.limits != baseline.limits || passkey.apiLimits != baseline.apiLimits || passkey.gatewayMaxConcurrent != baseline.gatewayMaxConcurrent {
+	passkey, ok := newRuntimeFixtureProfile(false, true, false, false, false)
+	if !ok || !passkey.device || !passkey.passkey || passkey.expiry || passkey.restart || passkey.grant || passkey.limits != baseline.limits || passkey.apiLimits != baseline.apiLimits || passkey.gatewayMaxConcurrent != baseline.gatewayMaxConcurrent {
 		t.Fatal("passkey fixture profile changed")
 	}
-	expiry, ok := newRuntimeFixtureProfile(false, false, true, false)
-	if !ok || !expiry.device || expiry.passkey || !expiry.expiry || expiry.restart || expiry.browserSessionLifetimeSeconds != runtimeFixtureExpirySessionSeconds || expiry.limits.IdleSeconds != runtimeFixtureExpiryIdleSeconds || expiry.limits.DurationSeconds != runtimeFixtureExpiryDurationSeconds || expiry.apiLimits != expiry.limits || expiry.gatewayMaxConcurrent != baseline.gatewayMaxConcurrent {
+	expiry, ok := newRuntimeFixtureProfile(false, false, true, false, false)
+	if !ok || !expiry.device || expiry.passkey || !expiry.expiry || expiry.restart || expiry.grant || expiry.browserSessionLifetimeSeconds != runtimeFixtureExpirySessionSeconds || expiry.limits.IdleSeconds != runtimeFixtureExpiryIdleSeconds || expiry.limits.DurationSeconds != runtimeFixtureExpiryDurationSeconds || expiry.apiLimits != expiry.limits || expiry.gatewayMaxConcurrent != baseline.gatewayMaxConcurrent {
 		t.Fatal("expiry fixture profile did not retain its bounded session and stream limits")
 	}
-	if _, ok := newRuntimeFixtureProfile(false, true, true, false); ok {
+	if _, ok := newRuntimeFixtureProfile(false, true, true, false, false); ok {
 		t.Fatal("expiry and passkey fixture profiles combined")
 	}
-	restart, ok := newRuntimeFixtureProfile(false, false, false, true)
-	if !ok || !restart.device || restart.passkey || restart.expiry || !restart.restart || restart.limits.Concurrent != runtimeFixtureRestartConcurrent || restart.apiLimits.Concurrent != 2 || restart.limits.IdleSeconds != runtimeFixtureExpiryIdleSeconds || restart.limits.DurationSeconds != runtimeFixtureExpiryDurationSeconds || restart.apiLimits.IdleSeconds != runtimeFixtureExpiryIdleSeconds || restart.apiLimits.DurationSeconds != runtimeFixtureExpiryDurationSeconds || restart.gatewayMaxConcurrent != runtimeFixtureRestartMaxConcurrent || restart.gatewayMaxConcurrent != restart.limits.Concurrent+restart.apiLimits.Concurrent {
+	restart, ok := newRuntimeFixtureProfile(false, false, false, true, false)
+	if !ok || !restart.device || restart.passkey || restart.expiry || !restart.restart || restart.grant || restart.limits.Concurrent != runtimeFixtureRestartConcurrent || restart.apiLimits.Concurrent != 2 || restart.limits.IdleSeconds != runtimeFixtureExpiryIdleSeconds || restart.limits.DurationSeconds != runtimeFixtureExpiryDurationSeconds || restart.apiLimits.IdleSeconds != runtimeFixtureExpiryIdleSeconds || restart.apiLimits.DurationSeconds != runtimeFixtureExpiryDurationSeconds || restart.gatewayMaxConcurrent != runtimeFixtureRestartMaxConcurrent || restart.gatewayMaxConcurrent != restart.limits.Concurrent+restart.apiLimits.Concurrent {
 		t.Fatal("restart fixture did not retain its isolated stream capacity")
 	}
-	for _, incompatible := range [][4]bool{{false, true, false, true}, {false, false, true, true}} {
-		if _, ok := newRuntimeFixtureProfile(incompatible[0], incompatible[1], incompatible[2], incompatible[3]); ok {
+	grant, ok := newRuntimeFixtureProfile(false, false, false, false, true)
+	if !ok || !grant.device || grant.passkey || grant.expiry || grant.restart || !grant.grant || grant.limits != baseline.limits || grant.apiLimits != baseline.apiLimits || grant.gatewayMaxConcurrent != baseline.gatewayMaxConcurrent {
+		t.Fatal("grant fixture did not retain its isolated lifecycle profile")
+	}
+	for _, incompatible := range [][5]bool{{false, true, false, true, false}, {false, false, true, true, false}, {false, true, false, false, true}, {false, false, true, false, true}, {false, false, false, true, true}} {
+		if _, ok := newRuntimeFixtureProfile(incompatible[0], incompatible[1], incompatible[2], incompatible[3], incompatible[4]); ok {
 			t.Fatal("restart fixture accepted an incompatible profile")
 		}
 	}
@@ -1188,11 +1268,11 @@ func TestRuntimeFixtureProfilesKeepExpirySeparateAndStreamsLive(t *testing.T) {
 }
 
 func TestRuntimeAutheliaPasskeyProfile(t *testing.T) {
-	base := runtimeAutheliaConfig("127.0.0.1:1234", t.TempDir(), "users.yml", "client", "session", "storage", "validation", "hmac", "rsa", false)
+	base := runtimeAutheliaConfig("127.0.0.1:1234", t.TempDir(), "users.yml", "client", "session", "storage", "validation", "hmac", "rsa", false, false)
 	if strings.Contains(base, "webauthn:") || strings.Contains(base, "default_2fa_method") {
 		t.Fatal("baseline fixture changed its TOTP-first selection")
 	}
-	passkey := runtimeAutheliaConfig("127.0.0.1:1234", t.TempDir(), "users.yml", "client", "session", "storage", "validation", "hmac", "rsa", true)
+	passkey := runtimeAutheliaConfig("127.0.0.1:1234", t.TempDir(), "users.yml", "client", "session", "storage", "validation", "hmac", "rsa", true, false)
 	for _, field := range []string{"enable_passkey_login: true", "experimental_enable_passkey_uv_two_factors: true", "discoverability: required", "user_verification: required", "timeout: '5 seconds'"} {
 		if !strings.Contains(passkey, field) {
 			t.Fatalf("passkey fixture missing %q", field)
@@ -1200,6 +1280,10 @@ func TestRuntimeAutheliaPasskeyProfile(t *testing.T) {
 	}
 	if strings.Contains(passkey, "default_2fa_method") {
 		t.Fatal("passkey fixture must not force a WebAuthn bootstrap login")
+	}
+	grant := runtimeAutheliaConfig("127.0.0.1:1234", t.TempDir(), "users.yml", "client", "session", "storage", "validation", "hmac", "rsa", false, true)
+	if !strings.Contains(grant, "https://"+edgeRetainedHost+"/_anvil-connect/callback") {
+		t.Fatal("grant fixture missing retained-resource redirect")
 	}
 }
 
@@ -1222,7 +1306,7 @@ func TestRuntimeFixtureElevationCodeIsNewestAndClosed(t *testing.T) {
 }
 
 func TestRuntimeCaddyConfigRoutesAPIUpgradeBeforeH2C(t *testing.T) {
-	declaration := runtimeCaddyConfig(":443", "127.0.0.1:9091", "/tmp/ingress.sock", "certificate", "key")
+	declaration := runtimeCaddyConfig(":443", "127.0.0.1:9091", "/tmp/ingress.sock", "certificate", "key", []string{dashHost, edgeRetainedHost})
 	apps := declaration["apps"].(map[string]any)
 	httpApp := apps["http"].(map[string]any)
 	servers := httpApp["servers"].(map[string]any)
@@ -1230,6 +1314,7 @@ func TestRuntimeCaddyConfigRoutesAPIUpgradeBeforeH2C(t *testing.T) {
 	routes := server["routes"].([]any)
 
 	upgradeIndex, h2cIndex := -1, -1
+	browserRoute := false
 	for index, entry := range routes {
 		route := entry.(map[string]any)
 		matchers, ok := route["match"].([]any)
@@ -1238,10 +1323,16 @@ func TestRuntimeCaddyConfigRoutesAPIUpgradeBeforeH2C(t *testing.T) {
 		}
 		match := matchers[0].(map[string]any)
 		hosts, ok := match["host"].([]string)
-		if !ok || len(hosts) != 1 || hosts[0] != edgeAPIHost {
+		if !ok {
 			continue
 		}
 		versions := route["handle"].([]any)[1].(map[string]any)["transport"].(map[string]any)["versions"].([]string)
+		if len(hosts) == 2 && hosts[0] == dashHost && hosts[1] == edgeRetainedHost && match["header_regexp"] != nil && len(versions) == 1 && versions[0] == "1.1" {
+			browserRoute = true
+		}
+		if len(hosts) != 1 || hosts[0] != edgeAPIHost {
+			continue
+		}
 		switch {
 		case match["header_regexp"] != nil && len(versions) == 1 && versions[0] == "1.1":
 			upgradeIndex = index
@@ -1249,8 +1340,21 @@ func TestRuntimeCaddyConfigRoutesAPIUpgradeBeforeH2C(t *testing.T) {
 			h2cIndex = index
 		}
 	}
-	if upgradeIndex < 0 || h2cIndex < 0 || upgradeIndex >= h2cIndex {
+	if !browserRoute || upgradeIndex < 0 || h2cIndex < 0 || upgradeIndex >= h2cIndex {
 		t.Fatal("API upgrade route does not precede the API h2c route")
+	}
+}
+
+func TestRuntimeCanonicalKeyID(t *testing.T) {
+	for value, want := range map[string]bool{
+		strings.Repeat("a", 32): true,
+		strings.Repeat("A", 32): false,
+		strings.Repeat("a", 31): false,
+		strings.Repeat("g", 32): false,
+	} {
+		if got := runtimeCanonicalKeyID(value); got != want {
+			t.Fatalf("canonical key id %q = %t, want %t", value, got, want)
+		}
 	}
 }
 

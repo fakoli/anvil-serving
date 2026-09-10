@@ -213,6 +213,8 @@ _STREAM_CLOSURE_TESTS = frozenset({
     "container-gated browser and CLI streams close on normal restart",
     "container-gated browser and CLI streams close on authority reset",
     "container-gated browser and CLI credentials fail closed after restore",
+    "container-gated CLI key revocation preserves other sessions",
+    "container-gated browser grant removal persists after restart",
 })
 _CLOSURE_MS = __import__("re").compile(r"(?:0|[1-9][0-9]{0,3})")
 
