@@ -37,10 +37,36 @@ def checked_directory(path: Path, *, create: bool = False) -> None:
         except FileNotFoundError:
             if not create:
                 continue
-            parent.mkdir(mode=0o755)
+            try:
+                parent.mkdir(mode=0o755)
+            except FileExistsError:
+                # Another installer may have created it. Treat that as an
+                # existing directory: never repair metadata we did not create.
+                pass
+            else:
+                fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                try:
+                    created = os.fstat(fd)
+                    if not stat.S_ISDIR(created.st_mode) or created.st_uid != os.geteuid():
+                        raise ValueError('Install ancestry changed during creation')
+                    # mkdir honors the caller's umask. These are installer-owned
+                    # directories, so publish their fixed traversal mode before
+                    # anything is placed underneath them.
+                    os.fchmod(fd, 0o755)
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
             info = parent.lstat()
         if not stat.S_ISDIR(info.st_mode) or info.st_uid not in {0, os.geteuid()} or info.st_mode & 0o022:
             raise ValueError('Install ancestry must be owned and not writable by other users')
+
+
+def checked_managed_directory(path: Path, *, create: bool = False) -> None:
+    """Require an installer-owned release directory to remain executable."""
+    checked_directory(path, create=create)
+    info = path.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_mode & 0o7777 != 0o755:
+        raise ValueError('Managed installation directory metadata drifted')
 
 
 def load_bundle(root: Path, expected: str, *, installed_names: set[str] | None = None) -> tuple[dict, bytes]:
@@ -63,6 +89,10 @@ def load_bundle(root: Path, expected: str, *, installed_names: set[str] | None =
         raise ValueError('Invalid file list')
     if installed_names is not None and not installed_names <= set(files):
         raise ValueError('Installed role members are missing from the release manifest')
+    if installed_names is not None:
+        checked_managed_directory(root)
+        checked_managed_directory(root / 'bin')
+        checked_managed_directory(root / 'share')
     for name, entry in files.items():
         if not re.fullmatch(r'(?:bin|share)/[a-zA-Z0-9._-]+', name) or set(entry) != {'sha256', 'size', 'mode'}:
             raise ValueError('Invalid bundle member')
@@ -70,7 +100,7 @@ def load_bundle(root: Path, expected: str, *, installed_names: set[str] | None =
             raise ValueError('Invalid bundle metadata')
         if installed_names is not None and name not in installed_names:
             continue
-        data = read_relative(root, name, entry['size'])
+        data = read_relative(root, name, entry['size'], expected_mode=entry['mode'] if installed_names is not None else None)
         if len(data) != entry['size'] or hashlib.sha256(data).hexdigest() != entry['sha256']:
             raise ValueError('Bundle checksum mismatch')
     if 'bin/anvil-connect' not in files:
@@ -83,7 +113,7 @@ def host_platform() -> str:
     return platform.system().lower() + '-' + architecture
 
 
-def read_relative(root: Path, name: str, maximum: int) -> bytes:
+def read_relative(root: Path, name: str, maximum: int, *, expected_mode: int | None = None) -> bytes:
     """Open every member beneath retained no-follow directory descriptors."""
     fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
@@ -94,7 +124,8 @@ def read_relative(root: Path, name: str, maximum: int) -> bytes:
         member = os.open(name.split('/')[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
         with os.fdopen(member, 'rb') as stream:
             info = os.fstat(stream.fileno())
-            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size > maximum or info.st_mode & 0o022:
+            if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size > maximum
+                    or info.st_mode & 0o022 or (expected_mode is not None and info.st_mode & 0o7777 != expected_mode)):
                 raise ValueError('Unsafe release member')
             data = stream.read(maximum + 1)
             if len(data) > maximum:
@@ -148,7 +179,10 @@ def install(root: Path, prefix: Path, *, role: str, expected: str, apply: bool) 
         if not re.fullmatch(r'releases/[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.-]+)?-[a-f0-9]{12}', selected):
             raise ValueError('Active installation link drifted')
         prior_root = prefix / selected
-        checked_directory(prior_root)
+        checked_managed_directory(prefix)
+        checked_managed_directory(prefix / 'bin')
+        checked_managed_directory(prefix / 'releases')
+        checked_managed_directory(prior_root)
         previous = json.loads(read_relative(prior_root, 'installation.json', 128 * 1024))
         if previous.get('schema') != result['schema'] or previous.get('role') != role or previous.get('release') != selected or previous.get('files') != sorted(names):
             raise ValueError('Existing installation has a different owner or role')
@@ -163,7 +197,7 @@ def install(root: Path, prefix: Path, *, role: str, expected: str, apply: bool) 
                     raise ValueError('Installed command link drifted')
     destination = prefix / result['release']
     if os.path.lexists(destination):
-        checked_directory(destination)
+        checked_managed_directory(destination)
         load_bundle(destination, expected, installed_names=names)
         if json.loads(read_relative(destination, 'installation.json', 128 * 1024)) != result:
             raise ValueError('Existing release receipt drifted')
@@ -179,8 +213,8 @@ def install(root: Path, prefix: Path, *, role: str, expected: str, apply: bool) 
             first_stage.chmod(0o755)
             work = first_stage
         try:
-            checked_directory(work / 'releases', create=True)
-            checked_directory(work / 'bin', create=True)
+            checked_managed_directory(work / 'releases', create=True)
+            checked_managed_directory(work / 'bin', create=True)
             dest = work / result['release']
             if not dest.exists():
                 stage = Path(tempfile.mkdtemp(prefix='.release-', dir=work / 'releases'))
@@ -188,13 +222,14 @@ def install(root: Path, prefix: Path, *, role: str, expected: str, apply: bool) 
                     stage.chmod(0o755)
                     for name in sorted(names):
                         target = stage / name
-                        target.parent.mkdir(mode=0o755, exist_ok=True)
+                        checked_managed_directory(target.parent, create=True)
                         data = read_relative(root, name, manifest['files'][name]['size'])
                         if hashlib.sha256(data).hexdigest() != manifest['files'][name]['sha256']:
                             raise ValueError('Bundle changed during installation')
                         write_durable(target, data, manifest['files'][name]['mode'])
                     write_durable(stage / 'bundle.json', raw)
                     write_durable(stage / 'installation.json', (json.dumps(result, sort_keys=True) + '\n').encode())
+                    load_bundle(stage, expected, installed_names=names)
                     sync_directory(stage / 'bin')
                     sync_directory(stage / 'share')
                     sync_directory(stage)
