@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import platform
 import shutil
+import stat
 import subprocess
 import sys
 import zipfile
@@ -69,6 +70,47 @@ def remove_root_fixture(root: Path) -> None:
     if root.parent != Path('/opt') or not root.name.startswith('anvil-connect-install-test.'):
         raise AssertionError('refusing to remove an unexpected root fixture')
     subprocess.run(['sudo', '-n', '/bin/rm', '-rf', '--', str(root)], check=True)
+
+
+def root_owned_path(path: Path, *, directory: bool) -> Path | None:
+    """Resolve a test interpreter target before it is ever passed to sudo."""
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError:
+        return None
+    for candidate in (resolved, *resolved.parents):
+        try:
+            info = candidate.lstat()
+        except OSError:
+            return None
+        if stat.S_ISLNK(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
+            return None
+        if candidate == resolved:
+            expected = stat.S_ISDIR if directory else stat.S_ISREG
+            if not expected(info.st_mode):
+                return None
+        elif not stat.S_ISDIR(info.st_mode):
+            return None
+    return resolved
+
+
+def root_safe_interpreter() -> str:
+    """Return a root-safe isolated interpreter, or skip before any sudo call."""
+    candidates = (Path(sys.executable), Path('/usr/bin/python3'))
+    for candidate in candidates:
+        interpreter = root_owned_path(candidate, directory=False)
+        if interpreter is None:
+            continue
+        probe = subprocess.run(
+            [str(interpreter), '-I', '-S', '-c', 'import sys, sysconfig; print(sys.base_prefix); print(sys.exec_prefix); print(sysconfig.get_path("stdlib"))'],
+            capture_output=True,
+            text=True,
+            env={'PATH': '/usr/bin:/bin'},
+        )
+        locations = probe.stdout.splitlines() if probe.returncode == 0 else []
+        if len(locations) == 3 and all(root_owned_path(Path(location), directory=True) is not None for location in locations):
+            return str(interpreter)
+    pytest.skip('requires a root-owned non-writable Python interpreter and standard library')
 
 
 def test_standalone_manager_contains_no_router_or_third_party_runtime(tmp_path: Path) -> None:
@@ -229,6 +271,7 @@ def test_root_install_under_umask_keeps_commands_traversable_by_service_user(tmp
         roles=['gateway', 'connector', 'client'],
         executable=b'#!/bin/sh\nexit 0\n',
     )
+    interpreter = root_safe_interpreter()
     fixture = root_fixture_directory()
     try:
         staged_bundle = fixture / 'bundle'
@@ -236,11 +279,15 @@ def test_root_install_under_umask_keeps_commands_traversable_by_service_user(tmp
         subprocess.run(['sudo', '-n', '/bin/cp', '-R', '--', str(source), str(staged_bundle)], check=True)
         subprocess.run(['sudo', '-n', '/usr/bin/install', '-o', 'root', '-g', 'root', '-m', '0700', '--', str(ROOT / 'connect/packaging/install.py'), str(staged_installer)], check=True)
         command = [
-            'sudo', '-n', '/bin/sh', '-c', 'umask 077; exec /usr/bin/python3 "$@"', 'sh',
+            # Resolve and validate this exact interpreter before sudo.  -I -S
+            # excludes user site startup files and environment configuration.
+            'sudo', '-n', '/bin/sh', '-c', 'umask 077; exec "$@"', 'sh',
+            interpreter, '-I', '-S',
             str(staged_installer), '--bundle', str(staged_bundle), '--prefix', str(fixture / 'prefix'),
             '--role', 'client', '--manifest-sha256', digest, '--confirm',
         ]
-        first = subprocess.run(command, capture_output=True, text=True, check=True)
+        first = subprocess.run(command, capture_output=True, text=True)
+        assert first.returncode == 0, f'root installer failed:\nstdout={first.stdout!r}\nstderr={first.stderr!r}'
         assert json.loads(first.stdout)['state'] == 'installed'
         release = fixture / 'prefix/releases' / ('0.1.0-' + 'a' * 12)
         for directory in (fixture / 'prefix', fixture / 'prefix/bin', fixture / 'prefix/releases', release, release / 'bin', release / 'share'):

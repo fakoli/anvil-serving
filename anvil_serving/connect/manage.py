@@ -190,8 +190,22 @@ def _bounded_run(argv: tuple[str, ...], timeout: float, identity: ServiceIdentit
                     value.extend(chunk)
             # A child can exit while a descendant retains stdout/stderr. The
             # original deadline still kills that descendant process group.
-        if process.poll() is None:
-            kill_group()
+        if process.poll() is None and not killed:
+            if limited:
+                kill_group()
+            else:
+                # A short-lived child may close both output descriptors before
+                # the kernel records its exit. Draining those descriptors is
+                # not a completion signal: preserve the original command
+                # deadline before terminating its process group.
+                remaining = deadline - time.monotonic()
+                if remaining > 0:
+                    try:
+                        process.wait(timeout=remaining)
+                    except subprocess.TimeoutExpired:
+                        kill_group()
+                else:
+                    kill_group()
         try:
             process.wait(timeout=1)
         except subprocess.TimeoutExpired:
