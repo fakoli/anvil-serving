@@ -1,5 +1,7 @@
 # RTX PRO 6000 benchmark view
 
+**2026-09-11 update:** [GLM v0.4.3](../../findings/2026-09-11-glm53-v043-native-linux-qualification.md) is the latest qualified native 524K/C4 reference, with Pi 14/14 and 4K output retained. Recovery to native rc14 was verified during the campaign; current assignments are private. Earlier deployment descriptions below are historical.
+
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
@@ -64,6 +66,8 @@ prior promotion decisions remain dated history. See the
 [finding and artifacts](../../findings/2026-09-08-glm53-linux-wsl-comparison.md).
 
 ## Native NCCL P2P transport A/B (2026-09-09)
+
+Latest functional measurement (2026-09-11): [GLM Pi completion-budget comparison](../../findings/2026-09-11-glm53-output-budget.md) on this native Max-Q pair. Same rc14/393K/C1 backend; 16 valid runs and eight invalid coding runs. No output-default or hardware-setting change; this is not throughput qualification.
 
 The pinned GLM TP=2/C1 native recipe now retains P2P enabled after the bounded
 transport A/B: 4K n12 and 120K n3 matched cells lowered median TTFT by about

@@ -1,0 +1,1526 @@
+[
+  {
+    "id": "timeout-guard",
+    "category": "straightforward",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 2.0663826870149933,
+    "model_requests": 5,
+    "tool_calls": 6,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      1447,
+      401,
+      289,
+      135,
+      196
+    ],
+    "usage": [
+      {
+        "input": 1447,
+        "output": 40,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1487,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 401,
+        "output": 23,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1704,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 289,
+        "output": 86,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1911,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 135,
+        "output": 17,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1944,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 196,
+        "output": 101,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 2089,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "stable-unique",
+    "category": "straightforward",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 2.366849281010218,
+    "model_requests": 6,
+    "tool_calls": 7,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      167,
+      394,
+      291,
+      109,
+      131,
+      306
+    ],
+    "usage": [
+      {
+        "input": 167,
+        "output": 22,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1469,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 394,
+        "output": 23,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1697,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 291,
+        "output": 64,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1891,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 109,
+        "output": 13,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1914,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 131,
+        "output": 108,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 2031,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 306,
+        "output": 73,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 2171,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "slug-whitespace",
+    "category": "straightforward",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 2.116499430994736,
+    "model_requests": 6,
+    "tool_calls": 6,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      170,
+      406,
+      179,
+      289,
+      90,
+      112
+    ],
+    "usage": [
+      {
+        "input": 170,
+        "output": 56,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1506,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 406,
+        "output": 11,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1697,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 179,
+        "output": 13,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1728,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 289,
+        "output": 47,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1872,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 90,
+        "output": 13,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 1895,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 112,
+        "output": 124,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 2028,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "mutable-default",
+    "category": "debugging",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 4.219629788014572,
+    "model_requests": 6,
+    "tool_calls": 7,
+    "tool_error_results": 2,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      168,
+      245,
+      148,
+      135,
+      292,
+      176
+    ],
+    "usage": [
+      {
+        "input": 168,
+        "output": 107,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 15,
+        "totalTokens": 1555,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 245,
+        "output": 88,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 1869,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 148,
+        "output": 190,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 54,
+        "totalTokens": 2130,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 135,
+        "output": 107,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2290,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 292,
+        "output": 126,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2466,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 176,
+        "output": 181,
+        "cacheRead": 2304,
+        "cacheWrite": 0,
+        "reasoning": 55,
+        "totalTokens": 2661,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "expiry-boundary",
+    "category": "debugging",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 2.9675208080152515,
+    "model_requests": 6,
+    "tool_calls": 6,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      188,
+      463,
+      275,
+      149,
+      132,
+      154
+    ],
+    "usage": [
+      {
+        "input": 188,
+        "output": 38,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 16,
+        "totalTokens": 1506,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 463,
+        "output": 12,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 1755,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 275,
+        "output": 27,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 8,
+        "totalTokens": 1838,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 149,
+        "output": 224,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 107,
+        "totalTokens": 2165,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 132,
+        "output": 14,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2194,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 154,
+        "output": 130,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2332,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "config-false",
+    "category": "debugging",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 3.1175949489988852,
+    "model_requests": 6,
+    "tool_calls": 7,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      183,
+      432,
+      333,
+      218,
+      240,
+      123
+    ],
+    "usage": [
+      {
+        "input": 183,
+        "output": 42,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 20,
+        "totalTokens": 1505,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 432,
+        "output": 24,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 1736,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 333,
+        "output": 126,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 51,
+        "totalTokens": 1995,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 218,
+        "output": 14,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2024,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 240,
+        "output": 129,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2161,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 123,
+        "output": 111,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 7,
+        "totalTokens": 2282,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "renamed-status",
+    "category": "multi-file",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 2.967398646986112,
+    "model_requests": 5,
+    "tool_calls": 6,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      182,
+      376,
+      194,
+      148,
+      269
+    ],
+    "usage": [
+      {
+        "input": 182,
+        "output": 60,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 20,
+        "totalTokens": 1522,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 376,
+        "output": 48,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 14,
+        "totalTokens": 1704,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 194,
+        "output": 182,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 50,
+        "totalTokens": 1912,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 148,
+        "output": 97,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2037,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 269,
+        "output": 104,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 16,
+        "totalTokens": 2165,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "money-cents",
+    "category": "multi-file",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 5.020614351000404,
+    "model_requests": 5,
+    "tool_calls": 8,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      188,
+      317,
+      227,
+      96,
+      154
+    ],
+    "usage": [
+      {
+        "input": 188,
+        "output": 111,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 17,
+        "totalTokens": 1579,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 317,
+        "output": 32,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 1885,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 227,
+        "output": 621,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 469,
+        "totalTokens": 2640,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 96,
+        "output": 50,
+        "cacheRead": 2560,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2706,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 154,
+        "output": 152,
+        "cacheRead": 2560,
+        "cacheWrite": 0,
+        "reasoning": 8,
+        "totalTokens": 2866,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "schema-version",
+    "category": "multi-file",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 2.7172861490107607,
+    "model_requests": 6,
+    "tool_calls": 8,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      186,
+      484,
+      279,
+      164,
+      96,
+      118
+    ],
+    "usage": [
+      {
+        "input": 186,
+        "output": 37,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 15,
+        "totalTokens": 1503,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 484,
+        "output": 22,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 1786,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 279,
+        "output": 37,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 18,
+        "totalTokens": 1852,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 164,
+        "output": 172,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 60,
+        "totalTokens": 2128,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 96,
+        "output": 14,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2158,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 118,
+        "output": 119,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2285,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "retry-transient",
+    "category": "tool-heavy",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 3.2680273719888646,
+    "model_requests": 5,
+    "tool_calls": 6,
+    "tool_error_results": 0,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      193,
+      492,
+      137,
+      196,
+      228
+    ],
+    "usage": [
+      {
+        "input": 193,
+        "output": 36,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 14,
+        "totalTokens": 1509,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 492,
+        "output": 30,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 1802,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 137,
+        "output": 306,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 105,
+        "totalTokens": 2235,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 196,
+        "output": 20,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2264,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 228,
+        "output": 115,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 8,
+        "totalTokens": 2391,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "cli-integers",
+    "category": "tool-heavy",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 3.518203441024525,
+    "model_requests": 5,
+    "tool_calls": 5,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      191,
+      445,
+      355,
+      73,
+      208
+    ],
+    "usage": [
+      {
+        "input": 191,
+        "output": 36,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 19,
+        "totalTokens": 1507,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 445,
+        "output": 22,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 1747,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 355,
+        "output": 221,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 105,
+        "totalTokens": 2112,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 73,
+        "output": 92,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2213,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 208,
+        "output": 178,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 2434,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "csv-quotes",
+    "category": "tool-heavy",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 14.031526614999166,
+    "model_requests": 6,
+    "tool_calls": 7,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      191,
+      292,
+      145,
+      19,
+      76,
+      238
+    ],
+    "usage": [
+      {
+        "input": 191,
+        "output": 106,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 14,
+        "totalTokens": 1577,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 292,
+        "output": 22,
+        "cacheRead": 1536,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 1850,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 145,
+        "output": 2169,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "reasoning": 1706,
+        "totalTokens": 4106,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 19,
+        "output": 49,
+        "cacheRead": 4096,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 4164,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 76,
+        "output": 155,
+        "cacheRead": 4096,
+        "cacheWrite": 0,
+        "reasoning": 20,
+        "totalTokens": 4327,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 238,
+        "output": 168,
+        "cacheRead": 4096,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 4502,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "long-config",
+    "category": "long-context",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 8.127026844013017,
+    "model_requests": 4,
+    "tool_calls": 4,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      42931,
+      459,
+      33,
+      55
+    ],
+    "usage": [
+      {
+        "input": 42931,
+        "output": 49,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 22,
+        "totalTokens": 44260,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 459,
+        "output": 77,
+        "cacheRead": 44032,
+        "cacheWrite": 0,
+        "reasoning": 31,
+        "totalTokens": 44568,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 33,
+        "output": 14,
+        "cacheRead": 44544,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 44591,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 55,
+        "output": 77,
+        "cacheRead": 44544,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 44676,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  },
+  {
+    "id": "long-migration",
+    "category": "long-context",
+    "passed": true,
+    "validator_exit": 0,
+    "checker_intact": true,
+    "source_intact": true,
+    "controls_verified": true,
+    "wall_seconds": 10.178671080997447,
+    "model_requests": 5,
+    "tool_calls": 7,
+    "tool_error_results": 1,
+    "truncations": 0,
+    "protocol_errors": [],
+    "prompt_tokens": [
+      42938,
+      365,
+      259,
+      260,
+      32
+    ],
+    "usage": [
+      {
+        "input": 42938,
+        "output": 181,
+        "cacheRead": 1280,
+        "cacheWrite": 0,
+        "reasoning": 111,
+        "totalTokens": 44399,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 365,
+        "output": 68,
+        "cacheRead": 44288,
+        "cacheWrite": 0,
+        "reasoning": 21,
+        "totalTokens": 44721,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 259,
+        "output": 229,
+        "cacheRead": 44544,
+        "cacheWrite": 0,
+        "reasoning": 124,
+        "totalTokens": 45032,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 260,
+        "output": 20,
+        "cacheRead": 44800,
+        "cacheWrite": 0,
+        "reasoning": 1,
+        "totalTokens": 45080,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      {
+        "input": 32,
+        "output": 169,
+        "cacheRead": 45056,
+        "cacheWrite": 0,
+        "reasoning": 17,
+        "totalTokens": 45257,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    ],
+    "human_interventions": 0,
+    "timed_out": false,
+    "process_exit": 0
+  }
+]

@@ -8,14 +8,9 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained published default is the pinned ormandj GLM-5.3-Flash
-W4A16/NVFP4 checkpoint on digest-pinned SGLang rc14 at exclusive
-TP=2/393,216/C1 across both equal cards. It uses FP8 KV, adaptive EAGLE,
-explicit thinking control, a 4,096-token output cap, and image/OCR support;
-video is unsupported. Its original 3 GiB reserve failure was explicitly waived
-for the model-only GPU pair while all post-workload safety gates remained in
-force. The former 524K EXL3 K3 plus DFlash2 K5 profile is the immediate exact
-rollback. DFlash2 is noncommercial without separate permission.
+The latest qualified native reference is [GLM v0.4.3](findings/2026-09-11-glm53-v043-native-linux-qualification.md) with unchanged ormandj W4A16/NVFP4 weights, TP2/524,288 shared tokens/C4, FP8 KV, adaptive EAGLE and HiCache off. The output limit remains 4,096. Direct, long-context, C4 and 14/14 Pi gates passed; recovery to native rc14 was verified during the campaign. Current route and startup assignments are private operator state. Video is unsupported and GPU headroom remains narrow under the existing model-only reserve approval.
+
+Other retained comparisons (their dated evidence remains unchanged):
 RadixArk Qwen3.8 Flash Next NVFP4 remains the immediate retained video-capable
 rollback at TP=2/262,144/c1.
 On the dual RTX PRO 6000 host, two independent current-SGLang Inferact
