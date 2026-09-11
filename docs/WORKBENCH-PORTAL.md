@@ -31,6 +31,73 @@ the configured loopback address, commonly `127.0.0.1`. It does not require a
 separate public authentication service. A missing Workbench policy leaves the
 legacy dashboard behavior available.
 
+## Pi Web
+
+Pi Web is the separately owned session UI for the operator's existing local Pi
+sessions: it reads the same agent directory, session files, and model settings
+as the terminal Pi, and adds browser-side conversation control. It is the
+reuse candidate studied in [the Pi workspace reuse decision](design/workbench/PI-REUSE.md);
+this managed service installs the pinned third-party release
+(`@agegr/pi-web`) as one systemd unit instead of a hand-run process.
+
+Pi Web must be able to read and write the agent data directory and the working
+directories its sessions reference, so the service runs as one declared POSIX
+account and binds only `127.0.0.1`. A reverse proxy is the supported way to
+reach it from a browser; the exact external host names must be declared in the
+configuration so Pi Web's own host allow-list accepts them. Keep the private
+declaration in the operator home as `workbench/pi-web.json`:
+
+```json
+{
+  "version": "0.9.0",
+  "port": 30141,
+  "hostname": "127.0.0.1",
+  "allowed_hosts": ["pi.example.test"],
+  "idle_timeout_ms": 600000,
+  "service_user": "operator"
+}
+```
+
+`service_user` is the account whose Pi sessions the UI serves. `password_env_file`
+is an optional protected environment file (`PI_WEB_PASSWORD=...`, mode 0600)
+for a second, direct-to-service factor; the managed Connect exposure below is
+Authelia-gated and does not require it. The lifecycle:
+
+```bash
+anvil-serving workbench pi-web-install --dry-run
+sudo anvil-serving workbench pi-web-install --confirm
+anvil-serving workbench pi-web-status
+anvil-serving workbench pi-web-logs --tail 100
+sudo anvil-serving workbench pi-web-down --confirm
+sudo anvil-serving workbench pi-web-up --confirm
+```
+
+The install command pins the exact declared release below the operator home,
+installs the npm tree as the declared service user (the package postinstall
+never runs as root), writes the reviewed `anvil-pi-web.service` unit, enables
+and starts it, and then probes `127.0.0.1` until the UI answers. A repeated
+install converges without an unnecessary restart when the unit is unchanged.
+
+### Pi Web through Anvil Connect
+
+The supported browser path is an Anvil Connect browser resource: one dedicated
+resource host whose origin is the loopback Pi Web port. The public template is
+[connect/examples/pi-web-resource.json](https://github.com/fakoli/anvil-serving/blob/main/connect/examples/pi-web-resource.json).
+Merge its resource into the deployment manifest's connector, render, and apply:
+
+```bash
+anvil-serving connect validate --manifest /path/private/deployment.json
+sudo anvil-serving connect render --manifest /path/private/deployment.json --confirm
+sudo anvil-serving connect up --manifest /path/private/deployment.json --services gateway,caddy,connector-<id> --confirm
+```
+
+Connect's classic-upgrade and SSE forwarding carry Pi Web's event streams;
+the declared limits allow long agent turns (one-hour request duration) and
+file uploads (25 MB request ceiling). Browser access is Authelia-gated at the
+Connect edge; Pi Web's own session, cookie, and CSRF state stay separate from
+the Connect session. Do not bind Pi Web wider than loopback and do not disable
+Connect admission for it.
+
 ## Private policy shape
 
 The following is the `workbench` section of the existing authenticated
