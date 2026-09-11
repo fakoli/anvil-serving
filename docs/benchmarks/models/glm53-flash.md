@@ -27,16 +27,36 @@
 
 **Status:** bounded functional, no-promotion. **Measured:** real Pi on native Linux, same rc14/393K/C1 backend; 4096 versus 16384 completed 6/8 versus 7/8 valid tasks. **Limits:** eight coding runs invalid; larger budget did not rescue the reasoning fixture in both repetitions. Keep the existing output default. **Evidence:** [dated finding](../../findings/2026-09-11-glm53-output-budget.md). Dossier review for this bounded result: 2026-09-11; earlier qualification dates remain separate.
 
-#### 2026-09-11 — operator-reported daily experience
+#### 2026-09-11 — operator-reported daily experience, with confirmed deltas versus the previous serving
 
-**Status:** operational narrative, explicitly not a measured claim. **Reported:**
-the served v0.4.3 configuration is the operator's daily driver for agentic
-coding sessions, long-document review, and routed tool work through the
-Capability Gateway, with dependable day-to-day response quality, tool calling,
-and long-context behavior since the promotion gate. **Limits:** subjective
-operator experience with no matched measurement and no regression numbers;
-the measured record above and in the linked dated findings remains the decision
-evidence for any configuration change.
+**Status:** operational narrative plus controlled-comparison deltas. **Previous
+serving:** SGLang rc14 on Windows/WSL2, TP2, 393,216-token context, C1 —
+deployed 2026-09-02 and serving until the native migration. **Confirmed deltas
+(same rc14 image, same weights, same hardware, both sides):** per-request decode
+medians rose from 112.07 → 149.02 tok/s at the 4K target (+33.0%), 96.17 →
+125.03 at 120K (+30.0%), 102.42 → 124.46 at 262K (+21.5%), and 99.79 → 120.29
+at 380K (+20.5%); the 60-sample endurance lane rose 102.19 → 142.64 tok/s
+(+39.5%). Time-to-first-token at the 4K target fell from 0.178 s to 0.123 s
+median, with the p95 pair at 0.193 s → 0.129 s; long-context TTFT stayed
+prefill-bound and effectively unchanged (effective prefill ±2.3%). The
+v0.4.3 runtime then added the capacity gains on top: the 524,288-token shared
+pool with C4 four-request scheduling in place of C1 serialization, stock
+template support for `enable_thinking=false`, and host-IPC deployment parity.
+
+**Reported experience:** the served v0.4.3 configuration is the operator's
+daily driver for agentic coding sessions, long-document review, and routed tool
+work through the Capability Gateway, with dependable day-to-day response
+quality, tool calling, and long-context behavior since the promotion gate.
+
+**Limits:** the deltas are local whole-stack measurements from the
+[2026-09-08 controlled comparison](../../findings/2026-09-08-glm53-linux-wsl-comparison.md)
+— not a universal Linux speedup claim — and the Grafana operational scrape
+begins 2026-09-09 with the native era, so live cross-era TTFT/decode series do
+not exist; the live window since then shows steady TTFT p95 (about 0.6–1.0 s)
+on real agent traffic with no OOM or restart, until the unrelated 2026-09-11
+tunnel incident documented in the ticket. Subjective quality judgments remain
+operator experience; the measured record above and in the linked dated findings
+remains the decision evidence for any configuration change.
 
 #### 2026-08-29 — initial Cardillo/Purtell qualification
 

@@ -81,7 +81,7 @@ hide:
     <p>Model occupants and measurements change faster than capability contracts. Their dated evidence stays discoverable without becoming product documentation or a claim about the currently deployed operator state.</p>
   </div>
   <div class="anvil-resource-list">
-    <a class="anvil-path--evidence" href="benchmarks/models/glm53-flash/"><strong>Latest qualified native reference — GLM-5.3-Flash</strong><span>v0.4.3 native Linux recipe: unchanged ormandj W4A16/NVFP4 weights, TP2, 524,288 shared tokens, FP8 KV, adaptive EAGLE. 14/14 Pi gates, retrieval through 497,724 measured tokens, human-gated promotion. Boundaries and limits are stated in the dossier.</span></a>
+    <a class="anvil-path--evidence" href="benchmarks/models/glm53-flash/"><strong>Latest qualified native reference — GLM-5.3-Flash</strong><span>v0.4.3 native Linux recipe: 524,288 shared tokens with C4 four-request scheduling (from 393K/C1), decode +20.5–33% and 4K time-to-first-token −31% versus the previous Windows/WSL2 serving (controlled Sep 8 A/B), unchanged ormandj W4A16/NVFP4 weights, FP8 KV, adaptive EAGLE. 14/14 Pi gates, retrieval through 497,724 measured tokens, human-gated promotion. Boundaries are stated in the dossier.</span></a>
     <a href="benchmarks/comparison/"><strong>Model comparison</strong><span>Every measured configuration in one table.</span></a>
     <a href="benchmarks/"><strong>Benchmarks overview</strong><span>Hardware-first recommendations and evidence labels.</span></a>
     <a href="benchmarks/models/"><strong>Model dossiers</strong><span>Status, recipe, and decision boundary by model.</span></a>
