@@ -7,6 +7,10 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-09-11-glm53-v043-native-linux-qualification.md`;
+`docs/findings/2026-09-11-glm53-v043-native-linux-qualification-evidence/README.md`;
+`docs/findings/2026-09-11-glm53-v043-native-linux-qualification-evidence/publication-summary.md`;
+
 `anvil_serving/observability/dashboard/static/documents/benchmarks.md`
 (packaged Workbench copy of the benchmark methodology; no additional measurement);
 
@@ -187,3 +191,10 @@ local measurement).
 (test-adapter identity bug, not a local hardware measurement);
 `tests/fixtures/external_benchmarks/rtx6kpro_summary.md` (test fixture, not local
 qualification evidence).
+
+## 2026-09-11 output-budget additions
+
+| Path | Classification | Basis |
+|---|---|---|
+| `docs/findings/2026-09-11-glm53-output-budget.md` | measured | Real Pi requests on the native Max-Q pair; bounded functional evidence. |
+| `docs/findings/2026-09-11-glm53-output-budget-evidence/publication-summary.md` | measured | Derivative of the same local evidence; no new hardware claim. |

@@ -1,0 +1,5 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [],
+  "note": "Local deployed configuration, retained repository fixtures, and request evidence only; no external performance prior used."
+}

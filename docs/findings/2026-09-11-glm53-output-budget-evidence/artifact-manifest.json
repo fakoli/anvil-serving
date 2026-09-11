@@ -1,0 +1,175 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-11-glm53-output-budget",
+    "capability": "Pi completion-budget diagnosis",
+    "repository_revision": "730cd4ddbe598715b89b08a1e88334e46c0666ad",
+    "dirty_state": "Clean isolated publication worktree before owned documentation changes",
+    "started_at": "2026-09-11",
+    "completed_at": "2026-09-11",
+    "evidence_labels": [
+      "functional",
+      "historical-invalid"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "f6d6482f3329bccba130d5de4b5d69edb30213ea4a3731c179fdaaa229de82aa",
+          "bytes": 1235
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "f4753e3704cf0929667d2e797203bb17b31a25f11ab55b82fc1677961b8523e3",
+          "bytes": 214
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "panel.json",
+          "sha256": "c7e38ce1c0ff4e7ba582304baaa099ccce72e5c97e605a36a79845bb224786db",
+          "bytes": 326876
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "panel.json",
+          "sha256": "c7e38ce1c0ff4e7ba582304baaa099ccce72e5c97e605a36a79845bb224786db",
+          "bytes": 326876
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity.json",
+          "sha256": "ae651fb177f27664fe3ce2cafc4bc33a3868a4c5188d2b1a134abb5b48427be0",
+          "bytes": 1386
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "panel-results.json",
+          "sha256": "ca9da0a5876448e6bf644dc4a9a88a8e60ce6098252d186b50003cc856bf40dc",
+          "bytes": 40901
+        },
+        {
+          "path": "upstream.json",
+          "sha256": "e92baf58d3b266c0271f743f8f251ff97c3115176a1e0ec260d96ce68e143271",
+          "bytes": 39374
+        },
+        {
+          "path": "boundary-smokes.json",
+          "sha256": "40b1fcb05cc3412d8462f356d6e41870ad21a3b5d8341553a927121741897d0b",
+          "bytes": 380
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "validity.json",
+          "sha256": "08f4e7fb928cc2682d852ccf5c25ee964cef00413da8440cde0c307ef905fe22",
+          "bytes": 3631
+        },
+        {
+          "path": "friction-log.md",
+          "sha256": "389a88c6046b6201df47e597f00948873c96e7cc7a792c73d1d7507bc0f98376",
+          "bytes": 1560
+        },
+        {
+          "path": "harness-repair-check.json",
+          "sha256": "45b002d7a38b2d10cd48d71511f56b34884000a9d6ff930c65786f8e6efecca4",
+          "bytes": 285
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "da246ecdaf014982535a06b76b4e7efaba9abe7c503c86851dba7330727226af",
+          "bytes": 512
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "2a2511feb0a04f5955e7bb211859cb8020428950bc2d46ee82e5104ae70ed55e",
+          "bytes": 1209
+        },
+        {
+          "path": "verify-summary.py",
+          "sha256": "0f25dd98d72e96ec1e9da7a381a6ecafca729c9a29872740ac735f7132054ede",
+          "bytes": 1585
+        },
+        {
+          "path": "validation.json",
+          "sha256": "1dc1934f6f00a7e6385232dedd3e1dd8c24a3668a4d5fcfe513bd71667cb55ef",
+          "bytes": 648
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "558646c6df50c0c3e5711f901fd06c42ab68de388f6445e5faa41a30c075726a",
+          "bytes": 1669
+        }
+      ],
+      "reason": ""
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "status": "verified",
+  "budget_campaign_backend_restarts": 0,
+  "backend_identity_unchanged": true,
+  "router_config_byte_identical": true,
+  "production_discovery_unchanged": true,
+  "production_completion_cap": 4096,
+  "temporary_router_ports_closed": true,
+  "fresh_real_pi_tool_and_executable_check": "passed",
+  "quant_runtime_kv_speculation_tp_concurrency_prefill_transport_unchanged": true,
+  "promotion_authorized": false,
+  "promoted": false
+}

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "timeout-guard",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "stable-unique",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "slug-whitespace",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "mutable-default",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "expiry-boundary",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "config-false",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "renamed-status",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "money-cents",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "schema-version",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "retry-transient",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "cli-integers",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "csv-quotes",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "long-config",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  },
+  {
+    "id": "long-migration",
+    "buggy_fails": true,
+    "independent_reference_passes": true
+  }
+]

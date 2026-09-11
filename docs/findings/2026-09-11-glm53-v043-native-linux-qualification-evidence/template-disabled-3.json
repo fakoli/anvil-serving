@@ -1,0 +1,90 @@
+{
+  "base_url": "http://127.0.0.1:39119/v1",
+  "budget": {
+    "max_completion_tokens": 512,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "errors": [],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [],
+  "model": "glm-5.3-flash",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nThat's it \u2014 `sum()` is the built-in function for exactly this. If you need a starting value (e.g., summing from a non-zero base), you can use `sum(xs, start)`.",
+      "content_chars": 182,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nThat's it \u2014 `sum()` is the built-in function for exactly this. If you need a starting value (e.g., summing from a non-zero base), you can use `sum(xs, start)`.",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.373,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 53,
+        "prompt_tokens": 29,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 82
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.147,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 10,
+        "prompt_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0,
+        "total_tokens": 41
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "0.4s got=\"```python\\nsum(xs)\\n```\\n\\nThat's it \u2014 `sum()` is the \" finish='stop' visible=182 reasoning_chars=0 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=0 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

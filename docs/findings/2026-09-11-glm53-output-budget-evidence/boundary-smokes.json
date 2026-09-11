@@ -1,0 +1,20 @@
+[
+  {
+    "arm": "A",
+    "requested": 4097,
+    "http": 200,
+    "clamp_warning": "max_tokens_clamped",
+    "content": "READY",
+    "finish": "stop",
+    "unauthenticated_status": 401
+  },
+  {
+    "arm": "B",
+    "requested": 16385,
+    "http": 200,
+    "clamp_warning": "max_tokens_clamped",
+    "content": "READY",
+    "finish": "stop",
+    "unauthenticated_status": 401
+  }
+]
