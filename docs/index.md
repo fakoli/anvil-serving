@@ -59,8 +59,19 @@ hide:
   <div class="anvil-resource-list">
     <a href="HOST-SERVICES/"><strong>Manage host services</strong><span>Discover, adopt, inspect, start, and stop services through Anvil. Use Docker on Windows and Linux, or native MLX and Docker on macOS.</span></a>
     <a href="TAILSCALE-NETWORKING/"><strong>Set up private networking</strong><span>Understand device roles, identity, grants, MagicDNS, mobile access, and the Serve-to-loopback pattern.</span></a>
-    <a href="ANVIL-CONNECT/"><strong>Protect application access</strong><span>Use a self-hosted HTTPS gateway, browser login, scoped SDK keys, and outbound origin connectors.</span></a>
     <a href="DEVICE-TOPOLOGIES/"><strong>Place roles across devices</strong><span>Separate primary inference, harness, voice, media, and operator ownership without exposing machine identity.</span></a>
+  </div>
+</section>
+
+<section class="anvil-section" aria-labelledby="connect-product">
+  <div class="anvil-section__heading">
+    <h2 id="connect-product">One credential for every local surface</h2>
+    <p>Anvil Connect publishes local applications to browsers through a self-hosted gateway. Applications stay bound to loopback; exposure is one declaration, enrolled through an invitation, redemption, and human fingerprint approval — never an implicit publish.</p>
+  </div>
+  <div class="anvil-resource-list">
+    <a href="CONNECT-OVERVIEW/"><strong>Why Anvil Connect</strong><span>The access problem it removes, the request path, and the boundary it holds.</span></a>
+    <a href="ANVIL-CONNECT/"><strong>Application access guide</strong><span>Declare a resource, render and review the plan, activate, enroll, and approve.</span></a>
+    <a href="cli/connect/"><strong>Connect commands</strong><span>Qualify, validate, render, up, down, status, init, identity, and admin verbs.</span></a>
   </div>
 </section>
 
@@ -70,6 +81,7 @@ hide:
     <p>Model occupants and measurements change faster than capability contracts. Their dated evidence stays discoverable without becoming product documentation or a claim about the currently deployed operator state.</p>
   </div>
   <div class="anvil-resource-list">
+    <a class="anvil-path--evidence" href="benchmarks/models/glm53-flash/"><strong>Latest qualified native reference — GLM-5.3-Flash</strong><span>v0.4.3 native Linux recipe: unchanged ormandj W4A16/NVFP4 weights, TP2, 524,288 shared tokens, FP8 KV, adaptive EAGLE. 14/14 Pi gates, retrieval through 497,724 measured tokens, human-gated promotion. Boundaries and limits are stated in the dossier.</span></a>
     <a href="benchmarks/comparison/"><strong>Model comparison</strong><span>Every measured configuration in one table.</span></a>
     <a href="benchmarks/"><strong>Benchmarks overview</strong><span>Hardware-first recommendations and evidence labels.</span></a>
     <a href="benchmarks/models/"><strong>Model dossiers</strong><span>Status, recipe, and decision boundary by model.</span></a>

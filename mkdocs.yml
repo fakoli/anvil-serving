@@ -67,6 +67,7 @@ nav:
       - Overview: index.md
       - Install and run a first serve: GETTING-STARTED.md
       - Private networking with Tailscale: TAILSCALE-NETWORKING.md
+      - Why Anvil Connect: CONNECT-OVERVIEW.md
       - Application access with Anvil Connect: ANVIL-CONNECT.md
       - Product map and journeys: PRODUCT-FAMILIES.md
       - Discover the product from the CLI: cli/product.md

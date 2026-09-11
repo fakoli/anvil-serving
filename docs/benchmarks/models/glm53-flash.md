@@ -27,6 +27,17 @@
 
 **Status:** bounded functional, no-promotion. **Measured:** real Pi on native Linux, same rc14/393K/C1 backend; 4096 versus 16384 completed 6/8 versus 7/8 valid tasks. **Limits:** eight coding runs invalid; larger budget did not rescue the reasoning fixture in both repetitions. Keep the existing output default. **Evidence:** [dated finding](../../findings/2026-09-11-glm53-output-budget.md). Dossier review for this bounded result: 2026-09-11; earlier qualification dates remain separate.
 
+#### 2026-09-11 — operator-reported daily experience
+
+**Status:** operational narrative, explicitly not a measured claim. **Reported:**
+the served v0.4.3 configuration is the operator's daily driver for agentic
+coding sessions, long-document review, and routed tool work through the
+Capability Gateway, with dependable day-to-day response quality, tool calling,
+and long-context behavior since the promotion gate. **Limits:** subjective
+operator experience with no matched measurement and no regression numbers;
+the measured record above and in the linked dated findings remains the decision
+evidence for any configuration change.
+
 #### 2026-08-29 — initial Cardillo/Purtell qualification
 
 The `brandonmusic/GLM-5.3-Flash-tr3-4bpw` 262K/524K campaign remains retained
