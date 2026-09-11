@@ -50,13 +50,18 @@ quality, tool calling, and long-context behavior since the promotion gate.
 
 **Limits:** the deltas are local whole-stack measurements from the
 [2026-09-08 controlled comparison](../../findings/2026-09-08-glm53-linux-wsl-comparison.md)
-— not a universal Linux speedup claim — and the Grafana operational scrape
-begins 2026-09-09 with the native era, so live cross-era TTFT/decode series do
-not exist; the live window since then shows steady TTFT p95 (about 0.6–1.0 s)
-on real agent traffic with no OOM or restart, until the unrelated 2026-09-11
-tunnel incident documented in the ticket. Subjective quality judgments remain
-operator experience; the measured record above and in the linked dated findings
-remains the decision evidence for any configuration change.
+— not a universal Linux speedup claim. The Grafana/Prometheus operational
+scrape (started 2026-09-09 09:52 UTC) covers the final WSL2 serving window
+through the 2026-09-11 07:50–08:10 UTC cutover: on real agent traffic the
+WSL2 baseline recorded TTFT median 0.49 s / p95 0.53 s and an engine
+inter-token gap of 6.0 ms median over about 185 scrape windows, while the
+native-era live window holds only the qualification campaign's traffic
+(TTFT p95 0.16 s, inter-token 5.9 ms median, about 30 minutes of samples),
+so like-for-like operational era comparison needs more accumulated v0.4.3
+traffic; the confirmed cross-era deltas remain the controlled A/B. Subjective
+quality judgments remain operator experience; the measured record above and in
+the linked dated findings remains the decision evidence for any configuration
+change.
 
 #### 2026-08-29 — initial Cardillo/Purtell qualification
 
