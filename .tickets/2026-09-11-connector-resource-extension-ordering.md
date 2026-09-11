@@ -50,6 +50,31 @@ the connector `init --bundle` parent-directory requirement, and the fact that
 `installation-revoke` is a prerequisite for re-inviting an active installation
 in the same epoch.
 
+## Related gap: principal resources are not extended on resource addition
+
+Adding a browser resource also does not extend existing principals: the
+session manager's `issueSession` requires `hasResource(human.Resources,
+record.Resource)`, `SetHuman` is reachable only through the admin
+`human-set` operation, and there is no operation that lists stored humans.
+The first browser login for a newly added resource therefore fails with a
+classified 401 at the OIDC callback until an operator runs `human-set` with
+the full resource list for that principal (issuer, Authelia subject, and the
+explicit resource IDs). Observed 2026-09-11 on primary-node: the pi-web
+browser login failed at the callback until
+`{"operation": "human-set", "issuer": "https://auth.example.test",
+"subject": "<identity-provider-subject>", "resources": ["dashboard", "pi-web"], "disabled": false}`
+was applied through the managed admin surface, using the Authelia OIDC
+subject for that principal. Note the subject is Authelia's per-user UUID
+(visible in the IdP's `oauth2_openid_connect_session` table), not the
+username — setting the username creates an inert shadow record instead of
+extending the real principal. A `SetHuman` generation bump
+also invalidates the principal's existing browser sessions by design.
+
+A managed resource-extension flow should therefore also refresh affected
+principals' resource lists (or resolve resources dynamically at login), and
+should expose a read-only principal listing so operators can enumerate
+affected principals without reading private store files.
+
 ## Suggested product change
 
 Add a managed resource-extension flow, for example
