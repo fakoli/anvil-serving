@@ -464,6 +464,7 @@ class PiWebInstaller:
         probe_opener: Callable[[str], object] | None = None,
         node_path: str | None = None,
         platform: str | None = None,
+        chown: Callable[[Path, int, int], None] | None = None,
     ) -> None:
         self.config = config
         self._run = run
@@ -472,6 +473,7 @@ class PiWebInstaller:
         self._probe_opener = probe_opener
         self._node_path = node_path
         self._platform = platform
+        self._chown = chown or os.chown
 
     def install(self, *, confirm: bool) -> dict[str, object]:
         if not confirm:
@@ -502,7 +504,7 @@ class PiWebInstaller:
         existed = entry.is_file()
         if not existed:
             version_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
-            os.chown(version_dir, uid, uid)
+            self._chown(version_dir, uid, uid)
             npm_script = npm_script_for(node)
             _bounded_run(self._run, [
                 "runuser", "-u", config.service_user, "--",
