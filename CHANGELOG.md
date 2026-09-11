@@ -6,8 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-11
+
 ### Added
 
+- Anvil Workbench provides bounded Pi sessions, task artifacts, managed tool execution,
+  and operation/evidence views with explicit storage and egress authority.
+- GLM v0.4.3 qualification artifacts and a verified portable recipe cover 524K
+  shared context, four-request scheduling, and real client acceptance. The bounded
+  output-budget comparison retains the 4096-token recommendation.
 - Router tiers accept `max_concurrency = "auto"`: the dispatch ceiling is
   derived from the serving engine's declared scheduler concurrency (bounded
   read-only `GET /get_server_info` / `GET /server_info`, allowlisted keys
@@ -15,8 +22,6 @@ All notable changes to this project are documented here. The format is based on
   keep the last known ceiling and effective changes are logged. Direct tiers
   only — replica members and aggregate replica ceilings remain explicit
   integers (flexibility:T023).
-
-### Added
 
 - Explicit same-host qualified replica sets with round-robin or capacity-aware
   member selection, atomic admission, per-member readiness and drain controls,
@@ -56,6 +61,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- Managed promotion reuses the lock-owning transition handler, respects failed
+  readmission, resolves the deployed configuration mount, and preserves file
+  metadata during atomic installation and recovery. First installs and Linux
+  daemon paths from Windows clients are covered.
+- The test runner avoids Unix ownership checks on Windows.
 - OpenAI-compatible relay responses preserve provider-reported
   `reasoning_content` as a distinct structured field in buffered and streaming
   paths, replay reasoning-bearing assistant history on same-dialect requests,
@@ -2453,7 +2463,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/fakoli/anvil-serving/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fakoli/anvil-serving/compare/v0.36.0...v1.0.0
 [0.36.0]: https://github.com/fakoli/anvil-serving/compare/v0.35.1...v0.36.0
 [0.35.1]: https://github.com/fakoli/anvil-serving/compare/v0.35.0...v0.35.1
