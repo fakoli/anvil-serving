@@ -66,6 +66,7 @@ import math
 import mimetypes
 import numbers
 import os
+import posixpath
 import re
 import shlex
 import signal
@@ -1497,10 +1498,10 @@ def _install_router_config(
         mounted = matches[0]
         if mounted["Type"] == "bind" and destination == mounted["Destination"]:
             source = mounted["Source"]
-            if not os.path.isabs(source) or ":" in source or os.path.dirname(source) == "/":
+            if not posixpath.isabs(source) or ":" in source or posixpath.dirname(source) == "/":
                 raise ValueError("unsupported config source")
-            mount = os.path.dirname(source) + ":" + _ROUTER_CFG_SIDE_MOUNT
-            config_path = _ROUTER_CFG_SIDE_MOUNT + "/" + os.path.basename(source)
+            mount = posixpath.dirname(source) + ":" + _ROUTER_CFG_SIDE_MOUNT
+            config_path = _ROUTER_CFG_SIDE_MOUNT + "/" + posixpath.basename(source)
         elif not (mounted["Type"] == "volume" and mounted.get("Name") == cfg_volume
                   and destination == mounted["Destination"].rstrip("/") + "/config.toml"):
             raise ValueError("unsupported config mount")
@@ -1521,7 +1522,10 @@ def _install_router_config(
     if backup.returncode != 0:
         print("  router config backup failed")
         return 1
-    write_script = "cp -p {cfg} {new} && cat > {new} && mv {new} {cfg}".format(
+    write_script = (
+        "if [ -f {cfg} ]; then cp -p {cfg} {new}; else : > {new}; fi"
+        " && cat > {new} && mv {new} {cfg}"
+    ).format(
         new=shlex.quote(new_path), cfg=shlex.quote(config_path)
     )
     write = _run(

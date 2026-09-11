@@ -6,7 +6,7 @@
 
 !!! info "Decision snapshot"
 
-    - **Product role:** selected native text, tools, image and OCR reference.
+    - **Product role:** qualified native text, tools, image and OCR reference.
     - **Selected or best-qualified configuration:** v0.4.3 (`ec4243f9`), unchanged
       ormandj `c3cbb989`, TP2/524,288 shared tokens/C4, FP8 KV, adaptive EAGLE,
       HiCache off, verified thinking template, output cap 4K.
@@ -14,8 +14,8 @@
     - **Evidence:** [qualification](../../findings/2026-09-11-glm53-v043-native-linux-qualification.md)
       passed Pi 14/14, retrieval 12/12 through 497,724 actual tokens, C4 probes,
       and fresh Pi/Hermes/OpenClaw terminal turns. No matched speedup claim.
-    - **Decision:** user-authorized native primary promotion; exact native rc14
-      393K/C1 is immediate rollback. EXL3 profiles below are historical.
+    - **Decision:** dated human-authorized promotion gate passed; recovery to native rc14
+      393K/C1 was verified. Current route and startup assignments are private. EXL3 profiles below are historical.
     - **Important limitation:** no video; sampled free memory reached 567 MiB per
       card under the existing model-only reserve approval. Bounded evidence,
       not a live status API or long-duration stability guarantee.

@@ -26,6 +26,9 @@ from pathlib import Path
 def untrusted_ancestry(cwd: Path) -> list[str]:
     """Return human-readable reasons the cwd ancestry violates the trust contract."""
 
+    if sys.platform == "win32":
+        # Unix ownership and mode checks do not describe Windows ACLs.
+        return []
     problems: list[str] = []
     effective_uid = os.geteuid()
     for directory in [cwd, *cwd.parents]:

@@ -3,6 +3,12 @@ import subprocess
 from scripts import run_tests
 
 
+def test_windows_runner_does_not_use_unix_ownership(monkeypatch):
+    monkeypatch.setattr(run_tests.sys, "platform", "win32")
+    monkeypatch.delattr(run_tests.os, "geteuid", raising=False)
+    assert run_tests.untrusted_ancestry(run_tests.Path.cwd()) == []
+
+
 def test_runner_uses_unique_base_temp_and_preserves_pytest_exit(monkeypatch):
     seen = {}
     monkeypatch.setattr(run_tests.tempfile, "mkdtemp", lambda **_kwargs: "C:/temp/unique")
