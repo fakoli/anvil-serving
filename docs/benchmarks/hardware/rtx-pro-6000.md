@@ -1,6 +1,6 @@
 # RTX PRO 6000 benchmark view
 
-**2026-09-11 update:** [GLM v0.4.3](../../findings/2026-09-11-glm53-v043-native-linux-qualification.md) is the user-approved native 524K/C4 profile, with Pi 14/14 and 4K output retained. Native rc14 is immediate rollback. Earlier deployment descriptions below are historical.
+**2026-09-11 update:** [GLM v0.4.3](../../findings/2026-09-11-glm53-v043-native-linux-qualification.md) is the latest qualified native 524K/C4 reference, with Pi 14/14 and 4K output retained. Recovery to native rc14 was verified during the campaign; current assignments are private. Earlier deployment descriptions below are historical.
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Fakoli Dark; native Linux

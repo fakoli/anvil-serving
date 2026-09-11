@@ -1,8 +1,8 @@
 schema = "anvil-serving.serve-recipes/v1"
 [[recipe]]
 model = "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO"
-status = "experimental"
-source = "Resume v0.4.3 qualification after stock template ignored enable_thinking=false; no runtime source or weight edits."
+status = "verified"
+source = "Qualified 2026-09-11 on dual RTX PRO 6000 Max-Q; see docs/findings/2026-09-11-glm53-v043-native-linux-qualification.md."
 [recipe.download]
 repo = "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO"
 revision = "c3cbb9891b67c741bcbf6b176dd7af9265b069db"
@@ -28,4 +28,4 @@ ulimits = ["memlock=-1"]
 named_volumes = ["glm53-v043-v84-thinking-control-cache:/root/.cache"]
 env = ["CUDA_VISIBLE_DEVICES=0,1", "SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION=0", "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True", "CUBLAS_WORKSPACE_CONFIG=:4096:2:16:8", "SGLANG_ENABLE_PCIE_IPC_ALLREDUCE=1", "SGLANG_PCIE_IPC_MAX_NUMEL=786432", "SGLANG_EXPERIMENTAL_DSA_KPOOL_METADATA_FUSION=1", "SGLANG_LM_HEAD_FP8=1", "TORCHINDUCTOR_CACHE_DIR=/root/.cache/torchinductor", "TILELANG_CACHE_DIR=/root/.cache/tilelang", "TRITON_CACHE_DIR=/root/.cache/triton", "SGLANG_KDA_EXTEND_BLOCK_TOKENS=2048", "SGLANG_BCG_RAGGED_SHAPES=1", "SGLANG_BCG_RAGGED_MAX_BS=1", "SGLANG_BCG_SEPARATE_CAPTURE_SESSIONS=1"]
 flags = ["--served-model-name glm-5.3-flash --chat-template /tmp/glm53-thinking-control.jinja --tp 2 --enable-multimodal --warmups serving_coverage --image-processor-backend torchvision --mm-preprocessing-device cpu --quantization modelopt_mixed --moe-runner-backend flashinfer_cutlass --disable-shared-experts-fusion --disable-custom-all-reduce --attention-backend dsa --linear-attn-backend triton --context-length 524288 --max-total-tokens 524288 --kv-cache-dtype fp8_e4m3 --mem-fraction-static 0.99 --chunked-prefill-size 4096 --max-prefill-tokens 4096 --max-running-requests 4 --max-mamba-cache-size 28 --mamba-ssm-dtype bfloat16 --cuda-graph-backend-prefill breakable --cuda-graph-bs-prefill 64 128 --cuda-graph-backend-decode full --cuda-graph-bs-decode 1 2 3 4 --dsa-prefill-backend flashinfer_sparse_mla --dsa-decode-backend flashinfer_sparse_mla --speculative-algorithm EAGLE --speculative-num-steps 5 --speculative-eagle-topk 1 --speculative-num-draft-tokens 6 --speculative-adaptive --speculative-adaptive-config /tmp/glm53-adaptive.json --reasoning-parser glm45 --tool-call-parser glm47 --enable-metrics --enable-cache-report --host 0.0.0.0 --port 8001"]
-note = "524K/C4/28 recurrent slots, HiCache off, upstream runtime flags and environment preserved. Single generation-suffix fix; no old logits or transport patches. Default/enabled byte-identical; disabled explicitly closes reasoning prefix. Not qualified or promoted."
+note = "524K/C4/28 recurrent slots, HiCache off, upstream runtime flags and environment preserved. Single generation-suffix fix; no old logits or transport patches. Default/enabled byte-identical; disabled explicitly closes reasoning prefix. Bounded qualification passed on the recorded hardware; active deployment assignments are private. Catalog metadata updated after qualification; evidence/recipe.toml retains the as-run bytes."

@@ -14,7 +14,7 @@ chronological evidence index. Newest first.
 
 ## Policy
 
-Latest runtime decision: [GLM v0.4.3 qualification](2026-09-11-glm53-v043-native-linux-qualification.md) — user-authorized native 524K/C4 promotion; 14/14 Pi tasks, output cap remains 4K.
+Latest runtime decision: [GLM v0.4.3 qualification](2026-09-11-glm53-v043-native-linux-qualification.md) — dated native 524K/C4 qualification and promotion acceptance; 14/14 Pi tasks, output cap remains 4K.
 
 Latest bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
 
