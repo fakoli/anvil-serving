@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 
 import pytest
@@ -22,12 +23,6 @@ from anvil_serving.workbench_app.pi_web import (
     pi_web_config,
     unit_content,
 )
-
-
-def _current_user() -> str:
-    import pwd
-
-    return pwd.getpwuid(os.getuid()).pw_name
 
 
 def _fake_node(tmp_path: Path, version: str = "v24.20.0") -> str:
@@ -48,7 +43,7 @@ def _config(tmp_path: Path, **overrides: object) -> dict[str, object]:
         "port": 30141,
         "hostname": "127.0.0.1",
         "allowed_hosts": ["pi.example.test"],
-        "service_user": _current_user(),
+        "service_user": "nobody",
         "install_root": str(tmp_path / "pi-web-home"),
     }
     value.update(overrides)
@@ -103,6 +98,7 @@ def installer_env(tmp_path: Path):
             "probe_opener": (lambda url: 200),
             "node_path": str(node),
             "platform": "linux",
+            "chown": (lambda target, uid, gid: None),
         }
         defaults.update(overrides)
         installer = PiWebInstaller(config, **defaults)  # type: ignore[arg-type]
@@ -218,7 +214,7 @@ def test_plan_lists_exact_root_commands(tmp_path: Path) -> None:
     config = pi_web_config(_config(tmp_path))
     planned = pi_web.plan(config, node_path=_fake_node(tmp_path))
     assert planned["package"] == f"{PACKAGE}@0.9.0"
-    assert planned["commands"][0][:4] == ["runuser", "-u", _current_user(), "--"]  # type: ignore[index]
+    assert planned["commands"][0][:4] == ["runuser", "-u", "nobody", "--"]  # type: ignore[index]
     assert planned["commands"][0][4] == "env"  # type: ignore[index]
     assert planned["commands"][0][-1] == f"{PACKAGE}@0.9.0"  # type: ignore[index]
     assert ["systemctl", "daemon-reload"] in planned["commands"]  # type: ignore[operator]
@@ -339,6 +335,7 @@ def test_install_runs_pinned_commands_and_probes_readiness(installer_env, tmp_pa
         config, run=run, systemd_root=root / "systemd",
         geteuid=(lambda: 0), probe_opener=(lambda url: 200),
         node_path=str(root / "runtime" / "bin" / "node-fake"), platform="linux",
+        chown=(lambda target, uid, gid: None),
     )
     result = installer.install(confirm=True)
     assert result["installed"] is True and result["package_installed"] is True
@@ -363,6 +360,7 @@ def test_repeated_install_converges_without_restart_or_npm(installer_env, tmp_pa
         config, run=run, systemd_root=root / "systemd",
         geteuid=(lambda: 0), probe_opener=(lambda url: 200),
         node_path=str(root / "runtime" / "bin" / "node-fake"), platform="linux",
+        chown=(lambda target, uid, gid: None),
     )
     installer.install(confirm=True)
     run.calls.clear()
@@ -384,6 +382,7 @@ def test_install_with_changed_unit_reloads_and_restarts(installer_env, tmp_path:
         config, run=run, systemd_root=root / "systemd",
         geteuid=(lambda: 0), probe_opener=(lambda url: 200),
         node_path=str(root / "runtime" / "bin" / "node-fake"), platform="linux",
+        chown=(lambda target, uid, gid: None),
     )
     installer.install(confirm=True)
     run.calls.clear()
@@ -396,6 +395,7 @@ def test_install_with_changed_unit_reloads_and_restarts(installer_env, tmp_path:
         changed, run=run, systemd_root=tmp_path / "systemd",
         geteuid=(lambda: 0), probe_opener=(lambda url: 200),
         node_path=str(root / "runtime" / "bin" / "node-fake"), platform="linux",
+        chown=(lambda target, uid, gid: None),
     )
     result = changed_installer.install(confirm=True)
     assert result["unit_changed"] is True and result["lifecycle"] == "restarted"
