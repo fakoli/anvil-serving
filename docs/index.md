@@ -65,11 +65,11 @@ hide:
 
 <section class="anvil-section" aria-labelledby="connect-product">
   <div class="anvil-section__heading">
-    <h2 id="connect-product">One credential for every local surface</h2>
-    <p>Anvil Connect publishes local applications to browsers through a self-hosted gateway. Applications stay bound to loopback; exposure is one declaration, enrolled through an invitation, redemption, and human fingerprint approval — never an implicit publish.</p>
+    <h2 id="connect-product">Anvil Connect — one credential for every local surface</h2>
+    <p>The newest product family publishes local applications to browsers through a self-hosted edge: your own TLS certificate authority, the OIDC provider you already run, an outbound-only data plane, and applications that stay loopback-bound and unchanged. Exposure is one declaration, enrolled through an invitation, redemption, and human fingerprint approval — never an implicit publish.</p>
   </div>
   <div class="anvil-resource-list">
-    <a href="CONNECT-OVERVIEW/"><strong>Why Anvil Connect</strong><span>The access problem it removes, the request path, and the boundary it holds.</span></a>
+    <a href="CONNECT-OVERVIEW/"><strong>Anvil Connect</strong><span>The product story: the access problem, how the pieces fit, one identity three ways, and the boundary it holds.</span></a>
     <a href="ANVIL-CONNECT/"><strong>Application access guide</strong><span>Declare a resource, render and review the plan, activate, enroll, and approve.</span></a>
     <a href="cli/connect/"><strong>Connect commands</strong><span>Qualify, validate, render, up, down, status, init, identity, and admin verbs.</span></a>
   </div>

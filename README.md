@@ -18,10 +18,10 @@
 </div>
 
 Anvil Serving is one local-first product for Model Serving, the Capability
-Gateway, Evaluation & Evidence, Anvil Voice, Anvil Media, and Control Plane &
-Fleet operations. The six families share one package, CLI, topology, safety
-contract, evidence policy, and release line while retaining explicit authority
-boundaries. Anvil Voice and Anvil Media are first-class domains inside the
+Gateway, Evaluation & Evidence, Anvil Voice, Anvil Media, Anvil Connect, and
+Control Plane & Fleet operations. The seven families share one package, CLI,
+topology, safety contract, evidence policy, and release line while retaining
+explicit authority boundaries. Anvil Voice and Anvil Media are first-class domains inside the
 umbrella, not separate products.
 
 The result is a reproducible path from model artifact to qualified capability:
@@ -39,6 +39,7 @@ promotion behind that path.
 | **Evaluation & Evidence** | Prove compatibility and retain benchmark evidence. | `eval` |
 | **Anvil Voice** | Operate qualified STT, TTS, and realtime voice paths. | `voice` |
 | **Anvil Media** | Run bounded named image/video workflows with durable artifacts. | `media` |
+| **Anvil Connect** | Publish local browser surfaces through one self-hosted, authenticated edge. | `connect` |
 | **Control Plane & Fleet** | Resolve ownership and operate declared hosts and integrations. | `topology`, `controller`, `mcp`, `fleet`, `host` |
 
 The installed product map is read-only and machine-readable:
@@ -67,6 +68,24 @@ placement. The gateway keeps authentication, dialect translation, streaming,
 readiness, admission, and decision evidence consistent across those
 capabilities. See [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
 for each authority boundary and its ordered path.
+
+## Anvil Connect exposure contract
+
+Anvil Connect is the browser gateway for the surfaces you build with Anvil
+Serving. It answers one question: how do you open a dashboard, an agent UI, or
+a family chat page running on your own workstation from any browser — the same
+convenience hosted tools give you for their cloud workloads, without
+port-forwarding an unhardened application, without a VPN per device, and
+without handing identity for your own services to a hosted vendor. Applications
+stay bound to loopback and unchanged; exposure is one closed declaration that
+is validated, rendered, activated, and enrolled. Browsers authenticate once
+through the OpenID Connect provider you already operate, spoofable identity
+headers are stripped at the edge, and applications that need a user identity
+receive signed handoff instead of a raw header.
+
+See [Why Anvil Connect](docs/CONNECT-OVERVIEW.md) for the product story and
+[Anvil Connect](docs/ANVIL-CONNECT.md) for the architecture and component
+boundaries.
 
 ## Capability meta-router contract
 

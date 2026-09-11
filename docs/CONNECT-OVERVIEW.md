@@ -1,19 +1,27 @@
 ---
-title: Why Anvil Connect
-description: The self-hosted browser gateway for local AI surfaces — one credential, loopback-only origins, no application changes.
+title: Anvil Connect
+description: The self-hosted browser gateway family for local AI surfaces — one credential for everything you run locally, no VPN, no application changes.
 ---
 
-# Why Anvil Connect
+# Anvil Connect
 
-Anvil Connect is the browser gateway for the surfaces you build with Anvil
-Serving. It answers one question: how do you open a model dashboard, an agent
-UI, or a family chat page from any browser — without port-forwarding an
-unhardened application, without giving every application its own login system,
-and without handing the routing problem to a hosted vendor.
+Anvil Connect is the newest product family in Anvil Serving, alongside Model
+Serving, the Capability Gateway, Evaluation & Evidence, Anvil Voice, Anvil
+Media, and the Control Plane. It is the browser gateway for the surfaces you
+build and run on your own workstation: model dashboards, agent UIs, chat
+frontends, and anything else that speaks HTTP on a loopback port.
+
+It exists to answer one question. Hosted tools give you a phone view of work
+that runs in their cloud — open the app from anywhere, pick up where you left
+off, no setup between devices. Anvil Connect gives you the same convenience for
+work that runs on *your* machine: open your own services from any browser,
+anywhere, without port-forwarding an unhardened application, without a VPN
+client on every device and person, and without handing identity, admission, or
+audit for your own services to a hosted vendor.
 
 ## The access problem it removes
 
-A homelab or workstation server that serves real capability normally faces a
+A workstation or homelab server that serves real capability normally faces a
 bad set of choices:
 
 - **Expose ports directly** and every local application becomes internet-
@@ -44,20 +52,63 @@ reset flows, which is how one homelab becomes six credentials.
   each connector run as separate service identities. Origins never bind
   wider than loopback.
 
-## The request path
+## How the pieces fit
+
+Anvil Connect is deliberately composed from proven parts, each owning one
+narrow responsibility:
 
 ```mermaid
 flowchart LR
-    B["Browser"] --> E["Edge<br/>TLS termination"]
-    E --> G["Gateway<br/>OIDC session, admission limits"]
-    G --> T["Reverse tunnel<br/>outbound, mTLS"]
-    T --> C["Origin connector<br/>runs beside the apps"]
-    C --> O["Loopback origin<br/>the application itself"]
+    B["Browser<br/>any device, anywhere"] --> CF["Cloudflare<br/>public front door"]
+    CF --> T["cloudflared + wstunnel<br/>outbound-only data plane"]
+    T --> CA["Caddy<br/>operator PKI TLS, header hygiene"]
+    CA --> G["Anvil Connect gateway<br/>OIDC session, admission, identity handoff"]
+    G --> C["Origin connector<br/>runs beside the apps"]
+    C --> O["Loopback origins<br/>the applications themselves"]
+    G -.->|OIDC| A["Authelia<br/>the local identity provider"]
 ```
 
-The connector dials out; no inbound port is opened for it. The gateway learns
-a connector through a redeemable invitation and a human fingerprint approval,
-so a resource goes live only after an explicit enrollment and approval chain.
+- **Cloudflare** is the public front door: DNS for each published host and
+  the first TLS hop with abuse protection. It terminates nothing private —
+  it forwards to a tunnel that only exists because your own connector dialed
+  out to build it.
+- **cloudflared and wstunnel** are the data plane. Every connection is
+  established outbound by your own infrastructure; the server side accepts
+  only connectors that present credentials from a redeemed invitation. No
+  inbound port is opened on the application host.
+- **Caddy** terminates edge TLS with a certificate authority that *you* issue
+  and own — not a vendor — and enforces header hygiene: spoofable identity
+  and forwarding headers are deleted at ingress, so no browser can claim an
+  identity by header.
+- **The Anvil Connect gateway** is the policy core. It runs the OpenID
+  Connect login flow, issues opaque, host-only session cookies, enforces each
+  resource's admission budget per request, and provides signed identity
+  handoff for applications that verify a user.
+- **Authelia** is the local identity provider the whole family leans on:
+  passkeys, TOTP, and your existing user directory. The same provider fronts
+  the edge gate and any federated application you register with it.
+- **The origin connector** runs beside the applications under its own service
+  identity, pulls traffic from the gateway, and forwards to loopback-only
+  origins. It holds no secrets beyond its own enrollment state.
+- **The applications** are unchanged. They keep binding to `127.0.0.1` and
+  never learn that the internet exists.
+
+## One identity, three ways
+
+Every published application takes identity one of three ways, and all three
+come from the same login:
+
+1. **Unmodified applications** — the Authelia session at the edge is the
+   gate; the application sees ordinary local traffic.
+2. **OIDC-native applications** — registered as relying parties of the same
+   provider, they federate the same identity directly. One login covers the
+   edge and the application.
+3. **Identity-verifying applications** — they receive a signed, keyed handoff
+   the gateway injects after authentication, never a raw client-controlled
+   header.
+
+That is the whole identity story: one provider, one credential, no per-
+application accounts unless the application insists on them.
 
 ## What an operator does
 
@@ -98,3 +149,8 @@ and tracked rather than hidden:
 
 None of these gaps change what is published today; they are the operation
 log of a component moving from *works* to *operated*.
+
+Anvil Connect is one of the seven product families — see
+[Product families and user journeys](PRODUCT-FAMILIES.md#anvil-connect) for
+its authority boundary and ordered journey, or run
+`anvil-serving product journey anvil-connect`.
