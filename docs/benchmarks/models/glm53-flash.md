@@ -45,19 +45,30 @@ template support for `enable_thinking=false`, and host-IPC deployment parity.
 After promotion, the transition's final axis was restored: GPU peer-to-peer.
 The two RTX PRO 6000 Max-Q cards share one PCIe host bridge (no NVLink on
 Max-Q) and the driver reports bidirectional PCIe P2P OK; WSL2 could not use it
-(the translated-IOMMU diagnosis), so the 2026-09-08 comparison and the
-qualification gates deliberately ran with `NCCL_P2P_DISABLE=1` — the measured
-deltas above therefore exclude any P2P effect. The live v0.4.3 serving
-subsequently enabled the FlashInfer PCIe IPC all-reduce for the tensor-parallel
-pair (startup proof 2026-09-11 09:45 UTC, `max_numel=786432`, custom
-all-reduce disabled in its favor); its dedicated measurement and FlashInfer
-workspace tuning (currently running seed configurations per the engine log)
-are the recorded follow-up.
+(the translated-IOMMU diagnosis). The 2026-09-08 comparison therefore
+deliberately ran with `NCCL_P2P_DISABLE=1` on both sides — its deltas are the
+OS-migration effect alone. The P2P axis was then restored and measured separately: the
+2026-09-09 authorized transport A/B re-enabled NCCL P2P on the native recipe
+with matched evidence (4K n=12: median TTFT −9.0%, E2E −7.4%; 120K n=3:
+TTFT −8.9%) and retained it as the default. The live v0.4.3 serving adds the
+FlashInfer PCIe IPC all-reduce on top of that transport (startup proof
+2026-09-11 09:45 UTC, `max_numel=786432`, custom all-reduce disabled in its
+favor); that layer currently runs untuned seed configurations per the engine
+log, so the FlashInfer workspace tune and a dedicated IPC all-reduce
+measurement are the recorded follow-up.
 
 **Reported experience:** the served v0.4.3 configuration is the operator's
 daily driver for agentic coding sessions, long-document review, and routed tool
 work through the Capability Gateway, with dependable day-to-day response
 quality, tool calling, and long-context behavior since the promotion gate.
+The operator further reports it as probably the strongest model they have used
+for this work — the first local configuration where the routine hard parts of
+agentic work complete locally, with escalation to the remote lead models
+becoming the exception for genuinely novel problems rather than the normal
+unblocking step. This is subjective operator experience with no escalation-rate
+metric behind it; it is recorded here because it is the qualification
+program's purpose outcome, and it should be re-examined as v0.4.3 operational
+traffic accumulates in Grafana.
 
 **Limits:** the deltas are local whole-stack measurements from the
 [2026-09-08 controlled comparison](../../findings/2026-09-08-glm53-linux-wsl-comparison.md)
