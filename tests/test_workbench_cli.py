@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import pwd
+import sys
 
 import pytest
 
@@ -143,3 +146,75 @@ def test_workbench_compose_waits_for_neo4j_and_ignores_its_secret_env_file():
     assert "ghcr.io/" not in compose
     assert "workbench.env" in gitignore
     assert "!workbench.env.example" in gitignore
+
+
+def _pi_web_config(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
+    config_path = tmp_path / "workbench" / "pi-web.json"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    runtime = tmp_path / "runtime"
+    node = runtime / "bin" / "node-fake"
+    node.parent.mkdir(parents=True, exist_ok=True)
+    (runtime / "lib" / "node_modules" / "npm" / "bin").mkdir(parents=True, exist_ok=True)
+    (runtime / "lib" / "node_modules" / "npm" / "bin" / "npm-cli.js").write_text("// fake\n", encoding="utf-8")
+    config_path.write_text(
+        json.dumps({
+            "version": "0.9.0",
+            "port": 30141,
+            "hostname": "127.0.0.1",
+            "allowed_hosts": ["pi.example.test"],
+            "service_user": pwd.getpwuid(os.getuid()).pw_name,
+            "install_root": str(tmp_path / "pi-web-home"),
+            "node_path": str(node),
+        }),
+        encoding="utf-8",
+    )
+    node.write_text("#!/bin/sh\necho v24.20.0\n", encoding="utf-8")
+    node.chmod(0o755)
+    return config_path
+
+
+def test_pi_web_install_requires_the_private_configuration(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "empty-home"))
+    assert workbench.main(["pi-web", "install", "--dry-run"]) == 2
+    assert "pi-web.json" in json.loads(capsys.readouterr().err)["error"]
+
+
+def test_pi_web_install_dry_run_prints_the_exact_root_plan(tmp_path, monkeypatch, capsys):
+    _pi_web_config(tmp_path, monkeypatch)
+    assert workbench.main(["pi-web", "install", "--dry-run"]) == 0
+    rendered = json.loads(capsys.readouterr().out)
+    assert rendered["dry_run"] is True
+    assert rendered["package"] == "@agegr/pi-web@0.9.0"
+    assert rendered["commands"][0][:2] == ["runuser", "-u"]
+    assert rendered["unit_path"].endswith("anvil-pi-web.service")
+
+
+def test_pi_web_up_and_down_dry_run_render_systemctl_commands(capsys):
+    for action, verb in (("up", "start"), ("down", "stop")):
+        assert workbench.main(["pi-web", action, "--dry-run"]) == 0
+        rendered = json.loads(capsys.readouterr().out)
+        assert rendered == {
+            "ok": True,
+            "dry_run": True,
+            "command": ["systemctl", verb, "anvil-pi-web.service"],
+        }
+
+
+def test_pi_web_unsupported_configuration_is_a_clean_error(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
+    config_path = tmp_path / "workbench" / "pi-web.json"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text(json.dumps({"version": "latest"}), encoding="utf-8")
+    assert workbench.main(["pi-web", "install", "--dry-run", "--config", str(config_path)]) == 2
+    assert "pinned release" in json.loads(capsys.readouterr().err)["error"]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only journalctl")
+def test_pi_web_status_reports_loopback_readiness(tmp_path, monkeypatch, capsys):
+    _pi_web_config(tmp_path, monkeypatch)
+    assert workbench.main(["pi-web", "status"]) == 0
+    rendered = json.loads(capsys.readouterr().out)
+    assert rendered["ok"] is True
+    assert rendered["unit"] == "anvil-pi-web.service"
+    assert rendered["probe"]["url"] == "http://127.0.0.1:30141/"
