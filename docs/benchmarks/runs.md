@@ -29,6 +29,11 @@ These records synthesize retained measurements without claiming a new run.
 
 ## RTX PRO 6000 runs
 
+| Date | Capability / configuration | Measured hardware | Evidence | Decision | Dossier / finding |
+|---|---|---|---|---|---|
+| 2026-09-11 | GLM v0.4.3, fixed ormandj weights, 524K/C4 | 2x RTX PRO 6000 Blackwell Max-Q | functional, capacity, bounded quality; Pi 14/14, retrieval 12/12 | user-authorized promotion; 4K output retained | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-11-glm53-v043-native-linux-qualification.md) |
+| 2026-09-11 | GLM rc14 Pi completion budget 4096 vs 16384; same 393K/C1 backend | 2x RTX PRO 6000 Blackwell Max-Q | bounded functional; 16 valid / 24 tasks, eight coding runs invalid | no-promotion; retain 4096 | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-11-glm53-output-budget.md) |
+
 | Date | Capability | Exact model/configuration | Measured hardware | Evidence | Decision | Dossier / finding |
 |---|---|---|---|---|---|---|
 | 2026-09-09 | ormandj v0.4.2 runtime upgrade qualification | GLM-5.3-Flash `c3cbb989`, candidate image `877ae294`, TP2/393,216/C1, P2P enabled | 2× RTX PRO 6000 Blackwell Max-Q | functional/thinking/multimodal/high-context pass; 4K n12 and 120K n3 matched cells; strict turnover 58/60 and repeat 57/60 | user-selected `retain-baseline/no-promotion`; exact baseline restored | [GLM-5.3-Flash](models/glm53-flash.md) · [finding](../findings/2026-09-09-glm53-ormandj-v042.md) |

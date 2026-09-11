@@ -1,0 +1,5 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [],
+  "note": "Exact pins came from the supplied campaign and were verified locally. All outcomes are local measurements; no external performance prior used."
+}

@@ -1,0 +1,108 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-11-glm53-output-budget",
+    "capability": "Pi completion-budget diagnosis",
+    "repository_revision": "730cd4ddbe598715b89b08a1e88334e46c0666ad",
+    "dirty_state": "Clean isolated publication worktree before owned documentation changes",
+    "started_at": "2026-09-11",
+    "completed_at": "2026-09-11",
+    "evidence_labels": [
+      "functional",
+      "historical-invalid"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "panel.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "panel.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "identity.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "panel-results.json",
+        "upstream.json",
+        "boundary-smokes.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "validity.json",
+        "friction-log.md",
+        "harness-repair-check.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "verify-summary.py",
+        "validation.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": ""
+    }
+  ]
+}

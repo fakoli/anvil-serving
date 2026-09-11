@@ -1,0 +1,1171 @@
+[
+  {
+    "case": "timeout-guard",
+    "repetition": 1,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114798.4155853,
+        "timeout": 1200.0,
+        "messages_sha256": "fa2a28a10e2da206ae4ef355d9c11ac55a7913fa740e326a426beb5d4f59f3a1"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114798.930403,
+        "timeout": 1200.0,
+        "messages_sha256": "b554f5c7cfba76161d3b03740db6166d8876b4b7ba780a80d0db35611da97b66"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114799.351821,
+        "timeout": 1200.0,
+        "messages_sha256": "2c3e8ff788f071ab1cedbb853b43541bfc0ee01bec60e0973f2c506cd7e3deeb"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114800.1710017,
+        "timeout": 1200.0,
+        "messages_sha256": "cda4c1c24745177b73708f045c87384a9b329c1ea815f946376afa254df096f8"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114800.894675,
+        "timeout": 1200.0,
+        "messages_sha256": "f7875ffff06ee040fa335e807a4ecab28f2a19d8b312527690d89ce42c24c492"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114801.185643,
+        "timeout": 1200.0,
+        "messages_sha256": "9f100ccab513cb42c379848ee4c2c8ec4a129d239ed4e492084e46ab42789104"
+      }
+    ]
+  },
+  {
+    "case": "timeout-guard",
+    "repetition": 1,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114802.2530556,
+        "timeout": 1200.0,
+        "messages_sha256": "fa2a28a10e2da206ae4ef355d9c11ac55a7913fa740e326a426beb5d4f59f3a1"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114802.7400532,
+        "timeout": 1200.0,
+        "messages_sha256": "a7b57bafb3c42775e76d28f49ee94f7429f2f6363caafa9054c6824a95faeb05"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114803.1121519,
+        "timeout": 1200.0,
+        "messages_sha256": "fa84ea316b2ecccc90c95732f1cb88184168f9e2c9e1b303f1ed3ef5a00cae0e"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114804.8790393,
+        "timeout": 1200.0,
+        "messages_sha256": "bcd214618f62c3b3a991a92aee34412487e0ea8d4d9b28ef01a2ff040769226d"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114806.3591516,
+        "timeout": 1200.0,
+        "messages_sha256": "ba28886e142946c7a5a2c177bb934a99713970d2ca6ddfbc0572c039a4a5e482"
+      }
+    ]
+  },
+  {
+    "case": "mutable-default",
+    "repetition": 1,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114808.259656,
+        "timeout": 1200.0,
+        "messages_sha256": "d42f2b627b54b92e6a659607e231dabed220545957acc984ec48f346eb84ede0"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114808.8498812,
+        "timeout": 1200.0,
+        "messages_sha256": "f2a72b80711aa7a07d578888d2f3048087d9cf5d86c7c7cd64f1ad25ec851c71"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114809.217303,
+        "timeout": 1200.0,
+        "messages_sha256": "d30aea609823fa6ef6022ce5f83823b69d472b66eb317dbd145bdaa8d1e5392e"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114809.560545,
+        "timeout": 1200.0,
+        "messages_sha256": "edf55f8c5fe1975a8aff21eb18f4f5d231edd68cf1b68fea5703a708492eba19"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114810.4804685,
+        "timeout": 1200.0,
+        "messages_sha256": "30fbe7742ca3b0b9ddb9cc558b731c170ee09e4b71a552e1598c7acd98f7e5d6"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114810.7648404,
+        "timeout": 1200.0,
+        "messages_sha256": "2b092e9baf5dff000fdeccb44af8ac9182251e3da39676b9d26faf8c9588d601"
+      }
+    ]
+  },
+  {
+    "case": "mutable-default",
+    "repetition": 1,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114811.6468747,
+        "timeout": 1200.0,
+        "messages_sha256": "d42f2b627b54b92e6a659607e231dabed220545957acc984ec48f346eb84ede0"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114812.255223,
+        "timeout": 1200.0,
+        "messages_sha256": "c27e2ec036100ba2d27b2334c358cf55a91d9380f51a1be703b41272b8970312"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114812.6930645,
+        "timeout": 1200.0,
+        "messages_sha256": "1bcb38063e1805c29a1b573754e402937f8aa0aa73720a0b4054c785b76068da"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114813.4745164,
+        "timeout": 1200.0,
+        "messages_sha256": "f5f704cf2879b1817d530043cdaaf9e0849b91df6ec6b435ce890ae5dcdc2dd6"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114813.7460747,
+        "timeout": 1200.0,
+        "messages_sha256": "04e3543b062c4c3bfc4f3776624805995b276d64a5ec972b18d9845c7d8194df"
+      }
+    ]
+  },
+  {
+    "case": "weather-continuation",
+    "repetition": 1,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114814.6438124,
+        "timeout": 1200.0,
+        "messages_sha256": "6d0963d990155784e82dcc769c90f665c7be218546e56b98864944eb54a95372"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114815.273208,
+        "timeout": 1200.0,
+        "messages_sha256": "5057636ed8ad600943bc8d5e86e129273faa94fec270306cbfc46da9b27b35a0"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114815.4630487,
+        "timeout": 1200.0,
+        "messages_sha256": "62eb291e8e7e37651abbd99baceaf65f49a33af939730eaa4cfbae14afc0381b"
+      }
+    ]
+  },
+  {
+    "case": "weather-continuation",
+    "repetition": 1,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114815.8495588,
+        "timeout": 1200.0,
+        "messages_sha256": "6d0963d990155784e82dcc769c90f665c7be218546e56b98864944eb54a95372"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114816.459076,
+        "timeout": 1200.0,
+        "messages_sha256": "b11f30f9387271d6ae84100153a7eebda9c93dc177f3d034b70a4a1d58afb21e"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114816.7613947,
+        "timeout": 1200.0,
+        "messages_sha256": "ba8bef5f157595ab56016d306fea69d431d7dcb1b91811d418424b9ca870b429"
+      }
+    ]
+  },
+  {
+    "case": "ticket-recovery",
+    "repetition": 1,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114817.1813805,
+        "timeout": 1200.0,
+        "messages_sha256": "2770ce0ebe5f1c7dabfa3ccf39bfeb1fcc3aa4d6f7c496c77dd835930172defb"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114817.6488807,
+        "timeout": 1200.0,
+        "messages_sha256": "bc6169ab2bd8725a0f0e4ccbbf237c5e363ea17e8d1ea8bddb270e1b3adae04f"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114818.0191932,
+        "timeout": 1200.0,
+        "messages_sha256": "5a41d7f1fe5762932f711f5e2be9426a6e82e9f5ec35ec089a07ab8d2b2bdcd8"
+      }
+    ]
+  },
+  {
+    "case": "ticket-recovery",
+    "repetition": 1,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114818.4373388,
+        "timeout": 1200.0,
+        "messages_sha256": "2770ce0ebe5f1c7dabfa3ccf39bfeb1fcc3aa4d6f7c496c77dd835930172defb"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114818.8890665,
+        "timeout": 1200.0,
+        "messages_sha256": "70daf88256ffe490f2020923b89773505975ff0e58c2afb7fd59be1ddf029be8"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114819.1940353,
+        "timeout": 1200.0,
+        "messages_sha256": "203882f8f2ad244848a7f0e23241d2efe225717c59dd42fbea9e1d159c855b24"
+      }
+    ]
+  },
+  {
+    "case": "risc-reasoning",
+    "repetition": 1,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114819.6031175,
+        "timeout": 1200.0,
+        "messages_sha256": "7d52a330f1534ba15c0231bbfb9e594f5bf4b10c14314a35e7efc790f55d29f0"
+      }
+    ]
+  },
+  {
+    "case": "risc-reasoning",
+    "repetition": 1,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114851.4572697,
+        "timeout": 1200.0,
+        "messages_sha256": "7d52a330f1534ba15c0231bbfb9e594f5bf4b10c14314a35e7efc790f55d29f0"
+      }
+    ]
+  },
+  {
+    "case": "context-needle",
+    "repetition": 1,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114870.3442502,
+        "timeout": 1200.0,
+        "messages_sha256": "5ff01d7210d6d852502c37c4857598b3f15b8fae4e1aa8a111407d7a0d94fee5"
+      }
+    ]
+  },
+  {
+    "case": "context-needle",
+    "repetition": 1,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114877.9959285,
+        "timeout": 1200.0,
+        "messages_sha256": "5ff01d7210d6d852502c37c4857598b3f15b8fae4e1aa8a111407d7a0d94fee5"
+      }
+    ]
+  },
+  {
+    "case": "timeout-guard",
+    "repetition": 2,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114878.7900567,
+        "timeout": 1200.0,
+        "messages_sha256": "fa2a28a10e2da206ae4ef355d9c11ac55a7913fa740e326a426beb5d4f59f3a1"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114879.31191,
+        "timeout": 1200.0,
+        "messages_sha256": "fda597270d1fb74c88a718b52d6ddeeb06688890762e8139949332c39de21a00"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114879.6885383,
+        "timeout": 1200.0,
+        "messages_sha256": "12671e6fa92b47310b6b2b722c12aa2f707af9ba00c086e56303afcfc95423e6"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114881.4863656,
+        "timeout": 1200.0,
+        "messages_sha256": "e341f59c290bca9ba89e8eaef79002a60812e651c3b4e175b515dffaf96aa64b"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114882.5721142,
+        "timeout": 1200.0,
+        "messages_sha256": "53d558cfea1d79941fbd3080a4f7900e122e12785f35931d615a7cdf7affe0a7"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114885.6825347,
+        "timeout": 1200.0,
+        "messages_sha256": "f4a91f8a42f8a03411ff731510db4b48c41f6d47c698e1eec02e226033d8672d"
+      }
+    ]
+  },
+  {
+    "case": "timeout-guard",
+    "repetition": 2,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114886.820817,
+        "timeout": 1200.0,
+        "messages_sha256": "fa2a28a10e2da206ae4ef355d9c11ac55a7913fa740e326a426beb5d4f59f3a1"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114887.3331983,
+        "timeout": 1200.0,
+        "messages_sha256": "2d30cbee7abd8edc8bdf33a0c64d23be5f9820244aad297173432a2dd9cfb33b"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114887.7090716,
+        "timeout": 1200.0,
+        "messages_sha256": "eac6f48ef5349605dfda641ce1c9a5beb5ab9f89095ff919806d50ca94a0949d"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114889.6995091,
+        "timeout": 1200.0,
+        "messages_sha256": "3d13d7e569d4105f85ebc0191d7979603e6ecab501bd0ac4c5ce9b21e6e5f325"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114895.7560384,
+        "timeout": 1200.0,
+        "messages_sha256": "502d4f9ef0b6b1cc18a24d69935cf686227344de058f778e15f70c29f97568ea"
+      }
+    ]
+  },
+  {
+    "case": "mutable-default",
+    "repetition": 2,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114898.086401,
+        "timeout": 1200.0,
+        "messages_sha256": "d42f2b627b54b92e6a659607e231dabed220545957acc984ec48f346eb84ede0"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114898.6467094,
+        "timeout": 1200.0,
+        "messages_sha256": "2ac6f8b7e06a7dbb7501e0a8d4384b1a3da87dc8b68715b6f76bf0b3dc7d7090"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114899.0185616,
+        "timeout": 1200.0,
+        "messages_sha256": "cb8c7887d190f44b3ab0865e8fef682933f39ca7e0ccc735a39738f35b7711e9"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114899.42578,
+        "timeout": 1200.0,
+        "messages_sha256": "7490f764beb597230cf56847248b969930e7872a82ecfbcb916450579f02cb7d"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114900.064145,
+        "timeout": 1200.0,
+        "messages_sha256": "d53b899b0c844c19210f2686afd46936afa7d5a2cca1f3b9e493bea50bab2508"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114900.3694687,
+        "timeout": 1200.0,
+        "messages_sha256": "90b6309dacfaaaef41af7b2cdbede239e991b697abfb7f4fb8b81b1b212e293f"
+      }
+    ]
+  },
+  {
+    "case": "mutable-default",
+    "repetition": 2,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114901.0754256,
+        "timeout": 1200.0,
+        "messages_sha256": "d42f2b627b54b92e6a659607e231dabed220545957acc984ec48f346eb84ede0"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114901.6619203,
+        "timeout": 1200.0,
+        "messages_sha256": "5b920dbd18aa6428243e52bdb051af336f970c4538467907fef2e11c7618e0be"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114902.05021,
+        "timeout": 1200.0,
+        "messages_sha256": "d87ef0d637a7be9b5ec45fa841a8208ba4f9172538f8f7963b09d3b67c5f0a69"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114902.8008735,
+        "timeout": 1200.0,
+        "messages_sha256": "733020bc83e9afdac9a3f821cffc89b588b7276e663aab9e46a6b2dd6cbc0f68"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114903.4158432,
+        "timeout": 1200.0,
+        "messages_sha256": "601aa2b2c4e6fe8118055be24c0ed4fa15e339fff527e1734ba8666061ac1a98"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114903.680771,
+        "timeout": 1200.0,
+        "messages_sha256": "5837c88bdc1352a59b1fd428046e1f5576aedfeb0cdd67a20cec3c13f94141cf"
+      }
+    ]
+  },
+  {
+    "case": "weather-continuation",
+    "repetition": 2,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114904.6167197,
+        "timeout": 1200.0,
+        "messages_sha256": "6d0963d990155784e82dcc769c90f665c7be218546e56b98864944eb54a95372"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114905.1284962,
+        "timeout": 1200.0,
+        "messages_sha256": "5b596f90ad877e0cc9bf7b74c7cd492d12f7d803be41d8fedd20d58517fe38d1"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114905.39195,
+        "timeout": 1200.0,
+        "messages_sha256": "479c4cf7cbcb5598c668d1b3220a8c452be3783be0b779e383ccc5c52b20bdbc"
+      }
+    ]
+  },
+  {
+    "case": "weather-continuation",
+    "repetition": 2,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114905.785003,
+        "timeout": 1200.0,
+        "messages_sha256": "6d0963d990155784e82dcc769c90f665c7be218546e56b98864944eb54a95372"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114906.258718,
+        "timeout": 1200.0,
+        "messages_sha256": "d2ccd6006efc87e620cf8e25a5e4bff65a203cca4e1587cfe4a7c34778636b8a"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114906.5421677,
+        "timeout": 1200.0,
+        "messages_sha256": "8326eb0fbbb0c5ff6237adc37524c40a5889dd1f2a5082b2ad161399633222e9"
+      }
+    ]
+  },
+  {
+    "case": "ticket-recovery",
+    "repetition": 2,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114906.93524,
+        "timeout": 1200.0,
+        "messages_sha256": "2770ce0ebe5f1c7dabfa3ccf39bfeb1fcc3aa4d6f7c496c77dd835930172defb"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114907.5414824,
+        "timeout": 1200.0,
+        "messages_sha256": "e5f19694920690ad61ce0f0ddf4c4ae13a0211d4b841673ced28e060f5247f7c"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114907.8269382,
+        "timeout": 1200.0,
+        "messages_sha256": "9db5e8a16299e1a04426e32ae748ffc25f9a61cef945121570ddf424d5835b92"
+      }
+    ]
+  },
+  {
+    "case": "ticket-recovery",
+    "repetition": 2,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114908.221854,
+        "timeout": 1200.0,
+        "messages_sha256": "2770ce0ebe5f1c7dabfa3ccf39bfeb1fcc3aa4d6f7c496c77dd835930172defb"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114908.6366525,
+        "timeout": 1200.0,
+        "messages_sha256": "a2a4e9050c2a8a49fdc24f688515f5be35a7fba90389e9f37f7fdfaa022888ec"
+      },
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114909.02128,
+        "timeout": 1200.0,
+        "messages_sha256": "13c015a7062e8eb21ef3cdf72620cbe3780f3fffcf859469b3366d331c509940"
+      }
+    ]
+  },
+  {
+    "case": "risc-reasoning",
+    "repetition": 2,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789114909.425627,
+        "timeout": 1200.0,
+        "messages_sha256": "7d52a330f1534ba15c0231bbfb9e594f5bf4b10c14314a35e7efc790f55d29f0"
+      }
+    ]
+  },
+  {
+    "case": "risc-reasoning",
+    "repetition": 2,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789115020.7225888,
+        "timeout": 1200.0,
+        "messages_sha256": "7d52a330f1534ba15c0231bbfb9e594f5bf4b10c14314a35e7efc790f55d29f0"
+      }
+    ]
+  },
+  {
+    "case": "context-needle",
+    "repetition": 2,
+    "arm": "B",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 16384,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789115053.469719,
+        "timeout": 1200.0,
+        "messages_sha256": "5ff01d7210d6d852502c37c4857598b3f15b8fae4e1aa8a111407d7a0d94fee5"
+      }
+    ]
+  },
+  {
+    "case": "context-needle",
+    "repetition": 2,
+    "arm": "A",
+    "requests": [
+      {
+        "model": "glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp",
+        "max_tokens": 4096,
+        "max_completion_tokens": null,
+        "max_output_tokens": null,
+        "reasoning_effort": "max",
+        "chat_template_kwargs": null,
+        "temperature": null,
+        "stream": true,
+        "time": 1789115061.3385441,
+        "timeout": 1200.0,
+        "messages_sha256": "5ff01d7210d6d852502c37c4857598b3f15b8fae4e1aa8a111407d7a0d94fee5"
+      }
+    ]
+  }
+]

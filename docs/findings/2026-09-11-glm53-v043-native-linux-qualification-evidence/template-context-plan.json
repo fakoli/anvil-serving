@@ -1,0 +1,20 @@
+{
+  "buckets": [
+    4096,
+    32768,
+    131072,
+    262144,
+    400000,
+    500000
+  ],
+  "positions": [
+    0.1,
+    0.9
+  ],
+  "repetitions": 1,
+  "max_tokens": 8192,
+  "thinking": false,
+  "unique_prefix": true,
+  "stop_on_failed_gate": true,
+  "context_limit": 524288
+}

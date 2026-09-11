@@ -1,0 +1,17 @@
+{
+  "docs_tests": "19 passed",
+  "router_regression_tests": "97 passed",
+  "full_suite": "8179 passed, 35 skipped",
+  "ruff": "passed",
+  "markdown_links": "647 tracked Markdown files passed",
+  "mkdocs_strict": "passed",
+  "cli_audit": "zero violations; inventory/generated/nav okay",
+  "skill_validation": "passed",
+  "manifest_repeat": "byte-identical",
+  "arithmetic_and_request_controls": "passed",
+  "environment_repairs": [
+    "Worktree directory made owner-only for trusted-file tests.",
+    "Existing Python environment added to test subprocess PATH.",
+    "Documentation/lint dependencies installed in isolated check environment."
+  ]
+}

@@ -2191,6 +2191,8 @@ def test_install_router_config_validates_writes_atomically_and_restarts(tmp_path
         calls.append((argv, kwargs.get("input")))
         if argv[:4] == ["docker", "inspect", "-f", "{{.Config.Image}}"]:
             return proc(0, "anvil-serving:test\n")
+        if argv[:3] == ["docker", "inspect", "-f"] and '"mounts"' in argv[3]:
+            return proc(0, '{"cmd":["--config","/cfg/config.toml"],"mounts":[{"Type":"volume","Name":"anvil-router-cfg","Destination":"/cfg"}]}')
         return proc()
 
     assert serves._install_router_config(str(config), _run=run) == 0
@@ -2219,6 +2221,8 @@ def test_install_router_config_writes_canonical_lf_bytes(tmp_path):
         calls.append((argv, kwargs))
         if argv[:4] == ["docker", "inspect", "-f", "{{.Config.Image}}"]:
             return proc(0, "anvil-serving:test\n")
+        if argv[:3] == ["docker", "inspect", "-f"] and '"mounts"' in argv[3]:
+            return proc(0, '{"cmd":["--config","/cfg/config.toml"],"mounts":[{"Type":"volume","Name":"anvil-router-cfg","Destination":"/cfg"}]}')
         return proc()
 
     assert serves._install_router_config(str(config), _run=run) == 0

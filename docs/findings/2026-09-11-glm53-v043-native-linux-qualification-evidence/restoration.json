@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-10-glm53-v043-native-linux",
+  "status": "promoted",
+  "verified": true,
+  "promoted": true,
+  "promotion_authorized": true,
+  "authorization": "User: if success then promote and do not go back to fallback",
+  "rollback_proof": {
+    "stock_attempt_followed_by_exact_rc14_restore": true,
+    "direct": "rollback-direct.json",
+    "routed_and_real_pi": "Separate completion-budget campaign restoration and final Pi evidence before this resumed qualification"
+  },
+  "ending_state": {
+    "runtime": "v0.4.3",
+    "context": 524288,
+    "concurrency": 4,
+    "output_limit": 4096,
+    "readmitted": true,
+    "expected_model": "glm-5.3-flash",
+    "observed_model": "glm-5.3-flash",
+    "automatic_restarts": 0,
+    "oom_killed": false,
+    "exclusive_owner": "qualified v0.4.3 primary",
+    "ipc": "host",
+    "host_ipc_accepted": true
+  },
+  "differences": [
+    "User-authorized runtime/capacity promotion replaces final rollback",
+    "Normal output cap remains4096"
+  ],
+  "startup_selected": "v0.4.3",
+  "reboot_tested": false,
+  "fresh_rebuild_tested": false
+}
