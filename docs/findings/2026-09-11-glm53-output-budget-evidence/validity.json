@@ -1,0 +1,170 @@
+[
+  {
+    "case": "timeout-guard",
+    "repetition": 1,
+    "arm": "A",
+    "status": "historical-invalid",
+    "reason": "Starting code fixtures were mutated through source prompt paths; exclude all coding runs."
+  },
+  {
+    "case": "timeout-guard",
+    "repetition": 1,
+    "arm": "B",
+    "status": "historical-invalid",
+    "reason": "Starting code fixtures were mutated through source prompt paths; exclude all coding runs."
+  },
+  {
+    "case": "mutable-default",
+    "repetition": 1,
+    "arm": "A",
+    "status": "historical-invalid",
+    "reason": "Starting code fixtures were mutated through source prompt paths; exclude all coding runs."
+  },
+  {
+    "case": "mutable-default",
+    "repetition": 1,
+    "arm": "B",
+    "status": "historical-invalid",
+    "reason": "Starting code fixtures were mutated through source prompt paths; exclude all coding runs."
+  },
+  {
+    "case": "weather-continuation",
+    "repetition": 1,
+    "arm": "A",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "weather-continuation",
+    "repetition": 1,
+    "arm": "B",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "ticket-recovery",
+    "repetition": 1,
+    "arm": "A",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "ticket-recovery",
+    "repetition": 1,
+    "arm": "B",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "risc-reasoning",
+    "repetition": 1,
+    "arm": "A",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "risc-reasoning",
+    "repetition": 1,
+    "arm": "B",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "context-needle",
+    "repetition": 1,
+    "arm": "A",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "context-needle",
+    "repetition": 1,
+    "arm": "B",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "timeout-guard",
+    "repetition": 2,
+    "arm": "B",
+    "status": "historical-invalid",
+    "reason": "Starting code fixtures were mutated through source prompt paths; exclude all coding runs."
+  },
+  {
+    "case": "timeout-guard",
+    "repetition": 2,
+    "arm": "A",
+    "status": "historical-invalid",
+    "reason": "Starting code fixtures were mutated through source prompt paths; exclude all coding runs."
+  },
+  {
+    "case": "mutable-default",
+    "repetition": 2,
+    "arm": "B",
+    "status": "historical-invalid",
+    "reason": "Starting code fixtures were mutated through source prompt paths; exclude all coding runs."
+  },
+  {
+    "case": "mutable-default",
+    "repetition": 2,
+    "arm": "A",
+    "status": "historical-invalid",
+    "reason": "Starting code fixtures were mutated through source prompt paths; exclude all coding runs."
+  },
+  {
+    "case": "weather-continuation",
+    "repetition": 2,
+    "arm": "B",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "weather-continuation",
+    "repetition": 2,
+    "arm": "A",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "ticket-recovery",
+    "repetition": 2,
+    "arm": "B",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "ticket-recovery",
+    "repetition": 2,
+    "arm": "A",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "risc-reasoning",
+    "repetition": 2,
+    "arm": "B",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "risc-reasoning",
+    "repetition": 2,
+    "arm": "A",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "context-needle",
+    "repetition": 2,
+    "arm": "B",
+    "status": "valid",
+    "reason": ""
+  },
+  {
+    "case": "context-needle",
+    "repetition": 2,
+    "arm": "A",
+    "status": "valid",
+    "reason": ""
+  }
+]

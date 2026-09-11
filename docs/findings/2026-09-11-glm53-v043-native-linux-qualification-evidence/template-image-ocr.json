@@ -1,0 +1,123 @@
+{
+  "base_url": "http://127.0.0.1:39119/v1",
+  "budget": {
+    "max_completion_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [
+    "ANVIL READY"
+  ],
+  "model": "glm-5.3-flash",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "# Image Description\n\nThe image shows a **status display screen** with a dark navy blue background containing three lines of text:\n\n## Content Breakdown\n\n| Line | Text | Color |\n|------|------|-------|\n| 1 | **ANVIL READY** | Bright green |\n| 2 | **CODE 42917** | White |\n| 3 | **TEMPERATURE 42 C** | Light blue |\n\n## Key Values & Status\n\n- **Status:** ANVIL READY \u2014 indicates the system/anvil is operational and ready for use\n- **Code:** 42917 \u2014 likely an identification or reference code\n- **Temperature:** 42\u00b0C \u2014 the current operating temperature reading\n\n## Interpretation\n\nThis appears to be a **machine or industrial equipment status panel**, possibly from a forging press, manufacturing system, or monitoring interface. The green \"ANVIL READY\" text suggests a positive/operational state, while the temperature reading of 42\u00b0C is displayed in blue, which is a relatively moderate temperature for industrial equipment. The code \"42917\" could serve as a batch number, session ID, or equipment identifier.",
+      "content_chars": 1007,
+      "content_excerpt": "# Image Description\n\nThe image shows a **status display screen** with a dark navy blue background containing three lines of text:\n\n## Content Breakdown\n\n| Line | Text | Color |\n|------|------|-------|",
+      "expected": [
+        "ANVIL READY"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 1.814,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 237,
+        "prompt_tokens": 334,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "image_tokens": 299
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 571
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "content_chars": 39,
+      "content_excerpt": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "expected": [
+        "CODE 42917",
+        "TEMPERATURE 42 C"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.149,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 18,
+        "prompt_tokens": 335,
+        "prompt_tokens_details": {
+          "cached_tokens": 256,
+          "image_tokens": 299
+        },
+        "reasoning_tokens": 0,
+        "total_tokens": 353
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "CODE 42917",
+    "TEMPERATURE 42 C"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "1.8s all expected text present finish='stop' visible=1007 reasoning_chars=0 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "0.1s all expected text present finish='stop' visible=39 reasoning_chars=0 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

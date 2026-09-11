@@ -6,38 +6,26 @@
 
 !!! info "Decision snapshot"
 
-    - **Product role:** selected published text, tools, image, and OCR
-      reference profile; this dossier records the evidence decision and does
-      not claim current live route or serve state.
-    - **Selected or best-qualified configuration:** exact ormandj
-      W4A16/NVFP4 target on digest-pinned SGLang rc14, TP=2, 393,216
-      configured tokens, C1, adaptive EAGLE, and image/OCR support.
-    - **Measured hardware:** two NVIDIA RTX PRO 6000 Blackwell Max-Q cards in
-      exclusive TP=2 over PCIe without NVLink; retained Windows 11/Docker
-      Desktop/WSL2 qualification and a separate native Linux comparison.
-    - **Evidence:** complete thinking-off/on, tool, Responses, capacity,
-      coding 15/15, media 12/12, endurance 60/60, managed/routed promotion,
-      real Pi/OpenClaw/Hermes gates, and a fixed SWE-bench
-      Verified smoke resolved 1/1; 304,491 actual prompt tokens and 112.07 tok/s
-      at 4K.
-    - **Decision:** record the 393K/C1 SGLang profile as `current` in the
-      published comparison after the human-approved model-only reserve waiver;
-      retain the corrected 524K EXL3/DFlash2 K5 profile as immediate rollback.
-    - **Important limitation:** video is unsupported; admission is C1; the
-      3,072 MiB standing reserve was waived only for this model-only GPU pair.
-      DFlash2 in the rollback is noncommercial without separate permission.
-    - **Conservative fallback:** the same SGLang profile at 245,760/C1 remains
-      independently verified with 3,487 MiB free per card after workload.
-    - **Latest bounded comparison:** native Linux historical-style C1/n3
-      decode 149.02 versus retained WSL 112.07 tok/s at 4K (+33.0%);
-      380K-target decode +20.5%. Shared prefixes and variable short outputs;
-      strict output/canary and routed failures prevent new qualification.
-      Extended context passed 128/150 through 376,484 actual tokens, with
-      9 empty length-terminated and 13 incorrect visible answers.
-    - **Review dates:** evidence cutoff and dossier review 2026-09-08;
-      historical promotion 2026-09-02 and concurrency review 2026-09-03.
+    - **Product role:** selected native text, tools, image and OCR reference.
+    - **Selected or best-qualified configuration:** v0.4.3 (`ec4243f9`), unchanged
+      ormandj `c3cbb989`, TP2/524,288 shared tokens/C4, FP8 KV, adaptive EAGLE,
+      HiCache off, verified thinking template, output cap 4K.
+    - **Measured hardware:** two RTX PRO 6000 Blackwell Max-Q cards, native Linux.
+    - **Evidence:** [qualification](../../findings/2026-09-11-glm53-v043-native-linux-qualification.md)
+      passed Pi 14/14, retrieval 12/12 through 497,724 actual tokens, C4 probes,
+      and fresh Pi/Hermes/OpenClaw terminal turns. No matched speedup claim.
+    - **Decision:** user-authorized native primary promotion; exact native rc14
+      393K/C1 is immediate rollback. EXL3 profiles below are historical.
+    - **Important limitation:** no video; sampled free memory reached 567 MiB per
+      card under the existing model-only reserve approval. Bounded evidence,
+      not a live status API or long-duration stability guarantee.
+    - **Review dates:** locally measured and reviewed 2026-09-11 UTC.
 
 ### Review narrative
+
+#### 2026-09-11 — completion-budget diagnosis
+
+**Status:** bounded functional, no-promotion. **Measured:** real Pi on native Linux, same rc14/393K/C1 backend; 4096 versus 16384 completed 6/8 versus 7/8 valid tasks. **Limits:** eight coding runs invalid; larger budget did not rescue the reasoning fixture in both repetitions. Keep the existing output default. **Evidence:** [dated finding](../../findings/2026-09-11-glm53-output-budget.md). Dossier review for this bounded result: 2026-09-11; earlier qualification dates remain separate.
 
 #### 2026-08-29 — initial Cardillo/Purtell qualification
 
@@ -114,6 +102,14 @@ No new promotion occurred. See the
 [native Linux comparison](../../findings/2026-09-08-glm53-linux-wsl-comparison.md).
 
 ## Immutable identity
+
+The selected native v0.4.3 profile uses ormandj revision
+`c3cbb9891b67c741bcbf6b176dd7af9265b069db`, image
+`sha256:ec4243f940a179a27fea21895077efd47cd050501f99a1d2a5fecf7df2e7be71`,
+served identity `glm-5.3-flash` and derived template SHA256
+`3406cc91800b56c06439e65aaea1929e6bc803cdb62f7f995f25ab082efd3408`.
+[Full configuration](../../findings/2026-09-11-glm53-v043-native-linux-qualification-evidence/identity.json).
+The remaining identities in this section are retained historical profiles.
 
 - Target: `wrldsuksgo2mars/GLM-5.3-Flash-EXL3-K3-v1`
 - Target revision: `319d66a8b53092b491f698440ecea781e4ddd4e4`

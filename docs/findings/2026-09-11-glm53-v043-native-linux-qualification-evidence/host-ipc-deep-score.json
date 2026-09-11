@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.context-observation/v1",
+  "case_id": "native-needle-500000-0.900-r0",
+  "case_type": "native-needle",
+  "requested_tokens": 500000,
+  "prompt_tokens": 497729,
+  "token_measurement": "usage",
+  "position": 0.9,
+  "target_count": 1,
+  "distractor_count": 0,
+  "passed": true,
+  "completed": true,
+  "visible_answer": "K309646336707",
+  "latency_ms": 83467.82772400184,
+  "throughput_tps": null,
+  "finish_reason": "stop",
+  "failure": null,
+  "engine_telemetry": null
+}
