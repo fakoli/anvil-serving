@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-import pwd
 import sys
 
 import pytest
@@ -163,7 +162,7 @@ def _pi_web_config(tmp_path, monkeypatch):
             "port": 30141,
             "hostname": "127.0.0.1",
             "allowed_hosts": ["pi.example.test"],
-            "service_user": pwd.getpwuid(os.getuid()).pw_name,
+            "service_user": os.environ.get("ANVIL_PI_WEB_TEST_USER", "nobody"),
             "install_root": str(tmp_path / "pi-web-home"),
             "node_path": str(node),
         }),
@@ -181,6 +180,8 @@ def test_pi_web_install_requires_the_private_configuration(tmp_path, monkeypatch
 
 
 def test_pi_web_install_dry_run_prints_the_exact_root_plan(tmp_path, monkeypatch, capsys):
+    if sys.platform == "win32":
+        pytest.skip("the managed install runs Linux host commands")
     _pi_web_config(tmp_path, monkeypatch)
     assert workbench.main(["pi-web", "install", "--dry-run"]) == 0
     rendered = json.loads(capsys.readouterr().out)
