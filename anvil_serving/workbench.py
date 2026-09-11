@@ -102,6 +102,29 @@ def _parser() -> argparse.ArgumentParser:
                 help=f"Maximum log lines per service (1 through {_MAX_LOG_TAIL}).",
             )
             child.add_argument("--follow", action="store_true", help="Follow logs in the foreground.")
+    piweb = subparsers.add_parser(
+        "pi-web",
+        help="Manage the pinned Pi Web session UI service on loopback.",
+    )
+    piweb_sub = piweb.add_subparsers(dest="pi_web_action", required=True)
+    for name, description in (
+        ("install", "Install the pinned Pi Web release and its reviewed systemd unit."),
+        ("up", "Start the managed Pi Web service."),
+        ("down", "Stop the managed Pi Web service."),
+        ("status", "Show the managed Pi Web service state and loopback readiness."),
+        ("logs", "Read bounded managed Pi Web service journal logs."),
+    ):
+        child = piweb_sub.add_parser(name, help=description)
+        child.add_argument(
+            "--config",
+            type=Path,
+            help="Private Pi Web configuration; defaults to the operator-home workbench/pi-web.json.",
+        )
+        if name in {"install", "up", "down"}:
+            child.add_argument("--confirm", action="store_true", help="Confirm the guarded mutation.")
+            child.add_argument("--dry-run", action="store_true", help="Preview the exact commands without changing state.")
+        if name == "logs":
+            child.add_argument("--tail", type=_bounded_tail, default=200, help=f"Maximum journal lines (1 through {_MAX_LOG_TAIL}).")
     return parser
 
 
@@ -153,8 +176,56 @@ def compose_command(args: argparse.Namespace) -> list[str]:
     return command
 
 
+def _pi_web_main(args: argparse.Namespace) -> int:
+    """Dispatch one managed Pi Web action; library operations return, CLI prints."""
+    from .workbench_app import pi_web
+
+    action = args.pi_web_action
+    try:
+        config = pi_web.load_config(getattr(args, "config", None), required=action == "install")
+        if action == "install":
+            confirmed = confirmation_authorized() and not args.dry_run
+            if args.confirm and not args.dry_run and not confirmed:
+                print(
+                    json.dumps({"ok": False, "error": "confirmation required; invoke through anvil-serving workbench with --confirm"}),
+                    file=sys.stderr,
+                )
+                return 3
+            result = pi_web.PiWebInstaller(config).install(confirm=confirmed)
+            print(json.dumps({"ok": True, **result}))
+            return 0
+        if action in {"up", "down"}:
+            if args.dry_run:
+                verb = "start" if action == "up" else "stop"
+                print(json.dumps({"ok": True, "dry_run": True, "command": ["systemctl", verb, pi_web.UNIT_NAME]}))
+                return 0
+            if not confirmation_authorized():
+                print(
+                    json.dumps({"ok": False, "error": "confirmation required; invoke through anvil-serving workbench with --confirm"}),
+                    file=sys.stderr,
+                )
+                return 3
+            if action == "up":
+                pi_web.start_service()
+            else:
+                pi_web.stop_service()
+            print(json.dumps({"ok": True, "action": action, "unit": pi_web.UNIT_NAME}))
+            return 0
+        if action == "status":
+            print(json.dumps({"ok": True, **pi_web.status(config)}))
+            return 0
+        output = pi_web.logs(config, tail=args.tail)
+        print(output, end="" if output.endswith("\n") else "\n")
+        return 0
+    except (ValueError, OSError, KeyError) as exc:
+        print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
+        return 2
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.action == "pi-web":
+        return _pi_web_main(args)
     if args.action == "pi-storage":
         from .workbench_app.config import validate_config
         from .workbench_app.pi_storage import PiStorageError, PiStorageManager
