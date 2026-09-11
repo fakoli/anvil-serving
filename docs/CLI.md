@@ -393,6 +393,11 @@ required operands, choices, and defaults.
 | `workbench build` | Build the Workbench hub image from the local companion checkout. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--source`<br>`--image`<br>`--runner` |
 | `workbench pi-egress` | Approve or remove the isolated Pi provider gateway policy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--provider`<br>`--remove` |
 | `workbench pi-storage` | Provision and verify the bounded Pi runner storage pool. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
+| `workbench pi-web-install` | Install the pinned Pi Web session UI service on loopback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
+| `workbench pi-web-up` | Start the managed Pi Web session UI service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `workbench pi-web-down` | Stop the managed Pi Web session UI service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `workbench pi-web-status` | Show the managed Pi Web service state and loopback readiness. | `read` / `bounded` | `--config` |
+| `workbench pi-web-logs` | Read bounded managed Pi Web service journal logs. | `read` / `bounded` | `--config`<br>`--tail` |
 | `workbench up` | Start the private Workbench hub, Postgres, and Neo4j projection. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `workbench down` | Stop the Workbench hub stack while preserving its named data volumes. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `workbench status` | Show the bounded Docker Compose service status for Workbench. | `read` / `bounded` | - |
