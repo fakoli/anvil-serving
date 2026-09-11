@@ -165,7 +165,7 @@ def test_load_config_uses_the_conventional_operator_home(monkeypatch: pytest.Mon
 
 def test_load_config_missing_required_file_is_actionable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
-    with pytest.raises(PiWebError, match="workbench/pi-web.json"):
+    with pytest.raises(PiWebError, match=r"workbench.pi-web\\.json"):
         pi_web.load_config(required=True)
     assert pi_web.load_config(required=False).version == pi_web.DEFAULT_VERSION
 
