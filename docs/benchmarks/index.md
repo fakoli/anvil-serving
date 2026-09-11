@@ -1,5 +1,7 @@
 # Benchmarks
 
+**2026-09-11 update:** [GLM v0.4.3](../findings/2026-09-11-glm53-v043-native-linux-qualification.md) is the latest qualified native 524K/C4 reference, with Pi 14/14 and 4K output retained. Recovery to native rc14 was verified during the campaign; current assignments are private. Earlier deployment descriptions below are historical.
+
 Measured local-model results on real Blackwell hardware: exact model revision,
 engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a

@@ -1,0 +1,90 @@
+{
+  "passed": true,
+  "observations": [
+    {
+      "label": "turn-0",
+      "tokens": 6988,
+      "finish": "stop"
+    },
+    {
+      "label": "turn-1",
+      "tokens": 13960,
+      "finish": "stop"
+    },
+    {
+      "label": "turn-2",
+      "tokens": 20932,
+      "finish": "stop"
+    },
+    {
+      "label": "turn-3",
+      "tokens": 27904,
+      "finish": "stop"
+    },
+    {
+      "label": "turn-4",
+      "tokens": 34876,
+      "finish": "stop"
+    },
+    {
+      "label": "turn-5",
+      "tokens": 41848,
+      "finish": "stop"
+    },
+    {
+      "label": "turn-6",
+      "tokens": 48820,
+      "finish": "stop"
+    },
+    {
+      "label": "turn-7",
+      "tokens": 55792,
+      "finish": "stop"
+    },
+    {
+      "label": "turn-8",
+      "tokens": 62764,
+      "finish": "stop"
+    },
+    {
+      "label": "turn-9",
+      "tokens": 69736,
+      "finish": "stop"
+    },
+    {
+      "label": "tool",
+      "tokens": 69895,
+      "finish": "tool_calls"
+    },
+    {
+      "label": "continuation",
+      "tokens": 69806,
+      "finish": "stop"
+    },
+    {
+      "label": "post-stress-0",
+      "tokens": 27,
+      "finish": "stop"
+    },
+    {
+      "label": "post-stress-1",
+      "tokens": 27,
+      "finish": "stop"
+    },
+    {
+      "label": "post-stress-2",
+      "tokens": 27,
+      "finish": "stop"
+    },
+    {
+      "label": "post-stress-3",
+      "tokens": 27,
+      "finish": "stop"
+    },
+    {
+      "label": "post-stress-4",
+      "tokens": 27,
+      "finish": "stop"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "sha256": "34d5ee66b12fa6446cdae131c352b8f68cd85369e0e6fda115583805fada3891",
+  "enable_thinking_occurrences": 0,
+  "generation_suffix": "{%- if add_generation_prompt -%}\n    <|assistant|>{{- '<think>' -}}\n{%- endif -%}\n",
+  "stock_identity": "c3cbb9891b67c741bcbf6b176dd7af9265b069db"
+}

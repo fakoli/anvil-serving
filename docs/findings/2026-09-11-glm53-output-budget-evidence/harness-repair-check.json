@@ -1,0 +1,8 @@
+{
+  "source_fixture_hashes_verified": true,
+  "original_code_tests_fail": true,
+  "runner_syntax_valid": true,
+  "fix": "stdin prompts and copy declared files with hash checks",
+  "live_retest": false,
+  "reason": "24 task-run limit consumed; invalid evidence retained and excluded"
+}
