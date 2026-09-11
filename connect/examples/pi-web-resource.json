@@ -1,0 +1,20 @@
+{
+  "schema": "anvil-connect.connector/v1",
+  "id": "origin-a",
+  "resources": [
+    {
+      "rule": {
+        "id": "pi-web",
+        "host": "pi.example.test",
+        "path_prefix": "/",
+        "methods": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+        "access": "browser",
+        "native_auth": "passthrough",
+        "limits": {"request_bytes": 26214400, "concurrent": 32, "buffer_bytes": 65536, "idle_seconds": 30, "duration_seconds": 3600}
+      },
+      "listen": "127.0.0.1:9083",
+      "origin_url": "http://127.0.0.1:30141",
+      "token_env": ""
+    }
+  ]
+}
