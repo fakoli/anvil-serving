@@ -42,6 +42,17 @@ prefill-bound and effectively unchanged (effective prefill ±2.3%). The
 v0.4.3 runtime then added the capacity gains on top: the 524,288-token shared
 pool with C4 four-request scheduling in place of C1 serialization, stock
 template support for `enable_thinking=false`, and host-IPC deployment parity.
+After promotion, the transition's final axis was restored: GPU peer-to-peer.
+The two RTX PRO 6000 Max-Q cards share one PCIe host bridge (no NVLink on
+Max-Q) and the driver reports bidirectional PCIe P2P OK; WSL2 could not use it
+(the translated-IOMMU diagnosis), so the 2026-09-08 comparison and the
+qualification gates deliberately ran with `NCCL_P2P_DISABLE=1` — the measured
+deltas above therefore exclude any P2P effect. The live v0.4.3 serving
+subsequently enabled the FlashInfer PCIe IPC all-reduce for the tensor-parallel
+pair (startup proof 2026-09-11 09:45 UTC, `max_numel=786432`, custom
+all-reduce disabled in its favor); its dedicated measurement and FlashInfer
+workspace tuning (currently running seed configurations per the engine log)
+are the recorded follow-up.
 
 **Reported experience:** the served v0.4.3 configuration is the operator's
 daily driver for agentic coding sessions, long-document review, and routed tool
