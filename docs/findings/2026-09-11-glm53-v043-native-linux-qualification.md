@@ -1,6 +1,6 @@
 # GLM-5.3-Flash v0.4.3 native-Linux qualification
 
-**Date:** 2026-09-11 UTC. **Decision:** user-authorized promotion to the native GLM primary. The exact ormandj weights remain unchanged; this is a runtime and capacity upgrade.
+**Date:** 2026-09-11 UTC. **Campaign decision:** qualified; the dated human-authorized promotion gate passed. Current route and startup assignments are private operator state. The exact ormandj weights remain unchanged; this is a runtime and capacity upgrade.
 
 | Field | Measured result |
 |---|---|
@@ -14,18 +14,18 @@
 | Reused context | Ten incremental turns through 69,736 tokens, retained anchor and subsequent tool result correct; five post-stress smokes pass |
 | Concurrency | Corrected C4 probes 4/4 short and 4/4 at about 106.5K tokens per request |
 | Pi | 14/14 executable tasks; zero human interventions, truncations, or protocol errors |
-| Production | Exact routed identity verified; fresh Pi, Hermes and OpenClaw terminal turns pass |
+| Routed acceptance | Exact routed identity verified; fresh Pi, Hermes and OpenClaw terminal turns pass |
 | Stability | No observed OOM or automatic restart; minimum sampled GPU free memory 567 MiB per card |
 
 ## What changed and what did not
 
-The old rc14 baseline had a 393,216-token pool and C1. v0.4.3 now provides a 524,288-token **shared** pool and four-request scheduling. C4 does not mean four simultaneous full 524K windows. The quant, model revision, KV precision and adaptive speculation remain fixed. HiCache is disabled because its upstream allocation is unsuitable for this host's RAM budget.
+The old rc14 baseline had a 393,216-token pool and C1. The qualified v0.4.3 profile provides a 524,288-token **shared** pool and four-request scheduling. C4 does not mean four simultaneous full 524K windows. The quant, model revision, KV precision and adaptive speculation remain fixed. HiCache is disabled because its upstream allocation is unsuitable for this host's RAM budget.
 
-The [separate completion-budget campaign](2026-09-11-glm53-output-budget.md) did not establish a repeatable benefit from raising the default. Production therefore keeps **4,096 output tokens**. Qualification explicitly exercised 8,192 and 16,384 in isolated Pi lanes; those allowances are not the production default.
+The [separate completion-budget campaign](2026-09-11-glm53-output-budget.md) did not establish a repeatable benefit from raising the default. The recommended default remains **4,096 output tokens**. Qualification explicitly exercised 8,192 and 16,384 in isolated Pi lanes; those allowances are not the recommended default.
 
 The original managed qualification (including the 14-task Pi panel and 12-cell
 retrieval sweep) used a private 64 GiB IPC namespace. A final packaging audit
-aligned production to the requested **host IPC** mode without changing model,
+aligned the tested profile to the requested **host IPC** mode without changing model,
 runtime or GPU-serving controls. The affected direct, routed, long-context,
 C4 and fresh-client gates are retained separately as `host-ipc-*` evidence.
 The final host-IPC run passed C4 long requests 4/4, deep retrieval at 497,729
@@ -52,10 +52,10 @@ GLM exposes a binary `enable_thinking` template control, not verified numeric lo
 
 ## Promotion and rollback
 
-The stock attempt was followed by restoration of the exact rc14 recipe, direct acceptance and later routed/real-Pi baseline checks. That is retained rollback evidence. The user's later instruction authorized leaving v0.4.3 active after success, so the final action was promotion, not another restoration. The managed reload on the production endpoint passed thinking-off/on gates, tools and retrieval, then the router verified the exact served model and readmitted it.
+The stock attempt was followed by restoration of the exact rc14 recipe, direct acceptance and later routed/real-Pi baseline checks. That is retained rollback evidence. The campaign concluded with a human-authorized promotion gate rather than another restoration; this is dated acceptance evidence, not a live deployment declaration. The managed reload on the evaluated endpoint passed thinking-off/on gates, tools and retrieval, then the router verified the exact served model and readmitted it.
 
-Mini's retained Anvil-backed Hermes profiles, Pi and OpenClaw received 524K context metadata with the 4K output cap; a second sync was a no-op. Cloud providers and secondary-model routing remain separate. Startup configuration selects the promoted recipe. A reboot and a fresh-machine rebuild were not tested.
+The evaluated model-free client node’s retained Hermes profiles, Pi and OpenClaw received 524K context metadata with the 4K output cap; a second sync was a no-op. Cloud providers and secondary-model routing remain separate. Current startup and route selections are recorded only in private operator configuration. A reboot and a fresh-machine rebuild were not tested.
 
-The [reproducible managed recipe](2026-09-11-glm53-v043-native-linux-qualification-evidence/recipe.toml) retains the exact pins and template guard.
+The [reproducible managed recipe](2026-09-11-glm53-v043-native-linux-qualification-evidence/recipe.toml) retains the exact as-run pins, template guard and historical pre-qualification metadata. The catalog recipe now reports `verified`; that metadata-only update does not rewrite the recorded recipe digest.
 
-See the [identity record](2026-09-11-glm53-v043-native-linux-qualification-evidence/identity.json), [decision summary](2026-09-11-glm53-v043-native-linux-qualification-evidence/summary.json), and [artifact inventory](2026-09-11-glm53-v043-native-linux-qualification-evidence/artifact-manifest.json). The immediate native rollback remains the exact rc14 recipe. No other model tournament was started.
+See the [identity record](2026-09-11-glm53-v043-native-linux-qualification-evidence/identity.json), [decision summary](2026-09-11-glm53-v043-native-linux-qualification-evidence/summary.json), and [artifact inventory](2026-09-11-glm53-v043-native-linux-qualification-evidence/artifact-manifest.json). The campaign verified recovery to the exact rc14 recipe. No other model tournament was started.

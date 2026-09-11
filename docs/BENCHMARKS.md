@@ -8,7 +8,7 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The maintained published native default is [GLM v0.4.3](findings/2026-09-11-glm53-v043-native-linux-qualification.md) with unchanged ormandj W4A16/NVFP4 weights, TP2/524,288 shared tokens/C4, FP8 KV, adaptive EAGLE and HiCache off. The output limit remains 4,096. Direct, long-context, C4 and 14/14 Pi gates passed; native rc14 remains rollback. Video is unsupported and GPU headroom remains narrow under the existing model-only reserve approval.
+The latest qualified native reference is [GLM v0.4.3](findings/2026-09-11-glm53-v043-native-linux-qualification.md) with unchanged ormandj W4A16/NVFP4 weights, TP2/524,288 shared tokens/C4, FP8 KV, adaptive EAGLE and HiCache off. The output limit remains 4,096. Direct, long-context, C4 and 14/14 Pi gates passed; recovery to native rc14 was verified during the campaign. Current route and startup assignments are private operator state. Video is unsupported and GPU headroom remains narrow under the existing model-only reserve approval.
 
 Other retained comparisons (their dated evidence remains unchanged):
 RadixArk Qwen3.8 Flash Next NVFP4 remains the immediate retained video-capable

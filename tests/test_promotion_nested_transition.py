@@ -68,3 +68,43 @@ def test_canonical_volume_without_cmd_and_failed_restart_restores_metadata(tmp_p
     assert any('cp -p /cfg/config.toml /cfg/config.toml.bak' in a[-1] for a in calls)
     assert any('mv /cfg/config.toml.bak /cfg/config.toml' in a[-1] for a in calls)
     assert sum(a == ['docker','restart','anvil-router'] for a in calls) == 2
+
+
+@pytest.mark.skipif(__import__('sys').platform == 'win32', reason='executes Linux container shell')
+@pytest.mark.parametrize('existing', [False, True])
+@pytest.mark.parametrize('restart_fails', [False, True])
+def test_install_shell_handles_absent_config_and_restores_state(tmp_path, existing, restart_fails):
+    import subprocess
+    config = tmp_path / 'candidate.toml'
+    config.write_bytes(b'[router]\n')
+    mounted = tmp_path / 'mount'
+    mounted.mkdir()
+    deployed = mounted / 'config.toml'
+    if existing:
+        deployed.write_bytes(b'old config\n')
+        deployed.chmod(0o640)
+    restarts = 0
+
+    def run(argv, **kwargs):
+        nonlocal restarts
+        if argv[:3] == ['docker', 'run', '--rm']:
+            script = argv[-1].replace('/cfg', str(mounted))
+            return subprocess.run(['sh', '-c', script], **kwargs)
+        if argv == ['docker', 'restart', 'anvil-router']:
+            restarts += 1
+            return subprocess.CompletedProcess(argv, int(restart_fails and restarts == 1), '', '')
+        output = ''
+        if argv[:4] == ['docker', 'inspect', '-f', '{{.Config.Image}}']:
+            output = 'test-image'
+        elif argv[:3] == ['docker', 'inspect', '-f']:
+            output = json.dumps({'cmd': None, 'mounts': [{'Type': 'volume', 'Name': 'anvil-router-cfg', 'Destination': '/etc/anvil'}]})
+        return subprocess.CompletedProcess(argv, 0, output, '')
+
+    assert serves._install_router_config(str(config), _run=run) == int(restart_fails)
+    assert restarts == (2 if restart_fails else 1)
+    if restart_fails and not existing:
+        assert not deployed.exists()
+    else:
+        assert deployed.read_bytes() == (b'old config\n' if restart_fails else config.read_bytes())
+        if existing:
+            assert deployed.stat().st_mode & 0o777 == 0o640
