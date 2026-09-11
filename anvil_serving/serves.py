@@ -66,6 +66,7 @@ import math
 import mimetypes
 import numbers
 import os
+import posixpath
 import re
 import shlex
 import signal
@@ -1471,12 +1472,48 @@ def _install_router_config(
         return 1
     mount = cfg_volume + ":" + _ROUTER_CFG_SIDE_MOUNT
     config_path = _ROUTER_CFG_PATH
+    layout = _run(
+        ["docker", "inspect", "-f",
+         '{"mounts":{{json .Mounts}},"cmd":{{json .Config.Cmd}}}', container],
+        capture_output=True, text=True,
+    )
+    try:
+        observed = json.loads(layout.stdout)
+        command = observed["cmd"] or []
+        if "--config" in command:
+            destination = command[command.index("--config") + 1]
+        else:
+            configured = _run(
+                ["docker", "exec", container, "printenv", "ANVIL_CONFIG"],
+                capture_output=True, text=True,
+            )
+            if configured.returncode not in (0, 1):
+                raise ValueError("cannot resolve runtime config path")
+            destination = (configured.stdout or "").strip() or "/etc/anvil/config.toml"
+        matches = [m for m in observed["mounts"] if
+                   destination == m["Destination"] or
+                   destination.startswith(m["Destination"].rstrip("/") + "/")]
+        if layout.returncode or len(matches) != 1:
+            raise ValueError("ambiguous config mount")
+        mounted = matches[0]
+        if mounted["Type"] == "bind" and destination == mounted["Destination"]:
+            source = mounted["Source"]
+            if not posixpath.isabs(source) or ":" in source or posixpath.dirname(source) == "/":
+                raise ValueError("unsupported config source")
+            mount = posixpath.dirname(source) + ":" + _ROUTER_CFG_SIDE_MOUNT
+            config_path = _ROUTER_CFG_SIDE_MOUNT + "/" + posixpath.basename(source)
+        elif not (mounted["Type"] == "volume" and mounted.get("Name") == cfg_volume
+                  and destination == mounted["Destination"].rstrip("/") + "/config.toml"):
+            raise ValueError("unsupported config mount")
+    except (ValueError, KeyError, IndexError, TypeError):
+        print("  router config install refused: cannot resolve the deployed config mount")
+        return 1
     backup_path = config_path + ".bak"
     new_path = config_path + ".new"
     backup_script = (
-        "if [ -f {cfg} ]; then cp {cfg} {bak}; "
+        "if [ -f {cfg} ]; then cp -p {cfg} {bak}; "
         "else rm -f {bak}; fi"
-    ).format(cfg=config_path, bak=backup_path)
+    ).format(cfg=shlex.quote(config_path), bak=shlex.quote(backup_path))
     backup = _run(
         ["docker", "run", "--rm", "--user", "0", "-v", mount,
          "--entrypoint", "sh", image, "-c", backup_script],
@@ -1485,8 +1522,11 @@ def _install_router_config(
     if backup.returncode != 0:
         print("  router config backup failed")
         return 1
-    write_script = "cat > {new} && mv {new} {cfg}".format(
-        new=new_path, cfg=config_path
+    write_script = (
+        "if [ -f {cfg} ]; then cp -p {cfg} {new}; else : > {new}; fi"
+        " && cat > {new} && mv {new} {cfg}"
+    ).format(
+        new=shlex.quote(new_path), cfg=shlex.quote(config_path)
     )
     write = _run(
         ["docker", "run", "--rm", "-i", "--user", "0", "-v", mount,
@@ -1510,7 +1550,7 @@ def _install_router_config(
     restore_script = (
         "if [ -f {bak} ]; then mv {bak} {cfg}; "
         "else rm -f {cfg}; fi"
-    ).format(bak=backup_path, cfg=config_path)
+    ).format(bak=shlex.quote(backup_path), cfg=shlex.quote(config_path))
     restored = _run(
         ["docker", "run", "--rm", "--user", "0", "-v", mount,
          "--entrypoint", "sh", image, "-c", restore_script],
@@ -1555,6 +1595,16 @@ def _transition_cli(router_url, action, tier_id, *, timeout=None, reason=None,
     if action == "quiesce" and reason:
         argv += ["--reason", reason]
     print("  gate: %s" % " ".join(argv))
+    if _run is subprocess.run:
+        # Keep the nested transition in the transaction's thread so its
+        # reentrant authority lock remains held across the HTTP request.
+        from .router_manage import main as router_main
+
+        try:
+            return router_main(argv[4:])
+        except RuntimeError:
+            print("  router transition refused")
+            return 1
     return _run(argv, text=True).returncode
 
 

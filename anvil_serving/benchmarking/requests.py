@@ -59,7 +59,7 @@ def make_prompt(
 ):
     """Build a calibrated prompt without exceeding the requested token budget."""
     budget = ctx_tokens if max_prompt_tokens is None else min(ctx_tokens, max_prompt_tokens)
-    marker_instruction = f" Begin with the exact marker {marker}." if marker else ""
+    marker_instruction = f" Begin with the exact marker {marker}, followed by one space." if marker else ""
     if response_words:
         tail = (
             f"\n# request {uniq}:{marker_instruction} Then emit exactly "

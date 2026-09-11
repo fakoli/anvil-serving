@@ -1,0 +1,129 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-11-glm53-v043-native-linux-qualification",
+    "capability": "GLM runtime qualification",
+    "repository_revision": "730cd4ddbe598715b89b08a1e88334e46c0666ad",
+    "dirty_state": "Owned prompt and managed-promotion fixes plus publication",
+    "started_at": "2026-09-11",
+    "completed_at": "2026-09-11",
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality"
+    ],
+    "decision_labels": [
+      "promoted"
+    ],
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "pi-task-plan.json",
+        "template-context-plan.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "pi-task-plan.json",
+        "template-context-plan.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "identity.json",
+        "recipe.toml"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "template-disabled-1.json",
+        "template-disabled-2.json",
+        "template-disabled-3.json",
+        "template-enabled-1.json",
+        "template-enabled-2.json",
+        "template-enabled-3.json",
+        "template-tools-disabled.json",
+        "template-image-ocr.json",
+        "template-long-tool.json",
+        "template-c4-short.json",
+        "template-c4-short-explicit-delimiter.json",
+        "template-c4-long.json",
+        "pi-task-results.json",
+        "template-context-plan.json",
+        "context-results.json",
+        "incremental-results.json",
+        "client-acceptance.json",
+        "promoted-routed.json",
+        "host-ipc-c4.json",
+        "host-ipc-deep-score.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "stock-control-disabled-1.json",
+        "stock-json-disabled-fifth.json",
+        "stock-template-contract.json",
+        "friction-log.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "pi-validator-preflight.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": ""
+    }
+  ]
+}

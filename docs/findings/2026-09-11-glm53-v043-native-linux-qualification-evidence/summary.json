@@ -1,0 +1,129 @@
+{
+  "schema": "glm53-native-qualification/v1",
+  "campaign_id": "2026-09-10-glm53-v043-native-linux",
+  "complete": true,
+  "decision": "promoted",
+  "promotion_authorized": true,
+  "quant_changed": false,
+  "runtime": "v0.4.3",
+  "served_model": "glm-5.3-flash",
+  "shared_context_tokens": 524288,
+  "scheduler_concurrency": 4,
+  "default_output_tokens": 4096,
+  "pi_tasks": {
+    "passed": 14,
+    "total": 14,
+    "human_interventions": 0,
+    "wall_seconds": 66.68,
+    "truncations": 0,
+    "protocol_errors": 0,
+    "matched_baseline_panel": false
+  },
+  "retrieval": {
+    "passed": 12,
+    "total": 12,
+    "deepest_actual_prompt_tokens": 497724
+  },
+  "incremental_session": {
+    "turns": 10,
+    "actual_prompt_tokens": 69736,
+    "anchor_and_tool_result_passed": true,
+    "post_stress_smokes": 5
+  },
+  "c4": {
+    "short_passed": 4,
+    "long_passed": 4,
+    "long_actual_prompt_tokens": [
+      106531,
+      106531,
+      106533,
+      106535
+    ]
+  },
+  "routed_preflight": true,
+  "clients": {
+    "schema": "glm53-client-acceptance/v1",
+    "clients": [
+      {
+        "client": "pi",
+        "passed": true,
+        "tool": "bash",
+        "tool_result": "437",
+        "final": "GLM53_V043_PI_PASS"
+      },
+      {
+        "client": "hermes",
+        "passed": true,
+        "tool": "terminal",
+        "tool_result": "437",
+        "tool_exit": 0,
+        "final": "GLM53_V043_HERMES_PASS"
+      },
+      {
+        "client": "openclaw",
+        "passed": true,
+        "tool": "exec",
+        "tool_calls": 1,
+        "tool_failures": 0,
+        "final": "GLM53_V043_OPENCLAW_PASS"
+      }
+    ],
+    "context_limit": 524288,
+    "max_output_tokens": 4096,
+    "mini_sync_second_run_changed": [],
+    "scheduled_sync_clients": [
+      "openclaw",
+      "hermes",
+      "pi"
+    ],
+    "hermes_profiles": "all",
+    "scheduled_sync_last_exit": 0,
+    "limitation": "OpenClaw smoke process lacked unrelated controller MCP credential; that integration not qualified."
+  },
+  "stability": {
+    "oom_killed": false,
+    "automatic_restarts": 0,
+    "minimum_sampled_free_mib_per_card": 567,
+    "final_idle_free_mib_per_card": 567
+  },
+  "rollback_proven_before_resumed_qualification": true,
+  "failures_retained": [
+    "Stock thinking-disabled JSON failed five times",
+    "Original C4 marker delimiter mismatch:0/4; graderunchanged correctedprompt4/4",
+    "Promotion child lock contention",
+    "Legacy promotion config volume mismatch and false readmit success before correction"
+  ],
+  "limitations": [
+    "Bounded qualification, no matched speedup claim",
+    "Narrow GPU headroom; existing model-only reserve approval",
+    "TileLang warnings remain unexplained",
+    "Binary thinking control; no verified native numeric effort levels",
+    "No reboot/fresh rebuild tested"
+  ],
+  "source_validation": {
+    "focused_promotion_tests": 231,
+    "infra_tests": 176,
+    "full_suite_passed": 8186,
+    "full_suite_skipped": 35,
+    "publication_tests": 38,
+    "ruff": "passed",
+    "markdown_links": "passed",
+    "mkdocs_strict": "passed"
+  },
+  "final_ipc": "host",
+  "initial_broad_qualification_ipc": "private",
+  "host_ipc_revalidation": {
+    "passed": true,
+    "c4_completed": 4,
+    "c4_failed": 0,
+    "deep_prompt_tokens": 497729,
+    "deep_passed": true,
+    "thinking_off_on": "passed",
+    "routed_preflight": "passed",
+    "fresh_clients": [
+      "pi",
+      "hermes",
+      "openclaw"
+    ]
+  }
+}

@@ -14,6 +14,10 @@ chronological evidence index. Newest first.
 
 ## Policy
 
+Latest runtime decision: [GLM v0.4.3 qualification](2026-09-11-glm53-v043-native-linux-qualification.md) — dated native 524K/C4 qualification and promotion acceptance; 14/14 Pi tasks, output cap remains 4K.
+
+Latest bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
+
 These findings remain public as durable evidence under
 [ADR-0027](../adr/0027-public-findings-are-durable-evidence.md). A later benchmark or ADR can
 supersede a recommendation, but it does not erase the historical observation or move its

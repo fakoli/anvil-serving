@@ -1,0 +1,43 @@
+{
+  "schema": "anvil-serving.benchmark-summary/v1",
+  "verdict": "no improvement established under acceptance rule",
+  "evidence_labels": [
+    "functional",
+    "historical-invalid"
+  ],
+  "decision": "no-promotion",
+  "retained_default": 4096,
+  "task_runs": 24,
+  "valid_runs": 16,
+  "invalid_runs": 8,
+  "promotion_authorized": false,
+  "promoted": false,
+  "arms": {
+    "A": {
+      "completion_cap": 4096,
+      "valid_tasks": 8,
+      "successful_tasks": 6,
+      "truncations": 2,
+      "empty_finals": 2,
+      "unexpected_tool_failures": 0,
+      "expected_transient_errors": 2,
+      "total_task_seconds": 77.9515251670091
+    },
+    "B": {
+      "completion_cap": 16384,
+      "valid_tasks": 8,
+      "successful_tasks": 7,
+      "truncations": 1,
+      "empty_finals": 1,
+      "unexpected_tool_failures": 0,
+      "expected_transient_errors": 2,
+      "total_task_seconds": 143.67185614799382
+    }
+  },
+  "limitations": [
+    "Coding coverage invalid; no live rerun beyond 24 tasks.",
+    "B did not rescue the cap-related reasoning fixture in both repetitions.",
+    "Timings are diagnostic: warm/cache state uncontrolled.",
+    "No new full 393216-token or concurrency qualification."
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "glm53-client-acceptance/v1",
+  "clients": [
+    {
+      "client": "pi",
+      "passed": true,
+      "tool": "bash",
+      "tool_result": "437",
+      "final": "GLM53_V043_PI_PASS"
+    },
+    {
+      "client": "hermes",
+      "passed": true,
+      "tool": "terminal",
+      "tool_result": "437",
+      "tool_exit": 0,
+      "final": "GLM53_V043_HERMES_PASS"
+    },
+    {
+      "client": "openclaw",
+      "passed": true,
+      "tool": "exec",
+      "tool_calls": 1,
+      "tool_failures": 0,
+      "final": "GLM53_V043_OPENCLAW_PASS"
+    }
+  ],
+  "context_limit": 524288,
+  "max_output_tokens": 4096,
+  "mini_sync_second_run_changed": [],
+  "scheduled_sync_clients": [
+    "openclaw",
+    "hermes",
+    "pi"
+  ],
+  "hermes_profiles": "all",
+  "scheduled_sync_last_exit": 0,
+  "limitation": "OpenClaw smoke process lacked unrelated controller MCP credential; that integration not qualified."
+}

@@ -1,0 +1,90 @@
+{
+  "base_url": "http://127.0.0.1:39119/v1",
+  "budget": {
+    "max_completion_tokens": 8704,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm-5.3-flash",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nIf you need it as a reusable function, you can write it as a one-line lambda:\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nOr, if you're avoiding the built-in (e.g., for an exercise), `functools.reduce` works too:\n\n```python\nfrom functools import reduce\ntotal = reduce(lambda a, b: a + b, xs, 0)\n```",
+      "content_chars": 320,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nIf you need it as a reusable function, you can write it as a one-line lambda:\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nOr, if you're avoiding the built-in (e.g., for an exerci",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 1166,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most obvious answer is:\n\n```python\nsum(xs)\n```\n\nThat's the idiomatic Python way. But maybe the",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 1.83,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 386,
+        "prompt_tokens": 28,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 293,
+        "total_tokens": 414
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 176,
+      "reasoning_excerpt": "The user wants me to return only a JSON object: {\"language\":\"python\",\"ok\":true}. No prose. This is a simple, direct request. I should just output the JSON exactly as requested.",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.308,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 52,
+        "prompt_tokens": 30,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 42,
+        "total_tokens": 82
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "1.8s got='```python\\nsum(xs)\\n```\\n\\nIf you need it as a reusabl' finish='stop' visible=320 reasoning_chars=1166 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=176 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}
