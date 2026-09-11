@@ -176,7 +176,7 @@ def _pi_web_config(tmp_path, monkeypatch):
 def test_pi_web_install_requires_the_private_configuration(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "empty-home"))
     assert workbench.main(["pi-web", "install", "--dry-run"]) == 2
-    assert "pi-web.json" in json.loads(capsys.readouterr().err)["error"]
+    assert "pi-web.json" in json.loads(capsys.readouterr().err)["error"].replace("\\", "/")
 
 
 def test_pi_web_install_dry_run_prints_the_exact_root_plan(tmp_path, monkeypatch, capsys):

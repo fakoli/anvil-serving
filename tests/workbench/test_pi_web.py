@@ -174,6 +174,8 @@ def test_load_config_missing_required_file_is_actionable(monkeypatch: pytest.Mon
 
 
 def test_unit_content_renders_the_reviewed_service(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("systemd unit rendering is Linux-only")
     config = pi_web_config(_config(tmp_path, password_env_file="/etc/anvil-pi-web/env"))
     content = unit_content(
         config,
@@ -240,6 +242,8 @@ def test_plan_requires_a_service_user(tmp_path: Path) -> None:
 
 
 def test_install_without_confirm_is_a_read_only_plan(installer_env) -> None:
+    if sys.platform == "win32":
+        pytest.skip("the plan probes the pinned Node.js runtime")
     build, _, _ = installer_env
     installer, run, _ = build()
     result = installer.install(confirm=False)
