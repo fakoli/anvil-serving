@@ -17,6 +17,7 @@ import (
 	"net/http/httputil"
 	"reflect"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -32,6 +33,16 @@ import (
 
 const GatewayPeer = "gateway.anvil-connect.internal"
 
+// dispatchConnections bounds the inner TLS connection budget of the ordinary
+// multiplexed transport. Admission and resource limits already bound concurrent
+// application requests; this budget only prevents a cold burst from dialing a
+// serialized inner TLS connection per request through the reverse tunnel.
+const dispatchConnections = 2
+
+// maxCertificateMargin caps the proactive certificate-expiry retirement lead
+// so a long-lived connector leaf is not retired absurdly early.
+const maxCertificateMargin = 10 * time.Minute
+
 func ConnectorPeer(id string) string { return id + ".connector.anvil-connect.internal" }
 
 type binding struct {
@@ -40,6 +51,129 @@ type binding struct {
 	upgradeTransport *http.Transport
 	proxy            *httputil.ReverseProxy
 	upgradeProxy     *httputil.ReverseProxy
+	conns            *connRegistry
+}
+
+// trackedConn lets the dispatcher retire exactly the pooled inner connection
+// whose connector certificate lost authority, instead of failing every future
+// request against a stale pool entry.
+type trackedConn struct {
+	net.Conn
+	registry *connRegistry
+}
+
+func (c *trackedConn) Close() error {
+	c.registry.remove(c)
+	return c.Conn.Close()
+}
+
+// connRegistry tracks live inner connections by connector leaf DER so that one
+// revoked or expiring certificate retires only the connections carrying it.
+type connRegistry struct {
+	mu     sync.Mutex
+	conns  map[*trackedConn][]byte
+	byLeaf map[string]map[*trackedConn]struct{}
+	timers map[*trackedConn]*time.Timer
+}
+
+func newConnRegistry() *connRegistry {
+	return &connRegistry{conns: map[*trackedConn][]byte{}, byLeaf: map[string]map[*trackedConn]struct{}{}, timers: map[*trackedConn]*time.Timer{}}
+}
+
+func (r *connRegistry) add(c *trackedConn) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.conns[c] = nil
+}
+
+// bind records the connection's verified leaf and schedules retirement before
+// that leaf expires. Never infer a new generation from a reused key. Reused
+// connections bind once: the leaf does not change while the pool entry lives.
+func (r *connRegistry) bind(c *trackedConn, leaf *x509.Certificate) {
+	key := string(leaf.Raw)
+	lifetime := leaf.NotAfter.Sub(leaf.NotBefore)
+	margin := lifetime / 10
+	if margin > maxCertificateMargin {
+		margin = maxCertificateMargin
+	}
+	delay := time.Until(leaf.NotAfter) - margin
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if bound, seen := r.conns[c]; !seen {
+		return
+	} else if string(bound) == key {
+		if _, scheduled := r.timers[c]; scheduled {
+			return
+		}
+	} else {
+		set := r.byLeaf[string(bound)]
+		delete(set, c)
+		if len(set) == 0 {
+			delete(r.byLeaf, string(bound))
+		}
+	}
+	r.conns[c] = leaf.Raw
+	set, ok := r.byLeaf[key]
+	if !ok {
+		set = map[*trackedConn]struct{}{}
+		r.byLeaf[key] = set
+	}
+	set[c] = struct{}{}
+	if delay <= 0 {
+		go r.retire(c)
+		return
+	}
+	timer := time.AfterFunc(delay, func() { r.retire(c) })
+	r.timers[c] = timer
+}
+
+// retire closes one connection and drops it from every index. Closing the raw
+// connection makes the transport discard the pool entry and dial fresh.
+func (r *connRegistry) retire(c *trackedConn) {
+	r.mu.Lock()
+	_, live := r.conns[c]
+	delete(r.conns, c)
+	for key, set := range r.byLeaf {
+		delete(set, c)
+		if len(set) == 0 {
+			delete(r.byLeaf, key)
+		}
+	}
+	if timer, ok := r.timers[c]; ok {
+		timer.Stop()
+		delete(r.timers, c)
+	}
+	r.mu.Unlock()
+	if live {
+		_ = c.Conn.Close()
+	}
+}
+
+// retireLeaf closes every connection verified against one leaf DER.
+func (r *connRegistry) retireLeaf(der []byte) {
+	r.mu.Lock()
+	victims := make([]*trackedConn, 0, len(r.byLeaf[string(der)]))
+	for c := range r.byLeaf[string(der)] {
+		victims = append(victims, c)
+	}
+	r.mu.Unlock()
+	for _, c := range victims {
+		r.retire(c)
+	}
+}
+
+func (r *connRegistry) remove(c *trackedConn) { r.retire(c) }
+
+func (r *connRegistry) close() {
+	r.mu.Lock()
+	victims := make([]*trackedConn, 0, len(r.conns))
+	for c := range r.conns {
+		victims = append(victims, c)
+	}
+	r.mu.Unlock()
+	for _, c := range victims {
+		r.retire(c)
+	}
 }
 
 // PeerAuthority binds signed TLS material to a currently approved installation.
@@ -96,9 +230,14 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 	for _, resource := range declaration.Resources {
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
 		idle := time.Duration(resource.Rule.Limits.IdleSeconds) * time.Second
+		conns := newConnRegistry()
 		tr := &http.Transport{
-			Proxy: nil, DisableKeepAlives: true, DisableCompression: true,
-			MaxConnsPerHost: resource.Rule.Limits.Concurrent, MaxResponseHeaderBytes: 65536,
+			Proxy: nil, DisableCompression: true,
+			// Ordinary requests multiplex over a bounded connection budget. A
+			// fresh inner TLS connection per request would serialize every
+			// cold-burst handshake through the reverse tunnel loop and breach
+			// the handshake deadline for the queued tail.
+			MaxConnsPerHost: dispatchConnections, MaxResponseHeaderBytes: 65536,
 			ResponseHeaderTimeout: idle, TLSHandshakeTimeout: 5 * time.Second,
 			TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots.Clone(), Certificates: []tls.Certificate{certificate}, ServerName: ConnectorPeer(resource.Connector)},
 			DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
@@ -109,7 +248,9 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 				if err != nil {
 					return nil, err
 				}
-				return relay.WrapConn(conn, idle), nil
+				tracked := &trackedConn{Conn: relay.WrapConn(conn, idle), registry: conns}
+				conns.add(tracked)
+				return tracked, nil
 			},
 		}
 		// Ordinary requests require h2 so an admitted unknown-length HTTP/2 body
@@ -127,6 +268,10 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 		upgradeTransport := tr.Clone()
 		upgradeTransport.Protocols = new(http.Protocols)
 		upgradeTransport.Protocols.SetHTTP1(true)
+		// Clone copies the multiplexed budget; upgrades keep their own admission
+		// sizing and must never reuse a connection across negotiated streams.
+		upgradeTransport.DisableKeepAlives = true
+		upgradeTransport.MaxConnsPerHost = resource.Rule.Limits.Concurrent
 		proxy := &httputil.ReverseProxy{
 			Transport: tr, FlushInterval: -1, BufferPool: relay.NewBufferPool(resource.Rule.Limits), ErrorLog: log.New(io.Discard, "", 0),
 			Rewrite: func(request *httputil.ProxyRequest) {
@@ -162,7 +307,7 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 		}
 		upgradeProxy := *proxy
 		upgradeProxy.Transport = upgradeTransport
-		d.resources[resource.Rule.ID] = binding{resource: resource, transport: tr, upgradeTransport: upgradeTransport, proxy: proxy, upgradeProxy: &upgradeProxy}
+		d.resources[resource.Rule.ID] = binding{resource: resource, transport: tr, upgradeTransport: upgradeTransport, proxy: proxy, upgradeProxy: &upgradeProxy, conns: conns}
 	}
 	return d, nil
 }
@@ -172,6 +317,7 @@ func (d *Dispatcher) Close() {
 	for _, target := range d.resources {
 		target.transport.CloseIdleConnections()
 		target.upgradeTransport.CloseIdleConnections()
+		target.conns.close()
 	}
 }
 
@@ -223,6 +369,12 @@ func (d *Dispatcher) dispatch(w http.ResponseWriter, r *http.Request, resource c
 			return nil
 		}
 		_, err := d.peers.VerifyPeer(resource.Rule.ID, leaf)
+		if err != nil {
+			// The pooled connection this request was about to reuse has lost
+			// installation authority. Retire every connection carrying that
+			// leaf so the pool cannot offer it to future requests.
+			target.conns.retireLeaf(leaf.Raw)
+		}
 		return err
 	})
 	if err != nil {
@@ -249,9 +401,19 @@ func (d *Dispatcher) dispatch(w http.ResponseWriter, r *http.Request, resource c
 			return
 		}
 		certificate.Store(leaf)
-		if _, err := d.peers.VerifyPeer(resource.Rule.ID, leaf); err != nil {
+		tracked, ok := connection.NetConn().(*trackedConn)
+		if !ok {
 			cancel()
+			return
 		}
+		if _, err := d.peers.VerifyPeer(resource.Rule.ID, leaf); err != nil {
+			// Retire the offending pooled connection before cancelling so the
+			// pool cannot re-offer it to the next request.
+			target.conns.retire(tracked)
+			cancel()
+			return
+		}
+		target.conns.bind(tracked, leaf)
 	}}
 	r = r.Clone(httptrace.WithClientTrace(ctx, trace))
 	proxy := target.proxy
