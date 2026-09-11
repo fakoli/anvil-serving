@@ -9,8 +9,6 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-import pwd
-import subprocess
 import sys
 
 import pytest
@@ -27,6 +25,8 @@ from anvil_serving.workbench_app.pi_web import (
 
 
 def _current_user() -> str:
+    import pwd
+
     return pwd.getpwuid(os.getuid()).pw_name
 
 
@@ -213,6 +213,8 @@ def test_unit_content_refuses_a_non_loopback_bind(tmp_path: Path) -> None:
 
 
 def test_plan_lists_exact_root_commands(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("the managed install runs Linux host commands")
     config = pi_web_config(_config(tmp_path))
     planned = pi_web.plan(config, node_path=_fake_node(tmp_path))
     assert planned["package"] == f"{PACKAGE}@0.9.0"
@@ -224,12 +226,16 @@ def test_plan_lists_exact_root_commands(tmp_path: Path) -> None:
 
 
 def test_plan_rejects_a_node_below_the_engine_floor(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("the managed install runs Linux host commands")
     config = pi_web_config(_config(tmp_path))
     with pytest.raises(PiWebError, match="22.19.0"):
         pi_web.plan(config, node_path=_fake_node(tmp_path, version="v20.11.0"))
 
 
 def test_plan_requires_a_service_user(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("the managed install runs Linux host commands")
     config = pi_web_config(_config(tmp_path, service_user=None))
     with pytest.raises(PiWebError, match="service_user"):
         pi_web.plan(config, node_path=_fake_node(tmp_path))
@@ -265,6 +271,8 @@ def test_install_requires_linux(installer_env) -> None:
 
 
 def test_install_rejects_missing_password_env_file(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("the managed install runs Linux host commands")
     missing = tmp_path / "missing-env"
     config = pi_web_config(_config(tmp_path, password_env_file=str(missing)))
     installer = PiWebInstaller(
@@ -276,6 +284,8 @@ def test_install_rejects_missing_password_env_file(tmp_path: Path) -> None:
 
 
 def test_install_rejects_group_or_world_readable_password_env_file(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("the managed install runs Linux host commands")
     loose = tmp_path / "loose-env"
     loose.write_text("PI_WEB_PASSWORD=x\n", encoding="utf-8")
     loose.chmod(0o644)
@@ -399,6 +409,8 @@ def test_install_with_changed_unit_reloads_and_restarts(installer_env, tmp_path:
 
 
 def test_service_state_parses_systemd_properties(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("systemd is Linux-only")
     run = FakeRun()
     state = pi_web.service_state(run=run)
     assert state["unit"] == pi_web.UNIT_NAME
@@ -407,6 +419,8 @@ def test_service_state_parses_systemd_properties(tmp_path: Path) -> None:
 
 
 def test_status_reports_probe_and_installed_pin(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("systemd is Linux-only")
     config = pi_web_config(_config(tmp_path))
     root = Path(str(config.install_root))
     root.mkdir(parents=True)
@@ -437,6 +451,8 @@ def test_status_reports_probe_and_installed_pin(tmp_path: Path) -> None:
 
 
 def test_logs_returns_bounded_journal_text(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("journalctl is Linux-only")
     config = pi_web_config(_config(tmp_path))
     run = FakeRun()
     import anvil_serving.workbench_app.pi_web as module
