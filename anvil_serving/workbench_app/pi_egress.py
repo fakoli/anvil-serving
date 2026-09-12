@@ -130,8 +130,9 @@ class PiEgress:
         approved = json.loads(self.record_path(provider).read_text())
         if approved.get("policy") != policy or approved.get("image") != self.config["image"]:
             raise PiEgressError("Provider gateway approval changed; run managed egress setup")
+        session_policy = policy | {"session_id": session_id}
         key = provider + "--" + session_id
-        digest = hashlib.sha256(_encoded(policy)).hexdigest()
+        digest = hashlib.sha256(_encoded(session_policy)).hexdigest()
         suffix = hashlib.sha256((str(self.root) + key).encode()).hexdigest()[:16]
         network, proxy = "isolated-pi-" + suffix, "anvil-pi-proxy-" + suffix
         if not confirm:
@@ -145,7 +146,7 @@ class PiEgress:
         else:
             self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
             policy_path = self.root / (key + "-allowlist.json")
-            policy_path.write_bytes(_encoded(policy)); policy_path.chmod(0o600)
+            policy_path.write_bytes(_encoded(session_policy)); policy_path.chmod(0o600)
             health = "require('http').get('http://127.0.0.1:3128/health',r=>{let s='';r.on('data',c=>s+=c);r.on('end',()=>process.exit(JSON.parse(s).digest==='" + digest + "'?0:1))}).on('error',()=>process.exit(1))"
             record = {"provider": provider, "origins": endpoints, "network": network, "network_id": None,
                       "proxy": proxy, "proxy_id": None, "image": self.config["image"], "session_id": session_id,
@@ -254,7 +255,10 @@ class PiEgress:
             approved = json.loads(self.record_path(provider).read_text())
             endpoint = self.config["provider_endpoints"][provider]
             secret = self.config["provider_secret_refs"][provider][endpoint["credential_env"]]
-            if (approved.get("policy") != json.loads(policy_path.read_text()) or approved.get("image") != record["image"]
+            approved_policy = approved.get("policy")
+            session_policy = json.loads(policy_path.read_text())
+            if (not isinstance(approved_policy, dict) or session_policy != approved_policy | {"session_id": session_id}
+                    or approved.get("image") != record["image"]
                     or record["session_id"] != session_id or record["secret_path"] != secret.removeprefix("file:")):
                 raise PiEgressError("Pi gateway no longer matches its provider approval")
             network = self._inspect("network", record["network"])

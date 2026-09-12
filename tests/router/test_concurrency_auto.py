@@ -103,9 +103,24 @@ class _FakeResponse:
         return False
 
 
-def test_engine_adapter_reads_sglang_server_info():
+def test_engine_adapter_reads_legacy_sglang_server_info():
     opener = _FakeOpener({"/get_server_info": {"max_running_requests": 1}})
     assert engine_declared_concurrency("http://127.0.0.1:8001/v1", opener=opener) == 1
+
+
+@pytest.mark.parametrize("prefix", ["", "/engine"])
+def test_engine_adapter_uses_supported_endpoint_without_deprecated_probe(prefix):
+    calls = []
+    delegate = _FakeOpener({"/server_info": {"max_running_requests": 4}})
+
+    def opener(request, timeout=None):
+        calls.append(request.full_url)
+        return delegate(request, timeout=timeout)
+
+    assert engine_declared_concurrency(
+        f"http://127.0.0.1:8001{prefix}/v1", opener=opener
+    ) == 4
+    assert calls == [f"http://127.0.0.1:8001{prefix}/server_info"]
 
 
 def test_engine_adapter_reads_vllm_server_info():

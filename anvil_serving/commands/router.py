@@ -32,10 +32,13 @@ def commands() -> CommandNode:
             ),
             _node(
                 "diagnose",
-                "Explain one request from bounded router evidence without replaying it.",
+                "Inspect active requests or retained request/session evidence without replaying it.",
                 handler=_handler("anvil_serving.router_diagnostics", attribute="dispatch", argv_prefix=()),
                 options=(
                     _option("--request-id", summary="Request identifier returned by the gateway.", value_name="ID"),
+                    _option("--session-id", summary="Opaque session identifier to filter retained or active requests.", value_name="ID"),
+                    _option("--active", summary="Read current active requests, optionally filtered by session."),
+                    _option("--config", summary="Saved diagnostic connection settings; defaults to operator home.", value_name="PATH"),
                     _option("--router-url", summary="Explicit router HTTP(S) origin.", value_name="URL"),
                     _option("--auth-env", summary="Environment variable containing the router credential.", value_name="NAME"),
                     _option("--timeout", summary="Per-read socket timeout, at most 30 seconds.", value_name="SECONDS"),

@@ -53,6 +53,8 @@ HERMES_MEDIA_TOOLS = (
 )
 PI_ANVIL_COMPAT = {
     "maxTokensField": "max_tokens",
+    "sendSessionAffinityHeaders": True,
+    "sessionAffinityFormat": "openai",
     "supportsDeveloperRole": False,
     "supportsReasoningEffort": True,
     "supportsStore": False,
@@ -424,6 +426,16 @@ def _render_pi_documents(
         providers["anvil"] = pi_provider
     elif not isinstance(pi_provider, dict):
         raise ClientCatalogError("Pi Anvil provider must be an object")
+    provider_compat = pi_provider.get("compat")
+    if provider_compat is None:
+        provider_compat = {}
+    if not isinstance(provider_compat, Mapping):
+        raise ClientCatalogError("Pi Anvil provider compat must be an object")
+    pi_provider["compat"] = {
+        **provider_compat,
+        "sendSessionAffinityHeaders": PI_ANVIL_COMPAT["sendSessionAffinityHeaders"],
+        "sessionAffinityFormat": PI_ANVIL_COMPAT["sessionAffinityFormat"],
+    }
     if pi_provider.get("apiKey") == api_key_env:
         pi_provider["apiKey"] = "$" + api_key_env
     old_pi_models = _models_by_id(pi_provider.get("models"))
