@@ -1,0 +1,194 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "m4-max-voice-refresh-20260908",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 7680,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "voice campaign",
+        "observed_at": "2026-09-08"
+      },
+      "output_reserve": {
+        "value": 512,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "voice campaign",
+        "observed_at": "2026-09-08"
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "sequences",
+      "status": "assumed",
+      "source": "voice campaign",
+      "observed_at": "2026-09-08"
+    },
+    "physical_vram_bytes": {
+      "value": 51539607552,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "system_profiler SPHardwareDataType; shared unified memory",
+      "observed_at": "2026-09-08"
+    },
+    "vram_reserves": {
+      "host_and_co_residents": {
+        "kind": "policy",
+        "variable": {
+          "value": 25769803776,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "Reserve half the shared laptop RAM for existing apps, STT/TTS and baseline LLM",
+          "observed_at": "2026-09-08"
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "all assertions required",
+        "observed_at": "2026-09-08"
+      }
+    }
+  },
+  "candidates": [
+    {
+      "id": "qwen35-9b",
+      "runtime_context_limit_tokens": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "bounded voice target; no long-context qualification",
+        "observed_at": "2026-09-08"
+      },
+      "resident_components": {
+        "target_weights": {
+          "min": 5977073303,
+          "max": 6574780633.3,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "exact HF repository bytes with 10% allocation uncertainty",
+          "observed_at": "2026-09-08"
+        },
+        "runtime_fixed": {
+          "min": 1073741824,
+          "max": 3221225472,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "planning workspace and recurrent state interval",
+          "observed_at": "2026-09-08"
+        }
+      },
+      "per_token_components": {
+        "target_kv": {
+          "min": 16384,
+          "max": 32768,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "conservative compact voice window estimate; refine after load",
+          "observed_at": "2026-09-08"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "one sequence, no draft",
+        "observed_at": "2026-09-08"
+      }
+    },
+    {
+      "id": "qwen36-35b-a3b",
+      "runtime_context_limit_tokens": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "bounded voice target; no long-context qualification",
+        "observed_at": "2026-09-08"
+      },
+      "resident_components": {
+        "target_weights": {
+          "min": 20429169263,
+          "max": 22472086189.300003,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "exact HF repository bytes with 10% allocation uncertainty",
+          "observed_at": "2026-09-08"
+        },
+        "runtime_fixed": {
+          "min": 2147483648,
+          "max": 5368709120,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "planning workspace and recurrent state interval",
+          "observed_at": "2026-09-08"
+        }
+      },
+      "per_token_components": {
+        "target_kv": {
+          "min": 16384,
+          "max": 65536,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "conservative compact voice window estimate; refine after load",
+          "observed_at": "2026-09-08"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "one sequence, no draft",
+        "observed_at": "2026-09-08"
+      }
+    },
+    {
+      "id": "qwen38-27b",
+      "runtime_context_limit_tokens": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "bounded voice target; no long-context qualification",
+        "observed_at": "2026-09-08"
+      },
+      "resident_components": {
+        "target_weights": {
+          "min": 16081490933,
+          "max": 17689640026.300003,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "exact HF repository bytes with 10% allocation uncertainty",
+          "observed_at": "2026-09-08"
+        },
+        "runtime_fixed": {
+          "min": 2147483648,
+          "max": 5368709120,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "planning workspace and recurrent state interval",
+          "observed_at": "2026-09-08"
+        }
+      },
+      "per_token_components": {
+        "target_kv": {
+          "min": 16384,
+          "max": 98304,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "conservative compact voice window estimate; refine after load",
+          "observed_at": "2026-09-08"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "one sequence, no draft",
+        "observed_at": "2026-09-08"
+      }
+    }
+  ]
+}
