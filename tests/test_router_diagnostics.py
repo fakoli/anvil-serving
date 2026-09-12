@@ -5,12 +5,16 @@ import json
 import http.client
 import threading
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
 from anvil_serving import cli, router_diagnostics as diagnostics
 from anvil_serving.operator_output import OperatorError, TransportError, UsageError
+from anvil_serving.observability.workloads import WorkloadState
+from anvil_serving.router.decision_log import DecisionLog
+from anvil_serving.router.workloads import RouterWorkloadRegistry
 
 
 @contextmanager
@@ -114,6 +118,30 @@ def test_active_diagnosis_allows_an_unfiltered_snapshot_and_preserves_phase_fiel
                       "estimated_input_tokens": None, "input_tokens": None,
                       "context_limit_tokens": 8192,
                       "output_tokens": None, "cache_read_input_tokens": None}
+
+
+def test_active_registry_record_is_ongoing_not_a_failed_terminal_request():
+    registry = RouterWorkloadRegistry(
+        DecisionLog(), clock=lambda: datetime(2026, 9, 12, tzinfo=timezone.utc)
+    )
+    request_id = "req_" + "b" * 32
+    token = registry.begin(request_id)
+    assert token.activate()
+    assert token.advance(WorkloadState.ADMITTED)
+    assert token.advance(WorkloadState.DISPATCHED)
+    assert token.advance(WorkloadState.STREAMING)
+    registry.observe_request(request_id, {"session_id": "session-a"}, "llm.primary", {
+        "phase": "streaming", "elapsed_ms": 7, "last_activity_ms": 2,
+    })
+    payload = registry.active_requests()
+    with endpoint({"/v1/requests?active=1": (200, payload)}) as (url, _):
+        result = diagnostics.diagnose_session(router_url=url, token="test-credential", active=True)
+    request = result["requests"][0]
+    assert request["outcome"] == "ongoing"
+    assert request["upstream_outcome"] == "unknown"
+    assert request["active"]["phase"] == "streaming"
+    assert request["observations"] == ["waiting_for_upstream_activity"]
+    assert request["next_checks"] == ["wait_for_current_phase_or_terminal_outcome"]
 
 
 def test_cli_rejects_request_id_with_active_snapshot():

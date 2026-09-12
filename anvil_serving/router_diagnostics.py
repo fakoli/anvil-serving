@@ -234,7 +234,7 @@ def _fetch(base, path, token, timeout, opener):
     return value
 
 
-def diagnose_record(record: Mapping) -> dict:
+def diagnose_record(record: Mapping, *, active: bool = False) -> dict:
     """Project known metadata and derive bounded observations, never content."""
     attempts = record.get("attempts")
     attempt = attempts[-1] if isinstance(attempts, list) and attempts else {}
@@ -248,6 +248,9 @@ def diagnose_record(record: Mapping) -> dict:
     delivery_outcome = record.get("workload_outcome")
     if delivery_outcome not in {"success", "error", "cancelled", "timeout", "rejected", "disconnected"}:
         delivery_outcome = None
+    # The active workload endpoint has no terminal delivery outcome.  An
+    # absent upstream attempt there means it is still progressing, not failed.
+    ongoing = active and delivery_outcome is None
     measurements = record.get("measurements")
     if not isinstance(measurements, Mapping):
         measurements = {}
@@ -269,7 +272,10 @@ def diagnose_record(record: Mapping) -> dict:
                 timing[phase] = None
     observations = []
     checks = []
-    if not succeeded:
+    if ongoing:
+        observations.append("waiting_for_upstream_activity")
+        checks.append("wait_for_current_phase_or_terminal_outcome")
+    elif not succeeded:
         observations.append("request_failed")
         if reason in {"over_context", "media_admission_context_limit"}:
             checks.append("check_request_context_and_media_limits")
@@ -316,9 +322,9 @@ def diagnose_record(record: Mapping) -> dict:
         "request_id": _label(record.get("request_id")),
         "gateway_request_id": _label(record.get("gateway_request_id")),
         "route": _label(record.get("route")),
-        "requested_tier": _label(record.get("requested_tier")),
+        "requested_tier": _label(record.get("requested_tier")) or _label(record.get("tier_id")),
         "served_tier": _label(record.get("served_tier")),
-        "outcome": delivery_outcome or upstream_outcome,
+        "outcome": delivery_outcome or ("ongoing" if ongoing else upstream_outcome),
         "upstream_outcome": upstream_outcome,
         "delivery_outcome": delivery_outcome,
         "finish_reason": finish,
@@ -389,7 +395,7 @@ def diagnose_session(session_id=None, *, router_url, token, active=False, timeou
         "scope": expected_scope,
         "session_id": session_id,
         "active": active,
-        "requests": [diagnose_record(record) for record in records],
+        "requests": [diagnose_record(record, active=active) for record in records],
         "truncated": trace.get("truncated") is True,
         "limitations": [
             "metadata_only", "history_is_bounded_to_managed_jsonl_generations",
