@@ -10,11 +10,19 @@ from __future__ import annotations
 import dataclasses
 import json
 from pathlib import Path
+import sys
 
 import pytest
 
 from anvil_serving.connect import edge
 from anvil_serving.connect.edge import EdgeConfig, EdgeError, edge_config
+
+# The Connect manifest reader requires POSIX no-follow descriptors; the
+# plan and apply flows run on POSIX only, like the rest of the family.
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="the Connect manifest reader requires POSIX no-follow descriptors",
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 ZONE_ID = "023e105f4ecef8ad9ca31a8372d0c354"
@@ -325,7 +333,7 @@ def test_retirement_never_touches_foreign_service_rules(tmp_path: Path) -> None:
         "legacy.example.test": {"id": "rec9", "name": "legacy.example.test",
                                  "content": "someone-elses-tunnel.cfargotunnel.com", "proxied": True},
     })
-    result = edge.apply(config, manifest, confirm=True, retire_orphans=True, fetch=api)
+    edge.apply(config, manifest, confirm=True, retire_orphans=True, fetch=api)
     assert legacy in api.ingress  # different origin service: not ours
     assert api.dns["legacy.example.test"]["content"].startswith("someone-elses-tunnel")
 
