@@ -576,7 +576,15 @@ func StartConnector(parent context.Context, declaration ConnectorConfig, secrets
 			case <-ctx.Done():
 			case <-p.Done():
 				// A PID proves neither establishment nor a previous registration.
-				runtime.events.Record(path, resource.Envelope.Rule.ID, "tunnel_establishment_failed")
+				if p.Failed() {
+					runtime.events.Record(path, resource.Envelope.Rule.ID, "tunnel_establishment_failed")
+				} else {
+					// The child ran and then ended without a process-level
+					// failure: record the lifecycle end rather than implying
+					// establishment never happened. Activation readiness
+					// (Slice 3) is what turns this split into proof.
+					runtime.events.Record(path, resource.Envelope.Rule.ID, "tunnel_disconnected")
+				}
 				select {
 				case runtime.errors <- ErrUnavailable:
 				default:
