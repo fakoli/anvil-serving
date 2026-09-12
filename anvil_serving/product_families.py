@@ -279,6 +279,54 @@ PRODUCT_FAMILIES = (
         ),
     ),
     ProductFamily(
+        id="anvil-connect",
+        name="Anvil Connect",
+        promise=(
+            "Publish local browser surfaces through one self-hosted, authenticated edge "
+            "with no application changes."
+        ),
+        boundary=(
+            "Owns edge TLS, OIDC login, session admission, identity handoff, reverse-tunnel "
+            "transport, and per-resource exposure contracts; it does not rewrite origins, bind "
+            "an origin wider than loopback, expose a resource outside a rendered and activated "
+            "declaration, or place identity under a hosted vendor."
+        ),
+        commands=("connect",),
+        docs_anchor="docs/PRODUCT-FAMILIES.md#anvil-connect",
+        journey=(
+            JourneyStep(
+                "validate",
+                "Validate the closed deployment declaration offline.",
+                "anvil-serving connect validate --manifest <PATH>",
+                "Hosts, access profiles, methods, limits, and ownership are checked before anything renders.",
+            ),
+            JourneyStep(
+                "render",
+                "Render the declared edge configuration and review the exact file plan.",
+                "anvil-serving connect render --manifest <PATH> --confirm",
+                "Caddy, Authelia, gateway, and connector configuration stays reviewable and reversible.",
+            ),
+            JourneyStep(
+                "activate",
+                "Apply the rendered generation to selected managed targets.",
+                "anvil-serving connect up --manifest <PATH> --service gateway --confirm",
+                "Activation is a bounded transaction with rollback on failure.",
+            ),
+            JourneyStep(
+                "enroll",
+                "Enroll a connector and approve its fingerprint independently.",
+                "anvil-serving connect init --service connector:<ID> --bundle <FILE> --confirm",
+                "Trust is established out of band: invitation, identity fingerprint, human approval.",
+            ),
+            JourneyStep(
+                "administer",
+                "Operate invitations, approvals, and principal resources through the admin boundary.",
+                "anvil-serving connect admin --manifest <PATH> --request <FILE> --confirm",
+                "Identity operations stay explicit, classified, and auditable.",
+            ),
+        ),
+    ),
+    ProductFamily(
         id="control-plane-fleet",
         name="Control Plane & Fleet",
         promise="Resolve ownership, dispatch bounded operations, and expose fleet-wide state.",
@@ -299,7 +347,6 @@ PRODUCT_FAMILIES = (
             "collectors",
             "dashboard",
             "edge",
-            "connect",
             "workbench",
         ),
         docs_anchor="docs/PRODUCT-FAMILIES.md#control-plane-fleet",
@@ -348,6 +395,7 @@ _ALIASES = {
     "eval": "evaluation-evidence",
     "voice": "anvil-voice",
     "media": "anvil-media",
+    "connect": "anvil-connect",
     "control": "control-plane-fleet",
     "fleet": "control-plane-fleet",
 }

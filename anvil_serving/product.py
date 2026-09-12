@@ -15,7 +15,7 @@ def _parser() -> argparse.ArgumentParser:
         description="Discover Anvil Serving product families and ordered user journeys.",
     )
     actions = parser.add_subparsers(dest="action")
-    actions.add_parser("families", help="List the six product families and boundaries.")
+    actions.add_parser("families", help="List the product families and their boundaries.")
     journey = actions.add_parser("journey", help="Show one ordered family journey.")
     journey.add_argument("family", help="Stable family id or short alias.")
     return parser

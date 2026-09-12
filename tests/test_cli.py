@@ -521,7 +521,7 @@ def test_command_manifest_is_terminal_and_machine_readable(capsys):
         ["--verbose"],
         ["-h", "--help"],
     ]
-    assert len(payload["product_families"]) == 6
+    assert len(payload["product_families"]) == 7
     assert payload["umbrella"]["name"] == "Anvil Serving"
     assert any(record["path"] == "topology resolve" for record in payload["commands"])
 
