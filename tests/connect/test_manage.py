@@ -1031,3 +1031,58 @@ def test_post_exec_unit_failure_does_not_commit_activation(tmp_path: Path, monke
         manage.up(manifest, manage.Target('gateway'), apply=True, runner=runner, unit_root=units)
     assert not Path(value['config_root']).exists()
     assert list(units.iterdir()) == []
+
+
+@pytest.mark.parametrize("local", [False, True])
+def test_schema_render_consumes_local_fields_without_starting_services(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, local: bool) -> None:
+    from tests.connect.test_render import local_tunnel_manifest
+
+    manifest_path, value, native = deployment(tmp_path, monkeypatch)
+    if local:
+        value = local_tunnel_manifest(value)
+        manifest_path.write_text(json.dumps(value))
+    expected = render_config(value)
+    seen = {}
+    synthetic = SyntheticRunner()
+
+    def inspect(argv, timeout, identity):
+        if argv[0] == str(native) and argv[1] == "preflight":
+            mode = argv[argv.index("--mode") + 1]
+            seen[mode] = Path(argv[argv.index("--config") + 1]).read_text()
+        return synthetic(argv, timeout, identity)
+
+    result = manage.render(manifest_path, apply=True, runner=inspect)
+    assert result["generation"] == expected["generation"]
+    assert seen == {"gateway": expected["files"]["gateway.json"], "connector": expected["files"]["connectors/dashboard.json"],
+                    "client": expected["files"]["clients/dashboard-api.json"]}
+    staged = Path(result["stage"]["path"])
+    assert {name: (staged / name).read_text() for name in expected["files"]} == expected["files"]
+    again = manage.render(manifest_path, apply=True, runner=inspect)
+    assert again["stage"] == result["stage"]
+    assert not Path(value["config_root"]).exists()
+    assert not any(call[0] == "/usr/bin/systemctl" for call in synthetic.calls)
+
+
+@pytest.mark.parametrize("mutation", ["missing", "address", "server_name", "http_host", "null", "proxy"])
+def test_local_selection_rejected_before_native_validation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str) -> None:
+    from anvil_serving.connect.config import ManifestError
+    from tests.connect.test_render import local_tunnel_manifest
+
+    manifest_path, value, _ = deployment(tmp_path, monkeypatch)
+    value = local_tunnel_manifest(value)
+    endpoint = value["connectors"][0]["local_tunnel"]
+    if mutation == "missing":
+        del value["gateway"]["local_tunnel"]
+    elif mutation in {"address", "server_name", "http_host"}:
+        endpoint[mutation] = "127.0.0.1:18444" if mutation == "address" else "other.example.test"
+    elif mutation == "null":
+        value["connectors"][0]["local_tunnel"] = None
+    else:
+        endpoint["proxy"] = "http://127.0.0.1:1080"
+    manifest_path.write_text(json.dumps(value))
+    runner = SyntheticRunner()
+    for operation in (manage.validate, manage.render):
+        with pytest.raises(ManifestError, match="must match gateway local_tunnel|null|unknown"):
+            operation(manifest_path, runner=runner)
+    assert runner.calls == []
+    assert not Path(value["config_root"]).exists()
