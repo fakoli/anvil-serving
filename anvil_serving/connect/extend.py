@@ -240,19 +240,16 @@ def _admin_exchange(
             request_path.unlink()
         except FileNotFoundError:
             pass
-        if output_path is not None and output_path.exists():
-            try:
-                output_path.unlink()
-            except FileNotFoundError:
-                pass
+    value = None
     if output_path is not None and output_path.is_file():
+        # The response carries bearer invitation material; read it and delete
+        # it immediately so no secret outlives its use.
         value = json.loads(output_path.read_text(encoding="utf-8"))
         try:
             output_path.unlink()
         except FileNotFoundError:
             pass
-        return value
-    return result
+    return value if value is not None else result
 
 
 def _revoke_and_invite(

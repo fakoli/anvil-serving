@@ -64,8 +64,9 @@ def _sha(content: bytes) -> str:
 def environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """One rendered owned generation plus a three-resource declaration."""
     root = tmp_path / "rendered"
+    root.mkdir(mode=0o755)
     connectors = root / "connectors"
-    connectors.mkdir(parents=True)
+    connectors.mkdir(mode=0o755)
     manifest = isolated_manifest()
     manifest["config_root"] = str(root)
     manifest["connectors"][0]["resources"] = _declared_resources(DECLARED)
@@ -171,8 +172,9 @@ def test_plan_accepts_all_three_recorded_resource_shapes() -> None:
 
 def test_plan_rejects_removals_with_guidance(tmp_path: Path) -> None:
     root = tmp_path / "rendered"
+    root.mkdir(mode=0o755)
     connectors = root / "connectors"
-    connectors.mkdir(parents=True)
+    connectors.mkdir(mode=0o755)
     manifest = isolated_manifest()
     manifest["config_root"] = str(root)
     manifest["connectors"][0]["resources"] = _declared_resources(("dashboard",))
