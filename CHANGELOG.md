@@ -21,6 +21,8 @@ All notable changes to this project are documented here. The format is based on
   session grouping requires per-session headers.
 - Managed Pi Web browser sessions and Anvil Connect resource extension for declared
   local browser applications, with a documented Cloudflare edge boundary.
+- Optional Anvil Connect local-tunnel configuration schemas with Go/Python reader
+  parity. These declarations are inert; no listener, dialer, or transport is activated.
 
 ### Fixed
 
