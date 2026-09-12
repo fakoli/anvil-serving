@@ -47,7 +47,7 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
   retroactively across history (2026-09-12 directive): real operator names,
   account emails, identity-provider subjects, home paths, tailnet names, and
   host names are replaced with synthetic names (`Primary Node`,
-  `Companion Node`, `example.tailnet.ts.net`, `example.test`), and values an
+  `Companion Node`, `example.ts.net`, `example.test`), and values an
   installer must supply are declared as environment references. Display
   labels never carry real names; secrets never enter the repo at all
   (enforced by the pre-submit secret gate).
