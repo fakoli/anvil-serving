@@ -43,8 +43,14 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
 - Files under `examples/` and the packaged scaffold are public templates. They
   must remain generic and byte-synchronized; `anvil-serving init` may detect
   real values only while writing to the private operator home.
-- Display labels such as `Primary Node` and `Companion Node` may remain in public
-  benchmark evidence, but they must not resolve to a reachable network identity.
+- Person and machine identifiers are scrubbed from every public record,
+  retroactively across history (2026-09-12 directive): real operator names,
+  account emails, identity-provider subjects, home paths, tailnet names, and
+  host names are replaced with synthetic names (`Primary Node`,
+  `Companion Node`, `example.tailnet.ts.net`, `example.test`), and values an
+  installer must supply are declared as environment references. Display
+  labels never carry real names; secrets never enter the repo at all
+  (enforced by the pre-submit secret gate).
 
 ## Code conventions
 

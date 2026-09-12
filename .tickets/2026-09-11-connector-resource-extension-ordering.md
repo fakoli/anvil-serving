@@ -91,3 +91,11 @@ Pi Web enablement completed through the bridge plus managed commands on
 set and the new resource's reverse tunnel and origin listener are live. The
 public Cloudflare hostname record and tunnel ingress for the new resource host
 remain operator-gated steps outside this repository.
+## Redactions
+
+- 2026-09-12: standing identity scrub applied retroactively — the operator
+  principal, issuer host, and resource IDs in the `human-set` example above are
+  placeholders; the full history was rewritten with the same substitution.
+  Person identifiers, home paths, tailnet names, and machine names never
+  re-enter public records (see AGENTS.md, public product and private
+  operator-state policy).
