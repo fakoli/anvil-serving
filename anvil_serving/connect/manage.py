@@ -25,7 +25,7 @@ import time
 from typing import Any, Callable, Iterator, Literal
 from contextlib import contextmanager
 
-from .config import read_manifest, require_isolated, role_identity
+from .config import ManifestError, read_manifest, require_isolated, role_identity
 from .render import plan, plan_for_inspection, render as render_config, stage
 
 # The package and command help remain portable.  The actual ownership model
@@ -2061,17 +2061,18 @@ def _tunnel_observation(data: dict[str, Any], target: Target, runner: Runner | N
     degraded = any(event["reason"] not in healthy_observations for event in observations.values())
     result = {"declared": selected, "state": "degraded" if degraded else "unknown", "readiness": "unknown",
               "observations": list(observations.values()), "evidence": "bounded current-invocation events; not a readiness proof"}
-    if "local_tunnel" in data["gateway"]:
-        try:
-            value = _gateway_ready(data, runner, deadline=deadline, check_entries=False)
-            if value.get("entries"):
-                connectors = tuple(c for c in data["connectors"] if target.kind == "gateway" or c["id"] == target.name)
-                ready = _entry_ready(value, data, connectors)
-                result.update(state="ready" if ready else "degraded", readiness="ready" if ready else "not-ready",
-                              entries=[e for e in value["entries"] if e["path"] in selected["paths"]],
-                              evidence="native entry health and admitted registrations; not origin readiness")
-        except ManageError:
-            pass
+    try:
+        value = _gateway_ready(data, runner, deadline=deadline, check_entries=False)
+        if value.get("entries"):
+            connectors = tuple(c for c in data["connectors"] if target.kind == "gateway" or c["id"] == target.name)
+            ready = _entry_ready(value, data, connectors)
+            result.update(state="ready" if ready else "degraded", readiness="ready" if ready else "not-ready",
+                          entries=[e for e in value["entries"] if e["path"] in selected["paths"]],
+                          evidence="native entry health and admitted registrations; not origin readiness")
+    except (ManageError, ManifestError):
+        # Legacy or otherwise unparsable generations stay inspectable with
+        # unknown readiness rather than failing the status call.
+        pass
     return result
 
 
