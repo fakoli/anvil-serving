@@ -846,9 +846,10 @@ class RelayBackend:
 
                 control.set_upstream_close(close_response)
                 _set_response_timeout(response, _control_timeout(self._timeout, control))
-                raw = response.read(
-                    self._max_response_bytes + 1
-                    if self._max_response_bytes is not None else -1
+                raw = (
+                    response.read(self._max_response_bytes + 1)
+                    if self._max_response_bytes is not None
+                    else response.read()
                 )
             elif self._transport is _urlopen_transport and self._max_response_bytes is not None:
                 raw = self._transport(
@@ -961,10 +962,10 @@ class RelayBackend:
                 if control is not None:
                     control.check_upstream()
                     _set_response_timeout(resp, _control_timeout(self._timeout, control))
-                raw = resp.read(
-                    self._max_response_bytes + 1
+                raw = (
+                    resp.read(self._max_response_bytes + 1)
                     if self._max_response_bytes is not None
-                    else -1
+                    else resp.read()
                 )
                 if (
                     self._max_response_bytes is not None

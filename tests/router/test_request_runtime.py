@@ -139,6 +139,53 @@ class _DripHeadersUpstream:
         return f"http://{host}:{port}/v1"
 
 
+class _BufferedKeepaliveUpstream:
+    """Send one complete JSON body, then retain the HTTP/1.1 connection."""
+
+    def __init__(self) -> None:
+        self.opened = threading.Event()
+        self.release = threading.Event()
+        self.body = json.dumps({
+            "choices": [{"message": {"content": "prompt"}, "finish_reason": "stop"}],
+        }).encode()
+        owner = self
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def do_POST(self):
+                self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(owner.body)))
+                self.end_headers()
+                self.wfile.write(owner.body)
+                self.wfile.flush()
+                owner.opened.set()
+                owner.release.wait(3)
+
+            def log_message(self, *_args):
+                pass
+
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+
+    def __enter__(self):
+        self.thread.start()
+        return self
+
+    def __exit__(self, *_args):
+        self.release.set()
+        self.httpd.shutdown()
+        self.httpd.server_close()
+        self.thread.join(timeout=3)
+
+    @property
+    def base_url(self):
+        host, port = self.httpd.server_address[:2]
+        return f"http://{host}:{port}/v1"
+
+
 @contextmanager
 def _gateway(upstream, config: ServerConfig, *, auth_token=None, policy=None, routes=(), max_concurrency=None):
     tier = replace(make_tier("openai"), id="loopback", base_url=upstream.base_url,
@@ -161,15 +208,16 @@ def _gateway(upstream, config: ServerConfig, *, auth_token=None, policy=None, ro
         thread.join(timeout=3)
 
 
-def _post(sock, *, stream=True, token=None, payload=None):
+def _post(sock, *, stream=True, token=None, session_id=None, payload=None):
     payload = payload if payload is not None else json.dumps({
         "model": "chat", "stream": stream,
         "messages": [{"role": "user", "content": "hi"}],
     }).encode()
     headers = b"" if token is None else f"Authorization: Bearer {token}\r\n".encode()
+    session = b"" if session_id is None else f"X-Anvil-Session-Id: {session_id}\r\n".encode()
     sock.sendall(
         b"POST /v1/chat/completions HTTP/1.1\r\nHost: 127.0.0.1\r\n"
-        b"Content-Type: application/json\r\nConnection: close\r\n" + headers
+        b"Content-Type: application/json\r\nConnection: close\r\n" + headers + session
         + f"Content-Length: {len(payload)}\r\n\r\n".encode() + payload
     )
 
@@ -247,6 +295,29 @@ def test_buffered_dripped_headers_cannot_outlive_startup_deadline_or_admission()
             wire = _read_until(client, b"\r\n\r\n", timeout=1)
     assert b" 504 " in wire
     assert routing._admission.snapshot("loopback").active_requests == 0
+
+
+def test_buffered_content_length_returns_before_upstream_keepalive_closes():
+    settings = ServerConfig(startup_timeout_s=1, idle_timeout_s=1, total_timeout_s=5,
+                            heartbeat_interval_s=0.02)
+    with _BufferedKeepaliveUpstream() as upstream, _gateway(upstream, settings, max_concurrency=1) as ((host, port), routing):
+        with socket.create_connection((host, port), timeout=1) as client:
+            started = time.monotonic()
+            _post(client, stream=False, session_id="session-buffered")
+            assert upstream.opened.wait(1)
+            wire = _read_until(client, b'"content": "prompt"', timeout=0.5)
+        assert time.monotonic() - started < 1
+        assert not upstream.release.is_set()
+        assert b" 200 " in wire
+        assert b'"content": "prompt"' in wire
+        deadline = time.monotonic() + 0.5
+        while routing._admission.snapshot("loopback").active_requests and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert routing._admission.snapshot("loopback").active_requests == 0
+        record = routing._decision_log.last
+        assert record is not None
+        assert record.session_id == "session-buffered"
+        assert record.attempts[-1].succeeded is True
 
 
 @pytest.mark.parametrize(("idle_timeout_s", "total_timeout_s"), ((0.07, 1), (1, 0.07)))
