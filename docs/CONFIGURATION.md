@@ -354,7 +354,16 @@ instead requires the member contract below. A direct tier's `base_url` is an
 OpenAI- or Anthropic-compatible base URL; use `127.0.0.1`, never `localhost`,
 for same-host serves. Optional `health_path`, `timeout`, `max_concurrency`,
 `max_output_tokens`, `context_admission`, `extra_body`, and
-`extra_body_defaults` control relay behavior. `engine`,
+`extra_body_defaults` control relay behavior. `strip_reasoning_history = true`
+is an opt-in policy for a qualified OpenAI-compatible endpoint: remove prior
+assistant `reasoning_content`, `reasoning`, and `reasoning_text` fields before
+forwarding, including within a tool cycle. Visible content, tool calls/results,
+and generation settings remain intact; unfinished reasoning-only messages are
+omitted. The policy applies to streamed and buffered requests after extra-body
+merging, so client extensions are not required. It defaults to false, does not
+change generated reasoning, and must be requalified when the backing model changes.
+It does not remove thinking embedded in visible text or encrypted reasoning data.
+`engine`,
 `quantization`, and `params` are descriptive serve metadata.
 
 `context_admission = "estimate"` is the default. It rejects a text request
