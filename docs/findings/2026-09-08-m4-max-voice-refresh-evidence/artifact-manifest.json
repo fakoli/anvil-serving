@@ -300,6 +300,11 @@
           "path": "summary.json",
           "sha256": "09d3fb2068ad4a214762907c7f997e83e9c1a7748e0f14e32b4570d0a94ba06c",
           "bytes": 3310
+        },
+        {
+          "path": "sanitized-voice-summary.json",
+          "sha256": "368a2ad4c03f6c8ace8fb4d2ee2029ed3990bf496579491dc3b10a9ad373fdef",
+          "bytes": 2986
         }
       ],
       "reason": "derivative bounded no-promotion decision"
