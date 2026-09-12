@@ -32,7 +32,7 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     qualify_mode.add_argument("--prepare-container", action="store_true")
     qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
-    for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration"):
+    for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply"):
         leaf = actions.add_parser(action, allow_abbrev=False)
         leaf.add_argument("--manifest", required=True, action=_Once)
         if action == "up":
@@ -40,9 +40,14 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
             selected.add_argument("--service", action=_Once)
             selected.add_argument("--services", action=_Once)
             leaf.add_argument("--upgrade", action="store_true")
+        elif action in {"edge-status", "edge-apply"}:
+            leaf.add_argument(
+                "--edge-config", action=_Once,
+                help="Private edge-publishing configuration; defaults to the operator-home connect/edge-cloudflare.json.",
+            )
         elif action not in {"render", "admin", "backup", "restore", "migration"}:
             leaf.add_argument("--service", required=action not in {"validate", "status", "doctor"}, action=_Once)
-        if action in {"render", "up", "down", "init", "admin", "keygen", "backup", "restore"}:
+        if action in {"render", "up", "down", "init", "admin", "keygen", "backup", "restore", "edge-apply"}:
             leaf.add_argument("--dry-run", action="store_true")
             leaf.add_argument("--confirm", action="store_true")
         if action == "logs":
@@ -183,6 +188,18 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         elif action == "migration":
             from .migration import preview_observatory
             result = preview_observatory(args.manifest, args.observatory_config, resource_id=args.resource)
+        elif action == "edge-status":
+            from .edge import EdgeError, load_config, plan
+            try:
+                result = plan(load_config(getattr(args, "edge_config", None)), args.manifest)
+            except EdgeError as exc:
+                return CommandResult(error=OperatorError(str(exc), code="connect_edge_invalid"))
+        elif action == "edge-apply":
+            from .edge import EdgeError, apply as edge_apply, load_config
+            try:
+                result = edge_apply(load_config(getattr(args, "edge_config", None)), args.manifest, confirm=apply)
+            except EdgeError as exc:
+                return CommandResult(error=OperatorError(str(exc), code="connect_edge_invalid"))
         else:
             result = manage.keygen(args.manifest, target, output_path=args.output, apply=apply)
         return CommandResult(data=result)

@@ -389,6 +389,8 @@ required operands, choices, and defaults.
 | `connect backup` | Back up the stopped gateway authority to a private file. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `connect restore` | Restore fenced authority into a fresh private directory. | `mutate` / `bounded` | `--manifest`<br>`--input`<br>`--destination`<br>`--sha256`<br>`--native-sha256`<br>`--dry-run`<br>`--confirm` |
 | `connect migration` | Preview Observatory access at one canonical origin. | `read` / `bounded` | `--manifest`<br>`--observatory-config`<br>`--resource` |
+| `connect edge-status` | Compare declared resources with the live Cloudflare edge. | `read` / `bounded` | `--manifest`<br>`--edge-config` |
+| `connect edge-apply` | Apply declared DNS records and tunnel ingress rules through Cloudflare. | `mutate` / `bounded` | `--manifest`<br>`--edge-config`<br>`--dry-run`<br>`--confirm` |
 | `workbench` | Build Workbench runners and manage the optional companion hub. | `read` / `bounded` | - |
 | `workbench build` | Build the Workbench hub image from the local companion checkout. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--source`<br>`--image`<br>`--runner` |
 | `workbench pi-egress` | Approve or remove the isolated Pi provider gateway policy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--provider`<br>`--remove` |

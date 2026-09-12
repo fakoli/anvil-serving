@@ -27,7 +27,7 @@ def _command(name: str, summary: str, *, service: bool = True, mutation: bool = 
     )
 
 
-@command_family(category="Control Plane & Fleet")
+@command_family(category="Anvil Connect")
 def commands() -> CommandNode:
     return _node(
         "connect", "Manage authenticated API and browser access with Anvil Connect.",
@@ -72,6 +72,12 @@ def commands() -> CommandNode:
             _command("migration", "Preview Observatory access at one canonical origin.", service=False, extra=(
                 _option("--observatory-config", summary="Existing Observatory access configuration.", value_name="PATH"),
                 _option("--resource", summary="Exact browser resource ID in the manifest.", value_name="ID"),
+            )),
+            _command("edge-status", "Compare declared resources with the live Cloudflare edge.", service=False, extra=(
+                _option("--edge-config", summary="Private edge-publishing configuration; defaults to the operator-home connect/edge-cloudflare.json.", value_name="PATH"),
+            )),
+            _command("edge-apply", "Apply declared DNS records and tunnel ingress rules through Cloudflare.", service=False, mutation=True, extra=(
+                _option("--edge-config", summary="Private edge-publishing configuration; defaults to the operator-home connect/edge-cloudflare.json.", value_name="PATH"),
             )),
         ),
         docs_anchor="docs/cli/connect.md",

@@ -19,7 +19,7 @@ from anvil_serving.connect.cli import dispatch
 
 
 ROOT = Path(__file__).parents[2]
-LEAVES = {"validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "qualify"}
+LEAVES = {"validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "qualify"}
 
 
 def test_connect_registry_help_has_no_runtime_discovery(capsys, monkeypatch):
@@ -39,7 +39,7 @@ def test_connect_registry_help_has_no_runtime_discovery(capsys, monkeypatch):
             assert "--manifest" in text
         assert "--topology" not in text and "--target" not in text
     node = next(node for node in COMMAND_TREE.nodes if node.name == "connect")
-    assert node.group == "Control Plane & Fleet"
+    assert node.group == "Anvil Connect"
     assert {child.name for child in node.children} == LEAVES
     assert all(child.execution_policy == "offline" and child.transports == () for child in node.children)
 

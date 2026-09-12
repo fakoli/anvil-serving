@@ -124,6 +124,51 @@ application accounts unless the application insists on them.
 The [application access guide](ANVIL-CONNECT.md) walks the full sequence with
 the real commands, and the [CLI reference](cli/connect.md) lists every verb.
 
+## Publishing through Cloudflare
+
+The data plane is outbound-only: the connector dials out and builds the tunnel,
+so the edge needs two public things from Cloudflare — one DNS record per
+published host and one ingress rule per host inside the tunnel's configuration.
+Anvil Connect manages both from the same closed declaration:
+
+1. **Create the tunnel once** in the Cloudflare dashboard (Zero Trust →
+   Networks → Tunnels) and install the `cloudflared` agent on the edge host
+   with the printed token, keeping the token in a protected environment
+   reference — never in a tracked file.
+2. **Declare the edge publishing config** — the private
+   `connect/edge-cloudflare.json` carries the account id, zone, tunnel id, CA
+   pool path, and the name of the environment variable holding an API token
+   with *Zone DNS Edit* and *Account Cloudflare Tunnel Edit* scopes:
+
+```json
+{
+  "schema": "anvil-connect.edge-publishing/v1",
+  "account_id": "<32-hex-account-id>",
+  "zone_name": "example.test",
+  "tunnel_id": "<tunnel-uuid>",
+  "api_token_env": "ANVIL_CLOUDFLARE_API_TOKEN",
+  "origin_service": "https://127.0.0.1:19443",
+  "ca_pool": "/etc/cloudflared/example-connect-ca.pem",
+  "origin_server_name": "connect.example.test"
+}
+```
+
+3. **Compare, then apply.** The plan derives every required record and rule
+   from the deployment manifest, shows the exact difference, and the apply
+   merges it into the live tunnel configuration — preserving rules it does
+   not own, keeping the catch-all last:
+
+```bash
+anvil-serving connect edge-status --manifest <PATH> --edge-config <PATH>
+sudo anvil-serving connect edge-apply --manifest <PATH> --edge-config <PATH> --confirm
+```
+
+A repeated apply converges without API writes; ingress rules for hosts not
+declared in the manifest are preserved untouched, and the apply verifies the
+tunnel is reporting an active connector before it reports success. API access
+uses the environment reference only — the token value never appears in
+configuration, output, or evidence.
+
 ## Where the boundary sits
 
 Connect publishes applications; it does not promote or substitute anything

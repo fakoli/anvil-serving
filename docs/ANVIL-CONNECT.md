@@ -137,6 +137,40 @@ process status is not application readiness. Gateway service certificates are
 currently renewed by a supervised process restart before 24-hour expiry, not by
 zero-downtime certificate rotation.
 
+## Cloudflare edge publishing
+
+The public side of a Connect deployment is one Cloudflare tunnel plus one DNS
+record per published host. The cloudflared agent runs on the edge host under
+its own service identity with the tunnel token in a protected environment
+reference (`ExecStart=/usr/bin/cloudflared tunnel run --token ...`, the token
+file 0600 and outside any tracked tree). The tunnel is remotely managed, so
+its ingress rules live in Cloudflare's tunnel configuration — which is exactly
+what the edge verbs own:
+
+```bash
+anvil-serving connect edge-status --manifest <PATH> --edge-config <PATH>
+sudo anvil-serving connect edge-apply --manifest <PATH> --edge-config <PATH> --confirm
+```
+
+The private edge-publishing configuration (the generic template is
+[connect/examples/edge-cloudflare.json](https://github.com/fakoli/anvil-serving/blob/main/connect/examples/edge-cloudflare.json))
+carries the account id, zone name, tunnel UUID, CA-pool path, origin service,
+and the name of the environment variable holding an API token with Zone DNS
+Edit and Account Cloudflare Tunnel Edit scopes. `edge-status` derives the
+required DNS CNAMEs and ingress rules from the deployment manifest and
+compares them with the live tunnel configuration and zone records; the apply
+merges exactly the difference, preserves every ingress rule it does not own,
+keeps the catch-all last, and verifies the tunnel is reporting an active
+connector before it reports success. Hosts declared outside the configured
+zone are rejected, and the token is read from the environment reference only —
+it never appears in output, configuration, or evidence.
+
+Rules of the road: apply after every manifest change that adds or renames a
+published host (a `render`/`up` alone does not touch Cloudflare), keep the
+token scoped to the two permissions above plus reads, and treat a degraded
+`edge-status` tunnel status as an agent problem first (the cloudflared unit's
+journal) before suspecting the API.
+
 ## Recovery
 
 Stop the gateway before `connect backup`. It takes a consistent read-only logical
