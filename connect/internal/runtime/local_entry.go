@@ -12,7 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fakoli/anvil-serving/connect/internal/admin"
+	"github.com/fakoli/anvil-serving/connect/internal/privatefiles"
 	"github.com/fakoli/anvil-serving/connect/internal/relay"
+	"github.com/fakoli/anvil-serving/connect/internal/transport"
 	"github.com/fakoli/anvil-serving/connect/internal/tunnelgate"
 )
 
@@ -279,4 +282,74 @@ func (c ConnectorConfig) VerifyLocalTunnelTrust(g GatewayConfig) error {
 		return ErrConfiguration
 	}
 	return nil
+}
+
+// VerifyLocalTunnelMaterial uses exactly startup's leaf/key and trust checks.
+// No state is initialized or replaced by preflight.
+func (g GatewayConfig) VerifyLocalTunnelMaterial() error {
+	if g.Validate() != nil {
+		return ErrConfiguration
+	}
+	if g.LocalTunnel == nil {
+		return nil
+	}
+	directory, err := privatefiles.OpenExisting(g.StateDirectory)
+	if err != nil {
+		return ErrConfiguration
+	}
+	defer directory.Close()
+	inner, backend, err := loadAuthorities(directory)
+	if err != nil {
+		return err
+	}
+	_, err = g.LocalTunnel.loadTLS(inner.certificate, backend.certificate)
+	return err
+}
+
+func (g *Gateway) entryStatus(declaration GatewayConfig, gate *tunnelgate.Gate) []admin.EntryStatus {
+	result := []admin.EntryStatus{}
+	counts := gate.Registrations()
+	for _, path := range []string{"public", "local"} {
+		if path == "local" && declaration.LocalTunnel == nil {
+			continue
+		}
+		h := g.EntryHealth(path)
+		entry := admin.EntryStatus{Path: path, Listening: h.Listening, Reason: h.Reason, Resources: []admin.ResourceReadiness{}}
+		for _, r := range declaration.Gateway.Resources {
+			count := counts[path][r.Rule.ID]
+			if !h.Listening {
+				count = 0
+			}
+			entry.Resources = append(entry.Resources, admin.ResourceReadiness{Resource: r.Rule.ID, Registrations: count})
+		}
+		result = append(result, entry)
+	}
+	return result
+}
+
+// WaitLocalTunnelEntry proves the declared dedicated TLS entry, not a bare TCP
+// socket. Registration readiness is separately checked through owner admin status.
+func (c ConnectorConfig) WaitLocalTunnelEntry(ctx context.Context) error {
+	if ctx == nil || ctx.Err() != nil || c.Validate() != nil || c.LocalTunnel == nil {
+		return ErrConfiguration
+	}
+	_, roots, err := localRoot(c.LocalTunnel.TrustFile)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	for {
+		attempt, stop := context.WithTimeout(ctx, time.Second)
+		err := transport.VerifyLocalEntry(attempt, *c.outerClient().Local, roots)
+		stop()
+		if err == nil {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ErrUnavailable
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
 }

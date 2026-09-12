@@ -233,6 +233,19 @@ def _render(data: dict[str, Any]) -> dict[str, Any]:
             files[f"systemd/anvil-connect-connector-{name}.service"] = _unit("Anvil Connect connector " + name, [data["binary"], "connector", "--config", data["config_root"] + "/connectors/" + name + ".json"], data["service_user"], environment_file=data["environment_files"]["connectors"][name])
         else:
             files[f"systemd/anvil-connect-connector-{name}.service"] = _isolated_unit("Anvil Connect connector " + name, [data["binary"], "connector", "--config", data["config_root"] + "/connectors/" + name + ".json"], role_identity(data, "connector", name), role_limits(data, "connector", name), [connector["state_directory"]], environment_file=data["environment_files"]["connectors"][name])
+            if "local_tunnel" in connector:
+                # Order the declared colocated gateway without propagating its
+                # stop/restart to connectors using a healthy sibling entry.
+                unit = f"systemd/anvil-connect-connector-{name}.service"
+                preflight = [data["binary"], "preflight", "--mode", "connector", "--config",
+                             data["config_root"] + "/connectors/" + name + ".json", "--input",
+                             data["config_root"] + "/gateway.json", "--socket", connector["local_tunnel"]["address"]]
+                files[unit] = files[unit].replace("ExecStart=", "ExecStartPre=" + " ".join(_unit_argument(arg) for arg in preflight) + "\nExecStart=")
+                files[unit] = files[unit].replace(
+                    "After=network-online.target\nWants=network-online.target",
+                    "After=network-online.target anvil-connect-gateway.service\n"
+                    "Wants=network-online.target anvil-connect-gateway.service",
+                )
     for client in data["clients"]:
         name = client["rule"]["id"]
         files[f"clients/{name}.json"] = _json(client)

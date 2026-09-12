@@ -17,6 +17,7 @@ import re
 import selectors
 import signal
 import secrets
+import socket
 import stat
 import subprocess
 import tempfile
@@ -49,6 +50,11 @@ _MAX_BINARY = 512 * 1024 * 1024
 _SYSTEMD_TIMEOUT = 30.0
 _VALIDATE_TIMEOUT = 10.0
 _ID = re.compile(r"[a-z][a-z0-9-]{0,62}\Z")
+_EVENT_REASONS = {
+    "entry_bind_failed", "entry_tls_failed", "entry_stopped", "entry_listening", "entry_capacity_exhausted",
+    "tunnel_established", "tunnel_establishment_failed", "tunnel_disconnected",
+    "renewal_failed", "renewal_resumed", "lease_expired", "authority_denied",
+}
 
 
 class ManageError(RuntimeError):
@@ -487,7 +493,7 @@ def _target_roles(data: dict[str, Any], target: Target) -> tuple[tuple[str, str 
     return ((target.kind, target.name),)
 
 
-def _safe_root_ancestors(path: Path) -> None:
+def _safe_root_ancestors(path: Path, identity: tuple[int, int] | None = None) -> None:
     """Require a root-owned, non-writable path to a role-owned leaf.
 
     Role-owned parents are intentionally not accepted: a role state or secret
@@ -502,6 +508,10 @@ def _safe_root_ancestors(path: Path) -> None:
         if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
                 or info.st_uid != 0 or info.st_mode & 0o022):
             raise ManageError("managed runtime directory is unsafe")
+        if identity is not None:
+            uid, gid = identity
+            if not info.st_mode & (0o100 if info.st_uid == uid else 0o010 if info.st_gid == gid else 0o001):
+                raise ManageError("local trust directory is not traversable by its service identity")
         if current == current.parent:
             return
         current = current.parent
@@ -623,6 +633,35 @@ def _validate_gateway_files(data: dict[str, Any]) -> None:
         "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file",
     ):
         _safe_consumed_file(Path(data["authelia"][name]), idp_uid, idp_gid)
+    _validate_local_files(data, Target("gateway"))
+
+
+def _validate_local_files(data: dict[str, Any], target: Target) -> None:
+    """Metadata counterpart of native readManagedMaterial; never read PEM/key bytes."""
+    if target.kind == "client":
+        return
+    declaration = (data["gateway"] if target.kind == "gateway" else
+                   next(item for item in data["connectors"] if item["id"] == target.name))
+    local = declaration.get("local_tunnel")
+    if local is None:
+        return
+    uid, gid = role_identity(data, target.kind, target.name)
+    for name, reference in local.items():
+        if not name.endswith("_file"):
+            continue
+        path = Path(reference)
+        _safe_root_ancestors(path, (uid, gid))
+        try:
+            info = path.lstat()
+        except OSError as exc:
+            raise ManageError("local trust material is unavailable") from exc
+        mode = stat.S_IMODE(info.st_mode)
+        readable = mode & (0o400 if info.st_uid == uid else 0o040 if info.st_gid == gid else 0o004)
+        if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or not 1 <= info.st_size <= 1024 * 1024 or info.st_uid not in {0, uid}
+                or mode & 0o022 or not readable
+                or (name == "private_key_file" and (info.st_uid != uid or mode != 0o600 or info.st_nlink != 1))):
+            raise ManageError("local trust material has unsafe ownership, mode, type or size")
 
 
 def _validate_isolated_runtime(data: dict[str, Any], targets: tuple[Target, ...]) -> None:
@@ -633,6 +672,8 @@ def _validate_isolated_runtime(data: dict[str, Any], targets: tuple[Target, ...]
         for role, path, identifier in _role_private_paths(data, target):
             uid, gid, _ = _role_account(data, role, identifier)
             _safe_private_runtime_directory(Path(path), uid, gid)
+        if target.kind == "connector":
+            _validate_local_files(data, target)
     if any(target.kind == "gateway" for target in targets):
         _validate_closed_memberships(data)
         _safe_ingress_directory(data)
@@ -681,10 +722,29 @@ def _validate_environment_files(data: dict[str, Any], target: Target | tuple[Tar
             raise ManageError("declared EnvironmentFile has unsafe ownership or mode")
 
 
-def _validate_data(data: dict[str, Any], target: Target | tuple[Target, ...] | None, runner: Runner | None) -> dict[str, Any]:
+def _native_preflight(data: dict[str, Any], targets: tuple[Target, ...], root: Path, runner: Runner | None, *, initializing: bool = False) -> None:
+    selected = list(targets)
+    if any(item.kind == "connector" and "local_tunnel" in _tunnel_selection(data, item) for item in targets):
+        if Target("gateway") not in selected:
+            selected.insert(0, Target("gateway"))
+    for item in selected:
+        # init creates the authorities against which local-root separation is
+        # checked. It validates declarations first; up always uses full preflight.
+        verb = "validate" if initializing and item.kind == "gateway" and "local_tunnel" in data["gateway"] else "preflight"
+        command = [data["binary"], verb, "--mode", _mode(item), "--config",
+                   str(_config_path({**data, "config_root": str(root)}, item))]
+        if item.kind == "connector" and "local_tunnel" in _tunnel_selection(data, item):
+            command.extend(["--input", str(root / "gateway.json")])
+        _fail(_run(runner, tuple(command), _VALIDATE_TIMEOUT, _target_identity(data, item)),
+              "native declaration validation failed")
+
+
+def _validate_data(data: dict[str, Any], target: Target | tuple[Target, ...] | None, runner: Runner | None, *, initializing: bool = False) -> dict[str, Any]:
     require_isolated(data)
     selected = _selected_targets(data, target)
     _validate_isolated_runtime(data, selected)
+    if Target("gateway") not in selected and any(item.kind == "connector" and "local_tunnel" in _tunnel_selection(data, item) for item in selected):
+        _validate_local_files(data, Target("gateway"))
     _validate_environment_files(data, target)
     digests = _verified_binaries(data, target)
     generated = render_config(data)
@@ -694,15 +754,17 @@ def _validate_data(data: dict[str, Any], target: Target | tuple[Target, ...] | N
         # Validators run with the service UID, so this temporary public
         # declaration must be traversable just like installed rendered config.
         _make_public(root)
-        for item in selected:
-            result = _run(runner, (data["binary"], "preflight", "--mode", _mode(item), "--config", str(_config_path({**data, "config_root": str(root)}, item))), _VALIDATE_TIMEOUT, _target_identity(data, item))
-            _fail(result, "native declaration validation failed")
+        _native_preflight(data, selected, root, runner, initializing=initializing)
         if any(item.kind == "gateway" for item in selected):
             caddy = _run(runner, (data["components"]["caddy"], "validate", "--config", str(root / "caddy.json")), _VALIDATE_TIMEOUT, _role_service_identity(data, "edge"))
             _fail(caddy, "Caddy configuration validation failed")
             authelia = _run(runner, (data["components"]["authelia"], "--config", str(root / "authelia" / "configuration.yml"), "--config.experimental.filters", "template", "config", "validate"), _VALIDATE_TIMEOUT, _role_service_identity(data, "idp"))
             _fail(authelia, "Authelia configuration validation failed")
-    return {"targets": [item.text() for item in selected], "digests": digests, "generation": generated["generation"]}
+    checked = {"targets": [item.text() for item in selected], "digests": digests, "generation": generated["generation"]}
+    if any("local_tunnel" in _tunnel_selection(data, item) for item in selected):
+        checked["local_trust_validation"] = ("metadata and declaration checked; material preflight follows initialization" if initializing else
+                                             "metadata and native material checked under consuming identities")
+    return checked
 
 
 def validate(manifest_path: str | Path, target: Target | None = None, *, runner: Runner | None = None) -> dict[str, Any]:
@@ -728,6 +790,9 @@ def render_generation(manifest_path: str | Path, *, apply: bool = False, runner:
     require_isolated(data)
     checked = _validate_data(data, None, runner)
     result: dict[str, Any] = {"schema": "anvil-connect.manage/v1", "action": "render", "applied": bool(apply), "plan": plan(data, data["config_root"]), **checked}
+    selected = _targets(data, None)
+    result["tunnel_selections"] = [_tunnel_selection(data, target) for target in selected if target.kind != "client"]
+    result["activation_blockers"] = []
     if apply:
         result["stage"] = stage(data, data["config_root"])
     return result
@@ -1113,6 +1178,7 @@ class _Activation:
     committed: bool = False
     cleanup_retained: bool = False
     pending_record: dict[str, Any] | None = None
+    retain_failed: bool = False
 
     def rollback(self, runner: Runner | None) -> None:
         """Restore public config/unit bytes. Preserve backup if restoration fails."""
@@ -1127,7 +1193,12 @@ class _Activation:
                 else:
                     _write_atomic(self.unit_root / unit, value)
             if self.new_root and self.root.exists():
-                _remove_owned_tree(self.root)
+                if self.retain_failed:
+                    failed = Path(tempfile.mkdtemp(prefix="." + self.root.name + ".anvil-connect-failed-", dir=self.root.parent))
+                    os.rmdir(failed)
+                    os.replace(self.root, failed)
+                else:
+                    _remove_owned_tree(self.root)
             if self.root_moved:
                 if self.backup is None:
                     raise ManageError("activation rollback artifact is unavailable")
@@ -1166,8 +1237,7 @@ def _activate(data: dict[str, Any], targets: tuple[Target, ...], stage_path: Pat
     if state not in {"absent", "update"}:
         raise ManageError("rendered ownership is not safe to activate")
     changed = set(report["changes"]) - {"managed.json"}
-    if state == "update" and not changed <= _target_files(targets):
-        raise ManageError("activation would change an unselected target")
+    _require_selected_changes(targets, report)
     root_exists = root.exists()
     old_sources: dict[str, bytes] = {}
     old_generation: str | None = None
@@ -1308,7 +1378,7 @@ def _restore_running(runner: Runner | None, units: tuple[str, ...], prior: dict[
         raise ManageError("managed unit restoration failed", may_have_executed=mutated or failure.may_have_executed) from failure
 
 
-def _started_units(runner: Runner | None, unit_root: Path, units: tuple[str, ...]) -> None:
+def _started_units(runner: Runner | None, unit_root: Path, units: tuple[str, ...], *, deadline: float | None = None) -> None:
     """Require stable supervised processes before discarding activation rollback.
 
     This is a bounded process check, not origin or application readiness.
@@ -1317,7 +1387,10 @@ def _started_units(runner: Runner | None, unit_root: Path, units: tuple[str, ...
     for attempt in range(6):
         observed: dict[str, str] = {}
         for unit in units:
-            result = _run(runner, (_SYSTEMCTL, "show", "--property=ActiveState,SubState,MainPID,FragmentPath,DropInPaths", unit), _VALIDATE_TIMEOUT)
+            timeout = _VALIDATE_TIMEOUT if deadline is None else min(_VALIDATE_TIMEOUT, deadline - time.monotonic())
+            if timeout <= 0:
+                raise ManageError("runtime observation deadline expired")
+            result = _run(runner, (_SYSTEMCTL, "show", "--property=ActiveState,SubState,MainPID,FragmentPath,DropInPaths", unit), timeout)
             _fail(result, "managed unit status failed after startup")
             fields = dict(line.split("=", 1) for line in result.stdout.decode("utf-8").splitlines() if "=" in line)
             if (set(fields) != {"ActiveState", "SubState", "MainPID", "FragmentPath", "DropInPaths"}
@@ -1330,11 +1403,11 @@ def _started_units(runner: Runner | None, unit_root: Path, units: tuple[str, ...
             return
         previous = observed
         if attempt < 5:
-            time.sleep(1)
+            time.sleep(1 if deadline is None else max(0, min(1, deadline - time.monotonic())))
     raise ManageError("managed units did not stabilize after startup")
 
 
-def _closed_gateway_status(raw: bytes) -> None:
+def _closed_gateway_status(raw: bytes) -> dict[str, Any]:
     """Accept only the secret-free response from the native admin status RPC."""
     value = _strict_json(raw, "gateway readiness response is invalid")
     fields = {
@@ -1342,7 +1415,7 @@ def _closed_gateway_status(raw: bytes) -> None:
         "invitation", "installation", "role", "resources", "generation",
         "fingerprint", "status",
     }
-    if set(value) != fields or value.get("operation") != "status":
+    if set(value) not in (fields, fields | {"entries"}) or value.get("operation") != "status":
         raise ManageError("gateway readiness response is invalid")
     epoch = value.get("epoch")
     empty = ("secret", "key_id", "principal", "invitation", "installation", "role", "fingerprint")
@@ -1358,9 +1431,57 @@ def _closed_gateway_status(raw: bytes) -> None:
             or status.get("resources") != []):
         raise ManageError("gateway readiness response is invalid")
 
+    if "entries" in value:
+        entries = value["entries"]
+        if not isinstance(entries, list) or not 1 <= len(entries) <= 2:
+            raise ManageError("gateway readiness response is invalid")
+        paths = set()
+        for entry in entries:
+            if (not isinstance(entry, dict) or set(entry) != {"path", "listening", "reason", "resources"}
+                    or not isinstance(entry["path"], str) or not isinstance(entry["reason"], str)
+                    or entry["path"] not in {"public", "local"} or entry["path"] in paths
+                    or type(entry["listening"]) is not bool
+                    or entry["reason"] not in {"", "entry_listening", "entry_stopped", "entry_bind_failed", "entry_tls_failed"}
+                    or (entry["listening"] != (entry["reason"] == "entry_listening"))
+                    or not isinstance(entry["resources"], list) or not 1 <= len(entry["resources"]) <= 64):
+                raise ManageError("gateway readiness response is invalid")
+            paths.add(entry["path"])
+            resources = set()
+            for item in entry["resources"]:
+                if (not isinstance(item, dict) or set(item) != {"resource", "registrations"}
+                        or not isinstance(item["resource"], str) or _ID.fullmatch(item["resource"]) is None
+                        or item["resource"] in resources or type(item["registrations"]) is not int
+                        or not 0 <= item["registrations"] <= 258
+                        or (not entry["listening"] and item["registrations"] != 0)):
+                    raise ManageError("gateway readiness response is invalid")
+                resources.add(item["resource"])
+    return value
 
-def _gateway_ready(data: dict[str, Any], runner: Runner | None) -> None:
+
+def _entry_ready(value: dict[str, Any], data: dict[str, Any], connectors: tuple[dict[str, Any], ...],
+                 require_local: bool | None = None) -> bool:
+    entries = {entry["path"]: entry for entry in value.get("entries", [])}
+    if require_local is None:
+        require_local = (not connectors and "local_tunnel" in data["gateway"]) or any("local_tunnel" in c for c in connectors)
+    if require_local and not entries.get("local", {}).get("listening"):
+        return False
+    expected = {r["rule"]["id"] for r in data["gateway"]["gateway"]["resources"]}
+    for connector in connectors:
+        path = "local" if "local_tunnel" in connector else "public"
+        entry = entries.get(path)
+        if entry is None or not entry["listening"]:
+            return False
+        counts = {r["resource"]: r["registrations"] for r in entry["resources"]}
+        if set(counts) != expected or any(counts.get(r["envelope"]["rule"]["id"], 0) < 1 for r in connector["resources"]):
+            return False
+    return True
+
+
+def _gateway_ready(data: dict[str, Any], runner: Runner | None, *, deadline: float | None = None,
+                   connectors: tuple[dict[str, Any], ...] = (), check_entries: bool = True,
+                   require_local: bool | None = None) -> dict[str, Any]:
     """Require the restarted gateway's own same-user admin socket before dependents."""
+    deadline = min(deadline, time.monotonic() + 5) if deadline is not None else time.monotonic() + 5
     root = Path(data["config_root"])
     _safe_dir(root.parent)
     with tempfile.TemporaryDirectory(prefix=".anvil-connect-status-", dir=root.parent) as temporary:
@@ -1376,12 +1497,16 @@ def _gateway_ready(data: dict[str, Any], runner: Runner | None) -> None:
             "--request", str(request),
         )
         for attempt in range(6):
-            observed = _run(runner, command, _VALIDATE_TIMEOUT, _role_service_identity(data, "gateway"))
+            timeout = _VALIDATE_TIMEOUT if deadline is None else min(_VALIDATE_TIMEOUT, deadline - time.monotonic())
+            if timeout <= 0:
+                raise ManageError("runtime observation deadline expired")
+            observed = _run(runner, command, timeout, _role_service_identity(data, "gateway"))
             if observed.returncode == 0:
-                _closed_gateway_status(observed.stdout)
-                return
+                value = _closed_gateway_status(observed.stdout)
+                if not check_entries or _entry_ready(value, data, connectors, require_local):
+                    return value
             if attempt < 5:
-                time.sleep(1)
+                time.sleep(1 if deadline is None else max(0, min(1, deadline - time.monotonic())))
     raise ManageError("gateway did not become ready before dependent activation")
 
 
@@ -1443,8 +1568,9 @@ def _restored_gateway_ready(data: dict[str, Any], root: Path, runner: Runner | N
         for attempt in range(6):
             observed = _run(runner, command, _VALIDATE_TIMEOUT, identity)
             if observed.returncode == 0:
-                _closed_gateway_status(observed.stdout)
-                return
+                value = _closed_gateway_status(observed.stdout)
+                if _entry_ready(value, {"gateway": gateway}, ()):
+                    return
             if attempt < 5:
                 time.sleep(1)
     raise ManageError("restored gateway did not become ready before dependent restoration")
@@ -1490,6 +1616,135 @@ def _require_complete_isolated_migration(data: dict[str, Any], targets: tuple[Ta
         raise ManageError("isolated migration requires every declared target")
 
 
+def _require_selected_changes(targets: tuple[Target, ...], report: dict[str, Any]) -> None:
+    if report["state"] == "update" and not set(report["changes"]) - {"managed.json"} <= _target_files(targets):
+        raise ManageError("activation would change an unselected target; select the coordinated services explicitly")
+
+
+def _unit_required_files(unit: str, targets: tuple[Target, ...]) -> set[str]:
+    if unit in _units(Target("gateway")):
+        config = {"anvil-connect-gateway.service": "gateway.json", "anvil-connect-caddy.service": "caddy.json",
+                  "anvil-connect-authelia.service": "authelia/configuration.yml"}[unit]
+        return {config, "systemd/" + unit}
+    return next(_files(target) for target in targets if unit in _units(target))
+
+
+def _tunnel_selection(data: dict[str, Any], target: Target) -> dict[str, Any]:
+    if target.kind == "client":
+        return {}
+    declaration = (data["gateway"] if target.kind == "gateway" else
+                   next(item for item in data["connectors"] if item["id"] == target.name))
+    local = declaration.get("local_tunnel")
+    result: dict[str, Any] = {"target": target.text(), "paths": ["public"]}
+    if local is not None:
+        result["paths"] = ["public", "local"] if target.kind == "gateway" else ["local"]
+        result["local_tunnel"] = dict(local)
+    if target.kind == "connector":
+        result["public_trust_file"] = declaration["public_trust_file"]
+    return result
+
+
+def _runtime_healthy(data: dict[str, Any], targets: tuple[Target, ...], unit: str, runner: Runner | None,
+                     unit_root: Path, deadline: float | None = None) -> bool:
+    """Preserve healthy units; local selections require native admission readiness."""
+    try:
+        _started_units(runner, unit_root, (unit,), deadline=deadline)
+        if unit == "anvil-connect-gateway.service":
+            _gateway_ready(data, runner, deadline=deadline)
+        elif unit.startswith("anvil-connect-connector-"):
+            target = next(item for item in targets if unit in _units(item))
+            connector = next(item for item in data["connectors"] if item["id"] == target.name)
+            if "local_tunnel" in connector:
+                _gateway_ready(data, runner, deadline=deadline, connectors=(connector,))
+            elif _tunnel_observation(data, target, runner, deadline)["state"] == "degraded":
+                return False
+        return True
+    except ManageError:
+        return False
+
+
+def _preview_runtime_actions(data: dict[str, Any], targets: tuple[Target, ...], report: dict[str, Any],
+                             runner: Runner | None, unit_root: Path) -> list[dict[str, str]]:
+    actions = []
+    if report["state"] not in {"current", "update"}:
+        return actions
+    deadline = time.monotonic() + 5
+    for unit in _target_units(targets):
+        if _unit_required_files(unit, targets).intersection(report["changes"]):
+            continue
+        observed = _unit_status(runner, (unit,), deadline)[0]
+        if not observed["available"] or observed["active"] == "unknown":
+            actions.append({"unit": unit, "action": "check", "reason": "runtime state unavailable"})
+            continue
+        if observed["active"] != "active":
+            actions.append({"unit": unit, "action": "start", "reason": "inactive"})
+        elif not _runtime_healthy(data, targets, unit, runner, unit_root, deadline):
+            if time.monotonic() >= deadline:
+                actions.append({"unit": unit, "action": "check", "reason": "runtime observation deadline expired"})
+            else:
+                actions.append({"unit": unit, "action": "restart", "reason": "runtime check failed"})
+    return actions
+
+
+def _prior_runtime(data: dict[str, Any]) -> dict[str, Any]:
+    root = Path(data["config_root"])
+    if not root.exists():
+        return {**data, "connectors": []}
+    _, owned = _verify_owned_tree(root)
+    prior = dict(data)
+    prior["gateway"] = _strict_json(_read_regular(root / "gateway.json", _MAX_OUTPUT) or b"", "owned prior gateway declaration is invalid")
+    prior["connectors"] = [_strict_json(_read_regular(root / name, _MAX_OUTPUT) or b"", "owned prior connector declaration is invalid")
+                           for name in sorted(owned) if name.startswith("connectors/") and name.endswith(".json")]
+    sources = _unit_sources(root)
+    source = sources["anvil-connect-gateway.service"]
+    prior["binary"] = str(_unit_exec_path(source))
+    if "local_tunnel" in prior["gateway"] or any("local_tunnel" in c for c in prior["connectors"]):
+        identities = {**data["service_identities"], "connectors": dict(data["service_identities"]["connectors"])}
+        for target in (Target("gateway"), *(Target("connector", c["id"]) for c in prior["connectors"])):
+            identity = _prior_gateway_identity(data, sources[_units(target)[-1]])
+            account = {"uid": identity.uid if identity else os.geteuid(), "gid": identity.gid if identity else os.getegid()}
+            if target.kind == "gateway":
+                identities["gateway"] = account
+            else:
+                identities["connectors"][target.name] = account
+        prior["service_identities"] = identities
+    return prior
+
+
+def _reverse_ports_free(connectors: tuple[dict[str, Any], ...]) -> bool:
+    # A successful exclusive bind proves release; never connect to or evict an
+    # unknown listener. SO_REUSEADDR permits old TIME_WAIT, not live listeners.
+    try:
+        for address in {r["reverse_address"] for c in connectors for r in c["resources"]}:
+            host, port = address.rsplit(":", 1)
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                probe.bind((host, int(port)))
+                probe.listen(1)
+        return True
+    except OSError:
+        return False
+
+
+def _reverse_released(data: dict[str, Any], connectors: tuple[dict[str, Any], ...], runner: Runner | None) -> None:
+    deadline = time.monotonic() + 5
+    resources = {r["envelope"]["rule"]["id"] for c in connectors for r in c["resources"]}
+    for attempt in range(6):
+        value = _gateway_ready(data, runner, deadline=deadline, check_entries=False)
+        entries = value.get("entries", [])
+        if not entries:
+            raise ManageError("native reverse registration status is unavailable")
+        declared = {r["resource"] for e in entries for r in e["resources"]}
+        if not resources <= declared:
+            raise ManageError("native reverse registration status is incomplete")
+        if (not any(r["registrations"] for e in entries for r in e["resources"] if r["resource"] in resources)
+                and _reverse_ports_free(connectors)):
+            return
+        if attempt < 5:
+            time.sleep(max(0, min(1, deadline - time.monotonic())))
+    raise ManageError("stale or foreign reverse listener; replacement refused")
+
+
 def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bool, upgrade: bool, runner: Runner | None, unit_root: str | Path, action: str) -> dict[str, Any]:
     """Activate one closed role set in a single reversible transaction."""
     _require_supported_platform()
@@ -1497,13 +1752,19 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
     checked = _validate_data(data, targets, runner)
     report = plan(data, data["config_root"])
     _require_complete_isolated_migration(data, targets, report)
+    _require_selected_changes(targets, report)
     units = _target_units(targets)
     result: dict[str, Any] = {
         "schema": "anvil-connect.manage/v1", "action": action,
         "targets": [target.text() for target in targets], "applied": bool(apply),
         "upgrade": bool(upgrade), "plan": report, "units": list(units), **checked,
+        "tunnel_selections": [_tunnel_selection(data, target) for target in targets if target.kind != "client"],
+        "activation_blockers": [],
+        "configuration_restarts": [unit for unit in units if _unit_required_files(unit, targets).intersection(report["changes"])],
+        "runtime_actions": [],
     }
     if not apply:
+        result["runtime_actions"] = _preview_runtime_actions(data, targets, report, runner, Path(unit_root))
         return result
     root, system_root = Path(data["config_root"]), Path(unit_root)
     with _deployment_lock(root):
@@ -1511,12 +1772,24 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
         # request decided was target-scoped.
         report = plan(data, data["config_root"])
         _require_complete_isolated_migration(data, targets, report)
+        _require_selected_changes(targets, report)
         if report["state"] not in {"absent", "update", "current"}:
             raise ManageError("rendered ownership is not safe to activate")
+        prior_data = _prior_runtime(data)
+        prior_connectors = {c["id"]: c for c in prior_data["connectors"]}
+        local_connectors = tuple(c for c in data["connectors"]
+                                 if "local_tunnel" in c or "local_tunnel" in prior_connectors.get(c["id"], {}))
+        guarded = tuple(c for c in local_connectors if Target("connector", c["id"]) in targets)
         transaction: _Activation | None = None
         active_record: dict[str, Any] | None = None
         prior: dict[str, tuple[bool, str]] = {}
+        touched: dict[str, tuple[bool, str]] = {}
+        restarted: list[str] = []
         selected_gateway = any(target.kind == "gateway" for target in targets)
+        local_transaction = bool(guarded) or selected_gateway and ("local_tunnel" in data["gateway"] or "local_tunnel" in prior_data["gateway"])
+        readiness_connectors = list(guarded)
+        if selected_gateway and local_transaction:
+            readiness_connectors = [c for c in data["connectors"] if Target("connector", c["id"]) in targets]
         try:
             if report["state"] != "current":
                 staged = stage(data, data["config_root"])
@@ -1533,23 +1806,68 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                 _verify_unit(system_root, unit, sources.get(unit))
                 _unit_metadata(runner, system_root, (unit,), present=True)
                 prior[unit] = _unit_state(runner, unit)
+            if selected_gateway:
+                for connector in data["connectors"]:
+                    target = Target("connector", connector["id"])
+                    unit = _units(target)[0]
+                    if target in targets or not local_transaction or not (system_root / unit).exists():
+                        continue
+                    _verify_unit(system_root, unit, sources.get(unit))
+                    _unit_metadata(runner, system_root, (unit,), present=True)
+                    if _unit_state(runner, unit)[0]:
+                        readiness_connectors.append(connector)
             gateway_units = _target_units((Target("gateway"),)) if selected_gateway else ()
             dependent_units = tuple(unit for unit in units if unit not in gateway_units)
+            stopped: set[str] = set()
+            for connector in guarded:
+                target = Target("connector", connector["id"])
+                unit = _units(target)[0]
+                changed = bool(_files(target).intersection(report["changes"]))
+                if changed and connector["id"] in prior_connectors:
+                    touched[unit] = prior[unit]
+                    _action(runner, (_SYSTEMCTL, "stop", unit), _SYSTEMD_TIMEOUT, "old connector failed to stop")
+                    stopped.add(unit)
+                    _reverse_released(prior_data, (prior_connectors[connector["id"]],), runner)
             for unit in gateway_units:
                 active, enabled = prior[unit]
+                changed = bool(_unit_required_files(unit, targets).intersection(report["changes"]))
+                if active and not changed and _runtime_healthy(data, targets, unit, runner, system_root):
+                    continue
+                touched[unit] = prior[unit]
                 if active:
                     _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
+                    restarted.append(unit)
                 else:
                     _action(runner, (_SYSTEMCTL, "enable", "--now", unit), _SYSTEMD_TIMEOUT, "managed unit failed to start")
-            if selected_gateway:
-                _gateway_ready(data, runner)
+            if selected_gateway or guarded:
+                if guarded:
+                    # Attest ownership on this host even for connector-only up.
+                    gateway_sources = _unit_sources(root)
+                    _verify_unit(system_root, "anvil-connect-gateway.service", gateway_sources["anvil-connect-gateway.service"])
+                    _unit_metadata(runner, system_root, ("anvil-connect-gateway.service",), present=True)
+                    if any("local_tunnel" in c for c in guarded):
+                        _native_preflight(data, (Target("gateway"),), root, runner)
+                _gateway_ready(data, runner, require_local=any("local_tunnel" in c for c in guarded) if guarded else None)
             for unit in dependent_units:
                 active, enabled = prior[unit]
+                changed = bool(_unit_required_files(unit, targets).intersection(report["changes"]))
+                if unit not in stopped and active and not changed and _runtime_healthy(data, targets, unit, runner, system_root):
+                    continue
+                touched[unit] = prior[unit]
+                connector = next((c for c in guarded if unit == _units(Target("connector", c["id"]))[0]), None)
+                if connector is not None:
+                    if unit not in stopped:
+                        _action(runner, (_SYSTEMCTL, "stop", unit), _SYSTEMD_TIMEOUT, "old connector failed to stop")
+                    _reverse_released(data, (connector,), runner)
+                    _native_preflight(data, (Target("connector", connector["id"]),), root, runner)
                 if active:
                     _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
+                    restarted.append(unit)
                 else:
                     _action(runner, (_SYSTEMCTL, "enable", "--now", unit), _SYSTEMD_TIMEOUT, "managed unit failed to start")
             _started_units(runner, system_root, units)
+            if readiness_connectors:
+                _gateway_ready(data, runner, connectors=tuple(readiness_connectors))
             if transaction.pending_record is not None:
                 # Do not bless newly supplied artifact bytes until the complete
                 # selected start/restart sequence has succeeded.
@@ -1563,22 +1881,51 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
             if transaction is None:
                 raise
             if not transaction.committed:
+                cleanup_error: ManageError | None = None
+                for connector in guarded:
+                    unit = _units(Target("connector", connector["id"]))[0]
+                    if unit in touched:
+                        try:
+                            _action(runner, (_SYSTEMCTL, "stop", unit), _SYSTEMD_TIMEOUT, "failed connector cleanup failed")
+                            _reverse_released(data, (connector,), runner)
+                        except ManageError as error:
+                            cleanup_error = error
+                if local_transaction and "anvil-connect-gateway.service" in touched:
+                    try:
+                        _action(runner, (_SYSTEMCTL, "stop", "anvil-connect-gateway.service"), _SYSTEMD_TIMEOUT, "failed gateway cleanup failed")
+                    except ManageError as error:
+                        cleanup_error = error
+                transaction.retain_failed = local_transaction
                 try:
                     transaction.rollback(runner)
                 except ManageError as rollback_error:
                     raise rollback_error from exc
-                if prior:
+                if cleanup_error is not None:
+                    _restore_running(runner, units, {unit: state for unit, state in touched.items() if not state[0]})
+                    raise ManageError("recovery failed; recovery artifacts retained", may_have_executed=True) from cleanup_error
+                if touched:
                     try:
+                        if local_transaction and transaction.prior_record is not None and any(state[0] for state in touched.values()):
+                            restored_targets = tuple(t for t in targets if t.kind == "gateway" or
+                                                     t.kind == "connector" and t.name in prior_connectors)
+                            _native_preflight(prior_data, restored_targets, root, runner)
                         _restore_running(
                             runner,
                             units,
-                            prior,
+                            touched,
                             (lambda: _restored_gateway_ready(data, root, runner)) if selected_gateway else None,
                         )
+                        restored_connectors = tuple(prior_connectors[c["id"]] for c in readiness_connectors
+                                                    if c["id"] in prior_connectors and prior.get(_units(Target("connector", c["id"]))[0], (True, "enabled"))[0])
+                        if restored_connectors:
+                            _gateway_ready(prior_data, runner, connectors=restored_connectors)
                     except ManageError as restore_error:
+                        if local_transaction:
+                            raise ManageError("recovery failed; recovery artifacts retained", may_have_executed=True) from restore_error
                         raise restore_error from exc
             raise _executed_error(exc) from exc
     result["activated"] = report["state"] != "current"
+    result["restarted_units"] = restarted
     if transaction is not None and transaction.cleanup_retained:
         result["recovery_artifact_retained"] = True
     return result
@@ -1632,10 +1979,20 @@ def down(manifest_path: str | Path, target: Target, *, apply: bool = False, runn
     return result
 
 
-def _unit_status(runner: Runner | None, units: tuple[str, ...]) -> list[dict[str, Any]]:
+def _observe(runner: Runner | None, argv: tuple[str, ...], deadline: float) -> RunResult:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        return RunResult(1)
+    try:
+        return _run(runner, argv, min(_VALIDATE_TIMEOUT, remaining))
+    except ManageError:
+        return RunResult(1)
+
+
+def _unit_status(runner: Runner | None, units: tuple[str, ...], deadline: float) -> list[dict[str, Any]]:
     result = []
     for unit in units:
-        observed = _run(runner, (_SYSTEMCTL, "show", "--property=Id,ActiveState,SubState,UnitFileState", unit), _VALIDATE_TIMEOUT)
+        observed = _observe(runner, (_SYSTEMCTL, "show", "--property=Id,ActiveState,SubState,UnitFileState", unit), deadline)
         fields: dict[str, str] = {}
         if observed.returncode == 0:
             fields = dict(line.split("=", 1) for line in observed.stdout.decode("utf-8", "replace").splitlines() if "=" in line)
@@ -1643,12 +2000,90 @@ def _unit_status(runner: Runner | None, units: tuple[str, ...]) -> list[dict[str
     return result
 
 
+def _native_events(runner: Runner | None, unit: str, tail: int = 200, deadline: float | None = None) -> list[dict[str, str]]:
+    """Decode only Slice 2's closed log vocabulary, scoped to one invocation.
+
+    Logs are rate limited and bounded: absence is unknown, and establishment
+    observations are not proof of current admission or listener ownership.
+    """
+    if deadline is None:
+        deadline = time.monotonic() + 5
+    invocation = _observe(runner, (_SYSTEMCTL, "show", "--property=InvocationID", unit), deadline)
+    if invocation.returncode != 0:
+        return []
+    match = re.fullmatch(rb"InvocationID=([0-9a-f]{32})\n?", invocation.stdout)
+    if match is None:
+        return []
+    identifier = match[1].decode("ascii")
+    observed = _observe(runner, (_JOURNALCTL, "--no-pager", "--output=json", "--lines=" + str(tail),
+                                 "--unit", unit, "_SYSTEMD_INVOCATION_ID=" + identifier), deadline)
+    if observed.returncode != 0:
+        return []
+    events = []
+    for raw in observed.stdout.splitlines()[-tail:]:
+        try:
+            row = _strict_json(raw, "invalid journal row")
+        except ManageError:
+            continue
+        if row.get("_SYSTEMD_INVOCATION_ID") != identifier or row.get("_SYSTEMD_UNIT") != unit:
+            continue
+        message = row.get("MESSAGE")
+        if not isinstance(message, str):
+            continue
+        event = re.fullmatch(
+            r"(?:[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} )?"
+            r"connect_event path=(local|public) resource=([a-z][a-z0-9-]{0,62}|) reason=([a-z_]+)", message)
+        if event is not None and event[3] in _EVENT_REASONS:
+            events.append({"path": event[1], "resource": event[2], "reason": event[3]})
+    # A restart racing the journal query invalidates these observations.
+    current = _observe(runner, (_SYSTEMCTL, "show", "--property=InvocationID", unit), deadline)
+    if current.returncode != 0 or current.stdout != invocation.stdout:
+        return []
+    return events
+
+
+def _tunnel_observation(data: dict[str, Any], target: Target, runner: Runner | None, deadline: float | None = None) -> dict[str, Any]:
+    selected = _tunnel_selection(data, target)
+    if not selected:
+        return {}
+    unit = "anvil-connect-gateway.service" if target.kind == "gateway" else _units(target)[0]
+    events = _native_events(runner, unit, deadline=deadline)
+    observations: dict[tuple[str, str, str], dict[str, str]] = {}
+    resources = ({resource["envelope"]["rule"]["id"] for connector in data["connectors"] if connector["id"] == target.name
+                  for resource in connector["resources"]} if target.kind == "connector" else
+                 {resource["rule"]["id"] for resource in data["gateway"]["gateway"]["resources"]})
+    for event in events:
+        if event["path"] not in selected["paths"] or event["resource"] not in {"", *resources}:
+            continue
+        category = "entry" if event["reason"].startswith("entry_") else "tunnel" if event["reason"].startswith("tunnel_") else "authority"
+        observations[(event["path"], event["resource"], category)] = event
+    healthy_observations = {"entry_listening", "tunnel_established", "renewal_resumed"}
+    degraded = any(event["reason"] not in healthy_observations for event in observations.values())
+    result = {"declared": selected, "state": "degraded" if degraded else "unknown", "readiness": "unknown",
+              "observations": list(observations.values()), "evidence": "bounded current-invocation events; not a readiness proof"}
+    if "local_tunnel" in data["gateway"]:
+        try:
+            value = _gateway_ready(data, runner, deadline=deadline, check_entries=False)
+            if value.get("entries"):
+                connectors = tuple(c for c in data["connectors"] if target.kind == "gateway" or c["id"] == target.name)
+                ready = _entry_ready(value, data, connectors)
+                result.update(state="ready" if ready else "degraded", readiness="ready" if ready else "not-ready",
+                              entries=[e for e in value["entries"] if e["path"] in selected["paths"]],
+                              evidence="native entry health and admitted registrations; not origin readiness")
+        except ManageError:
+            pass
+    return result
+
+
 def status(manifest_path: str | Path, target: Target | None = None, *, runner: Runner | None = None) -> dict[str, Any]:
-    """Return bounded unit metadata and renderer drift, without a readiness claim."""
+    """Return unit activity, drift, and bounded native tunnel readiness separately."""
     _require_supported_platform()
     data = read_manifest(manifest_path)
     selected = _targets(data, target)
-    return {"schema": "anvil-connect.manage/v1", "action": "status", "applied": False, "plan": _inspection_plan(data), "targets": [{"target": item.text(), "units": _unit_status(runner, _units(item))} for item in selected]}
+    deadline = time.monotonic() + 5
+    return {"schema": "anvil-connect.manage/v1", "action": "status", "applied": False, "plan": _inspection_plan(data),
+            "targets": [{"target": item.text(), "units": _unit_status(runner, _units(item), deadline),
+                         "tunnel": _tunnel_observation(data, item, runner, deadline)} for item in selected]}
 
 
 def doctor(manifest_path: str | Path, target: Target | None = None, *, runner: Runner | None = None) -> dict[str, Any]:
@@ -1667,9 +2102,12 @@ def logs(manifest_path: str | Path, target: Target, *, tail: int = 200, runner: 
     data = read_manifest(manifest_path)
     _targets(data, target)
     events = []
+    deadline = time.monotonic() + 5
     for unit in _units(target):
-        observed = _run(runner, (_JOURNALCTL, "--no-pager", "--output=json", "--lines=" + str(tail), "--unit", unit), _VALIDATE_TIMEOUT)
+        observed = _observe(runner, (_JOURNALCTL, "--no-pager", "--output=json", "--lines=" + str(tail), "--unit", unit), deadline)
         events.append({"unit": unit, "available": observed.returncode == 0, "bytes": len(observed.stdout) + len(observed.stderr), "lines_requested": tail})
+        if unit not in {"anvil-connect-caddy.service", "anvil-connect-authelia.service"}:
+            events[-1]["bounded_events"] = _native_events(runner, unit, tail, deadline)
     return {"schema": "anvil-connect.manage/v1", "action": "logs", "target": target.text(), "applied": False, "events": events}
 
 
@@ -1705,7 +2143,7 @@ def native_init(manifest_path: str | Path, target: Target, *, bundle: str | Path
         raise ManageError("initialization requires gateway without a bundle or connector with a private bundle")
     # Validation and binary pinning precede all native state changes. This has
     # no dependency on an already running Caddy/Authelia/gateway stack.
-    checked = _validate_data(data, target, runner)
+    checked = _validate_data(data, target, runner, initializing=True)
     args = [data["binary"], "init", "--mode", _mode(target)]
     if bundle is not None:
         value = Path(bundle)

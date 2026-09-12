@@ -301,7 +301,17 @@ def _validate_local_tunnels(data: dict[str, Any]) -> None:
         raise _error("$.gateway.local_tunnel", "must not reuse an existing listener")
     existing_files = {c["public_trust_file"] for c in connectors}
     existing_files.update(data["caddy"]["tls"][key] for key in ("certificate_file", "key_file"))
-    state_paths = [gateway["state_directory"], *(c["state_directory"] for c in connectors)]
+    existing_files.update(value for key, value in data["authelia"].items() if key.endswith("_file"))
+    env = data["environment_files"]
+    existing_files.update([env["gateway"], *env["connectors"].values(), *env["clients"].values()])
+    if "gateway_identity" in env:
+        existing_files.add(env["gateway_identity"])
+    state_paths = [gateway["state_directory"], data["authelia"]["state_directory"],
+                   *(c["state_directory"] for c in connectors)]
+    if "state_directory" in data["caddy"]:
+        state_paths.append(data["caddy"]["state_directory"])
+    if "ingress" in gateway:
+        state_paths.append(gateway["ingress"]["directory"])
     declarations = [listener, *(c["local_tunnel"] for c in connectors if "local_tunnel" in c)]
     for declaration in declarations:
         for key, file in declaration.items():
