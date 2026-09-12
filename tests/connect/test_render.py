@@ -503,6 +503,7 @@ def _invalid_local_objects(local: dict) -> list[tuple[str, str]]:
     return cases
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the Go runtime reader contract compiles POSIX-only")
 def test_local_tunnel_python_go_reader_parity(tmp_path: Path) -> None:
     selected_go = os.environ.get("ANVIL_CONNECT_GO") or shutil.which("go")
     if not selected_go:
