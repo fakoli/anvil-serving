@@ -328,7 +328,7 @@ func composeGateway(parent context.Context, declaration GatewayConfig, secrets S
 		return nil, ErrUnavailable
 	}
 	g.cleanup = append(g.cleanup, func() { _ = process.Close() })
-	adminHandler, err := admin.New(state, keys, identities, sessions, admin.Options{ControlHost: declaration.ControlHost, TunnelHost: declaration.TunnelHost, InnerCAPEM: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: innerCA.certificate.Raw}))})
+	adminHandler, err := admin.New(state, keys, identities, sessions, admin.Options{EntryStatus: func() []admin.EntryStatus { return g.entryStatus(declaration, gate) }, ControlHost: declaration.ControlHost, TunnelHost: declaration.TunnelHost, InnerCAPEM: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: innerCA.certificate.Raw}))})
 	if err != nil {
 		return nil, ErrUnavailable
 	}

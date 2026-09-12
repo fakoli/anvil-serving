@@ -2,15 +2,18 @@ package runtime
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,8 +21,11 @@ import (
 	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
+	"github.com/fakoli/anvil-serving/connect/internal/admin"
+	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/identity"
 	"github.com/fakoli/anvil-serving/connect/internal/relay"
+	"github.com/fakoli/anvil-serving/connect/internal/store"
 	"github.com/fakoli/anvil-serving/connect/internal/testpki"
 	"github.com/fakoli/anvil-serving/connect/internal/tunnelgate"
 )
@@ -504,5 +510,123 @@ func TestLocalTrustComparisonRejectsEmptyPublicMaterial(t *testing.T) {
 	root, _ := ca.SigningIdentity(t)
 	if distinctRoot(root, nil) || distinctRoot(root, []byte(" \n\t")) {
 		t.Fatal("missing public roots accepted as distinct")
+	}
+}
+
+func TestLocalPreflightUsesStartupMaterialChecks(t *testing.T) {
+	g, _ := localTunnelSettings(t)
+	l, _ := entryMaterial(t)
+	g.LocalTunnel = &l
+	g.StateDirectory = filepath.Join(t.TempDir(), "state")
+	if g.VerifyLocalTunnelMaterial() == nil {
+		t.Fatal("missing authority accepted")
+	}
+	if _, err := os.Stat(g.StateDirectory); !os.IsNotExist(err) {
+		t.Fatal("preflight created state")
+	}
+	if err := InitializeGateway(g); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.VerifyLocalTunnelMaterial(); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(filepath.Join(g.StateDirectory, "authorities.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(l.PrivateKeyFile, []byte("invalid"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if g.VerifyLocalTunnelMaterial() == nil {
+		t.Fatal("preflight skipped private leaf/key validation")
+	}
+	after, _ := os.ReadFile(filepath.Join(g.StateDirectory, "authorities.json"))
+	if !bytes.Equal(before, after) {
+		t.Fatal("preflight changed authority")
+	}
+}
+
+// The Python test consumes these actual native status responses, independently
+// checking its closed decoder against Go encoding (no hand-maintained snapshot).
+func TestLocalEntryStatusContract(t *testing.T) {
+	declaration, _ := localTunnelSettings(t)
+	g, _ := entryGateway(t)
+	gate := localGate(t)
+	state, err := store.Open(filepath.Join(t.TempDir(), "authority"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer state.Close()
+	ids := []string{}
+	for _, r := range declaration.Gateway.Resources {
+		ids = append(ids, r.Rule.ID)
+	}
+	identities, err := identity.NewManager(state, "https://control.example.test", ids)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := admin.New(state, nil, identities, nil, admin.Options{EntryStatus: func() []admin.EntryStatus { return g.entryStatus(declaration, gate) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	responses := []json.RawMessage{}
+	g.entries["public"].set(true, "entry_listening")
+	for _, listening := range []bool{true, false} {
+		reason := "entry_listening"
+		if !listening {
+			reason = "entry_tls_failed"
+		}
+		g.entries["local"].set(listening, reason)
+		body, _ := json.Marshal(admin.Request{Operation: "status", Grants: []access.Grant{}, Resources: []string{}})
+		request := httptest.NewRequest("POST", admin.Path, bytes.NewReader(body))
+		request.Host = admin.Host
+		request.Header.Set("Content-Type", "application/json")
+		output := httptest.NewRecorder()
+		handler.ServeHTTP(output, request)
+		if output.Code != 200 {
+			t.Fatal("status failed", output.Code)
+		}
+		var response admin.Response
+		if config.Decode(bytes.NewReader(output.Body.Bytes()), &response) != nil {
+			t.Fatal("native response rejected")
+		}
+		if len(response.Entries) != 2 || response.Entries[1].Listening != listening || len(response.Entries[1].Resources) != len(ids) {
+			t.Fatal("incomplete status")
+		}
+		for _, e := range response.Entries {
+			for _, r := range e.Resources {
+				if r.Registrations != 0 {
+					t.Fatal("events fabricated registration")
+				}
+			}
+		}
+		malformed := bytes.Replace(output.Body.Bytes(), []byte(`"registrations":0`), []byte(`"registrations":true`), 1)
+		if config.Decode(bytes.NewReader(malformed), &response) == nil {
+			t.Fatal("boolean count accepted")
+		}
+		malformed = bytes.Replace(output.Body.Bytes(), []byte(`"listening":true`), []byte(`"credential":"hidden","listening":true`), 1)
+		if config.Decode(bytes.NewReader(malformed), &response) == nil {
+			t.Fatal("unknown entry field accepted")
+		}
+		responses = append(responses, append([]byte(nil), output.Body.Bytes()...))
+	}
+	if path := os.Getenv("ANVIL_CONNECT_STATUS_OUTPUT"); path != "" {
+		raw, _ := json.Marshal(responses)
+		if err := os.WriteFile(path, raw, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestLocalEntryWaitRejectsMissingBindingAndCancellation(t *testing.T) {
+	_, c := localTunnelSettings(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if c.WaitLocalTunnelEntry(nil) == nil || c.WaitLocalTunnelEntry(ctx) == nil {
+		t.Fatal("invalid or cancelled readiness wait accepted")
+	}
+	c.LocalTunnel = nil
+	if c.WaitLocalTunnelEntry(context.Background()) == nil {
+		t.Fatal("public connector used local wait")
 	}
 }

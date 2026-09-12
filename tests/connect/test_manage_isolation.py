@@ -307,3 +307,116 @@ def test_environment_file_rejects_role_owned_parent(tmp_path: Path, monkeypatch:
     monkeypatch.setattr(Path, "lstat", lstat)
     with pytest.raises(manage.ManageError, match="runtime directory is unsafe"):
         manage._validate_environment_files(data, manage.Target("connector", "dashboard"))
+
+
+@pytest.mark.parametrize("role", ["gateway", "connector"])
+@pytest.mark.parametrize("fault", [None, "missing", "symlink", "directory", "fifo", "owner", "writable", "unreadable", "empty", "oversized"])
+def test_local_material_metadata_matches_native_owner_contract(tmp_path, monkeypatch, role, fault):
+    from tests.connect.test_render import local_tunnel_manifest
+
+    data = local_tunnel_manifest(isolated_data(tmp_path))
+    target = manage.Target(role, "dashboard" if role == "connector" else None)
+    declaration = data["gateway"] if role == "gateway" else data["connectors"][0]
+    paths = {Path(value) for key, value in declaration["local_tunnel"].items() if key.endswith("_file")}
+    trust = Path(declaration["local_tunnel"]["trust_file"])
+    key = Path(data["gateway"]["local_tunnel"]["private_key_file"])
+    seen = set()
+
+    def metadata(path):
+        assert path in paths  # Connector validation must never inspect the leaf key.
+        seen.add(path)
+        uid, gid, mode, size = (1201, 2201, 0o600, 100) if path == key else (0, 0, 0o644, 100)
+        kind = stat.S_IFREG
+        if path == trust:
+            if fault == "missing":
+                raise FileNotFoundError()
+            if fault in {"symlink", "directory", "fifo"}:
+                kind = {"symlink": stat.S_IFLNK, "directory": stat.S_IFDIR, "fifo": stat.S_IFIFO}[fault]
+            if fault == "owner":
+                uid = 1202
+            if fault == "writable":
+                mode = 0o664
+            if fault == "unreadable":
+                mode = 0o600
+            if fault == "empty":
+                size = 0
+            if fault == "oversized":
+                size = 1024 * 1024 + 1
+        return os.stat_result((kind | mode, 1, 1, 1, uid, gid, size, 0, 0, 0))
+
+    monkeypatch.setattr(Path, "lstat", metadata)
+    monkeypatch.setattr(manage, "_safe_root_ancestors", lambda *_: None)
+    monkeypatch.setattr(Path, "open", lambda *_: pytest.fail("Python must not read local material"))
+    if fault:
+        with pytest.raises(manage.ManageError, match="local trust material"):
+            manage._validate_local_files(data, target)
+    else:
+        manage._validate_local_files(data, target)
+        assert seen == paths
+
+
+@pytest.mark.parametrize("uid,mode,links", [(0, 0o600, 1), (0, 0o640, 1), (1201, 0o640, 1), (1201, 0o600, 2)])
+def test_local_leaf_key_is_exclusively_gateway_owned(tmp_path, monkeypatch, uid, mode, links):
+    from tests.connect.test_render import local_tunnel_manifest
+
+    data = local_tunnel_manifest(isolated_data(tmp_path))
+    key = Path(data["gateway"]["local_tunnel"]["private_key_file"])
+
+    def metadata(path):
+        if path == key:
+            return os.stat_result((stat.S_IFREG | mode, 1, 1, links, uid, 2201, 100, 0, 0, 0))
+        return os.stat_result((stat.S_IFREG | 0o644, 1, 1, 1, 0, 0, 100, 0, 0, 0))
+
+    monkeypatch.setattr(Path, "lstat", metadata)
+    monkeypatch.setattr(manage, "_safe_root_ancestors", lambda *_: None)
+    with pytest.raises(manage.ManageError, match="local trust material"):
+        manage._validate_local_files(data, manage.Target("gateway"))
+
+
+def test_local_material_requires_service_traversable_ancestors(monkeypatch):
+    path = Path("/etc/local-trust/v1/root.pem")
+    mode = 0o700
+
+    def metadata(candidate):
+        return os.stat_result((stat.S_IFDIR | (mode if candidate == path.parent else 0o755), 1, 1, 1, 0, 2204, 0, 0, 0, 0))
+
+    monkeypatch.setattr(Path, "lstat", metadata)
+    with pytest.raises(manage.ManageError, match="not traversable"):
+        manage._safe_root_ancestors(path, (1204, 2204))
+    mode = 0o710
+    manage._safe_root_ancestors(path, (1204, 2204))
+
+
+def test_local_native_preflight_runs_both_roles_without_sharing_leaf_key(tmp_path, monkeypatch):
+    from tests.connect.test_render import local_tunnel_manifest
+    data = local_tunnel_manifest(isolated_data(tmp_path))
+    install_nss(monkeypatch, data)
+    observed = []
+    def runner(argv, timeout, identity):
+        observed.append((argv, identity))
+        return manage.RunResult(0)
+    manage._native_preflight(data, (manage.Target("connector", "dashboard"),), tmp_path, runner)
+    assert [identity for _, identity in observed] == [manage.ServiceIdentity(1201, 2201), manage.ServiceIdentity(1204, 2204)]
+    gateway, connector = [argv for argv, _ in observed]
+    assert gateway[2:4] == ("--mode", "gateway") and "--input" not in gateway
+    assert connector[2:4] == ("--mode", "connector")
+    assert connector[-2:] == ("--input", str(tmp_path / "gateway.json"))
+    assert data["gateway"]["local_tunnel"]["private_key_file"] not in connector
+
+
+def test_reverse_release_uses_exclusive_bind_and_preserves_foreign_listener(monkeypatch, tmp_path):
+    import errno
+    data = isolated_data(tmp_path)
+    calls = []
+    class Probe:
+        def __enter__(self): return self
+        def __exit__(self, *_): calls.append("closed")
+        def setsockopt(self, level, option, value):
+            assert option == manage.socket.SO_REUSEADDR
+        def bind(self, address):
+            calls.append(address)
+            raise OSError(errno.EADDRINUSE, "occupied")
+        def listen(self, _): pytest.fail("occupied listener cannot be claimed")
+    monkeypatch.setattr(manage.socket, "socket", lambda *_: Probe())
+    assert not manage._reverse_ports_free(tuple(data["connectors"]))
+    assert len(calls) == 2 and calls[-1] == "closed"
