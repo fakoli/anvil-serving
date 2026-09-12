@@ -32,6 +32,33 @@ disconnects produce one bounded event instead of a Python traceback. Upstream
 failures remain separate events. Embedding, reranking and audio routes retain
 their existing controls; these chat settings do not change those contracts.
 
+## Harness protocol contracts
+
+The reliability controls apply to the router protocol, not to a particular
+agent. Hermes uses OpenAI Chat Completions. OpenClaw can use the configured
+OpenAI or Anthropic Messages adapter. Pi uses OpenAI Chat Completions and the
+supported stateless Responses subset. Tool-call continuations remain ordinary
+messages in each dialect, so they retain the same admission, deadline,
+heartbeat, cancellation, and terminal-error behavior as text turns.
+
+For an optional retained session view, clients may send one bounded opaque
+`X-Anvil-Session-Id`; `X-Session-Affinity` remains the compatible alias. The
+header is read before dialect parsing, so its behavior is identical for Chat
+Completions, Messages, and Responses. It is router metadata only and is never
+forwarded to the model upstream. `GET /v1/requests?session_id=...&history=1`
+returns its retained terminal records.
+
+Pi's managed Anvil provider enables its documented session-affinity
+compatibility setting and uses the compatible header. OpenClaw's documented
+[custom-provider headers](https://docs.openclaw.ai/gateway/config-tools/custom-providers)
+and Hermes's documented [custom-provider headers](https://github.com/hermes-agent-org/hermes/blob/main/cli-config.yaml.example)
+are static provider settings. They must not be populated with a session value:
+a static value would merge unrelated conversations. Enable `X-Anvil-Session-Id`
+for Hermes or OpenClaw only through a client feature that supplies that
+client's existing per-conversation opaque ID on each request. An unmodified
+client remains fully supported; its requests are individually diagnosable by
+the router-generated request ID but have no session-history grouping.
+
 ## Client concurrency budgets
 
 Use the existing scoped authorization policy with `inference:use` credentials.
