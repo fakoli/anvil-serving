@@ -282,7 +282,11 @@ def test_dripped_response_headers_cannot_outlive_startup_deadline_or_admission()
         with socket.create_connection((host, port), timeout=1) as client:
             _post(client)
             assert upstream.opened.wait(1)
-            wire = _read_until(client, b"0\r\n\r\n", timeout=1)
+            # Read to the chunked terminator with margin beyond total_timeout_s:
+            # the committed-SSE terminal error payload flushes after the 504
+            # status line, and a short read window races that flush on slow
+            # runners, truncating the reason marker and flaking the assertion.
+            wire = _read_until(client, b"0\r\n\r\n", timeout=2)
     # Dispatch can commit SSE headers before the upstream finishes parsing
     # headers.  A startup deadline is therefore a typed 504 before commitment
     # or the native terminal SSE error after commitment; it must never become
