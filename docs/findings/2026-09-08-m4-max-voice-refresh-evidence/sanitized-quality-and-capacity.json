@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.voice-refresh-sanitized-summary/v1",
+  "redaction": "No audio, base64, SDK event stream, private path, PID, UID, or host identity is retained. This bounded derivative preserves the source schemas, outcome counts, metrics, and failures.",
+  "spoken_assistant": {
+    "native_schema": "anvil-serving.fast-tier-bakeoff/v1",
+    "suite": "spoken-assistant-bounded-v1",
+    "repetitions": 3,
+    "baseline_qwen3_4b": {"strict": "36/36", "status": "pass"},
+    "qwen35_9b": {"strict": "33/36", "status": "fail", "failure": "memory: exact validator expected tea; all three replies were Tea. The retained native artifact is not regraded."},
+    "qwen36_35b_a3b": {"strict": "36/36", "status": "pass", "scope": "bounded spoken-assistant suite only; it does not override the separate strict JSON preflight failure"}
+  },
+  "built_in_quality": {
+    "native_schema": "anvil-serving.fast-tier-bakeoff/v1",
+    "candidate": "Qwen3.5-9B",
+    "functional_gates": "6/6 pass",
+    "diagnostic_quality": "9/12",
+    "failure": "patchformat 0/3"
+  },
+  "capacity": {
+    "native_schema": "anvil-serving.benchmark/v1",
+    "candidate": "Qwen3.5-9B",
+    "context_tokens": 4096,
+    "concurrency": 1,
+    "controlled_output_policy": "strict",
+    "requested_words": 32,
+    "completed": "0/10",
+    "canaries": "10/10 pass",
+    "failure": "controlled_output_failed; the first retained sample observed 28 rather than 32 code words, and all ten requests failed strict adherence. Canaries passed 10/10. This is not an OOM or parser-failure claim.",
+    "performance_headline_eligible": false
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "status": "supported",
+  "source": "https://huggingface.co/Qwen/Qwen3.5-9B",
+  "observed": "2026-09-08",
+  "mechanism": "enable_thinking=false via chat template",
+  "runtime_default": {
+    "enable_thinking": false
+  },
+  "observations": "Zero reasoning chunks and no visible thinking in candidate preflight and diagnostic quality; static support is not an exhaustive runtime attestation.",
+  "schema": "anvil-serving.control-evidence/v1",
+  "control_mechanism": "chat_template_kwargs",
+  "observed_at": "2026-09-08"
+}

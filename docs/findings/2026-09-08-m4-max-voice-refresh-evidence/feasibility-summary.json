@@ -1,0 +1,11 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "m4-max-voice-refresh-20260908",
+  "hardware": {"measured_memory_bytes": 51539607552, "policy_reserve_bytes": 25769803776, "required_tokens": 8192},
+  "candidates": [
+    {"id": "qwen35-9b", "classification": "benchmark-survivor"},
+    {"id": "qwen38-27b", "classification": "benchmark-survivor"},
+    {"id": "qwen36-35b-a3b", "classification": "unresolved", "reason": "policy memory interval crosses the reserve boundary"}
+  ],
+  "limit": "Feasibility is a pre-benchmark screen, not behavioral or promotion evidence."
+}

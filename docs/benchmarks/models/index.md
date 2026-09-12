@@ -57,3 +57,9 @@ for the maintained cross-model view.
 
 Statuses use the portal's [evidence and decision labels](../index.md#how-to-read-the-evidence).
 Failed loads and compatibility-only runs remain visible.
+
+## Apple Silicon
+
+| Dossier | Latest published decision | Capability |
+|---|---|---|
+| [Voice LLM MLX local lane](voice-llm-mlx.md) | `no-promotion`; Qwen3.5-9B functional pass but strict spoken/output failures | Same-host M4 Max voice candidate lane; one synthesized STT/TTS smoke and corrected managed-proxy Realtime fence |

@@ -1,0 +1,147 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "campaign": {
+    "id": "2026-09-08-m4-max-voice-refresh",
+    "capability": "voice",
+    "repository_revision": "b85b5d27bc8da84216bcc7f5b5704dd340a884a6",
+    "dirty_state": "Historical September 8 capture used uncommitted native-dispatch and SDK-harness changes; documentation-only publication on September 12 excludes those changes and does not validate current runtime behavior.",
+    "started_at": null,
+    "completed_at": "2026-09-08T10:25:30Z",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.benchmark/v1",
+    "voice-benchmark-evidence/v1",
+    "anvil-serving.recipe-feasibility-result/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "sanitized human index"
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "dated external provenance"
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "native/spoken-assistant-suite.json",
+        "sanitized-quality-and-capacity.json"
+      ],
+      "reason": "native spoken suite plus derivative strict-output summary"
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "coverage-and-gaps.md",
+        "campaign-state.json"
+      ],
+      "reason": "sanitized adaptive campaign record"
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "native/candidate-artifact-verification.json",
+        "native/qwen36-artifact-verification.json",
+        "native/qwen38-artifact-verification.json",
+        "native/runtime-identity.json",
+        "native/audio-runtime-review.json",
+        "native/thinking-control.json",
+        "native/qwen36-thinking-control.json",
+        "sanitized-preflight.json",
+        "feasibility-summary.json"
+      ],
+      "reason": "native identity, audio-version, and verification controls plus clearly marked derivatives"
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "native/baseline-preflight.json",
+        "native/candidate-preflight.json",
+        "native/qwen38-preflight.json",
+        "native/qwen36-preflight.json",
+        "native/baseline-spoken-quality.json",
+        "native/candidate-spoken-quality.json",
+        "native/qwen36-spoken-quality.json",
+        "native/candidate-quality.json",
+        "native/candidate-capacity.json",
+        "native/baseline-voice.json",
+        "native/audio-roundtrip.json",
+        "native/baseline-live-realtime.session.json",
+        "native/candidate-realtime.session.json",
+        "native/qwen36-realtime.session.json",
+        "native/kokoro082-audio-roundtrip.json",
+        "native/kokoro082-realtime.session.json",
+        "native/updated-live-final.session.json",
+        "native/kokoro082-startup-failure.json",
+        "native/final-restoration-receipt.json",
+        "native/final-deployment-receipt.json",
+        "native/feasibility-input.json",
+        "native/feasibility-result.json",
+        "native/upstream-version-review.json",
+        "native/redactions.json"
+      ],
+      "reason": "sanitized original native JSON preserves failure details, answers, validators, and timings; audio/base64 payloads were removed"
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "retained strict and protocol failures"
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "native/final-deployment-receipt.json"
+      ],
+      "reason": "verified baseline restoration and deployed audio-runtime update"
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "derivative bounded no-promotion decision"
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "claim ledger and copy-ready derivative"
+    }
+  ]
+}
