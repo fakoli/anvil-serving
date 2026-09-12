@@ -252,6 +252,72 @@ def _loopback(value: Any, path: str) -> str:
     return text
 
 
+def _local_tunnel(value: Any, path: str, state: str, *, listener: bool) -> dict[str, str]:
+    address = "listen" if listener else "address"
+    files = {"trust_file", "certificate_file", "private_key_file"} if listener else {"trust_file"}
+    raw = _mapping(value, path, {address, "server_name", "http_host"} | files)
+    result = {
+        address: _loopback(raw[address], path + "." + address),
+        "server_name": _host(raw["server_name"], path + ".server_name"),
+        "http_host": _host(raw["http_host"], path + ".http_host"),
+        **{key: _abs_path(raw[key], path + "." + key) for key in sorted(files)},
+    }
+    references = [result[key] for key in files]
+    if len(set(references)) != len(references) or any(file == state or file.startswith(state + "/") for file in references):
+        raise _error(path, "file references must be distinct and outside runtime state")
+    return result
+
+
+def _validate_local_tunnels(data: dict[str, Any]) -> None:
+    """Check declaration references only; PKI and service access need preflight."""
+    gateway, connectors = data["gateway"], data["connectors"]
+    listener = gateway.get("local_tunnel")
+    for connector in connectors:
+        endpoint = connector.get("local_tunnel")
+        if endpoint is not None and (listener is None or any(
+                endpoint[key] != listener["listen" if key == "address" else key]
+                for key in ("address", "server_name", "http_host"))):
+            raise _error("$.connectors.local_tunnel", "must match gateway local_tunnel")
+    if listener is None:
+        return
+    hosts = {
+        gateway["control_host"], gateway["tunnel_host"], data["authelia"]["host"],
+        "admin.anvil-connect.internal", "gateway.anvil-connect.internal", "tunnel.anvil-connect.internal", "tunnel-gate.anvil-connect.internal",
+        *(r["rule"]["host"] for r in gateway["gateway"]["resources"]),
+        *(c["id"] + ".connector.anvil-connect.internal" for c in connectors),
+    }
+    if listener["server_name"] in hosts or listener["http_host"] in hosts:
+        raise _error("$.gateway.local_tunnel", "must not reuse an existing service identity")
+    addresses = {gateway["gateway"]["listen"], gateway["tunnel_listen"], data["authelia"]["listen"],
+                 *(r["tunnel_address"] for r in gateway["gateway"]["resources"]),
+                 *(c["listen"] for c in data["clients"])}
+    for connector in connectors:
+        for resource in connector["resources"]:
+            addresses.update((resource["reverse_address"], resource["envelope"]["listen"],
+                              resource["envelope"]["origin_url"].removeprefix("http://").removesuffix("/")))
+    edge = data["caddy"].get("listen", ":443")
+    if listener["listen"] in addresses or listener["listen"] == edge or (
+            edge.startswith(":") and listener["listen"].rsplit(":", 1)[1] == edge[1:]):
+        raise _error("$.gateway.local_tunnel", "must not reuse an existing listener")
+    existing_files = {c["public_trust_file"] for c in connectors}
+    existing_files.update(data["caddy"]["tls"][key] for key in ("certificate_file", "key_file"))
+    state_paths = [gateway["state_directory"], *(c["state_directory"] for c in connectors)]
+    declarations = [listener, *(c["local_tunnel"] for c in connectors if "local_tunnel" in c)]
+    for declaration in declarations:
+        for key, file in declaration.items():
+            if not key.endswith("_file"):
+                continue
+            if file in existing_files:
+                raise _error("$.local_tunnel", "must not reuse an existing trust reference")
+            if any(file == state or file.startswith(state + "/") for state in state_paths):
+                raise _error("$.local_tunnel", "file references must be distinct and outside runtime state")
+            if file == data["config_root"] or file.startswith(data["config_root"] + "/"):
+                raise _error("$.local_tunnel", "file references must be outside rendered output")
+    if any(c["local_tunnel"]["trust_file"] in {listener["certificate_file"], listener["private_key_file"]}
+           for c in connectors if "local_tunnel" in c):
+        raise _error("$.connectors.local_tunnel", "must not reuse an existing trust reference")
+
+
 def _url(value: Any, path: str) -> str:
     text = _string(value, path)
     match = re.fullmatch(r"http://127\.0\.0\.1:([1-9][0-9]{0,4})/?", text)
@@ -437,6 +503,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         gateway_fields.add("browser_session_lifetime_seconds")
     if isinstance(raw["gateway"], dict) and "ingress" in raw["gateway"]:
         gateway_fields.add("ingress")
+    if isinstance(raw["gateway"], dict) and "local_tunnel" in raw["gateway"]:
+        gateway_fields.add("local_tunnel")
     gateway_raw = _mapping(raw["gateway"], "$.gateway", gateway_fields)
     if gateway_raw["schema"] != "anvil-connect.gateway-runtime/v1":
         raise _error("$.gateway.schema", "must equal anvil-connect.gateway-runtime/v1")
@@ -551,6 +619,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         "tunnel_listen": _loopback(gateway_raw["tunnel_listen"], "$.gateway.tunnel_listen"),
         "oidc": {"issuer": _issuer(oidc["issuer"], "$.gateway.oidc.issuer"), "client_id": _client_id(oidc["client_id"], "$.gateway.oidc.client_id"), "client_secret_env": _env(oidc["client_secret_env"], "$.gateway.oidc.client_secret_env")},
     }
+    if "local_tunnel" in gateway_raw:
+        gateway["local_tunnel"] = _local_tunnel(gateway_raw["local_tunnel"], "$.gateway.local_tunnel", gateway["state_directory"], listener=True)
     if service_identities is not None:
         derived_ingress = {
             "directory": service_identities["ingress"]["directory"],
@@ -592,7 +662,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     connectors: list[dict[str, Any]] = []
     for index, connector_raw in enumerate(connector_raws):
         path = f"$.connectors[{index}]"
-        item = _mapping(connector_raw, path, {"schema", "id", "control_host", "tunnel_host", "state_directory", "tunnel_binary", "public_trust_file", "http_proxy_url", "resources"})
+        connector_fields = {"schema", "id", "control_host", "tunnel_host", "state_directory", "tunnel_binary", "public_trust_file", "http_proxy_url", "resources"}
+        if isinstance(connector_raw, dict) and "local_tunnel" in connector_raw:
+            connector_fields.add("local_tunnel")
+        item = _mapping(connector_raw, path, connector_fields)
         if item["schema"] != "anvil-connect.connector-runtime/v1":
             raise _error(path + ".schema", "must equal anvil-connect.connector-runtime/v1")
         connector_resources = []
@@ -608,6 +681,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
             "http_proxy_url": "" if item["http_proxy_url"] == "" else _proxy_url(item["http_proxy_url"], path + ".http_proxy_url"),
             "resources": sorted(connector_resources, key=lambda r: r["envelope"]["rule"]["id"]),
         }
+        if "local_tunnel" in item:
+            connector["local_tunnel"] = _local_tunnel(item["local_tunnel"], path + ".local_tunnel", connector["state_directory"], listener=False)
         if connector["control_host"] != gateway["control_host"] or connector["tunnel_host"] != gateway["tunnel_host"]:
             raise _error(path, "control_host and tunnel_host must match the gateway")
         if len({r["envelope"]["rule"]["id"] for r in connector_resources}) != len(connector_resources):
@@ -792,6 +867,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         raise _error("$.gateway.oidc.issuer", "must equal the managed Authelia HTTPS host")
 
     result = {"schema": SCHEMA, "binary": binary, "components": components, "config_root": config_root, "environment_files": environment_files, "gateway": gateway, "connectors": connectors, "clients": clients, "caddy": caddy, "authelia": authelia}
+    _validate_local_tunnels(result)
     if service_identities is None:
         result["service_user"] = service_user
         return result
