@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.benchmark-provenance-errata/v1",
+  "campaign_id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "raw_artifacts_rewritten": false,
+  "entries": [
+    {
+      "artifact": "incumbent preflight and initial quality/capacity artifacts",
+      "field": "model",
+      "problem": "The initial requested model string was the recipe/container label, not the API-advertised alias. The server accepted those requests.",
+      "recipe_label": "unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-262K",
+      "advertised_api_model": "qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-262k",
+      "basis": "GET /v1/models after exact immutable-container restoration; subsequent quality comparisons use the advertised alias. No weights or runtime changed."
+    },
+    {
+      "artifact": "incumbent-quality-thinking-disabled.json",
+      "field": "source_recipe.ref",
+      "problem": "The recorded URL used the served alias as a repository name; that URL is not a valid model source.",
+      "correct_repository": "unsloth/Qwen3.8-27B-GGUF",
+      "correct_revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+      "correct_source": "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/tree/4ca720788d1e01f1bff70c033e0d0028fd02e502",
+      "basis": "Original managed container labels, model cache inventory and captured starting identity."
+    },
+    {
+      "artifact": "run-plan.json",
+      "field": "requirements.usable_prompt_tokens",
+      "problem": "The first preflight command used a nominal filler count, not the actual tokenized prompt depth.",
+      "nominal_needle_context": 57344,
+      "observed_prompt_tokens": 47349,
+      "consequence": "This is not proof of the planned 57344 usable prompt plus8192 completion reserve."
+    }
+  ]
+}

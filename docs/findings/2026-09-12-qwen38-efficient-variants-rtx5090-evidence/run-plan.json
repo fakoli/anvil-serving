@@ -1,0 +1,49 @@
+{
+  "schema": "anvil-serving.benchmark-run-plan/v1",
+  "campaign_id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "objective": "Find a local RTX 5090 profile that improves useful response time or task completion over the exact running Qwen3.8 27B GGUF/MTP3 incumbent while preserving deterministic correctness.",
+  "requirements": {
+    "usable_prompt_tokens": 57344,
+    "visible_output_reserve_tokens": 8192,
+    "reasoning_headroom_tokens": 4096,
+    "concurrency": 1,
+    "normal_vram_reserve_mib": 3072,
+    "max_relative_quality_loss": 0.02,
+    "minimum_warm_e2e_gain": 0.10,
+    "minimum_successful_tasks_per_hour_ratio": 1.10,
+    "deterministic_pass_rate": 1.0
+  },
+  "order": ["incumbent-control", "signal-q6k-mtp3", "swift-q6k-mtp3", "qwopus-flash-q6k-nospec", "minitron-20b-q6k-nospec"],
+  "scout_gate": {
+    "preflight_checks": ["smoke", "json", "tools", "streaming-tools", "tool-result", "needle"],
+    "thinking_mode": "disabled",
+    "needle_context_tokens": 57344,
+    "capacity": {"requests": 5, "concurrency": 1, "context_tokens": 4096, "response_words": 128, "prompt_cache_mode": "unique", "request_canaries": true, "controlled_output_policy": "strict"}
+  },
+  "quality_gate": {
+    "suites": ["chat", "tool", "intelligence"],
+    "repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "thinking_profiles": [
+      {"thinking_mode": "disabled", "visible_answer_tokens": 512, "reasoning_headroom_tokens": 0},
+      {"thinking_mode": "enabled", "visible_answer_tokens": 512, "reasoning_headroom_tokens": 4096}
+    ],
+    "independent_validation": "deterministic built-in assertions; the candidate never grades itself"
+  },
+  "advance_rule": "Only identity-pinned, complete, failure-free scout arms with visible answers and valid tools advance. Performance cannot compensate for a hard-gate failure.",
+  "lifecycle": "One candidate at a time through models recipes load/status/logs/unload; no router or client changes.",
+  "restoration": "Restore the exact retained incumbent container and prove health, model identity, smoke, JSON, tools, GPU ownership, and shared-memory baseline.",
+  "usage_stop": {"limit_id": "codex", "initial_used_percent": 19, "stop_at_or_above_percent": 50, "checkpoints": ["after-feasibility", "after-each-candidate", "before-publication"]},
+  "promotion_authorized": true,
+  "authority_update": "The operator subsequently requested unattended completion and promotion of the evidence-supported best model, with no more than three justified fixes per issue and a 50-percent Codex usage stop. This supersedes the initial no-promotion boundary, not the correctness gates.",
+  "scout_amendment": {
+    "reason": "The incumbent and Signal failed exact 128-word output. Preserve those failures, do not rank invalid repetitive decode, and compare useful-answer quality separately.",
+    "suite": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+    "repetitions": 1,
+    "thinking_mode": "enabled",
+    "visible_answer_tokens": 1024,
+    "reasoning_headroom_tokens": 4096,
+    "classification": "diagnostic screening, not statistical proof of a two-percent quality-loss bound",
+    "context_correction": "57344 nominal filler produced 47349 actual prompt tokens; a larger actual-context gate remains required for finalists."
+  }
+}

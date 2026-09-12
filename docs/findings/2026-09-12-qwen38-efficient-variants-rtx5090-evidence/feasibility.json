@@ -1,0 +1,937 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 65536,
+    "max": 65536
+  },
+  "physical_available_bytes": {
+    "min": 33750515712,
+    "max": 33750515712
+  },
+  "policy_available_bytes": {
+    "min": 30529290240,
+    "max": 30529290240
+  },
+  "candidates": [
+    {
+      "id": "incumbent-q4xl-mtp3",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "pass",
+        "measured_context_evidence_status": "measured",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 30529290240,
+        "max": 30529290240
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[0].per_token_components.unseparated_live_kv_slope"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.headroom.variable",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "signal-q6k-mtp3",
+      "classification": "benchmark-survivor",
+      "reasons": [
+        "resource bounds pass; behavioral evidence remains incomplete"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "pass",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": 26189096512,
+        "max": 29410321984
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 30529290240,
+        "max": 30529290240
+      },
+      "physical_margin_bytes": {
+        "min": 4340193728,
+        "max": 7561419200
+      },
+      "policy_margin_bytes": {
+        "min": 1118968256,
+        "max": 4340193728
+      },
+      "estimated_max_tokens_physical": {
+        "min": 153837,
+        "max": 296292
+      },
+      "estimated_max_tokens_policy": {
+        "min": 88301,
+        "max": 197988
+      },
+      "load_bearing_unknowns": [
+        "candidates[1].measured_max_stable_context_tokens"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.headroom.variable",
+        "candidates[1].resident_components.runtime_fixed",
+        "candidates[1].per_sequence_components.recurrent_and_scheduler_state",
+        "candidates[1].per_token_components.target_kv",
+        "candidates[1].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "swift-q6k-mtp3",
+      "classification": "benchmark-survivor",
+      "reasons": [
+        "resource bounds pass; behavioral evidence remains incomplete"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "pass",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": 26642503840,
+        "max": 29863729312
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 30529290240,
+        "max": 30529290240
+      },
+      "physical_margin_bytes": {
+        "min": 3886786400,
+        "max": 7108011872
+      },
+      "policy_margin_bytes": {
+        "min": 665560928,
+        "max": 3886786400
+      },
+      "estimated_max_tokens_physical": {
+        "min": 144612,
+        "max": 282455
+      },
+      "estimated_max_tokens_policy": {
+        "min": 79076,
+        "max": 184151
+      },
+      "load_bearing_unknowns": [
+        "candidates[2].measured_max_stable_context_tokens"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.headroom.variable",
+        "candidates[2].resident_components.runtime_fixed",
+        "candidates[2].per_sequence_components.recurrent_and_scheduler_state",
+        "candidates[2].per_token_components.target_kv",
+        "candidates[2].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "qwopus-flash-q6k-nospec",
+      "classification": "benchmark-survivor",
+      "reasons": [
+        "resource bounds pass; behavioral evidence remains incomplete"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "pass",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": 26189093440,
+        "max": 29410318912
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 30529290240,
+        "max": 30529290240
+      },
+      "physical_margin_bytes": {
+        "min": 4340196800,
+        "max": 7561422272
+      },
+      "policy_margin_bytes": {
+        "min": 1118971328,
+        "max": 4340196800
+      },
+      "estimated_max_tokens_physical": {
+        "min": 153837,
+        "max": 296292
+      },
+      "estimated_max_tokens_policy": {
+        "min": 88301,
+        "max": 197988
+      },
+      "load_bearing_unknowns": [
+        "candidates[3].measured_max_stable_context_tokens"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.headroom.variable",
+        "candidates[3].resident_components.runtime_fixed",
+        "candidates[3].per_sequence_components.recurrent_and_scheduler_state",
+        "candidates[3].per_token_components.target_kv",
+        "candidates[3].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "minitron-20b-q6k-nospec",
+      "classification": "benchmark-survivor",
+      "reasons": [
+        "resource bounds pass; behavioral evidence remains incomplete"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "pass",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 65536,
+        "max": 65536
+      },
+      "demand_bytes": {
+        "min": 18655578880,
+        "max": 22279457536
+      },
+      "physical_available_bytes": {
+        "min": 33750515712,
+        "max": 33750515712
+      },
+      "policy_available_bytes": {
+        "min": 30529290240,
+        "max": 30529290240
+      },
+      "physical_margin_bytes": {
+        "min": 11471058176,
+        "max": 15094936832
+      },
+      "policy_margin_bytes": {
+        "min": 8249832704,
+        "max": 11873711360
+      },
+      "estimated_max_tokens_physical": {
+        "min": 298915,
+        "max": 735588
+      },
+      "estimated_max_tokens_policy": {
+        "min": 233379,
+        "max": 592600
+      },
+      "load_bearing_unknowns": [
+        "candidates[4].measured_max_stable_context_tokens"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.headroom.variable",
+        "candidates[4].resident_components.runtime_fixed",
+        "candidates[4].per_sequence_components.recurrent_and_scheduler_state",
+        "candidates[4].per_token_components.target_kv",
+        "candidates[4].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 57344,
+      "max": 57344,
+      "source": "campaign requirement",
+      "observed_at": "2026-09-12",
+      "notes": "usable prompt budget"
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "campaign requirement",
+      "observed_at": "2026-09-12",
+      "notes": "visible output and bounded reasoning reserve"
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "sequences",
+      "min": 1,
+      "max": 1,
+      "source": "interactive single-user campaign",
+      "observed_at": "2026-09-12",
+      "notes": "C1 first qualification"
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 34190917632,
+      "max": 34190917632,
+      "source": "anvil-serving host gpus plus Windows nvidia-smi",
+      "observed_at": "2026-09-12",
+      "notes": "32607 MiB"
+    },
+    {
+      "path": "requirements.vram_reserves.driver_unavailable.variable",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 440401920,
+      "max": 440401920,
+      "source": "same-card process-free idle baseline from 2026-09-03 retained local evidence",
+      "observed_at": "2026-09-03",
+      "notes": "420 MiB total/free difference retained as physically unavailable"
+    },
+    {
+      "path": "requirements.vram_reserves.headroom.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 3221225472,
+      "max": 3221225472,
+      "source": "normal RTX 5090 campaign policy",
+      "observed_at": "2026-09-12",
+      "notes": "3 GiB reserve; no waiver"
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "measured",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "retained exact incumbent recipe and live identity",
+      "observed_at": "2026-09-12",
+      "notes": "current control"
+    },
+    {
+      "path": "candidates[0].measured_max_stable_context_tokens",
+      "status": "measured",
+      "unit": "tokens",
+      "min": 253822,
+      "max": 253822,
+      "source": "2026-08-21 retained local qualification",
+      "observed_at": "2026-08-21",
+      "notes": "exact retrieval with output reserve"
+    },
+    {
+      "path": "candidates[0].resident_components.live_allocation_at_262k",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 27309113344,
+      "max": 27309113344,
+      "source": "Windows nvidia-smi with exact incumbent healthy",
+      "observed_at": "2026-09-12",
+      "notes": "conservatively treated as fixed demand"
+    },
+    {
+      "path": "candidates[0].per_token_components.unseparated_live_kv_slope",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "The retained live allocation includes KV and runtime state at 262K; no independent same-build KV slope measurement is available. The measured stable-context result remains authoritative for the control."
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "single independent sequence",
+      "observed_at": "2026-09-12",
+      "notes": "allocation already included"
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1.0,
+      "max": 1.0,
+      "source": "qualification hard gate",
+      "observed_at": "2026-09-12",
+      "notes": "no weighted compensation"
+    },
+    {
+      "path": "requirements.thresholds.max_relative_quality_loss",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.02,
+      "max": 0.02,
+      "source": "campaign requirement",
+      "observed_at": "2026-09-12",
+      "notes": "at most two percent relative loss"
+    },
+    {
+      "path": "requirements.thresholds.min_warm_e2e_gain",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.1,
+      "max": 0.1,
+      "source": "campaign requirement",
+      "observed_at": "2026-09-12",
+      "notes": "at least ten percent useful warm wall-time gain"
+    },
+    {
+      "path": "requirements.thresholds.min_tasks_per_hour_ratio",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1.1,
+      "max": 1.1,
+      "source": "campaign requirement",
+      "observed_at": "2026-09-12",
+      "notes": "successful-task throughput threshold"
+    },
+    {
+      "path": "candidates[1].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "Qwen3.8 parent architecture and Signal original template",
+      "observed_at": "2026-09-12",
+      "notes": "local recipe capped at 65536"
+    },
+    {
+      "path": "candidates[1].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "not yet loaded locally"
+    },
+    {
+      "path": "candidates[1].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 22431000128,
+      "max": 22431000128,
+      "source": "Hugging Face exact-revision blob metadata",
+      "observed_at": "2026-09-12",
+      "notes": "AP-Q6_K GGUF"
+    },
+    {
+      "path": "candidates[1].resident_components.runtime_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 1073741824,
+      "max": 2147483648,
+      "source": "prior exact llama.cpp Qwen3.8 resident measurements",
+      "observed_at": "2026-09-12",
+      "notes": "graphs, workspace, allocator"
+    },
+    {
+      "path": "candidates[1].per_sequence_components.recurrent_and_scheduler_state",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 536870912,
+      "max": 1610612736,
+      "source": "prior same-family llama.cpp runs",
+      "observed_at": "2026-09-12",
+      "notes": "MTP/recurrent uncertainty"
+    },
+    {
+      "path": "candidates[1].per_token_components.target_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 32768,
+      "max": 49152,
+      "source": "Q4_0 K/V from confirmed 64 KiB/token F16 architecture with runtime uncertainty",
+      "observed_at": "2026-09-12",
+      "notes": "replace with startup evidence"
+    },
+    {
+      "path": "candidates[1].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "single independent sequence",
+      "observed_at": "2026-09-12",
+      "notes": "C1"
+    },
+    {
+      "path": "candidates[2].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "Swift model card",
+      "observed_at": "2026-09-12",
+      "notes": "local recipe capped at 65536"
+    },
+    {
+      "path": "candidates[2].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "not yet loaded locally"
+    },
+    {
+      "path": "candidates[2].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 22884407456,
+      "max": 22884407456,
+      "source": "Hugging Face exact-revision blob metadata",
+      "observed_at": "2026-09-12",
+      "notes": "Q6_K GGUF"
+    },
+    {
+      "path": "candidates[2].resident_components.runtime_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 1073741824,
+      "max": 2147483648,
+      "source": "prior exact llama.cpp Qwen3.8 resident measurements",
+      "observed_at": "2026-09-12",
+      "notes": "graphs, workspace, allocator"
+    },
+    {
+      "path": "candidates[2].per_sequence_components.recurrent_and_scheduler_state",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 536870912,
+      "max": 1610612736,
+      "source": "prior same-family llama.cpp runs",
+      "observed_at": "2026-09-12",
+      "notes": "MTP/recurrent uncertainty"
+    },
+    {
+      "path": "candidates[2].per_token_components.target_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 32768,
+      "max": 49152,
+      "source": "Q4_0 K/V from confirmed 64 KiB/token F16 architecture with runtime uncertainty",
+      "observed_at": "2026-09-12",
+      "notes": "replace with startup evidence"
+    },
+    {
+      "path": "candidates[2].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "single independent sequence",
+      "observed_at": "2026-09-12",
+      "notes": "C1"
+    },
+    {
+      "path": "candidates[3].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "exact source config inherited from Qwen3.8",
+      "observed_at": "2026-09-12",
+      "notes": "local recipe capped at 65536"
+    },
+    {
+      "path": "candidates[3].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "not yet loaded locally"
+    },
+    {
+      "path": "candidates[3].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 22430997056,
+      "max": 22430997056,
+      "source": "Hugging Face exact-revision blob metadata",
+      "observed_at": "2026-09-12",
+      "notes": "iMatrix Q6_K GGUF"
+    },
+    {
+      "path": "candidates[3].resident_components.runtime_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 1073741824,
+      "max": 2147483648,
+      "source": "prior exact llama.cpp Qwen3.8 resident measurements",
+      "observed_at": "2026-09-12",
+      "notes": "graphs, workspace, allocator"
+    },
+    {
+      "path": "candidates[3].per_sequence_components.recurrent_and_scheduler_state",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 536870912,
+      "max": 1610612736,
+      "source": "prior same-family llama.cpp runs",
+      "observed_at": "2026-09-12",
+      "notes": "target-only arm"
+    },
+    {
+      "path": "candidates[3].per_token_components.target_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 32768,
+      "max": 49152,
+      "source": "Q4_0 K/V from confirmed 64 KiB/token F16 architecture with runtime uncertainty",
+      "observed_at": "2026-09-12",
+      "notes": "replace with startup evidence"
+    },
+    {
+      "path": "candidates[3].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "single independent sequence",
+      "observed_at": "2026-09-12",
+      "notes": "C1"
+    },
+    {
+      "path": "candidates[4].runtime_context_limit_tokens",
+      "status": "confirmed",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 262144,
+      "source": "source config preserves parent context contract",
+      "observed_at": "2026-09-12",
+      "notes": "local recipe capped at 65536"
+    },
+    {
+      "path": "candidates[4].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "not yet loaded locally"
+    },
+    {
+      "path": "candidates[4].resident_components.target_weights",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 15837006592,
+      "max": 15837006592,
+      "source": "Hugging Face exact-revision blob metadata",
+      "observed_at": "2026-09-12",
+      "notes": "iMatrix Q6_K GGUF"
+    },
+    {
+      "path": "candidates[4].resident_components.runtime_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 1073741824,
+      "max": 2147483648,
+      "source": "prior llama.cpp hybrid-model runs",
+      "observed_at": "2026-09-12",
+      "notes": "graphs, workspace, allocator"
+    },
+    {
+      "path": "candidates[4].per_sequence_components.recurrent_and_scheduler_state",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 268435456,
+      "max": 1073741824,
+      "source": "scaled from pruned 44-layer architecture",
+      "observed_at": "2026-09-12",
+      "notes": "target-only arm"
+    },
+    {
+      "path": "candidates[4].per_token_components.target_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 22528,
+      "max": 49152,
+      "source": "eleven retained hybrid groups with conservative upper bound",
+      "observed_at": "2026-09-12",
+      "notes": "replace with startup evidence"
+    },
+    {
+      "path": "candidates[4].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "single independent sequence",
+      "observed_at": "2026-09-12",
+      "notes": "C1"
+    }
+  ],
+  "unresolved_variables": [
+    "candidates[0].per_token_components.unseparated_live_kv_slope",
+    "candidates[1].measured_max_stable_context_tokens",
+    "candidates[2].measured_max_stable_context_tokens",
+    "candidates[3].measured_max_stable_context_tokens",
+    "candidates[4].measured_max_stable_context_tokens"
+  ],
+  "promotion_authority": false
+}

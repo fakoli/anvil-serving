@@ -1,0 +1,14 @@
+{
+  "schema": "anvil-serving.independent-review/v1",
+  "observed_at": "2026-09-12",
+  "scope": ["anvil_serving/workbench_app/pi_rpc.py", "tests/workbench/test_pi_rpc.py", "tests/workbench/test_pi_official_smoke.py"],
+  "author_model": "GPT-6 Astra",
+  "reviewer_model": "GPT-5.6 Sol",
+  "reviewer_role": "anvil-adversarial-reviewer",
+  "decision": "accept-bounded-fix",
+  "findings": [],
+  "verification": "Independent code review; author-run real-child pipe regression failed before fix; six focused tests including actual Pi0.85.1 history/fork/resume/model controls passed afterward.",
+  "root_causes": ["Missing SystemRoot in isolated Windows test environment caused Node CSPRNG startup assertion and exit134.", "Windows select supports sockets, not subprocess pipes, causing the live RPC response timeout after startup was repaired."],
+  "residuals": ["Transport retains its pre-existing single-poller assumption; shared concurrent polling is not qualified.", "General retained-recipe lifecycle release hold remains separate and unchanged."],
+  "source": "https://docs.python.org/3/library/select.html"
+}

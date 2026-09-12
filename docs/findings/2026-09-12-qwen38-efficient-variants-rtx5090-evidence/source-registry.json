@@ -1,0 +1,127 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "observed_at": "2026-09-12T13:28:27Z",
+  "sources": [
+    {
+      "id": "qwen38-official",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B",
+      "published_or_observed": "2026-08-16",
+      "observed_at": "2026-09-12",
+      "age_class": "current",
+      "evidence_type": "official",
+      "hardware_runtime_relevance": "Defines parent architecture, 262144 native context, thinking controls, and supported runtimes; not RTX 5090 proof.",
+      "decision_impact": "Establishes parent identity and supported thinking-disabled control."
+    },
+    {
+      "id": "prior-local-5090-bakeoff",
+      "url": "https://github.com/fakoli/anvil-serving/blob/948346f5ab553361c6b61d9517b71a0e5e3cfe98/docs/findings/2026-09-03-qwen38-27b-rtx5090-quant-bakeoff.md",
+      "published_or_observed": "2026-09-03",
+      "observed_at": "2026-09-12",
+      "age_class": "current",
+      "evidence_type": "local-result",
+      "hardware_runtime_relevance": "Same RTX 5090 class and incumbent revision; workload differs.",
+      "decision_impact": "Avoids repeating the fourteen-arm quant matrix and supplies prior baseline context."
+    },
+    {
+      "id": "signal-gguf",
+      "url": "https://huggingface.co/agentionai/Signal-3.8-27B-GGUF/tree/9848da210febc2141edb7e3f89cfc307a0d15163",
+      "published_or_observed": "2026-09-11",
+      "observed_at": "2026-09-12",
+      "age_class": "current",
+      "evidence_type": "community-recipe",
+      "hardware_runtime_relevance": "Exact llama.cpp Q6_K artifact with embedded MTP; publisher measurements used other hardware.",
+      "decision_impact": "Selected as a terse, token-efficient fine-tune."
+    },
+    {
+      "id": "signal-pinned-publisher-card",
+      "url": "https://huggingface.co/agentionai/Signal-3.8-27B-GGUF/blob/9848da210febc2141edb7e3f89cfc307a0d15163/README.md",
+      "published_or_observed": "2026-09-12",
+      "observed_at": "2026-09-12",
+      "age_class": "current-pinned",
+      "evidence_type": "publisher-model-card",
+      "hardware_runtime_relevance": "Exact tested artifact publisher metadata; efficiency priors use Q8_0 and Strix Halo/Vulkan, not this local Q6_K/CUDA lane.",
+      "decision_impact": "Pinned card declares license: apache-2.0 and links LICENSE. This supports the publisher-declared license description, not legal certification. Its 57% answer-token and 52% thinking-token reduction claims remain external priors, not local results. Self-distillation motivates research selection without establishing local qualification."
+    },
+    {
+      "id": "swift-gguf",
+      "url": "https://huggingface.co/ukisai/Swift-Qwen3.8-27B-GGUF/tree/dfc5e7382fa86bd3b971108e23423be5ef18941e",
+      "published_or_observed": "2026-09-12",
+      "observed_at": "2026-09-12",
+      "age_class": "current",
+      "evidence_type": "community-recipe",
+      "hardware_runtime_relevance": "Exact Q6_K artifact fits the 32 GB lane; publisher token and quality results are advisory.",
+      "decision_impact": "Selected as the direct reduced-reasoning candidate."
+    },
+    {
+      "id": "qwopus-flash",
+      "url": "https://huggingface.co/Jackrong/Qwopus3.8-27B-Flash/tree/0f6553d5e2b66acc5b7ee305ae0413d481ac08a2",
+      "published_or_observed": "2026-09-06",
+      "observed_at": "2026-09-12",
+      "age_class": "current",
+      "evidence_type": "community-recipe",
+      "hardware_runtime_relevance": "Fine-tune targets iterative agent latency; local first arm isolates target-only behavior.",
+      "decision_impact": "Selected with Python indentation as an explicit hard gate."
+    },
+    {
+      "id": "qwopus-q6-conversion",
+      "url": "https://huggingface.co/mradermacher/Qwopus3.8-27B-Flash-i1-GGUF/tree/a2f33e11aa22e467206633d7af9da1990f7111b9",
+      "published_or_observed": "2026-09-06",
+      "observed_at": "2026-09-12",
+      "age_class": "current",
+      "evidence_type": "community-recipe",
+      "hardware_runtime_relevance": "Third-party iMatrix Q6_K conversion is small enough for the declared 64K point.",
+      "decision_impact": "Provides the exact runnable target artifact."
+    },
+    {
+      "id": "minitron-source",
+      "url": "https://huggingface.co/exnivo/Qwen3.8-20B-Minitron/tree/3c83513253dcc02c6bddfb55c74d2bfce9811d84",
+      "published_or_observed": "2026-08-16",
+      "observed_at": "2026-09-12",
+      "age_class": "current",
+      "evidence_type": "community-recipe",
+      "hardware_runtime_relevance": "Physically pruned 19.746B derivative whose source card discloses reasoning weaknesses.",
+      "decision_impact": "Selected as the lower-compute quality boundary, not an assumed upgrade."
+    },
+    {
+      "id": "minitron-q6-conversion",
+      "url": "https://huggingface.co/mradermacher/Qwen3.8-20B-Minitron-i1-GGUF/tree/ef2d8cbbb83bbe27142546665163d2ab9d31727c",
+      "published_or_observed": "2026-08-23",
+      "observed_at": "2026-09-12",
+      "age_class": "current",
+      "evidence_type": "community-recipe",
+      "hardware_runtime_relevance": "Third-party iMatrix Q6_K conversion is substantially smaller than the 27B arms.",
+      "decision_impact": "Provides the exact runnable compressed artifact."
+    },
+    {
+      "id": "swift-license",
+      "url": "https://huggingface.co/ukisai/Swift-Qwen3.8-27b/blob/97407cee5b90fa2506fa122cef7f2b8ec86dcf63/README.md",
+      "published_or_observed": "2026-09-12",
+      "observed_at": "2026-09-12",
+      "age_class": "current",
+      "evidence_type": "publisher-model-card",
+      "hardware_runtime_relevance": "Source license, independent of GPU or conversion.",
+      "decision_impact": "Publisher says free personal/research/evaluation and commercial use up to US$1M annual recurring revenue including affiliates; above threshold commercial deployment requires separate enterprise license. Operator eligibility not inferred."
+    },
+    {
+      "id": "pinned-llamacpp-reasoning-contract",
+      "url": "https://raw.githubusercontent.com/ggml-org/llama.cpp/a298422da78eb75e440a7de0ca408af64d323d93/tools/server/README.md",
+      "published_or_observed": "2026-09-12",
+      "observed_at": "2026-09-12",
+      "age_class": "current-pinned",
+      "evidence_type": "official-runtime-source",
+      "hardware_runtime_relevance": "Exact engine source for the shared digest-pinned runtime.",
+      "decision_impact": "Verified request-level thinking template overrides; Signal enabled preflight independently produced a reasoning channel despite recipe default off."
+    },
+    {
+      "id": "llamacpp-mtp-eos-watch",
+      "url": "https://github.com/ggml-org/llama.cpp/issues/28049",
+      "published_or_observed": "2026-08-30",
+      "observed_at": "2026-09-12",
+      "age_class": "current",
+      "evidence_type": "upstream-issue",
+      "hardware_runtime_relevance": "Hybrid-model draft-MTP EOS/cache behavior; not proof this local build has the reported defect.",
+      "decision_impact": "Motivates matched speculation-off diagnostics. Swift's strict 128-word failure persisted without speculation, so this issue is not assigned as its local root cause."
+    }
+  ]
+}

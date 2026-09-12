@@ -1,0 +1,1035 @@
+{
+  "context": {
+    "cap_tokens": null,
+    "max_model_len": null,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 1,
+    "version": 3,
+    "visible_answer_tokens": 2048
+  },
+  "failures": [
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-20-biology",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "mmlu-pro-format-repair"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-30-computer-science",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "mmlu-pro-format-repair"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-40-engineering",
+      "failure_classes": [
+        "visible_answer_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "mmlu-pro-format-repair"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:8081/v1",
+    "candidate_id": "qwopus-q6k-nospec",
+    "config_id": "q6k-nospec-64k",
+    "engine": "llama.cpp",
+    "gpu": "rtx5090-primary",
+    "model": "qwopus38-27b-flash-q6k-nospec-64k",
+    "started_at": "2026-09-12T19:00:53Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260912T190053Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "disabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "mmlu-pro-format-repair": {
+      "checks": [
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "The pituitary gland is located in the sella turcica, a depression in the sphenoid bone at the base of the skull. This places it within the cranial cavity.\n\nFINAL=J",
+              "content_chars": 163,
+              "content_excerpt": "The pituitary gland is located in the sella turcica, a depression in the sphenoid bone at the base of the skull. This places it within the cranial cavity.\n\nFINAL=J",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1076.252500002738,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 43,
+                "prompt_tokens": 133,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 176
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 2048,
+            "reasoning_headroom_tokens": 0,
+            "visible_answer_tokens": 2048
+          },
+          "content": "The pituitary gland is located in the sella turcica, a depression in the sphenoid bone at the base of the skull. This places it within the cranial cavity.\n\nFINAL=J",
+          "content_excerpt": "The pituitary gland is located in the sella turcica, a depression in the sphenoid bone at the base of the skull. This places it within the cranial cavity.\n\nFINAL=J",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-5-health",
+          "latency_ms": 1076.252500002738,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 0,
+          "reasoning_excerpt": "",
+          "reasoning_field": null,
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 43,
+            "prompt_tokens": 133,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 176
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "The amount of light gathered by an optical instrument is proportional to the area of its aperture. The area of a circle is given by \\( A = \\pi r^2 \\) or \\( A = \\frac{\\pi d^2}{4} \\), where \\( d \\) is the diameter.\n\nGiven:\n- Diameter of the pupil (\\( d_{eye} \\)) = 5 mm = 0.5 cm\n- Diameter of the telescope aperture (\\( d_{telescope} \\)) = 50 cm\n\nThe ratio of the light-gathering power is the ratio of the areas:\n\\[\n\\text{Ratio} = \\frac{A_{telescope}}{A_{eye}} = \\frac{\\pi (d_{telescope}/2)^2}{\\pi (d_{eye}/2)^2} = \\left( \\frac{d_{telescope}}{d_{eye}} \\right)^2\n\\]\n\nSubstitute the values:\n\\[\n\\text{Ratio} = \\left( \\frac{50 \\text{ cm}}{0.5 \\text{ cm}} \\right)^2 = (100)^2 = 10,000\n\\]\n\nSo, the telescope can gather 10,000 times more light than the eye.\n\nThis corresponds to option E.\n\nFINAL=E",
+              "content_chars": 788,
+              "content_excerpt": "The amount of light gathered by an optical instrument is proportional to the area of its aperture. The area of a circle is given by \\( A = \\pi r^2 \\) or \\( A = \\frac{\\pi d^2}{4} \\), where \\( d \\) is t",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5332.208200008608,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 288,
+                "prompt_tokens": 193,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 481
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 2048,
+            "reasoning_headroom_tokens": 0,
+            "visible_answer_tokens": 2048
+          },
+          "content": "The amount of light gathered by an optical instrument is proportional to the area of its aperture. The area of a circle is given by \\( A = \\pi r^2 \\) or \\( A = \\frac{\\pi d^2}{4} \\), where \\( d \\) is the diameter.\n\nGiven:\n- Diameter of the pupil (\\( d_{eye} \\)) = 5 mm = 0.5 cm\n- Diameter of the telescope aperture (\\( d_{telescope} \\)) = 50 cm\n\nThe ratio of the light-gathering power is the ratio of the areas:\n\\[\n\\text{Ratio} = \\frac{A_{telescope}}{A_{eye}} = \\frac{\\pi (d_{telescope}/2)^2}{\\pi (d_{eye}/2)^2} = \\left( \\frac{d_{telescope}}{d_{eye}} \\right)^2\n\\]\n\nSubstitute the values:\n\\[\n\\text{Ratio} = \\left( \\frac{50 \\text{ cm}}{0.5 \\text{ cm}} \\right)^2 = (100)^2 = 10,000\n\\]\n\nSo, the telescope can gather 10,000 times more light than the eye.\n\nThis corresponds to option E.\n\nFINAL=E",
+          "content_excerpt": "The amount of light gathered by an optical instrument is proportional to the area of its aperture. The area of a circle is given by \\( A = \\pi r^2 \\) or \\( A = \\frac{\\pi d^2}{4} \\), where \\( d \\) is t",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-10-physics",
+          "latency_ms": 5332.208200008608,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 0,
+          "reasoning_excerpt": "",
+          "reasoning_field": null,
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 288,
+            "prompt_tokens": 193,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 481
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "The correct answer is **F**.\n\n**Reasoning:**\n1.  **First blank:** The sentence contrasts two types of consumer campaigns. The second part describes campaigns that \"aim to reward favourable behaviour.\" This is the definition of a **Buycott** (buying from a company to support it). Therefore, the first blank must be the opposite, which is a **Boycott** (refusing to buy to punish a company). This eliminates options B, D, G, and I.\n2.  **Second blank:** As established, the campaigns that reward favourable behaviour are **Buycotts**. This eliminates options A and E (which suggest \"Buyalls\").\n3.  **Third blank:** The sentence states that the success of these campaigns is heightened by a specific technology. In the context of modern consumer activism and supply chain transparency, **Digital technology** (including apps, social media, and online platforms) is the primary enabler. While blockchain is a specific type of digital technology, \"Digital technology\" is the broader, more standard term used in this context to describe the general shift from physical to digital activism. Furthermore, looking at the remaining options (C, F, H, J), we need to see which fits best.\n4.  **Fourth blank:** The final part says the technology allows campaigns to facilitate the company in achieving a specific outcome. A buycott is designed to support a company, so the logical outcome is **Increased Sales**. This eliminates options C and J (which suggest \"Decreased Sales\").\n5.  **Final check:** Option F reads: \"In contrast to **Boycotts**, **Buycotts** aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of **Digital technology**, which allow campaigns to facilitate the company in achieving **Increased Sales**.\" This makes logical and semantic sense. Option H suggests \"Physical technology,\" which is incorrect as digital tools are the key enabler.\n\nFINAL=F",
+              "content_chars": 1918,
+              "content_excerpt": "The correct answer is **F**.\n\n**Reasoning:**\n1.  **First blank:** The sentence contrasts two types of consumer campaigns. The second part describes campaigns that \"aim to reward favourable behaviour.\"",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7480.074599967338,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 410,
+                "prompt_tokens": 266,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 676
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 2048,
+            "reasoning_headroom_tokens": 0,
+            "visible_answer_tokens": 2048
+          },
+          "content": "The correct answer is **F**.\n\n**Reasoning:**\n1.  **First blank:** The sentence contrasts two types of consumer campaigns. The second part describes campaigns that \"aim to reward favourable behaviour.\" This is the definition of a **Buycott** (buying from a company to support it). Therefore, the first blank must be the opposite, which is a **Boycott** (refusing to buy to punish a company). This eliminates options B, D, G, and I.\n2.  **Second blank:** As established, the campaigns that reward favourable behaviour are **Buycotts**. This eliminates options A and E (which suggest \"Buyalls\").\n3.  **Third blank:** The sentence states that the success of these campaigns is heightened by a specific technology. In the context of modern consumer activism and supply chain transparency, **Digital technology** (including apps, social media, and online platforms) is the primary enabler. While blockchain is a specific type of digital technology, \"Digital technology\" is the broader, more standard term used in this context to describe the general shift from physical to digital activism. Furthermore, looking at the remaining options (C, F, H, J), we need to see which fits best.\n4.  **Fourth blank:** The final part says the technology allows campaigns to facilitate the company in achieving a specific outcome. A buycott is designed to support a company, so the logical outcome is **Increased Sales**. This eliminates options C and J (which suggest \"Decreased Sales\").\n5.  **Final check:** Option F reads: \"In contrast to **Boycotts**, **Buycotts** aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of **Digital technology**, which allow campaigns to facilitate the company in achieving **Increased Sales**.\" This makes logical and semantic sense. Option H suggests \"Physical technology,\" which is incorrect as digital tools are the key enabler.\n\nFINAL=F",
+          "content_excerpt": "The correct answer is **F**.\n\n**Reasoning:**\n1.  **First blank:** The sentence contrasts two types of consumer campaigns. The second part describes campaigns that \"aim to reward favourable behaviour.\"",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-15-business",
+          "latency_ms": 7480.074599967338,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 0,
+          "reasoning_excerpt": "",
+          "reasoning_field": null,
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 410,
+            "prompt_tokens": 266,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 676
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "B",
+              "content_chars": 1,
+              "content_excerpt": "B",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 583.3360999822617,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2,
+                "prompt_tokens": 174,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 176
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 2048,
+            "reasoning_headroom_tokens": 0,
+            "visible_answer_tokens": 2048
+          },
+          "content": "B",
+          "content_excerpt": "B",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-20-biology",
+          "latency_ms": 583.3360999822617,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 0,
+          "reasoning_excerpt": "",
+          "reasoning_field": null,
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 2,
+            "prompt_tokens": 174,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 176
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "The methyl radical is \\(\\cdot CH_3\\). It has one unpaired electron (a doublet, \\(S = 1/2\\)).\n\nThe hyperfine splitting comes from the magnetic nuclei in the molecule:\n1. The carbon nucleus: \\(^{13}C\\) has nuclear spin \\(I = 1/2\\).\n2. The three hydrogen nuclei: each \\(^1H\\) has nuclear spin \\(I = 1/2\\).\n\nThe total number of lines in an EPR spectrum for a set of equivalent nuclei with spin \\(I\\) and number \\(n\\) is given by \\(2nI + 1\\).\n\nFor the three equivalent protons (\\(n=3, I=1/2\\)):\nNumber of lines = \\(2 \\times 3 \\times (1/2) + 1 = 3 + 1 = 4\\).\nThese four lines correspond to the total spin of the three protons: \\(M_I = -3/2, -1/2, +1/2, +3/2\\).\n\nFor the \\(^{13}C\\) nucleus (\\(n=1, I=1/2\\)):\nNumber of lines = \\(2 \\times 1 \\times (1/2) + 1 = 2\\).\nThese two lines correspond to \\(M_I = -1/2, +1/2\\).\n\nSince the hyperfine interactions are additive (assuming no overlap and first-order splitting), the total number of lines is the product of the number of lines from each set of nuclei:\nTotal lines = (lines from \\(^1H\\)) \\(\\times\\) (lines from \\(^{13}C\\)) = \\(4 \\times 2 = 8\\).\n\nThus, the EPR spectrum will have 8 lines.\n\nFINAL=B",
+              "content_chars": 1136,
+              "content_excerpt": "The methyl radical is \\(\\cdot CH_3\\). It has one unpaired electron (a doublet, \\(S = 1/2\\)).\n\nThe hyperfine splitting comes from the magnetic nuclei in the molecule:\n1. The carbon nucleus: \\(^{13}C\\) ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7121.142499963753,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 393,
+                "prompt_tokens": 153,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 546
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 2048,
+            "reasoning_headroom_tokens": 0,
+            "visible_answer_tokens": 2048
+          },
+          "content": "The methyl radical is \\(\\cdot CH_3\\). It has one unpaired electron (a doublet, \\(S = 1/2\\)).\n\nThe hyperfine splitting comes from the magnetic nuclei in the molecule:\n1. The carbon nucleus: \\(^{13}C\\) has nuclear spin \\(I = 1/2\\).\n2. The three hydrogen nuclei: each \\(^1H\\) has nuclear spin \\(I = 1/2\\).\n\nThe total number of lines in an EPR spectrum for a set of equivalent nuclei with spin \\(I\\) and number \\(n\\) is given by \\(2nI + 1\\).\n\nFor the three equivalent protons (\\(n=3, I=1/2\\)):\nNumber of lines = \\(2 \\times 3 \\times (1/2) + 1 = 3 + 1 = 4\\).\nThese four lines correspond to the total spin of the three protons: \\(M_I = -3/2, -1/2, +1/2, +3/2\\).\n\nFor the \\(^{13}C\\) nucleus (\\(n=1, I=1/2\\)):\nNumber of lines = \\(2 \\times 1 \\times (1/2) + 1 = 2\\).\nThese two lines correspond to \\(M_I = -1/2, +1/2\\).\n\nSince the hyperfine interactions are additive (assuming no overlap and first-order splitting), the total number of lines is the product of the number of lines from each set of nuclei:\nTotal lines = (lines from \\(^1H\\)) \\(\\times\\) (lines from \\(^{13}C\\)) = \\(4 \\times 2 = 8\\).\n\nThus, the EPR spectrum will have 8 lines.\n\nFINAL=B",
+          "content_excerpt": "The methyl radical is \\(\\cdot CH_3\\). It has one unpaired electron (a doublet, \\(S = 1/2\\)).\n\nThe hyperfine splitting comes from the magnetic nuclei in the molecule:\n1. The carbon nucleus: \\(^{13}C\\) ",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-25-chemistry",
+          "latency_ms": 7121.142499963753,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 0,
+          "reasoning_excerpt": "",
+          "reasoning_field": null,
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 393,
+            "prompt_tokens": 153,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 546
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "The expression is \\(AB + ABC + BC\\).\n\n1. **MUL R0, R1, R3** (AB) - 1 cycle\n2. **MUL R3, R2, R4** (ABC) - 2 cycles (R3 is used immediately)\n3. **MUL R1, R2, R5** (BC) - 1 cycle\n4. **ADD R3, R4, R6** (AB + ABC) - 2 cycles (R3 is used immediately)\n5. **ADD R6, R5, R7** (AB + ABC + BC) - 2 cycles (R6 is used immediately)\n\nTotal cycles: 1 + 2 + 1 + 2 + 2 = 8 cycles.\n\nFINAL=H",
+              "content_chars": 372,
+              "content_excerpt": "The expression is \\(AB + ABC + BC\\).\n\n1. **MUL R0, R1, R3** (AB) - 1 cycle\n2. **MUL R3, R2, R4** (ABC) - 2 cycles (R3 is used immediately)\n3. **MUL R1, R2, R5** (BC) - 1 cycle\n4. **ADD R3, R4, R6** (A",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 3394.1128000151366,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 174,
+                "prompt_tokens": 216,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 390
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 2048,
+            "reasoning_headroom_tokens": 0,
+            "visible_answer_tokens": 2048
+          },
+          "content": "The expression is \\(AB + ABC + BC\\).\n\n1. **MUL R0, R1, R3** (AB) - 1 cycle\n2. **MUL R3, R2, R4** (ABC) - 2 cycles (R3 is used immediately)\n3. **MUL R1, R2, R5** (BC) - 1 cycle\n4. **ADD R3, R4, R6** (AB + ABC) - 2 cycles (R3 is used immediately)\n5. **ADD R6, R5, R7** (AB + ABC + BC) - 2 cycles (R6 is used immediately)\n\nTotal cycles: 1 + 2 + 1 + 2 + 2 = 8 cycles.\n\nFINAL=H",
+          "content_excerpt": "The expression is \\(AB + ABC + BC\\).\n\n1. **MUL R0, R1, R3** (AB) - 1 cycle\n2. **MUL R3, R2, R4** (ABC) - 2 cycles (R3 is used immediately)\n3. **MUL R1, R2, R5** (BC) - 1 cycle\n4. **ADD R3, R4, R6** (A",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-30-computer-science",
+          "latency_ms": 3394.1128000151366,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 0,
+          "reasoning_excerpt": "",
+          "reasoning_field": null,
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 174,
+            "prompt_tokens": 216,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 390
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "For a stationary autoregressive (AR) process, the key property is that the effect of a shock (or innovation) decays over time. In an AR(1) process, for example, the impulse response function is given by \\(\\phi^t\\), where \\(|\\phi| < 1\\) for stationarity. This means the impact of a shock diminishes geometrically and eventually dies away, returning the process to its mean.\n\nTherefore, the correct answer is that shocks will eventually die away.\n\nFINAL=F",
+              "content_chars": 453,
+              "content_excerpt": "For a stationary autoregressive (AR) process, the key property is that the effect of a shock (or innovation) decays over time. In an AR(1) process, for example, the impulse response function is given ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2170.3068000497296,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 108,
+                "prompt_tokens": 146,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 254
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 2048,
+            "reasoning_headroom_tokens": 0,
+            "visible_answer_tokens": 2048
+          },
+          "content": "For a stationary autoregressive (AR) process, the key property is that the effect of a shock (or innovation) decays over time. In an AR(1) process, for example, the impulse response function is given by \\(\\phi^t\\), where \\(|\\phi| < 1\\) for stationarity. This means the impact of a shock diminishes geometrically and eventually dies away, returning the process to its mean.\n\nTherefore, the correct answer is that shocks will eventually die away.\n\nFINAL=F",
+          "content_excerpt": "For a stationary autoregressive (AR) process, the key property is that the effect of a shock (or innovation) decays over time. In an AR(1) process, for example, the impulse response function is given ",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-35-economics",
+          "latency_ms": 2170.3068000497296,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 0,
+          "reasoning_excerpt": "",
+          "reasoning_field": null,
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 108,
+            "prompt_tokens": 146,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 254
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "The force between two magnetic poles is given by the formula:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nWhere:\n- \\(\\mu_0 = 4\\pi \\times 10^{-7} \\, \\text{N/A}^2\\) (permeability of free space)\n- \\(m_1 = 4\\pi \\times 10^{-4} \\, \\text{Wb}\\)\n- \\(m_2 = 4\\pi \\times 1.5 \\times 10^{-4} \\, \\text{Wb}\\)\n- \\(r = 10 \\, \\text{cm} = 0.1 \\, \\text{m}\\)\n\nPlugging in the values:\n\n\\[ F = \\frac{4\\pi \\times 10^{-7}}{4\\pi} \\frac{(4\\pi \\times 10^{-4})(4\\pi \\times 1.5 \\times 10^{-4})}{(0.1)^2} \\]\n\nSimplify:\n\n\\[ F = 10^{-7} \\times \\frac{(4\\pi \\times 10^{-4})(4\\pi \\times 1.5 \\times 10^{-4})}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{16\\pi^2 \\times 1.5 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{24\\pi^2 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times 24\\pi^2 \\times 10^{-6} \\]\n\n\\[ F = 24\\pi^2 \\times 10^{-13} \\]\n\nWait, let me recalculate more carefully.\n\nActually, the formula for force between two magnetic poles is:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nWith \\(\\mu_0 = 4\\pi \\times 10^{-7}\\):\n\n\\[ F = \\frac{4\\pi \\times 10^{-7}}{4\\pi} \\frac{m_1 m_2}{r^2} = 10^{-7} \\frac{m_1 m_2}{r^2} \\]\n\nNow:\n- \\(m_1 = 4\\pi \\times 10^{-4}\\)\n- \\(m_2 = 4\\pi \\times 1.5 \\times 10^{-4} = 6\\pi \\times 10^{-4}\\)\n- \\(r = 0.1 \\, \\text{m}\\)\n\n\\[ F = 10^{-7} \\times \\frac{(4\\pi \\times 10^{-4})(6\\pi \\times 10^{-4})}{(0.1)^2} \\]\n\n\\[ F = 10^{-7} \\times \\frac{24\\pi^2 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times 24\\pi^2 \\times 10^{-6} \\]\n\n\\[ F = 24\\pi^2 \\times 10^{-13} \\]\n\nThis gives a very small number, which doesn't match any of the options. Let me reconsider.\n\nWait, perhaps the units are different. In some contexts, the force between magnetic poles is given by:\n\n\\[ F = \\frac{m_1 m_2}{4\\pi \\mu_0 r^2} \\]\n\nOr perhaps the pole strength is given in weber and the formula is:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nLet me try with \\(\\mu_0 = 4\\pi \\times 10^{-7}\\):\n\n\\[ F = 10^{-7} \\times \\frac{(4\\pi \\times 10^{-4})(6\\pi \\times 10^{-4})}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{24\\pi^2 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times 24\\pi^2 \\times 10^{-6} \\]\n\n\\[ F = 24\\pi^2 \\times 10^{-13} \\approx 24 \\times 9.87 \\times 10^{-13} \\approx 2.37 \\times 10^{-10} \\, \\text{N} \\]\n\nThis is way too small. Let me reconsider the problem.\n\nPerhaps the pole strength is given in weber and the formula should be:\n\n\\[ F = \\frac{m_1 m_2}{4\\pi \\mu_0 r^2} \\]\n\nNo, that doesn't make sense dimensionally.\n\nLet me think about this differently. In the CGS system, the force between two magnetic poles is:\n\n\\[ F = \\frac{m_1 m_2}{r^2} \\]\n\nBut in SI, it's:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nWith \\(\\mu_0 = 4\\pi \\times 10^{-7}\\), we get:\n\n\\[ F = 10^{-7} \\frac{m_1 m_2}{r^2} \\]\n\nLet me try with the given values again:\n\n\\(m_1 = 4\\pi \\times 10^{-4}\\)\n\\(m_2 = 4\\pi \\times 1.5 \\times 10^{-4} = 6\\pi \\times 10^{-4}\\)\n\\(r = 0.1\\)\n\n\\[ F = 10^{-7} \\times \\frac{(4\\pi \\times 10^{-4})(6\\pi \\times 10^{-4})}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{24\\pi^2 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times 24\\pi^2 \\times 10^{-6} \\]\n\n\\[ F = 24\\pi^2 \\times 10^{-13} \\]\n\nThis is approximately \\(2.37 \\times 10^{-10}\\) N, which is not among the options.\n\nLet me reconsider. Maybe the pole strength is in weber and the formula is different.\n\nActually, looking at the options (25 N, 12.5 N, etc.), these are large forces. Let me try:\n\n\\[ F = \\frac{m_1 m_2}{4\\pi \\mu_0 r^2} \\]\n\nNo, that would give even smaller numbers.\n\nWait, maybe I should use:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nBut with \\(\\mu_0 = 4\\pi \\times 10^{-7}\\), this gives \\(10^{-7} \\frac{m_1 m_2}{r^2}\\).\n\nLet me try with the numbers:\n\n\\(m_1 = 4\\pi \\times 10^{-4}\\)\n\\(m_2 = 4\\pi \\times 1.5 \\times 10^{-4}\\)\n\\(r = 0.1\\)\n\n\\[ F = 10^{-7} \\times \\frac{(4\\pi \\times 10^{-4})(4\\pi \\times 1.5 \\times 10^{-4})}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{16\\pi^2 \\times 1.5 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{24\\pi^2 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times 24\\pi^2 \\times 10^{-6} \\]\n\n\\[ F = 24\\pi^2 \\times 10^{-13} \\]\n\nThis is still very small.\n\nLet me try a different approach. Maybe the formula is:\n\n\\[ F = \\frac{m_1 m_2}{r^2} \\]\n\nin some unit system where the constant is 1.\n\n\\[ F = \\frac{(4\\pi \\times 10^{-4})(4\\pi \\times 1.5 \\times 10^{-4})}{(0.1)^2} \\]\n\n\\[ F =",
+              "content_chars": 4224,
+              "content_excerpt": "The force between two magnetic poles is given by the formula:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nWhere:\n- \\(\\mu_0 = 4\\pi \\times 10^{-7} \\, \\text{N/A}^2\\) (permeability of free space)\n-",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 36190.03330002306,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2048,
+                "prompt_tokens": 187,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 2235
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 2048,
+            "reasoning_headroom_tokens": 0,
+            "visible_answer_tokens": 2048
+          },
+          "content": "The force between two magnetic poles is given by the formula:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nWhere:\n- \\(\\mu_0 = 4\\pi \\times 10^{-7} \\, \\text{N/A}^2\\) (permeability of free space)\n- \\(m_1 = 4\\pi \\times 10^{-4} \\, \\text{Wb}\\)\n- \\(m_2 = 4\\pi \\times 1.5 \\times 10^{-4} \\, \\text{Wb}\\)\n- \\(r = 10 \\, \\text{cm} = 0.1 \\, \\text{m}\\)\n\nPlugging in the values:\n\n\\[ F = \\frac{4\\pi \\times 10^{-7}}{4\\pi} \\frac{(4\\pi \\times 10^{-4})(4\\pi \\times 1.5 \\times 10^{-4})}{(0.1)^2} \\]\n\nSimplify:\n\n\\[ F = 10^{-7} \\times \\frac{(4\\pi \\times 10^{-4})(4\\pi \\times 1.5 \\times 10^{-4})}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{16\\pi^2 \\times 1.5 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{24\\pi^2 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times 24\\pi^2 \\times 10^{-6} \\]\n\n\\[ F = 24\\pi^2 \\times 10^{-13} \\]\n\nWait, let me recalculate more carefully.\n\nActually, the formula for force between two magnetic poles is:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nWith \\(\\mu_0 = 4\\pi \\times 10^{-7}\\):\n\n\\[ F = \\frac{4\\pi \\times 10^{-7}}{4\\pi} \\frac{m_1 m_2}{r^2} = 10^{-7} \\frac{m_1 m_2}{r^2} \\]\n\nNow:\n- \\(m_1 = 4\\pi \\times 10^{-4}\\)\n- \\(m_2 = 4\\pi \\times 1.5 \\times 10^{-4} = 6\\pi \\times 10^{-4}\\)\n- \\(r = 0.1 \\, \\text{m}\\)\n\n\\[ F = 10^{-7} \\times \\frac{(4\\pi \\times 10^{-4})(6\\pi \\times 10^{-4})}{(0.1)^2} \\]\n\n\\[ F = 10^{-7} \\times \\frac{24\\pi^2 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times 24\\pi^2 \\times 10^{-6} \\]\n\n\\[ F = 24\\pi^2 \\times 10^{-13} \\]\n\nThis gives a very small number, which doesn't match any of the options. Let me reconsider.\n\nWait, perhaps the units are different. In some contexts, the force between magnetic poles is given by:\n\n\\[ F = \\frac{m_1 m_2}{4\\pi \\mu_0 r^2} \\]\n\nOr perhaps the pole strength is given in weber and the formula is:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nLet me try with \\(\\mu_0 = 4\\pi \\times 10^{-7}\\):\n\n\\[ F = 10^{-7} \\times \\frac{(4\\pi \\times 10^{-4})(6\\pi \\times 10^{-4})}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{24\\pi^2 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times 24\\pi^2 \\times 10^{-6} \\]\n\n\\[ F = 24\\pi^2 \\times 10^{-13} \\approx 24 \\times 9.87 \\times 10^{-13} \\approx 2.37 \\times 10^{-10} \\, \\text{N} \\]\n\nThis is way too small. Let me reconsider the problem.\n\nPerhaps the pole strength is given in weber and the formula should be:\n\n\\[ F = \\frac{m_1 m_2}{4\\pi \\mu_0 r^2} \\]\n\nNo, that doesn't make sense dimensionally.\n\nLet me think about this differently. In the CGS system, the force between two magnetic poles is:\n\n\\[ F = \\frac{m_1 m_2}{r^2} \\]\n\nBut in SI, it's:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nWith \\(\\mu_0 = 4\\pi \\times 10^{-7}\\), we get:\n\n\\[ F = 10^{-7} \\frac{m_1 m_2}{r^2} \\]\n\nLet me try with the given values again:\n\n\\(m_1 = 4\\pi \\times 10^{-4}\\)\n\\(m_2 = 4\\pi \\times 1.5 \\times 10^{-4} = 6\\pi \\times 10^{-4}\\)\n\\(r = 0.1\\)\n\n\\[ F = 10^{-7} \\times \\frac{(4\\pi \\times 10^{-4})(6\\pi \\times 10^{-4})}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{24\\pi^2 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times 24\\pi^2 \\times 10^{-6} \\]\n\n\\[ F = 24\\pi^2 \\times 10^{-13} \\]\n\nThis is approximately \\(2.37 \\times 10^{-10}\\) N, which is not among the options.\n\nLet me reconsider. Maybe the pole strength is in weber and the formula is different.\n\nActually, looking at the options (25 N, 12.5 N, etc.), these are large forces. Let me try:\n\n\\[ F = \\frac{m_1 m_2}{4\\pi \\mu_0 r^2} \\]\n\nNo, that would give even smaller numbers.\n\nWait, maybe I should use:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nBut with \\(\\mu_0 = 4\\pi \\times 10^{-7}\\), this gives \\(10^{-7} \\frac{m_1 m_2}{r^2}\\).\n\nLet me try with the numbers:\n\n\\(m_1 = 4\\pi \\times 10^{-4}\\)\n\\(m_2 = 4\\pi \\times 1.5 \\times 10^{-4}\\)\n\\(r = 0.1\\)\n\n\\[ F = 10^{-7} \\times \\frac{(4\\pi \\times 10^{-4})(4\\pi \\times 1.5 \\times 10^{-4})}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{16\\pi^2 \\times 1.5 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times \\frac{24\\pi^2 \\times 10^{-8}}{0.01} \\]\n\n\\[ F = 10^{-7} \\times 24\\pi^2 \\times 10^{-6} \\]\n\n\\[ F = 24\\pi^2 \\times 10^{-13} \\]\n\nThis is still very small.\n\nLet me try a different approach. Maybe the formula is:\n\n\\[ F = \\frac{m_1 m_2}{r^2} \\]\n\nin some unit system where the constant is 1.\n\n\\[ F = \\frac{(4\\pi \\times 10^{-4})(4\\pi \\times 1.5 \\times 10^{-4})}{(0.1)^2} \\]\n\n\\[ F =",
+          "content_excerpt": "The force between two magnetic poles is given by the formula:\n\n\\[ F = \\frac{\\mu_0}{4\\pi} \\frac{m_1 m_2}{r^2} \\]\n\nWhere:\n- \\(\\mu_0 = 4\\pi \\times 10^{-7} \\, \\text{N/A}^2\\) (permeability of free space)\n-",
+          "error": "answer",
+          "failure_class": "visible_answer_budget_exhausted",
+          "finish_reason": "length",
+          "id": "mmlu-pro-40-engineering",
+          "latency_ms": 36190.03330002306,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 0,
+          "reasoning_excerpt": "",
+          "reasoning_field": null,
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 2048,
+            "prompt_tokens": 187,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 2235
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "The sentence \"Turtles live long lives and are happy creatures, unless they are injured\" can be broken down as follows:\n\n1.  **Identify the propositions:**\n    *   $L$: Turtles live long lives.\n    *   $H$: Turtles are happy creatures.\n    *   $I$: Turtles are injured.\n\n2.  **Analyze the logical structure:**\n    *   The phrase \"unless\" in logic typically translates to \"if not... then\" or is equivalent to a conditional statement. Specifically, \"P unless Q\" is logically equivalent to \"If not Q, then P\" ($\\neg Q \\rightarrow P$) or \"P or Q\" ($P \\lor Q$).\n    *   Here, $P$ is the conjunction \"Turtles live long lives and are happy creatures\" ($L \\land H$).\n    *   $Q$ is \"they are injured\" ($I$).\n    *   So, the statement is: $(L \\land H)$ unless $I$.\n    *   This translates to: $(L \\land H) \\lor I$.\n\n3.  **Evaluate the options:**\n    *   A. $(L \\land H) \\leftrightarrow I$: This means \"Turtles live long lives and are happy creatures if and only if they are injured.\" This is incorrect.\n    *   B. $(L \\land H) \\lor I$: This means \"Either turtles live long lives and are happy creatures, or they are injured.\" This matches the logical translation of \"unless\".\n    *   C. $L \\land (H \\lor I)$: This means \"Turtles live long lives, and either they are happy or they are injured.\" This changes the meaning.\n    *   D. $L \\land (H \\rightarrow R)$: This introduces a new variable $R$ and has a different structure.\n    *   E-J. N/A: Not applicable.\n\nTherefore, the correct formula is B.\n\nFINAL=B",
+              "content_chars": 1496,
+              "content_excerpt": "The sentence \"Turtles live long lives and are happy creatures, unless they are injured\" can be broken down as follows:\n\n1.  **Identify the propositions:**\n    *   $L$: Turtles live long lives.\n    *  ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7755.375300010201,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 428,
+                "prompt_tokens": 158,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 586
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 2048,
+            "reasoning_headroom_tokens": 0,
+            "visible_answer_tokens": 2048
+          },
+          "content": "The sentence \"Turtles live long lives and are happy creatures, unless they are injured\" can be broken down as follows:\n\n1.  **Identify the propositions:**\n    *   $L$: Turtles live long lives.\n    *   $H$: Turtles are happy creatures.\n    *   $I$: Turtles are injured.\n\n2.  **Analyze the logical structure:**\n    *   The phrase \"unless\" in logic typically translates to \"if not... then\" or is equivalent to a conditional statement. Specifically, \"P unless Q\" is logically equivalent to \"If not Q, then P\" ($\\neg Q \\rightarrow P$) or \"P or Q\" ($P \\lor Q$).\n    *   Here, $P$ is the conjunction \"Turtles live long lives and are happy creatures\" ($L \\land H$).\n    *   $Q$ is \"they are injured\" ($I$).\n    *   So, the statement is: $(L \\land H)$ unless $I$.\n    *   This translates to: $(L \\land H) \\lor I$.\n\n3.  **Evaluate the options:**\n    *   A. $(L \\land H) \\leftrightarrow I$: This means \"Turtles live long lives and are happy creatures if and only if they are injured.\" This is incorrect.\n    *   B. $(L \\land H) \\lor I$: This means \"Either turtles live long lives and are happy creatures, or they are injured.\" This matches the logical translation of \"unless\".\n    *   C. $L \\land (H \\lor I)$: This means \"Turtles live long lives, and either they are happy or they are injured.\" This changes the meaning.\n    *   D. $L \\land (H \\rightarrow R)$: This introduces a new variable $R$ and has a different structure.\n    *   E-J. N/A: Not applicable.\n\nTherefore, the correct formula is B.\n\nFINAL=B",
+          "content_excerpt": "The sentence \"Turtles live long lives and are happy creatures, unless they are injured\" can be broken down as follows:\n\n1.  **Identify the propositions:**\n    *   $L$: Turtles live long lives.\n    *  ",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-45-philosophy",
+          "latency_ms": 7755.375300010201,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 0,
+          "reasoning_excerpt": "",
+          "reasoning_field": null,
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 428,
+            "prompt_tokens": 158,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 586
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 2048,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 2048
+              },
+              "content": "FINAL=I",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=I",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 426.2870000093244,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 4,
+                "prompt_tokens": 199,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 203
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 2048,
+            "reasoning_headroom_tokens": 0,
+            "visible_answer_tokens": 2048
+          },
+          "content": "FINAL=I",
+          "content_excerpt": "FINAL=I",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-65-law",
+          "latency_ms": 426.2870000093244,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 0,
+          "reasoning_excerpt": "",
+          "reasoning_field": null,
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 4,
+            "prompt_tokens": 199,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 203
+          },
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-09-12",
+      "evidence_use": "diagnostic",
+      "source": "docs/findings/2026-09-12-qwen38-efficient-variants-rtx5090-evidence/mmlu-format-repair.suite.json",
+      "source_sha256": "37c72bd3a82e2d7e21695d2be90d73590709d9571c3dc0483d3de535f413abd2",
+      "status": "failed",
+      "validator_strength": "deterministic_marker",
+      "work_class": "independent-multidomain-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": false
+    },
+    "control_status": "requested_unverified",
+    "mode": "disabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": null,
+      "completion_tokens_mean": null,
+      "completion_tokens_mean_ci95_high": null,
+      "completion_tokens_mean_ci95_low": null,
+      "completion_tokens_min": null,
+      "completion_tokens_p25": null,
+      "completion_tokens_p50": null,
+      "completion_tokens_p75": null,
+      "completion_tokens_p90": null,
+      "completion_tokens_p95": null,
+      "completion_tokens_p99": null,
+      "completion_tokens_samples": 0,
+      "completion_tokens_stddev": null,
+      "content_chunks": 0,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": null,
+      "decode_tok_s_mean": null,
+      "decode_tok_s_mean_ci95_high": null,
+      "decode_tok_s_mean_ci95_low": null,
+      "decode_tok_s_min": null,
+      "decode_tok_s_p25": null,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p75": null,
+      "decode_tok_s_p90": null,
+      "decode_tok_s_p95": null,
+      "decode_tok_s_p99": null,
+      "decode_tok_s_samples": 0,
+      "decode_tok_s_stddev": null,
+      "e2e_max_ms": null,
+      "e2e_mean_ci95_high_ms": null,
+      "e2e_mean_ci95_low_ms": null,
+      "e2e_mean_ms": null,
+      "e2e_min_ms": null,
+      "e2e_p25_ms": null,
+      "e2e_p50_ms": null,
+      "e2e_p75_ms": null,
+      "e2e_p90_ms": null,
+      "e2e_p95_ms": null,
+      "e2e_p99_ms": null,
+      "e2e_samples": 0,
+      "e2e_stddev_ms": null,
+      "effective_prefill_tok_s_max": null,
+      "effective_prefill_tok_s_mean": null,
+      "effective_prefill_tok_s_mean_ci95_high": null,
+      "effective_prefill_tok_s_mean_ci95_low": null,
+      "effective_prefill_tok_s_min": null,
+      "effective_prefill_tok_s_p25": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p75": null,
+      "effective_prefill_tok_s_p90": null,
+      "effective_prefill_tok_s_p95": null,
+      "effective_prefill_tok_s_p99": null,
+      "effective_prefill_tok_s_samples": 0,
+      "effective_prefill_tok_s_stddev": null,
+      "generation_max_ms": null,
+      "generation_mean_ci95_high_ms": null,
+      "generation_mean_ci95_low_ms": null,
+      "generation_mean_ms": null,
+      "generation_min_ms": null,
+      "generation_p25_ms": null,
+      "generation_p50_ms": null,
+      "generation_p75_ms": null,
+      "generation_p90_ms": null,
+      "generation_p95_ms": null,
+      "generation_p99_ms": null,
+      "generation_samples": 0,
+      "generation_stddev_ms": null,
+      "mean_inter_token_latency_ms_max": null,
+      "mean_inter_token_latency_ms_mean": null,
+      "mean_inter_token_latency_ms_mean_ci95_high": null,
+      "mean_inter_token_latency_ms_mean_ci95_low": null,
+      "mean_inter_token_latency_ms_min": null,
+      "mean_inter_token_latency_ms_p25": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p75": null,
+      "mean_inter_token_latency_ms_p90": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "mean_inter_token_latency_ms_p99": null,
+      "mean_inter_token_latency_ms_samples": 0,
+      "mean_inter_token_latency_ms_stddev": null,
+      "mean_time_per_output_token_max_ms": null,
+      "mean_time_per_output_token_mean_ci95_high_ms": null,
+      "mean_time_per_output_token_mean_ci95_low_ms": null,
+      "mean_time_per_output_token_mean_ms": null,
+      "mean_time_per_output_token_min_ms": null,
+      "mean_time_per_output_token_p25_ms": null,
+      "mean_time_per_output_token_p50_ms": null,
+      "mean_time_per_output_token_p75_ms": null,
+      "mean_time_per_output_token_p90_ms": null,
+      "mean_time_per_output_token_p95_ms": null,
+      "mean_time_per_output_token_p99_ms": null,
+      "mean_time_per_output_token_samples": 0,
+      "mean_time_per_output_token_stddev_ms": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_max": null,
+      "prompt_tokens_mean": null,
+      "prompt_tokens_mean_ci95_high": null,
+      "prompt_tokens_mean_ci95_low": null,
+      "prompt_tokens_min": null,
+      "prompt_tokens_p25": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p75": null,
+      "prompt_tokens_p90": null,
+      "prompt_tokens_p95": null,
+      "prompt_tokens_p99": null,
+      "prompt_tokens_samples": 0,
+      "prompt_tokens_stddev": null,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": null,
+      "time_to_first_output_mean_ci95_high_ms": null,
+      "time_to_first_output_mean_ci95_low_ms": null,
+      "time_to_first_output_mean_ms": null,
+      "time_to_first_output_min_ms": null,
+      "time_to_first_output_p25_ms": null,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p75_ms": null,
+      "time_to_first_output_p90_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "time_to_first_output_p99_ms": null,
+      "time_to_first_output_samples": 0,
+      "time_to_first_output_stddev_ms": null,
+      "tpot_max_ms": null,
+      "tpot_mean_ci95_high_ms": null,
+      "tpot_mean_ci95_low_ms": null,
+      "tpot_mean_ms": null,
+      "tpot_min_ms": null,
+      "tpot_p25_ms": null,
+      "tpot_p50_ms": null,
+      "tpot_p75_ms": null,
+      "tpot_p90_ms": null,
+      "tpot_p95_ms": null,
+      "tpot_p99_ms": null,
+      "tpot_samples": 0,
+      "tpot_stddev_ms": null,
+      "ttft_max_ms": null,
+      "ttft_mean_ci95_high_ms": null,
+      "ttft_mean_ci95_low_ms": null,
+      "ttft_mean_ms": null,
+      "ttft_min_ms": null,
+      "ttft_p25_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p75_ms": null,
+      "ttft_p90_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_p99_ms": null,
+      "ttft_samples": 0,
+      "ttft_stddev_ms": null
+    },
+    "wall_ms": 71550.40770000778
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

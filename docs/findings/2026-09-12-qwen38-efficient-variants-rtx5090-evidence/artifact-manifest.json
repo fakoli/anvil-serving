@@ -1,0 +1,457 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+    "capability": "text-and-tools",
+    "repository_revision": "948346f5ab553361c6b61d9517b71a0e5e3cfe98",
+    "dirty_state": "Clean at campaign start; uncommitted campaign changes to managed lifecycle CLI/MCP, Windows Pi pipe transport, regression tests, recipes, CLI docs, and dated benchmark publication. No merge or release.",
+    "started_at": "2026-09-12T13:12:00Z",
+    "completed_at": "2026-09-12T20:12:29Z",
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "current",
+      "no-promotion"
+    ],
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.fast-tier-bakeoff/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "880bec4faf9b84ba090b5ced0ba4818edbee1be9ed525f37a7b687c7f8965e13",
+          "bytes": 5206
+        }
+      ],
+      "reason": "Human index into native and derivative evidence."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "c55e2135bf1f453004b37a99058ccbea4546028ed0b623a0bd233cdad222a87b",
+          "bytes": 7168
+        }
+      ],
+      "reason": "Current official and publisher priors, dated and distinguished from local measurement."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "a13714b66bcd06a16e008b6dabfb8980e959b24f124404cf6790ad32592b5bf7",
+          "bytes": 2732
+        },
+        {
+          "path": "mmlu-budget-retry.suite.json",
+          "sha256": "c209f92737d52c39d78c875be3b30ac66528ec978d6295c5e57be63eabdb2d9f",
+          "bytes": 1383
+        },
+        {
+          "path": "mmlu-format-repair.suite.json",
+          "sha256": "37c72bd3a82e2d7e21695d2be90d73590709d9571c3dc0483d3de535f413abd2",
+          "bytes": 9241
+        }
+      ],
+      "reason": "Predeclared workload identity and explicit diagnostic amendments; independent answer keys retained."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "66396ce7f2c2c55773258b2589b7475c764f41a8dd9a4574a5f57aa9b44699db",
+          "bytes": 3287
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "a0a472245125d8389a50135c1a6c39857451063d4de5ef17626afe02d46140c9",
+          "bytes": 2603
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "bc412cebcc6a658678659629882a93a0a345bb83e29e601df3d49a3a9a33cfc0",
+          "bytes": 2446
+        },
+        {
+          "path": "dispatch-packet.md",
+          "sha256": "ead7eb28a54d6a294dbada8040b09ba204be706b223ba8c4a1e9e4b14a5cf014",
+          "bytes": 1426
+        }
+      ],
+      "reason": "Authority, limits, stage dispositions, coverage and bounded independent review scope."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration.json",
+          "sha256": "59f0ce73a4a3b6572d1e2120ffdc227dd961ab99b34ee4935e4c98a64ab831ed",
+          "bytes": 2034
+        },
+        {
+          "path": "recipes.toml",
+          "sha256": "8306a6478ef5beddd48e538f7664e0ea6aca14911c162a4c68c4fad30375fb4b",
+          "bytes": 11050
+        },
+        {
+          "path": "nospec-controls.toml",
+          "sha256": "855aa2fe149ca9ae1d262cd2b80d6f334aff26729f531da5d2e2525ee239026e",
+          "bytes": 5302
+        },
+        {
+          "path": "feasibility-input.json",
+          "sha256": "0f33c1dafa1c57530aee0247eb100f47982e16a8d5a40122d0213511ff36bff3",
+          "bytes": 10091
+        },
+        {
+          "path": "feasibility.json",
+          "sha256": "ffebda4e268ab0a6cbf11377804aba00ada8780e87e15f1718647a5470606ad3",
+          "bytes": 28462
+        },
+        {
+          "path": "feasibility.md",
+          "sha256": "682688a1b28b845a61e7c9d220cd093e10704f3606c41be8f3c255b99ca46755",
+          "bytes": 2625
+        },
+        {
+          "path": "cache-before.json",
+          "sha256": "64a1dd717e3f9d91c2571523d1f011ebf5f473c7a3e859db0c1ddd586e4287dc",
+          "bytes": 62581
+        },
+        {
+          "path": "cache-during-signal.json",
+          "sha256": "f06878e055bf8f8597141300aa1c5f9e3aa75fd07012a79aa3f96ac668e9ca46",
+          "bytes": 63317
+        }
+      ],
+      "reason": "Exact profile reconstruction, physical screening and sanitized cache observations."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "incumbent-capacity-32.json",
+          "sha256": "2d5a109cfdebaa444e0b81a773a5efb6ad1ce3324e535bb07a4224410ebd84ba",
+          "bytes": 17475
+        },
+        {
+          "path": "incumbent-capacity-observe-thinking-disabled.json",
+          "sha256": "7d123e4fd0318f214d24c886e2578ba73945ec908802d236dc036f900175295f",
+          "bytes": 17557
+        },
+        {
+          "path": "incumbent-capacity-thinking-disabled.json",
+          "sha256": "565e76a382e02fe06fc0c002b20ce9906847949a9b4a99c242ff0db60a482495",
+          "bytes": 22820
+        },
+        {
+          "path": "incumbent-mmlu-disabled.json",
+          "sha256": "97d7536054a2d811f2591d21f7cd210478ab06c70e7c9a8da155ca827a4e7299",
+          "bytes": 155884
+        },
+        {
+          "path": "incumbent-mmlu-thinking.json",
+          "sha256": "b6ea12ab050fb2be66653e7a46da52afc4550e638259cf66104c402415f12c28",
+          "bytes": 47590
+        },
+        {
+          "path": "incumbent-preflight-thinking-disabled.json",
+          "sha256": "911ebfb5c7f150e0644087a41bfdf6437cbd40ae48f5de1022597feef23f1d9a",
+          "bytes": 17903
+        },
+        {
+          "path": "incumbent-quality-thinking-disabled.json",
+          "sha256": "b75a510165fa1dff994daecfd147066eaa142bcf584d512cac272876634534f3",
+          "bytes": 24331
+        },
+        {
+          "path": "incumbent-restored-preflight.json",
+          "sha256": "e5819e8766899d2d936952b7f471a10fb515aae2246568dabbb478233d49098f",
+          "bytes": 17907
+        },
+        {
+          "path": "incumbent-thinking-disabled-control.json",
+          "sha256": "4d42640b60764a814deb7377e0ce9739dfa1bcd4fdc26729706cf6ff89b2792d",
+          "bytes": 546
+        },
+        {
+          "path": "minitron-capacity-32.json",
+          "sha256": "726ca8b6a7c0fd3ababe100d33f035fa5e3b487e3d77a992514d0947dcb2b3d0",
+          "bytes": 22814
+        },
+        {
+          "path": "minitron-mmlu-thinking.json",
+          "sha256": "a3b0916a197d0b7ca5bed9e439d567804c07c65b73d5e8661724b8f8ad26255a",
+          "bytes": 53322
+        },
+        {
+          "path": "minitron-preflight.json",
+          "sha256": "1fe74a69ed0216fc3e49855ea8386637a8d391dba1f78739409541bf90bece07",
+          "bytes": 17845
+        },
+        {
+          "path": "minitron-quality-disabled.json",
+          "sha256": "cb2721eee9223ae73cd65cccf1eb1e2bf9620f0578d0a1b30a93bcbec183c094",
+          "bytes": 132839
+        },
+        {
+          "path": "minitron-smoke.json",
+          "sha256": "3a462a1c6e3d2e37b1bc5ba0426ef9ca25e1ea62f07f72a0a7873a3eac641ec3",
+          "bytes": 2308
+        },
+        {
+          "path": "qwopus-capacity-32.json",
+          "sha256": "553eede4653ad98c1de7342f7a43f885ae18cb32b4d7a466ce3dce95decdf140",
+          "bytes": 17468
+        },
+        {
+          "path": "qwopus-format-repair.json",
+          "sha256": "13f046f767c786fbd6cab68cf13016fdcdb3e620b1efa0b6c0981158c157d8ce",
+          "bytes": 58406
+        },
+        {
+          "path": "qwopus-mmlu-thinking.json",
+          "sha256": "fa8654aa26d009d03a349040340bd3a1eef5519ee6033762cd95a1801c16a6e7",
+          "bytes": 40390
+        },
+        {
+          "path": "qwopus-preflight.json",
+          "sha256": "e6d83de5ecc53de1e8bef13fd90eda7f73f5bcaeb4564d3e3922c282cccca93f",
+          "bytes": 17903
+        },
+        {
+          "path": "qwopus-quality-disabled.json",
+          "sha256": "f6534a476b14bf92b79803e8f3b845339cbbe4934b6982259c09f226929ae916",
+          "bytes": 128935
+        },
+        {
+          "path": "qwopus-smoke.json",
+          "sha256": "9762c925f7afeb4232d3465d6ed2a298b563e5ef920a47cc221c46682985f09e",
+          "bytes": 2359
+        },
+        {
+          "path": "signal-capacity-strict.json",
+          "sha256": "5b0d04f3487e09a87779b14c5a63945979860d5738a6c47692fe4ea1f3ce0d34",
+          "bytes": 22812
+        },
+        {
+          "path": "signal-capacity-warm-observe.json",
+          "sha256": "781bbe22c23f251333bc63fe56993c343c61352cb257c0ef1030be7a8e031dd4",
+          "bytes": 17525
+        },
+        {
+          "path": "signal-mmlu-thinking.json",
+          "sha256": "843987e54f065a1adfc512d5f68fe4ebf154fc317c18241bf9117ebb2250c999",
+          "bytes": 48735
+        },
+        {
+          "path": "signal-nospec-capacity-32.json",
+          "sha256": "39ff3b832a0bffb8b60e0c00a413042302eeeee475396eb2ace8b636978c88aa",
+          "bytes": 17481
+        },
+        {
+          "path": "signal-nospec-capacity-strict.json",
+          "sha256": "e6b2625b239680d03e395b4b60cd3324faf7dffd9ed4844db1c0c58e9f68a880",
+          "bytes": 22822
+        },
+        {
+          "path": "signal-nospec-mmlu-budget-retry.json",
+          "sha256": "25c93a0ad80bf090a15c244ec10c412ef5c96079725b315e7d249d50427cdab0",
+          "bytes": 11891
+        },
+        {
+          "path": "signal-nospec-quality-disabled.json",
+          "sha256": "d3c0c021855c62083df6510a434a2da9ce74317a1b60f0b2ffd14f124f3c2d17",
+          "bytes": 144516
+        },
+        {
+          "path": "signal-nospec-smoke.json",
+          "sha256": "da0d93fbab32b154553b3957d929774edfcc1989f2f8d805feeb840fe799e0b7",
+          "bytes": 1518
+        },
+        {
+          "path": "signal-preflight.json",
+          "sha256": "d7877cccc02a3be8d82fe9a87a716c7f0d9dda059e473a50b80890247e47533e",
+          "bytes": 17882
+        },
+        {
+          "path": "signal-quality-disabled.json",
+          "sha256": "c986bbaeb36c38bfb4b6dc01f6ad0ce8e7e2c80790257b84789c807c2acf44af",
+          "bytes": 24013
+        },
+        {
+          "path": "signal-smoke.json",
+          "sha256": "4ae400190d37db411ac9c49b7fb6f97d9e1c75f3394cc3d0be0261c420ce2950",
+          "bytes": 2351
+        },
+        {
+          "path": "signal-thinking-enabled-preflight.json",
+          "sha256": "591213be3eabff437a98b7594f17a2bf8546401cf23cca5811372179322c0882",
+          "bytes": 2783
+        },
+        {
+          "path": "swift-capacity-strict.json",
+          "sha256": "6b2a1a5aa064d4c47038e2090b95315ee378fc9f5284c89777ca23cf668fdc5f",
+          "bytes": 22820
+        },
+        {
+          "path": "swift-mmlu-thinking.json",
+          "sha256": "a700ff731bdc6cadeb981d1942705fc75a095b4052487c4437a50e79fa0694a5",
+          "bytes": 45686
+        },
+        {
+          "path": "swift-nospec-capacity-32.json",
+          "sha256": "50f79fb9a30e55398c1f3b155fa17513ee7cd8d04f37df32ce3688d818d63c2d",
+          "bytes": 17444
+        },
+        {
+          "path": "swift-nospec-capacity-strict.json",
+          "sha256": "1842c8d07df1c212db9c0c403f1fe679567437e1c13f76dc25415b42d95df25b",
+          "bytes": 22817
+        },
+        {
+          "path": "swift-nospec-smoke.json",
+          "sha256": "8cb2140d5c9306bfe1785de15c71d4850c6c33fa5b5f55042c22f299cb008834",
+          "bytes": 2352
+        },
+        {
+          "path": "swift-preflight.json",
+          "sha256": "30c7a84dcba18061567d027dc9ada9769ed7618eaf50b2405a4cb98532444b50",
+          "bytes": 17887
+        },
+        {
+          "path": "swift-quality-disabled.json",
+          "sha256": "5ff0e66955fa721d2edb71adacf0c0035932423dbddce76cf9b2f6aed16cd6c9",
+          "bytes": 23898
+        },
+        {
+          "path": "swift-smoke.json",
+          "sha256": "72c1dbcbd5c244ee800a4046f3200844f55148f70911b6caba38fb8d82693504",
+          "bytes": 2350
+        },
+        {
+          "path": "graph-manifest.json",
+          "sha256": "09410e74026a92d9b8c4285522d55d6c2ad08162169ce4977a57c59439471bf2",
+          "bytes": 2411
+        },
+        {
+          "path": "cold-output-diagnostic.svg",
+          "sha256": "4ec088e4c0abd89c3a043a794fd36348d172d4102327f0c7c6366535a3c7c066",
+          "bytes": 5230
+        },
+        {
+          "path": "cold-output-graph-data.json",
+          "sha256": "0c3d759ee395ea48e305111ece85339f8d2824cc098c20ed588a9b24154ed677",
+          "bytes": 3181
+        }
+      ],
+      "reason": "Native successful and failed functional, quality and capacity artifacts preserved; generated chart only uses the labeled cold diagnostic subset."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "fd8f8784a4874ca46e00004c64be91ce63ec3e4dd76fa42ed6b1fc0a2ec3a387",
+          "bytes": 10727
+        },
+        {
+          "path": "provenance-errata.json",
+          "sha256": "0afbed4eac2c6e5208abe916c0d5557fec7f874cc379bc924c2388bde08c3b1e",
+          "bytes": 1753
+        },
+        {
+          "path": "lifecycle-review.json",
+          "sha256": "64b4adbd24e7e9b42dc5ace2ca831b0f838af8800d5a3a76a54e99b99ad18679",
+          "bytes": 1946
+        },
+        {
+          "path": "pi-rpc-review.json",
+          "sha256": "87bebb2916069bb44c398a1bbbf6a9c3b1a76a803f113156108e86816336e377",
+          "bytes": 1109
+        },
+        {
+          "path": "evidence-review.json",
+          "sha256": "b385660aa8376534d703111339ef0e410a4295f58f3ea1098ff9014cf103b9a6",
+          "bytes": 1622
+        },
+        {
+          "path": "verification.json",
+          "sha256": "7e5a86fc62473940531ac60a80fabfe26203bbe7ac84232436befdac64a7775c",
+          "bytes": 3403
+        }
+      ],
+      "reason": "Failure chronology, durable fix-forward dispositions, provenance corrections and independent bounded code reviews."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "a2de8be560bbf3add0679cefb81a1ffdb64a22ea1d0ea5b65819ee55d025c5f7",
+          "bytes": 1848
+        },
+        {
+          "path": "restored-state.json",
+          "sha256": "72959a4bb7c78ff40846084ec0c9d7f108fb65c1c536535dc1d53bc65a634028",
+          "bytes": 1876
+        },
+        {
+          "path": "recovery-admission.json",
+          "sha256": "539d38538997fa3963101c4d9487ea54e078c4ed3ba17d5eeb54e81bcacd7b0a",
+          "bytes": 1561
+        }
+      ],
+      "reason": "Exact incumbent restored healthy, protected process preserved, candidates unloaded."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "b285211614442a1955443153d5ac1760265a355ec1d11d3c07c853fef5797288",
+          "bytes": 10626
+        }
+      ],
+      "reason": "Evidence-derived retain-incumbent decision; no challenger qualified and no new promotion."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "040f3350dfb539d2219e84a00bbf9759dab1c72b7679655b86320cac7cb852c2",
+          "bytes": 5243
+        }
+      ],
+      "reason": "Bounded publication copy and claim ledger; not externally posted."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}
