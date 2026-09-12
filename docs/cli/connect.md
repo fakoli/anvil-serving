@@ -423,3 +423,18 @@ untouched. A repeated apply converges without API writes, and the apply
 verifies the tunnel is reporting an active connector before it reports
 success. Without `--confirm` the command prints the same plan and changes
 nothing.
+
+## Extend
+
+`connect extend --manifest /absolute/deployment.json --service connector:<id> --confirm`
+widen one enrolled connector's resource set to its declaration in one managed
+operation: the preflight accepts purely additive resource-set changes
+(removals and renames are rejected with revoke-and-redeclare guidance), the
+new generation is activated with only gateway units restarted, the native
+admin revoke/invite pair runs against the running gateway, the connector
+redeems the invitation from its own state directory with `init --bundle`, the
+new fingerprint is approved, and the connector restarts and stabilizes. The
+whole sequence runs inside the deployment lock with rollback of the rendered
+tree and gateway units. Without `--confirm` it prints the same plan and
+changes nothing. Existing principals keep their prior resource lists until
+`connect admin human-set` extends each one.
