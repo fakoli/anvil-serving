@@ -80,6 +80,7 @@ def commands() -> CommandNode:
                 _option("--edge-config", summary="Private edge-publishing configuration; defaults to the operator-home connect/edge-cloudflare.json.", value_name="PATH"),
                 _option("--retire-orphans", summary="Retire DNS and ingress state for hosts the declaration withdrew; the default reports them and leaves them routed."),
             )),
+            _command("extend", "Extend one enrolled connector with newly declared resources.", mutation=True),
         ),
         docs_anchor="docs/cli/connect.md",
     )
