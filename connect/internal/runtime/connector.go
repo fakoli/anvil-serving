@@ -307,8 +307,8 @@ func sameConnectorBinding(s connectorState, c ConnectorConfig, b admin.Response)
 	return s.ID == c.ID && s.ControlHost == c.ControlHost && s.TunnelHost == c.TunnelHost && s.Role == "connector" && s.Generation == b.Generation && s.Epoch == b.Epoch && s.InnerCAPEM == b.InnerCAPEM && sameResources(s.Resources, resourceIDs(c))
 }
 
-func readPublicTrustFile(path string) (*x509.CertPool, error) {
-	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+func readManagedMaterial(path string, private bool) ([]byte, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, ErrConfiguration
 	}
@@ -318,9 +318,20 @@ func readPublicTrustFile(path string) (*x509.CertPool, error) {
 	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > 1024*1024 || info.Mode().Perm()&0022 != 0 || unix.Fstat(int(f.Fd()), &stat) != nil || (stat.Uid != 0 && stat.Uid != uint32(os.Geteuid())) {
 		return nil, ErrConfiguration
 	}
+	if private && (info.Mode().Perm() != 0600 || stat.Uid != uint32(os.Geteuid()) || stat.Nlink != 1) {
+		return nil, ErrConfiguration
+	}
 	data, readErr := io.ReadAll(io.LimitReader(f, 1024*1024+1))
 	if readErr != nil || len(data) < 1 || len(data) > 1024*1024 {
 		return nil, ErrConfiguration
+	}
+	return data, nil
+}
+
+func readPublicTrustFile(path string) (*x509.CertPool, error) {
+	data, err := readManagedMaterial(path, false)
+	if err != nil {
+		return nil, err
 	}
 	roots := x509.NewCertPool()
 	count := 0
@@ -366,6 +377,7 @@ func parsePublicCA(raw string) (*x509.CertPool, error) {
 }
 
 type Connector struct {
+	events  relay.Events
 	cancel  context.CancelFunc
 	close   sync.Once
 	cleanup []func()
@@ -375,6 +387,7 @@ type Connector struct {
 }
 
 func (c *Connector) Done() <-chan struct{} { return c.done }
+func (c *Connector) Events() []relay.Event { return c.events.Snapshot() }
 func (c *Connector) Close() {
 	c.close.Do(func() {
 		c.cancel()
@@ -398,6 +411,9 @@ func (c *Connector) Wait(ctx context.Context) error {
 
 // StartConnector starts only an enrolled, immutable local connector state.
 // Each origin remains closed until its initial authenticated renewal succeeds.
+// A returned handle means owned processes started, not reverse-registration
+// readiness. The pin supplies no readiness IPC; activation must prove admission
+// independently before treating this handle as a healthy managed deployment.
 func StartConnector(parent context.Context, declaration ConnectorConfig, secrets SecretSource) (_ *Connector, result error) {
 	if parent == nil || parent.Err() != nil || declaration.Validate() != nil || secrets == nil {
 		return nil, ErrConfiguration
@@ -429,6 +445,17 @@ func StartConnector(parent context.Context, declaration ConnectorConfig, secrets
 	innerRoots, err := parsePublicCA(state.InnerCAPEM)
 	if err != nil {
 		return nil, ErrUnavailable
+	}
+	outer := declaration.outerClient()
+	path := "public"
+	if outer.Local != nil {
+		path = "local"
+		root, roots, err := localRoot(outer.TrustFile, publicRoots, innerRoots)
+		publicPEM, readErr := readManagedMaterial(declaration.PublicTrustFile, false)
+		if err != nil || readErr != nil || !distinctRoot(root, publicPEM) || !distinctRoot(root, []byte(state.InnerCAPEM)) || transport.VerifyLocalEntry(ctx, *outer.Local, roots) != nil {
+			runtime.events.Record(path, "", "entry_tls_failed")
+			return nil, ErrUnavailable
+		}
 	}
 	headers, err := directory.Subdirectory("headers")
 	if err != nil {
@@ -466,6 +493,7 @@ func StartConnector(parent context.Context, declaration ConnectorConfig, secrets
 		}
 		response, started, err := client.Renew(ctx, resource.Envelope.Rule.ID, csr)
 		if err != nil {
+			runtime.events.Record(path, resource.Envelope.Rule.ID, "renewal_failed")
 			return nil, ErrUnavailable
 		}
 		tlsPrivate, err := decodeTLSPrivate(key.TLSPrivate)
@@ -528,17 +556,27 @@ func StartConnector(parent context.Context, declaration ConnectorConfig, secrets
 				cancel()
 			}
 		}()
-		process, err := transport.StartClient(ctx, transport.ClientOptions{ViaGate: true, Binary: declaration.TunnelBinary, ServerURL: "wss://" + declaration.TunnelHost, ReverseAddress: resource.ReverseAddress, OriginAddress: resource.Envelope.Listen, TrustFile: declaration.PublicTrustFile, EmptyTrustDirectory: emptyPath.Path(), HeadersFile: headerPath.Path() + "/" + resource.Envelope.Rule.ID + ".headers", ProxyURL: declaration.HTTPProxyURL})
+		options := outer
+		options.ReverseAddress, options.OriginAddress = resource.ReverseAddress, resource.Envelope.Listen
+		options.EmptyTrustDirectory, options.HeadersFile = emptyPath.Path(), headerPath.Path()+"/"+resource.Envelope.Rule.ID+".headers"
+		process, err := transport.StartClient(ctx, options)
 		if err != nil {
+			runtime.events.Record(path, resource.Envelope.Rule.ID, "tunnel_establishment_failed")
 			return nil, ErrUnavailable
 		}
 		runtime.cleanup = append(runtime.cleanup, func() { _ = process.Close() })
-		runtime.wait.Add(2)
+		runtime.wait.Add(3)
+		go func() {
+			defer runtime.wait.Done()
+			watchLease(ctx, lease, &runtime.events, path, resource.Envelope.Rule.ID)
+		}()
 		go func(p *transport.Process) {
 			defer runtime.wait.Done()
 			select {
 			case <-ctx.Done():
 			case <-p.Done():
+				// A PID proves neither establishment nor a previous registration.
+				runtime.events.Record(path, resource.Envelope.Rule.ID, "tunnel_establishment_failed")
 				select {
 				case runtime.errors <- ErrUnavailable:
 				default:
@@ -546,10 +584,28 @@ func StartConnector(parent context.Context, declaration ConnectorConfig, secrets
 				cancel()
 			}
 		}(process)
-		go connectorRenewLoop(ctx, &runtime.wait, client, resource.Envelope.Rule.ID, csr, tlsPrivate, innerRoots, installation.ID, lease, &current, headers)
+		go connectorRenewLoop(ctx, &runtime.wait, client, resource.Envelope.Rule.ID, csr, tlsPrivate, innerRoots, installation.ID, lease, &current, headers, &runtime.events, path)
 		_ = leaf
 	}
 	return runtime, nil
+}
+
+func watchLease(ctx context.Context, lease *access.Lease, events *relay.Events, path, resource string) {
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+	expired := false
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		denied := lease.Check() != nil
+		if denied && !expired {
+			events.Record(path, resource, "lease_expired")
+		}
+		expired = denied
+	}
 }
 
 func resourceState(state connectorState, id string) (connectorResourceState, bool) {
@@ -597,11 +653,12 @@ func decodeTLSPrivate(raw string) (ed25519.PrivateKey, error) {
 	}
 	return ed25519.PrivateKey(value), nil
 }
-func connectorRenewLoop(ctx context.Context, w *sync.WaitGroup, client *control.Client, resource string, csr []byte, key ed25519.PrivateKey, roots *x509.CertPool, id string, lease *access.Lease, current *atomic.Pointer[tls.Certificate], headers *privatefiles.Directory) {
+func connectorRenewLoop(ctx context.Context, w *sync.WaitGroup, client *control.Client, resource string, csr []byte, key ed25519.PrivateKey, roots *x509.CertPool, id string, lease *access.Lease, current *atomic.Pointer[tls.Certificate], headers *privatefiles.Directory, events *relay.Events, path string) {
 	defer w.Done()
 	sequence := uint64(1)
 	timer := time.NewTimer(20 * time.Second)
 	defer timer.Stop()
+	failed := false
 	for {
 		select {
 		case <-ctx.Done():
@@ -614,10 +671,16 @@ func connectorRenewLoop(ctx context.Context, w *sync.WaitGroup, client *control.
 			_, certificate, e := verifyRenewalCertificate(response.Certificate, csr, key, roots, id)
 			if e == nil && headers.Replace(resource+".headers", []byte("Authorization: Bearer "+response.TransportToken+"\n")) == nil && lease.RenewFor(lease.Binding(), sequence, started, time.Duration(response.LeaseMilliseconds)*time.Millisecond) == nil {
 				current.Store(certificate)
+				if failed {
+					events.Record(path, resource, "renewal_resumed")
+				}
+				failed = false
 				timer.Reset(20 * time.Second)
 				continue
 			}
 		}
+		events.Record(path, resource, "renewal_failed")
+		failed = true
 		timer.Reset(5 * time.Second)
 	}
 }

@@ -302,3 +302,14 @@ func ReadClient(reader io.Reader) (ClientConfig, error) {
 	}
 	return c, nil
 }
+
+// outerClient resolves one path once, before any resource client is created.
+// Control clients deliberately continue to consume the public declaration.
+func (c ConnectorConfig) outerClient() transport.ClientOptions {
+	o := transport.ClientOptions{ViaGate: true, Binary: c.TunnelBinary, ServerURL: "wss://" + c.TunnelHost, TrustFile: c.PublicTrustFile, ProxyURL: c.HTTPProxyURL}
+	if l := c.LocalTunnel; l != nil {
+		o.Local = &transport.LocalBinding{Address: l.Address, ServerName: l.ServerName, Host: l.HTTPHost}
+		o.ServerURL, o.TrustFile, o.ProxyURL = "wss://"+l.Address, l.TrustFile, ""
+	}
+	return o
+}

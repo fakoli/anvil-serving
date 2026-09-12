@@ -17,6 +17,7 @@ import (
 	"net/http/httputil"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
@@ -43,6 +44,7 @@ type gateRoute struct {
 }
 
 type Gate struct {
+	Events    relay.Events
 	host      string
 	leases    *Leases
 	active    *access.Active
@@ -50,14 +52,19 @@ type Gate struct {
 	transport *http.Transport
 }
 
+// TransportCapacity is the existing derived tunnel budget, not the
+// dispatcher's application-request cap. Entry mounts must not multiply it.
+func (g *Gate) TransportCapacity() int { return g.transport.MaxConnsPerHost }
+
 func opaque(value string) bool {
 	b, err := hex.DecodeString(value)
 	return err == nil && len(b) == 32 && hex.EncodeToString(b) == value
 }
 
 // New requires a private loopback WSS backend under a dedicated trust root and
-// gate-only client identity. Mount Gate only on its owned Unix socket behind
-// the declared public TLS edge (or on a verified TLS fixture in tests).
+// gate-only client identity. Mount the public handler on its owned Unix socket
+// behind the declared TLS edge; mount Bind's local handler only on the verified
+// dedicated TLS 1.3 listener with its own SNI and HTTP/1.1 admission contract.
 func New(host string, declaration config.Gateway, leases *Leases, backends map[string]Backend, roots *x509.CertPool, certificate tls.Certificate) (*Gate, error) {
 	if !config.ValidHost(host) || declaration.Validate() != nil || leases == nil || len(backends) != len(declaration.Resources) || roots == nil || !validGateCertificate(certificate, roots) {
 		return nil, ErrDenied
@@ -138,6 +145,13 @@ func New(host string, declaration config.Gateway, leases *Leases, backends map[s
 					return ErrDenied
 				}
 				r.Header = http.Header{"Connection": {"Upgrade"}, "Upgrade": {"websocket"}, "Sec-Websocket-Protocol": {"v1"}, "Sec-Websocket-Accept": {accept}}
+				if attempt, ok := r.Request.Context().Value(attemptKey{}).(*upgradeAttempt); ok {
+					if (attempt.timer != nil && !attempt.timer.Stop()) || r.Request.Context().Err() != nil {
+						return ErrDenied
+					}
+					attempt.established.Store(true)
+					attempt.onEstablished()
+				}
 				return nil
 			},
 			ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) { gateFailure(w, http.StatusBadGateway) },
@@ -188,18 +202,48 @@ func gateFailure(w http.ResponseWriter, status int) {
 }
 
 func (g *Gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	raw, protocol, valid := upgradeHead(r, g.host)
+	g.serveEntry(w, r, g.host, "public")
+}
+
+// Bind changes only the entry's expected Host, never the shared gate or limits.
+// The caller must supply the dedicated verified TLS mount, not general ingress.
+func (g *Gate) Bind(host string) (http.Handler, error) {
+	if !config.ValidHost(host) || host == g.host {
+		return nil, ErrDenied
+	}
+	for _, route := range g.routes {
+		if host == route.resource.Rule.Host {
+			return nil, ErrDenied
+		}
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		g.serveEntry(w, r, host, "local")
+	}), nil
+}
+
+type attemptKey struct{}
+type upgradeAttempt struct {
+	timer         *time.Timer
+	established   atomic.Bool
+	onEstablished func()
+}
+
+func (g *Gate) serveEntry(w http.ResponseWriter, r *http.Request, host, path string) {
+	raw, protocol, valid := upgradeHead(r, host)
 	if !valid {
+		g.Events.Record(path, "", "tunnel_establishment_failed")
 		gateFailure(w, http.StatusBadRequest)
 		return
 	}
 	admission, err := g.leases.Authenticate(raw)
 	if err != nil {
+		g.Events.Record(path, "", "authority_denied")
 		gateFailure(w, http.StatusUnauthorized)
 		return
 	}
 	route, ok := g.routes[admission.Resource]
 	if !ok || !descriptor(protocol, route.resource.TunnelAddress) {
+		g.Events.Record(path, admission.Resource, "tunnel_establishment_failed")
 		gateFailure(w, http.StatusForbidden)
 		return
 	}
@@ -212,6 +256,14 @@ func (g *Gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() { <-route.slots }()
 	ctx, cancel := context.WithTimeout(r.Context(), 24*time.Hour)
 	defer cancel()
+	// Local admission gets three seconds for the entire backend dial/TLS/101,
+	// not three seconds per stage. Stop the timer only after verified upgrade.
+	attempt := &upgradeAttempt{onEstablished: func() { g.Events.Record(path, admission.Resource, "tunnel_established") }}
+	if path == "local" {
+		attempt.timer = time.AfterFunc(3*time.Second, cancel)
+		defer attempt.timer.Stop()
+	}
+	ctx = context.WithValue(ctx, attemptKey{}, attempt)
 	ctx, release, err := g.active.Watch(ctx, func() error { return g.leases.Check(admission) })
 	if err != nil {
 		gateFailure(w, http.StatusUnauthorized)
@@ -221,6 +273,11 @@ func (g *Gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// ReverseProxy owns the raw upgraded bytes. Do not reframe them with a
 	// WebSocket library: the pinned tunnel may use unmasked client frames.
 	route.proxy.ServeHTTP(relay.Writer(w, ctx, 45*time.Second), r.Clone(ctx))
+	if attempt.established.Load() {
+		g.Events.Record(path, admission.Resource, "tunnel_disconnected")
+	} else {
+		g.Events.Record(path, admission.Resource, "tunnel_establishment_failed")
+	}
 }
 
 // Restrictions emits a closed, credential-bearing backend file. The lifecycle
