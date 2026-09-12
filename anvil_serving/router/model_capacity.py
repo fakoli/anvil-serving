@@ -987,7 +987,7 @@ def engine_declared_concurrency(
     (the tier ``base_url`` with a trailing ``/v1`` stripped) and accept a
     positive integer from the allowlisted scheduler-capacity keys only:
 
-    - SGLang: ``GET /get_server_info`` → ``max_running_requests``
+    - SGLang: ``GET /server_info`` → ``max_running_requests``
     - vLLM:   ``GET /server_info``       → ``max_running_requests`` or
       ``max_num_seqs``
 
@@ -998,7 +998,8 @@ def engine_declared_concurrency(
     parsed = urlsplit(base_url)
     path = (parsed.path or "").rstrip("/")
     root = path[: -len("/v1")] if path.endswith("/v1") else path
-    paths = [f"{root}/get_server_info", f"{root}/server_info"]
+    # Prefer the supported endpoint; retain the alias for older engines.
+    paths = [f"{root}/server_info", f"{root}/get_server_info"]
     transport = opener if opener is not None else urllib.request.build_opener(
         urllib.request.ProxyHandler({}), _NoRedirect()
     ).open
