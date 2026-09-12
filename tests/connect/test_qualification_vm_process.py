@@ -144,7 +144,8 @@ def test_timeout_kills_descendant_that_ignores_termination(tmp_path):
         while True:
             try:
                 raw = status.read_text()
-            except FileNotFoundError:
+            except (FileNotFoundError, ProcessLookupError):
+                # procfs may open the entry just before the process is reaped.
                 return True
             state = raw.split(") ", 1)[1][:1] if ") " in raw else ""
             if state == "Z":
