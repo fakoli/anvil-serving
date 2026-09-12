@@ -24,6 +24,7 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- Failed router construction closes optional trace exporters and background refreshers.
 - Client disconnects produce concise request-linked router events instead of
   uncaught BrokenPipe tracebacks.
 - Buffered HTTP responses respect Content-Length on Python 3.11 keep-alive

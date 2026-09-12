@@ -181,6 +181,8 @@ def _span(record: "DecisionRecord") -> dict[str, Any]:
     end = int(max(float(getattr(record, "unix_ts", 0.0)), 0.0) * 1_000_000_000)
     duration = item.get("latency_ms") if isinstance(item.get("latency_ms"), int) else 0
     start = max(0, end - duration * 1_000_000)
+    # OTLP JSON explicitly requires hex IDs, unlike generic protobuf JSON bytes.
+    # https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding
     return {
         "traceId": os.urandom(16).hex(), "spanId": os.urandom(8).hex(),
         "name": "anvil.router.request", "kind": 2,

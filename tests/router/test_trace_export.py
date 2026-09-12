@@ -64,7 +64,10 @@ def test_trace_export_is_metadata_only_and_uses_no_proxy_or_auth_headers():
     assert "authorization" not in {key.lower() for key in headers}
     assert "private prompt" not in text
     payload = json.loads(body)
-    attributes = payload["resourceSpans"][0]["scopeSpans"][0]["spans"][0]["attributes"]
+    span = payload["resourceSpans"][0]["scopeSpans"][0]["spans"][0]
+    assert len(span["traceId"]) == 32 and len(bytes.fromhex(span["traceId"])) == 16
+    assert len(span["spanId"]) == 16 and len(bytes.fromhex(span["spanId"])) == 8
+    attributes = span["attributes"]
     assert {item["key"] for item in attributes} >= {
         "anvil.router.route", "anvil.router.client_id", "anvil.router.gateway_request_id",
     }
@@ -98,3 +101,50 @@ def test_trace_export_queue_overflow_drops_without_blocking():
         server.shutdown()
         server.server_close()
         worker.join(3)
+
+
+@pytest.mark.parametrize("failure", ["media", "bind", None])
+def test_server_owns_exporter_on_failed_and_successful_startup(tmp_path, monkeypatch, failure):
+    import socket
+
+    from anvil_serving.router import serve
+    from anvil_serving.router.config import ConfigError
+    from tests.router.helpers import StaticBackend
+
+    config = tmp_path / "router.toml"
+    text = '\n[server]\nauth_env = "TEST_ROUTER_TOKEN"\ntrace_export_url = "http://127.0.0.1:4318/v1/traces"\n'
+    if failure == "media":
+        text += 'media_principal = "harness"\nmedia_scopes = ["media:read"]\nmedia_public_origin = "http://127.0.0.1:8080"\n'
+    text += '\n[router.model_routes]\n"llm.primary" = "primary-local"\n[[router.tiers]]\nid = "primary-local"\nbase_url = "http://127.0.0.1:30000/v1"\nmodel = "m"\ndialect = "openai"\ncontext_limit = 4096\nprivacy = "local"\ntool_support = true\nauth_env = "TEST_BACKEND_TOKEN"\n'
+    config.write_text(text)
+    exporters = []
+
+    def create_exporter(url):
+        exporter = TraceExporter(url)
+        exporters.append(exporter)
+        return exporter
+
+    monkeypatch.setattr(serve, "TraceExporter", create_exporter)
+    try:
+        with socket.socket() as occupied:
+            occupied.bind(("127.0.0.1", 0))
+            occupied.listen()
+            kwargs = dict(env={"TEST_ROUTER_TOKEN": "synthetic-" + "token"}, backends={"primary-local": StaticBackend(["ok"])},
+                          port=occupied.getsockname()[1] if failure == "bind" else 0)
+            if failure:
+                with pytest.raises(
+                    ConfigError if failure == "media" else OSError,
+                    match="media gateway is enabled" if failure == "media" else None,
+                ):
+                    serve.build_server(str(config), **kwargs)
+            else:
+                server = serve.build_server(str(config), **kwargs)
+                try:
+                    assert exporters[0]._worker.is_alive()
+                finally:
+                    server.server_close()
+            assert len(exporters) == 1
+            assert not exporters[0]._worker.is_alive()
+    finally:
+        for exporter in exporters:
+            exporter.close()
