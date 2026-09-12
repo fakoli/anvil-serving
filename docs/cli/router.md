@@ -79,6 +79,16 @@ or tailnet configuration.
 Without `--follow`, logs are bounded and return after the selected window.
 `router logs --follow` is an explicit foreground stream and does not support JSON.
 
+Expected client disconnects produce one `event=client_disconnected` line instead
+of a socket traceback. It includes the exception class, UTC timestamp, elapsed
+request time in milliseconds, and `gateway_request_id`. Use that ID with
+`router diagnose` to inspect retained timing and outcome metadata. Disconnects
+before authenticated inference has started use `gateway_request_id=-`.
+The event says the downstream connection closed; it does not establish whether
+the caller cancelled, a proxy timed out, or an earlier delay caused the closure.
+Upstream streaming failures remain separate `500 stream error after headers`
+events. Neither log includes prompts, response text, tokens, or exception messages.
+
 Token inspection is redacted by default:
 
 ```bash
