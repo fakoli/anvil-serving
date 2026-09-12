@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-12
+
+### Fixed
+
+- Managed chat rejections log once with their actual HTTP status, instead of
+  producing a misleading 500 before the real 413, 503, or upstream 4xx.
+- Router diagnostics identify context admission rejection as not attempted
+  upstream and distinguish serialized request size from client context estimates.
+
+The companion built-in Pi compaction pruning fix ships in Anvil Extensions
+0.7.1; upgrading the router alone does not change Pi's compaction inputs.
+
 ## [1.2.0] - 2026-09-12
 
 ### Added
