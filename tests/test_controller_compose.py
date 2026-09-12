@@ -118,4 +118,4 @@ def test_controller_compose_has_exact_generic_operation_allowlist():
 def test_controller_compose_pins_current_release():
     text = _text()
 
-    assert "anvil-serving-controller:1.1.0" in text
+    assert "anvil-serving-controller:1.2.0" in text
