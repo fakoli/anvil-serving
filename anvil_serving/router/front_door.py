@@ -41,6 +41,7 @@ import os
 import re
 import sys
 import threading
+import time
 import urllib.parse
 import uuid
 from dataclasses import dataclass
@@ -156,6 +157,30 @@ class _InvalidWorkloadQuery(ValueError):
 
 class _WorkloadSourceUnavailable(RuntimeError):
     """Fixed, input-free workload source failure."""
+
+
+class _ClientDisconnected(ConnectionError):
+    """A socket failure originating specifically in the response writer."""
+
+
+class _ResponseWriter:
+    def __init__(self, wrapped):
+        self._wrapped = wrapped
+
+    def write(self, data):
+        try:
+            return self._wrapped.write(data)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as exc:
+            raise _ClientDisconnected(type(exc).__name__) from None
+
+    def flush(self):
+        try:
+            return self._wrapped.flush()
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as exc:
+            raise _ClientDisconnected(type(exc).__name__) from None
+
+    def __getattr__(self, name):
+        return getattr(self._wrapped, name)
 
 
 def _validated_operator_routes(
@@ -415,11 +440,29 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         # (Set to the configured value just below the class.)
 
         # --- helpers ---------------------------------------------------------
+        def handle_one_request(self) -> None:
+            self._reset_request_correlation()
+            if not isinstance(self.wfile, _ResponseWriter):
+                self.wfile = _ResponseWriter(self.wfile)
+            try:
+                super().handle_one_request()
+            except _ClientDisconnected as exc:
+                # Expected downstream disconnects have already unwound delivery
+                # and upstream cleanup. Do not emit socketserver's traceback.
+                self.close_connection = True
+                print(
+                    f"[anvil] event=client_disconnected error={exc} "
+                    f"{self._log_request_context()}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+
         def _reset_request_correlation(self) -> None:
             """Clear per-request state on a reused HTTP/1.1 handler."""
             self._anvil_correlation = None
             self._anvil_workload_stream = None
             self._anvil_delivery_outcome = None
+            self._anvil_request_started = time.monotonic()
 
         def _generate_deltas(self, request):
             """Retain delivery ownership before eager routing can fail."""
@@ -455,16 +498,24 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 "X-Request-Id": request_id,
             }
 
+        def _log_request_context(self) -> str:
+            gateway_request_id = self._correlation_headers().get(
+                "X-Anvil-Request-Id", "-"
+            )
+            elapsed_ms = (time.monotonic() - self._anvil_request_started) * 1000
+            return (
+                f"gateway_request_id={gateway_request_id} "
+                f"elapsed_ms={elapsed_ms:.1f} "
+                f"timestamp={datetime.now(timezone.utc).isoformat()}"
+            )
+
         def _log_inference_failure(
             self, status: int, scope: str, error: BaseException
         ) -> None:
             """Log bounded diagnostics without caller or upstream content."""
-            gateway_request_id = self._correlation_headers().get(
-                "X-Anvil-Request-Id", "-"
-            )
             print(
                 f"[anvil] {status} {scope}: {type(error).__name__} "
-                f"gateway_request_id={gateway_request_id}",
+                f"{self._log_request_context()}",
                 file=sys.stderr,
                 flush=True,
             )
@@ -729,16 +780,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         def _write_protocol_sse(self, frames: Iterable[bytes]) -> None:
             chunked = self.request_version == "HTTP/1.1"
-            self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream")
-            self.send_header("Cache-Control", "no-cache")
-            if chunked:
-                self.send_header("Transfer-Encoding", "chunked")
-            else:
-                self.close_connection = True
-                self.send_header("Connection", "close")
-            self.end_headers()
             try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                if chunked:
+                    self.send_header("Transfer-Encoding", "chunked")
+                else:
+                    self.close_connection = True
+                    self.send_header("Connection", "close")
+                self.end_headers()
                 for frame in frames:
                     if chunked:
                         self.wfile.write(b"%x\r\n" % len(frame) + frame + b"\r\n")
@@ -748,7 +799,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 if chunked:
                     self.wfile.write(b"0\r\n\r\n")
                     self.wfile.flush()
-            except (BrokenPipeError, ConnectionError):
+            except _ClientDisconnected:
+                raise
+            except Exception as exc:
+                self._log_inference_failure(500, "protocol stream error after headers", exc)
                 self.close_connection = True
             finally:
                 close = getattr(frames, "close", None)
@@ -1044,14 +1098,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # Build the dialect iterator only after headers, but keep it under
                 # the same cleanup boundary as the eagerly acquired backend stream.
                 _get_structured_fn = getattr(backend, "get_last_structured", None)
-                frames = dialect.stream(
+                frames = iter(dialect.stream(
                     request,
                     deltas,
                     get_structured=(
                         _get_structured_fn if callable(_get_structured_fn) else None
                     ),
                     response_model=requested_model,
-                )
+                ))
                 def _write_frame(frame: bytes) -> None:
                     if chunked:
                         # One write per event (wfile is unbuffered): size + frame + CRLF.
@@ -1060,35 +1114,31 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         self.wfile.write(frame)
                     self.wfile.flush()  # push each SSE event to the client immediately
 
-                try:
-                    for frame in frames:
-                        if not frame:
-                            continue  # never emit a zero-length chunk (ends the stream)
-                        _write_frame(frame)
-                except (BrokenPipeError, ConnectionError):
-                    raise  # client is gone; nothing left to signal
-                except Exception as exc:
-                    # ADR-0033 mid-stream honesty: a backend failure after the
-                    # 200 was committed must not read as a complete response.
-                    # Emit one generic terminal error frame (never upstream
-                    # exception text), always close the chunked body, and drop
-                    # the connection so length-blind clients also see the end.
-                    self._log_inference_failure(
-                        500, "stream error after headers", exc
-                    )
-                    self._workload_render_error()
-                    error_frame_fn = getattr(dialect, "stream_error", None)
+                while True:
                     try:
+                        frame = next(frames)
+                    except StopIteration:
+                        break
+                    except Exception as exc:
+                        # ADR-0033: an upstream failure after headers must not
+                        # read as success. Send a generic terminal error and
+                        # close, without exposing upstream exception text.
+                        self._log_inference_failure(
+                            500, "stream error after headers", exc
+                        )
+                        self._workload_render_error()
+                        error_frame_fn = getattr(dialect, "stream_error", None)
+                        self.close_connection = True
                         if callable(error_frame_fn):
                             _write_frame(error_frame_fn())
                         if chunked:
                             self.wfile.write(b"0\r\n\r\n")
                             self.wfile.flush()
-                    except OSError:
-                        self._anvil_delivery_outcome = WorkloadOutcome.DISCONNECTED
-                        pass  # client disconnected while we signalled failure
-                    self.close_connection = True
-                    return
+                        return
+                    if frame:
+                        # Keep downstream writes outside the upstream exception
+                        # boundary, including the terminal error frame above.
+                        _write_frame(frame)
                 if chunked:
                     self.wfile.write(b"0\r\n\r\n")  # chunked terminator
                     self.wfile.flush()
