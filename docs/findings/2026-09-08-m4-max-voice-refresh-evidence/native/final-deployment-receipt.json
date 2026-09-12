@@ -1,0 +1,65 @@
+{
+  "schema": "anvil-serving.voice-runtime-deployment/v1",
+  "observed_at": "2026-09-08T10:25:30.504566+00:00",
+  "updated_runtime": "Kokoro-FastAPI 0.8.0-rc1 to 0.8.2",
+  "model_changes": false,
+  "llm_model": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+  "endpoint_checks": [
+    {
+      "service": "stt",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "service": "tts",
+      "status": 200,
+      "passed": true,
+      "version": "0.8.2"
+    },
+    {
+      "service": "llm",
+      "status": 200,
+      "passed": true,
+      "models": [
+        "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+      ]
+    },
+    {
+      "service": "realtime",
+      "status": 200,
+      "passed": true
+    }
+  ],
+  "previous_tts_proxy_jobs_disabled_and_unregistered": true,
+  "llm_candidates_unloaded": true,
+  "candidate_ports_closed": {
+    "30114": true,
+    "30115": true
+  },
+  "launchd_recovery_configuration": {
+    "tts": {
+      "keep_alive": true,
+      "run_at_load": true,
+      "throttle_interval": 10
+    },
+    "proxy": {
+      "keep_alive": true,
+      "run_at_load": true,
+      "throttle_interval": 10
+    }
+  },
+  "live_voice_config_bytes_unchanged_since_audio_update_start": true,
+  "kokoro_model_and_voice_assets_unchanged": true,
+  "live_sdk_acceptance_errors": [],
+  "live_sdk_capture": "updated-live-final.session.json",
+  "rollback_definitions_retained": true,
+  "rollback_execution_tested": false,
+  "reboot_tested": false,
+  "physical_microphone_or_openclaw_client_tested": false,
+  "notes": [
+    "Live voice configuration and model selections are unchanged. Only TTS server version and TTS/proxy supervisor definitions changed.",
+    "First two post-update SDK wrapper commands exited with Python invocation errors after successful sessions; fresh corrected invocation exited zero. All captures remain private; public final capture is named above.",
+    "Managed install creates immutable definitions and does not overwrite existing plists. Versioned labels preserve exact rollback definitions."
+  ],
+  "verified": true
+}

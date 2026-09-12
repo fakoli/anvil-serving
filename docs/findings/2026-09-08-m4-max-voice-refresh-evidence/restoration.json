@@ -1,0 +1,12 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-08-m4-max-voice-refresh",
+  "status": "restored-with-verified-audio-runtime-update",
+  "mutation_required": true,
+  "starting_state": {"captured": true, "evidence": ["baseline Qwen3 4B native service", "proxy service state"]},
+  "ending_state": {"captured": true, "evidence": ["all LLM candidates unloaded and candidate ports closed", "Kokoro 0.8.2 serves the baseline TTS port", "baseline LLM, STT, TTS, and Realtime checks returned HTTP 200"]},
+  "differences": ["baseline proxy recovered", "native jobs adopted into managed private inventory", "proxy dependencies declared and STT readiness points at /health", "Kokoro 0.8.2 and versioned TTS/proxy supervisor definitions deployed"],
+  "post_run_checks": ["baseline 4B advertised", "four endpoint checks passed", "fresh live SDK capture passed", "live voice configuration bytes match the pre-audio update state"],
+  "verified": true,
+  "not_applicable_reason": "Reboot, physical microphone/OpenClaw, and actual rollback execution were not tested. Exact rollback definitions are retained; the LLM configuration was not changed."
+}

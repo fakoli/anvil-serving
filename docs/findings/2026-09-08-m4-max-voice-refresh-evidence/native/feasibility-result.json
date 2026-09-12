@@ -1,0 +1,522 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "m4-max-voice-refresh-20260908",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 8192,
+    "max": 8192
+  },
+  "physical_available_bytes": {
+    "min": 51539607552,
+    "max": 51539607552
+  },
+  "policy_available_bytes": {
+    "min": 25769803776,
+    "max": 25769803776
+  },
+  "candidates": [
+    {
+      "id": "qwen35-9b",
+      "classification": "benchmark-survivor",
+      "reasons": [
+        "resource bounds pass; behavioral evidence remains incomplete"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "pass",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 8192,
+        "max": 8192
+      },
+      "demand_bytes": {
+        "min": 7185032855,
+        "max": 10064441561.3
+      },
+      "physical_available_bytes": {
+        "min": 51539607552,
+        "max": 51539607552
+      },
+      "policy_available_bytes": {
+        "min": 25769803776,
+        "max": 25769803776
+      },
+      "physical_margin_bytes": {
+        "min": 41475165990.7,
+        "max": 44354574697
+      },
+      "policy_margin_bytes": {
+        "min": 15705362214.7,
+        "max": 18584770921
+      },
+      "estimated_max_tokens_physical": {
+        "min": 1273913,
+        "max": 2715380
+      },
+      "estimated_max_tokens_policy": {
+        "min": 487481,
+        "max": 1142516
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.host_and_co_residents.variable",
+        "candidates[0].runtime_context_limit_tokens",
+        "candidates[0].resident_components.target_weights",
+        "candidates[0].resident_components.runtime_fixed",
+        "candidates[0].per_token_components.target_kv",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "qwen36-35b-a3b",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 8192,
+        "max": 8192
+      },
+      "demand_bytes": {
+        "min": 22710870639,
+        "max": 28377666221.300003
+      },
+      "physical_available_bytes": {
+        "min": 51539607552,
+        "max": 51539607552
+      },
+      "policy_available_bytes": {
+        "min": 25769803776,
+        "max": 25769803776
+      },
+      "physical_margin_bytes": {
+        "min": 23161941330.699997,
+        "max": 28828736913
+      },
+      "policy_margin_bytes": {
+        "min": -2607862445.300003,
+        "max": 3058933137
+      },
+      "estimated_max_tokens_physical": {
+        "min": 361615,
+        "max": 1767758
+      },
+      "estimated_max_tokens_policy": {
+        "min": 0,
+        "max": 194894
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.host_and_co_residents.variable",
+        "candidates[1].runtime_context_limit_tokens",
+        "candidates[1].resident_components.target_weights",
+        "candidates[1].resident_components.runtime_fixed",
+        "candidates[1].per_token_components.target_kv",
+        "candidates[1].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "qwen38-27b",
+      "classification": "benchmark-survivor",
+      "reasons": [
+        "resource bounds pass; behavioral evidence remains incomplete"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "pass",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 8192,
+        "max": 8192
+      },
+      "demand_bytes": {
+        "min": 18363192309,
+        "max": 23863655514.300003
+      },
+      "physical_available_bytes": {
+        "min": 51539607552,
+        "max": 51539607552
+      },
+      "policy_available_bytes": {
+        "min": 25769803776,
+        "max": 25769803776
+      },
+      "physical_margin_bytes": {
+        "min": 27675952037.699997,
+        "max": 33176415243
+      },
+      "policy_margin_bytes": {
+        "min": 1906148261.699997,
+        "max": 7406611467
+      },
+      "estimated_max_tokens_physical": {
+        "min": 289726,
+        "max": 2033119
+      },
+      "estimated_max_tokens_policy": {
+        "min": 27582,
+        "max": 460255
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.host_and_co_residents.variable",
+        "candidates[2].runtime_context_limit_tokens",
+        "candidates[2].resident_components.target_weights",
+        "candidates[2].resident_components.runtime_fixed",
+        "candidates[2].per_token_components.target_kv",
+        "candidates[2].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 7680,
+      "max": 7680,
+      "source": "voice campaign",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 512,
+      "max": 512,
+      "source": "voice campaign",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "sequences",
+      "min": 1,
+      "max": 1,
+      "source": "voice campaign",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 51539607552,
+      "max": 51539607552,
+      "source": "system_profiler SPHardwareDataType; shared unified memory",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.host_and_co_residents.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 25769803776,
+      "max": 25769803776,
+      "source": "Reserve half the shared laptop RAM for existing apps, STT/TTS and baseline LLM",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "bounded voice target; no long-context qualification",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.target_weights",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 5977073303,
+      "max": 6574780633.3,
+      "source": "exact HF repository bytes with 10% allocation uncertainty",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.runtime_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 1073741824,
+      "max": 3221225472,
+      "source": "planning workspace and recurrent state interval",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].per_token_components.target_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 16384,
+      "max": 32768,
+      "source": "conservative compact voice window estimate; refine after load",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "one sequence, no draft",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "all assertions required",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].runtime_context_limit_tokens",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "bounded voice target; no long-context qualification",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].resident_components.target_weights",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 20429169263,
+      "max": 22472086189.300003,
+      "source": "exact HF repository bytes with 10% allocation uncertainty",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].resident_components.runtime_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 2147483648,
+      "max": 5368709120,
+      "source": "planning workspace and recurrent state interval",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].per_token_components.target_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 16384,
+      "max": 65536,
+      "source": "conservative compact voice window estimate; refine after load",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "one sequence, no draft",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].runtime_context_limit_tokens",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "bounded voice target; no long-context qualification",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].resident_components.target_weights",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 16081490933,
+      "max": 17689640026.300003,
+      "source": "exact HF repository bytes with 10% allocation uncertainty",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].resident_components.runtime_fixed",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 2147483648,
+      "max": 5368709120,
+      "source": "planning workspace and recurrent state interval",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].per_token_components.target_kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 16384,
+      "max": 98304,
+      "source": "conservative compact voice window estimate; refine after load",
+      "observed_at": "2026-09-08",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "one sequence, no draft",
+      "observed_at": "2026-09-08",
+      "notes": null
+    }
+  ],
+  "unresolved_variables": [],
+  "promotion_authority": false
+}

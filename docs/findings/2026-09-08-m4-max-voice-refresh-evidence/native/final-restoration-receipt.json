@@ -1,0 +1,92 @@
+{
+  "schema": "anvil-serving.voice-refresh-restoration/v1",
+  "observed_at": "2026-09-08T10:03:11.020816+00:00",
+  "live_config_matches_starting_git": false,
+  "private_config_matches_starting_git": true,
+  "live_config_sha256": "cc165f8bb7f7eb5b3a704acda7af228f8649de9398cd701197b0936218eb4a23",
+  "starting_config_sha256": "f8dc3cd0205143e1c77c1221b9368c9bbcb708d63f04b795a54b62e6f4579ab9",
+  "services": [
+    {
+      "id": "voice-llm",
+      "running": true,
+      "registered": true,
+      "ready": true
+    },
+    {
+      "id": "voice-proxy",
+      "running": true,
+      "registered": true,
+      "ready": null
+    },
+    {
+      "id": "voice-qwen35-candidate",
+      "running": false,
+      "registered": false,
+      "ready": false
+    },
+    {
+      "id": "voice-stt",
+      "running": true,
+      "registered": true,
+      "ready": true
+    },
+    {
+      "id": "voice-tts",
+      "running": true,
+      "registered": true,
+      "ready": true
+    },
+    {
+      "id": "voice-qwen38-candidate",
+      "running": false,
+      "registered": false,
+      "ready": false
+    },
+    {
+      "id": "voice-qwen36-candidate",
+      "running": false,
+      "registered": false,
+      "ready": false
+    }
+  ],
+  "endpoint_checks": [
+    {
+      "service": "stt",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "service": "tts",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "service": "llm",
+      "status": 200,
+      "passed": true,
+      "advertised_models": [
+        "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+      ]
+    },
+    {
+      "service": "realtime",
+      "status": 200,
+      "passed": true
+    }
+  ],
+  "all_candidate_services_unloaded": true,
+  "candidate_port_closed": true,
+  "accepted_changes": [
+    "Baseline proxy started; native jobs adopted into managed private service registry",
+    "Proxy dependencies declared; STT readiness points at health endpoint",
+    "Pinned challenger recipes, cache artifacts and stopped launchd definitions retained"
+  ],
+  "unverified": [
+    "Automatic login ordering and physical microphone/OpenClaw clients not tested"
+  ],
+  "promotion": "none",
+  "verified": true,
+  "live_config_matches_starting_git_after_newline_normalization": true,
+  "live_config_semantically_matches_starting_git": true,
+  "config_comparison_note": "Starting private Git copy is LF; pre-existing live file is CRLF. Normalized text and parsed TOML are identical. No initial live byte digest was retained; final digest is recorded."
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-08-m4-max-voice-refresh",
+  "updated_at": "2026-09-08T10:25:30Z",
+  "status": "complete",
+  "current_stage": "publication",
+  "launcher": {"invocation": "python -m anvil_serving.cli", "version": "1.0.0", "repository_revision": "b85b5d27bc8da84216bcc7f5b5704dd340a884a6", "module_source": "anvil_serving/cli.py", "verified": true},
+  "stages": [
+    {"id": "research", "status": "complete", "evidence": ["source-registry.json"], "failures": []},
+    {"id": "feasibility", "status": "complete", "evidence": ["feasibility-summary.json"], "failures": ["35B-A3B policy envelope unresolved"]},
+    {"id": "scout", "status": "complete", "evidence": ["sanitized-preflight.json"], "failures": ["9B strict output; 27B shared-prefix tools and latency"]},
+    {"id": "finalist", "status": "complete", "evidence": ["sanitized-preflight.json", "sanitized-quality-and-capacity.json"], "failures": ["no fully qualified replacement"]},
+    {"id": "quality", "status": "complete", "evidence": ["sanitized-quality-and-capacity.json"], "failures": ["9B spoken and patchformat failures"]},
+    {"id": "restoration", "status": "complete", "evidence": ["restoration.json", "native/final-deployment-receipt.json"], "failures": ["candidate warmup path-resolution failure retained and corrected"]},
+    {"id": "publication", "status": "complete", "evidence": ["README.md", "summary.json"], "failures": []}
+  ],
+  "active_assignments": [],
+  "completed_cells": ["4B baseline", "9B functional/quality/capacity", "27B preliminary preflight", "35B-A3B preflight/spoken/SDK", "Kokoro 0.8.2 candidate and deployed-runtime verification"],
+  "next_actions": ["human review is required before any future promotion"],
+  "promotion_authorized": false
+}

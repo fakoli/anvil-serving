@@ -1,0 +1,328 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-08-m4-max-voice-refresh",
+    "capability": "voice",
+    "repository_revision": "b85b5d27bc8da84216bcc7f5b5704dd340a884a6",
+    "dirty_state": "Historical September 8 capture used uncommitted native-dispatch and SDK-harness changes; documentation-only publication on September 12 excludes those changes and does not validate current runtime behavior.",
+    "started_at": null,
+    "completed_at": "2026-09-08T10:25:30Z",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.benchmark/v1",
+    "voice-benchmark-evidence/v1",
+    "anvil-serving.recipe-feasibility-result/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "eefc6ed3d5fd78e0f466f3c5bbb4a285080ac94011ea9a9c8c8dcbec6c19f106",
+          "bytes": 4202
+        }
+      ],
+      "reason": "sanitized human index"
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "c5469ed2b8bd45e5efa67687a1d2f4a974ff073ce94a517a08cf35b7f5e7a3c8",
+          "bytes": 5873
+        }
+      ],
+      "reason": "dated external provenance"
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native/spoken-assistant-suite.json",
+          "sha256": "f8b0fde15e01b5db3fd9fd0e24aea606840360ebbeb52135f996433cb0e2242f",
+          "bytes": 6183
+        },
+        {
+          "path": "sanitized-quality-and-capacity.json",
+          "sha256": "72d7a326d42b7b9850439761e7ec150eee26589a6dbc31135741ba2218698782",
+          "bytes": 1605
+        }
+      ],
+      "reason": "native spoken suite plus derivative strict-output summary"
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "ba02ec45205aef609f541f368e63327a2c8ea87c06cee1f714dae9d22d537f65",
+          "bytes": 1842
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "c5abbc874f385725f1097205a0c10d9e54000f219a9f5e9c50a0638c92baceda",
+          "bytes": 1801
+        }
+      ],
+      "reason": "sanitized adaptive campaign record"
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native/candidate-artifact-verification.json",
+          "sha256": "55854678a531874e8b5a77e4efc0f0ba853bcb5df54a13130ec69ee5d80bb177",
+          "bytes": 1932
+        },
+        {
+          "path": "native/qwen36-artifact-verification.json",
+          "sha256": "11836744b34058848b8b429fdc80b78fe3996472aa4277dff5c033630f1211af",
+          "bytes": 3133
+        },
+        {
+          "path": "native/qwen38-artifact-verification.json",
+          "sha256": "45231bd6171dd4ac10b5dbc3eed3719be1af280dafa4c07ee9ed7a95239d1818",
+          "bytes": 2692
+        },
+        {
+          "path": "native/runtime-identity.json",
+          "sha256": "84a3259f0ae4a61098bc93e2bfa3720511d534339d0ec189938b7215ea1a4508",
+          "bytes": 974
+        },
+        {
+          "path": "native/audio-runtime-review.json",
+          "sha256": "0d328e054637642d9021d4cd2dcfd3df0b2fe7d1c0e11593a45852eb055eb21b",
+          "bytes": 14247
+        },
+        {
+          "path": "native/thinking-control.json",
+          "sha256": "fd6a70a7ae49ce6c7cce3e0be43b74ecec9bab585a6801dd2956db2c3f3b709a",
+          "bytes": 523
+        },
+        {
+          "path": "native/qwen36-thinking-control.json",
+          "sha256": "8aef6335aa0aa126ba1c513a98fc657bea8049a3ee57a8926b8350394f8e2eb3",
+          "bytes": 508
+        },
+        {
+          "path": "sanitized-preflight.json",
+          "sha256": "7d9f1a97e2cbba11dee5d6d760c932fe2c9d3ef527d3d66af404ffefe94f3ab9",
+          "bytes": 1791
+        },
+        {
+          "path": "feasibility-summary.json",
+          "sha256": "c54afc0d32972017dced4629dd47fac0bf538ca3668ece9bd958205910beba82",
+          "bytes": 595
+        }
+      ],
+      "reason": "native identity, audio-version, and verification controls plus clearly marked derivatives"
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native/baseline-preflight.json",
+          "sha256": "adca926e081156718786cf2e4765b7bd4fee5bf30db58dbd665bf3b8a34cb0ae",
+          "bytes": 6609
+        },
+        {
+          "path": "native/candidate-preflight.json",
+          "sha256": "812a8d2ccd5bcff866f4c00a926545a24a68e4e4e1df6e4d6e4db75ead6ef9b6",
+          "bytes": 7546
+        },
+        {
+          "path": "native/qwen38-preflight.json",
+          "sha256": "bc6cb2055c3e39b847ff8d97547b6b5ae727530a6185d7f3594bcd233b448812",
+          "bytes": 6307
+        },
+        {
+          "path": "native/qwen36-preflight.json",
+          "sha256": "fc718c63a2c85a42faf76fbb827d2116650dc564b7124853cfe4cbd7bd3e61c3",
+          "bytes": 7621
+        },
+        {
+          "path": "native/baseline-spoken-quality.json",
+          "sha256": "a8c7192580456ac5dd2763cc919af3fca2e90a626f9cbc3eb57d2c94090aba4d",
+          "bytes": 52618
+        },
+        {
+          "path": "native/candidate-spoken-quality.json",
+          "sha256": "dae8704b0cec405c8ffe4af1d61862bd236e4d48ea25722f860a17aa0b01fc0b",
+          "bytes": 53206
+        },
+        {
+          "path": "native/qwen36-spoken-quality.json",
+          "sha256": "ad51544c1dc66e24e80c7ca0a7056eedea1fa61243761f7f201ca1b867ec4779",
+          "bytes": 52785
+        },
+        {
+          "path": "native/candidate-quality.json",
+          "sha256": "d7b52b5a822e45335a74ea57ffa8b917e9d7b18bcd78c8315a5693c890aac4c7",
+          "bytes": 27474
+        },
+        {
+          "path": "native/candidate-capacity.json",
+          "sha256": "e051f56882920f8be4701aa4891b2e6e1d3e7eb5d48de7b5ee42e5167b7ea4bd",
+          "bytes": 35776
+        },
+        {
+          "path": "native/baseline-voice.json",
+          "sha256": "ec93a50d5a596a9a1cc8ce53f29ab3a65ef1025e2d369c6c980aee48b75985e5",
+          "bytes": 2111
+        },
+        {
+          "path": "native/audio-roundtrip.json",
+          "sha256": "e2acdba9dbaa28009be42e807e6b0037467a6fbc3d223e8196a2296351fb78b2",
+          "bytes": 1339
+        },
+        {
+          "path": "native/baseline-live-realtime.session.json",
+          "sha256": "95a67306c3e1a4442487324e25f633272e3a4df3f47e066e9c3934a8cd187907",
+          "bytes": 1693
+        },
+        {
+          "path": "native/candidate-realtime.session.json",
+          "sha256": "08a413bae3e73c926b39648c9dad59e2101b97115a545ec58ed5bd9358d2d3df",
+          "bytes": 1701
+        },
+        {
+          "path": "native/qwen36-realtime.session.json",
+          "sha256": "e0cd09c8e83474b0bebea069c9654e0cab58aa135e3c06b8d7a41c747a7ab0d1",
+          "bytes": 1655
+        },
+        {
+          "path": "native/kokoro082-audio-roundtrip.json",
+          "sha256": "8d484606adc33159c8134699ec10a8ee23fd615cd95dfd21739426a211dce0ae",
+          "bytes": 1338
+        },
+        {
+          "path": "native/kokoro082-realtime.session.json",
+          "sha256": "df6b8fb92bfc8cca901cf705f6ddbdf92d030fd3c1a84b1b149b74aa08d1096b",
+          "bytes": 1672
+        },
+        {
+          "path": "native/updated-live-final.session.json",
+          "sha256": "8536084171017a88b06d40130653fc54cd4e2fabcc93982391ce89a124b46d95",
+          "bytes": 1690
+        },
+        {
+          "path": "native/kokoro082-startup-failure.json",
+          "sha256": "2ffc54cb95d212c0439917e60f435dd615c293ba6d470f8320a3a5a369544b54",
+          "bytes": 3491
+        },
+        {
+          "path": "native/final-restoration-receipt.json",
+          "sha256": "8ff709343079267d44dd7a327845149371dce766937dfc174695c49f768ee446",
+          "bytes": 2500
+        },
+        {
+          "path": "native/final-deployment-receipt.json",
+          "sha256": "baa30cff7ab46f6507501c27b88bdde543cd8b78bf7b545eceab29beff950715",
+          "bytes": 2047
+        },
+        {
+          "path": "native/feasibility-input.json",
+          "sha256": "3463328a6afc60853e8debd140b39d7eba3bb22a0d272d6284d338970a425746",
+          "bytes": 5618
+        },
+        {
+          "path": "native/feasibility-result.json",
+          "sha256": "91d53e3fbe4a359610ab77502f97335bf934896205f47e781924fd7a8b03034d",
+          "bytes": 14912
+        },
+        {
+          "path": "native/upstream-version-review.json",
+          "sha256": "0db39a15d547f15f3829985239fd8ce9a745778fe7384cb8a9470e2616653d54",
+          "bytes": 437
+        },
+        {
+          "path": "native/redactions.json",
+          "sha256": "d7ec099e6a9c016e9688c150f417b78ce4fae684391adfef613763a05add16ed",
+          "bytes": 9860
+        }
+      ],
+      "reason": "sanitized original native JSON preserves failure details, answers, validators, and timings; audio/base64 payloads were removed"
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "dd0bf3f37365ca0e6638b3219274ecc6f03fceaa4ceeef9daf2cb56f320c44c8",
+          "bytes": 3192
+        }
+      ],
+      "reason": "retained strict and protocol failures"
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "6ef2f8e5e1d91e4c8a0b8f648e9fe5f1cfb89adb2086f00b42844357a9a15c22",
+          "bytes": 1165
+        },
+        {
+          "path": "native/final-deployment-receipt.json",
+          "sha256": "baa30cff7ab46f6507501c27b88bdde543cd8b78bf7b545eceab29beff950715",
+          "bytes": 2047
+        }
+      ],
+      "reason": "verified baseline restoration and deployed audio-runtime update"
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "09d3fb2068ad4a214762907c7f997e83e9c1a7748e0f14e32b4570d0a94ba06c",
+          "bytes": 3310
+        },
+        {
+          "path": "sanitized-voice-summary.json",
+          "sha256": "368a2ad4c03f6c8ace8fb4d2ee2029ed3990bf496579491dc3b10a9ad373fdef",
+          "bytes": 2986
+        }
+      ],
+      "reason": "derivative bounded no-promotion decision"
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "0cde662b91546d512bae5033cb58a8486a11fb84da5c5878191a17c9e70830b4",
+          "bytes": 3039
+        }
+      ],
+      "reason": "claim ledger and copy-ready derivative"
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}
