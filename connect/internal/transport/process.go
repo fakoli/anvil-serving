@@ -99,7 +99,7 @@ func openInput(path string, private bool) (*os.File, error) {
 	if !filepath.IsAbs(path) {
 		return nil, ErrProcess
 	}
-	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NOFOLLOW, 0)
+	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, ErrProcess
 	}
@@ -161,7 +161,7 @@ func (s *inputs) directory(path string, empty bool) (*os.File, string, error) {
 	}
 	return f, s.hold(f), nil
 }
-func (s *inputs) rotatingHeaders(path string) (string, error) {
+func (s *inputs) rotatingHeaders(path string, local bool) (string, error) {
 	// wstunnel rereads this file on each connection. Pin the owned directory,
 	// allowing only the owner to atomically replace its validated 0600 file.
 	dir, child, err := s.directory(filepath.Dir(path), false)
@@ -177,6 +177,25 @@ func (s *inputs) rotatingHeaders(path string) (string, error) {
 	defer f.Close()
 	if !validInput(f, true) {
 		return "", ErrProcess
+	}
+	if local {
+		// The pin lets a headers-file Host override the CLI Host. Local files
+		// are therefore authorization-only. The managed renewal writer must
+		// preserve this closed format on every atomic replacement.
+		data, err := io.ReadAll(io.LimitReader(f, 4097))
+		token, ok := strings.CutPrefix(string(data), "Authorization: Bearer ")
+		if err != nil || len(data) > 4096 || !ok || !strings.HasSuffix(token, "\n") {
+			return "", ErrProcess
+		}
+		token = strings.TrimSuffix(token, "\n")
+		if token == "" {
+			return "", ErrProcess
+		}
+		for _, c := range token {
+			if c < 33 || c > 126 {
+				return "", ErrProcess
+			}
+		}
 	}
 	return child + "/" + name, nil
 }
@@ -246,6 +265,7 @@ func StartServer(ctx context.Context, o ServerOptions) (*Process, error) {
 }
 
 type ClientOptions struct {
+	Local                                                           *LocalBinding
 	ViaGate                                                         bool
 	Binary, ServerURL, ReverseAddress, OriginAddress                string
 	CertificateFile, PrivateKeyFile, TrustFile, EmptyTrustDirectory string
@@ -253,33 +273,47 @@ type ClientOptions struct {
 }
 
 func StartClient(ctx context.Context, o ClientOptions) (*Process, error) {
-	u, err := url.Parse(o.ServerURL)
-	if err != nil || u.Scheme != "wss" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || strings.ContainsAny(o.ServerURL, "?#") || (u.Path != "" && u.Path != "/") || !config.LoopbackAddress(o.ReverseAddress) || !config.LoopbackAddress(o.OriginAddress) {
-		return nil, ErrProcess
-	}
 	var in inputs
 	defer in.close()
+	env, args, err := clientCommand(o, &in)
+	if err != nil {
+		return nil, err
+	}
+	return start(ctx, o.Binary, env, args, in.files)
+}
+
+// clientCommand is also the pin-adapter contract test seam. Go argument tests
+// do not establish the binary's network behavior; the exact pin needs live
+// qualification, especially its upgrade timeout and registration readiness.
+func clientCommand(o ClientOptions, in *inputs) ([]string, []string, error) {
+	if l := o.Local; l != nil && (l.Validate() != nil || !o.ViaGate || o.ProxyURL != "" || o.ServerURL != "wss://"+l.Address) {
+		return nil, nil, ErrProcess
+	}
+	u, err := url.Parse(o.ServerURL)
+	if err != nil || u.Scheme != "wss" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || strings.ContainsAny(o.ServerURL, "?#") || (u.Path != "" && u.Path != "/") || !config.LoopbackAddress(o.ReverseAddress) || !config.LoopbackAddress(o.OriginAddress) {
+		return nil, nil, ErrProcess
+	}
 	certificate, key := "", ""
 	if !o.ViaGate {
 		var inputErr error
 		certificate, inputErr = in.file(o.CertificateFile, false)
 		if inputErr != nil {
-			return nil, inputErr
+			return nil, nil, inputErr
 		}
 		key, inputErr = in.file(o.PrivateKeyFile, true)
 		if inputErr != nil {
-			return nil, inputErr
+			return nil, nil, inputErr
 		}
 	} else if o.HeadersFile == "" {
-		return nil, ErrProcess
+		return nil, nil, ErrProcess
 	}
 	trust, err := in.file(o.TrustFile, false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	_, empty, err := in.directory(o.EmptyTrustDirectory, true)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	args := []string{"client", "--no-color", "--log-lvl", "warn", "--nb-worker-threads", "1", "--tls-verify-certificate", "--connection-retry-max-backoff", "1s", "--reverse-tunnel-connection-retry-max-backoff", "1s", "-R", "tcp://" + o.ReverseAddress + ":" + o.OriginAddress}
 	if !o.ViaGate {
@@ -288,19 +322,23 @@ func StartClient(ctx context.Context, o ClientOptions) (*Process, error) {
 		args = append(args, "--http-upgrade-path-prefix", "acv1")
 	}
 	if o.HeadersFile != "" {
-		headers, err := in.rotatingHeaders(o.HeadersFile)
+		headers, err := in.rotatingHeaders(o.HeadersFile, o.Local != nil)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		args = append(args, "--http-headers-file", headers)
 	}
 	if o.ProxyURL != "" {
 		proxy, err := url.Parse(o.ProxyURL)
 		if err != nil || proxy.Scheme != "http" || proxy.Host == "" || proxy.User != nil || proxy.Path != "" || strings.ContainsAny(o.ProxyURL, "?#") {
-			return nil, ErrProcess
+			return nil, nil, ErrProcess
 		}
 		args = append(args, "--http-proxy", o.ProxyURL)
 	}
+	if l := o.Local; l != nil {
+		// These spellings are present in v10.7.1 source, not live pin proof.
+		args = append(args, "--tls-sni-override", l.ServerName, "--http-headers", "Host: "+l.Host)
+	}
 	args = append(args, o.ServerURL)
-	return start(ctx, o.Binary, []string{"SSL_CERT_FILE=" + trust, "SSL_CERT_DIR=" + empty}, args, in.files)
+	return []string{"SSL_CERT_FILE=" + trust, "SSL_CERT_DIR=" + empty}, args, nil
 }

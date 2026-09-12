@@ -360,6 +360,9 @@ func (d *Dispatcher) dispatch(w http.ResponseWriter, r *http.Request, resource c
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(resource.Rule.Limits.DurationSeconds)*time.Second)
 	defer cancel()
+	// Bound pool wait + dial + inner TLS together, before origin dispatch.
+	establishment := time.AfterFunc(5*time.Second, cancel)
+	defer establishment.Stop()
 	var certificate atomic.Pointer[x509.Certificate]
 	ctx, release, err := d.active.Watch(ctx, func() error {
 		// Before GotConn the transport has bounded dial/handshake deadlines and
@@ -414,6 +417,9 @@ func (d *Dispatcher) dispatch(w http.ResponseWriter, r *http.Request, resource c
 			return
 		}
 		target.conns.bind(tracked, leaf)
+		if !establishment.Stop() {
+			cancel()
+		}
 	}}
 	r = r.Clone(httptrace.WithClientTrace(ctx, trace))
 	proxy := target.proxy

@@ -26,6 +26,7 @@ import (
 	"github.com/fakoli/anvil-serving/connect/internal/ingresshttp"
 	"github.com/fakoli/anvil-serving/connect/internal/localhttp"
 	"github.com/fakoli/anvil-serving/connect/internal/privatefiles"
+	"github.com/fakoli/anvil-serving/connect/internal/relay"
 	"github.com/fakoli/anvil-serving/connect/internal/session"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
 	"github.com/fakoli/anvil-serving/connect/internal/transport"
@@ -58,6 +59,8 @@ func identitySigners(resources []config.Resource, secrets SecretSource) (map[str
 // Gateway owns the Unix ingress/admin listeners, authority database, and its
 // pinned private tunnel child. Running is process state, not origin readiness.
 type Gateway struct {
+	entries map[string]*entryHealth
+	events  *relay.Events
 	cancel  context.CancelFunc
 	close   sync.Once
 	cleanup []func()
@@ -67,6 +70,7 @@ type Gateway struct {
 }
 
 func (g *Gateway) Done() <-chan struct{} { return g.done }
+func (g *Gateway) Events() []relay.Event { return g.events.Snapshot() }
 
 func (g *Gateway) Close() {
 	g.close.Do(func() {
@@ -119,19 +123,20 @@ func (g *Gateway) serve(server *http.Server, listener net.Listener) {
 	}()
 }
 
-// StartGateway is the shipped activation boundary. It requires a separate edge
-// identity and verifies its ingress directory before opening authority state.
+// StartGateway is the shipped activation boundary. The public mount requires a
+// verified ingress directory under a separate edge identity. An unavailable
+// entry stays unbound; a declared healthy sibling may continue serving.
 // Administration remains owner-only; no TCP application/admin listener opens.
 func StartGateway(parent context.Context, declaration GatewayConfig, secrets SecretSource) (_ *Gateway, result error) {
 	if parent == nil || parent.Err() != nil || declaration.Validate() != nil || declaration.Ingress == nil || secrets == nil {
 		return nil, ErrConfiguration
 	}
 	listener, err := ingresshttp.Listen(*declaration.Ingress)
-	if err != nil {
+	if err != nil && declaration.LocalTunnel == nil {
 		return nil, ErrUnavailable
 	}
 	defer func() {
-		if result != nil {
+		if result != nil && listener != nil {
 			_ = listener.Close()
 		}
 	}()
@@ -155,6 +160,10 @@ func composeGateway(parent context.Context, declaration GatewayConfig, secrets S
 	}
 	ctx, cancel := context.WithCancel(parent)
 	g := &Gateway{cancel: cancel, done: make(chan struct{}), errors: make(chan error, 3)}
+	g.entries = map[string]*entryHealth{"public": {}}
+	if declaration.LocalTunnel != nil {
+		g.entries["local"] = &entryHealth{}
+	}
 	defer func() {
 		if result != nil {
 			g.Close()
@@ -292,6 +301,7 @@ func composeGateway(parent context.Context, declaration GatewayConfig, secrets S
 		return nil, ErrUnavailable
 	}
 	g.cleanup = append(g.cleanup, gate.Close)
+	g.events = &gate.Events
 	restrictions, err := tunnelgate.Restrictions(declaration.Gateway, backends)
 	if err != nil {
 		return nil, ErrUnavailable
@@ -344,13 +354,24 @@ func composeGateway(parent context.Context, declaration GatewayConfig, secrets S
 			}
 		}
 	})
-	if ingressListener == nil {
+	if ingressListener == nil && declaration.Ingress == nil {
 		ingressListener, err = localhttp.Listen(directory, "ingress.sock")
-		if err != nil {
+		if err != nil && declaration.LocalTunnel == nil {
 			return nil, ErrUnavailable
 		}
 	}
-	g.serve(nativeServer(ctx, ingress), ingressListener)
+	if ingressListener != nil {
+		g.serveEntry(ctx, "public", ingress, ingressListener, nil)
+	} else {
+		g.entries["public"].set(false, "entry_bind_failed")
+		g.events.Record("public", "", "entry_bind_failed")
+	}
+	if l := declaration.LocalTunnel; l != nil {
+		g.startLocalEntry(ctx, *l, gate, innerCA.certificate, tunnelCA.certificate)
+	}
+	if g.entriesUnavailable() {
+		return nil, ErrUnavailable
+	}
 	// A managed supervisor restarts the whole owned generation before the
 	// ephemeral gateway/backend service certificates expire. This bounded
 	// lifetime is explicit; it never silently serves with expired identities.

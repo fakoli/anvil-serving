@@ -23,7 +23,7 @@ func TestManagedInputsKeepVerifiedFileAndDirectoryInodes(t *testing.T) {
 	if _, err := in.file(path, true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := in.rotatingHeaders(path); err != nil {
+	if _, err := in.rotatingHeaders(path, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Rename(dir, dir+"-old"); err != nil {
@@ -53,7 +53,7 @@ func TestManagedInputsKeepVerifiedFileAndDirectoryInodes(t *testing.T) {
 	if err := os.Chmod(dir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := in.rotatingHeaders(path); err == nil {
+	if _, err := in.rotatingHeaders(path, false); err == nil {
 		t.Fatal("shared rotating header directory accepted")
 	}
 }
