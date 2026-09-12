@@ -1,0 +1,51 @@
+{
+  "acceptance_errors": [],
+  "artifacts": {
+    "events_jsonl": "<private-evidence>/kokoro082-realtime.events.jsonl",
+    "input_wav": "<private-evidence>/kokoro082-realtime.input.wav",
+    "latency_json": "<private-evidence>/kokoro082-realtime.latency.json",
+    "output_wav": "<private-evidence>/kokoro082-realtime.output.wav",
+    "session_json": "<private-evidence>/kokoro082-realtime.session.json"
+  },
+  "assistant_transcript_errors": [],
+  "assistant_transcript_proven": true,
+  "barge_in_sent": true,
+  "cancellation_acceptance_boundary": "response.done:cancelled",
+  "cancelled_response_seen": true,
+  "completed_after_barge_in": true,
+  "connected": true,
+  "event_count": 39,
+  "finding_row_written": true,
+  "input_audio_bytes": 266256,
+  "model": "anvil-voice",
+  "openai_version": "2.53.0",
+  "output_after_cancel_events": 0,
+  "output_after_cancel_request_events": 0,
+  "output_audio_bytes": 38624,
+  "responses": [
+    {
+      "assistant_transcript": null,
+      "assistant_transcript_proven": false,
+      "audio_bytes": 2730,
+      "latency_ms": 6991.86,
+      "response_id": "resp_1",
+      "status": "cancelled",
+      "ttfa_ms": 6968.46
+    },
+    {
+      "assistant_transcript": "54.",
+      "assistant_transcript_proven": true,
+      "audio_bytes": 35894,
+      "latency_ms": 3229.19,
+      "response_id": "resp_2",
+      "status": "completed",
+      "ttfa_ms": 3037.17
+    }
+  ],
+  "timestamp_utc": "2026-09-08T10:18:41Z",
+  "transcripts": [
+    "Please count slowly from 1 to 20, so I can interrupt you.",
+    "Interrupting you now, please answer briefly, how many countries are in Africa?"
+  ],
+  "ws_url": "ws://127.0.0.1:65150/v1/realtime"
+}

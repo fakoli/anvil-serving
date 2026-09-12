@@ -1,0 +1,81 @@
+{
+  "identity": {
+    "candidate": "baseline-qwen3-4b",
+    "llm": {
+      "base_url": "http://127.0.0.1:30113/v1",
+      "model": "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+    },
+    "profile": null,
+    "route": {
+      "alias": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+      "endpoint_host": null
+    },
+    "stt": {
+      "base_url": "http://127.0.0.1:30110/v1",
+      "model": "tdt-0.6b-v3"
+    },
+    "tts": {
+      "base_url": "http://127.0.0.1:30111/v1",
+      "model": "kokoro"
+    }
+  },
+  "runs": [
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 1.4462
+      },
+      "id": "run-001",
+      "latency": {
+        "llm_ms": 604.99,
+        "llm_stage_latency_ms": 604.99,
+        "stt_ms": 519.87,
+        "total_turn_latency_ms": 4914.53,
+        "ttfa_ms": 4091.12,
+        "tts_ms": 3789.67,
+        "turn_latency_ms": 4914.53
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Hello. How can I assist you today?",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 2.6204,
+        "output_bytes": 125778,
+        "request_count": 2,
+        "source_sample_rate": 24000
+      }
+    }
+  ],
+  "schema_version": "voice-benchmark-evidence/v1",
+  "topology": {
+    "endpoints": {
+      "llm_base_url": "http://127.0.0.1:30113/v1",
+      "stt_base_url": "http://127.0.0.1:30110/v1",
+      "tts_base_url": "http://127.0.0.1:30111/v1"
+    },
+    "mini_model_free_assertion": {
+      "checked": true,
+      "method": "profile_and_endpoint_config",
+      "mini_hosts_models": false,
+      "mini_local_audio_profile": false,
+      "mini_local_model_endpoint_stages": [],
+      "passed": null,
+      "reference_model_free_profiles": [
+        "dark-audio",
+        "mini-dark-audio-proxy"
+      ],
+      "reference_test": false
+    },
+    "mode": "non-reference-or-unspecified",
+    "profile": null
+  }
+}

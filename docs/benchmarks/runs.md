@@ -126,10 +126,17 @@ These records synthesize retained measurements without claiming a new run.
 | 2026-07-13 | Fast LLM | Gemma 4 E4B Fast | RTX 5090 | `topology-only` | `functional` | historical `current` | [Gemma E4B](models/gemma4-e4b.md) · [router promotion](../findings/2026-07-13-e4b-fast-router-promotion.md) |
 | 2026-07-10–11 | Fast/Omni | Nemotron Nano/Omni 30B, Gemma 4 31B failed load, Qwen3.5 35B GGUF, Gemma E4B GGUF | RTX 5090 | `topology-only` | `functional`, `capacity`, `quality`, `historical-invalid` | `no-promotion` / `rejected` | [RTX 5090 dossiers](models/index.md#rtx-5090) · [Blackwell bakeoff](../findings/2026-07-10-blackwell-local-model-bakeoff.md) |
 
+## Apple Silicon runs
+
+| Date | Capability | Exact model/configuration | Measured hardware | Evidence | Decision | Dossier / finding |
+|---|---|---|---|---|---|---|
+| 2026-09-08 | Local voice LLM refresh and TTS runtime update | Qwen3.5-9B MLX 4-bit `8b2b98c00a6b4d291155e4890773ca8f769aee53`; Qwen3.8-27B `3e6447f082e89cc7f0bc6e5441afd38dfce760ff`; Qwen3.6-35B-A3B `38740b847e4cb78f352aba30aa41c76e08e6eb46`; MLX-LM 0.31.3 / MLX 0.31.2; Kokoro FastAPI 0.8.2 `58b08a915b3463cb76e376a2867e04f9d828f4df` | Apple M4 Max laptop, 48 GB unified memory | 9B `functional` 6/6; diagnostic quality 9/12 and patchformat 0/3; spoken 33/36 strict; strict 4K/C1 capacity 0/10 with canaries 10/10; Qwen3.8 compatibility-only 5/6 groups, tools 1/3; Qwen3.6 compatibility-only 5/6 strict JSON fail but spoken 36/36 and one accepted SDK session; Kokoro 0.8.2 one-sample WER 0.0/2139.31 ms and final warm Realtime acceptance | `no-promotion` for LLMs; no performance headline or live LLM change; candidates unloaded; Kokoro 0.8.2 and versioned TTS/proxy definitions deployed with four endpoint checks HTTP 200 | [Voice LLM MLX](models/voice-llm-mlx.md) · [finding](../findings/2026-09-08-m4-max-voice-refresh.md) |
+
 ## Related views
 
 - [RTX PRO 6000 hardware page](hardware/rtx-pro-6000.md)
 - [RTX 5090 hardware page](hardware/rtx-5090.md)
+- [Apple M4 Max hardware page](hardware/apple-m4-max.md)
 - [Model dossiers](models/index.md)
 - [RTX PRO 6000 mention audit](rtx-pro-6000-audit.md)
 - [Chronological findings](../findings/README.md)
