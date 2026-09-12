@@ -12,12 +12,20 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import sys
 
 import pytest
 
 from anvil_serving.connect import extend as extend_module
 from anvil_serving.connect.manage import Target
 from tests.connect.test_render import isolated_manifest
+
+# The Connect manifest reader requires POSIX no-follow descriptors; extend
+# runs on POSIX only, like the rest of the family.
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="the Connect manifest reader requires POSIX no-follow descriptors",
+)
 
 ENROLLED = ("dashboard", "dashboard-api")
 ADDED = "reports"
@@ -73,7 +81,6 @@ def environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     manifest["service_limits"]["clients"] = {}
     manifest_path = tmp_path / "deployment.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    data = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     connector_tree = {"schema": "anvil-connect.connector/v1", "id": "dashboard",
                       "resources": _declared_resources(ENROLLED)}
