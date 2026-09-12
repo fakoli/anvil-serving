@@ -1,0 +1,52 @@
+{
+  "schema": "anvil-serving.benchmark-configuration/v1",
+  "campaign_id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "repository": {
+    "revision": "948346f5ab553361c6b61d9517b71a0e5e3cfe98",
+    "branch": "codex/rtx5090-model-bakeoff-20260912",
+    "dirty_at_start": false,
+    "launcher": "python -m anvil_serving.cli",
+    "launcher_reported_version": "1.0.0",
+    "launcher_module": "anvil_serving/cli.py"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "gpu_count": 1,
+    "physical_vram_mib": 32607,
+    "gpu_uuid": "redacted from public evidence",
+    "driver": "616.64",
+    "arch": "sm_120",
+    "topology": "single local model-serving GPU"
+  },
+  "vram_policy": {
+    "default_reserve_mib": 3072,
+    "effective_reserve_mib": 3072,
+    "physical_unavailable_mib": 420,
+    "reserve_waived": false
+  },
+  "starting_state": {
+    "router": "absent",
+    "mode": "split",
+    "managed_manifest_serves": [],
+    "gpu_owner": "qwen-local",
+    "incumbent": {
+      "public_identity": "unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-262K",
+      "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+      "endpoint": "http://127.0.0.1:8080/v1",
+      "health": "healthy",
+      "image_digest": "sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",
+      "context_tokens": 262144,
+      "restore_required": true
+    },
+    "gpu_memory": {"used_mib": 26044, "free_mib": 6144},
+    "other_observed_gpu_clients": ["one Windows camera utility with unreported WDDM allocation"],
+    "exited_recipe_containers": ["one same-family unhealthy container retained for diagnosis; no GPU allocation"]
+  },
+  "credentials": {
+    "hf_token_present_in_campaign_shell": false,
+    "literal_value_retained": false,
+    "public_models_may_be_downloaded_without_authentication": true
+  },
+  "promotion_authorized": true,
+  "authority_update": "Operator subsequently authorized unattended selection and promotion of the evidence-supported best option; correctness gates and 50-percent usage stop remain."
+}

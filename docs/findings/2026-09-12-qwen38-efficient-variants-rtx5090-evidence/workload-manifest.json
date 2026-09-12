@@ -1,0 +1,43 @@
+{
+  "schema": "anvil-serving.benchmark-workload-manifest/v1",
+  "campaign_id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "capability": "text-and-tools",
+  "runner": "Anvil Serving preflight and benchmark built-ins at repository revision 948346f5ab553361c6b61d9517b71a0e5e3cfe98",
+  "external_corpus": {
+    "retained_fixture": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+    "sha256": "f6112c6f592c5285f8dae86808285f328161d3b4ae30ef660440d173d47b0636",
+    "dataset": "TIGER-Lab/MMLU-Pro",
+    "revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be",
+    "split": "validation",
+    "rows": [5, 10, 15, 20, 25, 30, 35, 40, 45, 65],
+    "selection": "Existing repository ten-domain sanity fixture, unchanged; diagnostic rather than representative benchmark accuracy."
+  },
+  "selection": {
+    "functional": ["smoke", "structured-json", "tools", "streaming-tools", "tool-result-continuation", "exact-needle-retrieval"],
+    "quality": ["chat", "tool", "intelligence", "hf-mmlu-pro-10-repeated"],
+    "performance": "unique-cache request-canary controlled-output capacity workload"
+  },
+  "controls": {
+    "prompt_tokens": 57344,
+    "output_reserve_tokens": 8192,
+    "capacity_context_tokens": 4096,
+    "capacity_response_words": 128,
+    "capacity_requests": 5,
+    "capacity_concurrency": 1,
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "controlled_output_policy": "strict",
+    "quality_repetitions": 3,
+    "quality_minimum_pass_rate": 1.0
+  },
+  "amendments": [
+    "Nominal preflight filler 57344 corresponds to measured 47349 actual prompt tokens, not a 57K usable-context qualification.",
+    "After 128-word failures, the 32-word diagnostic retains strict scoring and all other controls; it does not retroactively pass the original workload.",
+    "Thinking-enabled MMLU scouts use one repetition and max_tokens 5120 (1024 visible allocation plus4096 reasoning headroom).",
+    "Thinking-disabled repeated MMLU uses three repetitions with max_tokens1024; this is a separate workload from the initial built-in-only 256-token runs.",
+    "mmlu-format-repair.suite.json reinforces output syntax without changing answer keys; mmlu-budget-retry.suite.json isolates the failed computer-science question for a larger-budget retry.",
+    "Repository regression tests overlapped Qwopus, Minitron and Signal no-spec diagnostic quality collection. Those wall times are not clean finalist performance evidence."
+  ],
+  "licenses": ["Repository built-in synthetic fixtures and an already retained pinned MMLU-Pro fixture. Upstream dataset licensing was not independently re-audited in this campaign."],
+  "hashes": {"repository_revision": "948346f5ab553361c6b61d9517b71a0e5e3cfe98"}
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.campaign-lifecycle-review/v1",
+  "reviewer": "Independent GPT-5.6 Sol adversarial reviewer",
+  "implementer": "Lead GPT-6 Astra agent",
+  "scope": "Retained recipe stop/start, typed MCP parity, deterministic regression and generated CLI contracts",
+  "review_mode": "Read-only static review; reviewer performed no live mutation",
+  "campaign_disposition": "Conditionally accepted for explicitly serialized one-operator use",
+  "general_release_disposition": "HOLD; no merge or release authorized by this campaign evidence",
+  "resolved_findings": [
+    "Missing-registry lifecycle recovery",
+    "First-inspection immutable identity handoff",
+    "Explicit running/healthy postcondition and unknown offload refusal",
+    "Shared operation deadline through initial inspection, mutation and postcondition",
+    "Exact active Docker ID set, fixed compact projection and chunks of16",
+    "Legacy NVIDIA runtime and native compute-client admission",
+    "Exact GPU count/index/UUID telemetry consistency",
+    "CLI/MCP default registry and confirmation/stale-preview parity",
+    "Generated command manifest and schema snapshot refresh"
+  ],
+  "residual_risks": [
+    "No host-wide lifecycle lock shared by every recipe, serves and external process actor. Serialized campaign operation mitigates, but does not remove, a concurrency race.",
+    "Baseline compute PID allowance requires immediate executable identity and start-time verification by the operator; a PID is not an immutable process attestation."
+  ],
+  "allowance_addendum": "Declared PID set must equal the observed compute PID set. CLI preview and MCP plan expose the normalized list; MCP staleness binds that list. The all-GPU1024MiB baseline and active Docker-peer guards remain enforced.",
+  "live_read_only_gate": "While Qwopus was active, incumbent restart dry-run refused another device-owning container before mutation.",
+  "full_suite": "pending"
+}

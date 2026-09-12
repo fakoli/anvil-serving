@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.independent-review/v1",
+  "observed_at": "2026-09-12",
+  "scope": [
+    "dated efficient-variant finding",
+    "summary.json",
+    "publication-summary.md",
+    "restoration.json",
+    "source-registry.json",
+    "native quality and capacity evidence",
+    "artifact-manifest.json"
+  ],
+  "author_model": "GPT-6 Astra",
+  "reviewer_model": "GPT-5.6 Sol",
+  "reviewer_role": "anvil-adversarial-reviewer",
+  "substantive_disposition": "bounded-accept",
+  "decision_supported": "Retain incumbent; Signal only an efficiency research lead, not a qualified replacement.",
+  "findings": [
+    {
+      "issue": "Signal publisher-declared license lacked a dedicated pinned source-ledger entry.",
+      "resolution": "Pinned GGUF publisher card added with date, artifact revision, hardware mismatch and non-certification caveats; reviewer accepted correction."
+    },
+    {
+      "issue": "Canonical recipe checkout conversion could diverge from byte-preserved evidence.",
+      "resolution": "Both exact registries now have -text attributes; reviewer verified byte-identical public copies."
+    }
+  ],
+  "remaining_substantive_blockers": [],
+  "mechanical_completion_condition": "Regenerate artifact manifest after derivative updates and prove zero file hash/size mismatches. Acceptance never authorizes model promotion or general lifecycle release.",
+  "limits": [
+    "Ten-question diagnostic does not prove broad quality parity.",
+    "Failed original strict-output and missing full-context/client gates remain.",
+    "The review is independent from the evaluated models and evidence author."
+  ]
+}

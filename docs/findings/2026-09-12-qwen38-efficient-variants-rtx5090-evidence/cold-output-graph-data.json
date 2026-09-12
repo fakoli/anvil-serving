@@ -1,0 +1,93 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.e2e_mean_ms",
+      "series": [
+        {
+          "label": "Incumbent",
+          "points": [
+            {
+              "artifact": "incumbent-capacity-32.json",
+              "artifact_sha256": "2d5a109cfdebaa444e0b81a773a5efb6ad1ce3324e535bb07a4224410ebd84ba",
+              "value": 1953.6777399829589,
+              "x": "Inc 262K"
+            }
+          ]
+        },
+        {
+          "label": "Signal",
+          "points": [
+            {
+              "artifact": "signal-nospec-capacity-32.json",
+              "artifact_sha256": "39ff3b832a0bffb8b60e0c00a413042302eeeee475396eb2ace8b636978c88aa",
+              "value": 2658.1093000015244,
+              "x": "Signal 64K"
+            }
+          ]
+        },
+        {
+          "label": "Qwopus",
+          "points": [
+            {
+              "artifact": "qwopus-capacity-32.json",
+              "artifact_sha256": "553eede4653ad98c1de7342f7a43f885ae18cb32b4d7a466ce3dce95decdf140",
+              "value": 2798.4088400029577,
+              "x": "Qwopus 64K"
+            }
+          ]
+        }
+      ],
+      "title": "Mean finished-response latency",
+      "x_label": "Distinct recipe profiles, same short-output diagnostic",
+      "y_label": "Milliseconds (lower is shorter)"
+    },
+    {
+      "metric": "metrics.ttft_mean_ms",
+      "series": [
+        {
+          "label": "Incumbent",
+          "points": [
+            {
+              "artifact": "incumbent-capacity-32.json",
+              "artifact_sha256": "2d5a109cfdebaa444e0b81a773a5efb6ad1ce3324e535bb07a4224410ebd84ba",
+              "value": 1571.4262999943458,
+              "x": "Inc 262K"
+            }
+          ]
+        },
+        {
+          "label": "Signal",
+          "points": [
+            {
+              "artifact": "signal-nospec-capacity-32.json",
+              "artifact_sha256": "39ff3b832a0bffb8b60e0c00a413042302eeeee475396eb2ace8b636978c88aa",
+              "value": 1861.7974399821833,
+              "x": "Signal 64K"
+            }
+          ]
+        },
+        {
+          "label": "Qwopus",
+          "points": [
+            {
+              "artifact": "qwopus-capacity-32.json",
+              "artifact_sha256": "553eede4653ad98c1de7342f7a43f885ae18cb32b4d7a466ce3dce95decdf140",
+              "value": 1999.8899800004438,
+              "x": "Qwopus 64K"
+            }
+          ]
+        }
+      ],
+      "title": "Mean time to first token",
+      "x_label": "Distinct recipe profiles, same short-output diagnostic",
+      "y_label": "Milliseconds (lower is shorter)"
+    }
+  ],
+  "metric_semantics": {
+    "limits": "Incumbent Q4XL/MTP3/262K versus Q6_K/no-spec/64K fine-tunes. Quality gates failed; no causally isolated model or MTP speed claim. Swift warm and Minitron failed populations excluded.",
+    "workload": "Nominal4K/C1, strict32 code words, canaries, max512 output, unique prefixes, observed0 cached fraction."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Different serve profiles; CPU load uncontrolled. Original 128-word failures retained; not promotion-grade.",
+  "title": "RTX 5090 cold-cache 32-word diagnostic: N=5 each"
+}
