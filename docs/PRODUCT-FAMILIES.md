@@ -4,7 +4,7 @@ Anvil Serving is one umbrella product for operating, qualifying, and exposing
 local AI capabilities through explicit, reviewable contracts. It is broader
 than the request router and narrower than a general orchestration platform.
 
-The public product has six families. Anvil Voice and Anvil Media are branded,
+The public product has seven families. Anvil Voice and Anvil Media are branded,
 first-class domains inside Anvil Serving; they are not separate repositories,
 installations, or release lines. Run `anvil-serving product families` for the
 same map from installed code, or `anvil-serving product journey FAMILY` for an
@@ -19,6 +19,7 @@ ordered CLI journey.
 | [Evaluation & Evidence](#evaluation-evidence) | Prove compatibility and retain comparison-safe evidence. | `eval` | Serve, route, or promotion mutation from a result alone. |
 | [Anvil Voice](#anvil-voice) | Operate qualified STT, TTS, and realtime voice paths. | `voice` | Undeclared placement or hidden split-host fallback. |
 | [Anvil Media](#anvil-media) | Run bounded named image/video workflows with durable jobs and artifacts. | `media` | Raw backend graphs, paths, installs, placement, or fallback. |
+| [Anvil Connect](#anvil-connect) | Publish local browser surfaces through one self-hosted, authenticated edge. | `connect` | Origin rewrites, loopback bypass, vendor-hosted identity, or exposure outside a rendered declaration. |
 | [Control Plane & Fleet](#control-plane-fleet) | Resolve ownership, dispatch bounded operations, and expose fleet state. | `topology`, `controller`, `mcp`, `fleet`, `host`, and integration utilities | Resource-owner bypass, embedded secrets, or SSH-first operations. |
 
 Every visible operational root command belongs to exactly one family in the
@@ -123,6 +124,31 @@ model filename, filesystem path, installation request, host, or fallback list.
 Read [Media commands](cli/media.md) for the complete worker-to-artifact journey
 and [ADR-0040](adr/0040-media-gateway-and-controller-authority.md) for the
 gateway/controller authority split.
+
+## Anvil Connect
+
+Anvil Connect owns the browser edge for local surfaces: edge TLS under an
+operator-issued PKI, OIDC login through the local identity provider, session
+admission, signed identity handoff, reverse-tunnel transport, and per-resource
+exposure contracts. Applications stay bound to loopback and unchanged; a
+resource exists at the edge only when it is declared, rendered, activated, and
+enrolled. The family never rewrites an origin, binds an origin wider than
+loopback, or places identity under a hosted vendor.
+
+1. Validate the closed deployment declaration offline with
+   `anvil-serving connect validate --manifest <PATH>`.
+2. Render and review the exact configuration plan with
+   `anvil-serving connect render --manifest <PATH> --confirm`.
+3. Activate selected managed targets with
+   `anvil-serving connect up --manifest <PATH> --service gateway --confirm`.
+4. Enroll a connector and approve its fingerprint independently with
+   `anvil-serving connect init`, `connect identity`, and the admin approval.
+5. Operate invitations, approvals, and principal resources through
+   `anvil-serving connect admin`.
+
+Read [Why Anvil Connect](CONNECT-OVERVIEW.md) for the product story,
+[Anvil Connect](ANVIL-CONNECT.md) for the architecture, and
+[Connect commands](cli/connect.md) for the complete journey.
 
 ## Control Plane & Fleet
 

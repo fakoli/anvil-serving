@@ -27,6 +27,64 @@
 
 **Status:** bounded functional, no-promotion. **Measured:** real Pi on native Linux, same rc14/393K/C1 backend; 4096 versus 16384 completed 6/8 versus 7/8 valid tasks. **Limits:** eight coding runs invalid; larger budget did not rescue the reasoning fixture in both repetitions. Keep the existing output default. **Evidence:** [dated finding](../../findings/2026-09-11-glm53-output-budget.md). Dossier review for this bounded result: 2026-09-11; earlier qualification dates remain separate.
 
+#### 2026-09-11 — operator-reported daily experience, with confirmed deltas versus the previous serving
+
+**Status:** operational narrative plus controlled-comparison deltas. **Previous
+serving:** SGLang rc14 on Windows/WSL2, TP2, 393,216-token context, C1 —
+deployed 2026-09-02 and serving until the native migration. **Confirmed deltas
+(same rc14 image, same weights, same hardware, both sides):** per-request decode
+medians rose from 112.07 → 149.02 tok/s at the 4K target (+33.0%), 96.17 →
+125.03 at 120K (+30.0%), 102.42 → 124.46 at 262K (+21.5%), and 99.79 → 120.29
+at 380K (+20.5%); the 60-sample endurance lane rose 102.19 → 142.64 tok/s
+(+39.5%). Time-to-first-token at the 4K target fell from 0.178 s to 0.123 s
+median, with the p95 pair at 0.193 s → 0.129 s; long-context TTFT stayed
+prefill-bound and effectively unchanged (effective prefill ±2.3%). The
+v0.4.3 runtime then added the capacity gains on top: the 524,288-token shared
+pool with C4 four-request scheduling in place of C1 serialization, stock
+template support for `enable_thinking=false`, and host-IPC deployment parity.
+After promotion, the transition's final axis was restored: GPU peer-to-peer.
+The two RTX PRO 6000 Max-Q cards share one PCIe host bridge (no NVLink on
+Max-Q) and the driver reports bidirectional PCIe P2P OK; WSL2 could not use it
+(the translated-IOMMU diagnosis). The 2026-09-08 comparison therefore
+deliberately ran with `NCCL_P2P_DISABLE=1` on both sides — its deltas are the
+OS-migration effect alone. The P2P axis was then restored and measured separately: the
+2026-09-09 authorized transport A/B re-enabled NCCL P2P on the native recipe
+with matched evidence (4K n=12: median TTFT −9.0%, E2E −7.4%; 120K n=3:
+TTFT −8.9%) and retained it as the default. The live v0.4.3 serving adds the
+FlashInfer PCIe IPC all-reduce on top of that transport (startup proof
+2026-09-11 09:45 UTC, `max_numel=786432`, custom all-reduce disabled in its
+favor); that layer currently runs untuned seed configurations per the engine
+log, so the FlashInfer workspace tune and a dedicated IPC all-reduce
+measurement are the recorded follow-up.
+
+**Reported experience:** the served v0.4.3 configuration is the operator's
+daily driver for agentic coding sessions, long-document review, and routed tool
+work through the Capability Gateway, with dependable day-to-day response
+quality, tool calling, and long-context behavior since the promotion gate.
+The operator further reports it as probably the strongest model they have used
+for this work — the first local configuration where the routine hard parts of
+agentic work complete locally, with escalation to the remote lead models
+becoming the exception for genuinely novel problems rather than the normal
+unblocking step. This is subjective operator experience with no escalation-rate
+metric behind it; it is recorded here because it is the qualification
+program's purpose outcome, and it should be re-examined as v0.4.3 operational
+traffic accumulates in Grafana.
+
+**Limits:** the deltas are local whole-stack measurements from the
+[2026-09-08 controlled comparison](../../findings/2026-09-08-glm53-linux-wsl-comparison.md)
+— not a universal Linux speedup claim. The Grafana/Prometheus operational
+scrape (started 2026-09-09 09:52 UTC) covers the final WSL2 serving window
+through the 2026-09-11 07:50–08:10 UTC cutover: on real agent traffic the
+WSL2 baseline recorded TTFT median 0.49 s / p95 0.53 s and an engine
+inter-token gap of 6.0 ms median over about 185 scrape windows, while the
+native-era live window holds only the qualification campaign's traffic
+(TTFT p95 0.16 s, inter-token 5.9 ms median, about 30 minutes of samples),
+so like-for-like operational era comparison needs more accumulated v0.4.3
+traffic; the confirmed cross-era deltas remain the controlled A/B. Subjective
+quality judgments remain operator experience; the measured record above and in
+the linked dated findings remains the decision evidence for any configuration
+change.
+
 #### 2026-08-29 — initial Cardillo/Purtell qualification
 
 The `brandonmusic/GLM-5.3-Flash-tr3-4bpw` 262K/524K campaign remains retained

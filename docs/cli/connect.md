@@ -401,3 +401,25 @@ produces a no-write plan for one browser resource and the existing Observatory
 canonical origin. It verifies native passthrough and path compatibility. The plan
 preserves native login, session, CSRF, and action authorization; it does not perform
 a public cutover or establish public reachability.
+
+## Edge status
+
+`connect edge-status --manifest /absolute/deployment.json --edge-config /absolute/edge-cloudflare.json`
+compares the resources declared in the deployment manifest with the live
+Cloudflare state: the required CNAME record per published host, the required
+tunnel ingress rule per host, and the tunnel's connector status. Hosts outside
+the configured zone are rejected. Read-only; the API token is read from the
+environment reference named in the edge configuration and never appears in
+output.
+
+## Edge apply
+
+`connect edge-apply --manifest /absolute/deployment.json --edge-config /absolute/edge-cloudflare.json --confirm`
+applies exactly the declared difference through the Cloudflare API: the tunnel
+ingress rules are merged (managed hosts first, foreign rules preserved, the
+catch-all kept last) and the DNS records are created or updated in place.
+Ingress rules for hosts that the manifest does not declare are preserved
+untouched. A repeated apply converges without API writes, and the apply
+verifies the tunnel is reporting an active connector before it reports
+success. Without `--confirm` the command prints the same plan and changes
+nothing.

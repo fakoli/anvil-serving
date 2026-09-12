@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-connect.edge-publishing/v1",
+  "account_id": "023e105f4ecef8ad9ca31a8372d0c353",
+  "zone_name": "example.test",
+  "tunnel_id": "f1ba9e58-8f7b-4d6c-9a21-c0ffee424242",
+  "api_token_env": "ANVIL_CLOUDFLARE_API_TOKEN",
+  "origin_service": "https://127.0.0.1:19443",
+  "ca_pool": "/etc/cloudflared/example-connect-ca.pem",
+  "origin_server_name": "connect.example.test"
+}
