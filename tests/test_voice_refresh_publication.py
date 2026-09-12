@@ -27,7 +27,7 @@ def test_artifact_manifest_binds_all_retained_files():
             raw = path.read_bytes()
             assert len(raw) == item["bytes"]
             assert hashlib.sha256(raw).hexdigest() == item["sha256"]
-    retained = {str(path.relative_to(BUNDLE)) for path in BUNDLE.rglob("*") if path.is_file()}
+    retained = {path.relative_to(BUNDLE).as_posix() for path in BUNDLE.rglob("*") if path.is_file()}
     assert bound == retained - {"artifact-manifest.json", "artifact-manifest-source.json"}
 
 
