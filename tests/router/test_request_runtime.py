@@ -405,12 +405,14 @@ def test_worker_cleanup_failure_does_not_prevent_permit_release():
     worker.close()
 
 
-def test_client_disconnect_interrupts_silent_upstream_and_releases_admission_once():
-    settings = ServerConfig(startup_timeout_s=1, idle_timeout_s=1, total_timeout_s=2,
+@pytest.mark.parametrize("stream", (False, True))
+def test_client_disconnect_interrupts_silent_upstream_and_releases_admission_once(stream):
+    # Cleanup must beat both the backend silence and the configured deadline.
+    settings = ServerConfig(startup_timeout_s=10, idle_timeout_s=10, total_timeout_s=20,
                             heartbeat_interval_s=0.02)
     with _Upstream() as upstream, _gateway(upstream, settings, max_concurrency=1) as ((host, port), routing):
         client = socket.create_connection((host, port), timeout=1)
-        _post(client)
+        _post(client, stream=stream)
         assert upstream.opened.wait(1)
         linger_format = "HH" if os.name == "nt" else "ii"
         client.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack(linger_format, 1, 0))

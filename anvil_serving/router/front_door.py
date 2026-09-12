@@ -2300,8 +2300,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         self._anvil_delivery_outcome = WorkloadOutcome.DISCONNECTED
                     else:
                         self._workload_render_error()
-                self._log_inference_failure(getattr(exc, "status", 500),
-                    exc.code if isinstance(exc, RequestControlError) else "request failed", exc)
+                # Pre-header typed rejections are logged by their response helper
+                # with the actual HTTP status, not an additional generic 500.
+                if headers_sent or not isinstance(exc, (NoAvailableTierError, BackendClientError)):
+                    self._log_inference_failure(getattr(exc, "status", 500),
+                        exc.code if isinstance(exc, RequestControlError) else "request failed", exc)
                 if headers_sent:
                     error_frame = getattr(dialect, "stream_error", None)
                     if callable(error_frame):
