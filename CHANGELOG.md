@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-12
+
+### Fixed
+
+- Windows client cancellation closes the upstream socket handle so blocked reads
+  release admission promptly; buffered cancellation retains its correct diagnosis.
+- Managed chat rejections log once with their actual HTTP status, instead of
+  producing a misleading 500 before the real 413, 503, or upstream 4xx.
+- Router diagnostics identify context admission rejection as not attempted
+  upstream and distinguish serialized request size from client context estimates.
+
+The companion built-in Pi compaction pruning fix ships in Anvil Extensions
+0.7.1; upgrading the router alone does not change Pi's compaction inputs.
+
 ## [1.2.0] - 2026-09-12
 
 ### Added
@@ -2494,7 +2508,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/fakoli/anvil-serving/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/fakoli/anvil-serving/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fakoli/anvil-serving/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fakoli/anvil-serving/compare/v0.36.0...v1.0.0

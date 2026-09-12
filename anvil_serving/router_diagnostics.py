@@ -275,11 +275,14 @@ def diagnose_record(record: Mapping, *, active: bool = False) -> dict:
     if ongoing:
         observations.append("waiting_for_upstream_activity")
         checks.append("wait_for_current_phase_or_terminal_outcome")
+    elif not succeeded and reason in {"over_context", "media_admission_context_limit"}:
+        upstream_outcome = "not_attempted"
+        observations.append("request_rejected_over_context")
+        checks.extend(("check_request_context_and_media_limits",
+                       "compare_serialized_request_with_client_context_estimate"))
     elif not succeeded:
         observations.append("request_failed")
-        if reason in {"over_context", "media_admission_context_limit"}:
-            checks.append("check_request_context_and_media_limits")
-        elif reason in {"quiesced", "unavailable", "upstream_metadata_unavailable", "backend_unbound"}:
+        if reason in {"quiesced", "unavailable", "upstream_metadata_unavailable", "backend_unbound"}:
             checks.append("check_selected_tier_readiness_and_admission")
         elif reason == "client_disconnected":
             checks.append("check_client_timeout_or_cancellation")

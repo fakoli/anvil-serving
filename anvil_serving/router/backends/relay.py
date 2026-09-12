@@ -127,12 +127,23 @@ def _interrupt_response(response: Any) -> None:
     down the socket and never calls generator ``close`` concurrently.
     """
     sock = getattr(getattr(getattr(response, "fp", None), "raw", None), "_sock", None)
+    _interrupt_socket(sock)
+
+
+def _interrupt_socket(sock: Any) -> None:
     shutdown = getattr(sock, "shutdown", None)
     if callable(shutdown):
         try:
             shutdown(socket.SHUT_RDWR)
         except OSError:
             pass
+    # Winsock shutdown does not wake an already blocked read. A makefile keeps
+    # socket.close() deferred; detach transfers the handle so its final close
+    # interrupts I/O without a later reader cleanup closing a reused handle.
+    if os.name == "nt" and isinstance(sock, socket.socket):
+        handle = sock.detach()
+        if handle != -1:
+            socket.close(handle)
 
 
 def _set_response_timeout(response: Any, timeout: float) -> None:
@@ -151,12 +162,7 @@ def _control_timeout(timeout: float, control: Optional[RequestControl]) -> float
 
 def _interrupt_connection(connection: http.client.HTTPConnection) -> None:
     sock = getattr(connection, "sock", None)
-    shutdown = getattr(sock, "shutdown", None)
-    if callable(shutdown):
-        try:
-            shutdown(socket.SHUT_RDWR)
-        except OSError:
-            pass
+    _interrupt_socket(sock)
     closer = getattr(connection, "close", None)
     if callable(closer):
         closer()
@@ -909,6 +915,7 @@ class RelayBackend:
                 f"{self._max_response_bytes} (tier={self._tier.id!r})"
             )
         if control is not None:
+            control.check_upstream()
             control.note_activity("streaming")
         # Populate structured side channel BEFORE text extraction so the
         # thread-local is always set (even if _extract_text() raises). The
