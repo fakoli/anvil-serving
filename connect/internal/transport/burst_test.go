@@ -229,11 +229,17 @@ func TestSharedConnectionRetiresOnAuthorityRevocation(t *testing.T) {
 			t.Fatalf("revoked burst returned %d; want prompt failure, never stale-pool success", code)
 		}
 	}
-	if envelope.gated.closes.Load()-closedBefore == 0 {
-		t.Fatal("revocation retired no pooled connection")
-	}
 	if live := trackedConns(t, d, "router"); len(live) != 0 {
 		t.Fatalf("%d connections still tracked after revocation", len(live))
+	}
+	// Client retirement is synchronous; the server observes EOF and closes
+	// its accepted socket on a separate goroutine. Wait only for that witness.
+	deadline := time.Now().Add(2 * time.Second)
+	for envelope.gated.closes.Load() == closedBefore && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if envelope.gated.closes.Load() == closedBefore {
+		t.Fatal("server did not observe a retired pooled connection")
 	}
 
 	// Restore authority: a fresh dial must succeed and re-pool.
