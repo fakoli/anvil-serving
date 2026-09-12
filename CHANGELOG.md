@@ -6,6 +6,34 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-12
+
+### Added
+
+- Router diagnostics expose active request phases, admission wait, stream activity,
+  token/cache/context measurements, and bounded session history across restarts.
+- Configurable admission, startup, idle, and total deadlines, SSE heartbeats,
+  cancellation cleanup, retry hints, and credential-derived client concurrency limits.
+- Normalized serving metrics for SGLang, vLLM, and llama.cpp, with optional
+  metadata-only OTLP export. Engine metadata never selects or substitutes a route.
+- Pi session correlation and documented Hermes/OpenClaw request and session-header
+  contracts. Unmodified Hermes/OpenClaw clients remain request-diagnosable; dynamic
+  session grouping requires per-session headers.
+- Managed Pi Web browser sessions and Anvil Connect resource extension for declared
+  local browser applications, with a documented Cloudflare edge boundary.
+
+### Fixed
+
+- Client disconnects produce concise request-linked router events instead of
+  uncaught BrokenPipe tracebacks.
+- Buffered HTTP responses respect Content-Length on Python 3.11 keep-alive
+  connections instead of waiting for connection closure.
+- Automatic concurrency polling prefers the supported `/server_info` endpoint,
+  retaining the legacy endpoint only as a compatibility fallback.
+- Active diagnostics distinguish ongoing requests from failures; session history
+  respects its HTTP response envelope and versioned engine names normalize correctly.
+
+
 ## [1.1.0] - 2026-09-11
 
 ### Added
@@ -2463,7 +2491,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/fakoli/anvil-serving/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fakoli/anvil-serving/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fakoli/anvil-serving/compare/v0.36.0...v1.0.0
 [0.36.0]: https://github.com/fakoli/anvil-serving/compare/v0.35.1...v0.36.0
