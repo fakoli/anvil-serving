@@ -1289,10 +1289,10 @@ class RelayBackend:
         # genericity:T003 -- see the Anthropic branch above for the rationale.
         # extra_body_defaults are SOFT (the request wins); extra_body is the HARD override.
         self._apply_tier_extra_body(body)
-        if self._tier.strip_reasoning_history:
+        if self._tier.strip_reasoning_history and isinstance(body.get("messages"), list):
             messages = []
             for message in body["messages"]:
-                if message.get("role") == "assistant":
+                if isinstance(message, Mapping) and message.get("role") == "assistant":
                     fields = ("reasoning_content", "reasoning", "reasoning_text")
                     had_reasoning = any(key in message for key in fields)
                     message = {key: value for key, value in message.items() if key not in fields}

@@ -76,6 +76,14 @@ def test_legacy_function_calls_and_opaque_reasoning_are_preserved():
     assert all("reasoning_content" not in m for m in body["messages"])
 
 
+@pytest.mark.parametrize("messages", [None, {"custom": "override"}, [None, "invalid"]])
+def test_history_policy_preserves_existing_extra_body_override_contract(messages):
+    request = OpenAIDialect().parse_request({"model": "llm.primary", "messages": [{"role": "user", "content": "Hi"}]})
+    body = RelayBackend(tier(strip_reasoning_history=True, extra_body={"messages": messages}),
+                        env={})._build_body(request)
+    assert body["messages"] == messages
+
+
 @pytest.mark.parametrize("stream", [False, True])
 def test_chat_only_policy_reaches_wire_and_preserves_new_reasoning(stream):
     messages = [{"role": "user", "content": "Continue."},
