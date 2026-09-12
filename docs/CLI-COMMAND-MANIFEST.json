@@ -7659,6 +7659,33 @@
         },
         {
           "flags": [
+            "--session-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Opaque session identifier to filter retained or active requests.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--active"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Read current active requests, optionally filtered by session.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Saved diagnostic connection settings; defaults to operator home.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
             "--router-url"
           ],
           "output_policy": null,
@@ -7691,7 +7718,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": null,
-      "summary": "Explain one request from bounded router evidence without replaying it.",
+      "summary": "Inspect active requests or retained request/session evidence without replaying it.",
       "transports": [],
       "visible": true
     },

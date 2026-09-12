@@ -57,6 +57,8 @@ from .audio import (
     audio_purpose_for_path,
 )
 from .config import PURPOSE_EMBEDDING, PURPOSE_RERANK
+from .front_door_runtime import ClientAdmission, DeliveryWorker
+from .request_control import RequestControl, RequestControlError, RequestDeadlineExceeded
 from .decision_log import safe_correlation, summarize_decisions
 from .dialects import Dialect
 from .dialects.anthropic import AnthropicDialect
@@ -80,6 +82,7 @@ from .purpose import PurposeError, PurposeRouter
 from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
 from ..control_plane.authorization import (
     AuthorizationPolicy,
+    INFERENCE_USE,
     WORKLOADS_READ,
     check_scope,
 )
@@ -366,6 +369,7 @@ def _correlation_from_headers(headers) -> dict:
         "workbench_run_id": headers.get("X-Anvil-Workbench-Run-Id"),
         "task_id": headers.get("X-Anvil-Task-Id"),
         "request_id": headers.get("X-Request-Id") or headers.get("Request-Id"),
+        "session_id": headers.get("X-Anvil-Session-Id") or headers.get("X-Session-Affinity"),
     }
     return {key: value for key, raw in values.items() if (value := safe_correlation(raw)) is not None}
 
@@ -417,7 +421,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   operator_routes: Sequence[OperatorRoute] | None = None,
                   workload_host: Optional[str] = None,
                   workload_registry=None,
-                  workload_clock: Optional[Callable[[], datetime]] = None):
+                  workload_clock: Optional[Callable[[], datetime]] = None,
+                  server_config=None):
+    client_admission = ClientAdmission(server_config.client_limits if server_config else {})
     operator_route_map = {
         (route.method, route.path): route
         for route in _validated_operator_routes(operator_routes)
@@ -463,6 +469,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_workload_stream = None
             self._anvil_delivery_outcome = None
             self._anvil_request_started = time.monotonic()
+            self._anvil_client_id = None
+            self._anvil_client_budget_held = False
+            self._anvil_worker = None
 
         def _generate_deltas(self, request):
             """Retain delivery ownership before eager routing can fail."""
@@ -484,6 +493,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def _start_request_correlation(self) -> None:
             """Stamp one authenticated inference request with trusted lineage."""
             self._anvil_correlation = _new_request_correlation(self.headers)
+            if self._anvil_client_id:
+                self._anvil_correlation["client_id"] = self._anvil_client_id
 
         def _correlation_headers(self) -> dict[str, str]:
             correlation = getattr(self, "_anvil_correlation", None)
@@ -569,9 +580,25 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             supplied = _extract_bearer_token(self.headers)
             if supplied is None:
                 return False
-            return hmac.compare_digest(
+            if hmac.compare_digest(
                 supplied.encode("utf-8"), auth_token.encode("utf-8")
-            )
+            ):
+                self._anvil_client_id = "_legacy"
+                return True
+            path = self.path.split("?", 1)[0].rstrip("/")
+            required = None
+            if (self.command == "POST" and path in _ROUTES or
+                    self.command == "GET" and path in {
+                        "/v1/models", "/v1/models/capabilities", "/v1/models/capacity"}):
+                required = INFERENCE_USE
+            elif self.command == "GET" and (path == "/v1/requests" or path.startswith("/v1/requests/")):
+                required = WORKLOADS_READ
+            if required is not None:
+                decision = check_scope(authorization_policy, supplied, required)
+                if decision.allowed:
+                    self._anvil_client_id = decision.client_id
+                    return True
+            return False
 
         def _operator_route(self, method: str) -> Optional[OperatorRoute]:
             path, _, _query = self.path.partition("?")
@@ -1552,6 +1579,42 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         stats,
                         extra_headers={"Cache-Control": "no-store"},
                     )
+                elif route == "/v1/requests":
+                    try:
+                        raw_query = urllib.parse.urlparse(self.path).query
+                        if len(raw_query) > 1024:
+                            raise ValueError("invalid query")
+                        pairs = urllib.parse.parse_qsl(raw_query, keep_blank_values=True, max_num_fields=4)
+                        query = dict(pairs)
+                        if (len(query) != len(pairs) or set(query) - {"session_id", "history", "active", "limit"}
+                                or query.get("history", "0") not in {"0", "1"}
+                                or query.get("active", "0") not in {"0", "1"}
+                                or query.get("history") == query.get("active") == "1"):
+                            raise ValueError("invalid query")
+                        session = query.get("session_id")
+                        if session is not None and (not session or safe_correlation(session) != session):
+                            raise ValueError("invalid session identifier")
+                        limit = int(query.get("limit", "50"))
+                        if not 1 <= limit <= (200 if query.get("active") == "1" else 50):
+                            raise ValueError("invalid limit")
+                        if query.get("active") == "1":
+                            if workload_registry is None:
+                                self._error(503, "workload_source_unavailable", "active requests unavailable")
+                                return
+                            payload = workload_registry.active_requests(session_id=session, limit=limit)
+                        else:
+                            log = getattr(backend, "_decision_log", None)
+                            if log is None:
+                                self._error(503, "history_unavailable", "request history unavailable")
+                                return
+                            payload = log.lookup_history(session_id=session, limit=limit)
+                            if not payload.get("available"):
+                                self._error(503, "history_unavailable", "request history unavailable")
+                                return
+                    except (ValueError, TypeError):
+                        self._error(400, "invalid_request", "invalid request query")
+                        return
+                    self._json(200, payload, extra_headers={"Cache-Control": "no-store"})
                 elif route.startswith(REQUEST_TRACE_PREFIX):
                     request_id = urllib.parse.unquote(
                         route[len(REQUEST_TRACE_PREFIX):]
@@ -1570,6 +1633,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         return
                     try:
                         trace = trace_fn(request_id)
+                    except OSError:
+                        self._error(503, "history_unavailable", "request history unavailable")
+                        return
                     except KeyError:
                         self._error(404, "not_found", "request record not found")
                         return
@@ -1742,11 +1808,28 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 raise
             finally:
                 try:
-                    stream = self._anvil_workload_stream
-                    if stream is not None:
-                        stream.finish_delivery(self._anvil_delivery_outcome)
+                    def finish_delivery():
+                        stream = self._anvil_workload_stream
+                        if stream is not None:
+                            stream.finish_delivery(self._anvil_delivery_outcome)
+                    worker = self._anvil_worker
+                    if worker is not None:
+                        worker.when_finished(finish_delivery)
+                    else:
+                        finish_delivery()
                 finally:
-                    _CONCURRENCY_LIMIT.release()
+                    worker = self._anvil_worker
+                    if self._anvil_client_budget_held:
+                        self._anvil_client_budget_held = False
+                        client_id = self._anvil_client_id
+                        if worker is not None:
+                            worker.when_finished(lambda: client_admission.release(client_id))
+                        else:
+                            client_admission.release(client_id)
+                    if worker is not None:
+                        worker.when_finished(_CONCURRENCY_LIMIT.release)
+                    else:
+                        _CONCURRENCY_LIMIT.release()
 
         def _post_inner(self) -> None:
             """Core POST dispatch, called under the concurrency semaphore."""
@@ -1872,6 +1955,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._flush_closing_response()
                     return
                 raw = self.rfile.read(n) if n else b""
+                if len(raw) != n:
+                    self.close_connection = True
+                    self._error(400, "invalid_request", "incomplete request body", dialect=dialect)
+                    return
                 try:
                     body = json.loads(raw or b"{}")
                 except Exception as e:
@@ -1929,7 +2016,19 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._flush_closing_response()
                 return
 
+            if path in _ROUTES and server_config is not None:
+                if not client_admission.acquire(self._anvil_client_id):
+                    self.close_connection = True  # refused body has not been consumed
+                    self._json(429, dialect.render_error(429, "client_concurrency_exhausted",
+                        "client concurrency budget exhausted"), extra_headers={"Retry-After": "1"})
+                    return
+                self._anvil_client_budget_held = True
+
             raw = self.rfile.read(n) if n else b""  # body drained from here on
+            if len(raw) != n:
+                self.close_connection = True
+                self._error(400, "invalid_request", "incomplete request body", dialect=dialect)
+                return
             try:
                 body = json.loads(raw or b"{}")
             except Exception as e:
@@ -1967,6 +2066,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             request.raw["_anvil_correlation"] = dict(
                 getattr(self, "_anvil_correlation", None) or {}
             )
+
+            # Internal controls are never accepted from caller JSON.
+            request.raw.pop("_anvil_control", None)
+            if server_config is not None:
+                self._write_managed_chat(dialect, request)
+                return
 
             if request.stream:
                 self._write_sse(dialect, request)
@@ -2022,6 +2127,174 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     extra_headers=_output_clamp_headers(request),
                 )
 
+        def _write_managed_chat(self, dialect, request):
+            """Keep transport deadlines independent from SSE keepalive bytes."""
+            sender = None
+            ready_sent = False
+            def activity(phase, _snapshot):
+                nonlocal ready_sent
+                if phase in {"dispatched", "streaming"} and sender is not None and not ready_sent:
+                    ready_sent = True
+                    sender("ready")
+            control = RequestControl(activity_callback=activity,
+                **{key: getattr(server_config, key) for key in (
+                    "admission_timeout_s", "startup_timeout_s", "idle_timeout_s", "total_timeout_s")})
+            request.raw["_anvil_control"] = control
+            requested_model = request.model
+            headers_sent = False
+            chunked = self.request_version >= "HTTP/1.1"
+
+            def operation(send):
+                nonlocal sender
+                sender = send
+                deltas = frames = None
+                try:
+                    deltas = self._generate_deltas(request)
+                    get_structured = getattr(backend, "get_last_structured", None)
+                    if request.stream:
+                        def ready_deltas():
+                            for delta in deltas:
+                                # Injectable backends need not publish phases.
+                                # A real delta proves their admission completed.
+                                if not ready_sent:
+                                    activity("streaming", {})
+                                yield delta
+                        send("started")
+                        frames = iter(dialect.stream(request, ready_deltas(),
+                            get_structured=get_structured if callable(get_structured) else None,
+                            response_model=requested_model))
+                        for frame in frames:
+                            if frame:
+                                send("frame", frame)
+                        # Empty/synthetic backends may never report a phase.
+                        if not ready_sent:
+                            send("ready")
+                    else:
+                        parts = []
+                        for delta in deltas:
+                            if isinstance(delta, ModelDelta):
+                                if delta.text:
+                                    parts.append(delta.text)
+                            elif isinstance(delta, str):
+                                parts.append(delta)
+                            else:
+                                raise TypeError("invalid backend delta")
+                        structured = get_structured() if callable(get_structured) else None
+                        send("payload", dialect.render(request, "".join(parts),
+                            structured=structured, response_model=requested_model))
+                finally:
+                    for generator in (frames, deltas):
+                        close = getattr(generator, "close_upstream", None) or getattr(generator, "close", None)
+                        if callable(close):
+                            close()
+
+            worker = self._anvil_worker = DeliveryWorker(operation, control)
+            heartbeat_at = time.monotonic() + server_config.heartbeat_interval_s
+            connection = getattr(self, "connection", None)
+            previous_timeout = connection.gettimeout() if connection is not None else None
+            pending_frames = []
+
+            def write_frame(frame):
+                remaining = control.remaining_seconds()
+                if connection is not None:
+                    connection.settimeout(min(5.0, max(0.01, remaining)))
+                self.wfile.write((b"%x\r\n" % len(frame) + frame + b"\r\n") if chunked else frame)
+                self.wfile.flush()
+
+            try:
+                while True:
+                    control.check_upstream()
+                    kind, value = worker.poll(timeout=min(0.05, server_config.heartbeat_interval_s / 2))
+                    if workload_registry is not None:
+                        workload_registry.observe_request(
+                            (self._anvil_correlation or {}).get("gateway_request_id"),
+                            self._anvil_correlation or {}, requested_model, control.snapshot())
+                    if kind == "error":
+                        raise value
+                    if kind == "done":
+                        if headers_sent and chunked:
+                            self.wfile.write(b"0\r\n\r\n")
+                            self.wfile.flush()
+                        return
+                    if kind == "ready" and request.stream and not headers_sent:
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/event-stream")
+                        self.send_header("Cache-Control", "no-cache")
+                        for key, val in {**self._correlation_headers(), **_output_clamp_headers(request)}.items():
+                            self.send_header(key, val)
+                        if chunked:
+                            self.send_header("Transfer-Encoding", "chunked")
+                        else:
+                            self.close_connection = True
+                        if self.close_connection:
+                            self.send_header("Connection", "close")
+                        self.end_headers()
+                        self.wfile.flush()
+                        headers_sent = True
+                        for frame in pending_frames:
+                            write_frame(frame)
+                        pending_frames.clear()
+                    elif kind == "frame":
+                        if headers_sent:
+                            write_frame(value)
+                        else:
+                            # Dialect preludes can precede admission. Their
+                            # fixed, local framing must not commit HTTP 200.
+                            if len(pending_frames) >= 16:
+                                raise RuntimeError("excessive stream prelude")
+                            pending_frames.append(value)
+                        heartbeat_at = time.monotonic() + server_config.heartbeat_interval_s
+                    elif kind == "payload":
+                        self._json(200, value, extra_headers=_output_clamp_headers(request))
+                    elif headers_sent and time.monotonic() >= heartbeat_at:
+                        write_frame(b": keepalive\n\n")
+                        heartbeat_at = time.monotonic() + server_config.heartbeat_interval_s
+            except _ClientDisconnected:
+                self._anvil_delivery_outcome = WorkloadOutcome.DISCONNECTED
+                control.cancel()
+                raise
+            except Exception as exc:
+                self.close_connection = True
+                if isinstance(exc, RequestControlError):
+                    self._anvil_delivery_outcome = (
+                        WorkloadOutcome.TIMEOUT if isinstance(exc, RequestDeadlineExceeded)
+                        else WorkloadOutcome.CANCELLED)
+                elif headers_sent and not getattr(self._anvil_workload_stream, "generation_failed", False):
+                    if isinstance(exc, TimeoutError):
+                        self._anvil_delivery_outcome = WorkloadOutcome.TIMEOUT
+                    elif isinstance(exc, OSError):
+                        self._anvil_delivery_outcome = WorkloadOutcome.DISCONNECTED
+                    else:
+                        self._workload_render_error()
+                self._log_inference_failure(getattr(exc, "status", 500),
+                    exc.code if isinstance(exc, RequestControlError) else "request failed", exc)
+                if headers_sent:
+                    error_frame = getattr(dialect, "stream_error", None)
+                    if callable(error_frame):
+                        # A terminal deadline must not prevent writing its error.
+                        if connection is not None:
+                            connection.settimeout(1)
+                        frame = error_frame()
+                        self.wfile.write((b"%x\r\n" % len(frame) + frame + b"\r\n") if chunked else frame)
+                    if chunked:
+                        self.wfile.write(b"0\r\n\r\n")
+                    self.wfile.flush()
+                elif isinstance(exc, NoAvailableTierError):
+                    self._no_tier_response(exc, dialect=dialect)
+                elif isinstance(exc, BackendClientError):
+                    self._backend_client_error(exc, dialect)
+                elif isinstance(exc, RequestControlError):
+                    self._json(getattr(exc, "status", 499), dialect.render_error(
+                        getattr(exc, "status", 499), exc.code, str(exc)),
+                        extra_headers={"Retry-After": "1"} if getattr(exc, "status", 0) == 503 else None)
+                else:
+                    self._workload_render_error()
+                    self._error(500, "internal_error", "internal error", dialect=dialect)
+            finally:
+                worker.close()
+                if connection is not None:
+                    connection.settimeout(previous_timeout)
+
         def log_message(self, *args) -> None:  # keep the server quiet
             pass
 
@@ -2043,6 +2316,7 @@ def make_server(host: str, port: int,
                 workload_host: Optional[str] = None,
                 workload_registry=None,
                 workload_clock: Optional[Callable[[], datetime]] = None,
+                server_config=None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -2083,6 +2357,7 @@ def make_server(host: str, port: int,
             backend, timeout, model_routes, exhaustion_status, auth_token,
             purpose, audio, gateway, authorization_policy, validated_operator_routes,
             workload_host, workload_registry, workload_clock,
+            server_config,
         ),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown

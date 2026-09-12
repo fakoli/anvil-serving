@@ -80,6 +80,48 @@ def test_current_status_failure_retains_historical_request_evidence():
     assert result["request"]["outcome"] == "succeeded"
 
 
+def test_session_history_uses_the_bounded_metadata_endpoint():
+    item = record(session_id="session-a", client_id="client-a", cache_read_input_tokens=7,
+                  admission_wait_ms=3, config_sha256="a" * 64, router_version="1.2.3")["record"]
+    payload = {
+        "object": "router_request_history", "scope": "decision_log_jsonl",
+        "session_id": "session-a", "records": [item], "truncated": False,
+    }
+    with endpoint({"/v1/requests?session_id=session-a&history=1": (200, payload)}) as (url, calls):
+        result = diagnostics.diagnose_session("session-a", router_url=url, token="test-credential")
+    assert [call[:2] for call in calls] == [("GET", "/v1/requests?session_id=session-a&history=1")]
+    request = result["requests"][0]
+    assert request["session_id"] == "session-a"
+    assert request["cache_read_input_tokens"] == 7
+    assert request["request_router"] == {"config_sha256": "a" * 64, "version": "1.2.3"}
+
+
+def test_active_diagnosis_allows_an_unfiltered_snapshot_and_preserves_phase_fields():
+    payload = {
+        "object": "router_request_history", "scope": "active_workload_buffer", "records": [{
+            "gateway_request_id": "req_" + "a" * 32, "session_id": "session-a", "client_id": "client-a",
+            "route": "llm.primary", "state": "admitted", "phase": "queued",
+            "elapsed_ms": 7, "last_activity_ms": 2, "admission_wait_ms": 3,
+            "context_limit_tokens": 8192,
+            "created_at": "2026-09-12T00:00:00.000000Z",
+        }], "truncated": False,
+    }
+    with endpoint({"/v1/requests?active=1": (200, payload)}) as (url, _):
+        result = diagnostics.diagnose_session(router_url=url, token="test-credential", active=True)
+    active = result["requests"][0]["active"]
+    assert active == {"state": "admitted", "phase": "queued", "elapsed_ms": 7,
+                      "last_activity_ms": 2, "created_at": "2026-09-12T00:00:00.000000Z",
+                      "estimated_input_tokens": None, "input_tokens": None,
+                      "context_limit_tokens": 8192,
+                      "output_tokens": None, "cache_read_input_tokens": None}
+
+
+def test_cli_rejects_request_id_with_active_snapshot():
+    result = diagnostics.dispatch(["--request-id", "req_123", "--active"])
+    assert result.exit_code != 0
+    assert "cannot be combined" in result.human_stderr
+
+
 @pytest.mark.parametrize("status,expected", [(401, "router_access_denied"), (403, "router_access_denied"), (404, "request_not_found"), (500, "router_http_error"), (302, "router_http_error")])
 def test_errors_are_content_free_and_redirects_never_receive_credentials(status, expected):
     with endpoint({"/v1/requests/req_123": (status, {"error": "PRIVATE-RESPONSE"})}) as (url, calls):
@@ -253,9 +295,97 @@ def test_real_gateway_relay_lookup_and_diagnosis_share_generated_identity():
 
 
 def test_cli_returns_structured_error_and_exposes_declared_help(monkeypatch, capsys):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", "/tmp/anvil-serving-diagnostics-test-empty")
     monkeypatch.delenv("ANVIL_ROUTER_TOKEN", raising=False)
     assert cli.main(["router", "diagnose", "--request-id", "req_123", "--json"]) != 0
     output = json.loads(capsys.readouterr().out)
     assert output["error"]["code"] == "router_credential_required"
     assert cli.main(["router", "diagnose", "--help"]) == 0
     assert "--request-id" in capsys.readouterr().out
+
+
+def _dispatch_result():
+    return {
+        "request": {
+            "gateway_request_id": "req_123", "request_id": None, "outcome": "succeeded",
+            "route": "llm.primary", "requested_tier": "primary-local",
+            "timing": {}, "finish_reason": None,
+            "usage": {"prompt_tokens": None, "completion_tokens": None,
+                      "prompt_source": "unknown", "completion_source": "unknown"},
+            "output_limit": {"clamped": False}, "next_checks": [],
+        },
+    }
+
+
+def test_cli_missing_default_config_keeps_existing_defaults(monkeypatch, tmp_path):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "empty-home"))
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "process-token")
+    captured = {}
+    monkeypatch.setattr(diagnostics, "diagnose_request", lambda request_id, **kwargs: (
+        captured.update(request_id=request_id, **kwargs) or _dispatch_result()
+    ))
+    result = diagnostics.dispatch(["--request-id", "req_123"])
+    assert result.exit_code == 0
+    assert captured == {"request_id": "req_123", "router_url": "http://127.0.0.1:8000",
+                        "token": "process-token", "timeout": 5.0}
+
+
+def test_cli_loads_credential_only_from_explicitly_configured_env_file(monkeypatch, tmp_path):
+    config = tmp_path / "router-diagnostics.toml"
+    credential = tmp_path / "diagnostics.env"
+    config.write_text(
+        'router_url = "http://127.0.0.1:8111"\nauth_env = "DIAGNOSTIC_TOKEN"\n'
+        'credential_env_file = "diagnostics.env"\ntimeout = 2.5\n', encoding="utf-8",
+    )
+    credential.write_text("DIAGNOSTIC_TOKEN=file-only-token\n", encoding="utf-8")
+    monkeypatch.delenv("DIAGNOSTIC_TOKEN", raising=False)
+    captured = {}
+    monkeypatch.setattr(diagnostics, "diagnose_request", lambda request_id, **kwargs: (
+        captured.update(request_id=request_id, **kwargs) or _dispatch_result()
+    ))
+    result = diagnostics.dispatch(["--config", str(config), "--request-id", "req_123"])
+    assert result.exit_code == 0
+    assert captured == {"request_id": "req_123", "router_url": "http://127.0.0.1:8111",
+                        "token": "file-only-token", "timeout": 2.5}
+    assert "file-only-token" not in (result.human_stdout + result.human_stderr)
+
+
+def test_cli_and_process_settings_override_diagnostics_config(monkeypatch, tmp_path):
+    config = tmp_path / "router-diagnostics.toml"
+    credential = tmp_path / "diagnostics.env"
+    config.write_text(
+        'router_url = "http://127.0.0.1:8111"\nauth_env = "FILE_TOKEN"\n'
+        'credential_env_file = "diagnostics.env"\ntimeout = 2.5\n', encoding="utf-8",
+    )
+    credential.write_text("FILE_TOKEN=file-token\n", encoding="utf-8")
+    monkeypatch.setenv("ANVIL_ROUTER_URL", "http://127.0.0.1:8222")
+    monkeypatch.setenv("CLI_TOKEN", "process-token")
+    captured = {}
+    monkeypatch.setattr(diagnostics, "diagnose_request", lambda request_id, **kwargs: (
+        captured.update(request_id=request_id, **kwargs) or _dispatch_result()
+    ))
+    result = diagnostics.dispatch([
+        "--config", str(config), "--request-id", "req_123", "--router-url", "http://127.0.0.1:8333",
+        "--auth-env", "CLI_TOKEN", "--timeout", "3.5",
+    ])
+    assert result.exit_code == 0
+    assert captured == {"request_id": "req_123", "router_url": "http://127.0.0.1:8333",
+                        "token": "process-token", "timeout": 3.5}
+
+
+@pytest.mark.parametrize("body", [
+    'unknown = "value"\n',
+    'router_url = 7\n',
+    'auth_env = "invalid-name"\n',
+    'credential_env_file = "~/.env"\n',
+    'timeout = 31\n',
+    '[nested]\nvalue = "unsupported"\n',
+])
+def test_cli_malformed_diagnostics_config_fails_closed(tmp_path, body):
+    config = tmp_path / "router-diagnostics.toml"
+    config.write_text(body, encoding="utf-8")
+    result = diagnostics.dispatch(["--config", str(config), "--request-id", "req_123"])
+    assert result.exit_code != 0
+    assert result.error is not None
+    assert result.error.code == "router_diagnostics_config_invalid"
+    assert str(config) not in result.human_stderr

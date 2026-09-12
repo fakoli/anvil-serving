@@ -9,6 +9,7 @@ const policy = JSON.parse(raw);
 const digest = crypto.createHash('sha256').update(raw).digest('hex');
 const secret = fs.readFileSync(process.argv[4] || '/policy/credential', 'utf8').trim();
 if (!secret || /[\r\n]/.test(secret)) throw Error('Invalid provider credential');
+if (!/^[a-f0-9]{32}$/.test(policy.session_id || '')) throw Error('Invalid Pi session identity');
 const chosen = policy.targets[0];
 const suffix = {'openai-completions':'/chat/completions','openai-responses':'/responses','anthropic-messages':'/messages'}[policy.api];
 if (!suffix || policy.targets.length !== 1) throw Error('Unsupported gateway policy');
@@ -46,6 +47,7 @@ const server = http.createServer({maxHeaderSize:16384}, (req, res) => {
     if (!['max_tokens','max_completion_tokens','max_output_tokens'].some(k => k in body)) body[policy.api === 'openai-responses' ? 'max_output_tokens' : 'max_tokens'] = policy.max_tokens;
     const encoded = Buffer.from(JSON.stringify(body));
     const headers = {'content-type':'application/json', 'content-length':encoded.length, host:chosen.hostname + (chosen.port === 443 ? '' : ':' + chosen.port)};
+    headers['x-anvil-session-id'] = policy.session_id;
     if (policy.api === 'anthropic-messages') { headers['x-api-key'] = secret; headers['anthropic-version'] = '2023-06-01'; }
     else headers.authorization = 'Bearer ' + secret;
     active++;

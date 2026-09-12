@@ -49,7 +49,7 @@ def test_real_node_gateway_restricts_requests_and_injects_only_server_credential
         allocator.bind(("127.0.0.1", 0)); port = allocator.getsockname()[1]
     # Test-only direct policy uses loopback HTTP. Operator configuration requires HTTPS.
     policy = tmp_path / "allowlist.json"
-    policy.write_text(json.dumps({"api":"openai-completions", "base_path":"/v1", "models":["allowed-model"], "max_tokens":100, "targets": [{"scheme": "http", "hostname": "allowed.invalid", "port": fixture.server_port, "addresses": ["127.0.0.1"]}]}))
+    policy.write_text(json.dumps({"api":"openai-completions", "base_path":"/v1", "models":["allowed-model"], "max_tokens":100, "session_id":"a" * 32, "targets": [{"scheme": "http", "hostname": "allowed.invalid", "port": fixture.server_port, "addresses": ["127.0.0.1"]}]}))
     secret = tmp_path / "credential"; secret.write_text("provider-private-secret")
     source = Path(__file__).resolve().parents[2] / "pi_runner" / "proxy.cjs"
     process = subprocess.Popen([node, str(source), str(policy), str(port), str(secret)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -79,6 +79,7 @@ def test_real_node_gateway_restricts_requests_and_injects_only_server_credential
             conn.close()
         assert len(hits) == 1
         assert hits[0][1]["authorization"] == "Bearer provider-private-secret"
+        assert hits[0][1]["x-anvil-session-id"] == "a" * 32
         assert "x-api-key" not in hits[0][1]
         assert hits[0][2]["max_tokens"] == 40
     finally:
@@ -97,7 +98,7 @@ def test_network_identity_is_session_unique_and_extra_peer_is_rejected(tmp_path)
     assert egress.record_path('provider', 'a'*32) != egress.record_path('provider', 'b'*32)
     egress.root.mkdir()
     key = 'a'*32
-    policy = egress.root / ('provider--'+key+'-allowlist.json'); policy.write_bytes(_encoded({'models':['model']}))
+    policy = egress.root / ('provider--'+key+'-allowlist.json'); policy.write_bytes(_encoded({'models':['model'], 'session_id':key}))
     digest = hashlib.sha256(policy.read_bytes()).hexdigest()
     record = {'provider':'provider', 'origins':config['provider_egress']['provider'], 'network':'isolated-pi-session', 'network_id':'network-id', 'proxy':'anvil-proxy', 'proxy_id':'proxy-id', 'image':config['image'], 'session_id':key, 'runner_name':'anvil-pi-owned', 'secret_path':'/private/credential', 'policy_path':str(policy), 'digest':digest, 'suffix':'suffix', 'health':'health'}
     egress.record_path('provider', key).write_bytes(_encoded(record))
@@ -114,6 +115,10 @@ def test_network_identity_is_session_unique_and_extra_peer_is_rejected(tmp_path)
         return proxy
     egress._inspect = inspect
     assert egress.verify('provider',session_id=key)['network_id'] == 'network-id'
+    policy.write_bytes(_encoded({'models':['model'], 'session_id':'b' * 32}))
+    with pytest.raises(PiEgressError, match='allowlist'):
+        egress.verify('provider',session_id=key)
+    policy.write_bytes(_encoded({'models':['model'], 'session_id':key}))
     network['Containers']['peer-id']={'Name':'anvil-pi-other'}
     with pytest.raises(PiEgressError, match='unrelated peer'):
         egress.verify('provider',session_id=key)
@@ -147,3 +152,4 @@ def test_gateway_creation_intent_precedes_engine_mutations(tmp_path, monkeypatch
     with pytest.raises(PiEgressError,match='interrupted creation'):
         egress.setup('provider',confirm=True,session_id='a'*32,runner_name='anvil-pi-'+'b'*20)
     assert egress.record_path('provider','a'*32).is_file()
+    assert json.loads((egress.root / ('provider--' + 'a' * 32 + '-allowlist.json')).read_text())['session_id'] == 'a' * 32
