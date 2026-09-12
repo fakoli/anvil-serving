@@ -313,23 +313,23 @@
         },
         {
           "path": "finalist-k12-chunk1k-4k-c8-canary-long256-n100.json",
-          "sha256": "5d2425e52003462cd0b4d2389fe4388c86b74bf042331688c7c19d62645ba596",
-          "bytes": 89231
+          "sha256": "df868e28df0b8ae38ad985368e3d7423977f555b9994c9309d659bb5d55ed9b8",
+          "bytes": 89232
         },
         {
           "path": "finalist-k12-chunk1k-4k-c8-canary-long256-n8.json",
-          "sha256": "878443bbe488e9fa28b93432c2729568bb619bc6a92af0a0cc87277c09820a3b",
-          "bytes": 13077
+          "sha256": "fc6394df26dcb1851643d7c95081a5b3511e9cc63e2b3135bfb1f35765bccbba",
+          "bytes": 13078
         },
         {
           "path": "finalist-k12-chunk1k-4k-c8-n100.json",
-          "sha256": "371502abddfbbdb6860d9e79f1df08004f09639f8f02131b24067fc52b0ce685",
-          "bytes": 69350
+          "sha256": "c328163229e2a4a0fad46c76f0d07f289ccf3dfd1bed3b1b5e19b0e7f48efa30",
+          "bytes": 69351
         },
         {
           "path": "finalist-k12-chunk1k-82k-c8-n8.json",
-          "sha256": "c23cc17e41a57afe66c794ccc3cc500ae7003ba1592b0fd84537a757f02022c0",
-          "bytes": 11305
+          "sha256": "4acf507ad5c2b22a583abd1fa9e195255bee388b7ecfb324a19dba3cf41efe4e",
+          "bytes": 11306
         },
         {
           "path": "finalist-k12-chunk1k-preflight.json",
@@ -338,43 +338,43 @@
         },
         {
           "path": "kelnei-vllm0271-mtp2-32k-c1.json",
-          "sha256": "b96dac5ea4e71407e208b96a8da7181801d363c38f94a8cb38ef6eb0027928a5",
-          "bytes": 14233
+          "sha256": "80b84afb5d5de30725fcc6350596f5776f457ac7b2f59a4780f791e5f02bbd60",
+          "bytes": 14234
         },
         {
           "path": "kelnei-vllm0271-mtp2-4k-c1.json",
-          "sha256": "f0a0f4686f6183c9a1049c92688ddc571b16115b45c42b60c68a519e01fc1d67",
-          "bytes": 19813
+          "sha256": "99cdff260ff948a8ad7ad2fbdf62769269517eae95afbdfee1650905182b2432",
+          "bytes": 19814
         },
         {
           "path": "kelnei-vllm0271-mtp2-4k-c4.json",
-          "sha256": "e7919ee4c6f9fbe49f3b7527f99769913e078aa2019fda603dc5553900b0b9ee",
-          "bytes": 19818
+          "sha256": "0524dc039a7dd9f170804015e9bf65229db01e27cb2673b35b6fd11181e897de",
+          "bytes": 19819
         },
         {
           "path": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n100.json",
-          "sha256": "8bce32e0bdae52c99c500f877014af7baca44227c167a35f5f889892e26ff521",
-          "bytes": 89248
+          "sha256": "4e81ab5f553dda7eea2aa5f2fe1d9553f0815b3fa64edadf21dd5f085dd6a4b1",
+          "bytes": 89249
         },
         {
           "path": "kelnei-vllm0271-mtp2-4k-c8-canary-long256-n8.json",
-          "sha256": "f84a68da6c85fe5ae9a37b6a7447cf2fb7da903daf5c8c1a1919f767bc7d9a17",
-          "bytes": 15011
+          "sha256": "860a21fb9734628c521f2ea54c260525a2ff57898e5e8415d436dc112192634e",
+          "bytes": 15012
         },
         {
           "path": "kelnei-vllm0271-mtp2-4k-c8-n100.json",
-          "sha256": "98b0f6a3179fbf29ee1269bc6b61222b6be1d04bdc63fa3e2b358393ebf8ed9e",
-          "bytes": 78953
+          "sha256": "05bcc59a55f1b7ba395c76e97beda6b2e4fb5c3a2fa22343e2eb05c8223721df",
+          "bytes": 78954
         },
         {
           "path": "kelnei-vllm0271-mtp2-4k-c8.json",
-          "sha256": "b5c058622bda8e3a68e2f3b474496fe6933b307b888902deb6f739569f76b32b",
-          "bytes": 19838
+          "sha256": "4b39164340e6b56ba357dfe89082f28b4e7e323d26b32322eb3eafeb9b9fc60c",
+          "bytes": 19839
         },
         {
           "path": "kelnei-vllm0271-mtp2-82k-c8.json",
-          "sha256": "d4335173a6c8d89d026c41c25bfca2cba992c73fe30b139bd470fcaaac38dafb",
-          "bytes": 14246
+          "sha256": "a7f8ba3d8642efc69d8c1dcb2dcd42131d78439b6b1ed8e58e23397f28a02ba0",
+          "bytes": 14247
         },
         {
           "path": "kelnei-vllm0271-mtp2-preflight.json",
@@ -388,28 +388,28 @@
         },
         {
           "path": "kelnei-vllm0271-nospec-4k-c1.json",
-          "sha256": "ce935bcbcf873db07f5be6fcdb7fb6b20bd84677bd6bc38ccb05ef218074d5af",
-          "bytes": 19771
+          "sha256": "f8d5d4a4fe5c53b28ae00ac3a3359da13aec12e40bb4fe52d30d7d81886b4189",
+          "bytes": 19772
         },
         {
           "path": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n100.json",
-          "sha256": "c85aa05b5e6c29b33ef84466b773bc39175fc3a3d720fb1c6105faa94d2882f5",
-          "bytes": 89568
+          "sha256": "24e03aa1f10f729d27d5758e25d0d39a174730175ee6cfccfdd37f96078ced2c",
+          "bytes": 89569
         },
         {
           "path": "kelnei-vllm0271-nospec-4k-c8-canary-long256-n16.json",
-          "sha256": "b60be506ea0393404a75adbdba45434ffbdd5294b0ae9c1b0e6139767a4e87ba",
-          "bytes": 21524
+          "sha256": "11da36f53099440832a563bbf57d00ef689781c7c05ba94db59f5c353ceed5c6",
+          "bytes": 21525
         },
         {
           "path": "kelnei-vllm0271-nospec-4k-c8-n100.json",
-          "sha256": "4662ad75cb749b4147d46bb025c45213aae1eadd90deafa9aca59f449b698288",
-          "bytes": 78856
+          "sha256": "3fe181b38ddadb50dbae3c398b0e8940590161299c85a5feadc9231e15bdf4ee",
+          "bytes": 78857
         },
         {
           "path": "kelnei-vllm0271-nospec-4k-c8.json",
-          "sha256": "7cfa11e5a3b700d21db7707b57aed2f1e7b6cc4ef8dbb36959878915123bfd7f",
-          "bytes": 19839
+          "sha256": "66d3b1efba279b46596c0523a80cfe27b6246a21976bee54fc2b960a921d0e0d",
+          "bytes": 19840
         },
         {
           "path": "kelnei-vllm0271-nospec-preflight.json",
@@ -438,43 +438,43 @@
         },
         {
           "path": "opt-k12-chunk1k-32k-c1.json",
-          "sha256": "a66d948e4c0a0b9418ba6fdcc4743945237b8751ef190e869e16c0aa6d1ca04d",
-          "bytes": 8126
+          "sha256": "14eef7626d56b0e849e2c15765b198a5fbb0603a9ddfb9fe68045b25e9e0de00",
+          "bytes": 8127
         },
         {
           "path": "opt-k12-chunk1k-4k-c1.json",
-          "sha256": "f565efc37ab6e2f88ba1ab4e7da07897cc71e733a6a80db8a269b8483eca7739",
-          "bytes": 9366
+          "sha256": "ad3cbe4799c549e14900e3928a8aadb81fe4c4893dbf55d35765fed69fdad532",
+          "bytes": 9367
         },
         {
           "path": "opt-k12-chunk1k-4k-c4.json",
-          "sha256": "f3ab65ff1d1117a3f5b72b25d59cbad82cac9277f3657b4168397eb5c3058146",
-          "bytes": 11270
+          "sha256": "95a1984ed39551be354675cc0d2b194e913b72179ca92c042dab74081b5f5aff",
+          "bytes": 11271
         },
         {
           "path": "opt-k12-chunk1k-4k-c8.json",
-          "sha256": "4250bea4eb094f1eb18d31ddde2e6effd1005e1f5339d6173c5c19b92e5cd64d",
-          "bytes": 16345
+          "sha256": "840f435b7eb2ca08941fc6e38a2ed251240618cc6a9f12d86db104a9f170ae43",
+          "bytes": 16346
         },
         {
           "path": "opt-k12-chunk1k-lazy96-32k-c1.json",
-          "sha256": "2479dc2e3e6cad3543a8551115acf56da92ff01accbb9054c5926c7000a2d2c0",
-          "bytes": 8142
+          "sha256": "e7ee53feb6e0c7d685a682ac82f3ac71031ee19dfd8b176230ad5eb6f9f91eb1",
+          "bytes": 8143
         },
         {
           "path": "opt-k12-chunk1k-lazy96-4k-c1.json",
-          "sha256": "b4b0004a96314aa1a829e7dc049826c01782ad3ba2f026c8f8e8f6dc52744321",
-          "bytes": 9291
+          "sha256": "2c6225fcec29f5971e6058f32b57982302113693f950440e519c53d1f38e710e",
+          "bytes": 9292
         },
         {
           "path": "opt-k12-chunk1k-lazy96-4k-c4.json",
-          "sha256": "d0c7ff451d5a6b5a2e83d6be6b8b3caf53b0a92a7cf0fbc218aceadad4b8e3b4",
-          "bytes": 11274
+          "sha256": "db11013eb2d13f30b2df190f17e511520de5662b2deb198f3b60fce1e6c23297",
+          "bytes": 11275
         },
         {
           "path": "opt-k12-chunk1k-lazy96-4k-c8.json",
-          "sha256": "be39b5b50c59f9c46d42820ae98bf31af3e575faf7652a2cb0fe7865d9303077",
-          "bytes": 16335
+          "sha256": "bf67c0ef2b5a05a215077283cc9cadb9e788d19db062f523e5d55fc16b14e828",
+          "bytes": 16336
         },
         {
           "path": "opt-k12-chunk1k-lazy96-preflight.json",
@@ -483,28 +483,28 @@
         },
         {
           "path": "opt-k12-chunk1k-mamba40-32k-c1.json",
-          "sha256": "261ca1984fd8b856355e1254c74d45b811cc462382ce4d9a3a2c653ecd90b5b5",
-          "bytes": 8130
+          "sha256": "89bda131891fbb742cd2feecb8693e022307bc2e9a065b2bf02664ace539cf86",
+          "bytes": 8131
         },
         {
           "path": "opt-k12-chunk1k-mamba40-4k-c1.json",
-          "sha256": "234f9529786a270fe8c245fb819779c61df374c7b001f303ebce8bd2c836181c",
-          "bytes": 9358
+          "sha256": "ea0e25bc08e4efb2fc16ac6e4931362e4d67df5f601dc1c93f33cbce5d3a9175",
+          "bytes": 9359
         },
         {
           "path": "opt-k12-chunk1k-mamba40-4k-c4.json",
-          "sha256": "2a06105755f7aa4dfb2f24f9cea98f282aeb1c1078b166bfbc83a5d8e14295ff",
-          "bytes": 11270
+          "sha256": "efb29305dca38929cf262b025b45c73a927a6d1da282fff681cd7fe71619999f",
+          "bytes": 11271
         },
         {
           "path": "opt-k12-chunk1k-mamba40-4k-c8.json",
-          "sha256": "6efe6b4399851452da67b8d03c90d99d82bebf0157baeb3de79a524a2139f322",
-          "bytes": 16348
+          "sha256": "e5e3707e32ce94b95cc7307c343d6443efa4a3ab081f1d36b595f1d6ced3581d",
+          "bytes": 16349
         },
         {
           "path": "opt-k12-chunk1k-mamba40-82k-c8.json",
-          "sha256": "74bcff80251b75fb844cfe145ec4cc35f386a974e72786db812cda922f58294e",
-          "bytes": 11305
+          "sha256": "660bd5f5a2a57be58fbed933113e7aa841bed8b8666d4979c2be2dc0daec9f76",
+          "bytes": 11306
         },
         {
           "path": "opt-k12-chunk1k-mamba40-preflight.json",
@@ -518,23 +518,23 @@
         },
         {
           "path": "opt-k12-chunk8k-32k-c1.json",
-          "sha256": "aed89e7240c3be1c56ca0986e6bf3c24173496c5183efc70d22fa736601a89ce",
-          "bytes": 8124
+          "sha256": "fa77b1f63612993667ee4ff55fbe36fd8a02286752903fe74e6281bf8761271d",
+          "bytes": 8125
         },
         {
           "path": "opt-k12-chunk8k-4k-c1.json",
-          "sha256": "21482a87567c31c78eb958b6e0c98bf21e746fe55844664aaf47905bd32f2cfd",
-          "bytes": 9375
+          "sha256": "18e69acbda1a8477ddfd3a6a7897ea45bef31deaaadbc67df8fb78a3545874ad",
+          "bytes": 9376
         },
         {
           "path": "opt-k12-chunk8k-4k-c4.json",
-          "sha256": "7d558a7bab0b103e53de8ac87500007bd701de389d2a6f2db913324b3d772b9a",
-          "bytes": 11261
+          "sha256": "f104d5f1c80466d93e2c7f0a853465ab0ec56534ad30745c6371cc57136ea7a8",
+          "bytes": 11262
         },
         {
           "path": "opt-k12-chunk8k-4k-c8.json",
-          "sha256": "94b21e7987515941002c0c67c5efcc5141a0b3dfd7efa1b6444e0d9d9a5ae9c4",
-          "bytes": 16319
+          "sha256": "16a0afe01451b3d7bd39ea56d2bf61189dee3ff11b142441d744fef00a2cf8bd",
+          "bytes": 16320
         },
         {
           "path": "opt-k12-chunk8k-preflight.json",
@@ -543,23 +543,23 @@
         },
         {
           "path": "opt-k12-compile-32k-c1.json",
-          "sha256": "3d8fd58db94974695fec0f5a1db31c63962431247b88443b3ed3df993128f2db",
-          "bytes": 8133
+          "sha256": "60754a6565cc3919d875289d98fd35754aacb1af2ad0939e11334692df18c109",
+          "bytes": 8134
         },
         {
           "path": "opt-k12-compile-4k-c1.json",
-          "sha256": "66d4d7ee013684c455216565ee23bd4f11e86f57299e80c53511e94e68881f74",
-          "bytes": 9364
+          "sha256": "31a85c0beb567ea12d22bc927d12ad0de60be57d6c9cd0683145d20a9ddc4819",
+          "bytes": 9365
         },
         {
           "path": "opt-k12-compile-4k-c4.json",
-          "sha256": "dfc9cd43b7f9fd49bf267efde24e0748ecb1a5b930eaf403ac346e588ef9edfc",
-          "bytes": 11279
+          "sha256": "9733fc2314efb2909b4505487215fc4da4de37bb98fa5462222a978874e405d2",
+          "bytes": 11280
         },
         {
           "path": "opt-k12-compile-4k-c8.json",
-          "sha256": "5f7d5d3dbf360cf96650f7221cf5cc9c71c79645b2d0ee02fde1dbb6d623d857",
-          "bytes": 16324
+          "sha256": "8a7e869fa6461204fdf801664ca8652b3966b0260e76157daeea3f8af653a6c0",
+          "bytes": 16325
         },
         {
           "path": "opt-k12-compile-preflight.json",
