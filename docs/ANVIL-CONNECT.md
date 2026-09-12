@@ -181,6 +181,32 @@ two permissions above plus reads, and treat a degraded `edge-status` tunnel
 status as an agent problem first (the cloudflared unit's journal) before
 suspecting the API.
 
+## Connector resource extension
+
+Widening an enrolled connector's resource set is one managed command:
+
+```bash
+anvil-serving connect extend --manifest <PATH> --service connector:<id> --dry-run
+sudo anvil-serving connect extend --manifest <PATH> --service connector:<id> --confirm
+```
+
+The preflight accepts purely additive resource-set changes and rejects removals
+or renames (those change trust scope; use `installation-revoke` plus a full
+re-declaration instead). The managed sequence then runs inside one reversible
+transaction: the new generation is staged and activated with only gateway
+units restarted, the native admin revoke/invite pair runs against the running
+gateway, the connector redeems the invitation with `init --bundle` from its
+own state directory, the new fingerprint is approved, and the connector
+restarts and stabilizes with the extended set. Invitation material lives only
+in role-owned 0700 state directories and is deleted on redemption.
+
+Two boundaries remain operator decisions. Existing principals keep their prior
+resource lists until `admin human-set` extends each one — the first browser
+login for the new resource fails with a classified 401 until then, and the
+identity-provider subject is the per-user identifier from the IdP's session
+store, not the username. And the Cloudflare-side DNS record and tunnel ingress
+for the new host are published with `connect edge-apply`.
+
 ## Recovery
 
 Stop the gateway before `connect backup`. It takes a consistent read-only logical

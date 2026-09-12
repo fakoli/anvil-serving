@@ -32,7 +32,7 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     qualify_mode.add_argument("--prepare-container", action="store_true")
     qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
-    for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply"):
+    for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "extend"):
         leaf = actions.add_parser(action, allow_abbrev=False)
         leaf.add_argument("--manifest", required=True, action=_Once)
         if action == "up":
@@ -52,7 +52,7 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
             )
         if action not in {"render", "admin", "backup", "restore", "migration", "up", "edge-status", "edge-apply"}:
             leaf.add_argument("--service", required=action not in {"validate", "status", "doctor"}, action=_Once)
-        if action in {"render", "up", "down", "init", "admin", "keygen", "backup", "restore", "edge-apply"}:
+        if action in {"render", "up", "down", "init", "admin", "keygen", "backup", "restore", "edge-apply", "extend"}:
             leaf.add_argument("--dry-run", action="store_true")
             leaf.add_argument("--confirm", action="store_true")
         if action == "logs":
@@ -210,6 +210,15 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
                 return CommandResult(
                     error=OperatorError(str(exc), code="connect_edge_invalid"),
                     data={"applied": list(exc.applied), "failed_step": exc.failed_step} if exc.applied else None,
+                )
+        elif action == "extend":
+            from .extend import ExtendError, extend as extend_connector
+            try:
+                result = extend_connector(args.manifest, target, confirm=apply)
+            except ExtendError as exc:
+                return CommandResult(
+                    error=OperatorError(str(exc), code="connect_extend_invalid"),
+                    data={"plan": exc.plan} if getattr(exc, "plan", None) else None,
                 )
         else:
             result = manage.keygen(args.manifest, target, output_path=args.output, apply=apply)

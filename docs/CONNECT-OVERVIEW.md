@@ -186,12 +186,15 @@ does not exist at the edge.
 
 ## Maturity, stated plainly
 
-Connect is operated daily against production surfaces. Three gaps are known
-and tracked rather than hidden:
+Connect is operated daily against production surfaces. Its first managed
+resource-extension command exists (`connect extend`); the remaining gaps are
+known and tracked rather than hidden:
 
-- **Extending one connector's resource set** requires a re-enrollment ordering
-  rather than a single in-place command. The sequence is documented and
-  ticketed for a managed single-path fix.
+- **Resource removal or rename** still requires `installation-revoke` plus a
+  full re-declaration; `connect extend` handles purely additive changes.
+- **Principal resource lists** are not extended automatically: existing
+  principals need an `admin human-set` per principal before their first login
+  on the new resource, and there is no managed principal listing yet.
 - **Extra relying parties** on the bundled identity provider are added by a
   recorded configuration edit until the release supports more than the
   gateway's own client natively.
