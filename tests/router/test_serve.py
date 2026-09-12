@@ -10,6 +10,10 @@ from anvil_serving.router.admission import TierAdmission
 from tests.router.helpers import StaticBackend
 from anvil_serving.router.config import load
 from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
+from anvil_serving.router.request_control import (
+    RequestControl,
+    RequestDeadlineExceeded,
+)
 from anvil_serving.router.serve import RoutingBackend
 
 
@@ -124,6 +128,66 @@ def test_client_disconnect_records_metadata_without_content():
     assert record.served_tier is None
     assert record.attempts[0].reason == "client_disconnected"
     assert "first" not in repr(record)
+
+
+def test_request_control_enforces_named_admission_startup_and_idle_deadlines():
+    now = [10.0]
+    control = RequestControl(
+        deadline_monotonic=100.0,
+        admission_timeout_s=2,
+        startup_timeout_s=3,
+        idle_timeout_s=4,
+        clock=lambda: now[0],
+    )
+    control.begin_admission_wait()
+    now[0] = 12.0
+    with pytest.raises(RequestDeadlineExceeded, match="admission timeout") as error:
+        control.check_admission()
+    assert error.value.code == "admission_timeout"
+
+    control = RequestControl(deadline_monotonic=100.0, startup_timeout_s=3, clock=lambda: now[0])
+    control.start_upstream()
+    now[0] = 15.0
+    with pytest.raises(RequestDeadlineExceeded, match="startup timeout"):
+        control.check_upstream()
+
+    control = RequestControl(deadline_monotonic=100.0, idle_timeout_s=4, clock=lambda: now[0])
+    control.start_upstream()
+    control.note_activity("streaming")
+    control.note_activity(estimated_input_tokens=11, cache_read_input_tokens=3)
+    assert control.snapshot()["estimated_input_tokens"] == 11
+    assert control.snapshot()["cache_read_input_tokens"] == 3
+    now[0] = 19.0
+    with pytest.raises(RequestDeadlineExceeded, match="idle timeout"):
+        control.check_upstream()
+
+
+def test_concurrency_gate_wait_is_bounded_and_recorded():
+    class BlockingBackend:
+        def generate(self, _request):
+            yield "held"
+            yield "later"
+
+    config = load(_CONFIG)
+    config = replace(
+        config,
+        tiers=tuple(
+            replace(tier, max_concurrency=1) if tier.id == "primary-local" else tier
+            for tier in config.tiers
+        ),
+    )
+    routing = RoutingBackend(
+        config,
+        {"primary-local": BlockingBackend(), "omni-local": StaticBackend(["omni"])},
+    )
+    first = routing.generate(_request())
+    assert next(first) == "held"
+    control = RequestControl(admission_timeout_s=0.01)
+    with pytest.raises(RequestDeadlineExceeded, match="admission timeout"):
+        list(routing.generate(_request(raw={"_anvil_control": control})))
+    assert routing._decision_log.last.admission_wait_ms is not None
+    assert routing._decision_log.last.admission_wait_ms >= 0
+    first.close()
 
 
 @pytest.mark.parametrize(

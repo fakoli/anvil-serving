@@ -30,12 +30,16 @@ from .replica_scheduler import (
 #: request; 10k bounds a long-running server's audit memory to the recent
 #: window while staying far above what an operator inspects interactively.
 DEFAULT_MAX_RECORDS = 10_000
+MAX_HISTORY_RECORDS = 50
+MAX_HISTORY_SCAN_BYTES = 1024 * 1024
+MAX_HISTORY_LINE_BYTES = 64 * 1024
 _SUMMARY_SECRET_RE = re.compile(
     r"(?i)(bearer_[A-Za-z0-9._~+/\-]{6,}|bearer\s+[A-Za-z0-9._~+/\-]{6,}|"
     r"sk-(?:proj-)?[A-Za-z0-9_-]{6,}|"
     r"[A-Z0-9_-]*(?:TOKEN|SECRET|API_KEY|API-KEY|KEY)[A-Z0-9_-]*\s*[:=]\s*[^\s]+)"
 )
 _CORRELATION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
+_CLIENT_ID_RE = re.compile(r"^(?:_legacy|[A-Za-z][A-Za-z0-9_-]{0,63})$")
 _GATEWAY_REQUEST_ID_RE = re.compile(r"^req_[0-9a-f]{32}$")
 _WORKLOAD_TIMESTAMP_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$"
@@ -79,6 +83,8 @@ class DecisionRecord:
     gateway_request_id: Optional[str] = None
     workbench_run_id: Optional[str] = None
     task_id: Optional[str] = None
+    session_id: Optional[str] = None
+    client_id: Optional[str] = None
     # Content-free transport metadata for binary/purpose gateways.  Audio uses
     # these fields to expose hop volume and elapsed time without retaining the
     # audio payload, base64, transcript, or synthesis input.  They default to
@@ -106,6 +112,12 @@ class DecisionRecord:
     output_limit_requested: Optional[int] = None
     output_limit_applied: Optional[int] = None
     output_limit_clamped: Optional[bool] = None
+    # Request-time operational measurements and identity. They are optional
+    # because older direct and purpose callers do not observe every phase.
+    cache_read_input_tokens: Optional[int] = None
+    admission_wait_ms: Optional[int] = None
+    config_sha256: Optional[str] = None
+    router_version: Optional[str] = None
     # ADR-0033: wall-clock creation stamp for durable evidence. Stamped by
     # :meth:`DecisionLog.record` when left at the zero default; aggregate views
     # remain snapshots of the buffer, never historical windows.
@@ -135,6 +147,12 @@ def safe_correlation(value: Any) -> Optional[str]:
     return candidate if _CORRELATION_RE.fullmatch(candidate) else None
 
 
+def safe_client_id(value: Any) -> Optional[str]:
+    """Accept configured client principals, including the internal legacy id."""
+    candidate = str(value or "")
+    return candidate if _CLIENT_ID_RE.fullmatch(candidate) else None
+
+
 def request_correlation(request: Any) -> dict[str, Optional[str]]:
     """Read the front-door-stamped Workbench lineage from an internal request."""
     raw = getattr(request, "raw", {})
@@ -146,6 +164,8 @@ def request_correlation(request: Any) -> dict[str, Optional[str]]:
         "gateway_request_id": safe_gateway_request_id(source.get("gateway_request_id")),
         "workbench_run_id": safe_correlation(source.get("workbench_run_id")),
         "task_id": safe_correlation(source.get("task_id")),
+        "session_id": safe_correlation(source.get("session_id")),
+        "client_id": safe_client_id(source.get("client_id")),
     }
 
 
@@ -405,6 +425,30 @@ def _finish_reason(value: Any) -> Optional[str]:
     return value if isinstance(value, str) and value in {"stop", "length", "tool_calls", "content_filter"} else None
 
 
+def _workload_outcome(value: Any) -> Optional[str]:
+    """Project only the fixed lifecycle outcome, never a transport error body."""
+    return value if type(value) is str and value in _WORKLOAD_OUTCOMES else None
+
+
+def _config_sha256(value: Any) -> Optional[str]:
+    return value if type(value) is str and re.fullmatch(r"[0-9a-f]{64}", value) else None
+
+
+def _sanitize_history_metadata(record: DecisionRecord) -> DecisionRecord:
+    """Drop invalid request-time metadata before memory, disk, or export."""
+    values = {
+        "session_id": safe_correlation(record.session_id),
+        "client_id": safe_client_id(record.client_id),
+        "cache_read_input_tokens": _optional_nonnegative(record.cache_read_input_tokens),
+        "admission_wait_ms": _optional_nonnegative(record.admission_wait_ms),
+        "config_sha256": _config_sha256(record.config_sha256),
+        "router_version": safe_correlation(record.router_version),
+    }
+    if all(getattr(record, key) == value for key, value in values.items()):
+        return record
+    return dataclasses.replace(record, **values)
+
+
 def _attempt_summary(attempt: Any) -> dict:
     return {
         "tier_id": _summary_safe(_field(attempt, "tier_id")),
@@ -501,6 +545,17 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
             ),
             "workbench_run_id": _summary_safe(safe_correlation(_field(record, "workbench_run_id"))),
             "task_id": _summary_safe(safe_correlation(_field(record, "task_id"))),
+            "session_id": _summary_safe(safe_correlation(_field(record, "session_id"))),
+            "client_id": _summary_safe(safe_client_id(_field(record, "client_id"))),
+            "cache_read_input_tokens": _optional_nonnegative(
+                _field(record, "cache_read_input_tokens")
+            ),
+            "admission_wait_ms": _optional_nonnegative(
+                _field(record, "admission_wait_ms")
+            ),
+            "config_sha256": _config_sha256(_field(record, "config_sha256")),
+            "router_version": _summary_safe(safe_correlation(_field(record, "router_version"))),
+            "workload_outcome": _workload_outcome(_field(record, "workload_outcome")),
             **_replica_metadata(record),
         }
         scheduler = _replica_scheduler_metadata(record)
@@ -526,6 +581,11 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
             "authorization", "token", "audio", "audio_b64", "input", "text",
         ],
     }
+
+
+def decision_record_dict(record: Any) -> dict:
+    """Return the one-record, metadata-only projection used by history routes."""
+    return summarize_decisions((record,), limit=1)["records"][0]
 
 
 class DecisionLog:
@@ -559,6 +619,7 @@ class DecisionLog:
         max_records: Optional[int] = DEFAULT_MAX_RECORDS,
         *,
         sink: Optional[Callable[[DecisionRecord], None]] = None,
+        exporter: Optional[Callable[[DecisionRecord], None]] = None,
     ) -> None:
         if max_records is not None and max_records <= 0:
             raise ValueError(f"max_records must be positive or None, got {max_records!r}")
@@ -568,12 +629,17 @@ class DecisionLog:
         # ADR-0033: optional durable sink (JSONL writer). Best-effort — a sink
         # failure never fails the request that produced the record.
         self._sink = sink
+        # Export is deliberately separate from persistence and is expected to
+        # enqueue only. A bad collector must never affect the request path.
+        self._exporter = exporter
+        path = getattr(sink, "path", None)
+        self.file_path = path if isinstance(path, str) else None
 
     def record(self, record: DecisionRecord) -> None:
         """Append ``record`` to the log, stamping ``unix_ts`` (thread-safe)."""
-        record = _sanitize_replica_scheduler(
+        record = _sanitize_history_metadata(_sanitize_replica_scheduler(
             _sanitize_replica_metadata(_sanitize_workload_metadata(record))
-        )
+        ))
         if not record.unix_ts:
             record = dataclasses.replace(record, unix_ts=time.time())
         with self._lock:
@@ -584,6 +650,15 @@ class DecisionLog:
             except Exception as exc:
                 print(
                     "[anvil] warning decision sink write failed: %s" % type(exc).__name__,
+                    file=sys.stderr,
+                    flush=True,
+                )
+        if self._exporter is not None:
+            try:
+                self._exporter(record)
+            except Exception as exc:
+                print(
+                    "[anvil] warning decision trace export failed: %s" % type(exc).__name__,
                     file=sys.stderr,
                     flush=True,
                 )
@@ -621,6 +696,52 @@ class DecisionLog:
         """Safe recent-decision summary over the current immutable snapshot."""
         return summarize_decisions(self.records, limit=limit)
 
+    def lookup_history(
+        self,
+        request_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        *,
+        limit: int = MAX_HISTORY_RECORDS,
+    ) -> dict:
+        """Read matching metadata from this log's bounded persisted generations."""
+        if (request_id is None) == (session_id is None):
+            raise ValueError("exactly one of request_id or session_id is required")
+        candidate = request_id if request_id is not None else session_id
+        if safe_correlation(candidate) is None:
+            raise ValueError("history identifier must be a bounded opaque identifier")
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= MAX_HISTORY_RECORDS:
+            raise ValueError(f"history limit must be an integer from 1 to {MAX_HISTORY_RECORDS}")
+        if self.file_path is None:
+            return {
+                "scope": "decision_log_jsonl", "records": [], "truncated": False,
+                "available": False,
+            }
+
+        matches: list[dict] = []
+        truncated = False
+        available = False
+        # Current generation first; records are returned newest-first so an
+        # operator sees the most relevant retained evidence within the cap.
+        for index, path in enumerate((self.file_path, self.file_path + ".1")):
+            lines, clipped, readable = _history_lines(path)
+            if index == 0:
+                available = readable
+            truncated = truncated or clipped
+            for line in reversed(lines):
+                payload = _history_payload(line)
+                if payload is None or not _history_matches(payload, request_id, session_id):
+                    continue
+                matches.append(decision_record_dict(payload))
+                if len(matches) >= limit:
+                    return {
+                        "scope": "decision_log_jsonl", "records": matches,
+                        "truncated": True, "available": available,
+                    }
+        return {
+            "scope": "decision_log_jsonl", "records": matches,
+            "truncated": truncated, "available": available,
+        }
+
 
 #: Default size cap for one :class:`DecisionLogWriter` generation before the
 #: single-rotation ``os.replace`` to ``<path>.1``.
@@ -656,9 +777,9 @@ class DecisionLogWriter:
             pass
 
     def __call__(self, record: DecisionRecord) -> None:
-        record = _sanitize_replica_scheduler(
+        record = _sanitize_history_metadata(_sanitize_replica_scheduler(
             _sanitize_replica_metadata(_sanitize_workload_metadata(record))
-        )
+        ))
         # Explicit schema: future dataclass fields (including subclasses) must
         # never silently become durable audit payloads through asdict recursion.
         payload = {
@@ -666,13 +787,14 @@ class DecisionLogWriter:
             for name in (
                 "kind", "requested_tier", "served_tier", "total_prompt_tokens",
                 "total_completion_tokens", "route", "request_id",
-                "gateway_request_id", "workbench_run_id", "task_id",
+                "gateway_request_id", "workbench_run_id", "task_id", "session_id", "client_id",
                 "request_bytes", "response_bytes", "latency_ms",
                 "readiness_check_ms", "upstream_duration_ms",
                 "time_to_first_content_ms", "finish_reason", "prompt_tokens_source",
                 "completion_tokens_source", "output_limit_requested",
                 "output_limit_applied", "output_limit_clamped", "unix_ts",
                 "workload_created_at", "workload_updated_at", "workload_outcome",
+                "cache_read_input_tokens", "admission_wait_ms", "config_sha256", "router_version",
             )
         }
         payload["attempts"] = [
@@ -688,6 +810,8 @@ class DecisionLogWriter:
             payload["replica_scheduler"] = scheduler
         for field_name in (
             "workload_created_at", "workload_updated_at", "workload_outcome",
+            "session_id", "client_id", "cache_read_input_tokens", "admission_wait_ms",
+            "config_sha256", "router_version",
         ):
             if payload[field_name] is None:
                 del payload[field_name]
@@ -706,6 +830,50 @@ class DecisionLogWriter:
         if size < self.max_bytes:
             return
         os.replace(self.path, self.path + ".1")
+
+
+def _history_lines(path: str) -> tuple[tuple[bytes, ...], bool, bool]:
+    """Read only the tail of one configured JSONL generation."""
+    try:
+        size = os.path.getsize(path)
+        if size <= 0:
+            return (), False, True
+        start = max(0, size - MAX_HISTORY_SCAN_BYTES)
+        with open(path, "rb") as handle:
+            handle.seek(start)
+            data = handle.read(MAX_HISTORY_SCAN_BYTES)
+    except OSError:
+        return (), False, False
+    clipped = start > 0
+    if clipped:
+        _, separator, data = data.partition(b"\n")
+        if not separator:
+            return (), True, True
+    return (
+        tuple(line for line in data.splitlines() if len(line) <= MAX_HISTORY_LINE_BYTES),
+        clipped,
+        True,
+    )
+
+
+def _history_payload(line: bytes) -> Optional[dict]:
+    try:
+        value = json.loads(line)
+    except (TypeError, ValueError, UnicodeDecodeError, RecursionError):
+        return None
+    return value if type(value) is dict else None
+
+
+def _history_matches(
+    payload: Mapping[str, Any], request_id: Optional[str], session_id: Optional[str]
+) -> bool:
+    if session_id is not None:
+        return safe_correlation(payload.get("session_id")) == session_id
+    if request_id is None:
+        return False
+    key = "gateway_request_id" if safe_gateway_request_id(request_id) else "request_id"
+    validator = safe_gateway_request_id if key == "gateway_request_id" else safe_correlation
+    return validator(payload.get(key)) == request_id
 
 
 def _sanitize_workload_metadata(record: DecisionRecord) -> DecisionRecord:

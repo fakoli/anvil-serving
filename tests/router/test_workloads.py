@@ -33,6 +33,8 @@ from anvil_serving.router.decision_log import (
     DecisionLogWriter,
     DecisionRecord,
 )
+from anvil_serving.router.trace_export import _span
+from anvil_serving.router_diagnostics import diagnose_record
 from anvil_serving.router.workloads import RouterWorkloadRegistry
 from anvil_serving.router.serve import build_server
 from anvil_serving.router.internal import InternalRequest, Message
@@ -740,7 +742,13 @@ class _DeliveryWriter(io.BytesIO):
         self.writes += 1
         if self.require_deferred and self.server.anvil_workloads is not None:
             assert len(self.server.anvil_routing._decision_log) == 0
-        if self.failure == "headers" or (self.failure == "body" and self.writes > 1):
+        if (
+            self.failure == "headers"
+            or (self.failure == "body" and self.writes > 1)
+            or (self.failure == "timeout_once" and self.writes == 2)
+        ):
+            if self.failure == "timeout_once":
+                raise TimeoutError("private-write-timeout")
             raise BrokenPipeError("private-socket-detail")
         return super().write(data)
 
@@ -819,8 +827,41 @@ def test_delivery_failure_overrides_backend_success(tmp_path, stream, failure):
         log = server.anvil_routing._decision_log
         assert len(log) == 1
         assert log.last.workload_outcome == "disconnected"
+        summary = log.summary()["records"][0]
+        assert summary["workload_outcome"] == "disconnected"
+        diagnosis = diagnose_record(summary)
+        assert diagnosis["outcome"] == diagnosis["delivery_outcome"] == "disconnected"
+        # A streaming header failure happens before the upstream iterator is
+        # dispatched. Other write failures retain a completed upstream result.
+        expected_upstream = "failed" if stream and failure == "headers" else "succeeded"
+        assert diagnosis["upstream_outcome"] == expected_upstream
+        attributes = {
+            item["key"]: next(iter(item["value"].values()))
+            for item in _span(log.last)["attributes"]
+        }
+        assert attributes["anvil.router.outcome"] == "disconnected"
+        assert attributes["anvil.router.upstream_outcome"] == (
+            "error" if expected_upstream == "failed" else "success"
+        )
         assert server.anvil_workloads.active_count == 0
         assert backend.closed == 1
+        assert server.anvil_routing._admission.snapshot("primary").active_requests == 0
+    finally:
+        server.server_close()
+
+
+def test_stream_delivery_timeout_overrides_success_with_timeout_terminal(tmp_path):
+    backend = _RuntimeBackend()
+    server = _runtime(tmp_path, backend)
+    try:
+        raw = _post(server, stream=True, failure="timeout_once")
+        assert b"HTTP/1.1 " in raw
+        log = server.anvil_routing._decision_log
+        assert len(log) == 1
+        assert log.last.workload_outcome == "timeout"
+        diagnosis = diagnose_record(log.summary()["records"][0])
+        assert diagnosis["outcome"] == diagnosis["delivery_outcome"] == "timeout"
+        assert server.anvil_workloads.active_count == 0
         assert server.anvil_routing._admission.snapshot("primary").active_requests == 0
     finally:
         server.server_close()

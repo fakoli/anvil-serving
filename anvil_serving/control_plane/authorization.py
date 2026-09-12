@@ -30,8 +30,9 @@ MAX_CREDENTIAL_BYTES = 4096
 MAX_CREDENTIAL_SOURCE_BYTES = 64 * 1024
 
 WORKLOADS_READ = "workloads:read"
+INFERENCE_USE = "inference:use"
 NODE_ADMIN_BOOTSTRAP = "node-admin:bootstrap"
-ALLOWED_SCOPES = frozenset((WORKLOADS_READ, NODE_ADMIN_BOOTSTRAP))
+ALLOWED_SCOPES = frozenset((WORKLOADS_READ, INFERENCE_USE, NODE_ADMIN_BOOTSTRAP))
 
 _CLIENT_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,255}$")

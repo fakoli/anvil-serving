@@ -148,6 +148,7 @@ def test_all_chat_dialects_return_trusted_ids_for_buffered_and_streaming(
             headers={
                 "X-Request-Id": "caller-request-7",
                 "X-Anvil-Request-Id": "req_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "X-Session-Affinity": "pi-session-7",
             },
         )
 
@@ -158,6 +159,7 @@ def test_all_chat_dialects_return_trusted_ids_for_buffered_and_streaming(
     stamped = backend.requests[0].raw["_anvil_correlation"]
     assert stamped["gateway_request_id"] == headers["X-Anvil-Request-Id"]
     assert stamped["request_id"] == "caller-request-7"
+    assert stamped["session_id"] == "pi-session-7"
 
 
 def test_body_lineage_is_overwritten_and_invalid_legacy_id_defaults_to_gateway_id():
@@ -189,6 +191,7 @@ def test_body_lineage_is_overwritten_and_invalid_legacy_id_defaults_to_gateway_i
     assert backend.requests[0].raw["_anvil_correlation"] == {
         "gateway_request_id": gateway_id,
         "request_id": gateway_id,
+        "client_id": "_legacy",
     }
 
 

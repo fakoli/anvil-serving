@@ -15,6 +15,8 @@ import math
 import os
 import re
 import json
+import http.client
+import socket
 import urllib.error
 import urllib.request
 from collections import deque
@@ -22,7 +24,7 @@ from dataclasses import dataclass, replace
 import threading
 import time
 from typing import Callable, Mapping, Optional
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from .admission import AdmissionSnapshot, MemberAdmissionSnapshot, TierAdmission, _reason_code
 from .availability import (
@@ -54,7 +56,9 @@ _METRIC_RE = re.compile(
     r"(?P<value>[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?)"
     r"(?:\s+[-+]?[0-9]+)?$"
 )
-_MODEL_LABEL_RE = re.compile(r'(?:^|,)model_name="((?:[^"\\]|\\.)*)"')
+_LABEL_RE = re.compile(
+    r'(?:^|,)(?P<name>[A-Za-z_][A-Za-z0-9_]*)="(?P<value>(?:[^"\\]|\\.)*)"'
+)
 _ROLE_RE = re.compile(r"[a-z][a-z0-9_-]{0,63}")
 _MEMBER_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
 _QUALIFICATION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")
@@ -70,14 +74,53 @@ _MEMBER_REASONS = frozenset({
     "member_readiness_not_configured", "availability_member_check_failed",
 })
 
-_LIVE_METRICS = {
+# Each adapter only accepts its own documented namespace.  A metrics endpoint
+# may expose the same scheduler from every tensor/pipeline rank, as well as
+# independent vLLM engines or SGLang data-parallel schedulers.  The parser
+# below keeps the TP/PP rank-zero copy for each scheduler, then sums load,
+# counters, and generation rates across schedulers.  Cache utilization and
+# cache-hit rates are unweighted scheduler averages, matching vLLM's own
+# aggregate scheduler logging for KV utilization.
+_VLLM_METRICS = {
     "vllm:num_requests_running": "requests_running",
     "vllm:num_requests_waiting": "requests_waiting",
     "vllm:kv_cache_usage_perc": "kv_cache_usage_fraction",
     "vllm:num_preemptions_total": "preemptions_total",
     "vllm:mm_cache_queries_total": "multimodal_cache_queries_total",
     "vllm:mm_cache_hits_total": "multimodal_cache_hits_total",
+    "vllm:generation_tokens_total": "generation_tokens_total",
+    "vllm:prefix_cache_queries_total": "prefix_cache_queries_total",
+    "vllm:prefix_cache_hits_total": "prefix_cache_hits_total",
 }
+_SGLANG_METRICS = {
+    "sglang:num_running_reqs": "requests_running",
+    "sglang:num_queue_reqs": "requests_waiting",
+    "sglang:token_usage": "kv_cache_usage_fraction",
+    "sglang:generation_tokens_total": "generation_tokens_total",
+    "sglang:gen_throughput": "generation_throughput_tokens_per_second",
+    "sglang:cache_hit_rate": "prefix_cache_hit_rate",
+}
+_LLAMACPP_METRICS = {
+    "llamacpp:requests_processing": "requests_running",
+    "llamacpp:requests_deferred": "requests_waiting",
+    "llamacpp:tokens_predicted_total": "generation_tokens_total",
+    "llamacpp:predicted_tokens_seconds": "generation_throughput_tokens_per_second",
+}
+_SUMMED_SCHEDULER_METRICS = frozenset({
+    "requests_running",
+    "requests_waiting",
+    "preemptions_total",
+    "multimodal_cache_queries_total",
+    "multimodal_cache_hits_total",
+    "generation_tokens_total",
+    "generation_throughput_tokens_per_second",
+    "prefix_cache_queries_total",
+    "prefix_cache_hits_total",
+})
+_AVERAGED_SCHEDULER_METRICS = frozenset({
+    "kv_cache_usage_fraction",
+    "prefix_cache_hit_rate",
+})
 
 
 @dataclass(frozen=True)
@@ -104,12 +147,12 @@ class _PressureEntry:
 
 
 class ReplicaPressureCache:
-    """Bounded non-blocking vLLM-pressure refresh cache for capacity replicas."""
+    """Bounded non-blocking engine-pressure refresh cache for capacity replicas."""
 
     def __init__(self, tiers: tuple[Tier, ...], *, metrics_provider=None,
                  monotonic=time.monotonic) -> None:
         if metrics_provider is None:
-            metrics_provider = fetch_vllm_metrics
+            metrics_provider = fetch_engine_metrics
         if type(tiers) is not tuple or not callable(metrics_provider) or not callable(monotonic):
             raise ValueError("invalid replica pressure cache")
         entries: dict[tuple[str, str], _PressureEntry] = {}
@@ -293,34 +336,140 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def _metrics_url(tier: Tier) -> str:
+def _metrics_url(tier: Tier, *, llama_router: bool = False) -> str:
     parsed = urlsplit(tier.base_url)
-    return urlunsplit((parsed.scheme, parsed.netloc, "/metrics", "", ""))
+    query = urlencode({"model": tier.model}) if llama_router else ""
+    return urlunsplit((parsed.scheme, parsed.netloc, "/metrics", query, ""))
 
 
-def _parse_metrics(payload: bytes, model: Optional[str]) -> Mapping[str, float]:
+def _label_value(labels: str, name: str) -> Optional[str]:
+    for match in _LABEL_RE.finditer(labels):
+        if match.group("name") == name:
+            return (
+                match.group("value")
+                .replace(r"\\", "\\")
+                .replace(r'\"', '"')
+                .replace(r"\n", "\n")
+            )
+    return None
+
+
+def _metric_matches_tier(labels: str, model: Optional[str]) -> bool:
+    model_labels = tuple(
+        value
+        for name in ("model_name", "model")
+        if (value := _label_value(labels, name)) is not None
+    )
+    if model and any(value != model for value in model_labels):
+        return False
+    return all(
+        (value := _label_value(labels, name)) is None or value == "0"
+        for name in ("tp_rank", "pp_rank")
+    )
+
+
+def _scheduler_key(labels: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """Return the documented scheduler identity after TP/PP canonicalization."""
+    return (
+        _label_value(labels, "engine"),
+        _label_value(labels, "dp_rank"),
+        _label_value(labels, "engine_type"),
+    )
+
+
+def _interrupt_metrics_connection(connection: http.client.HTTPConnection) -> None:
+    """Break a default metrics read that is blocked in headers or body."""
+    sock = getattr(connection, "sock", None)
+    shutdown = getattr(sock, "shutdown", None)
+    if callable(shutdown):
+        try:
+            shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+    connection.close()
+
+
+def _default_metrics_read(
+    url: str, headers: Mapping[str, str], *, timeout: float, max_bytes: int
+) -> tuple[int, bytes]:
+    """Read direct HTTP metrics within one interruptible wall-clock deadline."""
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("invalid metrics URL")
+    target = urlunsplit(("", "", parsed.path or "/", parsed.query, ""))
+    connection_type = (
+        http.client.HTTPSConnection if parsed.scheme == "https" else http.client.HTTPConnection
+    )
+    connection = connection_type(parsed.hostname, parsed.port, timeout=timeout)
+    interrupted = threading.Event()
+
+    def interrupt() -> None:
+        interrupted.set()
+        _interrupt_metrics_connection(connection)
+
+    timer = threading.Timer(timeout, interrupt)
+    timer.daemon = True
+    timer.start()
+    response = None
+    try:
+        connection.request("GET", target, headers=dict(headers))
+        response = connection.getresponse()
+        if interrupted.is_set():
+            raise TimeoutError()
+        return response.status, response.read(max_bytes + 1)
+    finally:
+        timer.cancel()
+        if response is not None:
+            response.close()
+        _interrupt_metrics_connection(connection)
+
+
+def _parse_metrics(
+    payload: bytes, model: Optional[str], metrics: Mapping[str, str]
+) -> Mapping[str, float]:
     text = payload.decode("utf-8")
-    selected: dict[str, float] = {}
+    samples: dict[str, dict[tuple[Optional[str], Optional[str], Optional[str]], float]] = {}
+    conflicted: set[str] = set()
     for line in text.splitlines():
         if not line or line.startswith("#"):
             continue
         match = _METRIC_RE.fullmatch(line.strip())
-        if match is None or match.group("name") not in _LIVE_METRICS:
+        if match is None or match.group("name") not in metrics:
             continue
         labels = match.group("labels") or ""
-        model_match = _MODEL_LABEL_RE.search(labels)
-        if model and model_match and model_match.group(1) != model:
+        if not _metric_matches_tier(labels, model):
             continue
         value = float(match.group("value"))
         if math.isfinite(value):
-            key = _LIVE_METRICS[match.group("name")]
-            selected[key] = selected.get(key, 0.0) + value
+            metric = metrics[match.group("name")]
+            scheduler = _scheduler_key(labels)
+            current = samples.setdefault(metric, {})
+            prior = current.get(scheduler)
+            if prior is None:
+                current[scheduler] = value
+            elif prior != value:
+                # A single logical scheduler must not produce two divergent
+                # values for one signal.  Leave it unknown rather than choose
+                # one arbitrary sample or double-count it.
+                conflicted.add(metric)
+
+    selected: dict[str, float] = {}
+    for metric, by_scheduler in samples.items():
+        if metric in conflicted:
+            continue
+        values = tuple(by_scheduler.values())
+        if metric in _SUMMED_SCHEDULER_METRICS:
+            selected[metric] = sum(values)
+        elif metric in _AVERAGED_SCHEDULER_METRICS:
+            selected[metric] = sum(values) / len(values)
     return selected
 
 
-def fetch_vllm_metrics(
+def _fetch_metrics(
     tier: Tier,
     *,
+    metrics: Mapping[str, str],
+    llama_router: bool = False,
     env: Optional[Mapping[str, str]] = None,
     opener: Optional[Callable[..., object]] = None,
     timeout: float = 1.0,
@@ -332,31 +481,73 @@ def fetch_vllm_metrics(
     token = environ.get(tier.auth_env, "")
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    request = urllib.request.Request(
-        _metrics_url(tier), headers=headers, method="GET"
-    )
-    transport = opener if opener is not None else urllib.request.build_opener(
-        urllib.request.ProxyHandler({}), _NoRedirect()
-    ).open
     try:
-        with transport(request, timeout=timeout) as response:
-            status = getattr(response, "status", None) or response.getcode()
-            if not isinstance(status, int) or not 200 <= status < 300:
-                return MetricsSnapshot("unavailable", {}, "metrics_http")
-            payload = response.read(max_bytes + 1)
+        if opener is None:
+            status, payload = _default_metrics_read(
+                _metrics_url(tier, llama_router=llama_router), headers,
+                timeout=timeout, max_bytes=max_bytes,
+            )
+        else:
+            request = urllib.request.Request(
+                _metrics_url(tier, llama_router=llama_router), headers=headers, method="GET"
+            )
+            with opener(request, timeout=timeout) as response:
+                status = getattr(response, "status", None) or response.getcode()
+                payload = response.read(max_bytes + 1)
     except urllib.error.HTTPError:
         return MetricsSnapshot("unavailable", {}, "metrics_http")
     except Exception:  # noqa: BLE001 - raw endpoint/transport details stay private
         return MetricsSnapshot("unavailable", {}, "metrics_transport")
+    if not isinstance(status, int) or not 200 <= status < 300:
+        return MetricsSnapshot("unavailable", {}, "metrics_http")
     if len(payload) > max_bytes:
         return MetricsSnapshot("unavailable", {}, "metrics_oversized")
     try:
-        values = _parse_metrics(payload, tier.model)
+        values = _parse_metrics(payload, tier.model, metrics)
     except (UnicodeDecodeError, ValueError):
         return MetricsSnapshot("unavailable", {}, "metrics_malformed")
     if not values:
         return MetricsSnapshot("unavailable", {}, "metrics_missing")
     return MetricsSnapshot("available", values)
+
+
+def fetch_vllm_metrics(
+    tier: Tier,
+    *,
+    env: Optional[Mapping[str, str]] = None,
+    opener: Optional[Callable[..., object]] = None,
+    timeout: float = 1.0,
+    max_bytes: int = _MAX_METRICS_BYTES,
+) -> MetricsSnapshot:
+    """Read vLLM metrics; retained for callers using the original API."""
+    return _fetch_metrics(
+        tier, metrics=_VLLM_METRICS, env=env, opener=opener,
+        timeout=timeout, max_bytes=max_bytes,
+    )
+
+
+def fetch_engine_metrics(
+    tier: Tier,
+    *,
+    env: Optional[Mapping[str, str]] = None,
+    opener: Optional[Callable[..., object]] = None,
+    timeout: float = 1.0,
+    max_bytes: int = _MAX_METRICS_BYTES,
+) -> MetricsSnapshot:
+    """Read documented metrics for the tier's declared engine, bounded once."""
+    engine = tier.engine.casefold() if isinstance(tier.engine, str) else ""
+    if engine == "vllm":
+        metrics, llama_router = _VLLM_METRICS, False
+    elif engine == "sglang":
+        metrics, llama_router = _SGLANG_METRICS, False
+    elif engine in {"llamacpp", "llama.cpp", "llama-cpp"}:
+        metrics, llama_router = _LLAMACPP_METRICS, True
+    else:
+        return MetricsSnapshot("unavailable", {}, "metrics_unsupported_engine")
+    return _fetch_metrics(
+        tier, metrics=metrics, llama_router=llama_router, env=env,
+        opener=opener, timeout=timeout, max_bytes=max_bytes,
+    )
 
 
 def _positive_int(value) -> Optional[int]:
@@ -945,6 +1136,15 @@ def build_model_capacity(
                 "multimodal_cache_hits_total": values.get(
                     "multimodal_cache_hits_total"
                 ),
+                "generation_tokens_total": values.get("generation_tokens_total"),
+                "generation_throughput_tokens_per_second": values.get(
+                    "generation_throughput_tokens_per_second"
+                ),
+                "prefix_cache_queries_total": values.get(
+                    "prefix_cache_queries_total"
+                ),
+                "prefix_cache_hits_total": values.get("prefix_cache_hits_total"),
+                "prefix_cache_hit_rate": values.get("prefix_cache_hit_rate"),
             },
             "scenario": _scenario(
                 query,
@@ -1038,6 +1238,7 @@ __all__ = [
     "ReplicaPressureCache",
     "build_model_capacity",
     "engine_declared_concurrency",
+    "fetch_engine_metrics",
     "fetch_vllm_metrics",
     "replica_metadata",
 ]

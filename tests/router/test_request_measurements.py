@@ -61,7 +61,7 @@ def test_terminal_measurements_capture_delayed_content_and_real_usage(monkeypatc
         def get_last_structured():
             return StructuredResult(
                 finish_reason="end_turn",
-                usage={"input_tokens": 11, "output_tokens": 7},
+                usage={"input_tokens": 11, "output_tokens": 7, "cache_read_input_tokens": 5},
             )
 
     routing = _routing(Backend())
@@ -78,6 +78,9 @@ def test_terminal_measurements_capture_delayed_content_and_real_usage(monkeypatc
     assert record.total_completion_tokens == 7
     assert record.prompt_tokens_source == "upstream"
     assert record.completion_tokens_source == "upstream"
+    assert record.cache_read_input_tokens == 5
+    assert record.config_sha256 is not None and len(record.config_sha256) == 64
+    assert record.router_version is not None
     assert "private prompt" not in repr(record)
     assert "private completion" not in repr(record)
 

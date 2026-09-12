@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from dataclasses import replace
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
@@ -24,6 +26,7 @@ from anvil_serving.router.model_capacity import (
     MetricsSnapshot,
     ReplicaPressureCache,
     build_model_capacity,
+    fetch_engine_metrics,
     fetch_vllm_metrics,
 )
 from anvil_serving.router.replica_scheduler import (
@@ -92,6 +95,11 @@ def _live(_tier) -> MetricsSnapshot:
             "preemptions_total": 3.0,
             "multimodal_cache_queries_total": 5.0,
             "multimodal_cache_hits_total": 4.0,
+            "generation_tokens_total": 6.0,
+            "generation_throughput_tokens_per_second": 7.0,
+            "prefix_cache_queries_total": 8.0,
+            "prefix_cache_hits_total": 4.0,
+            "prefix_cache_hit_rate": 0.5,
         },
     )
 
@@ -160,6 +168,8 @@ def test_capacity_snapshot_joins_config_readiness_and_live_engine_metrics():
     }
     assert row["live"]["kv_cache_used_tokens_estimate"] == 142_988
     assert row["live"]["kv_cache_remaining_tokens_estimate"] == 428_962
+    assert row["live"]["generation_throughput_tokens_per_second"] == 7.0
+    assert row["live"]["prefix_cache_hit_rate"] == 0.5
 
 
 def test_only_allowlisted_capacity_metadata_is_emitted():
@@ -337,13 +347,22 @@ def test_bad_query_is_400_and_plain_backend_returns_empty_list():
     assert json.loads(raw) == {"object": "list", "data": []}
 
 
-def test_vllm_metrics_fetch_is_bounded_and_model_filtered():
+def test_vllm_metrics_fetch_is_bounded_model_filtered_and_aggregated_per_engine():
     payload = b"""\
 # HELP vllm:num_requests_running Number running
 vllm:num_requests_running{model_name="other"} 99
-vllm:num_requests_running{model_name="qwen35-122b-a10b-nvfp4"} 1
-vllm:num_requests_waiting{model_name="qwen35-122b-a10b-nvfp4"} 2
-vllm:kv_cache_usage_perc{model_name="qwen35-122b-a10b-nvfp4"} 0.5
+vllm:num_requests_running{model_name="qwen35-122b-a10b-nvfp4",engine="0"} 2
+vllm:num_requests_running{model_name="qwen35-122b-a10b-nvfp4",engine="1"} 3
+vllm:num_requests_waiting{model_name="qwen35-122b-a10b-nvfp4",engine="0"} 4
+vllm:num_requests_waiting{model_name="qwen35-122b-a10b-nvfp4",engine="1"} 5
+vllm:kv_cache_usage_perc{model_name="qwen35-122b-a10b-nvfp4",engine="0"} 0.25
+vllm:kv_cache_usage_perc{model_name="qwen35-122b-a10b-nvfp4",engine="1"} 0.75
+vllm:generation_tokens_total{model_name="qwen35-122b-a10b-nvfp4",engine="0"} 12
+vllm:generation_tokens_total{model_name="qwen35-122b-a10b-nvfp4",engine="1"} 18
+vllm:prefix_cache_queries_total{model_name="qwen35-122b-a10b-nvfp4",engine="0"} 40
+vllm:prefix_cache_queries_total{model_name="qwen35-122b-a10b-nvfp4",engine="1"} 20
+vllm:prefix_cache_hits_total{model_name="qwen35-122b-a10b-nvfp4",engine="0"} 30
+vllm:prefix_cache_hits_total{model_name="qwen35-122b-a10b-nvfp4",engine="1"} 15
 """
 
     class _Response:
@@ -373,14 +392,178 @@ vllm:kv_cache_usage_perc{model_name="qwen35-122b-a10b-nvfp4"} 0.5
         timeout=0.5,
     )
     assert result.status == "available"
-    assert result.values["requests_running"] == 1.0
-    assert result.values["requests_waiting"] == 2.0
+    assert result.values["requests_running"] == 5.0
+    assert result.values["requests_waiting"] == 9.0
     assert result.values["kv_cache_usage_fraction"] == 0.5
+    assert result.values["generation_tokens_total"] == 30.0
+    assert result.values["prefix_cache_queries_total"] == 60.0
+    assert result.values["prefix_cache_hits_total"] == 45.0
     assert seen == {
         "url": "http://127.0.0.1:30002/metrics",
         "authorization": "Bearer upstream-secret",
         "timeout": 0.5,
     }
+
+
+def test_engine_metrics_aggregates_sglang_data_parallel_schedulers_without_tp_pp_duplicates():
+    payload = b"""\
+sglang:num_running_reqs{model_name="qwen35-122b-a10b-nvfp4",dp_rank="0",tp_rank="0",pp_rank="0"} 2
+sglang:num_running_reqs{model_name="qwen35-122b-a10b-nvfp4",dp_rank="0",tp_rank="1",pp_rank="0"} 2
+sglang:num_running_reqs{model_name="qwen35-122b-a10b-nvfp4",dp_rank="0",tp_rank="0",pp_rank="1"} 2
+sglang:num_running_reqs{model_name="qwen35-122b-a10b-nvfp4",dp_rank="1",tp_rank="0",pp_rank="0"} 3
+sglang:num_running_reqs{model_name="qwen35-122b-a10b-nvfp4",dp_rank="1",tp_rank="1",pp_rank="0"} 3
+sglang:num_running_reqs{model_name="qwen35-122b-a10b-nvfp4",dp_rank="1",tp_rank="0",pp_rank="1"} 3
+sglang:num_queue_reqs{model_name="qwen35-122b-a10b-nvfp4",dp_rank="0",tp_rank="0",pp_rank="0"} 4
+sglang:num_queue_reqs{model_name="qwen35-122b-a10b-nvfp4",dp_rank="1",tp_rank="0",pp_rank="0"} 5
+sglang:token_usage{model_name="qwen35-122b-a10b-nvfp4",dp_rank="0",tp_rank="0",pp_rank="0"} 0.25
+sglang:token_usage{model_name="qwen35-122b-a10b-nvfp4",dp_rank="1",tp_rank="0",pp_rank="0"} 0.75
+sglang:generation_tokens_total{model_name="qwen35-122b-a10b-nvfp4",dp_rank="0",tp_rank="0",pp_rank="0"} 12
+sglang:generation_tokens_total{model_name="qwen35-122b-a10b-nvfp4",dp_rank="1",tp_rank="0",pp_rank="0"} 18
+sglang:gen_throughput{model_name="qwen35-122b-a10b-nvfp4",dp_rank="0",tp_rank="0",pp_rank="0"} 42.5
+sglang:gen_throughput{model_name="qwen35-122b-a10b-nvfp4",dp_rank="1",tp_rank="0",pp_rank="0"} 57.5
+sglang:cache_hit_rate{model_name="qwen35-122b-a10b-nvfp4",dp_rank="0",tp_rank="0",pp_rank="0"} 0.25
+sglang:cache_hit_rate{model_name="qwen35-122b-a10b-nvfp4",dp_rank="1",tp_rank="0",pp_rank="0"} 0.75
+vllm:num_requests_running{model_name="qwen35-122b-a10b-nvfp4"} 100
+"""
+
+    class _Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self, _amount):
+            return payload
+
+    result = fetch_engine_metrics(
+        replace(_tier(), engine="sglang"), env={}, opener=lambda *_args, **_kwargs: _Response()
+    )
+    assert result == MetricsSnapshot("available", {
+        "requests_running": 5.0,
+        "requests_waiting": 9.0,
+        "kv_cache_usage_fraction": 0.5,
+        "generation_tokens_total": 30.0,
+        "generation_throughput_tokens_per_second": 100.0,
+        "prefix_cache_hit_rate": 0.5,
+    })
+
+
+def test_engine_metrics_normalizes_llamacpp_and_marks_unknown_engines_unavailable():
+    payload = b"""\
+llamacpp:requests_processing 2
+llamacpp:requests_deferred 1
+llamacpp:tokens_predicted_total 24
+llamacpp:predicted_tokens_seconds 48.5
+"""
+
+    class _Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self, _amount):
+            return payload
+
+    seen = {}
+
+    def opener(request, timeout):
+        seen["url"] = request.full_url
+        return _Response()
+
+    tier = replace(_tier(), engine="llamacpp")
+    result = fetch_engine_metrics(tier, env={}, opener=opener)
+    assert result == MetricsSnapshot("available", {
+        "requests_running": 2.0,
+        "requests_waiting": 1.0,
+        "generation_tokens_total": 24.0,
+        "generation_throughput_tokens_per_second": 48.5,
+    })
+    assert "kv_cache_usage_fraction" not in result.values
+    assert seen["url"] == "http://127.0.0.1:30002/metrics?model=qwen35-122b-a10b-nvfp4"
+    assert fetch_engine_metrics(replace(tier, engine="generic"), env={}) == MetricsSnapshot(
+        "unavailable", {}, "metrics_unsupported_engine"
+    )
+
+
+def test_default_metrics_transport_interrupts_slow_headers_and_releases_cache_workers():
+    class _SlowHeaders(BaseHTTPRequestHandler):
+        def do_GET(self):
+            with self.server.lock:
+                self.server.requests += 1
+            self.connection.sendall(b"HTTP/1.1 200 OK\r\n")
+            for byte in b"Content-Type: text/plain\r\n\r\n":
+                try:
+                    self.connection.sendall(bytes((byte,)))
+                except OSError:
+                    return
+                time.sleep(0.01)
+
+        def log_message(self, _format, *_args):
+            return
+
+    class _Server(ThreadingHTTPServer):
+        daemon_threads = True
+
+    server = _Server(("127.0.0.1", 0), _SlowHeaders)
+    server.lock = threading.Lock()
+    server.requests = 0
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = "http://127.0.0.1:%s/v1" % server.server_port
+    try:
+        started = time.monotonic()
+        result = fetch_vllm_metrics(replace(_tier(), base_url=base_url), env={}, timeout=0.06)
+        assert result == MetricsSnapshot("unavailable", {}, "metrics_transport")
+        assert time.monotonic() - started < 0.3
+
+        capacity_tier = _capacity_replica_config().tiers[0]
+        capacity_tier = replace(
+            capacity_tier,
+            replicas=tuple(
+                replace(member, base_url=base_url) for member in capacity_tier.replicas
+            ),
+        )
+        cache = ReplicaPressureCache(
+            (capacity_tier,),
+            metrics_provider=lambda tier: fetch_vllm_metrics(tier, env={}, timeout=0.06),
+        )
+        try:
+            cache.snapshot(capacity_tier.id)
+            deadline = time.monotonic() + 0.8
+            while time.monotonic() < deadline:
+                pressure = cache.peek(capacity_tier.id)
+                if all(value.freshness is PressureFreshness.FAILED for value in pressure.values()):
+                    break
+                time.sleep(0.01)
+            assert all(value.freshness is PressureFreshness.FAILED for value in pressure.values())
+            with cache._condition:
+                assert all(not entry.running and not entry.queued for entry in cache._entries.values())
+                for entry in cache._entries.values():
+                    entry.completed_at = None
+            with server.lock:
+                completed_requests = server.requests
+            cache.snapshot(capacity_tier.id)
+            deadline = time.monotonic() + 0.8
+            while time.monotonic() < deadline:
+                with server.lock:
+                    if server.requests >= completed_requests + len(capacity_tier.replicas):
+                        break
+                time.sleep(0.01)
+            with server.lock:
+                assert server.requests >= completed_requests + len(capacity_tier.replicas)
+        finally:
+            cache.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=1)
 
 
 def test_replica_capacity_reads_one_atomic_admission_snapshot_and_no_sentinel_metrics():

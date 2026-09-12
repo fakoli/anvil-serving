@@ -436,6 +436,14 @@ class ServerConfig:
     media_scopes: tuple[str, ...] = ()
     media_public_origin: Optional[str] = None
     workload_host: Optional[str] = None
+    authorization_policy_path: Optional[str] = None
+    client_limits: Mapping[str, int] = field(default_factory=dict)
+    admission_timeout_s: float = 30.0
+    startup_timeout_s: float = 300.0
+    idle_timeout_s: float = 60.0
+    total_timeout_s: float = 900.0
+    heartbeat_interval_s: float = 15.0
+    trace_export_url: Optional[str] = None
 
 
 _SERVER_KEYS = frozenset({
@@ -446,6 +454,9 @@ _SERVER_KEYS = frozenset({
     "media_scopes",
     "media_public_origin",
     "workload_host",
+    "authorization_policy_path", "client_limits", "admission_timeout_s",
+    "startup_timeout_s", "idle_timeout_s", "total_timeout_s",
+    "heartbeat_interval_s", "trace_export_url",
 })
 _WORKLOAD_HOST_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
 _MEDIA_SCOPES = frozenset(
@@ -529,11 +540,36 @@ def load_server_config(path: str) -> ServerConfig:
         raw_media_scopes = []
 
     paths: dict[str, Optional[str]] = {}
-    for key in ("admission_state_path", "decision_log_path"):
+    for key in ("admission_state_path", "decision_log_path", "authorization_policy_path"):
         value = server.get(key)
         if value is not None and (not isinstance(value, str) or not value.strip()):
             raise ConfigError(f"[server].{key} must be a non-empty file path")
         paths[key] = os.path.expanduser(value) if isinstance(value, str) else None
+
+    durations = {}
+    defaults = ServerConfig()
+    for key in ("admission_timeout_s", "startup_timeout_s", "idle_timeout_s",
+                "total_timeout_s", "heartbeat_interval_s"):
+        value = server.get(key, getattr(defaults, key))
+        if type(value) not in (int, float) or not math.isfinite(value) or not 0 < value <= 86400:
+            raise ConfigError(f"[server].{key} must be a finite positive number <= 86400")
+        durations[key] = float(value)
+    client_limits = server.get("client_limits", {})
+    if not isinstance(client_limits, dict) or len(client_limits) > 33:
+        raise ConfigError("[server].client_limits must be a table with at most 33 clients")
+    for client, limit in client_limits.items():
+        if (client != "_legacy" and _WORKLOAD_HOST_RE.fullmatch(client) is None
+                or type(limit) is not int or not 1 <= limit <= 1024):
+            raise ConfigError("[server].client_limits requires client IDs and integer limits 1..1024")
+    if (client_limits or paths["authorization_policy_path"]) and auth_env is None:
+        raise ConfigError("[server] client policies require auth_env")
+    trace_export_url = server.get("trace_export_url")
+    if trace_export_url is not None:
+        from .trace_export import validate_export_url
+        try:
+            trace_export_url = validate_export_url(trace_export_url)
+        except ValueError:
+            raise ConfigError("[server].trace_export_url must name a private collector") from None
 
     return ServerConfig(
         auth_env=auth_env,
@@ -543,6 +579,10 @@ def load_server_config(path: str) -> ServerConfig:
         media_scopes=tuple(raw_media_scopes),
         media_public_origin=media_public_origin,
         workload_host=workload_host,
+        authorization_policy_path=paths["authorization_policy_path"],
+        client_limits=MappingProxyType(dict(client_limits)),
+        trace_export_url=trace_export_url,
+        **durations,
     )
 
 
