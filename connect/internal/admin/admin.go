@@ -83,6 +83,7 @@ type Response struct {
 	TunnelHost   string             `json:"tunnel_host,omitempty"`
 	InnerCAPEM   string             `json:"inner_ca_pem,omitempty"`
 	Status       InstallationStatus `json:"status"`
+	Entries      []EntryStatus      `json:"entries,omitempty"`
 }
 
 // Handler invokes only existing authority managers. keys and sessions can be
@@ -90,7 +91,19 @@ type Response struct {
 // Options carries the public inner-TLS bootstrap trust returned only by an
 // invitation. It accepts either no values (for bounded local-only fixtures) or
 // all three values; no private key material is accepted.
+type ResourceReadiness struct {
+	Resource      string `json:"resource"`
+	Registrations int    `json:"registrations"`
+}
+type EntryStatus struct {
+	Path      string              `json:"path"`
+	Listening bool                `json:"listening"`
+	Reason    string              `json:"reason"`
+	Resources []ResourceReadiness `json:"resources"`
+}
+
 type Options struct {
+	EntryStatus func() []EntryStatus
 	ControlHost string
 	TunnelHost  string
 	InnerCAPEM  string
@@ -202,6 +215,9 @@ func (h *Handler) apply(input Request) (Response, error) {
 	switch input.Operation {
 	case "status":
 		response.Epoch, err = h.epoch()
+		if h.options.EntryStatus != nil {
+			response.Entries = h.options.EntryStatus()
+		}
 	case "principal-set":
 		if h.keys == nil || !config.ValidID(input.Principal) {
 			return Response{}, ErrAdmin

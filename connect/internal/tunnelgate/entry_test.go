@@ -150,7 +150,13 @@ func TestEntryHostsShareAdmissionAndAuthority(t *testing.T) {
 			t.Fatal("shared capacity exceeded", w.Code)
 		}
 	}
+	if gate.Registrations()["public"]["router"] != 2 || gate.Registrations()["local"]["router"] != 1 || gate.Registrations()["local"]["other"] != 0 {
+		t.Fatal("registration snapshot did not reflect verified per-entry upgrades")
+	}
 	a.revoked.Store(true)
+	if gate.Registrations()["public"]["router"] != 0 || gate.Registrations()["local"]["router"] != 0 {
+		t.Fatal("revoked registration reported ready")
+	}
 	for _, c := range conns {
 		c.SetReadDeadline(time.Now().Add(time.Second))
 		if _, err := c.Read(make([]byte, 1)); err == nil {
@@ -236,5 +242,27 @@ func TestEntryAuthorityExpiryTerminatesBothMounts(t *testing.T) {
 		if w.Code != 401 {
 			t.Fatal("expired authority admitted", w.Code)
 		}
+	}
+}
+
+func TestRegistrationReadinessClearsAfterDisconnect(t *testing.T) {
+	gate, _, token := gateFixture(t)
+	local, _ := gate.Bind("local-http.example.test")
+	listener := testpki.NewPipeListener()
+	defer listener.Close()
+	server := &http.Server{Handler: local}
+	defer server.Close()
+	go server.Serve(listener)
+	conn := openUpgrade(t, listener, "local-http.example.test", token)
+	if gate.Registrations()["local"]["router"] != 1 {
+		t.Fatal("verified registration absent")
+	}
+	conn.Close()
+	deadline := time.Now().Add(time.Second)
+	for gate.Registrations()["local"]["router"] != 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("disconnected registration retained")
+		}
+		time.Sleep(time.Millisecond)
 	}
 }

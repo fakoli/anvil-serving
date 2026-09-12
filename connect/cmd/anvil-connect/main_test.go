@@ -450,3 +450,45 @@ func (w *gatedStoppedWriter) Write(data []byte) (int, error) {
 	}
 	return n, err
 }
+
+func TestPreflightPairedDeclarationIsClosedAndRequired(t *testing.T) {
+	raw, err := os.ReadFile("../../examples/deployment.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var deployment struct {
+		Gateway    connectruntime.GatewayConfig
+		Connectors []connectruntime.ConnectorConfig
+	}
+	if json.Unmarshal(raw, &deployment) != nil {
+		t.Fatal("fixture")
+	}
+	g, c := deployment.Gateway, deployment.Connectors[0]
+	g.LocalTunnel = &connectruntime.LocalTunnelListener{Listen: "127.0.0.1:18443", ServerName: "local-tls.example.test", HTTPHost: "local-http.example.test", CertificateFile: "/missing/leaf.pem", PrivateKeyFile: "/missing/leaf.key", TrustFile: "/missing/root.pem"}
+	c.LocalTunnel = &connectruntime.LocalTunnelEndpoint{Address: g.LocalTunnel.Listen, ServerName: g.LocalTunnel.ServerName, HTTPHost: g.LocalTunnel.HTTPHost, TrustFile: "/missing/connector-root.pem"}
+	gateway := jsonFile(t, "gateway.json", g)
+	public := c
+	public.LocalTunnel = nil
+	publicFile := jsonFile(t, "public.json", public)
+	connector := jsonFile(t, "connector.json", c)
+	for _, tc := range []struct {
+		args []string
+		want int
+	}{
+		{[]string{"preflight", "--mode", "connector", "--config", connector}, 2},
+		{[]string{"preflight", "--mode", "connector", "--config", publicFile, "--input", gateway}, 2},
+		{[]string{"preflight", "--mode", "connector", "--config", connector, "--input", gateway}, 1},
+		// Trust is rejected before reaching the later socket selector/binary checks.
+		{[]string{"preflight", "--mode", "connector", "--config", connector, "--input", gateway, "--socket", "invalid"}, 1},
+		{[]string{"preflight", "--mode", "gateway", "--config", gateway, "--input", connector}, 2},
+		{[]string{"validate", "--mode", "connector", "--config", connector, "--input", gateway}, 2},
+	} {
+		var stdout, stderr bytes.Buffer
+		if code := run(context.Background(), tc.args, &stdout, &stderr, noSecrets(t)); code != tc.want {
+			t.Fatalf("preflight code %d want %d", code, tc.want)
+		}
+		if stdout.Len() != 0 || strings.Contains(stderr.String(), "missing") {
+			t.Fatal("preflight leaked material details")
+		}
+	}
+}

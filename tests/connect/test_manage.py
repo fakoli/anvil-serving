@@ -463,16 +463,10 @@ def test_rollback_waits_for_prior_gateway_before_restoring_dependents(tmp_path: 
     assert runner.prior_probes == 3
     last_new_probe = max(index for index, call in enumerate(runner.calls) if call[:2] == (str(upgraded), "admin"))
     restored = [call[-1] for call in runner.calls[last_new_probe + 1:] if call[:2] == ("/usr/bin/systemctl", "restart")]
-    assert restored == [
-        "anvil-connect-authelia.service",
-        "anvil-connect-caddy.service",
-        "anvil-connect-gateway.service",
-        "anvil-connect-connector-dashboard.service",
-        "anvil-connect-client-dashboard-api.service",
-    ]
-    third_prior_probe = [index for index, call in enumerate(runner.calls) if call[:2] == (str(native), "admin")][2]
-    connector_restart = next(index for index, call in enumerate(runner.calls) if call == ("/usr/bin/systemctl", "restart", "anvil-connect-connector-dashboard.service"))
-    assert third_prior_probe < connector_restart
+    # Only the gateway was touched before readiness failed. Its healthy edge
+    # and still-running dependents must retain their original service intent.
+    assert restored == ["anvil-connect-gateway.service"]
+    assert not any(call == ("/usr/bin/systemctl", "restart", "anvil-connect-connector-dashboard.service") for call in runner.calls)
 
 
 def test_rollback_refuses_dependent_restore_when_prior_gateway_never_ready(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -632,7 +626,7 @@ def test_start_failure_restores_generation_and_preserves_private_state(tmp_path:
     changed = copy.deepcopy(value)
     changed["gateway"]["gateway"]["max_concurrent"] = 63
     manifest.write_text(json.dumps(changed), encoding="utf-8")
-    failing = SyntheticRunner(fail_start="anvil-connect-caddy.service", active=True); failing.unit_root = units
+    failing = SyntheticRunner(fail_start="anvil-connect-gateway.service", active=True); failing.unit_root = units
     with pytest.raises(manage.ManageError, match="restoration failed"):
         manage.up(manifest, manage.Target("gateway"), apply=True, runner=failing, unit_root=units)
     assert (Path(value["config_root"]) / "gateway.json").read_bytes() == before
@@ -1086,3 +1080,526 @@ def test_local_selection_rejected_before_native_validation(tmp_path: Path, monke
             operation(manifest_path, runner=runner)
     assert runner.calls == []
     assert not Path(value["config_root"]).exists()
+
+
+def test_unchanged_healthy_gateway_converges_without_restart(tmp_path, monkeypatch):
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(mode=0o755)
+    runner = SyntheticRunner(active=True)
+    runner.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    record = manage._activation_record(Path(value["config_root"])).read_bytes()
+    runner.calls.clear()
+    result = manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    assert not result["activated"] and result["restarted_units"] == []
+    assert not any(call[1] in {"restart", "enable", "stop", "disable"} for call in runner.calls)
+    assert manage._activation_record(Path(value["config_root"])).read_bytes() == record
+
+
+def test_gateway_only_change_preserves_healthy_edge_and_idp(tmp_path, monkeypatch):
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(mode=0o755)
+    runner = SyntheticRunner(active=True)
+    runner.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    value["gateway"]["gateway"]["max_concurrent"] = 63
+    manifest.write_text(json.dumps(value))
+    runner.calls.clear()
+    preview = manage.up(manifest, manage.Target("gateway"), runner=runner, unit_root=units)
+    assert preview["configuration_restarts"] == ["anvil-connect-gateway.service"]
+    result = manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    assert result["restarted_units"] == ["anvil-connect-gateway.service"]
+    assert not any(call[1] in {"restart", "enable"} and call[-1] in {"anvil-connect-caddy.service", "anvil-connect-authelia.service"}
+                   for call in runner.calls)
+
+
+def test_unhealthy_unchanged_gateway_is_restarted(tmp_path, monkeypatch):
+    manifest, value, native = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(mode=0o755)
+    initial = SyntheticRunner(active=True)
+    initial.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=initial, unit_root=units)
+
+    class FailedAdmin(SyntheticRunner):
+        def __call__(self, argv, timeout, identity):
+            if argv[:2] == (str(native), "admin") and not any(call[1] == "restart" for call in self.calls):
+                self.calls.append(argv)
+                return manage.RunResult(1)
+            return super().__call__(argv, timeout, identity)
+
+    runner = FailedAdmin(active=True)
+    runner.unit_root = units
+    preview = manage.up(manifest, manage.Target("gateway"), runner=runner, unit_root=units)
+    assert preview["configuration_restarts"] == []
+    assert preview["runtime_actions"] == [{"unit": "anvil-connect-gateway.service", "action": "restart", "reason": "runtime check failed"}]
+    result = manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    assert result["restarted_units"] == ["anvil-connect-gateway.service"]
+
+
+def test_local_preview_exposes_references_without_mutation(tmp_path, monkeypatch):
+    from tests.connect.test_render import local_tunnel_manifest
+
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    value = local_tunnel_manifest(value)
+    manifest.write_text(json.dumps(value))
+    units = tmp_path / "units"
+    units.mkdir(mode=0o755)
+    runner = SyntheticRunner()
+    runner.unit_root = units
+    targets = (manage.Target("gateway"), manage.Target("connector", "dashboard"))
+    preview = manage.up_many(manifest, targets, runner=runner, unit_root=units)
+    assert preview["activation_blockers"] == []
+    gateway, connector = preview["tunnel_selections"]
+    assert gateway["paths"] == ["public", "local"] and connector["paths"] == ["local"]
+    assert gateway["local_tunnel"] == value["gateway"]["local_tunnel"]
+    assert "private_key_file" not in connector["local_tunnel"]
+    assert list(units.iterdir()) == [] and not Path(value["config_root"]).exists()
+    assert not any(call[0] == "/usr/bin/systemctl" and call[1] != "show" for call in runner.calls)
+
+
+@pytest.mark.parametrize("retain_listener", [False, True])
+def test_cf_recovery_preview_targets_and_fail_closed_gate(tmp_path, monkeypatch, retain_listener):
+    from tests.connect.test_render import local_tunnel_manifest
+
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    local = local_tunnel_manifest(value)
+    root = Path(value["config_root"])
+    manage._materialize(render_config(local)["files"], root)
+    manage._make_public(root)
+    recovered = copy.deepcopy(local)
+    del recovered["connectors"][0]["local_tunnel"]
+    if not retain_listener:
+        del recovered["gateway"]["local_tunnel"]
+    manifest.write_text(json.dumps(recovered))
+    runner = SyntheticRunner()
+    runner.unit_root = tmp_path / "units"
+    targets = (manage.Target("connector", "dashboard"),)
+    if not retain_listener:
+        with pytest.raises(manage.ManageError, match="unselected target"):
+            manage.up_many(manifest, targets, runner=runner)
+        targets = (manage.Target("gateway"), *targets)
+    preview = manage.up_many(manifest, targets, runner=runner)
+    assert preview["tunnel_selections"][-1]["paths"] == ["public"]
+    assert preview["activation_blockers"] == []
+
+
+def test_bounded_events_are_closed_invocation_scoped_and_not_readiness(tmp_path, monkeypatch):
+    from tests.connect.test_render import local_tunnel_manifest
+
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    value = local_tunnel_manifest(value)
+    manifest.write_text(json.dumps(value))
+    unit = "anvil-connect-connector-dashboard.service"
+    invocation = "a" * 32
+    rows = [
+        {"MESSAGE": "connect_event path=local resource=dashboard reason=tunnel_established"},
+        {"MESSAGE": "2026/09/12 12:00:00 connect_event path=local resource=dashboard reason=tunnel_disconnected"},
+        {"MESSAGE": "connect_event path=local resource=dashboard reason=unrecognized"},
+        {"MESSAGE": "connect_event path=local resource=dashboard reason=tunnel_established Authorization: Bearer hidden"},
+        {"MESSAGE": "connect_event path=local resource=dashboard reason=tunnel_established", "_SYSTEMD_INVOCATION_ID": "b" * 32},
+        {"MESSAGE": "connect_event path=local resource=dashboard reason=tunnel_established", "_SYSTEMD_UNIT": "foreign.service"},
+        {"MESSAGE": ["connect_event path=local resource=dashboard reason=tunnel_established"]},
+    ]
+
+    class EventsRunner(SyntheticRunner):
+        def __call__(self, argv, timeout, identity):
+            if argv[1:3] == ("show", "--property=InvocationID"):
+                return manage.RunResult(0, f"InvocationID={invocation}\n".encode())
+            if argv[0] == "/usr/bin/journalctl" and argv[-1].startswith("_SYSTEMD_INVOCATION_ID="):
+                return manage.RunResult(0, b"\n".join(json.dumps({"_SYSTEMD_UNIT": unit, "_SYSTEMD_INVOCATION_ID": invocation, **row}).encode() for row in rows))
+            return super().__call__(argv, timeout, identity)
+
+    runner = EventsRunner(active=True)
+    target = manage.Target("connector", "dashboard")
+    result = manage.status(manifest, target, runner=runner)["targets"][0]
+    assert result["units"][0]["active"] == "active"
+    assert result["tunnel"]["state"] == "degraded" and result["tunnel"]["readiness"] == "unknown"
+    assert result["tunnel"]["observations"] == [{"path": "local", "resource": "dashboard", "reason": "tunnel_disconnected"}]
+    assert "hidden" not in json.dumps(manage.logs(manifest, target, runner=runner))
+    rows[:] = rows[:1]
+    observed = manage.status(manifest, target, runner=runner)["targets"][0]["tunnel"]
+    assert observed["state"] == observed["readiness"] == "unknown"
+
+
+def test_new_public_connector_has_no_prior_local_selection(tmp_path, monkeypatch):
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(mode=0o755)
+    runner = SyntheticRunner(active=True)
+    runner.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    secondary = copy.deepcopy(value["connectors"][0])
+    secondary["id"] = "secondary"
+    secondary["state_directory"] = str(tmp_path / "secondary-state")
+    resource = value["connectors"][0]["resources"].pop()
+    secondary["resources"] = [resource]
+    value["connectors"].append(secondary)
+    moved_id = resource["envelope"]["rule"]["id"]
+    next(item for item in value["gateway"]["gateway"]["resources"] if item["rule"]["id"] == moved_id)["connector"] = "secondary"
+    value["service_identities"]["connectors"]["secondary"] = {"uid": 1206, "gid": 2206}
+    value["service_limits"]["connectors"]["secondary"] = value["service_limits"]["connectors"]["dashboard"]
+    value["environment_files"]["connectors"]["secondary"] = str(tmp_path / "secondary.env")
+    monkeypatch.setattr(manage, "_validate_environment_files", lambda *_: None)
+    manifest.write_text(json.dumps(value))
+    # Existing migration detection requires all declared targets on addition.
+    targets = manage._targets(value, None)
+    preview = manage.up_many(manifest, targets, runner=runner, unit_root=units)
+    assert preview["activation_blockers"] == []
+    assert manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)["activated"]
+    assert (units / "anvil-connect-connector-secondary.service").is_file()
+
+
+def test_status_has_one_aggregate_observation_deadline(tmp_path, monkeypatch):
+    manifest, _, _ = deployment(tmp_path, monkeypatch)
+    now = [0.0]
+    calls = []
+    monkeypatch.setattr(manage.time, "monotonic", lambda: now[0])
+
+    def slow(argv, timeout, identity):
+        calls.append(argv)
+        now[0] += timeout
+        return manage.RunResult(1)
+
+    result = manage.status(manifest, runner=slow)
+    assert now[0] == 5 and len(calls) == 1
+    assert all(unit["active"] == "unknown" for target in result["targets"] for unit in target["units"])
+    assert all(target["tunnel"].get("readiness", "unknown") == "unknown" for target in result["targets"])
+
+
+def test_preview_runtime_checks_share_one_deadline(tmp_path, monkeypatch):
+    _, value, _ = deployment(tmp_path, monkeypatch)
+    now = [0.0]
+    calls = []
+    units = tmp_path / "units"
+    synthetic = SyntheticRunner(active=True)
+    synthetic.unit_root = units
+    monkeypatch.setattr(manage.time, "monotonic", lambda: now[0])
+
+    def slow_success(argv, timeout, identity):
+        calls.append(argv)
+        now[0] += min(2, timeout)
+        return synthetic(argv, timeout, identity)
+
+    targets = manage._targets(value, None)
+    actions = manage._preview_runtime_actions(value, targets, {"state": "current", "changes": []}, slow_success, units)
+    assert now[0] == 5 and len(calls) == 3
+    assert actions and all(action["action"] == "check" for action in actions)
+
+
+@pytest.mark.parametrize("failure", ["crlf", "unavailable", "rollover"])
+def test_events_fail_unknown_on_invalid_or_changed_invocation(failure):
+    unit = "anvil-connect-connector-dashboard.service"
+    calls = []
+
+    def runner(argv, timeout, identity):
+        calls.append(argv)
+        if argv[0] == "/usr/bin/journalctl":
+            return manage.RunResult(0, json.dumps({"_SYSTEMD_UNIT": unit, "_SYSTEMD_INVOCATION_ID": "a" * 32,
+                                                  "MESSAGE": "connect_event path=public resource=dashboard reason=tunnel_established"}).encode())
+        if failure == "unavailable":
+            return manage.RunResult(1)
+        if failure == "crlf":
+            return manage.RunResult(0, ("InvocationID=" + "a" * 32 + "\r\n").encode())
+        return manage.RunResult(0, ("InvocationID=" + ("a" if len(calls) == 1 else "b") * 32 + "\n").encode())
+
+    assert manage._native_events(runner, unit) == []
+
+
+class LocalRunner(SyntheticRunner):
+    def __init__(self, value, units):
+        super().__init__()
+        self.value, self.unit_root = value, units
+        self.registered = False
+        self.entry_listening = True
+        self.admit = True
+        self.events = []
+        self.stale = False
+
+    def __call__(self, argv, timeout, identity):
+        self.events.append((argv[1], argv[-1]))
+        if argv[0] == manage._SYSTEMCTL and argv[-1] == "anvil-connect-connector-dashboard.service":
+            if argv[1] == "stop":
+                self.registered = self.stale
+            elif argv[1] in {"restart", "enable"}:
+                self.registered = self.admit
+        if argv[1] == "admin":
+            self.calls.append(argv)
+            value = json.loads(_gateway_status())
+            root = Path(self.value["config_root"])
+            gateway = json.loads((root / "gateway.json").read_text())
+            connector = json.loads((root / "connectors/dashboard.json").read_text())
+            value["entries"] = []
+            for path in (["public", "local"] if "local_tunnel" in gateway else ["public"]):
+                listening = path == "public" or self.entry_listening
+                selected = "local" if "local_tunnel" in connector else "public"
+                value["entries"].append({"path": path, "listening": listening,
+                    "reason": "entry_listening" if listening else "entry_tls_failed",
+                    "resources": [{"resource": r["rule"]["id"], "registrations": int(listening and self.registered and selected == path)}
+                                  for r in gateway["gateway"]["resources"]]})
+            self.events.append(("snapshot", (self.entry_listening, self.registered)))
+            return manage.RunResult(0, json.dumps(value).encode())
+        return super().__call__(argv, timeout, identity)
+
+
+def local_deployment(tmp_path, monkeypatch):
+    from tests.connect.test_render import local_tunnel_manifest
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    value = local_tunnel_manifest(value)
+    manifest.write_text(json.dumps(value))
+    units = tmp_path / "units"
+    units.mkdir(mode=0o755)
+    monkeypatch.setattr(manage, "_reverse_ports_free", lambda _: True)
+    runner = LocalRunner(value, units)
+    targets = (manage.Target("gateway"), manage.Target("connector", "dashboard"))
+    return manifest, value, units, runner, targets
+
+
+def test_local_trust_and_admission_gate_commit_then_converge(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    commit = manage._write_activation_record
+    def checked_commit(root, record):
+        assert runner.registered and runner.entry_listening
+        commit(root, record)
+    monkeypatch.setattr(manage, "_write_activation_record", checked_commit)
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    connector_start = next(i for i, event in enumerate(runner.events) if event == ("enable", "anvil-connect-connector-dashboard.service"))
+    assert ("snapshot", (True, False)) in runner.events[:connector_start]
+    assert any(c[1] == "preflight" and "--input" in c for c in runner.calls)
+    runner.active = True
+    runner.calls.clear()
+    result = manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    assert not result["activated"] and result["restarted_units"] == []
+    assert not any(c[0] == manage._SYSTEMCTL and c[1] != "show" for c in runner.calls)
+
+
+@pytest.mark.parametrize("fault", ["trust", "listener", "admission"])
+def test_local_failed_gate_never_commits(tmp_path, monkeypatch, fault):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    if fault == "listener": runner.entry_listening = False
+    if fault == "admission": runner.admit = False
+    def run(argv, timeout, identity):
+        if fault == "trust" and argv[1] == "preflight": return manage.RunResult(1)
+        return runner(argv, timeout, identity)
+    with pytest.raises(manage.ManageError):
+        manage.up_many(manifest, targets, apply=True, runner=run, unit_root=units)
+    assert not manage._activation_record(Path(value["config_root"])).exists()
+    if fault in {"trust", "listener"}:
+        assert ("enable", "anvil-connect-connector-dashboard.service") not in runner.events
+
+
+@pytest.mark.parametrize("retain_listener", [False, True])
+def test_path_switch_stops_releases_then_replaces(tmp_path, monkeypatch, retain_listener):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    runner.active = True
+    del value["connectors"][0]["local_tunnel"]
+    if not retain_listener: del value["gateway"]["local_tunnel"]
+    manifest.write_text(json.dumps(value))
+    runner.events.clear()
+    released = []
+    monkeypatch.setattr(manage, "_reverse_ports_free", lambda _: released.append(len(runner.events)) or True)
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    stop = runner.events.index(("stop", "anvil-connect-connector-dashboard.service"))
+    start = runner.events.index(("restart", "anvil-connect-connector-dashboard.service"))
+    assert stop < released[0] < start
+    assert ("snapshot", (True, False)) in runner.events[stop:start]
+
+
+@pytest.mark.parametrize("fault", ["stale-registration", "foreign-port"])
+def test_path_switch_refuses_stale_or_foreign_listener(tmp_path, monkeypatch, fault):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    runner.active = True
+    runner.events.clear()
+    if fault == "stale-registration": runner.stale = True
+    else: monkeypatch.setattr(manage, "_reverse_ports_free", lambda _: False)
+    del value["connectors"][0]["local_tunnel"]
+    manifest.write_text(json.dumps(value))
+    with pytest.raises(manage.ManageError):
+        manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    assert ("restart", "anvil-connect-connector-dashboard.service") not in runner.events
+    assert all(event[0] != "kill" for event in runner.events)
+    assert list(tmp_path.glob(".rendered.anvil-connect-*"))
+
+
+def test_invalid_prior_trust_reports_failed_recovery_and_retains_artifacts(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    runner.active = True
+    old = Path(value["config_root"]) / "gateway.json"
+    old_bytes = old.read_bytes()
+    value["gateway"]["local_tunnel"]["certificate_file"] += ".v2"
+    manifest.write_text(json.dumps(value))
+    runner.events.clear()
+    preflight = manage._native_preflight
+    restoring = False
+    def gate(data, selected, root, selected_runner, *, initializing=False):
+        nonlocal restoring
+        if restoring and not data["gateway"]["local_tunnel"]["certificate_file"].endswith(".v2"):
+            raise manage.ManageError("native declaration validation failed")
+        preflight(data, selected, root, selected_runner)
+    monkeypatch.setattr(manage, "_native_preflight", gate)
+    def run(argv, timeout, identity):
+        nonlocal restoring
+        if argv[1] == "restart" and argv[-1] == "anvil-connect-gateway.service" and not restoring:
+            restoring = True
+            return manage.RunResult(1)
+        return runner(argv, timeout, identity)
+    with pytest.raises(manage.ManageError, match="recovery failed; recovery artifacts retained"):
+        manage.up_many(manifest, targets, apply=True, runner=run, unit_root=units)
+    assert old.read_bytes() == old_bytes
+    assert list(tmp_path.glob(".rendered.anvil-connect-failed-*"))
+    assert ("restart", "anvil-connect-connector-dashboard.service") not in runner.events
+
+
+@pytest.mark.parametrize("mutation", ["unknown", "bool-count", "negative", "duplicate", "secret", "missing", "oversize"])
+def test_closed_entry_status_rejects_non_native_fields(mutation):
+    value = json.loads(_gateway_status())
+    entry = {"path": "local", "listening": True, "reason": "entry_listening",
+             "resources": [{"resource": "dashboard", "registrations": 1}]}
+    value["entries"] = [entry]
+    if mutation == "unknown": entry["path"] = "fallback"
+    if mutation == "bool-count": entry["resources"][0]["registrations"] = True
+    if mutation == "negative": entry["resources"][0]["registrations"] = -1
+    if mutation == "duplicate": value["entries"].append(entry)
+    if mutation == "secret": entry["authorization"] = "hidden"
+    if mutation == "missing": del entry["resources"]
+    if mutation == "oversize": entry["resources"] *= 65
+    with pytest.raises(manage.ManageError, match="readiness response"):
+        manage._closed_gateway_status(json.dumps(value).encode())
+
+
+def test_cf_recovery_retains_failed_local_entry_without_restarting_gateway(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    runner.active = True
+    runner.entry_listening = False
+    del value["connectors"][0]["local_tunnel"]
+    manifest.write_text(json.dumps(value))
+    runner.events.clear()
+    result = manage.up(manifest, manage.Target("connector", "dashboard"), apply=True, runner=runner, unit_root=units)
+    assert result["activated"] and runner.registered
+    assert ("restart", "anvil-connect-gateway.service") not in runner.events
+
+
+def test_failed_initial_local_activation_stops_started_services(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    runner.entry_listening = False
+    with pytest.raises(manage.ManageError):
+        manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    for unit in manage._units(manage.Target("gateway")):
+        assert ("disable", unit) in runner.events
+    assert not Path(value["config_root"]).exists()
+
+
+@pytest.mark.parametrize("public", [False, True])
+def test_gateway_only_change_preserves_unchanged_connector(tmp_path, monkeypatch, public):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    if public:
+        del value["connectors"][0]["local_tunnel"]
+        manifest.write_text(json.dumps(value))
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    runner.active = True
+    value["gateway"]["gateway"]["max_concurrent"] += 1
+    manifest.write_text(json.dumps(value))
+    runner.events.clear()
+    commit = manage._write_activation_record
+    def checked_commit(root, record):
+        assert runner.registered
+        commit(root, record)
+    monkeypatch.setattr(manage, "_write_activation_record", checked_commit)
+    probes = 0
+    restarted = False
+    def run(argv, timeout, identity):
+        nonlocal probes, restarted
+        if argv[1:] == ("restart", "anvil-connect-gateway.service"):
+            restarted = True
+            runner.registered = False
+        if restarted and argv[1] == "admin":
+            probes += 1
+            if probes >= 3: runner.registered = True
+        return runner(argv, timeout, identity)
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=run, unit_root=units)
+    assert probes >= 3
+    assert ("restart", "anvil-connect-gateway.service") in runner.events
+    assert ("restart", "anvil-connect-connector-dashboard.service") not in runner.events
+    assert ("stop", "anvil-connect-connector-dashboard.service") not in runner.events
+
+
+def test_local_status_reports_authoritative_per_resource_readiness(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    result = manage.status(manifest, manage.Target("connector", "dashboard"), runner=runner)["targets"][0]["tunnel"]
+    assert result["readiness"] == "ready" and len(result["entries"][0]["resources"]) == 2
+    runner.registered = False
+    result = manage.status(manifest, manage.Target("connector", "dashboard"), runner=runner)["targets"][0]["tunnel"]
+    assert result["readiness"] == "not-ready" and result["state"] == "degraded"
+
+
+def test_gateway_status_requires_admitted_resources_not_just_listener(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    runner.registered = False
+    tunnel = manage.status(manifest, manage.Target("gateway"), runner=runner)["targets"][0]["tunnel"]
+    assert tunnel["readiness"] == "not-ready" and tunnel["state"] == "degraded"
+
+
+def test_local_initialization_creates_authority_before_material_preflight(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    manage.native_init(manifest, manage.Target("gateway"), apply=True, runner=runner)
+    assert any(c[1] == "validate" for c in runner.calls)
+    assert any(c[1] == "init" for c in runner.calls)
+    assert not any(c[1] == "preflight" for c in runner.calls)
+    def invalid_authorities(argv, timeout, identity):
+        if argv[1] == "preflight": return manage.RunResult(1)
+        return runner(argv, timeout, identity)
+    with pytest.raises(manage.ManageError, match="native declaration validation failed"):
+        manage.up_many(manifest, targets, apply=True, runner=invalid_authorities, unit_root=units)
+    assert not Path(value["config_root"]).exists()
+
+
+def test_path_switch_checks_replacement_reverse_address_too(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    runner.active = True
+    old = value["connectors"][0]["resources"][0]["reverse_address"]
+    value["connectors"][0]["resources"][0]["reverse_address"] = "127.0.0.1:17555"
+    value["gateway"]["gateway"]["resources"][0]["tunnel_address"] = "127.0.0.1:17555"
+    del value["connectors"][0]["local_tunnel"]
+    manifest.write_text(json.dumps(value))
+    addresses = []
+    def free(connectors):
+        selected = {r["reverse_address"] for c in connectors for r in c["resources"]}
+        addresses.append(selected)
+        return "127.0.0.1:17555" not in selected
+    monkeypatch.setattr(manage, "_reverse_ports_free", free)
+    runner.events.clear()
+    with pytest.raises(manage.ManageError):
+        manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    assert old in addresses[0] and any("127.0.0.1:17555" in selection for selection in addresses)
+    assert ("restart", "anvil-connect-connector-dashboard.service") not in runner.events
+
+
+def test_failed_local_activation_recovers_prior_trust_and_registrations(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    root = Path(value["config_root"])
+    previous = (root / "gateway.json").read_bytes()
+    receipt = manage._activation_record(root).read_bytes()
+    runner.active = True
+    value["gateway"]["local_tunnel"]["certificate_file"] += ".v2"
+    value["connectors"][0]["local_tunnel"]["trust_file"] += ".v2"
+    manifest.write_text(json.dumps(value))
+    def run(argv, timeout, identity):
+        if argv[1:] == ("restart", "anvil-connect-connector-dashboard.service"):
+            gateway = json.loads((root / "gateway.json").read_text())
+            runner.admit = not gateway["local_tunnel"]["certificate_file"].endswith(".v2")
+        return runner(argv, timeout, identity)
+    with pytest.raises(manage.ManageError, match="gateway did not become ready"):
+        manage.up_many(manifest, targets, apply=True, runner=run, unit_root=units)
+    assert (root / "gateway.json").read_bytes() == previous
+    assert manage._activation_record(root).read_bytes() == receipt
+    assert runner.registered

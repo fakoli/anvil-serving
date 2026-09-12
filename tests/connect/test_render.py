@@ -464,8 +464,13 @@ def test_local_tunnel_exact_projection_and_staged_listener() -> None:
     assert connector["local_tunnel"] == value["connectors"][0]["local_tunnel"]
     assert connector["http_proxy_url"] == value["connectors"][0]["http_proxy_url"]
     assert {name for name in result["files"] if result["files"][name] != original["files"][name]} == {
-        "gateway.json", "connectors/dashboard.json", "managed.json",
+        "gateway.json", "connectors/dashboard.json", "managed.json", "systemd/anvil-connect-connector-dashboard.service",
     }
+    unit = result["files"]["systemd/anvil-connect-connector-dashboard.service"]
+    assert "After=network-online.target anvil-connect-gateway.service" in unit
+    assert "Wants=network-online.target anvil-connect-gateway.service" in unit
+    assert all(directive not in unit for directive in ("Requires=", "BindsTo=", "PartOf="))
+    assert value["gateway"]["local_tunnel"]["private_key_file"] not in result["files"]["connectors/dashboard.json"]
     assert result["generation"] != original["generation"]
     assert validate_manifest(validate_manifest(value)) == validate_manifest(value)
     del value["connectors"][0]["local_tunnel"]
@@ -511,6 +516,24 @@ def test_local_tunnel_python_go_reader_parity(tmp_path: Path) -> None:
     value = local_tunnel_manifest()
     normalized = validate_manifest(value)
     cases = []
+    # Exercise real renderer output through the unchanged Go readers for both
+    # versioned rotation and each declared CF recovery stage.
+    for phase in ("local", "rotate", "public-retain-listener", "public"):
+        candidate = local_tunnel_manifest()
+        if phase == "rotate":
+            for declaration in (candidate["gateway"], candidate["connectors"][0]):
+                for key in declaration["local_tunnel"]:
+                    if key.endswith("_file"):
+                        declaration["local_tunnel"][key] += ".v2"
+        if phase.startswith("public"):
+            del candidate["connectors"][0]["local_tunnel"]
+        if phase == "public":
+            del candidate["gateway"]["local_tunnel"]
+        files = render(candidate)["files"]
+        cases.extend([
+            {"mode": "gateway", "raw": files["gateway.json"], "valid": True},
+            {"mode": "connector", "raw": files["connectors/dashboard.json"], "gateway": files["gateway.json"], "valid": True},
+        ])
     for mode, role in (("gateway", normalized["gateway"]), ("connector", normalized["connectors"][0])):
         raw_role = json.dumps(role)
         cases.append({"mode": mode, "raw": raw_role, "valid": True})
@@ -625,3 +648,51 @@ def test_local_tunnel_listener_and_trust_collisions() -> None:
     value["gateway"]["local_tunnel"]["trust_file"] = "/etc/edge/leaf.pem"
     with pytest.raises(ManifestError, match="trust reference"):
         validate_manifest(value)
+
+
+def test_local_material_stays_outside_other_role_state_and_secrets() -> None:
+    base = local_tunnel_manifest()
+    references = [base["authelia"]["state_directory"] + "/root.pem", base["caddy"]["state_directory"] + "/root.pem",
+                  base["service_identities"]["ingress"]["directory"] + "/root.pem",
+                  base["authelia"]["oidc_rsa_private_key_file"], base["environment_files"]["gateway"],
+                  *base["environment_files"]["connectors"].values(), *base["environment_files"]["clients"].values()]
+    for reference in references:
+        value = copy.deepcopy(base)
+        value["connectors"][0]["local_tunnel"]["trust_file"] = reference
+        with pytest.raises(ManifestError, match="outside runtime state|existing trust reference"):
+            validate_manifest(value)
+
+
+def test_versioned_local_rotation_changes_only_reviewed_role_references() -> None:
+    value = local_tunnel_manifest()
+    previous = render(value)
+    value["gateway"]["local_tunnel"]["certificate_file"] += ".v2"
+    value["gateway"]["local_tunnel"]["private_key_file"] += ".v2"
+    rotated = render(value)
+    assert rotated["generation"] != previous["generation"]
+    assert {name for name in previous["files"] if previous["files"][name] != rotated["files"][name]} == {"gateway.json", "managed.json"}
+    assert json.loads(previous["files"]["gateway.json"])["local_tunnel"]["private_key_file"].endswith(".key")
+
+
+def test_local_boot_preflight_waits_for_declared_tls_entry():
+    data = local_tunnel_manifest(isolated_manifest())
+    files = render(data)["files"]
+    unit = files["systemd/anvil-connect-connector-dashboard.service"]
+    assert "ExecStartPre=" + data["binary"] + " preflight --mode connector --config " in unit
+    assert " --input " + data["config_root"] + "/gateway.json --socket " + data["connectors"][0]["local_tunnel"]["address"] in unit
+    assert not any(name + "=" in unit for name in ("Requires", "BindsTo", "PartOf"))
+    assert "ExecStartPre=" not in files["systemd/anvil-connect-gateway.service"]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="native readiness is Linux owned")
+def test_native_entry_status_passes_closed_python_decoder(tmp_path):
+    from anvil_serving.connect.manage import _closed_gateway_status
+    go = os.environ.get("ANVIL_CONNECT_GO") or shutil.which("go")
+    if not go: pytest.skip("Go unavailable")
+    output = tmp_path / "native-status.json"
+    checked = subprocess.run([go, "-C", str(ROOT / "connect"), "test", "./internal/runtime", "-run", "^TestLocalEntryStatusContract$", "-count=1"],
+                             env={**os.environ, "ANVIL_CONNECT_STATUS_OUTPUT": str(output)}, capture_output=True, text=True, timeout=60)
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+    statuses = [_closed_gateway_status(json.dumps(value).encode()) for value in json.loads(output.read_text())]
+    assert [value["entries"][1]["listening"] for value in statuses] == [True, False]
+    assert all(len(value["entries"][1]["resources"]) == 2 for value in statuses)

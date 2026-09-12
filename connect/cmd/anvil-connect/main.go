@@ -24,7 +24,7 @@ import (
 )
 
 const usage = `anvil-connect validate --mode gateway|connector|client --config FILE
-anvil-connect preflight --mode gateway|connector|client --config FILE
+anvil-connect preflight --mode gateway|connector|client --config FILE [--input GATEWAY_FILE] [--socket LOCAL_ADDRESS]
 anvil-connect init --mode gateway --config FILE
 anvil-connect init --mode connector --config FILE --bundle PRIVATE_FILE
 anvil-connect gateway|connector|client --config FILE
@@ -77,6 +77,10 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	case "validate", "preflight", "init":
 		fs.StringVar(&mode, "mode", "", "native mode")
 		fs.StringVar(&file, "config", "", "closed declaration")
+		if command == "preflight" {
+			fs.StringVar(&input, "input", "", "paired gateway declaration for connector trust")
+			fs.StringVar(&socket, "socket", "", "wait for the declared local TLS socket")
+		}
 		if command == "init" {
 			fs.StringVar(&bundle, "bundle", "", "private enrollment invitation")
 		}
@@ -215,11 +219,41 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 		return status(map[string]string{"mode": mode, "status": "valid"})
 	}
 	if command == "preflight" {
+		if mode != "connector" && (input != "" || socket != "") {
+			return invalid()
+		}
+		if mode == "gateway" && gateway.VerifyLocalTunnelMaterial() != nil {
+			return fail()
+		}
+		if mode == "connector" {
+			if (connector.LocalTunnel != nil) != (input != "") {
+				return invalid()
+			}
+			if input != "" {
+				paired, readErr := readDeclaration(input)
+				if readErr != nil {
+					return invalid()
+				}
+				gateway, err = connectruntime.ReadGateway(bytes.NewReader(paired))
+				if err != nil {
+					return invalid()
+				}
+				if connector.VerifyLocalTunnelTrust(gateway) != nil {
+					return fail()
+				}
+			}
+			if socket != "" && (connector.LocalTunnel == nil || socket != connector.LocalTunnel.Address) {
+				return invalid()
+			}
+		}
 		binary := gateway.TunnelBinary
 		if mode == "connector" {
 			binary = connector.TunnelBinary
 		}
 		if mode != "client" && transport.VerifyBinary(binary) != nil {
+			return fail()
+		}
+		if socket != "" && connector.WaitLocalTunnelEntry(ctx) != nil {
 			return fail()
 		}
 		return status(map[string]string{"mode": mode, "status": "artifacts-verified"})

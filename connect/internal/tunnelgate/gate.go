@@ -17,6 +17,7 @@ import (
 	"net/http/httputil"
 	"reflect"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -44,12 +45,14 @@ type gateRoute struct {
 }
 
 type Gate struct {
-	Events    relay.Events
-	host      string
-	leases    *Leases
-	active    *access.Active
-	routes    map[string]gateRoute
-	transport *http.Transport
+	Events          relay.Events
+	registrationsMu sync.Mutex
+	registrations   map[*upgradeAttempt]registration
+	host            string
+	leases          *Leases
+	active          *access.Active
+	routes          map[string]gateRoute
+	transport       *http.Transport
 }
 
 // TransportCapacity is the existing derived tunnel budget, not the
@@ -221,6 +224,26 @@ func (g *Gate) Bind(host string) (http.Handler, error) {
 	}), nil
 }
 
+// Registration counts include only verified upgrades with current authority.
+// Entries are bounded by the existing admission slots, never by event history.
+type registration struct {
+	path      string
+	admission Admission
+	ctx       context.Context
+}
+
+func (g *Gate) Registrations() map[string]map[string]int {
+	g.registrationsMu.Lock()
+	defer g.registrationsMu.Unlock()
+	counts := map[string]map[string]int{"public": {}, "local": {}}
+	for _, r := range g.registrations {
+		if r.ctx.Err() == nil && g.leases.Check(r.admission) == nil {
+			counts[r.path][r.admission.Resource]++
+		}
+	}
+	return counts
+}
+
 type attemptKey struct{}
 type upgradeAttempt struct {
 	timer         *time.Timer
@@ -258,7 +281,17 @@ func (g *Gate) serveEntry(w http.ResponseWriter, r *http.Request, host, path str
 	defer cancel()
 	// Local admission gets three seconds for the entire backend dial/TLS/101,
 	// not three seconds per stage. Stop the timer only after verified upgrade.
-	attempt := &upgradeAttempt{onEstablished: func() { g.Events.Record(path, admission.Resource, "tunnel_established") }}
+	attempt := &upgradeAttempt{}
+	attempt.onEstablished = func() {
+		g.registrationsMu.Lock()
+		if g.registrations == nil {
+			g.registrations = make(map[*upgradeAttempt]registration)
+		}
+		g.registrations[attempt] = registration{path, admission, ctx}
+		g.registrationsMu.Unlock()
+		g.Events.Record(path, admission.Resource, "tunnel_established")
+	}
+	defer func() { g.registrationsMu.Lock(); delete(g.registrations, attempt); g.registrationsMu.Unlock() }()
 	if path == "local" {
 		attempt.timer = time.AfterFunc(3*time.Second, cancel)
 		defer attempt.timer.Stop()
