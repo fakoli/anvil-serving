@@ -368,6 +368,8 @@ def test_front_door_persists_session_history_and_reports_lost_source(tmp_path):
         status, _, body = http_get(host, port, "/v1/requests?session_id=session-a&history=1", token="test-credential")
         assert status == 200
         history = json.loads(body)
+        assert history["object"] == "router_request_history"
+        assert history["session_id"] == "session-a"
         assert history["records"] and history["records"][0]["session_id"] == "session-a"
         path.unlink()
         # Simulate the post-restart request-id fallback, where memory no
@@ -378,6 +380,55 @@ def test_front_door_persists_session_history_and_reports_lost_source(tmp_path):
         assert status == 503
         status, _, _ = http_get(host, port, f"/v1/requests/{gateway_request_id}", token="test-credential")
         assert status == 503
+
+
+def test_real_http_session_history_is_accepted_by_diagnose_session(tmp_path):
+    from anvil_serving import router_diagnostics
+    from anvil_serving.router.config import load
+    from anvil_serving.router.serve import RoutingBackend
+    from tests.router.helpers import http_get, server_context
+
+    class Backend:
+        def generate(self, request):
+            yield "ok"
+
+    config = load(Path(__file__).resolve().parents[2] / "configs" / "example.toml")
+    session_id = "pi-8f6b2a7c-77e5-4d83-a1c4-b4afed0ab123"
+    log = DecisionLog(sink=DecisionLogWriter(str(tmp_path / "decisions.jsonl")))
+    routing = RoutingBackend(config, {"primary-local": Backend()}, decision_log=log)
+    with server_context(routing, token="test-credential") as (host, port):
+        for _ in range(2):
+            connection = http.client.HTTPConnection(host, port, timeout=5)
+            try:
+                connection.request("POST", "/v1/chat/completions", json.dumps({
+                    "model": "llm.primary", "messages": [{"role": "user", "content": "private prompt"}],
+                }), {
+                    "Authorization": "Bearer test-credential", "Content-Type": "application/json",
+                    "X-Anvil-Session-Id": session_id,
+                })
+                response = connection.getresponse()
+                assert response.status == 200
+                response.read()
+            finally:
+                connection.close()
+        status, _, body = http_get(
+            host, port, f"/v1/requests?session_id={session_id}&history=1",
+            token="test-credential",
+        )
+        history = json.loads(body)
+        assert status == 200
+        assert history["object"] == "router_request_history"
+        assert history["scope"] == "decision_log_jsonl"
+        assert history["session_id"] == session_id
+        assert len(history["records"]) == 2
+        assert history["truncated"] is False
+        assert history["available"] is True
+        result = router_diagnostics.diagnose_session(
+            session_id, router_url=f"http://{host}:{port}", token="test-credential",
+        )
+    assert result["scope"] == "decision_log_jsonl"
+    assert result["session_id"] == session_id
+    assert len(result["requests"]) == 2
 
 
 def _scheduler_decision():

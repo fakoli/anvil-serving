@@ -1603,11 +1603,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                                 return
                             payload = workload_registry.active_requests(session_id=session, limit=limit)
                         else:
-                            log = getattr(backend, "_decision_log", None)
-                            if log is None:
+                            history_fn = getattr(backend, "request_history", None)
+                            if history_fn is None:
+                                routing = getattr(self.server, "anvil_routing", None)
+                                history_fn = getattr(routing, "request_history", None)
+                            if not callable(history_fn):
                                 self._error(503, "history_unavailable", "request history unavailable")
                                 return
-                            payload = log.lookup_history(session_id=session, limit=limit)
+                            payload = history_fn(session, limit)
                             if not payload.get("available"):
                                 self._error(503, "history_unavailable", "request history unavailable")
                                 return

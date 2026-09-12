@@ -1365,6 +1365,15 @@ class RoutingBackend:
         self._validate_stats_model(query)
         return aggregate_stats(self._decision_log.records, query)
 
+    def request_history(self, session_id: Optional[str], limit: int) -> dict:
+        """Project retained terminal records in the session-diagnostic envelope."""
+        history = self._decision_log.lookup_history(session_id=session_id, limit=limit)
+        return {
+            "object": "router_request_history",
+            "session_id": session_id,
+            **history,
+        }
+
     def request_trace(self, request_id: str) -> dict:
         try:
             return find_request(self._decision_log.records, request_id)
