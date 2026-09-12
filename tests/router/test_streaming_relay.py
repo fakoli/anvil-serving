@@ -22,7 +22,11 @@ from functools import partial
 
 import pytest
 
-from anvil_serving.router.backends.relay import RelayBackend, RelayBackendError
+from anvil_serving.router.backends.relay import (
+    RelayBackend,
+    RelayBackendError,
+    RelayTimeoutError,
+)
 from anvil_serving.router.availability import AvailabilityResult
 from anvil_serving.router.config import ReplicaIdentity, ReplicaMember, RouterConfig, Tier
 from anvil_serving.router.front_door import make_server
@@ -33,6 +37,7 @@ from anvil_serving.router.backends.sse import (
     iter_sse_events,
 )
 from anvil_serving.router.internal import InternalRequest, Message
+from anvil_serving.router.request_control import RequestControl
 from tests.router.helpers import make_tier as _tier
 from tests.router.test_backends import _CompletedPressure
 
@@ -128,6 +133,49 @@ def test_openai_streaming_deltas_and_structured():
     body = transport.bodies[0]
     assert body["stream"] is True
     assert body["stream_options"] == {"include_usage": True}
+
+
+def test_streaming_cancel_interrupts_the_open_socket_without_closing_generator():
+    class Socket:
+        def __init__(self):
+            self.shutdowns = []
+
+        def shutdown(self, how):
+            self.shutdowns.append(how)
+
+    class Response(FakeStreamResponse):
+        def __init__(self):
+            super().__init__(b"")
+            self.socket = Socket()
+            self.fp = type("FP", (), {"raw": type("Raw", (), {"_sock": self.socket})()})()
+
+    response = Response()
+    backend = RelayBackend(
+        _tier("openai"), env={"EXAMPLE_KEY": "k"},
+        stream_transport=lambda *args, **kwargs: response,
+    )
+    request = _request()
+    control = RequestControl()
+    request.raw["_anvil_control"] = control
+    stream = backend.generate(request)
+    control.cancel()
+    assert response.socket.shutdowns == [socket.SHUT_RDWR]
+    assert not response.closed
+    stream.close()
+    assert response.closed
+
+
+def test_controlled_stream_eof_is_a_terminal_error_not_idle_activity():
+    response = FakeStreamResponse(b"")
+    backend = RelayBackend(
+        _tier("openai"), env={"EXAMPLE_KEY": "k"},
+        stream_transport=lambda *args, **kwargs: response,
+    )
+    request = _request()
+    request.raw["_anvil_control"] = RequestControl()
+    with pytest.raises(RelayBackendError, match="ended before completion"):
+        list(backend.generate(request))
+    assert response.closed
 
 
 def test_openai_streaming_tool_calls_accumulate():
@@ -321,6 +369,26 @@ def test_custom_buffered_transport_never_streams():
                            transport=buffered)
     assert "".join(backend.generate(_request(stream=True))) == "buffered"
     assert calls[0]["stream"] is False  # buffered path body unchanged
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected"),
+    ((ConnectionResetError, RelayBackendError), (TimeoutError, RelayTimeoutError)),
+)
+def test_buffered_transport_classifies_reset_separately_from_timeout(failure, expected):
+    def buffered(url, *, data, headers, timeout):
+        raise failure("private-transport-detail")
+
+    backend = RelayBackend(
+        _tier("openai"), env={"EXAMPLE_KEY": "k"}, transport=buffered,
+    )
+    with pytest.raises(expected) as caught:
+        list(backend.generate(_request(stream=False)))
+    assert type(caught.value) is expected
+    assert str(caught.value) in {
+        "model upstream request failed", "model upstream request timed out",
+    }
+    assert "private-" not in str(caught.value)
 
 
 def test_extra_body_stream_override_wins():

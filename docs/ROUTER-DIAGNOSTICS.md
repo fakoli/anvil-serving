@@ -1,4 +1,4 @@
-# Diagnose one router request
+# Diagnose router requests and sessions
 
 The gateway observes a request's route, admission, upstream relay, completion,
 and usage without retaining its prompt or response. Use that evidence to
@@ -16,7 +16,23 @@ before routing may have an identifier without a terminal decision record.
 anvil-serving router diagnose --request-id req_0123456789abcdef0123456789abcdef --json
 ```
 
-The command uses `ANVIL_ROUTER_URL` (default `http://127.0.0.1:8000`) and reads
+Save connection defaults in `$ANVIL_SERVING_HOME/router-diagnostics.toml`
+(default `~/.anvil-serving/router-diagnostics.toml`):
+
+```toml
+router_url = "http://127.0.0.1:8000"
+auth_env = "ANVIL_ROUTER_TOKEN"
+credential_env_file = "/etc/anvil-serving/router.env"
+timeout = 5
+```
+
+The credential file is optional and must be explicitly declared; it is never
+searched for in the shared home environment file. Keep it protected and outside
+Git. `--config` selects another settings file. Explicit CLI options and process
+environment values take precedence over saved defaults.
+
+Without saved settings, the command uses `ANVIL_ROUTER_URL` (default
+`http://127.0.0.1:8000`) and reads
 the credential from `ANVIL_ROUTER_TOKEN`. `--router-url` selects an explicit
 origin; `--auth-env` selects a different credential environment variable.
 Credentials are never command-line values. HTTP origins must use a private or
@@ -87,7 +103,7 @@ The diagnostic envelope is `anvil-router-diagnosis/v1`. `request` contains
 allowlisted terminal evidence; `current_router` identifies the process observed
 by a separate GET. The latter does not establish which configuration served an
 earlier request. A not-found record may still be active, have been evicted,
-belong to a previous process, or come from a router without request lookup.
+fall outside retained history, or come from a router without request lookup.
 
 The gateway stores no prompt, response text, tool arguments/results, audio,
 transcripts, raw upstream errors, or arbitrary headers in these measurements.
@@ -95,10 +111,40 @@ It does not infer intent, replay requests, inspect an engine's logs, or choose
 a replacement model. Continue a failure investigation with the owning managed
 serve's bounded logs; a router symptom alone is not a root cause.
 
-For optional persisted metadata, the existing server `decision_log_path`
-configuration writes rotated JSONL. Those files are private runtime data and
-belong in neither repository. This command reads the process's current bounded
-buffer; it does not search retained JSONL or provide a historical database.
+For persisted metadata, `server.decision_log_path` writes rotated JSONL. Request
+lookup falls back to those retained files after buffer eviction or restart.
+Those files are private runtime data and belong in neither repository. Reads
+are bounded and report truncation; this is not an unbounded historical database.
+
+## Follow a session or inspect a pause
+
+```bash
+anvil-serving router diagnose --active --json
+anvil-serving router diagnose --session-id SESSION_ID --active --json
+anvil-serving router diagnose --session-id SESSION_ID --json
+```
+
+The active view reads the existing workload registry and reports the phase,
+elapsed time, time since upstream activity, admission wait and available token
+counts. Estimates and engine-reported counts remain distinct. A session query
+without `--active` searches retained terminal JSONL metadata. Each returns at
+most 50 records. The HTTP API is `GET /v1/requests?active=1` or
+`GET /v1/requests?session_id=SESSION_ID&history=1`.
+
+Clients can supply a bounded opaque `X-Anvil-Session-Id`, or `X-Session-Affinity`
+when the first header is absent. Managed Pi catalog sync enables Pi's session
+affinity headers; the managed Pi egress proxy supplies its trusted session ID
+automatically. Session IDs correlate
+requests; they do not grant access or identify an authenticated client. Tool
+execution happens in Pi between inference requests, so absence from the active
+router view alone cannot diagnose a client-side pause.
+
+New terminal records include the request-time routing configuration hash and
+router package version. The hash covers routing configuration, not all server
+settings. Older records can lack this identity and new measurements.
+
+See [router reliability controls](ROUTER-RELIABILITY.md) for deadlines,
+client budgets, engine metrics and optional trace export.
 
 See [router commands](cli/router.md#diagnose), the
 [observability API](THIN-CAPABILITY-GATEWAY.md#router-observability-api), and

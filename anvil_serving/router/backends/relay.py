@@ -9,10 +9,13 @@ hermetic.
 from __future__ import annotations
 
 import json
+import http.client
 import os
+import socket
 import sys
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import replace
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional
@@ -42,6 +45,11 @@ from ..internal import (
     InternalRequest,
     ModelDelta,
     StructuredResult,
+)
+from ..request_control import (
+    RequestControl,
+    RequestDeadlineExceeded,
+    request_control,
 )
 from .sse import (
     AnthropicStreamAssembler,
@@ -111,6 +119,167 @@ class _ClosingIterator:
                 pass
 
 
+def _interrupt_response(response: Any) -> None:
+    """Interrupt a blocked stdlib response read without closing its iterator.
+
+    The worker that owns the generator performs the ordinary ``close()``.
+    A disconnect monitor may call this from another thread, so it only shuts
+    down the socket and never calls generator ``close`` concurrently.
+    """
+    sock = getattr(getattr(getattr(response, "fp", None), "raw", None), "_sock", None)
+    shutdown = getattr(sock, "shutdown", None)
+    if callable(shutdown):
+        try:
+            shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+
+
+def _set_response_timeout(response: Any, timeout: float) -> None:
+    sock = getattr(getattr(getattr(response, "fp", None), "raw", None), "_sock", None)
+    setter = getattr(sock, "settimeout", None)
+    if callable(setter):
+        setter(max(0.001, timeout))
+
+
+def _control_timeout(timeout: float, control: Optional[RequestControl]) -> float:
+    """Keep a tier's configured transport timeout when control is attached."""
+    if control is None:
+        return timeout
+    return min(timeout, control.upstream_wait_seconds())
+
+
+def _interrupt_connection(connection: http.client.HTTPConnection) -> None:
+    sock = getattr(connection, "sock", None)
+    shutdown = getattr(sock, "shutdown", None)
+    if callable(shutdown):
+        try:
+            shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+    closer = getattr(connection, "close", None)
+    if callable(closer):
+        closer()
+
+
+def _close_controlled_response(response: Any) -> None:
+    try:
+        response.close()
+    finally:
+        connection = getattr(response, "_anvil_connection", None)
+        if isinstance(connection, http.client.HTTPConnection):
+            _interrupt_connection(connection)
+
+
+def _controlled_stream_open(
+    url: str, *, data: bytes, headers: Mapping[str, str], timeout: float,
+    control: RequestControl,
+) -> Any:
+    """Open a direct HTTP response with a hard deadline during header parsing.
+
+    ``urllib`` creates its connection inside ``open()`` and does not expose it
+    until all headers are parsed.  A peer that drips a header byte inside the
+    socket idle timeout can otherwise retain router admission indefinitely.
+    Register the stdlib connection before sending and interrupt that socket at
+    the control's startup/total deadline or downstream cancellation.
+    """
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise RelayBackendError("model upstream request failed")
+    target = urllib.parse.urlunsplit(("", "", parsed.path or "/", parsed.query, ""))
+    connection_type = (
+        http.client.HTTPSConnection if parsed.scheme == "https"
+        else http.client.HTTPConnection
+    )
+    connection = connection_type(
+        parsed.hostname, parsed.port, timeout=max(0.001, _control_timeout(timeout, control))
+    )
+    interrupted = threading.Event()
+    deadline_interrupted = threading.Event()
+    handoff_lock = threading.Lock()
+    response_handed_off = False
+
+    def close() -> None:
+        interrupted.set()
+        _interrupt_connection(connection)
+    control.set_upstream_close(close)
+    deadline_seconds, deadline_kind = control.upstream_deadline()
+
+    def expire() -> None:
+        # Timer.cancel() cannot stop a callback that already started.  Once
+        # getresponse() succeeds, the caller owns the response and installs a
+        # response-specific cancellation hook, so a late watchdog must not
+        # tear down that handed-off socket.
+        with handoff_lock:
+            if response_handed_off:
+                return
+            deadline_interrupted.set()
+        close()
+
+    timer = threading.Timer(deadline_seconds, expire)
+    timer.daemon = True
+    timer.start()
+    response = None
+    try:
+        control.check_upstream()
+        connection.request("POST", target, body=data, headers=dict(headers))
+        if interrupted.is_set():
+            control.check_upstream()
+            if deadline_interrupted.is_set():
+                raise RequestDeadlineExceeded(deadline_kind)
+        response = connection.getresponse()
+        with handoff_lock:
+            if deadline_interrupted.is_set():
+                control.check_upstream()
+                raise RequestDeadlineExceeded(deadline_kind)
+            response_handed_off = True
+    except (OSError, TimeoutError, http.client.HTTPException) as exc:
+        _interrupt_connection(connection)
+        try:
+            control.check_upstream()
+        except Exception:
+            raise
+        if deadline_interrupted.is_set():
+            # Timer resolution can beat the monotonic clock by a few
+            # milliseconds on Windows.  This socket interruption still came
+            # from the selected control deadline, never from the upstream.
+            raise RequestDeadlineExceeded(deadline_kind) from None
+        if is_relay_timeout(exc):
+            raise RelayTimeoutError("model upstream request timed out") from None
+        raise RelayBackendError("model upstream request failed") from None
+    except BaseException:
+        _interrupt_connection(connection)
+        raise
+    finally:
+        timer.cancel()
+        control.clear_upstream_close(close)
+    if not 200 <= response.status < 300:
+        status = response.status
+        _close_controlled_response(response)
+        _interrupt_connection(connection)
+        if status in _CALLER_REJECTION_STATUSES:
+            if status == 413:
+                raise BackendClientError(
+                    413, "payload_too_large", "model upstream rejected the request as too large",
+                )
+            raise BackendClientError(status, "invalid_request_error", "model upstream rejected the request")
+        raise RelayBackendError(f"model upstream returned HTTP {status}")
+    response._anvil_connection = connection
+    return response
+
+
+def _note_usage(control: Optional[RequestControl], result: StructuredResult) -> None:
+    if control is None or not isinstance(result.usage, Mapping):
+        return
+    counts = {
+        key: result.usage[key]
+        for key in ("input_tokens", "output_tokens", "cache_read_input_tokens")
+        if isinstance(result.usage.get(key), int) and not isinstance(result.usage.get(key), bool)
+    }
+    if counts:
+        control.note_activity(**counts)
+
+
 class _BoundedLineReader:
     """Iterate raw response lines without reading beyond a byte budget.
 
@@ -120,24 +289,42 @@ class _BoundedLineReader:
     event from being materialized by the relay before overflow is detected.
     """
 
-    def __init__(self, response: Any, max_bytes: int, tier_id: str) -> None:
+    def __init__(
+        self, response: Any, max_bytes: int, tier_id: str,
+        control: Optional[RequestControl] = None, timeout: Optional[float] = None,
+    ) -> None:
         self._response = response
         self._iterator = iter(response)
         self._readline = getattr(response, "readline", None)
         self._max_bytes = max_bytes
         self._tier_id = tier_id
         self._total = 0
+        self._control = control
+        self._timeout = timeout
 
     def __iter__(self) -> "_BoundedLineReader":
         return self
 
     def __next__(self) -> bytes:
-        if callable(self._readline):
-            line = self._readline(self._max_bytes - self._total + 1)
-            if not line:
-                raise StopIteration
-        else:
-            line = next(self._iterator)
+        control = self._control
+        if control is not None:
+            control.check_upstream()
+            _set_response_timeout(
+                self._response, _control_timeout(self._timeout or control.upstream_wait_seconds(), control),
+            )
+        try:
+            if callable(self._readline):
+                line = self._readline(self._max_bytes - self._total + 1)
+            else:
+                line = next(self._iterator)
+        except (OSError, TimeoutError, ValueError):
+            if control is not None:
+                control.check_upstream()
+            raise
+        if not line:
+            if control is not None:
+                control.check_upstream()
+            raise StopIteration
         if not isinstance(line, bytes):
             raise RelayBackendError(
                 f"model upstream returned an invalid streaming body "
@@ -149,6 +336,40 @@ class _BoundedLineReader:
                 f"cloud response body exceeded max_response_bytes="
                 f"{self._max_bytes} (tier={self._tier_id!r})"
             )
+        if control is not None:
+            control.note_activity("streaming")
+        return line
+
+
+class _ControlledLineReader:
+    """Attach deadline checks to an otherwise unbounded upstream SSE body."""
+
+    def __init__(self, response: Any, control: RequestControl, timeout: float) -> None:
+        self._response = response
+        self._iterator = iter(response)
+        self._readline = getattr(response, "readline", None)
+        self._control = control
+        self._timeout = timeout
+
+    def __iter__(self) -> "_ControlledLineReader":
+        return self
+
+    def __next__(self) -> bytes:
+        self._control.check_upstream()
+        _set_response_timeout(
+            self._response, _control_timeout(self._timeout, self._control),
+        )
+        try:
+            line = self._readline() if callable(self._readline) else next(self._iterator)
+        except (OSError, TimeoutError, ValueError):
+            self._control.check_upstream()
+            raise
+        if not line:
+            self._control.check_upstream()
+            raise StopIteration
+        if not isinstance(line, bytes):
+            raise RelayBackendError("model upstream returned an invalid streaming body")
+        self._control.note_activity("streaming")
         return line
 
 
@@ -620,6 +841,9 @@ class RelayBackend:
         path so existing hermetic setups never touch the network.
         """
         self._validate_request(request)
+        control = request_control(request)
+        if control is not None:
+            control.check_upstream()
         if request.stream and (
             self._stream_transport is not None
             or self._transport is _urlopen_transport
@@ -631,24 +855,51 @@ class RelayBackend:
         url = self._endpoint()
         headers = self._headers(request)
         data = json.dumps(self._build_body(request)).encode("utf-8")
+        control = request_control(request)
+        if control is not None:
+            control.start_upstream()
+        timeout = _control_timeout(self._timeout, control)
+        response = None
         try:
             # Pass max_bytes to the default _urlopen_transport (keyword-only).
             # Custom transports that do not accept max_bytes are called without it
             # so they remain backward-compatible; the post-read size guard below
             # still applies to their output.
-            if self._transport is _urlopen_transport and self._max_response_bytes is not None:
+            if self._transport is _urlopen_transport and control is not None:
+                response = _controlled_stream_open(
+                    url, data=data, headers=headers, timeout=timeout, control=control,
+                )
+
+                def close_response() -> None:
+                    _interrupt_response(response)
+
+                control.set_upstream_close(close_response)
+                _set_response_timeout(response, _control_timeout(self._timeout, control))
+                raw = (
+                    response.read(self._max_response_bytes + 1)
+                    if self._max_response_bytes is not None
+                    else response.read()
+                )
+            elif self._transport is _urlopen_transport and self._max_response_bytes is not None:
                 raw = self._transport(
-                    url, data=data, headers=headers, timeout=self._timeout,
+                    url, data=data, headers=headers, timeout=timeout,
                     max_bytes=self._max_response_bytes,
                 )
             else:
-                raw = self._transport(url, data=data, headers=headers, timeout=self._timeout)
-        except urllib.error.URLError as exc:
-            # A custom transport may raise URLError directly (the default
-            # _urlopen_transport already converts it, but this is the safety net).
-            # Log the full reason server-side; raise a generic, client-safe message.
-            _log_transport_error(exc, headers)
+                raw = self._transport(url, data=data, headers=headers, timeout=timeout)
+        except (OSError, TimeoutError) as exc:
+            if control is not None:
+                control.check_upstream()
+            if isinstance(exc, urllib.error.URLError):
+                # A custom transport may raise URLError directly (the default
+                # _urlopen_transport already converts it, but this is the safety net).
+                _log_transport_error(exc, headers)
             raise _transport_failure(exc) from None
+        finally:
+            if response is not None:
+                if control is not None:
+                    control.clear_upstream_close()
+                _close_controlled_response(response)
         # Post-read cap for custom transports (or the default when they have
         # already returned the full body). Guards against a runaway response that
         # slipped past the read-cap in the transport layer.
@@ -657,11 +908,14 @@ class RelayBackend:
                 f"cloud response body exceeded max_response_bytes="
                 f"{self._max_response_bytes} (tier={self._tier.id!r})"
             )
+        if control is not None:
+            control.note_activity("streaming")
         # Populate structured side channel BEFORE text extraction so the
         # thread-local is always set (even if _extract_text() raises). The
         # response_view_factory and dialect layer read this after the stream
         # is drained to build a live ResponseView (#42 / #52).
         self._thread_local.last_result = self._extract_structured(raw)
+        _note_usage(control, self._thread_local.last_result)
         text = self._extract_text(raw)
         for delta in split_into_deltas(text):
             yield delta
@@ -698,6 +952,9 @@ class RelayBackend:
             # SGLang): the final chunk carries the REAL usage block.
             body["stream_options"] = {"include_usage": True}
         data = json.dumps(body).encode("utf-8")
+        control = request_control(request)
+        if control is not None:
+            control.start_upstream()
 
         # Cleared up-front so a mid-stream interruption can never leave a STALE
         # result from a previous request on this thread.
@@ -705,13 +962,23 @@ class RelayBackend:
 
         transport = self._stream_transport or _urlopen_stream_transport
         try:
-            resp = transport(url, data=data, headers=headers, timeout=self._timeout)
+            timeout = _control_timeout(self._timeout, control)
+            resp = (
+                _controlled_stream_open(
+                    url, data=data, headers=headers, timeout=timeout, control=control,
+                )
+                if transport is _urlopen_stream_transport and control is not None
+                else transport(url, data=data, headers=headers, timeout=timeout)
+            )
         except RelayBackendError:
             raise
         except urllib.error.URLError as exc:
             # Safety net for injected transports (the default already converts).
             _log_transport_error(exc, headers)
             raise _transport_failure(exc) from None
+
+        if control is not None:
+            control.set_upstream_close(lambda: _interrupt_response(resp))
 
         def relay_response() -> Iterator[BackendDelta]:
             resp_headers = getattr(resp, "headers", None)
@@ -721,10 +988,13 @@ class RelayBackend:
             if "text/event-stream" not in ctype:
                 # Upstream ignored stream:true — parse the plain JSON body
                 # with the buffered extractors (same result, no streaming).
-                raw = resp.read(
-                    self._max_response_bytes + 1
+                if control is not None:
+                    control.check_upstream()
+                    _set_response_timeout(resp, _control_timeout(self._timeout, control))
+                raw = (
+                    resp.read(self._max_response_bytes + 1)
                     if self._max_response_bytes is not None
-                    else -1
+                    else resp.read()
                 )
                 if (
                     self._max_response_bytes is not None
@@ -734,8 +1004,11 @@ class RelayBackend:
                         f"cloud response body exceeded max_response_bytes="
                         f"{self._max_response_bytes} (tier={self._tier.id!r})"
                     )
+                if control is not None:
+                    control.note_activity("streaming")
                 structured = self._extract_structured(raw)
                 self._thread_local.last_result = structured
+                _note_usage(control, structured)
                 if structured.reasoning:
                     yield ModelDelta(reasoning=structured.reasoning)
                 text = self._extract_text(raw)
@@ -749,10 +1022,10 @@ class RelayBackend:
             )
             raw_stream = (
                 _BoundedLineReader(
-                    resp, self._max_response_bytes, self._tier.id
+                    resp, self._max_response_bytes, self._tier.id, control, self._timeout
                 )
                 if self._max_response_bytes is not None
-                else resp
+                else (_ControlledLineReader(resp, control, self._timeout) if control is not None else resp)
             )
             for event, payload in iter_sse_events(raw_stream):
                 try:
@@ -769,8 +1042,14 @@ class RelayBackend:
                     "model upstream stream ended before completion"
                 )
             self._thread_local.last_result = assembler.result()
+            _note_usage(control, self._thread_local.last_result)
 
-        return _ClosingIterator(relay_response(), resp.close)
+        def close_response() -> None:
+            if control is not None:
+                control.clear_upstream_close()
+            _close_controlled_response(resp)
+
+        return _ClosingIterator(relay_response(), close_response)
 
     # ------------------------------------------------------------------ #
     # request construction (the auth-bearing seam the tests inspect)

@@ -38,7 +38,9 @@ from anvil_serving.observability.workloads import (
 from anvil_serving.router.decision_log import (
     DecisionLog,
     DecisionRecord,
+    safe_client_id,
     safe_gateway_request_id,
+    safe_correlation,
 )
 
 MAX_ACTIVE_WORKLOADS = 1024
@@ -71,6 +73,7 @@ class _ActiveEntry:
     state: WorkloadState
     created_at: datetime
     updated_at: datetime
+    diagnostic: tuple = ()
 
 
 class RouterWorkloadRegistry:
@@ -121,6 +124,49 @@ class RouterWorkloadRegistry:
     def unrepresented_count(self) -> int:
         with self._lock:
             return sum(self._unrepresented.values())
+
+    def observe_request(self, request_id, correlation, route, measurements):
+        """Enrich existing active entries with bounded, content-free observations."""
+        values = {}
+        for key in ("session_id", "client_id"):
+            value = safe_correlation(correlation.get(key)) if key == "session_id" else safe_client_id(correlation.get(key))
+            if value is not None:
+                values[key] = value
+        if isinstance(route, str) and len(route) <= 128 and safe_correlation(route):
+            values["route"] = route
+        phase = measurements.get("phase")
+        if phase in {"checking", "queued", "admitted", "dispatched", "streaming"}:
+            values["phase"] = phase
+        for key in ("elapsed_ms", "last_activity_ms", "admission_wait_ms",
+                    "input_tokens", "estimated_input_tokens", "output_tokens", "cache_read_input_tokens",
+                    "context_limit_tokens"):
+            value = measurements.get(key)
+            if type(value) is int and 0 <= value <= MAX_COUNT:
+                values[key] = value
+        with self._lock:
+            entry = self._active.get(request_id)
+            if entry is not None:
+                self._active[request_id] = dataclasses.replace(entry, diagnostic=tuple(values.items()))
+
+    def active_requests(self, *, session_id=None, limit=50):
+        if session_id is not None and safe_correlation(session_id) != session_id:
+            raise ValueError("invalid session identifier")
+        if type(limit) is not int or not 1 <= limit <= 200:
+            raise ValueError("invalid request limit")
+        with self._lock:
+            entries = tuple(self._active.values())
+            omitted = sum(self._unrepresented.values())
+        records = []
+        for entry in reversed(entries):
+            fields = dict(entry.diagnostic)
+            if session_id is not None and fields.get("session_id") != session_id:
+                continue
+            records.append({"gateway_request_id": entry.gateway_request_id,
+                "state": entry.state.value, "phase": entry.state.value,
+                "created_at": format_workload_timestamp(entry.created_at), **fields})
+        return {"object": "router_request_history", "scope": "active_workload_buffer",
+            "session_id": session_id, "records": records[:limit],
+            "truncated": bool(omitted or len(records) > limit)}
 
     def source_result(
         self,
@@ -287,6 +333,8 @@ class RouterWorkloadRegistry:
         )
         with self._lock:
             if represented and entry.gateway_request_id in self._active:
+                updated = dataclasses.replace(updated,
+                    diagnostic=self._active[entry.gateway_request_id].diagnostic)
                 self._active[entry.gateway_request_id] = updated
             elif not represented:
                 if self._unrepresented[entry.state]:

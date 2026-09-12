@@ -830,6 +830,41 @@ def test_pi_only_seeds_missing_anvil_provider_from_router_contract(tmp_path):
     assert by_id["llm.primary"]["maxTokens"] == 8192
 
 
+def test_pi_sync_enables_session_affinity_only_for_managed_anvil_provider(tmp_path):
+    _, pi_models_path, pi_settings_path = _write_inputs(tmp_path)
+    pi_models = json.loads(pi_models_path.read_text())
+    pi_models["providers"]["anvil"]["compat"].update({
+        "sendSessionAffinityHeaders": False,
+        "sessionAffinityFormat": "openrouter",
+    })
+    pi_models["providers"]["other"] = {
+        "compat": {
+            "sendSessionAffinityHeaders": False,
+            "sessionAffinityFormat": "openrouter",
+        },
+        "models": [{"id": "other/model"}],
+    }
+    pi_models_path.write_text(json.dumps(pi_models), encoding="utf-8")
+    other_provider = pi_models["providers"]["other"]
+
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+
+    rendered_models = json.loads(pi_models_path.read_text())
+    assert rendered_models["providers"]["anvil"]["compat"] == {
+        "supportsUsageInStreaming": True,
+        "sendSessionAffinityHeaders": True,
+        "sessionAffinityFormat": "openai",
+    }
+    assert rendered_models["providers"]["other"] == other_provider
+    assert json.loads(pi_settings_path.read_text())["theme"] == "dark"
+
+
 def test_pi_only_repairs_bare_api_key_environment_name(tmp_path):
     _, pi_models_path, _ = _write_inputs(tmp_path)
     pi_models = json.loads(pi_models_path.read_text())

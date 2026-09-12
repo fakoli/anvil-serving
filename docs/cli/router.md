@@ -18,7 +18,7 @@ owning documentation link.
 | --- | --- |
 | `router run` | Run the router in the foreground. |
 | `router endpoint` | Show the listen address, port, and this node's Tailscale DNS name. |
-| `router diagnose` | Explain one request using bounded metadata, without replaying it. |
+| `router diagnose` | Inspect active requests or retained request/session metadata, without replaying it. |
 | `router workloads` | Read bounded canonical workloads from one explicit router endpoint. |
 
 ### Deployment lifecycle
@@ -79,6 +79,16 @@ or tailnet configuration.
 Without `--follow`, logs are bounded and return after the selected window.
 `router logs --follow` is an explicit foreground stream and does not support JSON.
 
+Expected client disconnects produce one `event=client_disconnected` line instead
+of a socket traceback. It includes the exception class, UTC timestamp, elapsed
+request time in milliseconds, and `gateway_request_id`. Use that ID with
+`router diagnose` to inspect retained timing and outcome metadata. Disconnects
+before authenticated inference has started use `gateway_request_id=-`.
+The event says the downstream connection closed; it does not establish whether
+the caller cancelled, a proxy timed out, or an earlier delay caused the closure.
+Upstream streaming failures remain separate `500 stream error after headers`
+events. Neither log includes prompts, response text, tokens, or exception messages.
+
 Token inspection is redacted by default:
 
 ```bash
@@ -111,6 +121,8 @@ Use the `X-Anvil-Request-Id` from an inference response:
 ```bash
 anvil-serving router diagnose --request-id req_0123456789abcdef0123456789abcdef
 anvil-serving router diagnose --request-id req_0123456789abcdef0123456789abcdef --router-url http://127.0.0.1:8000 --json
+anvil-serving router diagnose --active --json
+anvil-serving router diagnose --session-id SESSION_ID --json
 ```
 
 The command reads the router credential from `ANVIL_ROUTER_TOKEN` or the
@@ -118,7 +130,8 @@ environment variable selected by `--auth-env`. It retrieves one terminal
 decision and separately labeled current build metadata using bounded GETs.
 `--timeout` is a per-read socket timeout, at most 30 seconds. A missing record
 does not prove the request never ran: active requests, buffer eviction, older
-processes, and unsupported lookup can all explain its absence.
+processes without retained JSONL, and unsupported lookup can all explain its absence.
+Use `--active` with `--session-id` to filter current requests for one session.
 
 See [request diagnostics](../ROUTER-DIAGNOSTICS.md) for timing, usage provenance,
 correlation, retention, and interpretation limits.

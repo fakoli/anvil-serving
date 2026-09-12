@@ -16,6 +16,7 @@ import sys
 import tempfile
 import threading
 import time
+from contextlib import ExitStack
 from dataclasses import replace
 from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer
@@ -76,7 +77,7 @@ from .model_capacity import (
     ReplicaPressureCache,
     build_model_capacity,
     engine_declared_concurrency,
-    fetch_vllm_metrics,
+    fetch_engine_metrics,
 )
 from .model_metadata import (
     build_model_capabilities,
@@ -84,6 +85,12 @@ from .model_metadata import (
     build_router_status,
 )
 from .purpose import PurposeRouter
+from .request_control import (
+    RequestCancelledError,
+    RequestControl,
+    RequestDeadlineExceeded,
+    request_control,
+)
 from .router_telemetry import (
     aggregate_stats,
     find_request,
@@ -92,6 +99,7 @@ from .router_telemetry import (
     render_prometheus,
 )
 from .tier_health import build_tier_health
+from .trace_export import TraceExporter
 from .workloads import RouterWorkloadRegistry, RouterWorkloadToken
 from ..observability.workloads import WorkloadOutcome, WorkloadState
 from .. import envfile
@@ -416,8 +424,16 @@ class _ConcurrencyLimitedBackend:
         generate: Callable[..., Iterator[BackendDelta]],
         *args: object,
     ) -> Iterator[BackendDelta]:
-        self._sem.acquire()
+        control = request_control(args[-1])
+        if control is None:
+            control = RequestControl()
+        control.begin_admission_wait()
+        while not self._sem.acquire(timeout=control.admission_wait_seconds()):
+            control.check_admission()
         try:
+            control.check_admission()
+            control.end_admission_wait()
+            control.check()
             inner = iter(generate(*args))
         except BaseException:
             self._sem.release()
@@ -476,11 +492,20 @@ class _AutoConcurrencyGate:
         generate: Callable[..., Iterator[BackendDelta]],
         *args: object,
     ) -> Iterator[BackendDelta]:
+        request = args[-1]
+        control = request_control(request)
+        if control is None:
+            control = RequestControl()
+        control.begin_admission_wait()
         with self._cond:
             while self._ceiling is not None and self._in_flight >= self._ceiling:
-                self._cond.wait()
+                self._cond.wait(timeout=control.admission_wait_seconds())
+                control.check_admission()
             self._in_flight += 1
         try:
+            control.check_admission()
+            control.end_admission_wait()
+            control.check()
             inner = iter(generate(*args))
         except BaseException:
             with self._cond:
@@ -650,23 +675,31 @@ class RoutingBackend:
             self._auto_refresher.start()
         self._availability = availability if availability is not None else AlwaysAvailable()
         self._admission = admission if admission is not None else _configured_admission(config)
-        self._capacity_metrics = fetch_vllm_metrics if capacity_metrics is None else capacity_metrics
+        self._capacity_metrics = fetch_engine_metrics if capacity_metrics is None else capacity_metrics
         self._replica_pressure = ReplicaPressureCache(
             tuple(tier for tier in config.tiers if tier.replicas and tier.replica_strategy == "capacity"),
             metrics_provider=self._capacity_metrics,
         )
         self._started_at = time.time()
+        # Capture immutable build/config identity once for terminal records;
+        # a later status read is not evidence of what served this request.
+        request_identity = build_router_status(config, started_at=self._started_at)
+        self._request_config_sha256 = request_identity["config_sha256"]
+        self._router_version = request_identity["package_version"]
         # `is None`, not truthiness: DecisionLog defines __len__, so an empty
         # (sink-enabled) log is falsy and `or` would silently replace it.
         self._decision_log = DecisionLog() if decision_log is None else decision_log
         self._thread_local: threading.local = threading.local()
         self._workload_registry: Optional[RouterWorkloadRegistry] = None
+        self._trace_exporter: Optional[TraceExporter] = None
 
     def close(self) -> None:
         """Stop this owner's bounded telemetry refreshes without waiting on I/O."""
         if self._auto_refresher is not None:
             self._auto_refresher.close()
         self._replica_pressure.close()
+        if self._trace_exporter is not None:
+            self._trace_exporter.close()
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         return getattr(self._thread_local, "last_result", None)
@@ -698,15 +731,20 @@ class RoutingBackend:
         prompt_tokens: Optional[int] = None,
         prompt_tokens_source: str = "estimated",
         completion_tokens_source: str = "unknown",
+        cache_read_input_tokens: Optional[int] = None,
         replica_member_id: Optional[str] = None,
         replica_selection: Optional[str] = None,
         replica_scheduler: object = None,
         workload_token: Optional[RouterWorkloadToken] = None,
         workload_outcome: WorkloadOutcome = WorkloadOutcome.REJECTED,
+        admission_wait_ms: Optional[int] = None,
     ) -> None:
         if prompt_tokens is None:
             prompt_tokens = self._prompt_tokens(request)
         output_limit = self._output_limit(request, tier)
+        control = request_control(request)
+        if admission_wait_ms is None and control is not None:
+            admission_wait_ms = control.admission_wait_ms
         attempts = (AttemptRecord(
             tier.id, served, reason, prompt_tokens, completion_tokens, outcome,
         ),)
@@ -760,12 +798,16 @@ class RoutingBackend:
             finish_reason=finish_reason,
             prompt_tokens_source=prompt_tokens_source,
             completion_tokens_source=completion_tokens_source,
+            cache_read_input_tokens=cache_read_input_tokens,
             output_limit_requested=output_limit["requested"],
             output_limit_applied=output_limit["applied"],
             output_limit_clamped=output_limit["clamped"],
             replica_member_id=replica_member_id,
             replica_selection=replica_selection,
             replica_scheduler=scheduler,
+            admission_wait_ms=admission_wait_ms,
+            config_sha256=self._request_config_sha256,
+            router_version=self._router_version,
             **request_correlation(request),
         )
         if workload_token is not None:
@@ -870,6 +912,12 @@ class RoutingBackend:
         """Resolve once, check local constraints, then relay with no fallback."""
         # JSON/raw is caller input. Only this invocation may create this marker.
         request.raw.pop("_anvil_output_clamp", None)
+        control = request_control(request)
+        if control is None:
+            control = RequestControl()
+            request.raw["_anvil_control"] = control
+        control.note_activity("checking", estimated_input_tokens=self._prompt_tokens(request))
+        control.check_admission()
         self._thread_local.last_result = None
         self._thread_local.last_served_tier = None
         started = time.monotonic()
@@ -901,9 +949,9 @@ class RoutingBackend:
                     pass
 
         def failure_outcome(error: BaseException) -> WorkloadOutcome:
-            if is_relay_timeout(error):
+            if is_relay_timeout(error) or isinstance(error, RequestDeadlineExceeded):
                 return WorkloadOutcome.TIMEOUT
-            if isinstance(error, (GeneratorExit, KeyboardInterrupt)):
+            if isinstance(error, (GeneratorExit, KeyboardInterrupt, RequestCancelledError)):
                 return WorkloadOutcome.CANCELLED
             return WorkloadOutcome.ERROR
 
@@ -1073,20 +1121,28 @@ class RoutingBackend:
                 )
                 raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
 
-        advance(WorkloadState.ADMITTED)
         relay_request = request
         if configured_tier.metadata_source == METADATA_UPSTREAM:
             # Preserve the stable public alias on the original request and in
             # decision/response metadata. Only the private relay copy carries
             # the inference service's currently observed model id.
             relay_request = replace(request, model=tier.model)
+        upstream = None
         try:
+            control.check_admission()
+            control.note_activity("admitted", context_limit_tokens=tier.context_limit)
+            advance(WorkloadState.ADMITTED)
             upstream_call_started = time.monotonic()
             upstream = (
                 backend.generate_member(selected_member, relay_request)
                 if selected_member is not None
                 else backend.generate(relay_request)
             )
+            # A bounded backend can wait before it invokes its relay.  Do not
+            # publish dispatch (or start a startup deadline) until that gate
+            # has actually admitted this upstream call.
+            control.start_upstream()
+            control.note_activity("dispatched")
             advance(WorkloadState.DISPATCHED)
         except BaseException as exc:
             try:
@@ -1108,7 +1164,12 @@ class RoutingBackend:
                 # Failure reporting is not an admission owner.  Preserve the
                 # original eager-error handling while releasing even when a
                 # clock, metadata, or sink failure interrupts its projection.
-                lease.release()
+                try:
+                    close = getattr(upstream, "close", None)
+                    if callable(close):
+                        close()
+                finally:
+                    lease.release()
             raise
 
         fragments: List[str] = []
@@ -1126,6 +1187,10 @@ class RoutingBackend:
             )
             upstream_completion = (
                 self._token_count(usage.get("output_tokens"))
+                if isinstance(usage, Mapping) else None
+            )
+            cache_read_input_tokens = (
+                self._token_count(usage.get("cache_read_input_tokens"))
                 if isinstance(usage, Mapping) else None
             )
             prompt_tokens = (
@@ -1163,6 +1228,7 @@ class RoutingBackend:
                 completion_tokens_source=(
                     "upstream" if upstream_completion is not None else "estimated"
                 ),
+                cache_read_input_tokens=cache_read_input_tokens,
             )
 
         def on_complete() -> None:
@@ -1204,6 +1270,7 @@ class RoutingBackend:
                 # began. Its duration starts before ``generate`` so eager setup
                 # is included; a close before first iteration stays unknown.
                 upstream_dispatched = True
+                control.check_upstream()
                 advance(WorkloadState.STREAMING)
                 for delta in upstream:
                     if isinstance(delta, ModelDelta):
@@ -1239,8 +1306,15 @@ class RoutingBackend:
             except BaseException as exc:
                 record(
                     request, tier, served=False,
-                    reason="backend_error" if selected_member is not None else f"backend_error_{type(exc).__name__}",
-                    workload_outcome=failure_outcome(exc),
+                    reason=(
+                        "client_disconnected"
+                        if isinstance(exc, RequestCancelledError)
+                        else ("backend_error" if selected_member is not None else f"backend_error_{type(exc).__name__}")
+                    ),
+                    workload_outcome=(
+                        WorkloadOutcome.DISCONNECTED
+                        if isinstance(exc, RequestCancelledError) else failure_outcome(exc)
+                    ),
                     replica_member_id=selected_member,
                     completion_tokens=estimate_tokens(fragments),
                     completion_tokens_source="estimated" if any(fragments) else "unknown",
@@ -1292,8 +1366,33 @@ class RoutingBackend:
         self._validate_stats_model(query)
         return aggregate_stats(self._decision_log.records, query)
 
+    def request_history(self, session_id: Optional[str], limit: int) -> dict:
+        """Project retained terminal records in the session-diagnostic envelope."""
+        history = self._decision_log.lookup_history(session_id=session_id, limit=limit)
+        return {
+            "object": "router_request_history",
+            "session_id": session_id,
+            **history,
+        }
+
     def request_trace(self, request_id: str) -> dict:
-        return find_request(self._decision_log.records, request_id)
+        try:
+            return find_request(self._decision_log.records, request_id)
+        except KeyError:
+            history = self._decision_log.lookup_history(request_id=request_id, limit=1)
+            # A configured durable source that has become unreadable is an
+            # operational failure, distinct from an ordinary missing record.
+            # Keep the latter as KeyError so pre-history deployments retain
+            # their established 404 response.
+            if not history["available"] and self._decision_log.file_path is not None:
+                raise OSError("request history unavailable")
+            records = history["records"]
+            if not records:
+                raise
+            return {
+                "object": "router_request", "scope": history["scope"],
+                "record": records[0],
+            }
 
     def prometheus_metrics(self, query: Mapping[str, list[str]]) -> str:
         self._validate_stats_model(query)
@@ -1762,14 +1861,17 @@ def build_server(
             "[[router.audio_routes]] require a resolved [server].auth_env"
         )
     scoped_policy = None
-    if authorization_policy is not None:
+    policy_path = authorization_policy or server_config.authorization_policy_path
+    if policy_path is not None:
         try:
             scoped_policy = load_authorization_policy(
-                authorization_policy,
+                policy_path,
                 env=environ,
                 legacy_token=auth_token,
             )
         except AuthorizationError:
+            if authorization_policy is None:
+                raise ConfigError("[server].authorization_policy_path is invalid") from None
             # A malformed optional scoped policy disables only future scoped
             # surfaces.  Existing legacy router authentication remains intact.
             scoped_policy = None
@@ -1783,161 +1885,175 @@ def build_server(
         availability = AlwaysAvailable() if injected else HttpHealthAvailability(config, env=env)
     if capacity_metrics is None:
         def capacity_metrics(tier: Tier):
-            return fetch_vllm_metrics(tier, env=environ)
+            return fetch_engine_metrics(tier, env=environ)
     if admission is None and server_config.admission_state_path:
         admission = _durable_admission(server_config.admission_state_path, config)
-    decision_log: Optional[DecisionLog] = None
-    if server_config.decision_log_path:
-        try:
-            sink = DecisionLogWriter(server_config.decision_log_path)
-        except (OSError, ValueError) as exc:
-            raise ConfigError(
-                f"[server].decision_log_path {server_config.decision_log_path!r} "
-                f"is not writable: {exc}"
-            ) from exc
-        decision_log = DecisionLog(sink=sink)
-    routing = RoutingBackend(
-        config,
-        backends,
-        availability=availability,
-        admission=admission,
-        capacity_metrics=capacity_metrics,
-        decision_log=decision_log,
-    )
-    effective_workload_clock = workload_clock or (lambda: datetime.now(timezone.utc))
-    if observe_workloads:
-        routing._workload_registry = RouterWorkloadRegistry(
-            routing._decision_log,
-            clock=effective_workload_clock,
-        )
-
-    purpose: Optional[PurposeRouter] = None
-    if config.purpose_models:
-        purpose = PurposeRouter(
-            config.purpose_models,
-            env=env,
-            transport=transport,
-            default_timeout=config.relay_timeout,
-            decision_log=routing._decision_log,
-        )
-    audio: Optional[AudioGateway] = None
-    if config.audio_routes:
-        audio = AudioGateway(
-            config.audio_routes,
-            max_input_bytes=config.audio_max_input_bytes,
-            max_output_bytes=config.audio_max_output_bytes,
-            max_text_chars=config.audio_max_text_chars,
-            max_concurrency=config.audio_max_concurrency,
-            default_timeout=config.relay_timeout,
-            env=env,
-            transport=audio_transport,
-            decision_log=routing._decision_log,
-        )
-    gateway: Optional[ProtocolGateway] = None
-    media_worker: Optional[MediaReconciliationLoop] = None
-    if server_config.media_principal is not None:
-        backend_url = environ.get("ANVIL_MEDIA_BACKEND_URL")
-        if not backend_url:
-            raise ConfigError(
-                "media gateway is enabled but ANVIL_MEDIA_BACKEND_URL is not set"
-            )
-        state_path = environ.get(
-            "ANVIL_MEDIA_STATE_DB",
-            str(Path.home() / ".anvil-serving" / "media-jobs.sqlite3"),
-        )
-        artifact_root = environ.get(
-            "ANVIL_MEDIA_ARTIFACT_ROOT",
-            str(Path.home() / ".anvil-serving" / "media-artifacts"),
-        )
-        registry_path = environ.get(
-            "ANVIL_MEDIA_WORKFLOW_REGISTRY", str(DEFAULT_REGISTRY)
-        )
-        controller_url = (environ.get("ANVIL_MEDIA_CONTROLLER_URL") or "").strip()
-        controller_token = (environ.get("ANVIL_MEDIA_CONTROLLER_TOKEN") or "").strip()
-        if bool(controller_url) != bool(controller_token):
-            raise ConfigError(
-                "ANVIL_MEDIA_CONTROLLER_URL and ANVIL_MEDIA_CONTROLLER_TOKEN must be configured together"
-            )
-        operations = MediaOperations(
-            WorkflowRegistry(registry_path),
-            MediaJobStore(state_path),
-            ArtifactStore(artifact_root),
-            lifecycle_preview=(
-                _media_lifecycle_preview(controller_url, controller_token)
-                if controller_url
-                else None
-            ),
-        )
-        media_backend = ComfyUIClient(backend_url)
-        gateway = ProtocolGateway(
-            caller={
-                "principal": server_config.media_principal,
-                "scopes": server_config.media_scopes,
-            },
-            tasks=A2AMediaTasks(operations, media_backend),
-            registry=operations.registry,
-            artifacts=operations.artifacts,
-            public_origin=server_config.media_public_origin or "",
-        )
-        media_worker = MediaReconciliationLoop(
-            MediaJobReconciler(
-                operations.jobs,
-                media_backend.history,
-                MediaArtifactCapture(
-                    operations.registry,
-                    operations.artifacts,
-                    media_backend,
-                ),
-                getattr(media_backend, "find_prompt", None),
-            ),
-            maintenance=operations.artifacts.prune,
-        )
-    httpd = make_server(
-        host, port, routing, timeout=timeout, model_routes=config.model_routes,
-        exhaustion_status=config.exhaustion_status, auth_token=auth_token,
-        purpose=purpose, audio=audio, gateway=gateway,
-        authorization_policy=scoped_policy,
-        operator_routes=operator_routes,
-        workload_host=server_config.workload_host,
-        workload_registry=routing._workload_registry,
-        workload_clock=effective_workload_clock,
-    )
-    httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
-    httpd.anvil_routing = routing  # type: ignore[attr-defined]
-    httpd.anvil_workloads = routing._workload_registry  # type: ignore[attr-defined]
-    httpd.anvil_availability = availability  # type: ignore[attr-defined]
-    httpd.anvil_admission = routing._admission  # type: ignore[attr-defined]
-    httpd.anvil_purpose = purpose  # type: ignore[attr-defined]
-    httpd.anvil_audio = audio  # type: ignore[attr-defined]
-    httpd.anvil_gateway = gateway  # type: ignore[attr-defined]
-    httpd.anvil_media_worker = media_worker  # type: ignore[attr-defined]
-    original_server_close = httpd.server_close
-    close_lock = threading.Lock()
-    closed = False
-
-    def close_router_server() -> None:
-        nonlocal closed
-        with close_lock:
-            if closed:
-                return
-            closed = True
-        try:
-            if media_worker is not None:
-                media_worker.stop()
-        finally:
+    with ExitStack() as cleanup:
+        decision_log: Optional[DecisionLog] = None
+        trace_exporter: Optional[TraceExporter] = None
+        if server_config.decision_log_path:
             try:
-                routing.close()
-            finally:
-                original_server_close()
+                sink = DecisionLogWriter(server_config.decision_log_path)
+            except (OSError, ValueError) as exc:
+                raise ConfigError(
+                    f"[server].decision_log_path {server_config.decision_log_path!r} "
+                    f"is not writable: {exc}"
+                ) from exc
+            if server_config.trace_export_url:
+                trace_exporter = TraceExporter(server_config.trace_export_url)
+                cleanup.callback(trace_exporter.close)
+            decision_log = DecisionLog(sink=sink, exporter=trace_exporter)
+        elif server_config.trace_export_url:
+            trace_exporter = TraceExporter(server_config.trace_export_url)
+            cleanup.callback(trace_exporter.close)
+            decision_log = DecisionLog(exporter=trace_exporter)
+        routing = RoutingBackend(
+            config,
+            backends,
+            availability=availability,
+            admission=admission,
+            capacity_metrics=capacity_metrics,
+            decision_log=decision_log,
+        )
+        cleanup.callback(routing.close)
+        routing._trace_exporter = trace_exporter
+        effective_workload_clock = workload_clock or (lambda: datetime.now(timezone.utc))
+        if observe_workloads:
+            routing._workload_registry = RouterWorkloadRegistry(
+                routing._decision_log,
+                clock=effective_workload_clock,
+            )
 
-    httpd.server_close = close_router_server  # type: ignore[method-assign]
-    if media_worker is not None:
-        try:
-            media_worker.start()
-        except BaseException:
-            httpd.server_close()
-            raise
-    return httpd
+        purpose: Optional[PurposeRouter] = None
+        if config.purpose_models:
+            purpose = PurposeRouter(
+                config.purpose_models,
+                env=env,
+                transport=transport,
+                default_timeout=config.relay_timeout,
+                decision_log=routing._decision_log,
+            )
+        audio: Optional[AudioGateway] = None
+        if config.audio_routes:
+            audio = AudioGateway(
+                config.audio_routes,
+                max_input_bytes=config.audio_max_input_bytes,
+                max_output_bytes=config.audio_max_output_bytes,
+                max_text_chars=config.audio_max_text_chars,
+                max_concurrency=config.audio_max_concurrency,
+                default_timeout=config.relay_timeout,
+                env=env,
+                transport=audio_transport,
+                decision_log=routing._decision_log,
+            )
+        gateway: Optional[ProtocolGateway] = None
+        media_worker: Optional[MediaReconciliationLoop] = None
+        if server_config.media_principal is not None:
+            backend_url = environ.get("ANVIL_MEDIA_BACKEND_URL")
+            if not backend_url:
+                raise ConfigError(
+                    "media gateway is enabled but ANVIL_MEDIA_BACKEND_URL is not set"
+                )
+            state_path = environ.get(
+                "ANVIL_MEDIA_STATE_DB",
+                str(Path.home() / ".anvil-serving" / "media-jobs.sqlite3"),
+            )
+            artifact_root = environ.get(
+                "ANVIL_MEDIA_ARTIFACT_ROOT",
+                str(Path.home() / ".anvil-serving" / "media-artifacts"),
+            )
+            registry_path = environ.get(
+                "ANVIL_MEDIA_WORKFLOW_REGISTRY", str(DEFAULT_REGISTRY)
+            )
+            controller_url = (environ.get("ANVIL_MEDIA_CONTROLLER_URL") or "").strip()
+            controller_token = (environ.get("ANVIL_MEDIA_CONTROLLER_TOKEN") or "").strip()
+            if bool(controller_url) != bool(controller_token):
+                raise ConfigError(
+                    "ANVIL_MEDIA_CONTROLLER_URL and ANVIL_MEDIA_CONTROLLER_TOKEN must be configured together"
+                )
+            operations = MediaOperations(
+                WorkflowRegistry(registry_path),
+                MediaJobStore(state_path),
+                ArtifactStore(artifact_root),
+                lifecycle_preview=(
+                    _media_lifecycle_preview(controller_url, controller_token)
+                    if controller_url
+                    else None
+                ),
+            )
+            media_backend = ComfyUIClient(backend_url)
+            gateway = ProtocolGateway(
+                caller={
+                    "principal": server_config.media_principal,
+                    "scopes": server_config.media_scopes,
+                },
+                tasks=A2AMediaTasks(operations, media_backend),
+                registry=operations.registry,
+                artifacts=operations.artifacts,
+                public_origin=server_config.media_public_origin or "",
+            )
+            media_worker = MediaReconciliationLoop(
+                MediaJobReconciler(
+                    operations.jobs,
+                    media_backend.history,
+                    MediaArtifactCapture(
+                        operations.registry,
+                        operations.artifacts,
+                        media_backend,
+                    ),
+                    getattr(media_backend, "find_prompt", None),
+                ),
+                maintenance=operations.artifacts.prune,
+            )
+        httpd = make_server(
+            host, port, routing, timeout=timeout, model_routes=config.model_routes,
+            exhaustion_status=config.exhaustion_status, auth_token=auth_token,
+            purpose=purpose, audio=audio, gateway=gateway,
+            authorization_policy=scoped_policy,
+            operator_routes=operator_routes,
+            workload_host=server_config.workload_host,
+            workload_registry=routing._workload_registry,
+            workload_clock=effective_workload_clock,
+            server_config=server_config,
+        )
+        cleanup.callback(httpd.server_close)
+        httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
+        httpd.anvil_routing = routing  # type: ignore[attr-defined]
+        httpd.anvil_workloads = routing._workload_registry  # type: ignore[attr-defined]
+        httpd.anvil_availability = availability  # type: ignore[attr-defined]
+        httpd.anvil_admission = routing._admission  # type: ignore[attr-defined]
+        httpd.anvil_purpose = purpose  # type: ignore[attr-defined]
+        httpd.anvil_audio = audio  # type: ignore[attr-defined]
+        httpd.anvil_gateway = gateway  # type: ignore[attr-defined]
+        httpd.anvil_media_worker = media_worker  # type: ignore[attr-defined]
+        original_server_close = httpd.server_close
+        close_lock = threading.Lock()
+        closed = False
+
+        def close_router_server() -> None:
+            nonlocal closed
+            with close_lock:
+                if closed:
+                    return
+                closed = True
+            try:
+                if media_worker is not None:
+                    media_worker.stop()
+            finally:
+                try:
+                    routing.close()
+                finally:
+                    original_server_close()
+
+        httpd.server_close = close_router_server  # type: ignore[method-assign]
+        if media_worker is not None:
+            try:
+                media_worker.start()
+            except BaseException:
+                httpd.server_close()
+                raise
+        cleanup.pop_all()  # Successful construction transfers ownership to server_close.
+        return httpd
 
 
 def serve(

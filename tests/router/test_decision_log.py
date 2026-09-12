@@ -4,11 +4,16 @@ from __future__ import annotations
 import threading
 import dataclasses
 import json
+import http.client
+from pathlib import Path
 
 import pytest
 
-from anvil_serving.router.decision_log import AttemptRecord, DecisionLog, DecisionRecord, summarize_decisions
-from anvil_serving.router.decision_log import DecisionLogWriter, decision_line
+from anvil_serving.router.decision_log import (
+    MAX_HISTORY_SCAN_BYTES, AttemptRecord, DecisionLog, DecisionLogWriter,
+    DecisionRecord, summarize_decisions,
+)
+from anvil_serving.router.decision_log import decision_line
 from anvil_serving.router.replica_scheduler import (
     PressureFreshness,
     ReplicaDecision,
@@ -38,6 +43,20 @@ def test_decision_log_is_bounded_and_snapshot_is_independent():
 
     assert len(snapshot) == 1
     assert [record.attempts[0].reason for record in log.records] == ["two", "three"]
+
+
+def test_legacy_client_identity_is_retained_only_on_the_client_field():
+    from anvil_serving.router.internal import InternalRequest
+    from anvil_serving.router.decision_log import request_correlation
+
+    correlation = request_correlation(InternalRequest(
+        model="llm.primary", messages=[], raw={"_anvil_correlation": {"client_id": "_legacy"}},
+    ))
+    assert correlation["client_id"] == "_legacy"
+    log = DecisionLog()
+    log.record(dataclasses.replace(_record(), client_id="_legacy"))
+    assert log.last.client_id == "_legacy"
+    assert log.summary()["records"][0]["client_id"] == "_legacy"
 
 
 def test_summary_keeps_only_metadata_and_redacts_secret_shaped_values():
@@ -212,7 +231,12 @@ def test_writer_allowlist_preserves_legacy_fields_and_excludes_subclass_payload(
         workload_updated_at="2026-09-05T12:00:01.000000Z", workload_outcome="success",
     )
     expected = dataclasses.asdict(original)
-    del expected["replica_member_id"], expected["replica_selection"], expected["replica_scheduler"]
+    for name in (
+        "replica_member_id", "replica_selection", "replica_scheduler", "session_id",
+        "client_id", "cache_read_input_tokens", "admission_wait_ms", "config_sha256",
+        "router_version",
+    ):
+        del expected[name]
     expected["attempts"] = list(expected["attempts"])
     record = ExtendedRecord(**{f.name: getattr(original, f.name) for f in dataclasses.fields(original)})
     record = dataclasses.replace(record, attempts=(ExtendedAttempt(**dataclasses.asdict(original.attempts[0])),))
@@ -231,6 +255,180 @@ def test_direct_record_retains_legacy_optional_omission_and_audit_shape(tmp_path
         "route=llm.primary kind=chat served=primary-local outcome=served "
         "tier=primary-local prompt=3 completion=2"
     )
+
+
+def test_history_reads_only_configured_rotations_and_projects_metadata(tmp_path):
+    path = tmp_path / "decisions.jsonl"
+    writer = DecisionLogWriter(str(path), max_bytes=1024)
+    log = DecisionLog(sink=writer)
+    for index in range(12):
+        log.record(dataclasses.replace(
+            _record(), gateway_request_id=f"req_{index:032x}",
+            session_id="session-a", client_id="client-a",
+            cache_read_input_tokens=index, admission_wait_ms=index + 1,
+            config_sha256="a" * 64, router_version="1.2.3",
+        ))
+    assert path.exists() and (tmp_path / "decisions.jsonl.1").exists()
+    history = log.lookup_history(session_id="session-a")
+    assert history["scope"] == "decision_log_jsonl"
+    assert history["available"] is True
+    assert history["records"]
+    assert all(record["session_id"] == "session-a" for record in history["records"])
+    assert all(record["client_id"] == "client-a" for record in history["records"])
+    assert "private" not in repr(history).lower()
+    assert all(record["config_sha256"] == "a" * 64 for record in history["records"])
+
+
+def test_history_ignores_malformed_and_oversized_lines_without_leaking_them(tmp_path):
+    path = tmp_path / "decisions.jsonl"
+    writer = DecisionLogWriter(str(path))
+    log = DecisionLog(sink=writer)
+    log.record(dataclasses.replace(_record(), session_id="safe-session"))
+    with path.open("ab") as handle:
+        handle.write(b'{"session_id":"safe-session","prompt":"PRIVATE-PROMPT"}\n')
+        handle.write(b"{" + b"x" * (64 * 1024 + 1) + b"}\n")
+        handle.write(b"not-json\n")
+    history = log.lookup_history(session_id="safe-session")
+    encoded = repr(history)
+    assert len(history["records"]) == 2
+    assert "PRIVATE-PROMPT" not in encoded
+    assert "PRIVATE-PROMPT" not in encoded
+
+
+def test_history_marks_large_generation_truncated_and_never_accepts_a_path(tmp_path):
+    path = tmp_path / "decisions.jsonl"
+    writer = DecisionLogWriter(str(path))
+    log = DecisionLog(sink=writer)
+    with path.open("wb") as handle:
+        handle.write(b'{"session_id":"old-session"}\n')
+        handle.write(b"x" * (MAX_HISTORY_SCAN_BYTES + 8))
+        handle.write(b'\n{"session_id":"new-session","attempts":[]}\n')
+    history = log.lookup_history(session_id="new-session")
+    assert history["truncated"] is True
+    assert len(history["records"]) == 1
+    assert DecisionLog().lookup_history(session_id="new-session")["available"] is False
+    with pytest.raises(ValueError):
+        log.lookup_history(session_id="bad value\n")
+
+
+def test_history_reports_unavailable_when_the_configured_file_is_lost(tmp_path):
+    path = tmp_path / "decisions.jsonl"
+    log = DecisionLog(sink=DecisionLogWriter(str(path)))
+    path.unlink()
+    history = log.lookup_history(session_id="session-a")
+    assert history == {
+        "scope": "decision_log_jsonl", "records": [], "truncated": False,
+        "available": False,
+    }
+
+
+def test_request_trace_falls_back_to_retained_history_after_restart(tmp_path):
+    from anvil_serving.router.serve import RoutingBackend
+
+    path = tmp_path / "decisions.jsonl"
+    original = DecisionLog(sink=DecisionLogWriter(str(path)))
+    request_id = "req_" + "a" * 32
+    original.record(dataclasses.replace(_record(), gateway_request_id=request_id))
+    restarted = DecisionLog(sink=DecisionLogWriter(str(path)))
+    trace = RoutingBackend.request_trace(type("Router", (), {"_decision_log": restarted})(), request_id)
+    assert trace["scope"] == "decision_log_jsonl"
+    assert trace["record"]["gateway_request_id"] == request_id
+    with pytest.raises(KeyError):
+        RoutingBackend.request_trace(type("Router", (), {"_decision_log": DecisionLog()})(), request_id)
+
+
+def test_front_door_persists_session_history_and_reports_lost_source(tmp_path):
+    from anvil_serving.router.config import load
+    from anvil_serving.router.serve import RoutingBackend
+    from tests.router.helpers import http_get, server_context
+
+    class Backend:
+        def generate(self, request):
+            yield "ok"
+
+    config = load(Path(__file__).resolve().parents[2] / "configs" / "example.toml")
+    path = tmp_path / "decisions.jsonl"
+    log = DecisionLog(sink=DecisionLogWriter(str(path)))
+    routing = RoutingBackend(config, {"primary-local": Backend()}, decision_log=log)
+    with server_context(routing, token="test-credential") as (host, port):
+        connection = http.client.HTTPConnection(host, port, timeout=5)
+        try:
+            connection.request("POST", "/v1/chat/completions", json.dumps({
+                "model": "llm.primary", "messages": [{"role": "user", "content": "private prompt"}],
+            }), {
+                "Authorization": "Bearer test-credential", "Content-Type": "application/json",
+                "X-Anvil-Session-Id": "session-a",
+            })
+            response = connection.getresponse()
+            assert response.status == 200
+            gateway_request_id = response.getheader("X-Anvil-Request-Id")
+            response.read()
+        finally:
+            connection.close()
+        status, _, body = http_get(host, port, "/v1/requests?session_id=session-a&history=1", token="test-credential")
+        assert status == 200
+        history = json.loads(body)
+        assert history["object"] == "router_request_history"
+        assert history["session_id"] == "session-a"
+        assert history["records"] and history["records"][0]["session_id"] == "session-a"
+        path.unlink()
+        # Simulate the post-restart request-id fallback, where memory no
+        # longer contains the terminal record and only JSONL could answer it.
+        with log._lock:
+            log._records.clear()
+        status, _, _ = http_get(host, port, "/v1/requests?session_id=session-a&history=1", token="test-credential")
+        assert status == 503
+        status, _, _ = http_get(host, port, f"/v1/requests/{gateway_request_id}", token="test-credential")
+        assert status == 503
+
+
+def test_real_http_session_history_is_accepted_by_diagnose_session(tmp_path):
+    from anvil_serving import router_diagnostics
+    from anvil_serving.router.config import load
+    from anvil_serving.router.serve import RoutingBackend
+    from tests.router.helpers import http_get, server_context
+
+    class Backend:
+        def generate(self, request):
+            yield "ok"
+
+    config = load(Path(__file__).resolve().parents[2] / "configs" / "example.toml")
+    session_id = "pi-8f6b2a7c-77e5-4d83-a1c4-b4afed0ab123"
+    log = DecisionLog(sink=DecisionLogWriter(str(tmp_path / "decisions.jsonl")))
+    routing = RoutingBackend(config, {"primary-local": Backend()}, decision_log=log)
+    with server_context(routing, token="test-credential") as (host, port):
+        for _ in range(2):
+            connection = http.client.HTTPConnection(host, port, timeout=5)
+            try:
+                connection.request("POST", "/v1/chat/completions", json.dumps({
+                    "model": "llm.primary", "messages": [{"role": "user", "content": "private prompt"}],
+                }), {
+                    "Authorization": "Bearer test-credential", "Content-Type": "application/json",
+                    "X-Anvil-Session-Id": session_id,
+                })
+                response = connection.getresponse()
+                assert response.status == 200
+                response.read()
+            finally:
+                connection.close()
+        status, _, body = http_get(
+            host, port, f"/v1/requests?session_id={session_id}&history=1",
+            token="test-credential",
+        )
+        history = json.loads(body)
+        assert status == 200
+        assert history["object"] == "router_request_history"
+        assert history["scope"] == "decision_log_jsonl"
+        assert history["session_id"] == session_id
+        assert len(history["records"]) == 2
+        assert history["truncated"] is False
+        assert history["available"] is True
+        result = router_diagnostics.diagnose_session(
+            session_id, router_url=f"http://{host}:{port}", token="test-credential",
+        )
+    assert result["scope"] == "decision_log_jsonl"
+    assert result["session_id"] == session_id
+    assert len(result["requests"]) == 2
 
 
 def _scheduler_decision():
