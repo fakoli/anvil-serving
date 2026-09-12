@@ -203,16 +203,34 @@ class RequestControl:
             raise RequestDeadlineExceeded("idle_timeout")
 
     def upstream_wait_seconds(self) -> float:
+        return self.upstream_deadline()[0]
+
+    def upstream_deadline(self) -> tuple[float, str]:
+        """Return the next upstream deadline interval and its terminal code.
+
+        The transport uses this to distinguish its deadline watchdog from an
+        ordinary socket failure.  Keeping the selected code alongside the
+        interval avoids a coarse platform clock turning a watchdog-triggered
+        startup deadline into an unclassified transport error.
+        """
         self.check_upstream()
         now = self._clock()
         with self._lock:
             upstream_started = self._upstream_started
             last_activity = self._last_activity
-        phase_left = self._startup_timeout_s if upstream_started is None else (
-            self._startup_timeout_s - (now - upstream_started)
-            if last_activity is None else self._idle_timeout_s - (now - last_activity)
-        )
-        return max(0.0, min(phase_left, self.remaining_seconds()))
+            deadline = self._deadline
+        if upstream_started is None:
+            phase_deadline = now + self._startup_timeout_s
+            phase_kind = "startup_timeout"
+        elif last_activity is None:
+            phase_deadline = upstream_started + self._startup_timeout_s
+            phase_kind = "startup_timeout"
+        else:
+            phase_deadline = last_activity + self._idle_timeout_s
+            phase_kind = "idle_timeout"
+        if deadline <= phase_deadline:
+            return max(0.0, deadline - now), "request_timeout"
+        return max(0.0, phase_deadline - now), phase_kind
 
     def note_activity(self, phase: Optional[str] = None, **counts: int) -> None:
         if phase is not None and phase not in _PHASES:
