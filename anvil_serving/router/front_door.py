@@ -39,6 +39,7 @@ import hmac
 import json
 import os
 import re
+import socket
 import sys
 import threading
 import time
@@ -164,6 +165,34 @@ class _WorkloadSourceUnavailable(RuntimeError):
 
 class _ClientDisconnected(ConnectionError):
     """A socket failure originating specifically in the response writer."""
+
+
+def _peer_has_reset(connection) -> bool:
+    """Non-consumingly detect a downstream RST while generation blocks.
+
+    Heartbeat writes alone can take an OS-dependent amount of time to surface
+    a reset.  A clean EOF only means the caller stopped writing: HTTP callers
+    may half-close after sending their request and still read the response, so
+    it must not cancel generation.  The request body has already been consumed
+    before managed delivery starts, making this nonblocking peek safe.
+    """
+    if connection is None:
+        return False
+    previous_timeout = connection.gettimeout()
+    try:
+        connection.settimeout(0.0)
+        try:
+            connection.recv(1, socket.MSG_PEEK)
+        except (BlockingIOError, InterruptedError, socket.timeout, TypeError, ValueError):
+            return False
+        except OSError:
+            return True
+        return False
+    finally:
+        try:
+            connection.settimeout(previous_timeout)
+        except OSError:
+            pass
 
 
 class _ResponseWriter:
@@ -2206,6 +2235,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
             try:
                 while True:
+                    if _peer_has_reset(connection):
+                        raise _ClientDisconnected("peer_reset")
                     control.check_upstream()
                     kind, value = worker.poll(timeout=min(0.05, server_config.heartbeat_interval_s / 2))
                     if workload_registry is not None:

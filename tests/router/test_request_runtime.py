@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 import socket
+import struct
 import threading
 import time
 from contextlib import contextmanager
@@ -281,7 +283,15 @@ def test_dripped_response_headers_cannot_outlive_startup_deadline_or_admission()
             _post(client)
             assert upstream.opened.wait(1)
             wire = _read_until(client, b"0\r\n\r\n", timeout=1)
-    assert b"upstream_error" in wire
+    # Dispatch can commit SSE headers before the upstream finishes parsing
+    # headers.  A startup deadline is therefore a typed 504 before commitment
+    # or the native terminal SSE error after commitment; it must never become
+    # the generic internal 500 caused by a watchdog/socket race.
+    assert b" 500 " not in wire
+    assert (
+        (b" 504 " in wire and b"startup_timeout" in wire)
+        or b"upstream_error" in wire
+    )
     assert routing._admission.snapshot("loopback").active_requests == 0
 
 
@@ -402,6 +412,8 @@ def test_client_disconnect_interrupts_silent_upstream_and_releases_admission_onc
         client = socket.create_connection((host, port), timeout=1)
         _post(client)
         assert upstream.opened.wait(1)
+        linger_format = "HH" if os.name == "nt" else "ii"
+        client.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack(linger_format, 1, 0))
         client.close()
         end = time.monotonic() + 1
         while routing._admission.snapshot("loopback").active_requests and time.monotonic() < end:
@@ -411,6 +423,20 @@ def test_client_disconnect_interrupts_silent_upstream_and_releases_admission_onc
         with socket.create_connection((host, port), timeout=1) as next_client:
             _post(next_client)
             assert b" 200 " in _read_until(next_client, b"\r\n\r\n")
+
+
+def test_write_half_closed_client_still_receives_managed_stream():
+    settings = ServerConfig(startup_timeout_s=1, idle_timeout_s=1, total_timeout_s=2,
+                            heartbeat_interval_s=0.02)
+    with _Upstream() as upstream, _gateway(upstream, settings) as ((host, port), _routing):
+        with socket.create_connection((host, port), timeout=1) as client:
+            _post(client)
+            client.shutdown(socket.SHUT_WR)
+            assert upstream.opened.wait(1)
+            assert b": keepalive\n\n" in _read_until(client, b": keepalive\n\n", timeout=1)
+            upstream.release.set()
+            wire = _read_until(client, b'"content":"ok"', timeout=1)
+    assert b'"content":"ok"' in wire
 
 
 def test_inference_client_has_its_own_cap_and_cannot_read_operator_route(tmp_path):

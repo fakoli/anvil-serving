@@ -48,6 +48,7 @@ from ..internal import (
 )
 from ..request_control import (
     RequestControl,
+    RequestDeadlineExceeded,
     request_control,
 )
 from .sse import (
@@ -194,12 +195,28 @@ def _controlled_stream_open(
         parsed.hostname, parsed.port, timeout=max(0.001, _control_timeout(timeout, control))
     )
     interrupted = threading.Event()
+    deadline_interrupted = threading.Event()
+    handoff_lock = threading.Lock()
+    response_handed_off = False
 
     def close() -> None:
         interrupted.set()
         _interrupt_connection(connection)
     control.set_upstream_close(close)
-    timer = threading.Timer(control.upstream_wait_seconds(), close)
+    deadline_seconds, deadline_kind = control.upstream_deadline()
+
+    def expire() -> None:
+        # Timer.cancel() cannot stop a callback that already started.  Once
+        # getresponse() succeeds, the caller owns the response and installs a
+        # response-specific cancellation hook, so a late watchdog must not
+        # tear down that handed-off socket.
+        with handoff_lock:
+            if response_handed_off:
+                return
+            deadline_interrupted.set()
+        close()
+
+    timer = threading.Timer(deadline_seconds, expire)
     timer.daemon = True
     timer.start()
     response = None
@@ -208,13 +225,25 @@ def _controlled_stream_open(
         connection.request("POST", target, body=data, headers=dict(headers))
         if interrupted.is_set():
             control.check_upstream()
+            if deadline_interrupted.is_set():
+                raise RequestDeadlineExceeded(deadline_kind)
         response = connection.getresponse()
+        with handoff_lock:
+            if deadline_interrupted.is_set():
+                control.check_upstream()
+                raise RequestDeadlineExceeded(deadline_kind)
+            response_handed_off = True
     except (OSError, TimeoutError, http.client.HTTPException) as exc:
         _interrupt_connection(connection)
         try:
             control.check_upstream()
         except Exception:
             raise
+        if deadline_interrupted.is_set():
+            # Timer resolution can beat the monotonic clock by a few
+            # milliseconds on Windows.  This socket interruption still came
+            # from the selected control deadline, never from the upstream.
+            raise RequestDeadlineExceeded(deadline_kind) from None
         if is_relay_timeout(exc):
             raise RelayTimeoutError("model upstream request timed out") from None
         raise RelayBackendError("model upstream request failed") from None
