@@ -1,0 +1,77 @@
+{
+  "schema": "anvil-serving.voice-refresh-voice-summary/v1",
+  "derived_from_native_schemas": [
+    "voice-benchmark-evidence/v1"
+  ],
+  "redaction": "Audio payloads, base64 fields, and raw SDK event streams were removed. Bytes and hashes are retained only as bounded metadata.",
+  "audio_roundtrip": {
+    "scope": "one synthesized sample",
+    "stt": "Parakeet.cpp tdt-0.6b-v3 Metal",
+    "tts": "Kokoro FastAPI MPS",
+    "wer": 0.0,
+    "audio_roundtrip_ms": 1896.72,
+    "tts_output_bytes": 138082,
+    "quality_claim": "not a corpus or subjective speech-quality proof"
+  },
+  "realtime_sdk": {
+    "client": "official OpenAI Python SDK",
+    "candidate": "Qwen3.5-9B",
+    "initial_capture": "one inflight transcript observed after response.cancel request",
+    "protocol_fence": "server response.done with cancelled status",
+    "after_server_ack": "0 inflight transcripts; post-barge assistant answer completed",
+    "status": "Historical dirty-worktree harness correction only; current main retains client-send boundary. Original negative observation remains visible."
+  },
+  "baseline_live_realtime": {
+    "scope": "existing long-running managed proxy, not an ephemeral server",
+    "acceptance_errors": [],
+    "audio_utterances_recognized": 2,
+    "events_after_cancel_request": 0,
+    "events_after_cancel_ack": 0,
+    "cancelled_response_ttfa_ms": 3559.19,
+    "completed_response_ttfa_ms": 1678.46,
+    "completed_response_latency_ms": 2740.76,
+    "completed_answer": "54.",
+    "runtime_identity": "exact package versions and source-file hashes retained in private receipt"
+  },
+  "qwen36_realtime": {
+    "scope": "one SDK session; no cross-model latency comparison",
+    "acceptance_errors": [],
+    "cancellation": "successful",
+    "completed_follow_up": "54.",
+    "cancelled_response": {
+      "ttfa_ms": 3890.11,
+      "latency_ms": 3907.36
+    },
+    "follow_up": {
+      "ttfa_ms": 484.69,
+      "latency_ms": 664.81
+    },
+    "limit": "N=1 and warm/cache histories differ; no speed ratio is valid"
+  },
+  "kokoro_082_candidate": {
+    "scope": "one synthesized candidate sample",
+    "runtime": "Kokoro-FastAPI 0.8.2",
+    "wer": 0.0,
+    "audio_roundtrip_ms": 2139.31,
+    "stt_ms": 94.66,
+    "tts_ms": 2044.66,
+    "limit": "candidate endpoint; not a corpus, quality, or speed-comparison result"
+  },
+  "deployed_tts_realtime": {
+    "scope": "one warm session after repeated captures",
+    "runtime": "Kokoro-FastAPI 0.8.2 deployed to the baseline TTS port",
+    "acceptance_errors": [],
+    "cancellation_fence": "response.done:cancelled",
+    "completed_follow_up": "54 countries in Africa.",
+    "follow_up": {
+      "ttfa_ms": 353.53,
+      "latency_ms": 2186.88
+    },
+    "limit": "N=1; no speed ratio. Earlier wrapper invocation errors followed valid captures and are not pipeline failures."
+  },
+  "topology": {
+    "measured_host": "apple-m4-max-laptop",
+    "mode": "same-host local voice lane",
+    "reference_topology": "not measured"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "acceptance_errors": [],
+  "artifacts": {
+    "events_jsonl": "<private-evidence>/baseline-live-realtime.events.jsonl",
+    "input_wav": "<private-evidence>/baseline-live-realtime.input.wav",
+    "latency_json": "<private-evidence>/baseline-live-realtime.latency.json",
+    "output_wav": "<private-evidence>/baseline-live-realtime.output.wav",
+    "session_json": "<private-evidence>/baseline-live-realtime.session.json"
+  },
+  "assistant_transcript_errors": [],
+  "assistant_transcript_proven": true,
+  "barge_in_sent": true,
+  "cancellation_acceptance_boundary": "response.done:cancelled",
+  "cancelled_response_seen": true,
+  "completed_after_barge_in": true,
+  "connected": true,
+  "event_count": 39,
+  "finding_row_written": true,
+  "input_audio_bytes": 266124,
+  "model": "anvil-voice",
+  "openai_version": "2.53.0",
+  "output_after_cancel_events": 0,
+  "output_after_cancel_request_events": 0,
+  "output_audio_bytes": 38642,
+  "responses": [
+    {
+      "assistant_transcript": null,
+      "assistant_transcript_proven": false,
+      "audio_bytes": 2730,
+      "latency_ms": 3619.07,
+      "response_id": "resp_1",
+      "status": "cancelled",
+      "ttfa_ms": 3559.19
+    },
+    {
+      "assistant_transcript": "54.",
+      "assistant_transcript_proven": true,
+      "audio_bytes": 35912,
+      "latency_ms": 2740.76,
+      "response_id": "resp_2",
+      "status": "completed",
+      "ttfa_ms": 1678.46
+    }
+  ],
+  "timestamp_utc": "2026-09-08T09:48:17Z",
+  "transcripts": [
+    "Please count slowly from 1 to 20, so I can interrupt you.",
+    "Interrupting you now. Please answer briefly, how many countries are in Africa?"
+  ],
+  "ws_url": "ws://100.64.0.10:8765/v1/realtime"
+}

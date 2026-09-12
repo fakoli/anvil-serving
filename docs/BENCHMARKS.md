@@ -94,6 +94,17 @@ There is no new finalist performance qualification or promotion. OS, driver, hos
 and an added `NCCL_P2P_DISABLE=1` differ: this measures the migrated stack,
 not OS-only causality. See the [finding and raw evidence](findings/2026-09-08-glm53-linux-wsl-comparison.md).
 
+## Apple M4 Max local voice refresh (2026-09-08)
+
+Historical same-host M4 Max / 48 GB evidence was published on September 12.
+None of the three MLX LLM candidates passed every gate: Qwen3.5 9B failed
+strict spoken/format/output checks, Qwen3.8 27B failed the tool batch, and
+Qwen3.6 35B-A3B failed strict JSON despite passing the bounded spoken suite.
+The capture recorded Qwen3 4B retained and a separate Kokoro-FastAPI 0.8.2
+runtime update. Single-sample audio/protocol smokes establish no performance
+ranking, corpus quality, or current live state. See the
+[finding and sanitized evidence](findings/2026-09-08-m4-max-voice-refresh.md).
+
 ## Qwen3.8 27B comprehensive optimization on RTX PRO 6000 (2026-09-04)
 
 The campaign translated the Helix tuning report into a local search rather

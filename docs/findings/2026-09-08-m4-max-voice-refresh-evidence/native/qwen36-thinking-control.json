@@ -1,0 +1,13 @@
+{
+  "status": "supported",
+  "source": "https://huggingface.co/Qwen/Qwen3.6-35B-A3B",
+  "observed": "2026-09-08",
+  "mechanism": "enable_thinking=false via chat template",
+  "runtime_default": {
+    "enable_thinking": false
+  },
+  "observations": "Control supported by pinned chat template and runtime launch default; runtime evidence will be retained by independent preflight.",
+  "schema": "anvil-serving.control-evidence/v1",
+  "control_mechanism": "chat_template_kwargs",
+  "observed_at": "2026-09-08"
+}

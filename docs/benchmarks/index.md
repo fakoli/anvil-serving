@@ -2,7 +2,7 @@
 
 **2026-09-11 update:** [GLM v0.4.3](../findings/2026-09-11-glm53-v043-native-linux-qualification.md) is the latest qualified native 524K/C4 reference, with Pi 14/14 and 4K output retained. Recovery to native rc14 was verified during the campaign; current assignments are private. Earlier deployment descriptions below are historical.
 
-Measured local-model results on real Blackwell hardware: exact model revision,
+Measured local-model results on Blackwell and Apple Silicon hardware: exact model revision,
 engine, quantization, context, concurrency, and retained artifacts for every
 number. These are local decision records, not a universal leaderboard — a
 passing run never changes a serve or route without a separate human gate.
@@ -27,8 +27,9 @@ The latest [GLM-5.3-Flash native NCCL P2P transport A/B](../findings/2026-09-09-
 
 **1. Pick your hardware**
 
-Start with the measured [RTX PRO 6000](hardware/rtx-pro-6000.md) or
-[RTX 5090](hardware/rtx-5090.md) view. GPU count, interconnect, operating
+Start with the measured [RTX PRO 6000](hardware/rtx-pro-6000.md),
+[RTX 5090](hardware/rtx-5090.md), or [Apple M4 Max](hardware/apple-m4-max.md)
+view. GPU count, interconnect, operating
 system, and runtime are part of the result.
 
 </div>
@@ -97,6 +98,7 @@ artifacts.
 |---|---|---|
 | 2× NVIDIA RTX PRO 6000 Blackwell Max-Q, 192 GB aggregate, sm_120 | Measured dual-card reference configuration; split workloads or exclusive TP=2 | [RTX PRO 6000](hardware/rtx-pro-6000.md) |
 | NVIDIA GeForce RTX 5090, 32 GB, sm_120 | Measured single-card qualification configuration, plus retained historical results | [RTX 5090](hardware/rtx-5090.md) |
+| Apple M4 Max laptop, 48 GB unified memory | Historical same-host voice candidate evidence; no LLM promotion or reference-topology change | [Apple M4 Max](hardware/apple-m4-max.md) |
 
 The published dual-PRO reference configuration uses two equal PRO 6000 cards.
 Aggregate VRAM is not unified memory, and the cards communicate over PCIe
