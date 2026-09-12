@@ -1296,7 +1296,9 @@ class RelayBackend:
                     fields = ("reasoning_content", "reasoning", "reasoning_text")
                     had_reasoning = any(key in message for key in fields)
                     message = {key: value for key, value in message.items() if key not in fields}
-                    if had_reasoning and not message.get("content") and not message.get("tool_calls"):
+                    if (had_reasoning and not message.get("content")
+                            and not message.get("tool_calls") and not message.get("function_call")
+                            and not message.get("reasoning_details")):
                         continue
                 messages.append(message)
             body["messages"] = messages
