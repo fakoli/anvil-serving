@@ -2506,7 +2506,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/fakoli/anvil-serving/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/fakoli/anvil-serving/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fakoli/anvil-serving/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fakoli/anvil-serving/compare/v0.36.0...v1.0.0
