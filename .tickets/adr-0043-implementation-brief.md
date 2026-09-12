@@ -18,16 +18,16 @@ scope v1 exactly as the ADR's "Start scope" states:
 The public WSS leg failed silently during heavy enablement work, and the
 failure mode motivated this ADR's priority:
 
-- The wstunnel server (the gateway's ingress, :17081) stalled NEW handshakes
-  silently: clients TCP-connected, presented valid fresh credentials, and
-  timed out with zero log output on either side. One pre-existing session
-  kept serving, so observatory/pi-web kept working while every new tunnel
+- The tunnel gate's ingress listener stalled NEW handshakes silently:
+  clients TCP-connected, presented valid fresh credentials, and timed out
+  with zero log output on either side. One pre-existing session kept
+  serving, so existing surfaces kept working while every new tunnel
   establishment hung.
 - The connector's establishment and renewal failures produce no distinct,
   loud events today (the observability gap is ticketed).
 - A loopback diagnostic replica client was used to prove the stall existed
   with Cloudflare fully out of the path. The harness and its credentials
-  discipline are documented in the ops-private runbook.
+  discipline are documented in the operator runbook.
 
 ## Code map (where the work lands)
 
@@ -58,7 +58,7 @@ failure mode motivated this ADR's priority:
 - The manifest stays a closed, strictly validated declaration; every new
   field must be rendered into exactly one consumer and validated cross-section.
 - The loopback TLS entry uses its own trust root issued from the operator PKI
-  (the edge cert rotation runbook already retains a fresh root key on host);
+  (trust-root provisioning and retention follow the operator PKI runbook);
   the public edge continues to use the Cloudflare-facing PKI.
 - No silent fallbacks: if the local path is declared, the connector dials it;
   the CF path remains for the undeclared/remote case. Connection-state and

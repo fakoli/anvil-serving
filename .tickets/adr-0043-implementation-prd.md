@@ -1,5 +1,3 @@
-I read both documents fully and inspected the mapped implementation paths. The PRD is below; no files were modified.
-
 # ADR-0043 implementation PRD — colocated tunnel fast path, v1
 
 Status: implementation specification; qualification pending.  
@@ -284,4 +282,3 @@ The ADR’s approximately 20 ms direct and 150–330 ms CF figures are historica
 
 ---
 
-Saving `.tickets/adr-0043-implementation-prd.md` was rejected by the session’s read-only sandbox and approval settings. The requested file remains unwritten.
