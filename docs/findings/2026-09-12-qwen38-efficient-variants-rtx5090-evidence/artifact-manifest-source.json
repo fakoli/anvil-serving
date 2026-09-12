@@ -1,0 +1,173 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "campaign": {
+    "id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+    "capability": "text-and-tools",
+    "repository_revision": "948346f5ab553361c6b61d9517b71a0e5e3cfe98",
+    "dirty_state": "Clean at campaign start; uncommitted campaign changes to managed lifecycle CLI/MCP, Windows Pi pipe transport, regression tests, recipes, CLI docs, and dated benchmark publication. No merge or release.",
+    "started_at": "2026-09-12T13:12:00Z",
+    "completed_at": "2026-09-12T20:12:29Z",
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "current",
+      "no-promotion"
+    ],
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.fast-tier-bakeoff/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Human index into native and derivative evidence."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Current official and publisher priors, dated and distinguished from local measurement."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json",
+        "mmlu-budget-retry.suite.json",
+        "mmlu-format-repair.suite.json"
+      ],
+      "reason": "Predeclared workload identity and explicit diagnostic amendments; independent answer keys retained."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json",
+        "campaign-state.json",
+        "coverage-and-gaps.md",
+        "dispatch-packet.md"
+      ],
+      "reason": "Authority, limits, stage dispositions, coverage and bounded independent review scope."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration.json",
+        "recipes.toml",
+        "nospec-controls.toml",
+        "feasibility-input.json",
+        "feasibility.json",
+        "feasibility.md",
+        "cache-before.json",
+        "cache-during-signal.json"
+      ],
+      "reason": "Exact profile reconstruction, physical screening and sanitized cache observations."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "incumbent-capacity-32.json",
+        "incumbent-capacity-observe-thinking-disabled.json",
+        "incumbent-capacity-thinking-disabled.json",
+        "incumbent-mmlu-disabled.json",
+        "incumbent-mmlu-thinking.json",
+        "incumbent-preflight-thinking-disabled.json",
+        "incumbent-quality-thinking-disabled.json",
+        "incumbent-restored-preflight.json",
+        "incumbent-thinking-disabled-control.json",
+        "minitron-capacity-32.json",
+        "minitron-mmlu-thinking.json",
+        "minitron-preflight.json",
+        "minitron-quality-disabled.json",
+        "minitron-smoke.json",
+        "qwopus-capacity-32.json",
+        "qwopus-format-repair.json",
+        "qwopus-mmlu-thinking.json",
+        "qwopus-preflight.json",
+        "qwopus-quality-disabled.json",
+        "qwopus-smoke.json",
+        "signal-capacity-strict.json",
+        "signal-capacity-warm-observe.json",
+        "signal-mmlu-thinking.json",
+        "signal-nospec-capacity-32.json",
+        "signal-nospec-capacity-strict.json",
+        "signal-nospec-mmlu-budget-retry.json",
+        "signal-nospec-quality-disabled.json",
+        "signal-nospec-smoke.json",
+        "signal-preflight.json",
+        "signal-quality-disabled.json",
+        "signal-smoke.json",
+        "signal-thinking-enabled-preflight.json",
+        "swift-capacity-strict.json",
+        "swift-mmlu-thinking.json",
+        "swift-nospec-capacity-32.json",
+        "swift-nospec-capacity-strict.json",
+        "swift-nospec-smoke.json",
+        "swift-preflight.json",
+        "swift-quality-disabled.json",
+        "swift-smoke.json",
+        "graph-manifest.json",
+        "cold-output-diagnostic.svg",
+        "cold-output-graph-data.json"
+      ],
+      "reason": "Native successful and failed functional, quality and capacity artifacts preserved; generated chart only uses the labeled cold diagnostic subset."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "provenance-errata.json",
+        "lifecycle-review.json",
+        "pi-rpc-review.json",
+        "evidence-review.json",
+        "verification.json"
+      ],
+      "reason": "Failure chronology, durable fix-forward dispositions, provenance corrections and independent bounded code reviews."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "restored-state.json",
+        "recovery-admission.json"
+      ],
+      "reason": "Exact incumbent restored healthy, protected process preserved, candidates unloaded."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Evidence-derived retain-incumbent decision; no challenger qualified and no new promotion."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Bounded publication copy and claim ledger; not externally posted."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

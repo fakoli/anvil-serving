@@ -1,0 +1,290 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "complete": true,
+  "completion_scope": "Bounded measurement, selection and restoration; not challenger qualification or a general code release.",
+  "identity": {
+    "repository_revision": "948346f5ab553361c6b61d9517b71a0e5e3cfe98",
+    "gpu": "single NVIDIA RTX5090,32607MiB,sm120",
+    "configuration": "configuration.json",
+    "recipes": "recipes.toml",
+    "controls": "nospec-controls.toml",
+    "incumbent_advertised_id": "qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-262k",
+    "provenance_errata": "provenance-errata.json"
+  },
+  "workload": {
+    "manifest": "workload-manifest.json",
+    "functional_checks": 6,
+    "tool_batch": 20,
+    "actual_needle_prompt_tokens": 47349,
+    "thinking_enabled": {
+      "questions": 10,
+      "repetitions": 1,
+      "max_completion_tokens": 5120
+    },
+    "thinking_disabled": {
+      "questions": 10,
+      "repetitions": 3,
+      "max_completion_tokens": 1024
+    },
+    "capacity": {
+      "requests": 5,
+      "concurrency": 1,
+      "nominal_input_tokens": 4096,
+      "original_response_words": 128,
+      "diagnostic_response_words": 32,
+      "max_tokens": 512,
+      "prompt_cache_mode": "unique",
+      "request_canaries": true
+    }
+  },
+  "measurement": {
+    "path": "online-direct",
+    "warm_cold_state": "Per-artifact; cold32-word subset has0 cached fraction; Swift32-word subset has0.9281 cached fraction and is excluded from cold graph.",
+    "sample_count": "10 or30 quality attempts per recorded population;5 capacity requests per cell",
+    "statistics": [
+      "deterministic pass count",
+      "total completion tokens",
+      "descriptive N5 latency only"
+    ],
+    "timing_caveat": "Some diagnostic populations overlapped CPU repository checks; the runtime is pinned and shared, while model, quantization, context and speculation differ between recipe profiles. No isolated model or speculation speedup claim."
+  },
+  "results": {
+    "thinking_enabled": {
+      "signal_mtp3": {
+        "source": "signal-mmlu-thinking.json",
+        "source_sha256": "843987e54f065a1adfc512d5f68fe4ebf154fc317c18241bf9117ebb2250c999",
+        "passed": 9,
+        "attempts": 10,
+        "completion_tokens": 10966,
+        "summed_latency_ms": 99733.65590017056
+      },
+      "swift_mtp3": {
+        "source": "swift-mmlu-thinking.json",
+        "source_sha256": "a700ff731bdc6cadeb981d1942705fc75a095b4052487c4437a50e79fa0694a5",
+        "passed": 9,
+        "attempts": 10,
+        "completion_tokens": 11020,
+        "summed_latency_ms": 100207.72529998794
+      },
+      "qwopus_nospec": {
+        "source": "qwopus-mmlu-thinking.json",
+        "source_sha256": "fa8654aa26d009d03a349040340bd3a1eef5519ee6033762cd95a1801c16a6e7",
+        "passed": 1,
+        "attempts": 10,
+        "completion_tokens": 12017,
+        "summed_latency_ms": 214199.7431999771
+      },
+      "minitron_nospec": {
+        "source": "minitron-mmlu-thinking.json",
+        "source_sha256": "a3b0916a197d0b7ca5bed9e439d567804c07c65b73d5e8661724b8f8ad26255a",
+        "passed": 3,
+        "attempts": 10,
+        "completion_tokens": 24580,
+        "summed_latency_ms": 312535.5275000329
+      },
+      "incumbent": {
+        "source": "incumbent-mmlu-thinking.json",
+        "source_sha256": "b6ea12ab050fb2be66653e7a46da52afc4550e638259cf66104c402415f12c28",
+        "passed": 8,
+        "attempts": 10,
+        "completion_tokens": 13129,
+        "summed_latency_ms": 148428.03600005573
+      }
+    },
+    "thinking_disabled": {
+      "signal_nospec": {
+        "source": "signal-nospec-quality-disabled.json",
+        "source_sha256": "d3c0c021855c62083df6510a434a2da9ce74317a1b60f0b2ffd14f124f3c2d17",
+        "passed": 24,
+        "attempts": 30,
+        "completion_tokens": 21027,
+        "summed_latency_ms": 373216.3503000047
+      },
+      "qwopus_nospec": {
+        "source": "qwopus-quality-disabled.json",
+        "source_sha256": "f6534a476b14bf92b79803e8f3b845339cbbe4934b6982259c09f226929ae916",
+        "passed": 24,
+        "attempts": 30,
+        "completion_tokens": 17094,
+        "summed_latency_ms": 305933.05749981664
+      },
+      "minitron_nospec": {
+        "source": "minitron-quality-disabled.json",
+        "source_sha256": "cb2721eee9223ae73cd65cccf1eb1e2bf9620f0578d0a1b30a93bcbec183c094",
+        "passed": 15,
+        "attempts": 30,
+        "completion_tokens": 18186,
+        "summed_latency_ms": 231313.17329994636
+      },
+      "incumbent": {
+        "source": "incumbent-mmlu-disabled.json",
+        "source_sha256": "97d7536054a2d811f2591d21f7cd210478ab06c70e7c9a8da155ca827a4e7299",
+        "passed": 21,
+        "attempts": 30,
+        "completion_tokens": 23250,
+        "summed_latency_ms": 231467.87200012477
+      }
+    },
+    "capacity_32": {
+      "incumbent": {
+        "source": "incumbent-capacity-32.json",
+        "completed": 5,
+        "requests": 5,
+        "cached_fraction": 0,
+        "ttft_mean_ms": 1571.4262999943458,
+        "e2e_mean_ms": 1953.6777399829589,
+        "decode_mean_tok_s": 115.13560746944977,
+        "performance_eligible": true
+      },
+      "signal_nospec": {
+        "source": "signal-nospec-capacity-32.json",
+        "completed": 5,
+        "requests": 5,
+        "cached_fraction": 0,
+        "ttft_mean_ms": 1861.7974399821833,
+        "e2e_mean_ms": 2658.1093000015244,
+        "decode_mean_tok_s": 55.255231000071305,
+        "performance_eligible": true
+      },
+      "swift_nospec": {
+        "source": "swift-nospec-capacity-32.json",
+        "completed": 5,
+        "requests": 5,
+        "cached_fraction": 0.9281164847637406,
+        "ttft_mean_ms": 546.2330399896018,
+        "e2e_mean_ms": 1351.5927399974316,
+        "decode_mean_tok_s": 54.63436663114783,
+        "performance_eligible": true
+      },
+      "qwopus_nospec": {
+        "source": "qwopus-capacity-32.json",
+        "completed": 5,
+        "requests": 5,
+        "cached_fraction": 0,
+        "ttft_mean_ms": 1999.8899800004438,
+        "e2e_mean_ms": 2798.4088400029577,
+        "decode_mean_tok_s": 55.10533356394137,
+        "performance_eligible": true
+      },
+      "minitron_nospec": {
+        "source": "minitron-capacity-32.json",
+        "completed": 0,
+        "requests": 5,
+        "cached_fraction": null,
+        "ttft_mean_ms": null,
+        "e2e_mean_ms": null,
+        "decode_mean_tok_s": null,
+        "performance_eligible": false
+      }
+    }
+  },
+  "gates": [
+    {
+      "gate": "four distinct original candidates tested",
+      "status": "passed"
+    },
+    {
+      "gate": "original functional checks and tools",
+      "status": "passed"
+    },
+    {
+      "gate": "strict original128-word output",
+      "status": "failed",
+      "detail": "incumbent,Signal,Swift each0/5; Signal/Swift no-spec controls also0/5"
+    },
+    {
+      "gate": "failure-free independent quality",
+      "status": "failed",
+      "detail": "all recorded MMLU populations contain failures; diagnostics are too small for broad quality parity"
+    },
+    {
+      "gate": "actual57344 input plus8192 output reserve",
+      "status": "missing",
+      "detail": "nominal preflight produced47349 actual tokens"
+    },
+    {
+      "gate": "incumbent262K contract/client/endurance/broad SWE parity",
+      "status": "missing"
+    },
+    {
+      "gate": "restoration",
+      "status": "passed",
+      "source": "restoration.json"
+    },
+    {
+      "gate": "general lifecycle source release",
+      "status": "held",
+      "source": "lifecycle-review.json"
+    }
+  ],
+  "headline_results": [
+    {
+      "claim": "Signal and Swift passed9/10 strict thinking-on questions versus incumbent8/10.",
+      "source": "results.thinking_enabled"
+    },
+    {
+      "claim": "Signal and Swift total completion tokens were16.5% and16.1% lower than incumbent in that small enabled sample.",
+      "source": "results.thinking_enabled"
+    },
+    {
+      "claim": "Thinking-off repeated counts:Signal24/30,Qwopus24/30,Minitron15/30,incumbent21/30.",
+      "source": "results.thinking_disabled"
+    },
+    {
+      "claim": "Revised cold32-word N5 means:incumbent1.954s,Signal no-spec2.658s,Qwopus2.798s; different serve profiles and uncontrolled CPU load.",
+      "source": "results.capacity_32"
+    }
+  ],
+  "failures": [
+    "Strict128-word adherence failed before and after removing speculation.",
+    "Signal's no-spec9216-token isolated retry still exhausted reasoning with no final answer.",
+    "Qwopus exact output syntax failures and budget failures; stronger syntax/2048-token diagnostic7/10.",
+    "Minitron factual mistakes, reasoning/visible budget failures, strict32-word0/5.",
+    "Incumbent chemistry check failure, reasoning exhaustion, and three disabled-mode question budget failures remain visible."
+  ],
+  "limitations": [
+    "Tiny fixed sanity fixture is not representative benchmark accuracy or statistical2%quality-loss proof.",
+    "Separate reasoning-token counts are unavailable; only total completion tokens and reasoning characters are retained.",
+    "64K challenger profiles are not262K replacements; multimodal/client/endurance/broad SWE gates unrun.",
+    "No clean statistically adequate finalist performance population; cold chart is descriptive only.",
+    "Swift commercial-license threshold verified; user eligibility unknown.",
+    "No full model/runtime training repair attempted after bounded diagnostic rejection."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "current",
+      "no-promotion"
+    ],
+    "selected_profile": "incumbent",
+    "best_new_research_lead": "Signal Q6_K,not-qualified",
+    "challenger_qualified": false,
+    "promotion_authorized": true,
+    "promoted": false,
+    "rationale": "Signal/Swift improve this small token/quality diagnostic but fail advancement and full-deployment gates. Preserve the known262K incumbent; do not force promotion of an unqualified64K profile.",
+    "next_gate": "New separately scoped full-context Signal recipe and broader independent quality/strict-output/client qualification."
+  },
+  "usage": {
+    "limit_id": "codex",
+    "initial_used_percent": 19,
+    "last_observed_used_percent": 28,
+    "stop_at_or_above_percent": 50,
+    "threshold_reached": false
+  },
+  "evidence": [
+    "README.md",
+    "artifact-manifest.json",
+    "source-registry.json",
+    "run-plan.json",
+    "restoration.json",
+    "graph-manifest.json",
+    "cold-output-graph-data.json",
+    "friction-log.md"
+  ]
+}

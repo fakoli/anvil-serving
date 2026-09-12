@@ -1,0 +1,83 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "RTX 5090 cold-cache 32-word diagnostic: N=5 each",
+  "subtitle": "Different serve profiles; CPU load uncontrolled. Original 128-word failures retained; not promotion-grade.",
+  "output": "cold-output-diagnostic.svg",
+  "data_output": "cold-output-graph-data.json",
+  "metric_semantics": {
+    "workload": "Nominal4K/C1, strict32 code words, canaries, max512 output, unique prefixes, observed0 cached fraction.",
+    "limits": "Incumbent Q4XL/MTP3/262K versus Q6_K/no-spec/64K fine-tunes. Quality gates failed; no causally isolated model or MTP speed claim. Swift warm and Minitron failed populations excluded."
+  },
+  "charts": [
+    {
+      "title": "Mean finished-response latency",
+      "metric": "metrics.e2e_mean_ms",
+      "x_label": "Distinct recipe profiles, same short-output diagnostic",
+      "y_label": "Milliseconds (lower is shorter)",
+      "series": [
+        {
+          "label": "Incumbent",
+          "points": [
+            {
+              "x": "Inc 262K",
+              "artifact": "incumbent-capacity-32.json"
+            }
+          ]
+        },
+        {
+          "label": "Signal",
+          "points": [
+            {
+              "x": "Signal 64K",
+              "artifact": "signal-nospec-capacity-32.json"
+            }
+          ]
+        },
+        {
+          "label": "Qwopus",
+          "points": [
+            {
+              "x": "Qwopus 64K",
+              "artifact": "qwopus-capacity-32.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Mean time to first token",
+      "metric": "metrics.ttft_mean_ms",
+      "x_label": "Distinct recipe profiles, same short-output diagnostic",
+      "y_label": "Milliseconds (lower is shorter)",
+      "series": [
+        {
+          "label": "Incumbent",
+          "points": [
+            {
+              "x": "Inc 262K",
+              "artifact": "incumbent-capacity-32.json"
+            }
+          ]
+        },
+        {
+          "label": "Signal",
+          "points": [
+            {
+              "x": "Signal 64K",
+              "artifact": "signal-nospec-capacity-32.json"
+            }
+          ]
+        },
+        {
+          "label": "Qwopus",
+          "points": [
+            {
+              "x": "Qwopus 64K",
+              "artifact": "qwopus-capacity-32.json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

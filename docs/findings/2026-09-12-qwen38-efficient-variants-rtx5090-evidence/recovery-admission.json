@@ -1,0 +1,21 @@
+{
+  "schema": "anvil-serving.retained-recipe-recovery-admission/v1",
+  "observed_date": "2026-09-12",
+  "resource": "one RTX5090",
+  "candidate_cleanup": "All original four candidate containers and both matched no-spec containers unloaded through managed preview/confirm; cached weights preserved.",
+  "gpu_before_restore": {"used_mib": 16, "free_mib": 32172},
+  "protected_process": {
+    "classification": "pre-existing Windows camera utility",
+    "executable_identity_checked": true,
+    "process_start_time_checked": true,
+    "unchanged_before_preview_and_apply": true,
+    "terminated": false,
+    "public_redaction": "PID, executable installation path, and exact process start time omitted; live checks compared them exactly."
+  },
+  "managed_preview": "models recipes start --container anvil-qwen-local --operation-timeout 1800 with one explicitly declared verified baseline compute PID",
+  "preview_passed": true,
+  "apply_precondition": "Immediate Windows executable and UTC start-time tick equality assertion passed before managed confirmed start.",
+  "preserved_guards": ["exact immutable container fingerprint", "no active device-owning Docker peers", "complete native compute PID set equals declared baseline set", "complete GPU telemetry", "at most1024MiB pre-start memory", "declared healthy postcondition"],
+  "limitation": "Serialized single-operator recovery only; not general process-identity attestation or a shared lifecycle lock.",
+  "restore_result": "Recorded separately after managed start and post-run checks in restoration.json."
+}

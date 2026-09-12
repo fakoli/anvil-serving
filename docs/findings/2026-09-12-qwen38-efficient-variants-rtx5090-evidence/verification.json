@@ -1,0 +1,78 @@
+{
+  "schema": "anvil-serving.campaign-verification/v1",
+  "campaign_id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "observed_at": "2026-09-12T20:12:00Z",
+  "repository_revision": "948346f5ab553361c6b61d9517b71a0e5e3cfe98",
+  "working_tree": "Uncommitted campaign branch; no merge, package release or controller deployment.",
+  "checks": [
+    {
+      "command": "python scripts/run_tests.py tests/ -x -q",
+      "exit_code": 0,
+      "passed": 8117,
+      "skipped": 391,
+      "duration_seconds": 381.3,
+      "scope": "Final code and tests; subsequent edits limited to publication provenance/verification and byte-preserving checkout attributes."
+    },
+    {
+      "command": "python -m ruff check anvil_serving tests",
+      "exit_code": 0
+    },
+    {
+      "command": "python -m pytest tests/test_qwen38_efficient_campaign.py tests/test_benchmark_docs_skill.py -q",
+      "exit_code": 0,
+      "passed": 22
+    },
+    {
+      "command": "python -m mkdocs build --strict --quiet",
+      "exit_code": 0
+    },
+    {
+      "command": "python scripts/check_markdown_links.py --root .",
+      "exit_code": 0,
+      "tracked_markdown_files": 669
+    },
+    {
+      "command": "python scripts/audit_cli_references.py --check --scope full",
+      "exit_code": 0,
+      "files": 1164,
+      "violations": 0,
+      "inventory": "ok",
+      "generated": "ok",
+      "navigation": "ok"
+    },
+    {
+      "command": "skill-creator quick_validate.py skills/anvil-serving-benchmark-docs",
+      "exit_code": 0,
+      "result": "Skill is valid; five artifact-set template JSON files also parsed."
+    },
+    {
+      "command": "git check-attr text -- configs/qwen38-efficient-rtx5090-recipes.toml configs/qwen38-efficient-rtx5090-nospec-controls.toml",
+      "exit_code": 0,
+      "result": "text unset for both exact byte-preserved loaded registries."
+    },
+    {
+      "command": "git -c core.whitespace=blank-at-eol,space-before-tab,cr-at-eol,-blank-at-eof -c core.safecrlf=false diff --check",
+      "exit_code": 0,
+      "caveat": "Default whitespace checking reports preserved native CRLF and intentional recipe terminal blank lines; original evidence bytes are retained rather than normalized."
+    }
+  ],
+  "reproducibility": {
+    "artifact_manifest": "Finalizer run twice with byte-identical output required after final derivative updates.",
+    "chart": "Renderer run twice; both SVG and graph-data JSON were byte-identical.",
+    "recipe_copies": "Byte-identical to the exact canonical registries.",
+    "public_copy_length_characters": 248,
+    "bundle_size_policy": "Each public artifact under 1 MiB; total under 5 MiB.",
+    "privacy_scan": "No private operator paths, GPU UUIDs, private IPs, named host identities or literal HF credentials found in scoped evidence/recipes."
+  },
+  "live_postcheck": {
+    "command": "python -m anvil_serving.cli models recipes status --container anvil-qwen-local --json",
+    "exit_code": 0,
+    "result": "Exact incumbent still running and healthy after regression started.",
+    "identity": "Same image, revision, recipe and registry fingerprints as restoration evidence."
+  },
+  "boundaries": [
+    "Skipped tests do not qualify missing live client or model gates.",
+    "No new challenger promotion; incumbent retained.",
+    "General retained-lifecycle release remains held on shared host locking and immutable process-identity attestation."
+  ]
+}

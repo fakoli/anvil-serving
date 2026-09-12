@@ -1,0 +1,80 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "requirements": {
+    "tokens": {
+      "prompt": {"value": 57344, "unit": "tokens", "status": "assumed", "source": "campaign requirement", "observed_at": "2026-09-12", "notes": "usable prompt budget"},
+      "output_reserve": {"value": 8192, "unit": "tokens", "status": "assumed", "source": "campaign requirement", "observed_at": "2026-09-12", "notes": "visible output and bounded reasoning reserve"}
+    },
+    "concurrency": {"value": 1, "unit": "sequences", "status": "assumed", "source": "interactive single-user campaign", "observed_at": "2026-09-12", "notes": "C1 first qualification"},
+    "physical_vram_bytes": {"value": 34190917632, "unit": "bytes", "status": "measured", "source": "anvil-serving host gpus plus Windows nvidia-smi", "observed_at": "2026-09-12", "notes": "32607 MiB"},
+    "vram_reserves": {
+      "driver_unavailable": {"kind": "physical", "variable": {"value": 440401920, "unit": "bytes", "status": "measured", "source": "same-card process-free idle baseline from 2026-09-03 retained local evidence", "observed_at": "2026-09-03", "notes": "420 MiB total/free difference retained as physically unavailable"}},
+      "headroom": {"kind": "policy", "variable": {"value": 3221225472, "unit": "bytes", "status": "assumed", "source": "normal RTX 5090 campaign policy", "observed_at": "2026-09-12", "notes": "3 GiB reserve; no waiver"}}
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {"value": 1.0, "unit": "ratio", "status": "assumed", "source": "qualification hard gate", "observed_at": "2026-09-12", "notes": "no weighted compensation"},
+      "max_relative_quality_loss": {"value": 0.02, "unit": "ratio", "status": "assumed", "source": "campaign requirement", "observed_at": "2026-09-12", "notes": "at most two percent relative loss"},
+      "min_warm_e2e_gain": {"value": 0.10, "unit": "ratio", "status": "assumed", "source": "campaign requirement", "observed_at": "2026-09-12", "notes": "at least ten percent useful warm wall-time gain"},
+      "min_tasks_per_hour_ratio": {"value": 1.10, "unit": "ratio", "status": "assumed", "source": "campaign requirement", "observed_at": "2026-09-12", "notes": "successful-task throughput threshold"}
+    }
+  },
+  "candidates": [
+    {
+      "id": "incumbent-q4xl-mtp3",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "measured", "source": "retained exact incumbent recipe and live identity", "observed_at": "2026-09-12", "notes": "current control"},
+      "measured_max_stable_context_tokens": {"value": 253822, "unit": "tokens", "status": "measured", "source": "2026-08-21 retained local qualification", "observed_at": "2026-08-21", "notes": "exact retrieval with output reserve"},
+      "resident_components": {"live_allocation_at_262k": {"value": 27309113344, "unit": "bytes", "status": "measured", "source": "Windows nvidia-smi with exact incumbent healthy", "observed_at": "2026-09-12", "notes": "conservatively treated as fixed demand"}},
+      "per_sequence_components": {},
+      "per_token_components": {
+        "unseparated_live_kv_slope": {
+          "unit": "bytes/token",
+          "status": "unknown",
+          "notes": "The retained live allocation includes KV and runtime state at 262K; no independent same-build KV slope measurement is available. The measured stable-context result remains authoritative for the control."
+        }
+      },
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "single independent sequence", "observed_at": "2026-09-12", "notes": "allocation already included"},
+      "metrics": {}, "hard_failures": []
+    },
+    {
+      "id": "signal-q6k-mtp3",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "Qwen3.8 parent architecture and Signal original template", "observed_at": "2026-09-12", "notes": "local recipe capped at 65536"},
+      "measured_max_stable_context_tokens": {"unit": "tokens", "status": "unknown", "notes": "not yet loaded locally"},
+      "resident_components": {"target_weights": {"value": 22431000128, "unit": "bytes", "status": "confirmed", "source": "Hugging Face exact-revision blob metadata", "observed_at": "2026-09-12", "notes": "AP-Q6_K GGUF"}, "runtime_fixed": {"min": 1073741824, "max": 2147483648, "unit": "bytes", "status": "estimated", "source": "prior exact llama.cpp Qwen3.8 resident measurements", "observed_at": "2026-09-12", "notes": "graphs, workspace, allocator"}},
+      "per_sequence_components": {"recurrent_and_scheduler_state": {"min": 536870912, "max": 1610612736, "unit": "bytes", "status": "estimated", "source": "prior same-family llama.cpp runs", "observed_at": "2026-09-12", "notes": "MTP/recurrent uncertainty"}},
+      "per_token_components": {"target_kv": {"min": 32768, "max": 49152, "unit": "bytes/token", "status": "estimated", "source": "Q4_0 K/V from confirmed 64 KiB/token F16 architecture with runtime uncertainty", "observed_at": "2026-09-12", "notes": "replace with startup evidence"}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "single independent sequence", "observed_at": "2026-09-12", "notes": "C1"},
+      "metrics": {}, "hard_failures": []
+    },
+    {
+      "id": "swift-q6k-mtp3",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "Swift model card", "observed_at": "2026-09-12", "notes": "local recipe capped at 65536"},
+      "measured_max_stable_context_tokens": {"unit": "tokens", "status": "unknown", "notes": "not yet loaded locally"},
+      "resident_components": {"target_weights": {"value": 22884407456, "unit": "bytes", "status": "confirmed", "source": "Hugging Face exact-revision blob metadata", "observed_at": "2026-09-12", "notes": "Q6_K GGUF"}, "runtime_fixed": {"min": 1073741824, "max": 2147483648, "unit": "bytes", "status": "estimated", "source": "prior exact llama.cpp Qwen3.8 resident measurements", "observed_at": "2026-09-12", "notes": "graphs, workspace, allocator"}},
+      "per_sequence_components": {"recurrent_and_scheduler_state": {"min": 536870912, "max": 1610612736, "unit": "bytes", "status": "estimated", "source": "prior same-family llama.cpp runs", "observed_at": "2026-09-12", "notes": "MTP/recurrent uncertainty"}},
+      "per_token_components": {"target_kv": {"min": 32768, "max": 49152, "unit": "bytes/token", "status": "estimated", "source": "Q4_0 K/V from confirmed 64 KiB/token F16 architecture with runtime uncertainty", "observed_at": "2026-09-12", "notes": "replace with startup evidence"}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "single independent sequence", "observed_at": "2026-09-12", "notes": "C1"},
+      "metrics": {}, "hard_failures": []
+    },
+    {
+      "id": "qwopus-flash-q6k-nospec",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "exact source config inherited from Qwen3.8", "observed_at": "2026-09-12", "notes": "local recipe capped at 65536"},
+      "measured_max_stable_context_tokens": {"unit": "tokens", "status": "unknown", "notes": "not yet loaded locally"},
+      "resident_components": {"target_weights": {"value": 22430997056, "unit": "bytes", "status": "confirmed", "source": "Hugging Face exact-revision blob metadata", "observed_at": "2026-09-12", "notes": "iMatrix Q6_K GGUF"}, "runtime_fixed": {"min": 1073741824, "max": 2147483648, "unit": "bytes", "status": "estimated", "source": "prior exact llama.cpp Qwen3.8 resident measurements", "observed_at": "2026-09-12", "notes": "graphs, workspace, allocator"}},
+      "per_sequence_components": {"recurrent_and_scheduler_state": {"min": 536870912, "max": 1610612736, "unit": "bytes", "status": "estimated", "source": "prior same-family llama.cpp runs", "observed_at": "2026-09-12", "notes": "target-only arm"}},
+      "per_token_components": {"target_kv": {"min": 32768, "max": 49152, "unit": "bytes/token", "status": "estimated", "source": "Q4_0 K/V from confirmed 64 KiB/token F16 architecture with runtime uncertainty", "observed_at": "2026-09-12", "notes": "replace with startup evidence"}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "single independent sequence", "observed_at": "2026-09-12", "notes": "C1"},
+      "metrics": {}, "hard_failures": []
+    },
+    {
+      "id": "minitron-20b-q6k-nospec",
+      "runtime_context_limit_tokens": {"value": 262144, "unit": "tokens", "status": "confirmed", "source": "source config preserves parent context contract", "observed_at": "2026-09-12", "notes": "local recipe capped at 65536"},
+      "measured_max_stable_context_tokens": {"unit": "tokens", "status": "unknown", "notes": "not yet loaded locally"},
+      "resident_components": {"target_weights": {"value": 15837006592, "unit": "bytes", "status": "confirmed", "source": "Hugging Face exact-revision blob metadata", "observed_at": "2026-09-12", "notes": "iMatrix Q6_K GGUF"}, "runtime_fixed": {"min": 1073741824, "max": 2147483648, "unit": "bytes", "status": "estimated", "source": "prior llama.cpp hybrid-model runs", "observed_at": "2026-09-12", "notes": "graphs, workspace, allocator"}},
+      "per_sequence_components": {"recurrent_and_scheduler_state": {"min": 268435456, "max": 1073741824, "unit": "bytes", "status": "estimated", "source": "scaled from pruned 44-layer architecture", "observed_at": "2026-09-12", "notes": "target-only arm"}},
+      "per_token_components": {"target_kv": {"min": 22528, "max": 49152, "unit": "bytes/token", "status": "estimated", "source": "eleven retained hybrid groups with conservative upper bound", "observed_at": "2026-09-12", "notes": "replace with startup evidence"}},
+      "kv_token_multiplier": {"value": 1, "unit": "copies", "status": "assumed", "source": "single independent sequence", "observed_at": "2026-09-12", "notes": "C1"},
+      "metrics": {}, "hard_failures": []
+    }
+  ]
+}

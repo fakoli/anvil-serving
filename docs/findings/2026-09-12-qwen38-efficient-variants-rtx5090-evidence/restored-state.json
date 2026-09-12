@@ -1,0 +1,18 @@
+{
+  "schema": "anvil-serving.sanitized-operator-observation/v1",
+  "observed_date": "2026-09-12",
+  "observations": [
+    {"command": "models recipes start --container anvil-qwen-local with verified baseline compute allowance", "result": "started recipe container; state is healthy", "exit_code": 0},
+    {"command": "GET /v1/models on incumbent loopback endpoint", "advertised_model_id": "qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-262k"},
+    {"command": "models recipes status --container anvil-qwen-local", "immutable_container_same_as_baseline": true, "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502", "image_digest": "sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac", "recipe_digest": "07e7e4d4378a56c72a5c14595bde56965fa5238a70a395558674c81744a94ece", "registry_digest": "d47047d71d70ae4ee5c671e4dad965b8b17d32f012732437e6c4fb9f0dbf35ba", "configured_context": 262144},
+    {"command": "serves mode status", "mode": "split", "unresolved": [], "gpu_owner": "qwen-local"},
+    {"command": "router status", "state": "absent", "same_as_baseline": true},
+    {"command": "host shared-memory status", "available": true, "files": [], "blocked_reasons": [], "reclaimable_bytes": 0},
+    {"command": "nvidia-smi memory.used,memory.free", "used_mib": 26040, "free_mib": 6148, "phase": "after restored preflight, during first restored quality scout"}
+  ],
+  "functional_evidence": "incumbent-restored-preflight.json",
+  "functional_result": "all six checks passed; tools20/20; exact47349-token retrieval",
+  "protected_process_evidence": "recovery-admission.json",
+  "redactions": ["operator paths", "GPU UUID", "protected process PID and exact start time"],
+  "boundary": "Sanitized transcription of live product/tool outputs; native preflight remains authoritative for model correctness. No route, client catalog, or capability contract changed."
+}

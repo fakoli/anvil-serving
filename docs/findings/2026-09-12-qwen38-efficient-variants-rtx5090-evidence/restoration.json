@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "status": "restored",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": ["configuration.json", "cache-before.json"],
+    "router": "absent",
+    "mode": "split",
+    "gpu_owner": "qwen-local",
+    "incumbent": "unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-262K",
+    "incumbent_revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+    "incumbent_image_digest": "sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",
+    "incumbent_health": "healthy",
+    "gpu_used_mib": 26044,
+    "gpu_free_mib": 6144
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": ["recovery-admission.json", "restored-state.json", "incumbent-restored-preflight.json"],
+    "router": "absent",
+    "mode": "split",
+    "gpu_owner": "qwen-local",
+    "incumbent_health": "healthy",
+    "incumbent_identity_unchanged": true,
+    "candidate_containers_remaining": 0,
+    "protected_camera_process_preserved": true,
+    "shared_memory_files": 0
+  },
+  "differences": ["Four requested candidate weight artifacts remain cached for reproducibility; no cache volumes were removed.", "Source-only managed lifecycle and Windows test/transport fixes remain in the isolated worktree; no controller/router rebuild or release was performed."],
+  "post_run_checks": ["managed start declared healthy", "same exact retained container/image/revision/recipe identity", "advertised model identity", "smoke", "JSON", "47349-token exact retrieval", "tools20/20", "streaming tools", "tool-result continuation", "split owner restored", "router absent as baseline", "shared-memory clean", "protected camera identity and start time unchanged"],
+  "verified": true,
+  "not_applicable_reason": null
+}

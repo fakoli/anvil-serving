@@ -64,6 +64,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-09-12 | [Qwen3.8 efficient variants on RTX 5090](2026-09-12-qwen38-efficient-variants-rtx5090.md) | Four pinned fine-tuned/pruned variants plus no-spec controls; all functional gates pass, strict output and bounded quality failures retained; Signal/Swift9/10 versus incumbent8/10 on ten questions, but no qualified replacement; exact262K incumbent restored |
 | 2026-09-08 | [M4 Max local voice refresh](2026-09-08-m4-max-voice-refresh.md) | Historical same-host MLX candidate evidence published September 12: strict output/tool/JSON failures retained, no LLM promotion, separate Kokoro runtime-update receipt; no current deployment claim |
 | 2026-09-09 | [GLM-5.3-Flash ormandj v0.4.2 runtime qualification](2026-09-09-glm53-ormandj-v042.md) | Pinned candidate runtime has faster bounded 4K/120K matched cells and direct gates, but strict 60-request turnover remains 58/60 then 57/60; user selected `retain-baseline/no-promotion` and the exact baseline was restored |
 | 2026-09-09 | [GLM-5.3-Flash native NCCL P2P transport A/B](2026-09-09-glm53-native-nccl-p2p.md) | P2P enabled on the pinned native TP2/C1 profile after bounded 4K/120K latency evidence and routed restoration; both 380K strict capacity cells and the raw PowerShell diagnostic marker failure remain explicit limitations |
