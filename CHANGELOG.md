@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- Windows client cancellation closes the upstream socket handle so blocked reads
+  release admission promptly; buffered cancellation retains its correct diagnosis.
 - Managed chat rejections log once with their actual HTTP status, instead of
   producing a misleading 500 before the real 413, 503, or upstream 4xx.
 - Router diagnostics identify context admission rejection as not attempted
