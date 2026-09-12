@@ -1,0 +1,96 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-12-qwen38-efficient-variants-rtx5090",
+  "updated_at": "2026-09-12T20:12:29Z",
+  "status": "complete",
+  "current_stage": "publication",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.0.0",
+    "repository_revision": "948346f5ab553361c6b61d9517b71a0e5e3cfe98",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "complete",
+      "evidence": [
+        "source-registry.json"
+      ]
+    },
+    {
+      "id": "feasibility",
+      "status": "complete",
+      "evidence": [
+        "feasibility.json"
+      ]
+    },
+    {
+      "id": "scout",
+      "status": "complete",
+      "evidence": [
+        "summary.json"
+      ],
+      "failures": [
+        "Original strict 128-word output fails; failures retained."
+      ]
+    },
+    {
+      "id": "finalist",
+      "status": "not-run",
+      "reason": "No new profile passed the replacement contract; retries are diagnostic, not finalist qualification."
+    },
+    {
+      "id": "quality",
+      "status": "complete-diagnostic",
+      "evidence": [
+        "summary.json"
+      ],
+      "limitations": [
+        "Ten independent MMLU-Pro questions; not broad qualification.",
+        "262K challenger context and real client integration not qualified."
+      ]
+    },
+    {
+      "id": "restoration",
+      "status": "complete",
+      "evidence": [
+        "restoration.json",
+        "restored-state.json"
+      ]
+    },
+    {
+      "id": "publication",
+      "status": "complete",
+      "evidence": [
+        "artifact-manifest.json"
+      ]
+    }
+  ],
+  "active_assignments": [
+    {
+      "role": "incumbent",
+      "model": "qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-262k",
+      "state": "restored-healthy"
+    }
+  ],
+  "completed_cells": [
+    "four-original-profiles",
+    "two-no-spec-controls",
+    "incumbent-comparison",
+    "bounded-failure-retries",
+    "restoration"
+  ],
+  "next_actions": [],
+  "promotion_authorized": true,
+  "authority": "Operator explicitly authorized unattended sequential testing, selection and promotion of the best supported option, with up to three justified fix attempts per issue; the 50 percent Codex usage stop remains in force.",
+  "candidate_containers_remaining": 0,
+  "promoted": false,
+  "decision": "Retain incumbent; Signal is the best new research lead, not a qualified replacement.",
+  "usage": {
+    "initial_used_percent": 19,
+    "last_observed_used_percent": 28,
+    "stop_at_used_percent": 50
+  }
+}

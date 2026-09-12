@@ -1,0 +1,37 @@
+{
+  "suite": "mmlu-pro-computer-science-budget-retry",
+  "date": "2026-09-12",
+  "work_class": "independent-multidomain-reasoning-sanity",
+  "source": {
+    "dataset": "TIGER-Lab/MMLU-Pro",
+    "revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be",
+    "config": "default",
+    "split": "validation",
+    "rows": [
+      5,
+      10,
+      15,
+      20,
+      25,
+      30,
+      35,
+      40,
+      45,
+      65
+    ],
+    "url": "https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro"
+  },
+  "evals": [
+    {
+      "id": "mmlu-pro-30-computer-science",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nA pipelined RISC machine has registers R0 through R7 and supports ADD Rs1, Rs2, Rd and MUL Rs1, Rs2, Rd. An operation normally takes one cycle; however, an operation takes two cycles if it produces a result required by the immediately following operation. Consider AB + ABC + BC, where A, B, C are in R0, R1, R2 and those registers must not be modified. What is the minimum number of clock cycles required?\nA. 10\nB. 6\nC. 9\nD. 5\nE. 12\nF. 4\nG. 7\nH. 8\nI. N/A\nJ. N/A",
+      "checks": [
+        {
+          "name": "answer",
+          "matches_regex": "\\bFINAL\\s*=\\s*B\\b[*]*\\s*$"
+        }
+      ]
+    }
+  ],
+  "amendment": "Same failed computer-science question and independent answer key; larger completion budget only."
+}

@@ -1,0 +1,1101 @@
+{
+  "context": {
+    "cap_tokens": null,
+    "max_model_len": null,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 4096,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 1,
+    "version": 3,
+    "visible_answer_tokens": 1024
+  },
+  "failures": [
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-10-physics",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-15-business",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-20-biology",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-25-chemistry",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-30-computer-science",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-35-economics",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-40-engineering",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-45-philosophy",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-65-law",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:8081/v1",
+    "candidate_id": "qwopus-q6k-nospec",
+    "config_id": "q6k-nospec-64k",
+    "engine": "llama.cpp",
+    "gpu": "rtx5090-primary",
+    "model": "qwopus38-27b-flash-q6k-nospec-64k",
+    "started_at": "2026-09-12T18:50:49Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260912T185049Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "hf-mmlu-pro-10-repeated": {
+      "checks": [
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 5120,
+                "reasoning_headroom_tokens": 4096,
+                "visible_answer_tokens": 1024
+              },
+              "content": "The pituitary gland is located in the sella turcica of the sphenoid bone, which is within the **cranial cavity**. While the cranial cavity is a subdivision of the dorsal body cavity, the most specific and direct answer is the cranial cavity itself.\n\nFINAL=J",
+              "content_chars": 257,
+              "content_excerpt": "The pituitary gland is located in the sella turcica of the sphenoid bone, which is within the **cranial cavity**. While the cranial cavity is a subdivision of the dorsal body cavity, the most specific",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 9563.556500012055,
+              "reasoning_chars": 1751,
+              "reasoning_excerpt": "The question asks: \"Which of the following is the body cavity that contains the pituitary gland?\"\n\nThe pituitary gland is located in the sella turcica of the sphenoid bone, which is within the cranial",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 511,
+                "prompt_tokens": 93,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 604
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 5120,
+            "reasoning_headroom_tokens": 4096,
+            "visible_answer_tokens": 1024
+          },
+          "content": "The pituitary gland is located in the sella turcica of the sphenoid bone, which is within the **cranial cavity**. While the cranial cavity is a subdivision of the dorsal body cavity, the most specific and direct answer is the cranial cavity itself.\n\nFINAL=J",
+          "content_excerpt": "The pituitary gland is located in the sella turcica of the sphenoid bone, which is within the **cranial cavity**. While the cranial cavity is a subdivision of the dorsal body cavity, the most specific",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-5-health",
+          "latency_ms": 9563.556500012055,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 1751,
+          "reasoning_excerpt": "The question asks: \"Which of the following is the body cavity that contains the pituitary gland?\"\n\nThe pituitary gland is located in the sella turcica of the sphenoid bone, which is within the cranial",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 511,
+            "prompt_tokens": 93,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 604
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 5120,
+                "reasoning_headroom_tokens": 4096,
+                "visible_answer_tokens": 1024
+              },
+              "content": "Option Selected: E",
+              "content_chars": 18,
+              "content_excerpt": "Option Selected: E",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 5777.419199992437,
+              "reasoning_chars": 913,
+              "reasoning_excerpt": "We are given a multiple choice question: \"Say the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the telescope gather than your ey",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 312,
+                "prompt_tokens": 153,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 465
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 5120,
+            "reasoning_headroom_tokens": 4096,
+            "visible_answer_tokens": 1024
+          },
+          "content": "Option Selected: E",
+          "content_excerpt": "Option Selected: E",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-10-physics",
+          "latency_ms": 5777.419199992437,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 913,
+          "reasoning_excerpt": "We are given a multiple choice question: \"Say the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the telescope gather than your ey",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 312,
+            "prompt_tokens": 153,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 465
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 5120,
+                "reasoning_headroom_tokens": 4096,
+                "visible_answer_tokens": 1024
+              },
+              "content": "F",
+              "content_chars": 1,
+              "content_excerpt": "F",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 7018.910599988885,
+              "reasoning_chars": 1771,
+              "reasoning_excerpt": "Let me reason through this question step by step.\n\nThe sentence structure is:\n\"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been h",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 385,
+                "prompt_tokens": 226,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 611
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 5120,
+            "reasoning_headroom_tokens": 4096,
+            "visible_answer_tokens": 1024
+          },
+          "content": "F",
+          "content_excerpt": "F",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-15-business",
+          "latency_ms": 7018.910599988885,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 1771,
+          "reasoning_excerpt": "Let me reason through this question step by step.\n\nThe sentence structure is:\n\"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been h",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 385,
+            "prompt_tokens": 226,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 611
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 5120,
+                "reasoning_headroom_tokens": 4096,
+                "visible_answer_tokens": 1024
+              },
+              "content": "B**",
+              "content_chars": 3,
+              "content_excerpt": "B**",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 4756.025100010447,
+              "reasoning_chars": 1070,
+              "reasoning_excerpt": "Let me reason through each option:\n\nA. \"They possess an exoskeleton composed primarily of peptidoglycan.\" - This is incorrect. Arthropods have an exoskeleton composed primarily of chitin, not peptidog",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 258,
+                "prompt_tokens": 134,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 392
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 5120,
+            "reasoning_headroom_tokens": 4096,
+            "visible_answer_tokens": 1024
+          },
+          "content": "B**",
+          "content_excerpt": "B**",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-20-biology",
+          "latency_ms": 4756.025100010447,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 1070,
+          "reasoning_excerpt": "Let me reason through each option:\n\nA. \"They possess an exoskeleton composed primarily of peptidoglycan.\" - This is incorrect. Arthropods have an exoskeleton composed primarily of chitin, not peptidog",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 258,
+            "prompt_tokens": 134,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 392
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 5120,
+                "reasoning_headroom_tokens": 4096,
+                "visible_answer_tokens": 1024
+              },
+              "content": "Option Selected: B",
+              "content_chars": 18,
+              "content_excerpt": "Option Selected: B",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 16786.870200012345,
+              "reasoning_chars": 3359,
+              "reasoning_excerpt": "We are asked: \"Predict the number of lines in the EPR spectrum of a solution of 13C-labelled methyl radical (13CH3 radical), assuming the lines do not overlap.\"\n\nWe need to determine the number of lin",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 954,
+                "prompt_tokens": 113,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 1067
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 5120,
+            "reasoning_headroom_tokens": 4096,
+            "visible_answer_tokens": 1024
+          },
+          "content": "Option Selected: B",
+          "content_excerpt": "Option Selected: B",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-25-chemistry",
+          "latency_ms": 16786.870200012345,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 3359,
+          "reasoning_excerpt": "We are asked: \"Predict the number of lines in the EPR spectrum of a solution of 13C-labelled methyl radical (13CH3 radical), assuming the lines do not overlap.\"\n\nWe need to determine the number of lin",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 954,
+            "prompt_tokens": 113,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 1067
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 5120,
+                "reasoning_headroom_tokens": 4096,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 90475.6905999966,
+              "reasoning_chars": 12462,
+              "reasoning_excerpt": "Let me reason through this step by step.\n\nWe have a pipelined RISC machine with registers R0-R7.\n- ADD Rs1, Rs2, Rd: adds Rs1 + Rs2 into Rd\n- MUL Rs1, Rs2, Rd: multiplies Rs1 * Rs2 into Rd\n\nNormally a",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 5120,
+                "prompt_tokens": 176,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 5296
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 5120,
+            "reasoning_headroom_tokens": 4096,
+            "visible_answer_tokens": 1024
+          },
+          "content": "",
+          "content_excerpt": "",
+          "error": "answer",
+          "failure_class": "reasoning_budget_exhausted",
+          "finish_reason": "length",
+          "id": "mmlu-pro-30-computer-science",
+          "latency_ms": 90475.6905999966,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 12462,
+          "reasoning_excerpt": "Let me reason through this step by step.\n\nWe have a pipelined RISC machine with registers R0-R7.\n- ADD Rs1, Rs2, Rd: adds Rs1 + Rs2 into Rd\n- MUL Rs1, Rs2, Rd: multiplies Rs1 * Rs2 into Rd\n\nNormally a",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 5120,
+            "prompt_tokens": 176,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 5296
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 5120,
+                "reasoning_headroom_tokens": 4096,
+                "visible_answer_tokens": 1024
+              },
+              "content": "Option Selected: F",
+              "content_chars": 18,
+              "content_excerpt": "Option Selected: F",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 4669.172200025059,
+              "reasoning_chars": 1120,
+              "reasoning_excerpt": "We are asked: \"For a stationary autoregressive process, shocks will\" and there are ten options A through J. We need to reason through and pick the correct one, then output FINAL=<letter>.\n\nLet's recal",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 251,
+                "prompt_tokens": 106,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 357
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 5120,
+            "reasoning_headroom_tokens": 4096,
+            "visible_answer_tokens": 1024
+          },
+          "content": "Option Selected: F",
+          "content_excerpt": "Option Selected: F",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-35-economics",
+          "latency_ms": 4669.172200025059,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 1120,
+          "reasoning_excerpt": "We are asked: \"For a stationary autoregressive process, shocks will\" and there are ten options A through J. We need to reason through and pick the correct one, then output FINAL=<letter>.\n\nLet's recal",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 251,
+            "prompt_tokens": 106,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 357
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 5120,
+                "reasoning_headroom_tokens": 4096,
+                "visible_answer_tokens": 1024
+              },
+              "content": "Option Selected: C",
+              "content_chars": 18,
+              "content_excerpt": "Option Selected: C",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 60246.80579995038,
+              "reasoning_chars": 7382,
+              "reasoning_excerpt": "We are given a problem: \"A point pole has a strength of 4 pi times 10^-4 weber. The force in newtons on a point pole of 4 pi times 1.5 times 10^-4 weber placed 10 cm from it will be\" with options A th",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 3415,
+                "prompt_tokens": 147,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 3562
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 5120,
+            "reasoning_headroom_tokens": 4096,
+            "visible_answer_tokens": 1024
+          },
+          "content": "Option Selected: C",
+          "content_excerpt": "Option Selected: C",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-40-engineering",
+          "latency_ms": 60246.80579995038,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 7382,
+          "reasoning_excerpt": "We are given a problem: \"A point pole has a strength of 4 pi times 10^-4 weber. The force in newtons on a point pole of 4 pi times 1.5 times 10^-4 weber placed 10 cm from it will be\" with options A th",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 3415,
+            "prompt_tokens": 147,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 3562
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 5120,
+                "reasoning_headroom_tokens": 4096,
+                "visible_answer_tokens": 1024
+              },
+              "content": "Option Selected: D",
+              "content_chars": 18,
+              "content_excerpt": "Option Selected: D",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 9204.370399995241,
+              "reasoning_chars": 1816,
+              "reasoning_excerpt": "We are given a multiple-choice question: \"Which formula of propositional logic best symbolizes: Turtles live long lives and are happy creatures, unless they are injured.\" Options A through J, but only",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 508,
+                "prompt_tokens": 118,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 626
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 5120,
+            "reasoning_headroom_tokens": 4096,
+            "visible_answer_tokens": 1024
+          },
+          "content": "Option Selected: D",
+          "content_excerpt": "Option Selected: D",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-45-philosophy",
+          "latency_ms": 9204.370399995241,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 1816,
+          "reasoning_excerpt": "We are given a multiple-choice question: \"Which formula of propositional logic best symbolizes: Turtles live long lives and are happy creatures, unless they are injured.\" Options A through J, but only",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 508,
+            "prompt_tokens": 118,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 626
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 5120,
+                "reasoning_headroom_tokens": 4096,
+                "visible_answer_tokens": 1024
+              },
+              "content": "I**",
+              "content_chars": 3,
+              "content_excerpt": "I**",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 5700.922599993646,
+              "reasoning_chars": 1218,
+              "reasoning_excerpt": "The question asks: \"What is the judge ad hoc?\"\n\nLet me reason through the options:\n\nA. The president of the ICJ - No, the president is elected by the judges.\n\nB. A temporary judge appointed for a spec",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 303,
+                "prompt_tokens": 159,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 462
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 5120,
+            "reasoning_headroom_tokens": 4096,
+            "visible_answer_tokens": 1024
+          },
+          "content": "I**",
+          "content_excerpt": "I**",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-65-law",
+          "latency_ms": 5700.922599993646,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 1218,
+          "reasoning_excerpt": "The question asks: \"What is the judge ad hoc?\"\n\nLet me reason through the options:\n\nA. The president of the ICJ - No, the president is elected by the judges.\n\nB. A temporary judge appointed for a spec",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 303,
+            "prompt_tokens": 159,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 462
+          },
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "evidence_use": "diagnostic",
+      "source": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+      "source_sha256": "f6112c6f592c5285f8dae86808285f328161d3b4ae30ef660440d173d47b0636",
+      "status": "failed",
+      "validator_strength": "deterministic_marker",
+      "work_class": "independent-multidomain-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "requested_unverified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": null,
+      "completion_tokens_mean": null,
+      "completion_tokens_mean_ci95_high": null,
+      "completion_tokens_mean_ci95_low": null,
+      "completion_tokens_min": null,
+      "completion_tokens_p25": null,
+      "completion_tokens_p50": null,
+      "completion_tokens_p75": null,
+      "completion_tokens_p90": null,
+      "completion_tokens_p95": null,
+      "completion_tokens_p99": null,
+      "completion_tokens_samples": 0,
+      "completion_tokens_stddev": null,
+      "content_chunks": 0,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": null,
+      "decode_tok_s_mean": null,
+      "decode_tok_s_mean_ci95_high": null,
+      "decode_tok_s_mean_ci95_low": null,
+      "decode_tok_s_min": null,
+      "decode_tok_s_p25": null,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p75": null,
+      "decode_tok_s_p90": null,
+      "decode_tok_s_p95": null,
+      "decode_tok_s_p99": null,
+      "decode_tok_s_samples": 0,
+      "decode_tok_s_stddev": null,
+      "e2e_max_ms": null,
+      "e2e_mean_ci95_high_ms": null,
+      "e2e_mean_ci95_low_ms": null,
+      "e2e_mean_ms": null,
+      "e2e_min_ms": null,
+      "e2e_p25_ms": null,
+      "e2e_p50_ms": null,
+      "e2e_p75_ms": null,
+      "e2e_p90_ms": null,
+      "e2e_p95_ms": null,
+      "e2e_p99_ms": null,
+      "e2e_samples": 0,
+      "e2e_stddev_ms": null,
+      "effective_prefill_tok_s_max": null,
+      "effective_prefill_tok_s_mean": null,
+      "effective_prefill_tok_s_mean_ci95_high": null,
+      "effective_prefill_tok_s_mean_ci95_low": null,
+      "effective_prefill_tok_s_min": null,
+      "effective_prefill_tok_s_p25": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p75": null,
+      "effective_prefill_tok_s_p90": null,
+      "effective_prefill_tok_s_p95": null,
+      "effective_prefill_tok_s_p99": null,
+      "effective_prefill_tok_s_samples": 0,
+      "effective_prefill_tok_s_stddev": null,
+      "generation_max_ms": null,
+      "generation_mean_ci95_high_ms": null,
+      "generation_mean_ci95_low_ms": null,
+      "generation_mean_ms": null,
+      "generation_min_ms": null,
+      "generation_p25_ms": null,
+      "generation_p50_ms": null,
+      "generation_p75_ms": null,
+      "generation_p90_ms": null,
+      "generation_p95_ms": null,
+      "generation_p99_ms": null,
+      "generation_samples": 0,
+      "generation_stddev_ms": null,
+      "mean_inter_token_latency_ms_max": null,
+      "mean_inter_token_latency_ms_mean": null,
+      "mean_inter_token_latency_ms_mean_ci95_high": null,
+      "mean_inter_token_latency_ms_mean_ci95_low": null,
+      "mean_inter_token_latency_ms_min": null,
+      "mean_inter_token_latency_ms_p25": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p75": null,
+      "mean_inter_token_latency_ms_p90": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "mean_inter_token_latency_ms_p99": null,
+      "mean_inter_token_latency_ms_samples": 0,
+      "mean_inter_token_latency_ms_stddev": null,
+      "mean_time_per_output_token_max_ms": null,
+      "mean_time_per_output_token_mean_ci95_high_ms": null,
+      "mean_time_per_output_token_mean_ci95_low_ms": null,
+      "mean_time_per_output_token_mean_ms": null,
+      "mean_time_per_output_token_min_ms": null,
+      "mean_time_per_output_token_p25_ms": null,
+      "mean_time_per_output_token_p50_ms": null,
+      "mean_time_per_output_token_p75_ms": null,
+      "mean_time_per_output_token_p90_ms": null,
+      "mean_time_per_output_token_p95_ms": null,
+      "mean_time_per_output_token_p99_ms": null,
+      "mean_time_per_output_token_samples": 0,
+      "mean_time_per_output_token_stddev_ms": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_max": null,
+      "prompt_tokens_mean": null,
+      "prompt_tokens_mean_ci95_high": null,
+      "prompt_tokens_mean_ci95_low": null,
+      "prompt_tokens_min": null,
+      "prompt_tokens_p25": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p75": null,
+      "prompt_tokens_p90": null,
+      "prompt_tokens_p95": null,
+      "prompt_tokens_p99": null,
+      "prompt_tokens_samples": 0,
+      "prompt_tokens_stddev": null,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": null,
+      "time_to_first_output_mean_ci95_high_ms": null,
+      "time_to_first_output_mean_ci95_low_ms": null,
+      "time_to_first_output_mean_ms": null,
+      "time_to_first_output_min_ms": null,
+      "time_to_first_output_p25_ms": null,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p75_ms": null,
+      "time_to_first_output_p90_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "time_to_first_output_p99_ms": null,
+      "time_to_first_output_samples": 0,
+      "time_to_first_output_stddev_ms": null,
+      "tpot_max_ms": null,
+      "tpot_mean_ci95_high_ms": null,
+      "tpot_mean_ci95_low_ms": null,
+      "tpot_mean_ms": null,
+      "tpot_min_ms": null,
+      "tpot_p25_ms": null,
+      "tpot_p50_ms": null,
+      "tpot_p75_ms": null,
+      "tpot_p90_ms": null,
+      "tpot_p95_ms": null,
+      "tpot_p99_ms": null,
+      "tpot_samples": 0,
+      "tpot_stddev_ms": null,
+      "ttft_max_ms": null,
+      "ttft_mean_ci95_high_ms": null,
+      "ttft_mean_ci95_low_ms": null,
+      "ttft_mean_ms": null,
+      "ttft_min_ms": null,
+      "ttft_p25_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p75_ms": null,
+      "ttft_p90_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_p99_ms": null,
+      "ttft_samples": 0,
+      "ttft_stddev_ms": null
+    },
+    "wall_ms": 214221.86339995824
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

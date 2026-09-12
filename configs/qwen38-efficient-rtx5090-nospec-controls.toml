@@ -1,0 +1,105 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "agentionai/Signal-3.8-27B-Q6K-NoSpec-64K"
+status = "candidate"
+source = "2026-09-11 token-efficient Qwen3.8 27B fine-tune, RTX 5090 Q6_K/MTP3 intake"
+family = "qwen3.8-dense-vl-finetune"
+total_params_b = 27
+
+[recipe.download]
+repo = "agentionai/Signal-3.8-27B-GGUF"
+revision = "9848da210febc2141edb7e3f89cfc307a0d15163"
+volume = "vllm-hfcache"
+require_complete_cache = false
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "Q6_K plus Q4_0 KV at 64K passed the campaign interval screen with the normal 3 GiB reserve; measured residency remains a hard gate."
+
+[recipe.serve]
+engine = "llamacpp"
+image = "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac"
+entrypoint = ["/app/llama-server"]
+model_flag = "-m"
+model_path = "/root/.cache/huggingface/hub/models--agentionai--Signal-3.8-27B-GGUF/snapshots/9848da210febc2141edb7e3f89cfc307a0d15163/AP-Q6_K/Signal-3.8-27B-AP-Q6_K.gguf"
+quantization = "publisher iMatrix AP-Q6_K target, Q4_0 K/V cache, no speculation (matched MTP3 control)"
+context_tokens = 65536
+port = 8081
+health = "/health"
+startup_timeout_seconds = 1800
+served_model_name = "signal38-27b-q6k-nospec-64k"
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "GGML_CUDA_GRAPH_OPT=1"]
+flags = [
+  "--alias signal38-27b-q6k-nospec-64k", "--fit off", "--ctx-size 65536",
+  "--parallel 1", "--ctx-checkpoints 4", "--batch-size 512", "--ubatch-size 256",
+  "--threads 8", "--threads-batch 8", "--n-gpu-layers 999", "--flash-attn on",
+  "--cache-type-k q4_0", "--cache-type-v q4_0",
+  "--jinja", "--reasoning off", "--temp 0.7", "--top-p 0.95", "--top-k 20",
+  "--min-p 0", "--metrics", "--host 0.0.0.0", "--port 8081",
+]
+note = "Signal is a same-family fine-tune explicitly targeting shorter answers and fewer thinking tokens. Publisher measurements are advisory; this recipe measures the exact Q6_K artifact locally."
+
+[recipe.fit]
+suited = ["single-gpu", "64k-context", "efficient-reasoning", "interactive-tools", "coding", "speculative-decoding"]
+not_suited = ["automatic-promotion", "full-native-context-without-capacity-proof", "qualified-vision"]
+rationale = "Tests whether a minimally invasive terse fine-tune improves useful wall time while retaining strict tool and coding behavior."
+
+[recipe.sources]
+official = ["https://huggingface.co/Qwen/Qwen3.8-27B", "https://github.com/ggml-org/llama.cpp/tree/a298422da78eb75e440a7de0ca408af64d323d93"]
+community = ["https://huggingface.co/agentionai/Signal-3.8-27B-GGUF/tree/9848da210febc2141edb7e3f89cfc307a0d15163"]
+
+[[recipe]]
+model = "ukisai/Swift-Qwen3.8-27B-Q6K-NoSpec-64K"
+status = "candidate"
+source = "2026-09-12 reasoning-efficient Qwen3.8 27B fine-tune, RTX 5090 Q6_K/MTP3 intake"
+family = "qwen3.8-dense-vl-finetune"
+total_params_b = 27
+
+[recipe.download]
+repo = "ukisai/Swift-Qwen3.8-27B-GGUF"
+revision = "dfc5e7382fa86bd3b971108e23423be5ef18941e"
+volume = "vllm-hfcache"
+require_complete_cache = false
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "Q6_K plus Q4_0 KV at 64K passed the campaign interval screen with the normal 3 GiB reserve; measured residency remains a hard gate."
+
+[recipe.serve]
+engine = "llamacpp"
+image = "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac"
+entrypoint = ["/app/llama-server"]
+model_flag = "-m"
+model_path = "/root/.cache/huggingface/hub/models--ukisai--Swift-Qwen3.8-27B-GGUF/snapshots/dfc5e7382fa86bd3b971108e23423be5ef18941e/Swift-Qwen3.8-27B-Q6_K.gguf"
+quantization = "publisher iMatrix Q6_K target, Q4_0 K/V cache, no speculation (matched MTP3 control)"
+context_tokens = 65536
+port = 8081
+health = "/health"
+startup_timeout_seconds = 1800
+served_model_name = "swift38-27b-q6k-nospec-64k"
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "GGML_CUDA_GRAPH_OPT=1"]
+flags = [
+  "--alias swift38-27b-q6k-nospec-64k", "--fit off", "--ctx-size 65536",
+  "--parallel 1", "--ctx-checkpoints 4", "--batch-size 512", "--ubatch-size 256",
+  "--threads 8", "--threads-batch 8", "--n-gpu-layers 999", "--flash-attn on",
+  "--cache-type-k q4_0", "--cache-type-v q4_0",
+  "--jinja", "--reasoning off", "--temp 0.7", "--top-p 0.95", "--top-k 20",
+  "--min-p 0", "--metrics", "--host 0.0.0.0", "--port 8081",
+]
+note = "Swift explicitly reduces thinking-marker behavior and publishes Q6_K as the preferred strict-tool tier. Publisher scores remain advisory until reproduced locally."
+
+[recipe.fit]
+suited = ["single-gpu", "64k-context", "efficient-reasoning", "interactive-tools", "coding", "speculative-decoding"]
+not_suited = ["automatic-promotion", "full-native-context-without-capacity-proof", "qualified-vision"]
+rationale = "Directly tests whether a Qwen3.8 derivative can reason less without losing practical agent quality."
+
+[recipe.sources]
+official = ["https://huggingface.co/Qwen/Qwen3.8-27B", "https://github.com/ggml-org/llama.cpp/tree/a298422da78eb75e440a7de0ca408af64d323d93"]
+community = ["https://huggingface.co/ukisai/Swift-Qwen3.8-27b/tree/97407cee5b90fa2506fa122cef7f2b8ec86dcf63", "https://huggingface.co/ukisai/Swift-Qwen3.8-27B-GGUF/tree/dfc5e7382fa86bd3b971108e23423be5ef18941e"]
+
+

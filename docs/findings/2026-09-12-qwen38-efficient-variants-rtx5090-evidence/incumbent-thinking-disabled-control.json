@@ -1,0 +1,13 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "incumbent-preflight-thinking-disabled.json passed smoke, JSON, 57,344-token needle retrieval, 20/20 batched tools, streaming tools, and tool-result continuation with zero reasoning evidence",
+  "observed_at": "2026-09-12T13:40:00Z",
+  "artifacts": [
+    {
+      "path": "incumbent-preflight-thinking-disabled.json",
+      "sha256": "911ebfb5c7f150e0644087a41bfdf6437cbd40ae48f5de1022597feef23f1d9a"
+    }
+  ]
+}

@@ -1,0 +1,1838 @@
+{
+  "cache": {
+    "available_bytes": 592633966592,
+    "capacity_bytes": 1081101176832,
+    "logical_bytes": 143420791912,
+    "path": "/root/.cache/huggingface",
+    "used_bytes": 433474854912
+  },
+  "docker": {
+    "build_cache": [
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:53.744662205 +0000 UTC",
+        "id": "jw8b03bctrsvui1pf6mvntub3",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:53.800011526 +0000 UTC",
+        "size_bytes": 30400000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:53.780955001 +0000 UTC",
+        "id": "071y9ntn8fsmaqhx0lmx8uy9g",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:53.8412536 +0000 UTC",
+        "size_bytes": 4640000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:53.825317542 +0000 UTC",
+        "id": "y28kh0kh08e5ka5mf3gn720yc",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:53.886035163 +0000 UTC",
+        "size_bytes": 105000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:53.867006308 +0000 UTC",
+        "id": "x8k1lgh606ruiu8oevlmbwvrw",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:53.93602386 +0000 UTC",
+        "size_bytes": 185,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:53.912437725 +0000 UTC",
+        "id": "kg9sginaas6d6v1y57ku45kmc",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:53.979679096 +0000 UTC",
+        "size_bytes": 6890,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:53.960866682 +0000 UTC",
+        "id": "t8urgxpx23kelatols0138wvi",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.022980646 +0000 UTC",
+        "size_bytes": 104,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.004599196 +0000 UTC",
+        "id": "x59b4c1vp2v18xnt2aqqzdoxj",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.071841343 +0000 UTC",
+        "size_bytes": 230,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.051122494 +0000 UTC",
+        "id": "sb3nhz33n01n7ethl420f85pl",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.11947701 +0000 UTC",
+        "size_bytes": 227000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.100675787 +0000 UTC",
+        "id": "vkrgfjl075u3dv2yc38vzx0n1",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.167639757 +0000 UTC",
+        "size_bytes": 1730000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.149000546 +0000 UTC",
+        "id": "quc6l9d1gycekccnjr3m9rwcq",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.215122703 +0000 UTC",
+        "size_bytes": 53200000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.196813398 +0000 UTC",
+        "id": "kaj6hvbeturck42lr3pb9sxvm",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.26308375 +0000 UTC",
+        "size_bytes": 149,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.24466406 +0000 UTC",
+        "id": "a259d2ie1z0adwqu1w7b95amu",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.312162172 +0000 UTC",
+        "size_bytes": 4920,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.29375495 +0000 UTC",
+        "id": "yvvgx9wsccf52zczevwr7t3nh",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.362127253 +0000 UTC",
+        "size_bytes": 2080,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.343471361 +0000 UTC",
+        "id": "x1f5u09alx244yy6y9vy2i410",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.413157446 +0000 UTC",
+        "size_bytes": 2080,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.394685946 +0000 UTC",
+        "id": "wsossusympdo6uxclz3t0xp9s",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.464407524 +0000 UTC",
+        "size_bytes": 1680,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.445300838 +0000 UTC",
+        "id": "d6f5phvfnlcylax6wag66a07u",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.522910373 +0000 UTC",
+        "size_bytes": 659,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.498490438 +0000 UTC",
+        "id": "tcrh0x4bxufm9o56k8y8d00zf",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.576109718 +0000 UTC",
+        "size_bytes": 3910000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.558199757 +0000 UTC",
+        "id": "69hdsjj84qlpzh1vnnn75lepe",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.628487822 +0000 UTC",
+        "size_bytes": 1540000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.610859579 +0000 UTC",
+        "id": "act859ro650p5clmg75ziyiy1",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.681995086 +0000 UTC",
+        "size_bytes": 896,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.664196299 +0000 UTC",
+        "id": "g5hrgdobftgdlgxbxssuh30vj",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.738030819 +0000 UTC",
+        "size_bytes": 538000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.720748326 +0000 UTC",
+        "id": "cgini4h2zsmv6u9wl0f74cb6y",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.795373759 +0000 UTC",
+        "size_bytes": 121000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.774960142 +0000 UTC",
+        "id": "z023w1nzz2za0qjx9eyltt7em",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.849914387 +0000 UTC",
+        "size_bytes": 198,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.831597665 +0000 UTC",
+        "id": "mpkhdztd3si0ov325pqxibuhr",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.902756214 +0000 UTC",
+        "size_bytes": 240,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.888072597 +0000 UTC",
+        "id": "zwyq1s3ky09hkt0rq5bxqvdik",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:54.958373658 +0000 UTC",
+        "size_bytes": 275000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.940990004 +0000 UTC",
+        "id": "4etpimdlxnkuqgj7t05jncm7c",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:55.013674369 +0000 UTC",
+        "size_bytes": 32,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:54.996145163 +0000 UTC",
+        "id": "yrrrd8l18r3hsy07lx40b6toe",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:55.069966001 +0000 UTC",
+        "size_bytes": 252,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:55.052657966 +0000 UTC",
+        "id": "62uc70b0hkmmjo2ti12k871rs",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:55.128008928 +0000 UTC",
+        "size_bytes": 11500000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:55.110795506 +0000 UTC",
+        "id": "xaaesdhyb5k5cta4x91ni2waq",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:55.185911694 +0000 UTC",
+        "size_bytes": 80400000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:55.168328319 +0000 UTC",
+        "id": "ks8o27jivzi6j5kaxw7gifluh",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:55.242993536 +0000 UTC",
+        "size_bytes": 267000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:55.2255225 +0000 UTC",
+        "id": "fo715uk72x3x0xh9qvdpml3io",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:55.301878007 +0000 UTC",
+        "size_bytes": 256000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:55.284405639 +0000 UTC",
+        "id": "lzbsjlu7vodklh6z3opneeiov",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:55.361286558 +0000 UTC",
+        "size_bytes": 9850,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:55.343877671 +0000 UTC",
+        "id": "vyoh4jvknw2izp4ctpzejl37z",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:00:55.425514464 +0000 UTC",
+        "size_bytes": 246000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:44:43.684009546 +0000 UTC",
+        "id": "mrv8pnno2vx61nwhi1re23nr8",
+        "in_use": false,
+        "last_used_at": "2026-08-08 01:44:43.735957717 +0000 UTC",
+        "size_bytes": 117000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.743174287 +0000 UTC",
+        "id": "37nxbigx4cm69i38bq0dpnu8w",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:11:44.784287928 +0000 UTC",
+        "size_bytes": 3310,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.772906793 +0000 UTC",
+        "id": "rsx3bsaanqo5maoo72541izig",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:11:44.814354992 +0000 UTC",
+        "size_bytes": 81100000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.803009947 +0000 UTC",
+        "id": "sh6o7w7vietka61nd4jk7pgfr",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:11:44.844448475 +0000 UTC",
+        "size_bytes": 116,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.833340738 +0000 UTC",
+        "id": "j8j2f3l4lguvmtqk4qk5c0qsh",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:11:44.874769619 +0000 UTC",
+        "size_bytes": 96,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.863606197 +0000 UTC",
+        "id": "u0d69o38leg2rs52qkevhrb7s",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:11:44.906474156 +0000 UTC",
+        "size_bytes": 3750000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.894966448 +0000 UTC",
+        "id": "hpd24j1v3k1rusz6zz1j10ejz",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:11:44.938724 +0000 UTC",
+        "size_bytes": 4059999999,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.927238719 +0000 UTC",
+        "id": "v187yfz0xl2lz5rw5wz7q17cs",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:11:44.973388441 +0000 UTC",
+        "size_bytes": 489,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.961421898 +0000 UTC",
+        "id": "sg30hxjsz2f2feucbhz3sdvs9",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:11:45.005950526 +0000 UTC",
+        "size_bytes": 591000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.99422662 +0000 UTC",
+        "id": "xx7c0sudan5x5pl1e3qpy9iba",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:11:45.038841727 +0000 UTC",
+        "size_bytes": 63000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:45.027800605 +0000 UTC",
+        "id": "qo26ysbhqgdkma5onrde7b8t0",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:11:45.072060962 +0000 UTC",
+        "size_bytes": 23900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:45.060631359 +0000 UTC",
+        "id": "vr64kst1v2406pzu1rxc8k78a",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:13:13.263800566 +0000 UTC",
+        "size_bytes": 12400000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.636255331 +0000 UTC",
+        "id": "dcr3w8q6pwgfiuq8d6u1mj812",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:39:43.067108853 +0000 UTC",
+        "size_bytes": 29800000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.65942869 +0000 UTC",
+        "id": "bzoppl7phq4j8xid49zdilbov",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:39:43.082428701 +0000 UTC",
+        "size_bytes": 1290000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.689237071 +0000 UTC",
+        "id": "rxeyafyefi0kh8fvlen3zyz2k",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:39:43.093000389 +0000 UTC",
+        "size_bytes": 11900000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:11:44.715469069 +0000 UTC",
+        "id": "hbhzvhoxagcfwekmwbr84caoj",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:39:43.121744716 +0000 UTC",
+        "size_bytes": 250,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:39:43.111459114 +0000 UTC",
+        "id": "kky4zmdp7e7d6m1dowm2qo6e9",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:39:43.148843734 +0000 UTC",
+        "size_bytes": 3310,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:39:43.138563284 +0000 UTC",
+        "id": "3j11qsdyhcpnujc8slyh4ps11",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:39:43.181590293 +0000 UTC",
+        "size_bytes": 81100000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:39:43.17010834 +0000 UTC",
+        "id": "0o9j43r733gkmstblznrpki28",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:39:43.210540286 +0000 UTC",
+        "size_bytes": 117,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:39:43.199416321 +0000 UTC",
+        "id": "5bn68wxek1tywjr3gr7mqo02a",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:39:43.24887715 +0000 UTC",
+        "size_bytes": 96,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:39:43.237796337 +0000 UTC",
+        "id": "3xzb6lcub42z4qt1eq91orx7c",
+        "in_use": false,
+        "last_used_at": "2026-08-11 06:39:43.293440708 +0000 UTC",
+        "size_bytes": 3750000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.177842488 +0000 UTC",
+        "id": "fnpv5f5qb7iu0nrqlihhp4ucy",
+        "in_use": false,
+        "last_used_at": "2026-08-11 07:09:50.255741772 +0000 UTC",
+        "size_bytes": 1290000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.232001619 +0000 UTC",
+        "id": "egjhdju1nw5omtdtjw8sk1zks",
+        "in_use": false,
+        "last_used_at": "2026-08-11 07:09:50.334701294 +0000 UTC",
+        "size_bytes": 11900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.306504983 +0000 UTC",
+        "id": "62ap5dtj929mh200b2s8xl80v",
+        "in_use": false,
+        "last_used_at": "2026-08-11 07:09:50.38883165 +0000 UTC",
+        "size_bytes": 249,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.363716853 +0000 UTC",
+        "id": "4l9mu3yxr3j08boicg9rk5lm2",
+        "in_use": false,
+        "last_used_at": "2026-08-11 07:09:50.459757944 +0000 UTC",
+        "size_bytes": 3320,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.443503492 +0000 UTC",
+        "id": "ic0k27bfmg3hfdj6rx25x4ieg",
+        "in_use": false,
+        "last_used_at": "2026-08-11 07:09:50.50301574 +0000 UTC",
+        "size_bytes": 81100000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.485739444 +0000 UTC",
+        "id": "w00tgpowu4lzviipstiqaml4b",
+        "in_use": false,
+        "last_used_at": "2026-08-11 07:09:50.550457439 +0000 UTC",
+        "size_bytes": 117,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.532977898 +0000 UTC",
+        "id": "ny88dz1dve2t0vig8g5ubuxv5",
+        "in_use": false,
+        "last_used_at": "2026-08-11 07:09:50.596689201 +0000 UTC",
+        "size_bytes": 96,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.580581377 +0000 UTC",
+        "id": "kaxpd3lw5jlho0bfl7wrtvjo1",
+        "in_use": false,
+        "last_used_at": "2026-08-11 07:09:50.644141268 +0000 UTC",
+        "size_bytes": 3770000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.627856729 +0000 UTC",
+        "id": "s7fjs5069j1768ow04rmikc08",
+        "in_use": false,
+        "last_used_at": "2026-08-11 07:09:50.692273768 +0000 UTC",
+        "size_bytes": 2820000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.675019613 +0000 UTC",
+        "id": "ytoatbml4s89ob9lps7wbiec4",
+        "in_use": false,
+        "last_used_at": "2026-08-11 07:09:50.741422692 +0000 UTC",
+        "size_bytes": 487,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.479617434 +0000 UTC",
+        "id": "o12ruah5xoblxgs8u9abo2lqk",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.509401737 +0000 UTC",
+        "size_bytes": 30600000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.499507149 +0000 UTC",
+        "id": "empjklg867sfi4h6or4zx4b9j",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.532390427 +0000 UTC",
+        "size_bytes": 4550000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.523806107 +0000 UTC",
+        "id": "s7mxsz78259pxh2qx13jd0jte",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.557093488 +0000 UTC",
+        "size_bytes": 105000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.547564167 +0000 UTC",
+        "id": "t7kqc1wy7g2q4dj70uzoc0izd",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.581556975 +0000 UTC",
+        "size_bytes": 182,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.572566885 +0000 UTC",
+        "id": "kx4n35cj2zujqmm0wub3yc291",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.607223547 +0000 UTC",
+        "size_bytes": 6890,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.597515069 +0000 UTC",
+        "id": "o5e7br3kp7coq4ofc0ogsf9fv",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.634399206 +0000 UTC",
+        "size_bytes": 102,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.62410491 +0000 UTC",
+        "id": "k7acgvhwdbnyhpd8vqfjxf1wp",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.66205273 +0000 UTC",
+        "size_bytes": 229,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.651461313 +0000 UTC",
+        "id": "1lcqzst7o8z55ksge8bhf3zk7",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.69308732 +0000 UTC",
+        "size_bytes": 233000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.682721274 +0000 UTC",
+        "id": "9jgt10xljzm1owvk2qa3rgvik",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.724256806 +0000 UTC",
+        "size_bytes": 1370000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.713899691 +0000 UTC",
+        "id": "r64jt70ih0kl6eej2rmiydugy",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.758388601 +0000 UTC",
+        "size_bytes": 47900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.745367999 +0000 UTC",
+        "id": "u0tkgcjbf64uho11hq4of1pfq",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.791444499 +0000 UTC",
+        "size_bytes": 149,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.780438099 +0000 UTC",
+        "id": "iutjj850sdo1vzq2meck5lag9",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.824752809 +0000 UTC",
+        "size_bytes": 161,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.813401491 +0000 UTC",
+        "id": "tdd5vm0wsm5ter2pnj69za6rr",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.858022238 +0000 UTC",
+        "size_bytes": 3710,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.846955325 +0000 UTC",
+        "id": "kzuy7lu9hrazovc0om1f2yw5t",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.906165041 +0000 UTC",
+        "size_bytes": 2080,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.89133194 +0000 UTC",
+        "id": "y3qjsrch40cy1gp5828jekpig",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.941557544 +0000 UTC",
+        "size_bytes": 2080,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.931200514 +0000 UTC",
+        "id": "gebck8a3vaa7b6kief7rq6ifb",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:01.977550518 +0000 UTC",
+        "size_bytes": 1670,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:01.967058528 +0000 UTC",
+        "id": "i3aswca9y9bpzhgkjijzsi52a",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:48:02.012966223 +0000 UTC",
+        "size_bytes": 875,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "frontend",
+        "created_at": "2026-08-24 06:47:59.195189703 +0000 UTC",
+        "id": "o3iy17j3co6pjmn06331u0342",
+        "in_use": false,
+        "last_used_at": "2026-08-24 06:53:52.398856376 +0000 UTC",
+        "size_bytes": 42700000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.5028848 +0000 UTC",
+        "id": "otfx2uvdjikvkg03asp91bcv1",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.548265044 +0000 UTC",
+        "size_bytes": 117000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.535863757 +0000 UTC",
+        "id": "iod8pr38jpi25l8y8buphoacm",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.585957185 +0000 UTC",
+        "size_bytes": 6240000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.575431968 +0000 UTC",
+        "id": "rgmhoj1rzng67lrtkwcqoyhe0",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.619669916 +0000 UTC",
+        "size_bytes": 52300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.608634897 +0000 UTC",
+        "id": "uf5tp0lc5rrx88v2f5nkv0wdq",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.643742907 +0000 UTC",
+        "size_bytes": 16600,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.63366376 +0000 UTC",
+        "id": "hyw129dev83380q23uri5n1zh",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.669733599 +0000 UTC",
+        "size_bytes": 72900,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.658337335 +0000 UTC",
+        "id": "ec3ldp6mapp51itp2tv687drw",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.695852138 +0000 UTC",
+        "size_bytes": 262000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.684407552 +0000 UTC",
+        "id": "cysn2uyoflr8vkz924fslhzio",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.721754698 +0000 UTC",
+        "size_bytes": 12400,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.710861405 +0000 UTC",
+        "id": "l4wpnvo89a511mlmez6tv8zyz",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.746660885 +0000 UTC",
+        "size_bytes": 8290,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.736510824 +0000 UTC",
+        "id": "6pgh7lib8xtvuzw3uln4vzzg7",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.772747003 +0000 UTC",
+        "size_bytes": 17100000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.76168747 +0000 UTC",
+        "id": "8ih6kcwwhchtxgigp44h9plpz",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.799472235 +0000 UTC",
+        "size_bytes": 7860000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.788310251 +0000 UTC",
+        "id": "t6i6vmqs6t6voyxb9jdm8pahm",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.828222486 +0000 UTC",
+        "size_bytes": 12800,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.817305592 +0000 UTC",
+        "id": "nie1a89ug6rvdc3cc5ewbjlch",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.867224462 +0000 UTC",
+        "size_bytes": 2130000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.855813517 +0000 UTC",
+        "id": "sa1hgpv8mqn47oo25rattb939",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.896021559 +0000 UTC",
+        "size_bytes": 223000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.884952554 +0000 UTC",
+        "id": "jnhxvywalur1trand05rmliz3",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.924977451 +0000 UTC",
+        "size_bytes": 84400000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.914022657 +0000 UTC",
+        "id": "05y806260v76dpq6mmz512oam",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:04:18.954308086 +0000 UTC",
+        "size_bytes": 26100000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:40:17.457585653 +0000 UTC",
+        "id": "n5ubmhuzdnvff744xwxujkqwk",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:49:52.854749789 +0000 UTC",
+        "size_bytes": 163000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:40:07.94455774 +0000 UTC",
+        "id": "jvofg40eqbsh02wdrjab5f6ax",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:49:52.887044795 +0000 UTC",
+        "size_bytes": 880000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:40:08.238482104 +0000 UTC",
+        "id": "n86wjln0d07pf1w1omx16dlhm",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:49:52.907798968 +0000 UTC",
+        "size_bytes": 20700,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:40:08.869346837 +0000 UTC",
+        "id": "dcse9eqctu2faumnk5u0w1pt3",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:49:52.913515318 +0000 UTC",
+        "size_bytes": 8220,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:04:18.943340861 +0000 UTC",
+        "id": "qc4gt86l4y0dmkshigtrdamyl",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:49:52.920524754 +0000 UTC",
+        "size_bytes": 13400,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:40:08.304063613 +0000 UTC",
+        "id": "pre5nivw9bwi8weekezt46jxg",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:49:52.926297061 +0000 UTC",
+        "size_bytes": 21300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:40:33.832957582 +0000 UTC",
+        "id": "1bgecjiashopauf6vfaysv2ws",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:49:52.93092614 +0000 UTC",
+        "size_bytes": 121000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:40:27.841924502 +0000 UTC",
+        "id": "7xoncupbkwlfmg2ap12d6468k",
+        "in_use": false,
+        "last_used_at": "2026-08-28 07:49:52.936601667 +0000 UTC",
+        "size_bytes": 384000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:21.159183849 +0000 UTC",
+        "id": "jeo45mg2nwgymyk0qstkxlygy",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:21.199952051 +0000 UTC",
+        "size_bytes": 6240000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:21.189134407 +0000 UTC",
+        "id": "0sy7cz09w8dnv1lxv6kjn9l8l",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:21.232610935 +0000 UTC",
+        "size_bytes": 63300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:21.223019275 +0000 UTC",
+        "id": "x5ru44jgbtd01oyaze264fo8f",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:29.243884908 +0000 UTC",
+        "size_bytes": 16600,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:23.006445528 +0000 UTC",
+        "id": "qwpcb73iemcs37q4l003epiws",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:29.246385661 +0000 UTC",
+        "size_bytes": 8290,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:36.6236164 +0000 UTC",
+        "id": "ehiobk2l9k58kezteks8yrvtr",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:36.652110892 +0000 UTC",
+        "size_bytes": 3850000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:36.643440824 +0000 UTC",
+        "id": "8cj2l5plwr4dnl1u7wdibq2kd",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:36.675809183 +0000 UTC",
+        "size_bytes": 26800000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:36.666221094 +0000 UTC",
+        "id": "xsw36gvke5jvz6eidhyrmguwk",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:36.705308206 +0000 UTC",
+        "size_bytes": 4130,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:36.69622434 +0000 UTC",
+        "id": "6plpzv3mg0apmbk6li4ysal9r",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:36.733851302 +0000 UTC",
+        "size_bytes": 16800,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:36.724155655 +0000 UTC",
+        "id": "jwv9xxfiii3ognbuerds12miy",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:36.766273935 +0000 UTC",
+        "size_bytes": 61900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:36.756623151 +0000 UTC",
+        "id": "z7s7g8sd2vvlqo9qcqs5z4h46",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:36.792304898 +0000 UTC",
+        "size_bytes": 88300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:36.782743251 +0000 UTC",
+        "id": "slhpp7qm8t3wbz8lzsaly11gw",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:36.81742885 +0000 UTC",
+        "size_bytes": 43900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:36.808873868 +0000 UTC",
+        "id": "rte9iltl3ufhd50c7u6s29j27",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:36.844448701 +0000 UTC",
+        "size_bytes": 21000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:36.835636995 +0000 UTC",
+        "id": "w1ncjjau2l3uykvmqmsla0fez",
+        "in_use": false,
+        "last_used_at": "2026-08-28 20:17:36.87143518 +0000 UTC",
+        "size_bytes": 21500,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 21:35:18.948526329 +0000 UTC",
+        "id": "qxr66mory9uwauuap6nw7ba3z",
+        "in_use": false,
+        "last_used_at": "2026-08-28 21:41:02.530891064 +0000 UTC",
+        "size_bytes": 21300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 21:35:38.198247027 +0000 UTC",
+        "id": "gf8y4b08k55a9zdxjq6qqqlzl",
+        "in_use": false,
+        "last_used_at": "2026-08-28 21:41:02.536973372 +0000 UTC",
+        "size_bytes": 384000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 21:35:44.345809872 +0000 UTC",
+        "id": "6ra3ffxucqkc46zod8l0epzk7",
+        "in_use": false,
+        "last_used_at": "2026-08-28 21:41:02.541961502 +0000 UTC",
+        "size_bytes": 121000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 21:36:16.883885255 +0000 UTC",
+        "id": "sruxlv8amriccjs8kgauei3xk",
+        "in_use": false,
+        "last_used_at": "2026-08-28 21:41:02.547889941 +0000 UTC",
+        "size_bytes": 25100000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 21:35:19.277869554 +0000 UTC",
+        "id": "7lczmv75jjh5sghir3j3wl4wn",
+        "in_use": false,
+        "last_used_at": "2026-08-28 21:41:02.564238083 +0000 UTC",
+        "size_bytes": 8220,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 21:35:46.180411231 +0000 UTC",
+        "id": "15t2jmlo2wywc78gzgm4t5uup",
+        "in_use": false,
+        "last_used_at": "2026-08-28 21:41:02.57010382 +0000 UTC",
+        "size_bytes": 19200000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 21:36:05.394530016 +0000 UTC",
+        "id": "m8md0ogcg47fla5feqsww3iu6",
+        "in_use": false,
+        "last_used_at": "2026-08-28 21:41:02.574983072 +0000 UTC",
+        "size_bytes": 26400000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 21:36:02.7950004 +0000 UTC",
+        "id": "j4a52mcpf4s0gumsrxrjhsynw",
+        "in_use": false,
+        "last_used_at": "2026-08-28 21:41:02.581134392 +0000 UTC",
+        "size_bytes": 508000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 21:35:27.697180748 +0000 UTC",
+        "id": "d3kddfh5oici4a6py9x83urq5",
+        "in_use": false,
+        "last_used_at": "2026-08-28 21:41:02.602880145 +0000 UTC",
+        "size_bytes": 163000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-29 00:55:32.224902154 +0000 UTC",
+        "id": "id8c0tymcv7lv5n35smd4ipok",
+        "in_use": false,
+        "last_used_at": "2026-08-29 00:55:36.329466475 +0000 UTC",
+        "size_bytes": 93400,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-29 00:55:31.099080996 +0000 UTC",
+        "id": "m5xw49mbtjlq54qr0kvi44ja6",
+        "in_use": false,
+        "last_used_at": "2026-08-29 00:55:36.338909908 +0000 UTC",
+        "size_bytes": 34600000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-29 00:55:27.634733435 +0000 UTC",
+        "id": "vpivsxm7bcjk1xtusj1035dxz",
+        "in_use": false,
+        "last_used_at": "2026-08-29 00:55:36.358256967 +0000 UTC",
+        "size_bytes": 15700000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-29 00:55:31.636018737 +0000 UTC",
+        "id": "y5tmae5c18mdgjdlv5k67orgn",
+        "in_use": false,
+        "last_used_at": "2026-08-29 00:55:36.362035056 +0000 UTC",
+        "size_bytes": 28800,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:23.088388143 +0000 UTC",
+        "id": "3hwn1k1an7c12jhwijvp9f8u0",
+        "in_use": false,
+        "last_used_at": "2026-08-29 00:55:36.380894288 +0000 UTC",
+        "size_bytes": 39700,
+        "usage_count": 13
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-29 00:55:32.307570948 +0000 UTC",
+        "id": "pn1tdn3prbhrcuf6ap2hhc8ae",
+        "in_use": false,
+        "last_used_at": "2026-08-29 00:55:45.001032821 +0000 UTC",
+        "size_bytes": 4130,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 21:36:57.589067839 +0000 UTC",
+        "id": "xipwud1jcmxcxx5tcxo10wokk",
+        "in_use": false,
+        "last_used_at": "2026-08-29 07:17:15.017031712 +0000 UTC",
+        "size_bytes": 1340000000,
+        "usage_count": 7
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-29 08:20:39.437634316 +0000 UTC",
+        "id": "wi3stidcjnndryv9mqdvl08mf",
+        "in_use": false,
+        "last_used_at": "2026-08-29 08:30:17.646552992 +0000 UTC",
+        "size_bytes": 508000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-29 08:20:42.078167967 +0000 UTC",
+        "id": "3ep5u6nzpwo0zlpkcb7g984eo",
+        "in_use": false,
+        "last_used_at": "2026-08-29 08:30:17.67612103 +0000 UTC",
+        "size_bytes": 26400000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-29 08:21:35.978400932 +0000 UTC",
+        "id": "dupo4y35gbhig6ivgt55gcgw2",
+        "in_use": false,
+        "last_used_at": "2026-08-29 08:30:17.681249529 +0000 UTC",
+        "size_bytes": 1340000000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 07:40:35.673596899 +0000 UTC",
+        "id": "hzvag2v5ict1uf5m8juml766b",
+        "in_use": false,
+        "last_used_at": "2026-08-29 08:30:17.700693333 +0000 UTC",
+        "size_bytes": 19200000,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-29 08:20:55.00959472 +0000 UTC",
+        "id": "qoqa89kix9lfy7frt626vmjk9",
+        "in_use": false,
+        "last_used_at": "2026-08-29 08:30:17.709102349 +0000 UTC",
+        "size_bytes": 25100000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-08 01:00:55.402988545 +0000 UTC",
+        "id": "muby7271w2yom29r2episcksz",
+        "in_use": false,
+        "last_used_at": "2026-09-05 09:42:39.536273129 +0000 UTC",
+        "size_bytes": 483000000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:12:23.075404002 +0000 UTC",
+        "id": "i85piuxfbeklla5vfi68l9kca",
+        "in_use": false,
+        "last_used_at": "2026-09-05 09:42:41.337754153 +0000 UTC",
+        "size_bytes": 605000000,
+        "usage_count": 6
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 07:09:50.724128535 +0000 UTC",
+        "id": "rtbi31flmlfpn1u8m2y3vv1tq",
+        "in_use": false,
+        "last_used_at": "2026-09-05 09:42:41.701567433 +0000 UTC",
+        "size_bytes": 665000000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-11 06:39:43.282634577 +0000 UTC",
+        "id": "n97l5jof389em6dc19152cwca",
+        "in_use": false,
+        "last_used_at": "2026-09-05 09:42:41.714454896 +0000 UTC",
+        "size_bytes": 2820000000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-24 06:48:02.002894374 +0000 UTC",
+        "id": "tiu9ghvzdgzsc6cwfinn1yppn",
+        "in_use": false,
+        "last_used_at": "2026-09-05 09:42:41.727639277 +0000 UTC",
+        "size_bytes": 4640000000,
+        "usage_count": 2
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 05:07:26.11754969 +0000 UTC",
+        "id": "54fer2gbrxdl1govbx6efpn88",
+        "in_use": false,
+        "last_used_at": "2026-09-08 05:07:27.590913068 +0000 UTC",
+        "size_bytes": 12300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 05:07:27.187557219 +0000 UTC",
+        "id": "fc1wwo92pt0rq16g4c5mwri6p",
+        "in_use": false,
+        "last_used_at": "2026-09-08 05:07:27.596923988 +0000 UTC",
+        "size_bytes": 8189,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 05:07:27.095748343 +0000 UTC",
+        "id": "f7i5eqila5doo00dcuw185qmc",
+        "in_use": false,
+        "last_used_at": "2026-09-08 05:07:27.60644688 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 05:19:14.239752142 +0000 UTC",
+        "id": "sq2g0nwc284blobmn1yklsfdn",
+        "in_use": false,
+        "last_used_at": "2026-09-08 05:19:15.12305288 +0000 UTC",
+        "size_bytes": 12300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 05:19:14.534495328 +0000 UTC",
+        "id": "yqgbwx2nmcc7jw3p95llg8yr9",
+        "in_use": false,
+        "last_used_at": "2026-09-08 05:19:15.133404325 +0000 UTC",
+        "size_bytes": 8189,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-29 08:28:45.791478762 +0000 UTC",
+        "id": "6hta96vtm792qp271s6fvpnjb",
+        "in_use": false,
+        "last_used_at": "2026-09-08 05:19:15.137952649 +0000 UTC",
+        "size_bytes": 9070000000,
+        "usage_count": 3
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-08 05:19:14.392889136 +0000 UTC",
+        "id": "ktqywwmqb8tv4bwoeztrionab",
+        "in_use": false,
+        "last_used_at": "2026-09-08 05:19:15.149536096 +0000 UTC",
+        "size_bytes": 4100,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:36.294277951 +0000 UTC",
+        "id": "k1lx8lh1pck3w2vrinbro1fcj",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:36.354038597 +0000 UTC",
+        "size_bytes": 17400000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:36.337266597 +0000 UTC",
+        "id": "s9m7lcg4o4cp9rdh74zab95i7",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:36.398957776 +0000 UTC",
+        "size_bytes": 63300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:43.034912158 +0000 UTC",
+        "id": "vnw8v9kjlijhlnj1ggykomeil",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.366917165 +0000 UTC",
+        "size_bytes": 4130,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:43.262364895 +0000 UTC",
+        "id": "olrd205zntscq04xwhnxvhluj",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.371790597 +0000 UTC",
+        "size_bytes": 61900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 10:38:34.961470292 +0000 UTC",
+        "id": "sj5tqie1gngpe6c6f76f8jd95",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.37978697 +0000 UTC",
+        "size_bytes": 8189,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:36.385977285 +0000 UTC",
+        "id": "4rhl4xgnvd00s9m1j4m6ikk84",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.383762175 +0000 UTC",
+        "size_bytes": 16600,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:42.256082579 +0000 UTC",
+        "id": "xhgbe75podsfj9990f8tebzde",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.387853117 +0000 UTC",
+        "size_bytes": 28800,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:42.922096751 +0000 UTC",
+        "id": "xehog8a2e3d7ew5az2tw0qasd",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.391786225 +0000 UTC",
+        "size_bytes": 93400,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:43.538355374 +0000 UTC",
+        "id": "jhi4bov69j7iqlsqwdxkbucws",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.395761565 +0000 UTC",
+        "size_bytes": 88300000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:43.703284245 +0000 UTC",
+        "id": "zcj8jek2zn4c8t3z7phxk3f83",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.39981451 +0000 UTC",
+        "size_bytes": 43900000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 10:38:36.156292652 +0000 UTC",
+        "id": "f1mnq6x15iz5rwizejwfeo4fn",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.414729758 +0000 UTC",
+        "size_bytes": 8189,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:38.200178801 +0000 UTC",
+        "id": "9kpzvdma9ahpjo8qqokbidbid",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.418834392 +0000 UTC",
+        "size_bytes": 8290,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-08-28 20:17:36.861741863 +0000 UTC",
+        "id": "iquzm1f1xqoafc2fhfhzts9wf",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.422914245 +0000 UTC",
+        "size_bytes": 12400,
+        "usage_count": 15
+      },
+      {
+        "cache_type": "source.local",
+        "created_at": "2026-09-09 10:38:36.357966265 +0000 UTC",
+        "id": "7tfkkkpk7olko689wrseu27tk",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.439683671 +0000 UTC",
+        "size_bytes": 6320000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:38.318611855 +0000 UTC",
+        "id": "rqa91ye1s75u0kexc6pfwmtqm",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.445743512 +0000 UTC",
+        "size_bytes": 40300,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:41.772175133 +0000 UTC",
+        "id": "g7bguhnsiovl69xxrkmkjmcek",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.453832851 +0000 UTC",
+        "size_bytes": 34700000,
+        "usage_count": 1
+      },
+      {
+        "cache_type": "regular",
+        "created_at": "2026-09-09 10:38:38.448536808 +0000 UTC",
+        "id": "nbltcq100qsng8fx6zqy4qys2",
+        "in_use": false,
+        "last_used_at": "2026-09-09 10:38:47.458793383 +0000 UTC",
+        "size_bytes": 7560000,
+        "usage_count": 1
+      }
+    ],
+    "containers": [
+      {
+        "container_id": "3edd1815c001d41b80292828bcdeda8333c421112047620c40c893acccf12490",
+        "created_at": "2026-09-12 06:43:41 -0700 PDT",
+        "image_id": null,
+        "image_reference": "vllm/vllm-openai:nightly",
+        "name": "amazing_feistel",
+        "state": "running",
+        "status": "Up 3 minutes"
+      },
+      {
+        "container_id": "332361622c4b98ab188b9c61abd9dfea6acebde9b864e90d53e297e6d3e09920",
+        "created_at": "2026-09-09 04:03:47 -0700 PDT",
+        "image_id": null,
+        "image_reference": "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",
+        "name": "anvil-qwen-local",
+        "state": "running",
+        "status": "Up 3 days (healthy)"
+      },
+      {
+        "container_id": "8b3d9642aac92e6630fd9aeb3e8fc3884d32fd959e33650df9da735db29df9cb",
+        "created_at": "2026-09-09 03:40:59 -0700 PDT",
+        "image_id": null,
+        "image_reference": "sha256:ef5b2c3d632ac7cbb85391faed3b4a097ccc1ba1c642d5c2cb83785029530bf8",
+        "name": "anvil-media-resource-controller",
+        "state": "running",
+        "status": "Up 3 days (healthy)"
+      },
+      {
+        "container_id": "3ab7b973b835e9b1e854ea1965067608115538d3581f6c96d82f29c7731b3db6",
+        "created_at": "2026-09-09 03:38:47 -0700 PDT",
+        "image_id": null,
+        "image_reference": "anvil-serving-controller:1.0.0-c592e0b",
+        "name": "anvil-media-resource-controller-candidate",
+        "state": "exited",
+        "status": "Exited (0) 3 days ago"
+      },
+      {
+        "container_id": "02bf8aeaca5ad99a354793f2c6aca515362bdbd79459e26bb1990d12398a8650",
+        "created_at": "2026-09-03 13:57:51 -0700 PDT",
+        "image_id": null,
+        "image_reference": "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",
+        "name": "anvil-qwen38-27b-ud-q4xl-native-mtp3",
+        "state": "exited",
+        "status": "Exited (0) 6 days ago"
+      }
+    ],
+    "images": [
+      {
+        "attached_container_count": 2,
+        "created_at": "2026-09-09 03:38:43 -0700 PDT",
+        "image_id": "sha256:ef5b2c3d632ac7cbb85391faed3b4a097ccc1ba1c642d5c2cb83785029530bf8",
+        "last_container_observed_at": "2026-09-09 03:40:59 -0700 PDT",
+        "reference": "anvil-serving-controller:1.0.0-c592e0b",
+        "shared_bytes": 117300000,
+        "size_bytes": 434000000,
+        "unique_bytes": 317000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-29 01:28:45 -0700 PDT",
+        "image_id": "sha256:64c6639d574a9c023ba5729ed15c6610ad9d35c58ae009cc26a42bfaa69211ff",
+        "last_container_observed_at": null,
+        "reference": "anvil-comfyui:0.33.4-cu130-addons-20260827",
+        "shared_bytes": 10780000000,
+        "size_bytes": 16700000000,
+        "unique_bytes": 5932000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-28 17:55:32 -0700 PDT",
+        "image_id": "sha256:0f3677eac7143872e256668257ea0dc0be1329b0f18b6574cdffb6cf8ef711e1",
+        "last_container_observed_at": null,
+        "reference": "anvil-serving-controller:0.36.0-media-b46f6ce",
+        "shared_bytes": 236900000,
+        "size_bytes": 431000000,
+        "unique_bytes": 194200000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-28 17:55:32 -0700 PDT",
+        "image_id": "sha256:6709768864600e7fb3cb226a487c6fe5ba56e72e0fa3727800e5b210068547f8",
+        "last_container_observed_at": null,
+        "reference": "anvil-serving:0.36.0-media-b46f6ce",
+        "shared_bytes": 236900000,
+        "size_bytes": 237000000,
+        "unique_bytes": 13840
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-28 14:24:14 -0700 PDT",
+        "image_id": "sha256:cfe5faac5fb3a634a18fecf774b303164e2170536863f9283341d69c027e8dcd",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 10780000000,
+        "size_bytes": 11700000000,
+        "unique_bytes": 878900000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-27 16:20:36 -0700 PDT",
+        "image_id": "sha256:4a40acf4790733dfeb38a92dc2b976c812a484264ff08362e7f8c0d5a16df3e9",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 10780000000,
+        "size_bytes": 10800000000,
+        "unique_bytes": 73460
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-24 22:39:32 -0700 PDT",
+        "image_id": "sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 563100000,
+        "size_bytes": 28800000000,
+        "unique_bytes": 28230000000
+      },
+      {
+        "attached_container_count": 2,
+        "created_at": "2026-08-20 23:26:34 -0700 PDT",
+        "image_id": "sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 410800000,
+        "size_bytes": 6980000000,
+        "unique_bytes": 6573000000
+      },
+      {
+        "attached_container_count": 1,
+        "created_at": "2026-08-16 22:21:30 -0700 PDT",
+        "image_id": "sha256:b18ca8c30803f2de1ddfb2d7ace116161aa11c315018c9e09da283ad71ec8ead",
+        "last_container_observed_at": "2026-09-12 06:43:41 -0700 PDT",
+        "reference": "vllm/vllm-openai:nightly",
+        "shared_bytes": 563100000,
+        "size_bytes": 28800000000,
+        "unique_bytes": 28220000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-06 20:32:08 -0700 PDT",
+        "image_id": "sha256:2b6bc777d9a58499f7d6b919896549b4777c8e78b41eba135a809b10a8c75a6e",
+        "last_container_observed_at": null,
+        "reference": "ghcr.io/remsky/kokoro-fastapi-gpu:latest-cu128",
+        "shared_bytes": 410800000,
+        "size_bytes": 14400000000,
+        "unique_bytes": 13980000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-08-01 08:33:15 -0700 PDT",
+        "image_id": "sha256:dfbe0fa76a49386b5dd413392b74c89bc68fcac0a445dbb4efec083d7dc1acbf",
+        "last_container_observed_at": null,
+        "reference": "ghcr.io/mudler/parakeet.cpp-server:latest-cuda",
+        "shared_bytes": 0,
+        "size_bytes": 4520000000,
+        "unique_bytes": 4517000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-07-12 16:58:45 -0700 PDT",
+        "image_id": "sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089",
+        "last_container_observed_at": null,
+        "reference": "vllm/vllm-openai:aux-e4f88a-local",
+        "shared_bytes": 563400000,
+        "size_bytes": 27800000000,
+        "unique_bytes": 27280000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-06-27 22:18:28 -0700 PDT",
+        "image_id": "sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 563400000,
+        "size_bytes": 27700000000,
+        "unique_bytes": 27140000000
+      },
+      {
+        "attached_container_count": 0,
+        "created_at": "2026-06-24 01:05:22 -0700 PDT",
+        "image_id": "sha256:7c12af72ceb38b7432ab85e1a265cff6ae58e06f95539d539b654f2cfa64bb13",
+        "last_container_observed_at": null,
+        "reference": null,
+        "shared_bytes": 0,
+        "size_bytes": 35300000,
+        "unique_bytes": 35300000
+      }
+    ],
+    "usage_caveat": "Image last_container_observed_at is derived from retained container creation metadata, not a complete execution history. Docker's reclaimable-volume label does not establish that a volume is disposable.",
+    "volumes": []
+  },
+  "inspector_image": "vllm/vllm-openai:nightly",
+  "observed_at": "2026-09-12T13:47:41.727055Z",
+  "repositories": [
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 18615464147,
+      "incomplete_count": 1,
+      "latest_cache_modification_at": "2026-09-12T13:47:15.966033Z",
+      "logical_bytes": 18615468024,
+      "refs": {},
+      "repo_id": "agentionai/Signal-3.8-27B-GGUF",
+      "snapshots": [
+        "9848da210febc2141edb7e3f89cfc307a0d15163"
+      ]
+    },
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-09-09T10:14:33.240707Z",
+      "logical_bytes": 26735802408,
+      "refs": {},
+      "repo_id": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+      "snapshots": [
+        "0cc27958cefbbe231782ec8511de8c4eb5233348",
+        "8e2c0cd25468ac5c1f85f621c2b8edb15ea1f03a",
+        "b8ca3826548c9a7735642feb05c3c473f1fede1f"
+      ]
+    },
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-08-21T13:34:20.533101Z",
+      "logical_bytes": 3849113948,
+      "refs": {},
+      "repo_id": "incoai/Qwen3.8-27B-DFlash2",
+      "snapshots": [
+        "dedf8df68adfb1afeaf7b7480c0a0243108177b4"
+      ]
+    },
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-09-09T10:58:57.537090Z",
+      "logical_bytes": 21945294004,
+      "refs": {},
+      "repo_id": "nvidia/Qwen3.8-27B-NVFP4",
+      "snapshots": [
+        "dbb8f445b3145f8a4c18ddc769f032d57d32867c"
+      ]
+    },
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-08-20T10:25:40.796784Z",
+      "logical_bytes": 3106548,
+      "refs": {},
+      "repo_id": "peculiar-ragdoll/Qwen-Sharp-Chat-Templates",
+      "snapshots": [
+        "3dc34df52c63dd22ada21f96435e069deaa8d7da"
+      ]
+    },
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-08-08T01:06:05.911134Z",
+      "logical_bytes": 11988798738,
+      "refs": {
+        "main": "f75b40e3da2003cdd6e1829b1f420ca70797c34e"
+      },
+      "repo_id": "Qwen/Qwen2.5-Omni-3B",
+      "snapshots": [
+        "f75b40e3da2003cdd6e1829b1f420ca70797c34e"
+      ]
+    },
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-08-07T07:15:59.406098Z",
+      "logical_bytes": 1207471911,
+      "refs": {},
+      "repo_id": "Qwen/Qwen3-Embedding-0.6B",
+      "snapshots": [
+        "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+      ]
+    },
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-08-07T07:26:06.405441Z",
+      "logical_bytes": 1207473545,
+      "refs": {},
+      "repo_id": "Qwen/Qwen3-Reranker-0.6B",
+      "snapshots": [
+        "e61197ed45024b0ed8a2d74b80b4d909f1255473"
+      ]
+    },
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-08-17T10:45:42.545041Z",
+      "logical_bytes": 21945295265,
+      "refs": {},
+      "repo_id": "RadixArk/Qwen3.8-27B-NVFP4",
+      "snapshots": [
+        "554ebba9b5f1b79dc11246341960360e6ef05ef4"
+      ]
+    },
+    {
+      "broken_symlink_count": 0,
+      "incomplete_bytes": 0,
+      "incomplete_count": 0,
+      "latest_cache_modification_at": "2026-09-03T10:03:20.039127Z",
+      "logical_bytes": 35912864755,
+      "refs": {},
+      "repo_id": "unsloth/Qwen3.8-27B-GGUF",
+      "snapshots": [
+        "4ca720788d1e01f1bff70c033e0d0028fd02e502"
+      ]
+    }
+  ],
+  "schema_version": "model-cache-inventory/v1",
+  "timestamp_caveat": "Cache modification timestamps describe local filesystem changes; they do not prove when a model was last served or benchmarked.",
+  "volume": "vllm-hfcache"
+}

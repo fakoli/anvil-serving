@@ -1,0 +1,1871 @@
+{
+  "context": {
+    "cap_tokens": null,
+    "max_model_len": null,
+    "targets": [
+      {
+        "attempted_context_tokens": 32768,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 32768,
+        "content_chunks": 51,
+        "decode_tok_s": 58.633548599089856,
+        "e2e_ms": 11079.936399997678,
+        "effective_prefill_tok_s": 3058.23809912966,
+        "estimated_prompt_tokens": 32768,
+        "generation_ms": 869.8091999976896,
+        "mean_inter_token_latency_ms": 17.055082352895873,
+        "output_token_source": "usage",
+        "output_tokens": 52,
+        "prompt_tokens": 31225,
+        "reasoning_chunks": 0,
+        "status": "passed",
+        "target_tokens": 32768,
+        "time_to_first_output_ms": 10210.127199999988,
+        "ttft_ms": 10210.128799953964,
+        "usage": {
+          "completion_tokens": 52,
+          "prompt_tokens": 31225,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 31277
+        },
+        "visible_generation_ms": 869.807600043714
+      }
+    ]
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 1024
+  },
+  "failures": [
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-20-biology",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-25-chemistry",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-30-computer-science",
+      "failure_classes": [
+        "visible_answer_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-40-engineering",
+      "failure_classes": [
+        "visible_answer_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-45-philosophy",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:8081/v1",
+    "candidate_id": "minitron-q6k-nospec",
+    "config_id": "q6k-nospec-64k",
+    "engine": "llama.cpp",
+    "gpu": "rtx5090-primary",
+    "model": "qwen38-20b-minitron-q6k-nospec-64k",
+    "started_at": "2026-09-12T19:13:31Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "--- a/app.py\n+++ b/app.py\n@@ -1,4 +1,4 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "content_chars": 82,
+            "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,4 +1,4 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 693.7371999956667,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 40,
+              "prompt_tokens": 51,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 91
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "--- a/app.py\n+++ b/app.py\n@@ -1,4 +1,4 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "content_chars": 82,
+            "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,4 +1,4 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 532.5641999952495,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 40,
+              "prompt_tokens": 51,
+              "prompt_tokens_details": {
+                "cached_tokens": 47
+              },
+              "total_tokens": 91
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "--- a/app.py\n+++ b/app.py\n@@ -1,4 +1,4 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "content_chars": 82,
+            "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,4 +1,4 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 535.6462999479845,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 40,
+              "prompt_tokens": 51,
+              "prompt_tokens_details": {
+                "cached_tokens": 47
+              },
+              "total_tokens": 91
+            }
+          }
+        ],
+        "id": "unified_diff_timeout_edit",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "The LLM is the bottleneck causing the timeout, so optimize its inference speed or reduce the prompt complexity.",
+            "content_chars": 111,
+            "content_excerpt": "The LLM is the bottleneck causing the timeout, so optimize its inference speed or reduce the prompt complexity.",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 476.7072000540793,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 22,
+              "prompt_tokens": 79,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 101
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "The LLM is the bottleneck causing the timeout, so optimize its inference speed or reduce the prompt complexity.",
+            "content_chars": 111,
+            "content_excerpt": "The LLM is the bottleneck causing the timeout, so optimize its inference speed or reduce the prompt complexity.",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 317.63770000543445,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 22,
+              "prompt_tokens": 79,
+              "prompt_tokens_details": {
+                "cached_tokens": 75
+              },
+              "total_tokens": 101
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "The LLM is the bottleneck causing the timeout, so optimize its inference speed or reduce the prompt complexity.",
+            "content_chars": 111,
+            "content_excerpt": "The LLM is the bottleneck causing the timeout, so optimize its inference speed or reduce the prompt complexity.",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 312.88519996451214,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 22,
+              "prompt_tokens": 79,
+              "prompt_tokens_details": {
+                "cached_tokens": 75
+              },
+              "total_tokens": 101
+            }
+          }
+        ],
+        "id": "parallel_timeout_triage",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "passed"
+  },
+  "run_id": "fast-bakeoff-20260912T191331Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 11079.936399997678,
+    "intelligence_pass_rate": 1.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "disabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 10210.128799953964,
+    "usable_context_tokens": 32768,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "tool",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "hf-mmlu-pro-10-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must identify the anatomical location of the pituitary gland.\n\n1.  **Analyze the Pituitary Gland**: The pituitary gland is a small, pea-sized gland located in the brain. It is responsible for producing hormones that regulate the release of neurotransmitters in the brain.\n2.  **Determine its Location**: Because the pituitary gland is located within the brain, it is situated in the **cranial** cavity.\n3.  **Evaluate the Options**:\n    *   A. Ventral: This refers to the front of the body.\n    *   B. Dorsal: This refers to the back of the body.\n    *   C. Buccal: This refers to the cheek area.\n    *   D. Thoracic: This refers to the chest cavity.\n    *   E. Pericardial: This refers to the cavity surrounding the heart.\n    *   F. Abdominal: This refers to the belly cavity.\n    *   G. Spinal: This refers to the cavity surrounding the spinal cord.\n    *   H. Pelvic: This refers to the cavity surrounding the bladder and reproductive organs.\n    *   I. Pleural: This refers to the cavity surrounding the lungs.\n    *   J. Cranial: This refers to the cavity containing the brain.\n\nSince the pituitary gland is part of the brain, it is located in the cranial cavity.\n\nFINAL=J",
+              "content_chars": 1214,
+              "content_excerpt": "To determine the correct answer, we must identify the anatomical location of the pituitary gland.\n\n1.  **Analyze the Pituitary Gland**: The pituitary gland is a small, pea-sized gland located in the b",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4152.741500001866,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 319,
+                "prompt_tokens": 97,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 416
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must identify the anatomical location of the pituitary gland.\n\n1.  **Analyze the Pituitary Gland**: The pituitary gland is a small, pea-sized gland located in the brain. It is responsible for producing hormones that regulate the release of neurotransmitters in the brain.\n2.  **Determine its Location**: Because the pituitary gland is located within the brain, it is situated in the **cranial** cavity.\n3.  **Evaluate the Options**:\n    *   A. Ventral: This refers to the front of the body.\n    *   B. Dorsal: This refers to the back of the body.\n    *   C. Buccal: This refers to the cheek area.\n    *   D. Thoracic: This refers to the chest cavity.\n    *   E. Pericardial: This refers to the cavity surrounding the heart.\n    *   F. Abdominal: This refers to the belly cavity.\n    *   G. Spinal: This refers to the cavity surrounding the spinal cord.\n    *   H. Pelvic: This refers to the cavity surrounding the bladder and reproductive organs.\n    *   I. Pleural: This refers to the cavity surrounding the lungs.\n    *   J. Cranial: This refers to the cavity containing the brain.\n\nSince the pituitary gland is part of the brain, it is located in the cranial cavity.\n\nFINAL=J",
+              "content_chars": 1214,
+              "content_excerpt": "To determine the correct answer, we must identify the anatomical location of the pituitary gland.\n\n1.  **Analyze the Pituitary Gland**: The pituitary gland is a small, pea-sized gland located in the b",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4152.807999984361,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 319,
+                "prompt_tokens": 97,
+                "prompt_tokens_details": {
+                  "cached_tokens": 93
+                },
+                "total_tokens": 416
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must identify the anatomical location of the pituitary gland.\n\n1.  **Analyze the Pituitary Gland**: The pituitary gland is a small, pea-sized gland located in the brain. It is responsible for producing hormones that regulate the release of neurotransmitters in the brain.\n2.  **Determine its Location**: Because the pituitary gland is located within the brain, it is situated in the **cranial** cavity.\n3.  **Evaluate the Options**:\n    *   A. Ventral: This refers to the front of the body.\n    *   B. Dorsal: This refers to the back of the body.\n    *   C. Buccal: This refers to the cheek area.\n    *   D. Thoracic: This refers to the chest cavity.\n    *   E. Pericardial: This refers to the cavity surrounding the heart.\n    *   F. Abdominal: This refers to the belly cavity.\n    *   G. Spinal: This refers to the cavity surrounding the spinal cord.\n    *   H. Pelvic: This refers to the cavity surrounding the bladder and reproductive organs.\n    *   I. Pleural: This refers to the cavity surrounding the lungs.\n    *   J. Cranial: This refers to the cavity containing the brain.\n\nSince the pituitary gland is part of the brain, it is located in the cranial cavity.\n\nFINAL=J",
+              "content_chars": 1214,
+              "content_excerpt": "To determine the correct answer, we must identify the anatomical location of the pituitary gland.\n\n1.  **Analyze the Pituitary Gland**: The pituitary gland is a small, pea-sized gland located in the b",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4053.1874999869615,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 319,
+                "prompt_tokens": 97,
+                "prompt_tokens_details": {
+                  "cached_tokens": 93
+                },
+                "total_tokens": 416
+              }
+            }
+          ],
+          "id": "mmlu-pro-5-health",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine how much more light the telescope can gather compared to the eye, we need to compare the light-gathering capabilities of the two optical instruments. The amount of light an optical instrument can gather is primarily determined by its aperture (the diameter of the opening through which light enters).\n\n1.  **Identify the relevant parameters:**\n    *   Diameter of the pupil of the eye ($d_{eye}$) = 5 mm\n    *   Diameter of the telescope aperture ($d_{telescope}$) = 50 cm\n\n2.  **Convert units to a common scale:**\n    *   $d_{eye}$ = 5 mm\n    *   $d_{telescope}$ = 50 cm = 500 mm\n\n3.  **Calculate the ratio of the diameters:**\n    $$ \\text{Ratio} = \\frac{d_{telescope}}{d_{eye}} = \\frac{500 \\text{ mm}}{5 \\text{ mm}} = 100 $$\n\n4.  **Relate aperture to light gathering:**\n    The amount of light gathered by an optical instrument is proportional to the area of its aperture. The area of a circular aperture is proportional to the square of its diameter ($A \\propto d^2$). Therefore, the ratio of light gathered by the telescope to the eye is proportional to the ratio of their diameters squared.\n\n    $$ \\text{Light Ratio} \\propto \\left(\\frac{d_{telescope}}{d_{eye}}\\right)^2 $$\n\n5.  **Calculate the final ratio:**\n    $$ \\text{Light Ratio} = 100^2 = 10,000 $$\n\nThe telescope can gather 10,000 times more light than the eye.\n\nFINAL=E",
+              "content_chars": 1346,
+              "content_excerpt": "To determine how much more light the telescope can gather compared to the eye, we need to compare the light-gathering capabilities of the two optical instruments. The amount of light an optical instru",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4896.357299992815,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 385,
+                "prompt_tokens": 157,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 542
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine how much more light the telescope can gather compared to the eye, we need to compare the light-gathering capabilities of the two optical instruments. The amount of light an optical instrument can gather is primarily determined by its aperture (the diameter of the opening through which light enters).\n\n1.  **Identify the relevant parameters:**\n    *   Diameter of the pupil of the eye ($d_{eye}$) = 5 mm\n    *   Diameter of the telescope aperture ($d_{telescope}$) = 50 cm\n\n2.  **Convert units to a common scale:**\n    *   $d_{eye}$ = 5 mm\n    *   $d_{telescope}$ = 50 cm = 500 mm\n\n3.  **Calculate the ratio of the diameters:**\n    $$ \\text{Ratio} = \\frac{d_{telescope}}{d_{eye}} = \\frac{500 \\text{ mm}}{5 \\text{ mm}} = 100 $$\n\n4.  **Relate aperture to light gathering:**\n    The amount of light gathered by an optical instrument is proportional to the area of its aperture. The area of a circular aperture is proportional to the square of its diameter ($A \\propto d^2$). Therefore, the ratio of light gathered by the telescope to the eye is proportional to the ratio of their diameters squared.\n\n    $$ \\text{Light Ratio} \\propto \\left(\\frac{d_{telescope}}{d_{eye}}\\right)^2 $$\n\n5.  **Calculate the final ratio:**\n    $$ \\text{Light Ratio} = 100^2 = 10,000 $$\n\nThe telescope can gather 10,000 times more light than the eye.\n\nFINAL=E",
+              "content_chars": 1346,
+              "content_excerpt": "To determine how much more light the telescope can gather compared to the eye, we need to compare the light-gathering capabilities of the two optical instruments. The amount of light an optical instru",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4924.959300027695,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 385,
+                "prompt_tokens": 157,
+                "prompt_tokens_details": {
+                  "cached_tokens": 153
+                },
+                "total_tokens": 542
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine how much more light the telescope can gather compared to the eye, we need to compare the light-gathering capabilities of the two optical instruments. The amount of light an optical instrument can gather is primarily determined by its aperture (the diameter of the opening through which light enters).\n\n1.  **Identify the relevant parameters:**\n    *   Diameter of the pupil of the eye ($d_{eye}$) = 5 mm\n    *   Diameter of the telescope aperture ($d_{telescope}$) = 50 cm\n\n2.  **Convert units to a common scale:**\n    *   $d_{eye}$ = 5 mm\n    *   $d_{telescope}$ = 50 cm = 500 mm\n\n3.  **Calculate the ratio of the diameters:**\n    $$ \\text{Ratio} = \\frac{d_{telescope}}{d_{eye}} = \\frac{500 \\text{ mm}}{5 \\text{ mm}} = 100 $$\n\n4.  **Relate aperture to light gathering:**\n    The amount of light gathered by an optical instrument is proportional to the area of its aperture. The area of a circular aperture is proportional to the square of its diameter ($A \\propto d^2$). Therefore, the ratio of light gathered by the telescope to the eye is proportional to the ratio of their diameters squared.\n\n    $$ \\text{Light Ratio} \\propto \\left(\\frac{d_{telescope}}{d_{eye}}\\right)^2 $$\n\n5.  **Calculate the final ratio:**\n    $$ \\text{Light Ratio} = 100^2 = 10,000 $$\n\nThe telescope can gather 10,000 times more light than the eye.\n\nFINAL=E",
+              "content_chars": 1346,
+              "content_excerpt": "To determine how much more light the telescope can gather compared to the eye, we need to compare the light-gathering capabilities of the two optical instruments. The amount of light an optical instru",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4850.411399966106,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 385,
+                "prompt_tokens": 157,
+                "prompt_tokens_details": {
+                  "cached_tokens": 153
+                },
+                "total_tokens": 542
+              }
+            }
+          ],
+          "id": "mmlu-pro-10-physics",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must analyze the logical flow of the sentence and the definitions of the terms provided.\n\n**1. Analyzing the First Two Blanks: \"In contrast to _______, _______ aim to reward favourable behaviour...\"**\n*   **Context:** The sentence contrasts two types of corporate social responsibility or marketing campaigns. One type is criticized (the first blank), and the other is praised for rewarding \"favourable behaviour\" (the second blank).\n*   **Definitions:**\n    *   **Boycott:** A campaign to stop the sale of a product or service, often due to unethical practices. This is a negative action.\n    *   **Buycott:** A campaign to encourage the purchase of a product or service, often to support a company or cause. This is a positive action that rewards consumers for buying.\n*   **Logic:** The phrase \"aim to reward favourable behaviour\" clearly describes **Buycotts**. Therefore, the second blank must be \"Buycotts\".\n*   **Contrast:** Since Buycotts are positive/rewarding, the contrasting term in the first blank must be **Boycotts**.\n*   **Current Status:** The first two blanks are **Boycotts** and **Buycotts**. This eliminates options A, B, D, E, G, I, and J. We are left with options C, F, and H.\n\n**2. Analyzing the Third Blank: \"...heightened through the use of ___________, which allow campaigns to facilitate...\"**\n*   **Context:** The success of these campaigns is boosted by a specific technology or method.\n*   **Options Remaining:**\n    *   C: Digital technology\n    *   F: Digital technology\n    *   H: Physical technology\n*   **Analysis:** In the modern business context, \"Digital technology\" is the standard term used to describe the tools (like websites, apps, social media, data analytics) that allow companies to reach consumers and facilitate campaigns. \"Physical technology\" is not a standard term used in this context.\n*   **Current Status:** The third blank is **Digital technology**. This narrows our choices to C and F.\n\n**3. Analyzing the Fourth Blank: \"...facilitate the company in achieving _________.**\n*   **Context:** The ultimate goal of a successful Buycott campaign (which rewards buying) is to increase the number of people buying the product.\n*   **Options Remaining:**\n    *   C: Decreased Sales\n    *   F: Increased Sales\n*   **Logic:** A campaign that rewards favorable behavior (buying) is designed to drive more customers to purchase the product. Therefore, the goal is to achieve **Increased Sales**.\n*   **Conclusion:** Option F fits all criteria. Option C suggests the goal is to decrease sales, which contradicts the premise of a \"Buycott\" campaign.\n\n**Final Verification:**\n*   **Boycotts** (negative) contrast with **Buycotts** (positive/rewarding).\n*   Success is heightened by **Digital technology**.\n*   This facilitates achieving **Increased Sales**.\n\nFINAL=F",
+              "content_chars": 2844,
+              "content_excerpt": "To determine the correct answer, we must analyze the logical flow of the sentence and the definitions of the terms provided.\n\n**1. Analyzing the First Two Blanks: \"In contrast to _______, _______ aim ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8387.832699983846,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 661,
+                "prompt_tokens": 230,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 891
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must analyze the logical flow of the sentence and the definitions of the terms provided.\n\n**1. Analyzing the First Two Blanks: \"In contrast to _______, _______ aim to reward favourable behaviour...\"**\n*   **Context:** The sentence contrasts two types of corporate social responsibility or marketing campaigns. One type is criticized (the first blank), and the other is praised for rewarding \"favourable behaviour\" (the second blank).\n*   **Definitions:**\n    *   **Boycott:** A campaign to stop the sale of a product or service, often due to unethical practices. This is a negative action.\n    *   **Buycott:** A campaign to encourage the purchase of a product or service, often to support a company or cause. This is a positive action that rewards consumers for buying.\n*   **Logic:** The phrase \"aim to reward favourable behaviour\" clearly describes **Buycotts**. Therefore, the second blank must be \"Buycotts\".\n*   **Contrast:** Since Buycotts are positive/rewarding, the contrasting term in the first blank must be **Boycotts**.\n*   **Current Status:** The first two blanks are **Boycotts** and **Buycotts**. This eliminates options A, B, D, E, G, I, and J. We are left with options C, F, and H.\n\n**2. Analyzing the Third Blank: \"...heightened through the use of ___________, which allow campaigns to facilitate...\"**\n*   **Context:** The success of these campaigns is boosted by a specific technology or method.\n*   **Options Remaining:**\n    *   C: Digital technology\n    *   F: Digital technology\n    *   H: Physical technology\n*   **Analysis:** In the modern business context, \"Digital technology\" is the standard term used to describe the tools (like websites, apps, social media, data analytics) that allow companies to reach consumers and facilitate campaigns. \"Physical technology\" is not a standard term used in this context.\n*   **Current Status:** The third blank is **Digital technology**. This narrows our choices to C and F.\n\n**3. Analyzing the Fourth Blank: \"...facilitate the company in achieving _________.**\n*   **Context:** The ultimate goal of a successful Buycott campaign (which rewards buying) is to increase the number of people buying the product.\n*   **Options Remaining:**\n    *   C: Decreased Sales\n    *   F: Increased Sales\n*   **Logic:** A campaign that rewards favorable behavior (buying) is designed to drive more customers to purchase the product. Therefore, the goal is to achieve **Increased Sales**.\n*   **Conclusion:** Option F fits all criteria. Option C suggests the goal is to decrease sales, which contradicts the premise of a \"Buycott\" campaign.\n\n**Final Verification:**\n*   **Boycotts** (negative) contrast with **Buycotts** (positive/rewarding).\n*   Success is heightened by **Digital technology**.\n*   This facilitates achieving **Increased Sales**.\n\nFINAL=F",
+              "content_chars": 2844,
+              "content_excerpt": "To determine the correct answer, we must analyze the logical flow of the sentence and the definitions of the terms provided.\n\n**1. Analyzing the First Two Blanks: \"In contrast to _______, _______ aim ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8490.462799964007,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 661,
+                "prompt_tokens": 230,
+                "prompt_tokens_details": {
+                  "cached_tokens": 226
+                },
+                "total_tokens": 891
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must analyze the logical flow of the sentence and the definitions of the terms provided.\n\n**1. Analyzing the First Two Blanks: \"In contrast to _______, _______ aim to reward favourable behaviour...\"**\n*   **Context:** The sentence contrasts two types of corporate social responsibility or marketing campaigns. One type is criticized (the first blank), and the other is praised for rewarding \"favourable behaviour\" (the second blank).\n*   **Definitions:**\n    *   **Boycott:** A campaign to stop the sale of a product or service, often due to unethical practices. This is a negative action.\n    *   **Buycott:** A campaign to encourage the purchase of a product or service, often to support a company or cause. This is a positive action that rewards consumers for buying.\n*   **Logic:** The phrase \"aim to reward favourable behaviour\" clearly describes **Buycotts**. Therefore, the second blank must be \"Buycotts\".\n*   **Contrast:** Since Buycotts are positive/rewarding, the contrasting term in the first blank must be **Boycotts**.\n*   **Current Status:** The first two blanks are **Boycotts** and **Buycotts**. This eliminates options A, B, D, E, G, I, and J. We are left with options C, F, and H.\n\n**2. Analyzing the Third Blank: \"...heightened through the use of ___________, which allow campaigns to facilitate...\"**\n*   **Context:** The success of these campaigns is boosted by a specific technology or method.\n*   **Options Remaining:**\n    *   C: Digital technology\n    *   F: Digital technology\n    *   H: Physical technology\n*   **Analysis:** In the modern business context, \"Digital technology\" is the standard term used to describe the tools (like websites, apps, social media, data analytics) that allow companies to reach consumers and facilitate campaigns. \"Physical technology\" is not a standard term used in this context.\n*   **Current Status:** The third blank is **Digital technology**. This narrows our choices to C and F.\n\n**3. Analyzing the Fourth Blank: \"...facilitate the company in achieving _________.**\n*   **Context:** The ultimate goal of a successful Buycott campaign (which rewards buying) is to increase the number of people buying the product.\n*   **Options Remaining:**\n    *   C: Decreased Sales\n    *   F: Increased Sales\n*   **Logic:** A campaign that rewards favorable behavior (buying) is designed to drive more customers to purchase the product. Therefore, the goal is to achieve **Increased Sales**.\n*   **Conclusion:** Option F fits all criteria. Option C suggests the goal is to decrease sales, which contradicts the premise of a \"Buycott\" campaign.\n\n**Final Verification:**\n*   **Boycotts** (negative) contrast with **Buycotts** (positive/rewarding).\n*   Success is heightened by **Digital technology**.\n*   This facilitates achieving **Increased Sales**.\n\nFINAL=F",
+              "content_chars": 2844,
+              "content_excerpt": "To determine the correct answer, we must analyze the logical flow of the sentence and the definitions of the terms provided.\n\n**1. Analyzing the First Two Blanks: \"In contrast to _______, _______ aim ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8273.841199988965,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 661,
+                "prompt_tokens": 230,
+                "prompt_tokens_details": {
+                  "cached_tokens": 226
+                },
+                "total_tokens": 891
+              }
+            }
+          ],
+          "id": "mmlu-pro-15-business",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct statement, let's analyze the biological characteristics of arthropods (insects, spiders, and their relatives) against each option:\n\n*   **Option A:** Arthropods are characterized by a rigid, external skeleton called an **exoskeleton**. This exoskeleton is primarily composed of **chitin** (a polysaccharide), not peptidoglycan. Peptidoglycans are found in the cell walls of bacteria. Therefore, this statement is incorrect.\n*   **Option B:** Arthropods have a closed circulatory system. Their blood flows through a series of vessels (heart, arteries, capillaries, and veins) without mixing directly with the body fluids. The heart is typically located in the thorax (dorsal in many insects, but ventral in others), but the key feature is the **closed** system, not an open one. Therefore, this statement is incorrect.\n*   **Option C:** Arthropods are a highly successful and diverse group. They are capable of exploiting a vast array of habitats (aquatic, terrestrial, aerial) and nutrition sources (plant-based, animal-based, fungal-based). They are not biologically unsuccessful. Therefore, this statement is incorrect.\n*   **Option D:** A defining characteristic of arthropods is the presence of **paired, jointed appendages** (legs, wings, antennae). These appendages allow for movement and manipulation. Therefore, the statement \"They lack paired, jointed appendages\" is incorrect.\n*   **Option E:** Since options A, B, C, and D are all factually incorrect descriptions of arthropods, the accurate statement must be \"N/A\" (None of the above).\n\nFINAL=E",
+              "content_chars": 1581,
+              "content_excerpt": "To determine the correct statement, let's analyze the biological characteristics of arthropods (insects, spiders, and their relatives) against each option:\n\n*   **Option A:** Arthropods are characteri",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 4666.236500022933,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 366,
+                "prompt_tokens": 138,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 504
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct statement, let's analyze the biological characteristics of arthropods (insects, spiders, and their relatives) against each option:\n\n*   **Option A:** Arthropods are characterized by a rigid, external skeleton called an **exoskeleton**. This exoskeleton is primarily composed of **chitin** (a polysaccharide), not peptidoglycan. Peptidoglycans are found in the cell walls of bacteria. Therefore, this statement is incorrect.\n*   **Option B:** Arthropods have a closed circulatory system. Their blood flows through a series of vessels (heart, arteries, capillaries, and veins) without mixing directly with the body fluids. The heart is typically located in the thorax (dorsal in many insects, but ventral in others), but the key feature is the **closed** system, not an open one. Therefore, this statement is incorrect.\n*   **Option C:** Arthropods are a highly successful and diverse group. They are capable of exploiting a vast array of habitats (aquatic, terrestrial, aerial) and nutrition sources (plant-based, animal-based, fungal-based). They are not biologically unsuccessful. Therefore, this statement is incorrect.\n*   **Option D:** A defining characteristic of arthropods is the presence of **paired, jointed appendages** (legs, wings, antennae). These appendages allow for movement and manipulation. Therefore, the statement \"They lack paired, jointed appendages\" is incorrect.\n*   **Option E:** Since options A, B, C, and D are all factually incorrect descriptions of arthropods, the accurate statement must be \"N/A\" (None of the above).\n\nFINAL=E",
+              "content_chars": 1581,
+              "content_excerpt": "To determine the correct statement, let's analyze the biological characteristics of arthropods (insects, spiders, and their relatives) against each option:\n\n*   **Option A:** Arthropods are characteri",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 4792.321800021455,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 366,
+                "prompt_tokens": 138,
+                "prompt_tokens_details": {
+                  "cached_tokens": 134
+                },
+                "total_tokens": 504
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct statement, let's analyze the biological characteristics of arthropods (insects, spiders, and their relatives) against each option:\n\n*   **Option A:** Arthropods are characterized by a rigid, external skeleton called an **exoskeleton**. This exoskeleton is primarily composed of **chitin** (a polysaccharide), not peptidoglycan. Peptidoglycans are found in the cell walls of bacteria. Therefore, this statement is incorrect.\n*   **Option B:** Arthropods have a closed circulatory system. Their blood flows through a series of vessels (heart, arteries, capillaries, and veins) without mixing directly with the body fluids. The heart is typically located in the thorax (dorsal in many insects, but ventral in others), but the key feature is the **closed** system, not an open one. Therefore, this statement is incorrect.\n*   **Option C:** Arthropods are a highly successful and diverse group. They are capable of exploiting a vast array of habitats (aquatic, terrestrial, aerial) and nutrition sources (plant-based, animal-based, fungal-based). They are not biologically unsuccessful. Therefore, this statement is incorrect.\n*   **Option D:** A defining characteristic of arthropods is the presence of **paired, jointed appendages** (legs, wings, antennae). These appendages allow for movement and manipulation. Therefore, the statement \"They lack paired, jointed appendages\" is incorrect.\n*   **Option E:** Since options A, B, C, and D are all factually incorrect descriptions of arthropods, the accurate statement must be \"N/A\" (None of the above).\n\nFINAL=E",
+              "content_chars": 1581,
+              "content_excerpt": "To determine the correct statement, let's analyze the biological characteristics of arthropods (insects, spiders, and their relatives) against each option:\n\n*   **Option A:** Arthropods are characteri",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 4645.202200044878,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 366,
+                "prompt_tokens": 138,
+                "prompt_tokens_details": {
+                  "cached_tokens": 134
+                },
+                "total_tokens": 504
+              }
+            }
+          ],
+          "error": "answer",
+          "id": "mmlu-pro-20-biology",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the number of lines in the EPR (Electron Paramagnetic Resonance) spectrum, we must analyze the electronic structure of the molecule and apply the selection rules for EPR transitions.\n\n**1. Analyze the Electronic Structure**\nThe molecule is a methyl radical with a $^{13}\\text{C}$ label: $^{13}\\text{CH}_3$.\n*   **Unpaired Electrons:** The $^{13}\\text{C}$ atom has 7 valence electrons. In the methyl group ($\\text{CH}_3$), the carbon is bonded to three hydrogens. This requires 3 bonds, which consume 3 electrons. Therefore, the number of unpaired electrons (valence electrons) on the $^{13}\\text{C}$ is $7 - 3 = 4$.\n*   **Orbitals:** These 4 unpaired electrons occupy the four valence orbitals of the carbon atom:\n    1.  $2s$ orbital (1 electron)\n    2.  $2p_x$ orbital (1 electron)\n    3.  $2p_y$ orbital (1 electron)\n    4.  $2p_z$ orbital (1 electron)\n\n**2. Apply EPR Selection Rules**\nIn EPR spectroscopy, transitions occur between paired electrons. The number of lines observed is determined by the number of distinct pairs of electrons that can interact.\n*   **Rule:** For a system with $N$ unpaired electrons, the number of EPR lines is given by $\\binom{N}{2}$ (the number of ways to choose 2 electrons to form a pair).\n*   **Calculation:** Here, $N = 4$.\n    $$ \\text{Number of lines} = \\binom{4}{2} = \\frac{4 \\times 3}{2} = 6 $$\n\n**3. Verify with Orbital Interactions**\nLet's verify this by looking at the possible orbital pairings:\n*   **$2s$ - $2p_x$**: Allowed (1 line)\n*   **$2s$ - $2p_y$**: Allowed (1 line)\n*   **$2s$ - $2p_z$**: Allowed (1 line)\n*   **$2p_x$ - $2p_y$**: Allowed (1 line)\n*   **$2p_x$ - $2p_z$**: Allowed (1 line)\n*   **$2p_y$ - $2p_z$**: Allowed (1 line)\n\nTotal distinct pairs = 6. Since the problem states that lines do not overlap, we expect 6 distinct lines.\n\n**Conclusion**\nThe number of lines in the EPR spectrum is 6.\n\nFINAL=J",
+              "content_chars": 1879,
+              "content_excerpt": "To determine the number of lines in the EPR (Electron Paramagnetic Resonance) spectrum, we must analyze the electronic structure of the molecule and apply the selection rules for EPR transitions.\n\n**1",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 7649.157200008631,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 602,
+                "prompt_tokens": 117,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 719
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the number of lines in the EPR (Electron Paramagnetic Resonance) spectrum, we must analyze the electronic structure of the molecule and apply the selection rules for EPR transitions.\n\n**1. Analyze the Electronic Structure**\nThe molecule is a methyl radical with a $^{13}\\text{C}$ label: $^{13}\\text{CH}_3$.\n*   **Unpaired Electrons:** The $^{13}\\text{C}$ atom has 7 valence electrons. In the methyl group ($\\text{CH}_3$), the carbon is bonded to three hydrogens. This requires 3 bonds, which consume 3 electrons. Therefore, the number of unpaired electrons (valence electrons) on the $^{13}\\text{C}$ is $7 - 3 = 4$.\n*   **Orbitals:** These 4 unpaired electrons occupy the four valence orbitals of the carbon atom:\n    1.  $2s$ orbital (1 electron)\n    2.  $2p_x$ orbital (1 electron)\n    3.  $2p_y$ orbital (1 electron)\n    4.  $2p_z$ orbital (1 electron)\n\n**2. Apply EPR Selection Rules**\nIn EPR spectroscopy, transitions occur between paired electrons. The number of lines observed is determined by the number of distinct pairs of electrons that can interact.\n*   **Rule:** For a system with $N$ unpaired electrons, the number of EPR lines is given by $\\binom{N}{2}$ (the number of ways to choose 2 electrons to form a pair).\n*   **Calculation:** Here, $N = 4$.\n    $$ \\text{Number of lines} = \\binom{4}{2} = \\frac{4 \\times 3}{2} = 6 $$\n\n**3. Verify with Orbital Interactions**\nLet's verify this by looking at the possible orbital pairings:\n*   **$2s$ - $2p_x$**: Allowed (1 line)\n*   **$2s$ - $2p_y$**: Allowed (1 line)\n*   **$2s$ - $2p_z$**: Allowed (1 line)\n*   **$2p_x$ - $2p_y$**: Allowed (1 line)\n*   **$2p_x$ - $2p_z$**: Allowed (1 line)\n*   **$2p_y$ - $2p_z$**: Allowed (1 line)\n\nTotal distinct pairs = 6. Since the problem states that lines do not overlap, we expect 6 distinct lines.\n\n**Conclusion**\nThe number of lines in the EPR spectrum is 6.\n\nFINAL=J",
+              "content_chars": 1879,
+              "content_excerpt": "To determine the number of lines in the EPR (Electron Paramagnetic Resonance) spectrum, we must analyze the electronic structure of the molecule and apply the selection rules for EPR transitions.\n\n**1",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 7769.84599995194,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 602,
+                "prompt_tokens": 117,
+                "prompt_tokens_details": {
+                  "cached_tokens": 113
+                },
+                "total_tokens": 719
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the number of lines in the EPR (Electron Paramagnetic Resonance) spectrum, we must analyze the electronic structure of the molecule and apply the selection rules for EPR transitions.\n\n**1. Analyze the Electronic Structure**\nThe molecule is a methyl radical with a $^{13}\\text{C}$ label: $^{13}\\text{CH}_3$.\n*   **Unpaired Electrons:** The $^{13}\\text{C}$ atom has 7 valence electrons. In the methyl group ($\\text{CH}_3$), the carbon is bonded to three hydrogens. This requires 3 bonds, which consume 3 electrons. Therefore, the number of unpaired electrons (valence electrons) on the $^{13}\\text{C}$ is $7 - 3 = 4$.\n*   **Orbitals:** These 4 unpaired electrons occupy the four valence orbitals of the carbon atom:\n    1.  $2s$ orbital (1 electron)\n    2.  $2p_x$ orbital (1 electron)\n    3.  $2p_y$ orbital (1 electron)\n    4.  $2p_z$ orbital (1 electron)\n\n**2. Apply EPR Selection Rules**\nIn EPR spectroscopy, transitions occur between paired electrons. The number of lines observed is determined by the number of distinct pairs of electrons that can interact.\n*   **Rule:** For a system with $N$ unpaired electrons, the number of EPR lines is given by $\\binom{N}{2}$ (the number of ways to choose 2 electrons to form a pair).\n*   **Calculation:** Here, $N = 4$.\n    $$ \\text{Number of lines} = \\binom{4}{2} = \\frac{4 \\times 3}{2} = 6 $$\n\n**3. Verify with Orbital Interactions**\nLet's verify this by looking at the possible orbital pairings:\n*   **$2s$ - $2p_x$**: Allowed (1 line)\n*   **$2s$ - $2p_y$**: Allowed (1 line)\n*   **$2s$ - $2p_z$**: Allowed (1 line)\n*   **$2p_x$ - $2p_y$**: Allowed (1 line)\n*   **$2p_x$ - $2p_z$**: Allowed (1 line)\n*   **$2p_y$ - $2p_z$**: Allowed (1 line)\n\nTotal distinct pairs = 6. Since the problem states that lines do not overlap, we expect 6 distinct lines.\n\n**Conclusion**\nThe number of lines in the EPR spectrum is 6.\n\nFINAL=J",
+              "content_chars": 1879,
+              "content_excerpt": "To determine the number of lines in the EPR (Electron Paramagnetic Resonance) spectrum, we must analyze the electronic structure of the molecule and apply the selection rules for EPR transitions.\n\n**1",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 7551.148900005501,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 602,
+                "prompt_tokens": 117,
+                "prompt_tokens_details": {
+                  "cached_tokens": 113
+                },
+                "total_tokens": 719
+              }
+            }
+          ],
+          "error": "answer",
+          "id": "mmlu-pro-25-chemistry",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To find the minimum number of clock cycles required to compute $AB + ABC + BC$, we must schedule the operations to minimize the number of \"stalls\" (cycles where an operation takes two cycles instead of one due to data dependencies).\n\n**1. Analyze the Operations and Dependencies**\nThe expression is $AB + ABC + BC$. Let's break this down into three addition operations:\n1.  $T_1 = AB$\n2.  $T_2 = ABC$\n3.  $T_3 = BC$\n4.  $T_{final} = T_1 + T_2 + T_3$\n\nThe inputs $A, B, C$ are in registers $R_0, R_1, R_2$ and cannot be modified. This means we cannot use $R_0, R_1, or R_2$ as temporary storage for intermediate results. We must use $R_3$ through $R_7$.\n\nLet's determine the dependencies for each operation:\n*   **$T_1 = AB$**: Requires $R_0, R_1$. Result goes to a temp register (let's say $R_3$).\n*   **$T_2 = ABC$**: Requires $R_0, R_1, R_2$. Result goes to a temp register (let's say $R_4$).\n*   **$T_3 = BC$**: Requires $R_1, R_2$. Result goes to a temp register (let's say $R_5$).\n*   **$T_{final} = T_1 + T_2 + T_3$**: Requires $R_3, R_4, R_5$. Result goes to $R_6$ (or any free register).\n\n**2. Identify Critical Path and Stalls**\nAn operation takes 2 cycles if its result is needed by the *immediately following* operation. This is a \"stall\". We want to minimize the total number of stalls.\n\nLet's look at the sequence of operations. To minimize stalls, we should try to order operations such that the result of one operation is *not* needed by the very next operation.\n\n*   **Option 1: $T_1, T_2, T_3, T_{final}$**\n    *   $T_1$ (AB): Takes 1 cycle. Result in $R_3$.\n    *   $T_2$ (ABC): Needs $R_0, R_1, R_2$. Does it need $R_3$? No. Takes 1 cycle. Result in $R_4$.\n    *   $T_3$ (BC): Needs $R_1, R_2$. Does it need $R_3$ or $R_4$? No. Takes 1 cycle. Result in $R_5$.\n    *   $T_{final}$: Needs $R_3, R_4, R_5$. The immediately preceding operation was $T_3$. Does $T_{final}$ need the result of $T_3$? Yes. Therefore, $T_{final}$ takes **2 cycles**.\n\n    Total cycles: $1 + 1 + 1 + 2 = 5$.\n\nLet's double-check if there's a better order. The \"stall\" happens when an operation depends on the result of the previous operation.\n*   $T_1$ produces $R_3$.\n*   $T_2$ produces $R_4$.\n*   $T_3$ produces $R_5$.\n*   $T_{final}$ needs $R_3, R_4, R_5$.\n\nIf we do $T_1, T_2, T_3$, none of the intermediate results are needed by the *immediately following* operation.\n*   $T_1$ result ($R_3$) is not needed by $T_2$.\n*   $T_2$ result ($R_4$) is not needed by $T_3$.\n*   $T_3$ result ($R_5$) IS needed by $T_{final}$.\n\nSo the stall occurs at the last step. Total stalls = 1. Total cycles = $3 \\times 1 + 1 \\times 2 = 5$.\n\nIs it possible to avoid the stall at the end?\nThe final operation *must* add $T_1, T_2, T_3$. So it *must* depend on all three.\nIf we reorder the operations, say $T_1, T_3, T_2, T_{final}$:\n*   $T_1$ (AB) -> $R",
+              "content_chars": 2828,
+              "content_excerpt": "To find the minimum number of clock cycles required to compute $AB + ABC + BC$, we must schedule the operations to minimize the number of \"stalls\" (cycles where an operation takes two cycles instead o",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12885.2836000151,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1024,
+                "prompt_tokens": 180,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 1204
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To find the minimum number of clock cycles required to compute $AB + ABC + BC$, we must schedule the operations to minimize the number of \"stalls\" (cycles where an operation takes two cycles instead of one due to data dependencies).\n\n**1. Analyze the Operations and Dependencies**\nThe expression is $AB + ABC + BC$. Let's break this down into three addition operations:\n1.  $T_1 = AB$\n2.  $T_2 = ABC$\n3.  $T_3 = BC$\n4.  $T_{final} = T_1 + T_2 + T_3$\n\nThe inputs $A, B, C$ are in registers $R_0, R_1, R_2$ and cannot be modified. This means we cannot use $R_0, R_1, or R_2$ as temporary storage for intermediate results. We must use $R_3$ through $R_7$.\n\nLet's determine the dependencies for each operation:\n*   **$T_1 = AB$**: Requires $R_0, R_1$. Result goes to a temp register (let's say $R_3$).\n*   **$T_2 = ABC$**: Requires $R_0, R_1, R_2$. Result goes to a temp register (let's say $R_4$).\n*   **$T_3 = BC$**: Requires $R_1, R_2$. Result goes to a temp register (let's say $R_5$).\n*   **$T_{final} = T_1 + T_2 + T_3$**: Requires $R_3, R_4, R_5$. Result goes to $R_6$ (or any free register).\n\n**2. Identify Critical Path and Stalls**\nAn operation takes 2 cycles if its result is needed by the *immediately following* operation. This is a \"stall\". We want to minimize the total number of stalls.\n\nLet's look at the sequence of operations. To minimize stalls, we should try to order operations such that the result of one operation is *not* needed by the very next operation.\n\n*   **Option 1: $T_1, T_2, T_3, T_{final}$**\n    *   $T_1$ (AB): Takes 1 cycle. Result in $R_3$.\n    *   $T_2$ (ABC): Needs $R_0, R_1, R_2$. Does it need $R_3$? No. Takes 1 cycle. Result in $R_4$.\n    *   $T_3$ (BC): Needs $R_1, R_2$. Does it need $R_3$ or $R_4$? No. Takes 1 cycle. Result in $R_5$.\n    *   $T_{final}$: Needs $R_3, R_4, R_5$. The immediately preceding operation was $T_3$. Does $T_{final}$ need the result of $T_3$? Yes. Therefore, $T_{final}$ takes **2 cycles**.\n\n    Total cycles: $1 + 1 + 1 + 2 = 5$.\n\nLet's double-check if there's a better order. The \"stall\" happens when an operation depends on the result of the previous operation.\n*   $T_1$ produces $R_3$.\n*   $T_2$ produces $R_4$.\n*   $T_3$ produces $R_5$.\n*   $T_{final}$ needs $R_3, R_4, R_5$.\n\nIf we do $T_1, T_2, T_3$, none of the intermediate results are needed by the *immediately following* operation.\n*   $T_1$ result ($R_3$) is not needed by $T_2$.\n*   $T_2$ result ($R_4$) is not needed by $T_3$.\n*   $T_3$ result ($R_5$) IS needed by $T_{final}$.\n\nSo the stall occurs at the last step. Total stalls = 1. Total cycles = $3 \\times 1 + 1 \\times 2 = 5$.\n\nIs it possible to avoid the stall at the end?\nThe final operation *must* add $T_1, T_2, T_3$. So it *must* depend on all three.\nIf we reorder the operations, say $T_1, T_3, T_2, T_{final}$:\n*   $T_1$ (AB) -> $R",
+              "content_chars": 2828,
+              "content_excerpt": "To find the minimum number of clock cycles required to compute $AB + ABC + BC$, we must schedule the operations to minimize the number of \"stalls\" (cycles where an operation takes two cycles instead o",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13028.93909998238,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1024,
+                "prompt_tokens": 180,
+                "prompt_tokens_details": {
+                  "cached_tokens": 176
+                },
+                "total_tokens": 1204
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To find the minimum number of clock cycles required to compute $AB + ABC + BC$, we must schedule the operations to minimize the number of \"stalls\" (cycles where an operation takes two cycles instead of one due to data dependencies).\n\n**1. Analyze the Operations and Dependencies**\nThe expression is $AB + ABC + BC$. Let's break this down into three addition operations:\n1.  $T_1 = AB$\n2.  $T_2 = ABC$\n3.  $T_3 = BC$\n4.  $T_{final} = T_1 + T_2 + T_3$\n\nThe inputs $A, B, C$ are in registers $R_0, R_1, R_2$ and cannot be modified. This means we cannot use $R_0, R_1, or R_2$ as temporary storage for intermediate results. We must use $R_3$ through $R_7$.\n\nLet's determine the dependencies for each operation:\n*   **$T_1 = AB$**: Requires $R_0, R_1$. Result goes to a temp register (let's say $R_3$).\n*   **$T_2 = ABC$**: Requires $R_0, R_1, R_2$. Result goes to a temp register (let's say $R_4$).\n*   **$T_3 = BC$**: Requires $R_1, R_2$. Result goes to a temp register (let's say $R_5$).\n*   **$T_{final} = T_1 + T_2 + T_3$**: Requires $R_3, R_4, R_5$. Result goes to $R_6$ (or any free register).\n\n**2. Identify Critical Path and Stalls**\nAn operation takes 2 cycles if its result is needed by the *immediately following* operation. This is a \"stall\". We want to minimize the total number of stalls.\n\nLet's look at the sequence of operations. To minimize stalls, we should try to order operations such that the result of one operation is *not* needed by the very next operation.\n\n*   **Option 1: $T_1, T_2, T_3, T_{final}$**\n    *   $T_1$ (AB): Takes 1 cycle. Result in $R_3$.\n    *   $T_2$ (ABC): Needs $R_0, R_1, R_2$. Does it need $R_3$? No. Takes 1 cycle. Result in $R_4$.\n    *   $T_3$ (BC): Needs $R_1, R_2$. Does it need $R_3$ or $R_4$? No. Takes 1 cycle. Result in $R_5$.\n    *   $T_{final}$: Needs $R_3, R_4, R_5$. The immediately preceding operation was $T_3$. Does $T_{final}$ need the result of $T_3$? Yes. Therefore, $T_{final}$ takes **2 cycles**.\n\n    Total cycles: $1 + 1 + 1 + 2 = 5$.\n\nLet's double-check if there's a better order. The \"stall\" happens when an operation depends on the result of the previous operation.\n*   $T_1$ produces $R_3$.\n*   $T_2$ produces $R_4$.\n*   $T_3$ produces $R_5$.\n*   $T_{final}$ needs $R_3, R_4, R_5$.\n\nIf we do $T_1, T_2, T_3$, none of the intermediate results are needed by the *immediately following* operation.\n*   $T_1$ result ($R_3$) is not needed by $T_2$.\n*   $T_2$ result ($R_4$) is not needed by $T_3$.\n*   $T_3$ result ($R_5$) IS needed by $T_{final}$.\n\nSo the stall occurs at the last step. Total stalls = 1. Total cycles = $3 \\times 1 + 1 \\times 2 = 5$.\n\nIs it possible to avoid the stall at the end?\nThe final operation *must* add $T_1, T_2, T_3$. So it *must* depend on all three.\nIf we reorder the operations, say $T_1, T_3, T_2, T_{final}$:\n*   $T_1$ (AB) -> $R",
+              "content_chars": 2828,
+              "content_excerpt": "To find the minimum number of clock cycles required to compute $AB + ABC + BC$, we must schedule the operations to minimize the number of \"stalls\" (cycles where an operation takes two cycles instead o",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12874.342299997807,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1024,
+                "prompt_tokens": 180,
+                "prompt_tokens_details": {
+                  "cached_tokens": 176
+                },
+                "total_tokens": 1204
+              }
+            }
+          ],
+          "error": "answer",
+          "id": "mmlu-pro-30-computer-science",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must look at the mathematical definition of a stationary autoregressive process.\n\n1.  **Definition of Stationarity**: A stationary process is one where the statistical properties (such as the mean and variance) do not change over time. For a time series $X_t$, stationarity implies that $X_t$ does not drift away from its long-run mean.\n2.  **Autoregressive (AR) Process**: An autoregressive process is defined by an equation like $X_t = \\phi X_{t-1} + \\epsilon_t$, where $\\epsilon_t$ represents the shock.\n3.  **Effect of Shocks**:\n    *   If the process is **stationary**, the coefficient $\\phi$ must be less than 1 (specifically, for a first-order AR process, $|\\phi| < 1$).\n    *   Because $|\\phi| < 1$, the impact of a shock $\\epsilon_t$ decays over time. Specifically, the effect of a shock at time $t$ on the value at time $t+k$ is proportional to $\\phi^k$.\n    *   Since $\\phi < 1$, $\\phi^k$ approaches 0 as $k \\to \\infty$.\n    *   Therefore, the effect of any single shock eventually dies away. It does not persist indefinitely, nor does it cause a permanent change in the trend.\n\nLet's evaluate the options:\n*   A. Never occur: Incorrect. Shocks are random disturbances; they can and do occur.\n*   B. Persist indefinitely: Incorrect. This would be true for a unit root process (non-stationary), but not for a stationary process.\n*   C. Cause a permanent change in the trend: Incorrect. This is also characteristic of a unit root process.\n*   D. Grow exponentially: Incorrect. This would imply the shock's effect grows, which is not the case for a stable AR process.\n*   E. Only affect the next period: Incorrect. The shock affects the current period and propagates to future periods, though its magnitude diminishes.\n*   F. Eventually die away: **Correct.** The impact of the shock diminishes over time and vanishes.\n*   G. Cause the process to become non-stationary: Incorrect. By definition, a stationary process remains stationary.\n*   H. Immediately disappear: Incorrect. The shock affects the current period and propagates forward.\n*   I. Lead to a cyclical pattern: Incorrect. This is not a general property of shocks in a stationary AR process.\n*   J. Be balanced out by subsequent shocks: Incorrect. While subsequent shocks can offset the level, the *effect* of the original shock (its decay) is what happens. The key feature is that the shock's influence fades.\n\nTherefore, the correct description is that the effect of the shock eventually dies away.\n\nFINAL=F",
+              "content_chars": 2515,
+              "content_excerpt": "To determine the correct answer, we must look at the mathematical definition of a stationary autoregressive process.\n\n1.  **Definition of Stationarity**: A stationary process is one where the statisti",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7797.469799988903,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 616,
+                "prompt_tokens": 110,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 726
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must look at the mathematical definition of a stationary autoregressive process.\n\n1.  **Definition of Stationarity**: A stationary process is one where the statistical properties (such as the mean and variance) do not change over time. For a time series $X_t$, stationarity implies that $X_t$ does not drift away from its long-run mean.\n2.  **Autoregressive (AR) Process**: An autoregressive process is defined by an equation like $X_t = \\phi X_{t-1} + \\epsilon_t$, where $\\epsilon_t$ represents the shock.\n3.  **Effect of Shocks**:\n    *   If the process is **stationary**, the coefficient $\\phi$ must be less than 1 (specifically, for a first-order AR process, $|\\phi| < 1$).\n    *   Because $|\\phi| < 1$, the impact of a shock $\\epsilon_t$ decays over time. Specifically, the effect of a shock at time $t$ on the value at time $t+k$ is proportional to $\\phi^k$.\n    *   Since $\\phi < 1$, $\\phi^k$ approaches 0 as $k \\to \\infty$.\n    *   Therefore, the effect of any single shock eventually dies away. It does not persist indefinitely, nor does it cause a permanent change in the trend.\n\nLet's evaluate the options:\n*   A. Never occur: Incorrect. Shocks are random disturbances; they can and do occur.\n*   B. Persist indefinitely: Incorrect. This would be true for a unit root process (non-stationary), but not for a stationary process.\n*   C. Cause a permanent change in the trend: Incorrect. This is also characteristic of a unit root process.\n*   D. Grow exponentially: Incorrect. This would imply the shock's effect grows, which is not the case for a stable AR process.\n*   E. Only affect the next period: Incorrect. The shock affects the current period and propagates to future periods, though its magnitude diminishes.\n*   F. Eventually die away: **Correct.** The impact of the shock diminishes over time and vanishes.\n*   G. Cause the process to become non-stationary: Incorrect. By definition, a stationary process remains stationary.\n*   H. Immediately disappear: Incorrect. The shock affects the current period and propagates forward.\n*   I. Lead to a cyclical pattern: Incorrect. This is not a general property of shocks in a stationary AR process.\n*   J. Be balanced out by subsequent shocks: Incorrect. While subsequent shocks can offset the level, the *effect* of the original shock (its decay) is what happens. The key feature is that the shock's influence fades.\n\nTherefore, the correct description is that the effect of the shock eventually dies away.\n\nFINAL=F",
+              "content_chars": 2515,
+              "content_excerpt": "To determine the correct answer, we must look at the mathematical definition of a stationary autoregressive process.\n\n1.  **Definition of Stationarity**: A stationary process is one where the statisti",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7963.000799994916,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 616,
+                "prompt_tokens": 110,
+                "prompt_tokens_details": {
+                  "cached_tokens": 106
+                },
+                "total_tokens": 726
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must look at the mathematical definition of a stationary autoregressive process.\n\n1.  **Definition of Stationarity**: A stationary process is one where the statistical properties (such as the mean and variance) do not change over time. For a time series $X_t$, stationarity implies that $X_t$ does not drift away from its long-run mean.\n2.  **Autoregressive (AR) Process**: An autoregressive process is defined by an equation like $X_t = \\phi X_{t-1} + \\epsilon_t$, where $\\epsilon_t$ represents the shock.\n3.  **Effect of Shocks**:\n    *   If the process is **stationary**, the coefficient $\\phi$ must be less than 1 (specifically, for a first-order AR process, $|\\phi| < 1$).\n    *   Because $|\\phi| < 1$, the impact of a shock $\\epsilon_t$ decays over time. Specifically, the effect of a shock at time $t$ on the value at time $t+k$ is proportional to $\\phi^k$.\n    *   Since $\\phi < 1$, $\\phi^k$ approaches 0 as $k \\to \\infty$.\n    *   Therefore, the effect of any single shock eventually dies away. It does not persist indefinitely, nor does it cause a permanent change in the trend.\n\nLet's evaluate the options:\n*   A. Never occur: Incorrect. Shocks are random disturbances; they can and do occur.\n*   B. Persist indefinitely: Incorrect. This would be true for a unit root process (non-stationary), but not for a stationary process.\n*   C. Cause a permanent change in the trend: Incorrect. This is also characteristic of a unit root process.\n*   D. Grow exponentially: Incorrect. This would imply the shock's effect grows, which is not the case for a stable AR process.\n*   E. Only affect the next period: Incorrect. The shock affects the current period and propagates to future periods, though its magnitude diminishes.\n*   F. Eventually die away: **Correct.** The impact of the shock diminishes over time and vanishes.\n*   G. Cause the process to become non-stationary: Incorrect. By definition, a stationary process remains stationary.\n*   H. Immediately disappear: Incorrect. The shock affects the current period and propagates forward.\n*   I. Lead to a cyclical pattern: Incorrect. This is not a general property of shocks in a stationary AR process.\n*   J. Be balanced out by subsequent shocks: Incorrect. While subsequent shocks can offset the level, the *effect* of the original shock (its decay) is what happens. The key feature is that the shock's influence fades.\n\nTherefore, the correct description is that the effect of the shock eventually dies away.\n\nFINAL=F",
+              "content_chars": 2515,
+              "content_excerpt": "To determine the correct answer, we must look at the mathematical definition of a stationary autoregressive process.\n\n1.  **Definition of Stationarity**: A stationary process is one where the statisti",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7785.627600038424,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 616,
+                "prompt_tokens": 110,
+                "prompt_tokens_details": {
+                  "cached_tokens": 106
+                },
+                "total_tokens": 726
+              }
+            }
+          ],
+          "id": "mmlu-pro-35-economics",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To find the force between two point poles, we use Coulomb's Law for magnetic poles. The formula is:\n\n$$F = \\frac{m_1 m_2}{r^2}$$\n\nwhere:\n- $m_1$ is the strength of the first pole (in webers)\n- $m_2$ is the strength of the second pole (in webers)\n- $r$ is the distance between the poles (in meters)\n- $F$ is the force between the poles (in newtons)\n\n**Step 1: Convert the given values to consistent units.**\n\n- Strength of the first pole: $m_1 = 4\\pi \\times 10^{-4}$ W\n- Strength of the second pole: $m_2 = 4\\pi \\times 1.5 \\times 10^{-4}$ W\n- Distance: $r = 10$ cm = $0.1$ m\n\n**Step 2: Calculate the product of the pole strengths.**\n\n$$m_1 m_2 = (4\\pi \\times 10^{-4}) \\times (4\\pi \\times 1.5 \\times 10^{-4})$$\n$$m_1 m_2 = 16\\pi^2 \\times 1.5 \\times 10^{-8}$$\n$$m_1 m_2 = 24\\pi^2 \\times 10^{-8}$$\n\n**Step 3: Calculate the force.**\n\n$$F = \\frac{24\\pi^2 \\times 10^{-8}}{(0.1)^2}$$\n$$F = \\frac{24\\pi^2 \\times 10^{-8}}{10^{-2}}$$\n$$F = 24\\pi^2 \\times 10^{-6}$$\n\nNow, we need to evaluate $\\pi^2$. Since $\\pi \\approx 3.1416$, $\\pi^2 \\approx 9.8696$.\n\n$$F \\approx 24 \\times 9.8696 \\times 10^{-6}$$\n$$F \\approx 236.87 \\times 10^{-6}$$\n$$F \\approx 2.3687 \\times 10^{-4}$$\n\nWait, this doesn't match any of the options. Let me re-examine the problem.\n\nActually, let me reconsider. The problem states the strength is \"4 pi times 10^-4 weber\". Let me recalculate more carefully.\n\n$$m_1 = 4\\pi \\times 10^{-4} \\text{ W}$$\n$$m_2 = 4\\pi \\times 1.5 \\times 10^{-4} \\text{ W} = 6\\pi \\times 10^{-4} \\text{ W}$$\n\n$$F = \\frac{m_1 m_2}{r^2} = \\frac{(4\\pi \\times 10^{-4})(6\\pi \\times 10^{-4})}{(0.1)^2}$$\n$$F = \\frac{24\\pi^2 \\times 10^{-8}}{10^{-2}} = 24\\pi^2 \\times 10^{-6}$$\n\nUsing $\\pi^2 \\approx 9.87$:\n$$F \\approx 24 \\times 9.87 \\times 10^{-6} \\approx 236.88 \\times 10^{-6} \\approx 2.37 \\times 10^{-4} \\text{ N}$$\n\nThis is approximately 0.00237 N, which doesn't match any of the options either.\n\nLet me reconsider the problem. Perhaps the distance is 10 cm = 0.1 m, but maybe I should check if the answer choices are in different units or if I'm misinterpreting something.\n\nWait, let me re-read the problem. \"A point pole has a strength of 4 pi times 10^-4 weber.\" So $m_1 = 4\\pi \\times 10^{-4}$ W.\n\n\"The force in newtons on a point pole of 4 pi times 1.5 times 10^-4 weber placed 10 cm from it\"\n\nSo $m_2 = 4\\pi \\times 1.5 \\times 10^{-4}$ W = $6\\pi \\times 10^{-4}$ W.\n\nDistance $r = 10$ cm = $0.1$ m.\n\n$$F = \\",
+              "content_chars": 2385,
+              "content_excerpt": "To find the force between two point poles, we use Coulomb's Law for magnetic poles. The formula is:\n\n$$F = \\frac{m_1 m_2}{r^2}$$\n\nwhere:\n- $m_1$ is the strength of the first pole (in webers)\n- $m_2$ i",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12940.80539996503,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1024,
+                "prompt_tokens": 151,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 1175
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To find the force between two point poles, we use Coulomb's Law for magnetic poles. The formula is:\n\n$$F = \\frac{m_1 m_2}{r^2}$$\n\nwhere:\n- $m_1$ is the strength of the first pole (in webers)\n- $m_2$ is the strength of the second pole (in webers)\n- $r$ is the distance between the poles (in meters)\n- $F$ is the force between the poles (in newtons)\n\n**Step 1: Convert the given values to consistent units.**\n\n- Strength of the first pole: $m_1 = 4\\pi \\times 10^{-4}$ W\n- Strength of the second pole: $m_2 = 4\\pi \\times 1.5 \\times 10^{-4}$ W\n- Distance: $r = 10$ cm = $0.1$ m\n\n**Step 2: Calculate the product of the pole strengths.**\n\n$$m_1 m_2 = (4\\pi \\times 10^{-4}) \\times (4\\pi \\times 1.5 \\times 10^{-4})$$\n$$m_1 m_2 = 16\\pi^2 \\times 1.5 \\times 10^{-8}$$\n$$m_1 m_2 = 24\\pi^2 \\times 10^{-8}$$\n\n**Step 3: Calculate the force.**\n\n$$F = \\frac{24\\pi^2 \\times 10^{-8}}{(0.1)^2}$$\n$$F = \\frac{24\\pi^2 \\times 10^{-8}}{10^{-2}}$$\n$$F = 24\\pi^2 \\times 10^{-6}$$\n\nNow, we need to evaluate $\\pi^2$. Since $\\pi \\approx 3.1416$, $\\pi^2 \\approx 9.8696$.\n\n$$F \\approx 24 \\times 9.8696 \\times 10^{-6}$$\n$$F \\approx 236.87 \\times 10^{-6}$$\n$$F \\approx 2.3687 \\times 10^{-4}$$\n\nWait, this doesn't match any of the options. Let me re-examine the problem.\n\nActually, let me reconsider. The problem states the strength is \"4 pi times 10^-4 weber\". Let me recalculate more carefully.\n\n$$m_1 = 4\\pi \\times 10^{-4} \\text{ W}$$\n$$m_2 = 4\\pi \\times 1.5 \\times 10^{-4} \\text{ W} = 6\\pi \\times 10^{-4} \\text{ W}$$\n\n$$F = \\frac{m_1 m_2}{r^2} = \\frac{(4\\pi \\times 10^{-4})(6\\pi \\times 10^{-4})}{(0.1)^2}$$\n$$F = \\frac{24\\pi^2 \\times 10^{-8}}{10^{-2}} = 24\\pi^2 \\times 10^{-6}$$\n\nUsing $\\pi^2 \\approx 9.87$:\n$$F \\approx 24 \\times 9.87 \\times 10^{-6} \\approx 236.88 \\times 10^{-6} \\approx 2.37 \\times 10^{-4} \\text{ N}$$\n\nThis is approximately 0.00237 N, which doesn't match any of the options either.\n\nLet me reconsider the problem. Perhaps the distance is 10 cm = 0.1 m, but maybe I should check if the answer choices are in different units or if I'm misinterpreting something.\n\nWait, let me re-read the problem. \"A point pole has a strength of 4 pi times 10^-4 weber.\" So $m_1 = 4\\pi \\times 10^{-4}$ W.\n\n\"The force in newtons on a point pole of 4 pi times 1.5 times 10^-4 weber placed 10 cm from it\"\n\nSo $m_2 = 4\\pi \\times 1.5 \\times 10^{-4}$ W = $6\\pi \\times 10^{-4}$ W.\n\nDistance $r = 10$ cm = $0.1$ m.\n\n$$F = \\",
+              "content_chars": 2385,
+              "content_excerpt": "To find the force between two point poles, we use Coulomb's Law for magnetic poles. The formula is:\n\n$$F = \\frac{m_1 m_2}{r^2}$$\n\nwhere:\n- $m_1$ is the strength of the first pole (in webers)\n- $m_2$ i",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13065.80770004075,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1024,
+                "prompt_tokens": 151,
+                "prompt_tokens_details": {
+                  "cached_tokens": 147
+                },
+                "total_tokens": 1175
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To find the force between two point poles, we use Coulomb's Law for magnetic poles. The formula is:\n\n$$F = \\frac{m_1 m_2}{r^2}$$\n\nwhere:\n- $m_1$ is the strength of the first pole (in webers)\n- $m_2$ is the strength of the second pole (in webers)\n- $r$ is the distance between the poles (in meters)\n- $F$ is the force between the poles (in newtons)\n\n**Step 1: Convert the given values to consistent units.**\n\n- Strength of the first pole: $m_1 = 4\\pi \\times 10^{-4}$ W\n- Strength of the second pole: $m_2 = 4\\pi \\times 1.5 \\times 10^{-4}$ W\n- Distance: $r = 10$ cm = $0.1$ m\n\n**Step 2: Calculate the product of the pole strengths.**\n\n$$m_1 m_2 = (4\\pi \\times 10^{-4}) \\times (4\\pi \\times 1.5 \\times 10^{-4})$$\n$$m_1 m_2 = 16\\pi^2 \\times 1.5 \\times 10^{-8}$$\n$$m_1 m_2 = 24\\pi^2 \\times 10^{-8}$$\n\n**Step 3: Calculate the force.**\n\n$$F = \\frac{24\\pi^2 \\times 10^{-8}}{(0.1)^2}$$\n$$F = \\frac{24\\pi^2 \\times 10^{-8}}{10^{-2}}$$\n$$F = 24\\pi^2 \\times 10^{-6}$$\n\nNow, we need to evaluate $\\pi^2$. Since $\\pi \\approx 3.1416$, $\\pi^2 \\approx 9.8696$.\n\n$$F \\approx 24 \\times 9.8696 \\times 10^{-6}$$\n$$F \\approx 236.87 \\times 10^{-6}$$\n$$F \\approx 2.3687 \\times 10^{-4}$$\n\nWait, this doesn't match any of the options. Let me re-examine the problem.\n\nActually, let me reconsider. The problem states the strength is \"4 pi times 10^-4 weber\". Let me recalculate more carefully.\n\n$$m_1 = 4\\pi \\times 10^{-4} \\text{ W}$$\n$$m_2 = 4\\pi \\times 1.5 \\times 10^{-4} \\text{ W} = 6\\pi \\times 10^{-4} \\text{ W}$$\n\n$$F = \\frac{m_1 m_2}{r^2} = \\frac{(4\\pi \\times 10^{-4})(6\\pi \\times 10^{-4})}{(0.1)^2}$$\n$$F = \\frac{24\\pi^2 \\times 10^{-8}}{10^{-2}} = 24\\pi^2 \\times 10^{-6}$$\n\nUsing $\\pi^2 \\approx 9.87$:\n$$F \\approx 24 \\times 9.87 \\times 10^{-6} \\approx 236.88 \\times 10^{-6} \\approx 2.37 \\times 10^{-4} \\text{ N}$$\n\nThis is approximately 0.00237 N, which doesn't match any of the options either.\n\nLet me reconsider the problem. Perhaps the distance is 10 cm = 0.1 m, but maybe I should check if the answer choices are in different units or if I'm misinterpreting something.\n\nWait, let me re-read the problem. \"A point pole has a strength of 4 pi times 10^-4 weber.\" So $m_1 = 4\\pi \\times 10^{-4}$ W.\n\n\"The force in newtons on a point pole of 4 pi times 1.5 times 10^-4 weber placed 10 cm from it\"\n\nSo $m_2 = 4\\pi \\times 1.5 \\times 10^{-4}$ W = $6\\pi \\times 10^{-4}$ W.\n\nDistance $r = 10$ cm = $0.1$ m.\n\n$$F = \\",
+              "content_chars": 2385,
+              "content_excerpt": "To find the force between two point poles, we use Coulomb's Law for magnetic poles. The formula is:\n\n$$F = \\frac{m_1 m_2}{r^2}$$\n\nwhere:\n- $m_1$ is the strength of the first pole (in webers)\n- $m_2$ i",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12929.702300054487,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1024,
+                "prompt_tokens": 151,
+                "prompt_tokens_details": {
+                  "cached_tokens": 147
+                },
+                "total_tokens": 1175
+              }
+            }
+          ],
+          "error": "answer",
+          "id": "mmlu-pro-40-engineering",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct logical formula, we must break down the English sentence into its logical components and map them to the standard symbols of propositional logic.\n\n**1. Analyze the Sentence Structure**\nThe sentence is: \"Turtles live long lives and are happy creatures, unless they are injured.\"\n\nThis can be rephrased for clarity:\n\"Turtles live long lives AND are happy creatures, UNLESS they are injured.\"\n\nIn logic, the word \"unless\" functions as a conditional operator. Specifically, \"P unless Q\" is logically equivalent to \"If Q, then not P\" or \"P if not Q\".\n*   **P** (The main statement): Turtles live long lives and are happy creatures.\n*   **Q** (The condition): They are injured.\n\nSo, the logical structure is: **(P) if not (Q)**.\n\n**2. Translate Components into Symbols**\n*   **P (Main Statement):** \"Turtles live long lives and are happy creatures.\"\n    *   \"Turtles live long lives\" $\\rightarrow$ Let $L$ represent \"Turtles live long lives\".\n    *   \"are happy creatures\" $\\rightarrow$ Let $H$ represent \"Turtles are happy creatures\".\n    *   Since these two facts are joined by \"and\", the symbol is $L \\text{ and } H$.\n*   **Q (Condition):** \"they are injured.\"\n    *   Let $I$ represent \"Turtles are injured\".\n\n**3. Construct the Final Formula**\nSubstituting the symbols into the logical structure from Step 1:\n*   Structure: $(L \\text{ and } H) \\text{ if not } I$\n*   In standard propositional logic notation, \"if not I\" is written as $\\text{iff } I$ (if and only if I is false) or simply $\\text{iff } I$.\n\nTherefore, the formula is: **(L and H) iff I**\n\n**4. Evaluate the Options**\n*   **A. (L and H) iff I**: This matches our derived formula perfectly.\n*   **B. (L and H) or I**: This would mean \"Turtles live long lives and are happy creatures OR they are injured.\" This is incorrect because the \"unless\" implies a conditional relationship, not a disjunction.\n*   **C. L and (H or I)**: This is incorrect syntax and logic.\n*   **D. L and (H implies R)**: This is incorrect.\n\n**Conclusion**\nThe correct formula is Option A.\n\nFINAL=A",
+              "content_chars": 2057,
+              "content_excerpt": "To determine the correct logical formula, we must break down the English sentence into its logical components and map them to the standard symbols of propositional logic.\n\n**1. Analyze the Sentence St",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 7044.261500006542,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 552,
+                "prompt_tokens": 122,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 674
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct logical formula, we must break down the English sentence into its logical components and map them to the standard symbols of propositional logic.\n\n**1. Analyze the Sentence Structure**\nThe sentence is: \"Turtles live long lives and are happy creatures, unless they are injured.\"\n\nThis can be rephrased for clarity:\n\"Turtles live long lives AND are happy creatures, UNLESS they are injured.\"\n\nIn logic, the word \"unless\" functions as a conditional operator. Specifically, \"P unless Q\" is logically equivalent to \"If Q, then not P\" or \"P if not Q\".\n*   **P** (The main statement): Turtles live long lives and are happy creatures.\n*   **Q** (The condition): They are injured.\n\nSo, the logical structure is: **(P) if not (Q)**.\n\n**2. Translate Components into Symbols**\n*   **P (Main Statement):** \"Turtles live long lives and are happy creatures.\"\n    *   \"Turtles live long lives\" $\\rightarrow$ Let $L$ represent \"Turtles live long lives\".\n    *   \"are happy creatures\" $\\rightarrow$ Let $H$ represent \"Turtles are happy creatures\".\n    *   Since these two facts are joined by \"and\", the symbol is $L \\text{ and } H$.\n*   **Q (Condition):** \"they are injured.\"\n    *   Let $I$ represent \"Turtles are injured\".\n\n**3. Construct the Final Formula**\nSubstituting the symbols into the logical structure from Step 1:\n*   Structure: $(L \\text{ and } H) \\text{ if not } I$\n*   In standard propositional logic notation, \"if not I\" is written as $\\text{iff } I$ (if and only if I is false) or simply $\\text{iff } I$.\n\nTherefore, the formula is: **(L and H) iff I**\n\n**4. Evaluate the Options**\n*   **A. (L and H) iff I**: This matches our derived formula perfectly.\n*   **B. (L and H) or I**: This would mean \"Turtles live long lives and are happy creatures OR they are injured.\" This is incorrect because the \"unless\" implies a conditional relationship, not a disjunction.\n*   **C. L and (H or I)**: This is incorrect syntax and logic.\n*   **D. L and (H implies R)**: This is incorrect.\n\n**Conclusion**\nThe correct formula is Option A.\n\nFINAL=A",
+              "content_chars": 2057,
+              "content_excerpt": "To determine the correct logical formula, we must break down the English sentence into its logical components and map them to the standard symbols of propositional logic.\n\n**1. Analyze the Sentence St",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 7176.114499976393,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 552,
+                "prompt_tokens": 122,
+                "prompt_tokens_details": {
+                  "cached_tokens": 118
+                },
+                "total_tokens": 674
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct logical formula, we must break down the English sentence into its logical components and map them to the standard symbols of propositional logic.\n\n**1. Analyze the Sentence Structure**\nThe sentence is: \"Turtles live long lives and are happy creatures, unless they are injured.\"\n\nThis can be rephrased for clarity:\n\"Turtles live long lives AND are happy creatures, UNLESS they are injured.\"\n\nIn logic, the word \"unless\" functions as a conditional operator. Specifically, \"P unless Q\" is logically equivalent to \"If Q, then not P\" or \"P if not Q\".\n*   **P** (The main statement): Turtles live long lives and are happy creatures.\n*   **Q** (The condition): They are injured.\n\nSo, the logical structure is: **(P) if not (Q)**.\n\n**2. Translate Components into Symbols**\n*   **P (Main Statement):** \"Turtles live long lives and are happy creatures.\"\n    *   \"Turtles live long lives\" $\\rightarrow$ Let $L$ represent \"Turtles live long lives\".\n    *   \"are happy creatures\" $\\rightarrow$ Let $H$ represent \"Turtles are happy creatures\".\n    *   Since these two facts are joined by \"and\", the symbol is $L \\text{ and } H$.\n*   **Q (Condition):** \"they are injured.\"\n    *   Let $I$ represent \"Turtles are injured\".\n\n**3. Construct the Final Formula**\nSubstituting the symbols into the logical structure from Step 1:\n*   Structure: $(L \\text{ and } H) \\text{ if not } I$\n*   In standard propositional logic notation, \"if not I\" is written as $\\text{iff } I$ (if and only if I is false) or simply $\\text{iff } I$.\n\nTherefore, the formula is: **(L and H) iff I**\n\n**4. Evaluate the Options**\n*   **A. (L and H) iff I**: This matches our derived formula perfectly.\n*   **B. (L and H) or I**: This would mean \"Turtles live long lives and are happy creatures OR they are injured.\" This is incorrect because the \"unless\" implies a conditional relationship, not a disjunction.\n*   **C. L and (H or I)**: This is incorrect syntax and logic.\n*   **D. L and (H implies R)**: This is incorrect.\n\n**Conclusion**\nThe correct formula is Option A.\n\nFINAL=A",
+              "content_chars": 2057,
+              "content_excerpt": "To determine the correct logical formula, we must break down the English sentence into its logical components and map them to the standard symbols of propositional logic.\n\n**1. Analyze the Sentence St",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 6936.011699959636,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 552,
+                "prompt_tokens": 122,
+                "prompt_tokens_details": {
+                  "cached_tokens": 118
+                },
+                "total_tokens": 674
+              }
+            }
+          ],
+          "error": "answer",
+          "id": "mmlu-pro-45-philosophy",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must look at the specific definition of a \"judge ad hoc\" within the context of international law, particularly the International Court of Justice (ICJ).\n\n1.  **Analyze the Options:**\n    *   **A. The president of the ICJ:** The President is a permanent member of the Court, not a temporary \"ad hoc\" judge.\n    *   **B. A temporary judge appointed for a specific period:** This is a general description of what an ad hoc judge is, but it lacks the specific procedural context that defines the term in international litigation.\n    *   **C. A judge each party always nominates in every contentious case:** This is incorrect. Parties do not nominate judges in every case; they nominate them only when necessary.\n    *   **D. The ICJ bench member with a casting vote:** This refers to a permanent judge, not an ad hoc judge.\n    *   **E. A judge nominated by the parties irrespective of nationality:** This is close, but the key is the *reason* for the nomination.\n    *   **F. A judge who decides admissibility before the ICJ:** This describes a specific function, not the definition of the role itself.\n    *   **G. A judge appointed by the UN Security Council:** The UN Security Council appoints the ICJ as a whole, but \"ad hoc\" judges are appointed specifically for cases.\n    *   **H. A surrogate if a judge is disqualified or dies:** This is a specific scenario where an ad hoc judge *might* be appointed, but it is not the definition.\n    *   **I. If a party before the ICJ has no national sitting as judge, it may nominate someone solely for that case as judge ad hoc:** This option correctly describes the primary mechanism for appointing a judge ad hoc. Under the Statute of the ICJ, if a party to a case before the ICJ has no national judge sitting on the bench, it may nominate a judge ad hoc for that specific case. This judge serves only for that case (hence \"ad hoc\") and is appointed specifically to handle that dispute.\n\n2.  **Conclusion:**\nOption I provides the precise procedural definition and context for what constitutes a \"judge ad hoc\" in the ICJ system. It explains *why* and *how* such a judge is appointed, distinguishing it from permanent members of the bench.\n\nFINAL=I",
+              "content_chars": 2229,
+              "content_excerpt": "To determine the correct answer, we must look at the specific definition of a \"judge ad hoc\" within the context of international law, particularly the International Court of Justice (ICJ).\n\n1.  **Anal",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6502.064500004053,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 513,
+                "prompt_tokens": 163,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 676
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must look at the specific definition of a \"judge ad hoc\" within the context of international law, particularly the International Court of Justice (ICJ).\n\n1.  **Analyze the Options:**\n    *   **A. The president of the ICJ:** The President is a permanent member of the Court, not a temporary \"ad hoc\" judge.\n    *   **B. A temporary judge appointed for a specific period:** This is a general description of what an ad hoc judge is, but it lacks the specific procedural context that defines the term in international litigation.\n    *   **C. A judge each party always nominates in every contentious case:** This is incorrect. Parties do not nominate judges in every case; they nominate them only when necessary.\n    *   **D. The ICJ bench member with a casting vote:** This refers to a permanent judge, not an ad hoc judge.\n    *   **E. A judge nominated by the parties irrespective of nationality:** This is close, but the key is the *reason* for the nomination.\n    *   **F. A judge who decides admissibility before the ICJ:** This describes a specific function, not the definition of the role itself.\n    *   **G. A judge appointed by the UN Security Council:** The UN Security Council appoints the ICJ as a whole, but \"ad hoc\" judges are appointed specifically for cases.\n    *   **H. A surrogate if a judge is disqualified or dies:** This is a specific scenario where an ad hoc judge *might* be appointed, but it is not the definition.\n    *   **I. If a party before the ICJ has no national sitting as judge, it may nominate someone solely for that case as judge ad hoc:** This option correctly describes the primary mechanism for appointing a judge ad hoc. Under the Statute of the ICJ, if a party to a case before the ICJ has no national judge sitting on the bench, it may nominate a judge ad hoc for that specific case. This judge serves only for that case (hence \"ad hoc\") and is appointed specifically to handle that dispute.\n\n2.  **Conclusion:**\nOption I provides the precise procedural definition and context for what constitutes a \"judge ad hoc\" in the ICJ system. It explains *why* and *how* such a judge is appointed, distinguishing it from permanent members of the bench.\n\nFINAL=I",
+              "content_chars": 2229,
+              "content_excerpt": "To determine the correct answer, we must look at the specific definition of a \"judge ad hoc\" within the context of international law, particularly the International Court of Justice (ICJ).\n\n1.  **Anal",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6635.24159998633,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 513,
+                "prompt_tokens": 163,
+                "prompt_tokens_details": {
+                  "cached_tokens": 159
+                },
+                "total_tokens": 676
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "To determine the correct answer, we must look at the specific definition of a \"judge ad hoc\" within the context of international law, particularly the International Court of Justice (ICJ).\n\n1.  **Analyze the Options:**\n    *   **A. The president of the ICJ:** The President is a permanent member of the Court, not a temporary \"ad hoc\" judge.\n    *   **B. A temporary judge appointed for a specific period:** This is a general description of what an ad hoc judge is, but it lacks the specific procedural context that defines the term in international litigation.\n    *   **C. A judge each party always nominates in every contentious case:** This is incorrect. Parties do not nominate judges in every case; they nominate them only when necessary.\n    *   **D. The ICJ bench member with a casting vote:** This refers to a permanent judge, not an ad hoc judge.\n    *   **E. A judge nominated by the parties irrespective of nationality:** This is close, but the key is the *reason* for the nomination.\n    *   **F. A judge who decides admissibility before the ICJ:** This describes a specific function, not the definition of the role itself.\n    *   **G. A judge appointed by the UN Security Council:** The UN Security Council appoints the ICJ as a whole, but \"ad hoc\" judges are appointed specifically for cases.\n    *   **H. A surrogate if a judge is disqualified or dies:** This is a specific scenario where an ad hoc judge *might* be appointed, but it is not the definition.\n    *   **I. If a party before the ICJ has no national sitting as judge, it may nominate someone solely for that case as judge ad hoc:** This option correctly describes the primary mechanism for appointing a judge ad hoc. Under the Statute of the ICJ, if a party to a case before the ICJ has no national judge sitting on the bench, it may nominate a judge ad hoc for that specific case. This judge serves only for that case (hence \"ad hoc\") and is appointed specifically to handle that dispute.\n\n2.  **Conclusion:**\nOption I provides the precise procedural definition and context for what constitutes a \"judge ad hoc\" in the ICJ system. It explains *why* and *how* such a judge is appointed, distinguishing it from permanent members of the bench.\n\nFINAL=I",
+              "content_chars": 2229,
+              "content_excerpt": "To determine the correct answer, we must look at the specific definition of a \"judge ad hoc\" within the context of international law, particularly the International Court of Justice (ICJ).\n\n1.  **Anal",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6491.9865999836475,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 513,
+                "prompt_tokens": 163,
+                "prompt_tokens_details": {
+                  "cached_tokens": 159
+                },
+                "total_tokens": 676
+              }
+            }
+          ],
+          "id": "mmlu-pro-65-law",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "evidence_use": "diagnostic",
+      "source": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+      "source_sha256": "f6112c6f592c5285f8dae86808285f328161d3b4ae30ef660440d173d47b0636",
+      "status": "failed",
+      "validator_strength": "deterministic_marker",
+      "work_class": "independent-multidomain-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": false
+    },
+    "control_status": "requested_unverified",
+    "mode": "disabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": 52.0,
+      "completion_tokens_mean": 52.0,
+      "completion_tokens_mean_ci95_high": 52.0,
+      "completion_tokens_mean_ci95_low": 52.0,
+      "completion_tokens_min": 52.0,
+      "completion_tokens_p25": 52.0,
+      "completion_tokens_p50": 52.0,
+      "completion_tokens_p75": 52.0,
+      "completion_tokens_p90": 52.0,
+      "completion_tokens_p95": 52.0,
+      "completion_tokens_p99": 52.0,
+      "completion_tokens_samples": 1,
+      "completion_tokens_stddev": 0.0,
+      "content_chunks": 51,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": 58.633548599089856,
+      "decode_tok_s_mean": 58.633548599089856,
+      "decode_tok_s_mean_ci95_high": 58.633548599089856,
+      "decode_tok_s_mean_ci95_low": 58.633548599089856,
+      "decode_tok_s_min": 58.633548599089856,
+      "decode_tok_s_p25": 58.633548599089856,
+      "decode_tok_s_p50": 58.633548599089856,
+      "decode_tok_s_p75": 58.633548599089856,
+      "decode_tok_s_p90": 58.633548599089856,
+      "decode_tok_s_p95": 58.633548599089856,
+      "decode_tok_s_p99": 58.633548599089856,
+      "decode_tok_s_samples": 1,
+      "decode_tok_s_stddev": 0.0,
+      "e2e_max_ms": 11079.936399997678,
+      "e2e_mean_ci95_high_ms": 11079.936399997678,
+      "e2e_mean_ci95_low_ms": 11079.936399997678,
+      "e2e_mean_ms": 11079.936399997678,
+      "e2e_min_ms": 11079.936399997678,
+      "e2e_p25_ms": 11079.936399997678,
+      "e2e_p50_ms": 11079.936399997678,
+      "e2e_p75_ms": 11079.936399997678,
+      "e2e_p90_ms": 11079.936399997678,
+      "e2e_p95_ms": 11079.936399997678,
+      "e2e_p99_ms": 11079.936399997678,
+      "e2e_samples": 1,
+      "e2e_stddev_ms": 0.0,
+      "effective_prefill_tok_s_max": 3058.23809912966,
+      "effective_prefill_tok_s_mean": 3058.23809912966,
+      "effective_prefill_tok_s_mean_ci95_high": 3058.23809912966,
+      "effective_prefill_tok_s_mean_ci95_low": 3058.23809912966,
+      "effective_prefill_tok_s_min": 3058.23809912966,
+      "effective_prefill_tok_s_p25": 3058.23809912966,
+      "effective_prefill_tok_s_p50": 3058.23809912966,
+      "effective_prefill_tok_s_p75": 3058.23809912966,
+      "effective_prefill_tok_s_p90": 3058.23809912966,
+      "effective_prefill_tok_s_p95": 3058.23809912966,
+      "effective_prefill_tok_s_p99": 3058.23809912966,
+      "effective_prefill_tok_s_samples": 1,
+      "effective_prefill_tok_s_stddev": 0.0,
+      "generation_max_ms": 869.8091999976896,
+      "generation_mean_ci95_high_ms": 869.8091999976896,
+      "generation_mean_ci95_low_ms": 869.8091999976896,
+      "generation_mean_ms": 869.8091999976896,
+      "generation_min_ms": 869.8091999976896,
+      "generation_p25_ms": 869.8091999976896,
+      "generation_p50_ms": 869.8091999976896,
+      "generation_p75_ms": 869.8091999976896,
+      "generation_p90_ms": 869.8091999976896,
+      "generation_p95_ms": 869.8091999976896,
+      "generation_p99_ms": 869.8091999976896,
+      "generation_samples": 1,
+      "generation_stddev_ms": 0.0,
+      "mean_inter_token_latency_ms_max": 17.055082352895873,
+      "mean_inter_token_latency_ms_mean": 17.055082352895873,
+      "mean_inter_token_latency_ms_mean_ci95_high": 17.055082352895873,
+      "mean_inter_token_latency_ms_mean_ci95_low": 17.055082352895873,
+      "mean_inter_token_latency_ms_min": 17.055082352895873,
+      "mean_inter_token_latency_ms_p25": 17.055082352895873,
+      "mean_inter_token_latency_ms_p50": 17.055082352895873,
+      "mean_inter_token_latency_ms_p75": 17.055082352895873,
+      "mean_inter_token_latency_ms_p90": 17.055082352895873,
+      "mean_inter_token_latency_ms_p95": 17.055082352895873,
+      "mean_inter_token_latency_ms_p99": 17.055082352895873,
+      "mean_inter_token_latency_ms_samples": 1,
+      "mean_inter_token_latency_ms_stddev": 0.0,
+      "mean_time_per_output_token_max_ms": 17.055082352895873,
+      "mean_time_per_output_token_mean_ci95_high_ms": 17.055082352895873,
+      "mean_time_per_output_token_mean_ci95_low_ms": 17.055082352895873,
+      "mean_time_per_output_token_mean_ms": 17.055082352895873,
+      "mean_time_per_output_token_min_ms": 17.055082352895873,
+      "mean_time_per_output_token_p25_ms": 17.055082352895873,
+      "mean_time_per_output_token_p50_ms": 17.055082352895873,
+      "mean_time_per_output_token_p75_ms": 17.055082352895873,
+      "mean_time_per_output_token_p90_ms": 17.055082352895873,
+      "mean_time_per_output_token_p95_ms": 17.055082352895873,
+      "mean_time_per_output_token_p99_ms": 17.055082352895873,
+      "mean_time_per_output_token_samples": 1,
+      "mean_time_per_output_token_stddev_ms": 0.0,
+      "output_tokens": 52,
+      "prompt_token_samples": 1,
+      "prompt_tokens": 31225,
+      "prompt_tokens_max": 31225.0,
+      "prompt_tokens_mean": 31225.0,
+      "prompt_tokens_mean_ci95_high": 31225.0,
+      "prompt_tokens_mean_ci95_low": 31225.0,
+      "prompt_tokens_min": 31225.0,
+      "prompt_tokens_p25": 31225.0,
+      "prompt_tokens_p50": 31225.0,
+      "prompt_tokens_p75": 31225.0,
+      "prompt_tokens_p90": 31225.0,
+      "prompt_tokens_p95": 31225.0,
+      "prompt_tokens_p99": 31225.0,
+      "prompt_tokens_samples": 1,
+      "prompt_tokens_stddev": 0.0,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": 10210.127199999988,
+      "time_to_first_output_mean_ci95_high_ms": 10210.127199999988,
+      "time_to_first_output_mean_ci95_low_ms": 10210.127199999988,
+      "time_to_first_output_mean_ms": 10210.127199999988,
+      "time_to_first_output_min_ms": 10210.127199999988,
+      "time_to_first_output_p25_ms": 10210.127199999988,
+      "time_to_first_output_p50_ms": 10210.127199999988,
+      "time_to_first_output_p75_ms": 10210.127199999988,
+      "time_to_first_output_p90_ms": 10210.127199999988,
+      "time_to_first_output_p95_ms": 10210.127199999988,
+      "time_to_first_output_p99_ms": 10210.127199999988,
+      "time_to_first_output_samples": 1,
+      "time_to_first_output_stddev_ms": 0.0,
+      "tpot_max_ms": 17.055082352895873,
+      "tpot_mean_ci95_high_ms": 17.055082352895873,
+      "tpot_mean_ci95_low_ms": 17.055082352895873,
+      "tpot_mean_ms": 17.055082352895873,
+      "tpot_min_ms": 17.055082352895873,
+      "tpot_p25_ms": 17.055082352895873,
+      "tpot_p50_ms": 17.055082352895873,
+      "tpot_p75_ms": 17.055082352895873,
+      "tpot_p90_ms": 17.055082352895873,
+      "tpot_p95_ms": 17.055082352895873,
+      "tpot_p99_ms": 17.055082352895873,
+      "tpot_samples": 1,
+      "tpot_stddev_ms": 0.0,
+      "ttft_max_ms": 10210.128799953964,
+      "ttft_mean_ci95_high_ms": 10210.128799953964,
+      "ttft_mean_ci95_low_ms": 10210.128799953964,
+      "ttft_mean_ms": 10210.128799953964,
+      "ttft_min_ms": 10210.128799953964,
+      "ttft_p25_ms": 10210.128799953964,
+      "ttft_p50_ms": 10210.128799953964,
+      "ttft_p75_ms": 10210.128799953964,
+      "ttft_p90_ms": 10210.128799953964,
+      "ttft_p95_ms": 10210.128799953964,
+      "ttft_p99_ms": 10210.128799953964,
+      "ttft_samples": 1,
+      "ttft_stddev_ms": 0.0
+    },
+    "wall_ms": 247045.20339996088
+  },
+  "tool": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 868.2053000084125,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 288,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 320
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 455.6208999711089,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 288,
+              "prompt_tokens_details": {
+                "cached_tokens": 284
+              },
+              "total_tokens": 320
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 433.08729998534545,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 288,
+              "prompt_tokens_details": {
+                "cached_tokens": 284
+              },
+              "total_tokens": 320
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          }
+        ],
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "name": "openai_tool_call_smoke",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

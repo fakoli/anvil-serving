@@ -1,0 +1,663 @@
+{
+  "context": {
+    "cap_tokens": 64256,
+    "max_model_len": 65536,
+    "targets": [
+      {
+        "attempted_context_tokens": 32768,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 32768,
+        "content_chunks": 40,
+        "decode_tok_s": 71.89583013281155,
+        "e2e_ms": 12435.079399961978,
+        "effective_prefill_tok_s": 2628.650468366398,
+        "estimated_prompt_tokens": 32768,
+        "generation_ms": 556.3604999915697,
+        "mean_inter_token_latency_ms": 13.909012499789242,
+        "output_token_source": "usage",
+        "output_tokens": 41,
+        "prompt_tokens": 31225,
+        "reasoning_chunks": 0,
+        "status": "passed",
+        "target_tokens": 32768,
+        "time_to_first_output_ms": 11878.718899970409,
+        "ttft_ms": 11878.720299981069,
+        "usage": {
+          "completion_tokens": 41,
+          "prompt_tokens": 31225,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 31266
+        },
+        "visible_generation_ms": 556.3590999809094
+      }
+    ]
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 256
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:8080/v1",
+    "candidate_id": "incumbent-q4xl-mtp3",
+    "config_id": "q4xl-mtp3-262k-live",
+    "engine": "llama.cpp",
+    "gpu": "rtx5090-primary",
+    "model": "unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-262K",
+    "started_at": "2026-09-12T13:42:34Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_chars": 94,
+            "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 602.7853999985382,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 45,
+              "prompt_tokens": 51,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 96
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_chars": 94,
+            "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 496.82689999463037,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 45,
+              "prompt_tokens": 51,
+              "prompt_tokens_details": {
+                "cached_tokens": 47
+              },
+              "total_tokens": 96
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_chars": 94,
+            "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 483.4192999987863,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 45,
+              "prompt_tokens": 51,
+              "prompt_tokens_details": {
+                "cached_tokens": 47
+              },
+              "total_tokens": 96
+            }
+          }
+        ],
+        "id": "unified_diff_timeout_edit",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "The sequential pipeline exceeds the 2500 ms budget by 600 ms (totaling 3100 ms), so you should implement streaming to overlap LLM token generation with TTS synthesis or reduce LLM latency via a smaller model.",
+            "content_chars": 208,
+            "content_excerpt": "The sequential pipeline exceeds the 2500 ms budget by 600 ms (totaling 3100 ms), so you should implement streaming to overlap LLM token generation with TTS synthesis or reduce LLM latency via a smalle",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 969.1134999739006,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 54,
+              "prompt_tokens": 79,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 133
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "The sequential pipeline exceeds the 2500 ms budget by 600 ms (totaling 3100 ms), so you should implement streaming to overlap LLM token generation with TTS synthesis or reduce LLM latency via a smaller model.",
+            "content_chars": 208,
+            "content_excerpt": "The sequential pipeline exceeds the 2500 ms budget by 600 ms (totaling 3100 ms), so you should implement streaming to overlap LLM token generation with TTS synthesis or reduce LLM latency via a smalle",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 695.0202999869362,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 54,
+              "prompt_tokens": 79,
+              "prompt_tokens_details": {
+                "cached_tokens": 75
+              },
+              "total_tokens": 133
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "The sequential pipeline exceeds the 2500 ms budget by 600 ms (totaling 3100 ms), so you should implement streaming to overlap LLM token generation with TTS synthesis or reduce LLM latency via a smaller model.",
+            "content_chars": 208,
+            "content_excerpt": "The sequential pipeline exceeds the 2500 ms budget by 600 ms (totaling 3100 ms), so you should implement streaming to overlap LLM token generation with TTS synthesis or reduce LLM latency via a smalle",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 693.8486999715678,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 54,
+              "prompt_tokens": 79,
+              "prompt_tokens_details": {
+                "cached_tokens": 75
+              },
+              "total_tokens": 133
+            }
+          }
+        ],
+        "id": "parallel_timeout_triage",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "passed"
+  },
+  "run_id": "fast-bakeoff-20260912T134234Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 12435.079399961978,
+    "intelligence_pass_rate": 1.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "disabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 11878.720299981069,
+    "usable_context_tokens": 32768,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "tool",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "https://huggingface.co/unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-262K/commit/4ca720788d1e01f1bff70c033e0d0028fd02e502",
+    "serve_command": null
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "control_evidence": "docs/findings/2026-09-12-qwen38-efficient-variants-rtx5090-evidence/incumbent-thinking-disabled-control.json",
+    "control_evidence_sha256": "4d42640b60764a814deb7377e0ce9739dfa1bcd4fdc26729706cf6ff89b2792d",
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": false
+    },
+    "control_status": "verified",
+    "mode": "disabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": 41.0,
+      "completion_tokens_mean": 41.0,
+      "completion_tokens_mean_ci95_high": 41.0,
+      "completion_tokens_mean_ci95_low": 41.0,
+      "completion_tokens_min": 41.0,
+      "completion_tokens_p25": 41.0,
+      "completion_tokens_p50": 41.0,
+      "completion_tokens_p75": 41.0,
+      "completion_tokens_p90": 41.0,
+      "completion_tokens_p95": 41.0,
+      "completion_tokens_p99": 41.0,
+      "completion_tokens_samples": 1,
+      "completion_tokens_stddev": 0.0,
+      "content_chunks": 40,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": 71.89583013281155,
+      "decode_tok_s_mean": 71.89583013281155,
+      "decode_tok_s_mean_ci95_high": 71.89583013281155,
+      "decode_tok_s_mean_ci95_low": 71.89583013281155,
+      "decode_tok_s_min": 71.89583013281155,
+      "decode_tok_s_p25": 71.89583013281155,
+      "decode_tok_s_p50": 71.89583013281155,
+      "decode_tok_s_p75": 71.89583013281155,
+      "decode_tok_s_p90": 71.89583013281155,
+      "decode_tok_s_p95": 71.89583013281155,
+      "decode_tok_s_p99": 71.89583013281155,
+      "decode_tok_s_samples": 1,
+      "decode_tok_s_stddev": 0.0,
+      "e2e_max_ms": 12435.079399961978,
+      "e2e_mean_ci95_high_ms": 12435.079399961978,
+      "e2e_mean_ci95_low_ms": 12435.079399961978,
+      "e2e_mean_ms": 12435.079399961978,
+      "e2e_min_ms": 12435.079399961978,
+      "e2e_p25_ms": 12435.079399961978,
+      "e2e_p50_ms": 12435.079399961978,
+      "e2e_p75_ms": 12435.079399961978,
+      "e2e_p90_ms": 12435.079399961978,
+      "e2e_p95_ms": 12435.079399961978,
+      "e2e_p99_ms": 12435.079399961978,
+      "e2e_samples": 1,
+      "e2e_stddev_ms": 0.0,
+      "effective_prefill_tok_s_max": 2628.650468366398,
+      "effective_prefill_tok_s_mean": 2628.650468366398,
+      "effective_prefill_tok_s_mean_ci95_high": 2628.650468366398,
+      "effective_prefill_tok_s_mean_ci95_low": 2628.650468366398,
+      "effective_prefill_tok_s_min": 2628.650468366398,
+      "effective_prefill_tok_s_p25": 2628.650468366398,
+      "effective_prefill_tok_s_p50": 2628.650468366398,
+      "effective_prefill_tok_s_p75": 2628.650468366398,
+      "effective_prefill_tok_s_p90": 2628.650468366398,
+      "effective_prefill_tok_s_p95": 2628.650468366398,
+      "effective_prefill_tok_s_p99": 2628.650468366398,
+      "effective_prefill_tok_s_samples": 1,
+      "effective_prefill_tok_s_stddev": 0.0,
+      "generation_max_ms": 556.3604999915697,
+      "generation_mean_ci95_high_ms": 556.3604999915697,
+      "generation_mean_ci95_low_ms": 556.3604999915697,
+      "generation_mean_ms": 556.3604999915697,
+      "generation_min_ms": 556.3604999915697,
+      "generation_p25_ms": 556.3604999915697,
+      "generation_p50_ms": 556.3604999915697,
+      "generation_p75_ms": 556.3604999915697,
+      "generation_p90_ms": 556.3604999915697,
+      "generation_p95_ms": 556.3604999915697,
+      "generation_p99_ms": 556.3604999915697,
+      "generation_samples": 1,
+      "generation_stddev_ms": 0.0,
+      "mean_inter_token_latency_ms_max": 13.909012499789242,
+      "mean_inter_token_latency_ms_mean": 13.909012499789242,
+      "mean_inter_token_latency_ms_mean_ci95_high": 13.909012499789242,
+      "mean_inter_token_latency_ms_mean_ci95_low": 13.909012499789242,
+      "mean_inter_token_latency_ms_min": 13.909012499789242,
+      "mean_inter_token_latency_ms_p25": 13.909012499789242,
+      "mean_inter_token_latency_ms_p50": 13.909012499789242,
+      "mean_inter_token_latency_ms_p75": 13.909012499789242,
+      "mean_inter_token_latency_ms_p90": 13.909012499789242,
+      "mean_inter_token_latency_ms_p95": 13.909012499789242,
+      "mean_inter_token_latency_ms_p99": 13.909012499789242,
+      "mean_inter_token_latency_ms_samples": 1,
+      "mean_inter_token_latency_ms_stddev": 0.0,
+      "mean_time_per_output_token_max_ms": 13.909012499789242,
+      "mean_time_per_output_token_mean_ci95_high_ms": 13.909012499789242,
+      "mean_time_per_output_token_mean_ci95_low_ms": 13.909012499789242,
+      "mean_time_per_output_token_mean_ms": 13.909012499789242,
+      "mean_time_per_output_token_min_ms": 13.909012499789242,
+      "mean_time_per_output_token_p25_ms": 13.909012499789242,
+      "mean_time_per_output_token_p50_ms": 13.909012499789242,
+      "mean_time_per_output_token_p75_ms": 13.909012499789242,
+      "mean_time_per_output_token_p90_ms": 13.909012499789242,
+      "mean_time_per_output_token_p95_ms": 13.909012499789242,
+      "mean_time_per_output_token_p99_ms": 13.909012499789242,
+      "mean_time_per_output_token_samples": 1,
+      "mean_time_per_output_token_stddev_ms": 0.0,
+      "output_tokens": 41,
+      "prompt_token_samples": 1,
+      "prompt_tokens": 31225,
+      "prompt_tokens_max": 31225.0,
+      "prompt_tokens_mean": 31225.0,
+      "prompt_tokens_mean_ci95_high": 31225.0,
+      "prompt_tokens_mean_ci95_low": 31225.0,
+      "prompt_tokens_min": 31225.0,
+      "prompt_tokens_p25": 31225.0,
+      "prompt_tokens_p50": 31225.0,
+      "prompt_tokens_p75": 31225.0,
+      "prompt_tokens_p90": 31225.0,
+      "prompt_tokens_p95": 31225.0,
+      "prompt_tokens_p99": 31225.0,
+      "prompt_tokens_samples": 1,
+      "prompt_tokens_stddev": 0.0,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": 11878.718899970409,
+      "time_to_first_output_mean_ci95_high_ms": 11878.718899970409,
+      "time_to_first_output_mean_ci95_low_ms": 11878.718899970409,
+      "time_to_first_output_mean_ms": 11878.718899970409,
+      "time_to_first_output_min_ms": 11878.718899970409,
+      "time_to_first_output_p25_ms": 11878.718899970409,
+      "time_to_first_output_p50_ms": 11878.718899970409,
+      "time_to_first_output_p75_ms": 11878.718899970409,
+      "time_to_first_output_p90_ms": 11878.718899970409,
+      "time_to_first_output_p95_ms": 11878.718899970409,
+      "time_to_first_output_p99_ms": 11878.718899970409,
+      "time_to_first_output_samples": 1,
+      "time_to_first_output_stddev_ms": 0.0,
+      "tpot_max_ms": 13.909012499789242,
+      "tpot_mean_ci95_high_ms": 13.909012499789242,
+      "tpot_mean_ci95_low_ms": 13.909012499789242,
+      "tpot_mean_ms": 13.909012499789242,
+      "tpot_min_ms": 13.909012499789242,
+      "tpot_p25_ms": 13.909012499789242,
+      "tpot_p50_ms": 13.909012499789242,
+      "tpot_p75_ms": 13.909012499789242,
+      "tpot_p90_ms": 13.909012499789242,
+      "tpot_p95_ms": 13.909012499789242,
+      "tpot_p99_ms": 13.909012499789242,
+      "tpot_samples": 1,
+      "tpot_stddev_ms": 0.0,
+      "ttft_max_ms": 11878.720299981069,
+      "ttft_mean_ci95_high_ms": 11878.720299981069,
+      "ttft_mean_ci95_low_ms": 11878.720299981069,
+      "ttft_mean_ms": 11878.720299981069,
+      "ttft_min_ms": 11878.720299981069,
+      "ttft_p25_ms": 11878.720299981069,
+      "ttft_p50_ms": 11878.720299981069,
+      "ttft_p75_ms": 11878.720299981069,
+      "ttft_p90_ms": 11878.720299981069,
+      "ttft_p95_ms": 11878.720299981069,
+      "ttft_p99_ms": 11878.720299981069,
+      "ttft_samples": 1,
+      "ttft_stddev_ms": 0.0
+    },
+    "wall_ms": 17891.77510002628
+  },
+  "tool": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 872.0210999599658,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 288,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "total_tokens": 320
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 319.5090999943204,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 288,
+              "prompt_tokens_details": {
+                "cached_tokens": 284
+              },
+              "total_tokens": 320
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 256,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 256
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 322.3726999713108,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 288,
+              "prompt_tokens_details": {
+                "cached_tokens": 284
+              },
+              "total_tokens": 320
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          }
+        ],
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "name": "openai_tool_call_smoke",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}
