@@ -92,7 +92,8 @@ DEFAULT_REPORT_PATH_REL = "docs/findings/2026-07-voice-16gb-mini.json"
 DEFAULT_REPORT_PATH = str(_REPO_ROOT / DEFAULT_REPORT_PATH_REL)
 FINDINGS_DOC = _REPO_ROOT / "docs" / "findings" / "2026-07-voice-16gb-mini.md"
 DEFAULT_TARGET_HOST_PATTERN = (
-    r"(?i)^(?:fakoli[-_. ]?mini(?:[-_. ]?[0-9]+)?|mini[-_. ]?host(?:[-_. ]?[0-9]+)?)"
+    r"(?i)^(?:fakoli[-_. ]?mini(?:[-_. ]?[0-9]+)?|mini[-_. ]?host(?:[-_. ]?[0-9]+)?"
+    r"|companion[-_. ]?node(?:[-_. ]?[0-9]+)?)"
     r"(?:\.local|\.example)?$"
 )
 DEFAULT_TARGET_HW_MODEL_PATTERN = r"^Mac16,10$"

@@ -41,7 +41,7 @@ Reviewed 2026-09-05. [Comparison history](comparison.md) · [Container reconstru
 
 </div>
 
-<details><summary>Evidence provenance</summary><p>Source SHA-256: <code>5d2425e52003462cd0b4d2389fe4388c86b74bf042331688c7c19d62645ba596</code>. Metric values are generated from the linked native artifact. Recipe selection and strengths/limits are reviewed catalog annotations.</p><p>Recipe selector: <code>Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K12-Chunk1K</code>. Recipe SHA-256: <code>f0cbb351810e67d0dab326ba3fa54bb0fb1f0f51709e514d0ae9ba3b8639080b</code>.</p><p>Native identity: model=qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk1k; engine=sglang; gpu=Primary Node / RTX PRO 6000 Blackwell Max-Q / TP=1; measurement_protocol=capacity-v3</p></details>
+<details><summary>Evidence provenance</summary><p>Source SHA-256: <code>df868e28df0b8ae38ad985368e3d7423977f555b9994c9309d659bb5d55ed9b8</code>. Metric values are generated from the linked native artifact. Recipe selection and strengths/limits are reviewed catalog annotations.</p><p>Recipe selector: <code>Inferact/Qwen3.8-27B-NVFP4-PRO6000-DFlash2-K12-Chunk1K</code>. Recipe SHA-256: <code>f0cbb351810e67d0dab326ba3fa54bb0fb1f0f51709e514d0ae9ba3b8639080b</code>.</p><p>Native identity: model=qwen38-27b-inferact-nvfp4-pro6000-dflash2-k12-chunk1k; engine=sglang; gpu=Primary Node / RTX PRO 6000 Blackwell Max-Q / TP=1; measurement_protocol=capacity-v3</p></details>
 
 </article>
 
@@ -111,7 +111,7 @@ Reviewed 2026-09-05. [Comparison history](comparison.md) · [Container reconstru
 
 </div>
 
-<details><summary>Evidence provenance</summary><p>Source SHA-256: <code>8bce32e0bdae52c99c500f877014af7baca44227c167a35f5f889892e26ff521</code>. Metric values are generated from the linked native artifact. Recipe selection and strengths/limits are reviewed catalog annotations.</p><p>Recipe selector: <code>kelnei/Qwen3.8-27B-NVFP4-vLLM0271-MTP2-PRO6000</code>. Recipe SHA-256: <code>5d6efbce2f5d7570d147961195b94ecb551b01a3bf632c4f221149048c5cfe0a</code>.</p><p>Native identity: model=qwen38-27b-kelnei-nvfp4-vllm0271-mtp2; engine=vllm-0.27.1; gpu=Primary Node / RTX PRO 6000 Blackwell Max-Q / TP=1; measurement_protocol=capacity-v3</p></details>
+<details><summary>Evidence provenance</summary><p>Source SHA-256: <code>4e81ab5f553dda7eea2aa5f2fe1d9553f0815b3fa64edadf21dd5f085dd6a4b1</code>. Metric values are generated from the linked native artifact. Recipe selection and strengths/limits are reviewed catalog annotations.</p><p>Recipe selector: <code>kelnei/Qwen3.8-27B-NVFP4-vLLM0271-MTP2-PRO6000</code>. Recipe SHA-256: <code>5d6efbce2f5d7570d147961195b94ecb551b01a3bf632c4f221149048c5cfe0a</code>.</p><p>Native identity: model=qwen38-27b-kelnei-nvfp4-vllm0271-mtp2; engine=vllm-0.27.1; gpu=Primary Node / RTX PRO 6000 Blackwell Max-Q / TP=1; measurement_protocol=capacity-v3</p></details>
 
 </article>
 
@@ -146,7 +146,7 @@ Reviewed 2026-09-05. [Comparison history](comparison.md) · [Container reconstru
 
 </div>
 
-<details><summary>Evidence provenance</summary><p>Source SHA-256: <code>c85aa05b5e6c29b33ef84466b773bc39175fc3a3d720fb1c6105faa94d2882f5</code>. Metric values are generated from the linked native artifact. Recipe selection and strengths/limits are reviewed catalog annotations.</p><p>Recipe selector: <code>kelnei/Qwen3.8-27B-NVFP4-vLLM0271-NoSpec-PRO6000</code>. Recipe SHA-256: <code>a490aee8a48457651c6b2f32a54b5b73524c3a9b44631359710df2535d8fb6be</code>.</p><p>Native identity: model=qwen38-27b-kelnei-nvfp4-vllm0271-nospec; engine=vllm-0.27.1; gpu=Primary Node / RTX PRO 6000 Blackwell Max-Q / TP=1; measurement_protocol=capacity-v3</p></details>
+<details><summary>Evidence provenance</summary><p>Source SHA-256: <code>24e03aa1f10f729d27d5758e25d0d39a174730175ee6cfccfdd37f96078ced2c</code>. Metric values are generated from the linked native artifact. Recipe selection and strengths/limits are reviewed catalog annotations.</p><p>Recipe selector: <code>kelnei/Qwen3.8-27B-NVFP4-vLLM0271-NoSpec-PRO6000</code>. Recipe SHA-256: <code>a490aee8a48457651c6b2f32a54b5b73524c3a9b44631359710df2535d8fb6be</code>.</p><p>Native identity: model=qwen38-27b-kelnei-nvfp4-vllm0271-nospec; engine=vllm-0.27.1; gpu=Primary Node / RTX PRO 6000 Blackwell Max-Q / TP=1; measurement_protocol=capacity-v3</p></details>
 
 </article>
 
@@ -187,4 +187,4 @@ Reviewed 2026-09-05. [Comparison history](comparison.md) · [Container reconstru
 
 </div>
 
-Catalog SHA-256: `8f27603949ac4584df3c47cfa75e0ab8e6c97700b56aca566ca4f94c4e0a5235`.
+Catalog SHA-256: `fa82f917ff8c16f22bc95d4bda32fd35f96dc39b1b49c9e278a3a9b04c5b035b`.
