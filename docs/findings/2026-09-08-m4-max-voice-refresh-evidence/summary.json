@@ -1,0 +1,80 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-08-m4-max-voice-refresh",
+  "complete": true,
+  "identity": {
+    "baseline": "mlx-community/Qwen3-4B-Instruct-2507-4bit@50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "candidate": "mlx-community/Qwen3.5-9B-4bit@8b2b98c00a6b4d291155e4890773ca8f769aee53",
+    "incomplete": "mlx-community/Qwen3.8-27B-4bit@3e6447f082e89cc7f0bc6e5441afd38dfce760ff",
+    "audio_runtime": "Kokoro-FastAPI 0.8.2@58b08a915b3463cb76e376a2867e04f9d828f4df"
+  },
+  "workload": {
+    "spoken_suite": "spoken-assistant-bounded-v1, 12 cases x 3 repeats",
+    "capacity": "4K/C1, 10 strict controlled-output requests"
+  },
+  "measurement": {
+    "path": "direct loopback endpoints; synthesized audio round trips and bounded Realtime captures",
+    "warm_cold_state": "mixed cold/warm preflights; final deployed TTS capture is one warm session after repeated captures; state is retained per native artifact",
+    "sample_count": 10,
+    "statistics": [
+      "strict pass count",
+      "single-sample WER",
+      "end-to-end latency"
+    ]
+  },
+  "gates": [
+    "9B functional preflight 6/6 pass",
+    "9B spoken strict 33/36",
+    "9B capacity 0/10 strict",
+    "Qwen3.8 incomplete preflight 5/6 groups pass; shared-prefix tools 1/3",
+    "Qwen3.6-35B-A3B preflight 5/6 with strict JSON failure; spoken 36/36 and one SDK session pass",
+    "Kokoro 0.8.2 deployed with all four endpoints HTTP 200 and a fresh accepted SDK session"
+  ],
+  "headline_results": [
+    "9B diagnostic quality 9/12; patchformat 0/3",
+    "Qwen3.6 spoken suite 36/36 strict but separate JSON failure persists",
+    "baseline synthesized STT/TTS round trip: WER 0.0, 1896.72 ms",
+    "Kokoro 0.8.2 candidate round trip: WER 0.0, 2139.31 ms; final warm Realtime follow-up TTFA/E2E 353.53/2186.88 ms"
+  ],
+  "failures": [
+    "9B exact punctuation at spoken memory case",
+    "9B strict controlled output 0/10",
+    "Qwen3.8 shared-prefix tools 1/3; individual failed exception causes not retained",
+    "Qwen3.6 strict JSON response did not match required language/ok schema"
+  ],
+  "limitations": [
+    "No performance-eligible 9B capacity population",
+    "audio results are one synthesized sample each, not corpus proof",
+    "final deployed Realtime capture is N=1 warm and supports no speed ratio",
+    "Qwen3.6 SDK evidence is N=1 with differing warm/cache histories; strict JSON failure blocks qualification",
+    "reboot, physical microphone/OpenClaw, and actual rollback execution were not tested",
+    "no fully qualified LLM replacement"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion",
+      "deployed-audio-runtime-update"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "human review before any future LLM promotion"
+  },
+  "evidence": [
+    "sanitized-preflight.json",
+    "sanitized-quality-and-capacity.json",
+    "sanitized-voice-summary.json",
+    "feasibility-summary.json"
+  ],
+  "publication": {
+    "reviewed_at": "2026-09-12",
+    "historical_capture_date": "2026-09-08",
+    "runtime_code_included": false,
+    "current_live_state_verified": false,
+    "historical_evidence_author_model": "not recorded"
+  }
+}

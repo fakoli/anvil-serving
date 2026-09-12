@@ -1,0 +1,229 @@
+{
+  "schema": "anvil-serving.public-redaction-ledger/v1",
+  "policy": [
+    "Native JSON structures, numeric metrics, failed answers, validators and gate decisions are preserved.",
+    "Personal paths replaced by operator, product, model-cache and evidence placeholders; device identifiers replaced with apple-m4-max-laptop.",
+    "Real tailnet identity replaced with reserved 100.64.0.10.",
+    "SDK session metadata is retained; full event streams and WAV files remain private and are not included in this public set. Artifact paths in SDK summaries are placeholder references to those private originals.",
+    "No request was rerun or regraded for publication. Native schemas are unchanged."
+  ],
+  "files": [
+    {
+      "file": "baseline-preflight.json",
+      "source_sha256": "adca926e081156718786cf2e4765b7bd4fee5bf30db58dbd665bf3b8a34cb0ae",
+      "source_bytes": 6609,
+      "public_sha256": "adca926e081156718786cf2e4765b7bd4fee5bf30db58dbd665bf3b8a34cb0ae",
+      "public_bytes": 6609
+    },
+    {
+      "file": "candidate-preflight.json",
+      "source_sha256": "48de9e227a6abd65b32ed0508e4bc68b2dfb11866921a5fb1e524ada6a6cbdd0",
+      "source_bytes": 7577,
+      "public_sha256": "812a8d2ccd5bcff866f4c00a926545a24a68e4e4e1df6e4d6e4db75ead6ef9b6",
+      "public_bytes": 7546
+    },
+    {
+      "file": "qwen38-preflight.json",
+      "source_sha256": "9d7894b9a7a49f005c902fc7d0755e6712e859cbb6e3bafa516a3598368de9d2",
+      "source_bytes": 6338,
+      "public_sha256": "bc6cb2055c3e39b847ff8d97547b6b5ae727530a6185d7f3594bcd233b448812",
+      "public_bytes": 6307
+    },
+    {
+      "file": "qwen36-preflight.json",
+      "source_sha256": "206d2eecf22aeb08eed16d835b159f36206d57d6e135f2d032d19fa82e9d8816",
+      "source_bytes": 7652,
+      "public_sha256": "fc718c63a2c85a42faf76fbb827d2116650dc564b7124853cfe4cbd7bd3e61c3",
+      "public_bytes": 7621
+    },
+    {
+      "file": "baseline-spoken-quality.json",
+      "source_sha256": "f349f9da71365f0dcec4e8060ff34e68f08cfdb2b8abdb53e157093902515c2c",
+      "source_bytes": 52686,
+      "public_sha256": "a8c7192580456ac5dd2763cc919af3fca2e90a626f9cbc3eb57d2c94090aba4d",
+      "public_bytes": 52618
+    },
+    {
+      "file": "candidate-spoken-quality.json",
+      "source_sha256": "521ab896c011127401ff83c1e13abfaab380b92f8775c56031fe6262ec736a95",
+      "source_bytes": 53373,
+      "public_sha256": "dae8704b0cec405c8ffe4af1d61862bd236e4d48ea25722f860a17aa0b01fc0b",
+      "public_bytes": 53206
+    },
+    {
+      "file": "qwen36-spoken-quality.json",
+      "source_sha256": "45dac19fbf7367c1c5771cfe707d8bd6afbe3aeed9185eec2edf3dc2a9bad6c7",
+      "source_bytes": 52952,
+      "public_sha256": "ad51544c1dc66e24e80c7ca0a7056eedea1fa61243761f7f201ca1b867ec4779",
+      "public_bytes": 52785
+    },
+    {
+      "file": "candidate-quality.json",
+      "source_sha256": "f60319f8dbd9ed745411a75ec420aec275d90045f361b1941705f296bca71031",
+      "source_bytes": 27505,
+      "public_sha256": "d7b52b5a822e45335a74ea57ffa8b917e9d7b18bcd78c8315a5693c890aac4c7",
+      "public_bytes": 27474
+    },
+    {
+      "file": "candidate-capacity.json",
+      "source_sha256": "f70276536ba59d245041a98eb5c70431df45babae7e97d584cafa48d62366bd0",
+      "source_bytes": 35807,
+      "public_sha256": "e051f56882920f8be4701aa4891b2e6e1d3e7eb5d48de7b5ee42e5167b7ea4bd",
+      "public_bytes": 35776
+    },
+    {
+      "file": "baseline-voice.json",
+      "source_sha256": "ec93a50d5a596a9a1cc8ce53f29ab3a65ef1025e2d369c6c980aee48b75985e5",
+      "source_bytes": 2111,
+      "public_sha256": "ec93a50d5a596a9a1cc8ce53f29ab3a65ef1025e2d369c6c980aee48b75985e5",
+      "public_bytes": 2111
+    },
+    {
+      "file": "audio-roundtrip.json",
+      "source_sha256": "e2acdba9dbaa28009be42e807e6b0037467a6fbc3d223e8196a2296351fb78b2",
+      "source_bytes": 1339,
+      "public_sha256": "e2acdba9dbaa28009be42e807e6b0037467a6fbc3d223e8196a2296351fb78b2",
+      "public_bytes": 1339
+    },
+    {
+      "file": "baseline-live-realtime.session.json",
+      "source_sha256": "3dccc8c31897a840bb927eb0b9e41fa71149badd2b0e7d8169c9696986e50520",
+      "source_bytes": 2033,
+      "public_sha256": "95a67306c3e1a4442487324e25f633272e3a4df3f47e066e9c3934a8cd187907",
+      "public_bytes": 1693
+    },
+    {
+      "file": "candidate-realtime.session.json",
+      "source_sha256": "6636beaf9cf5c53c01ed55235e0f40111114d9fd404df1f6ab08b2c25a0e83ee",
+      "source_bytes": 2040,
+      "public_sha256": "08a413bae3e73c926b39648c9dad59e2101b97115a545ec58ed5bd9358d2d3df",
+      "public_bytes": 1701
+    },
+    {
+      "file": "qwen36-realtime.session.json",
+      "source_sha256": "e640a801c23b9f6c8b3321f7a86c603ccbafe6d85bd8440cc78d1114a16cdba7",
+      "source_bytes": 1994,
+      "public_sha256": "e0cd09c8e83474b0bebea069c9654e0cab58aa135e3c06b8d7a41c747a7ab0d1",
+      "public_bytes": 1655
+    },
+    {
+      "file": "feasibility-input.json",
+      "source_sha256": "3463328a6afc60853e8debd140b39d7eba3bb22a0d272d6284d338970a425746",
+      "source_bytes": 5618,
+      "public_sha256": "3463328a6afc60853e8debd140b39d7eba3bb22a0d272d6284d338970a425746",
+      "public_bytes": 5618
+    },
+    {
+      "file": "feasibility-result.json",
+      "source_sha256": "91d53e3fbe4a359610ab77502f97335bf934896205f47e781924fd7a8b03034d",
+      "source_bytes": 14912,
+      "public_sha256": "91d53e3fbe4a359610ab77502f97335bf934896205f47e781924fd7a8b03034d",
+      "public_bytes": 14912
+    },
+    {
+      "file": "runtime-identity.json",
+      "source_sha256": "84a3259f0ae4a61098bc93e2bfa3720511d534339d0ec189938b7215ea1a4508",
+      "source_bytes": 974,
+      "public_sha256": "84a3259f0ae4a61098bc93e2bfa3720511d534339d0ec189938b7215ea1a4508",
+      "public_bytes": 974
+    },
+    {
+      "file": "candidate-artifact-verification.json",
+      "source_sha256": "55854678a531874e8b5a77e4efc0f0ba853bcb5df54a13130ec69ee5d80bb177",
+      "source_bytes": 1932,
+      "public_sha256": "55854678a531874e8b5a77e4efc0f0ba853bcb5df54a13130ec69ee5d80bb177",
+      "public_bytes": 1932
+    },
+    {
+      "file": "qwen38-artifact-verification.json",
+      "source_sha256": "45231bd6171dd4ac10b5dbc3eed3719be1af280dafa4c07ee9ed7a95239d1818",
+      "source_bytes": 2692,
+      "public_sha256": "45231bd6171dd4ac10b5dbc3eed3719be1af280dafa4c07ee9ed7a95239d1818",
+      "public_bytes": 2692
+    },
+    {
+      "file": "qwen36-artifact-verification.json",
+      "source_sha256": "11836744b34058848b8b429fdc80b78fe3996472aa4277dff5c033630f1211af",
+      "source_bytes": 3133,
+      "public_sha256": "11836744b34058848b8b429fdc80b78fe3996472aa4277dff5c033630f1211af",
+      "public_bytes": 3133
+    },
+    {
+      "file": "spoken-assistant-suite.json",
+      "source_sha256": "42eee5ff10c4c052bc94b73ff86bed1308981c4e1fb78e7514751bafc0c53a05",
+      "source_bytes": 6199,
+      "public_sha256": "f8b0fde15e01b5db3fd9fd0e24aea606840360ebbeb52135f996433cb0e2242f",
+      "public_bytes": 6183
+    },
+    {
+      "file": "thinking-control.json",
+      "source_sha256": "fd6a70a7ae49ce6c7cce3e0be43b74ecec9bab585a6801dd2956db2c3f3b709a",
+      "source_bytes": 523,
+      "public_sha256": "fd6a70a7ae49ce6c7cce3e0be43b74ecec9bab585a6801dd2956db2c3f3b709a",
+      "public_bytes": 523
+    },
+    {
+      "file": "qwen36-thinking-control.json",
+      "source_sha256": "8aef6335aa0aa126ba1c513a98fc657bea8049a3ee57a8926b8350394f8e2eb3",
+      "source_bytes": 508,
+      "public_sha256": "8aef6335aa0aa126ba1c513a98fc657bea8049a3ee57a8926b8350394f8e2eb3",
+      "public_bytes": 508
+    },
+    {
+      "file": "final-restoration-receipt.json",
+      "source_sha256": "8ff709343079267d44dd7a327845149371dce766937dfc174695c49f768ee446",
+      "source_bytes": 2500,
+      "public_sha256": "8ff709343079267d44dd7a327845149371dce766937dfc174695c49f768ee446",
+      "public_bytes": 2500
+    },
+    {
+      "file": "upstream-version-review.json",
+      "source_sha256": "0db39a15d547f15f3829985239fd8ce9a745778fe7384cb8a9470e2616653d54",
+      "source_bytes": 437,
+      "public_sha256": "0db39a15d547f15f3829985239fd8ce9a745778fe7384cb8a9470e2616653d54",
+      "public_bytes": 437
+    },
+    {
+      "file": "audio-runtime-review.json",
+      "source_sha256": "0d328e054637642d9021d4cd2dcfd3df0b2fe7d1c0e11593a45852eb055eb21b",
+      "source_bytes": 14247,
+      "public_sha256": "0d328e054637642d9021d4cd2dcfd3df0b2fe7d1c0e11593a45852eb055eb21b",
+      "public_bytes": 14247
+    },
+    {
+      "file": "kokoro082-audio-roundtrip.json",
+      "source_sha256": "8d484606adc33159c8134699ec10a8ee23fd615cd95dfd21739426a211dce0ae",
+      "source_bytes": 1338,
+      "public_sha256": "8d484606adc33159c8134699ec10a8ee23fd615cd95dfd21739426a211dce0ae",
+      "public_bytes": 1338
+    },
+    {
+      "file": "kokoro082-realtime.session.json",
+      "source_sha256": "18644e3ac07586a872b053d70cc1c29e232277866b0a6dded9b6a64584b45d7e",
+      "source_bytes": 2011,
+      "public_sha256": "df6b8fb92bfc8cca901cf705f6ddbdf92d030fd3c1a84b1b149b74aa08d1096b",
+      "public_bytes": 1672
+    },
+    {
+      "file": "updated-live-final.session.json",
+      "source_sha256": "025f43fccceb79f9908914ad9f8772e69628ed583fbc19f8d13caaa3dfbd6041",
+      "source_bytes": 2030,
+      "public_sha256": "8536084171017a88b06d40130653fc54cd4e2fabcc93982391ce89a124b46d95",
+      "public_bytes": 1690
+    },
+    {
+      "file": "final-deployment-receipt.json",
+      "source_sha256": "baa30cff7ab46f6507501c27b88bdde543cd8b78bf7b545eceab29beff950715",
+      "source_bytes": 2047,
+      "public_sha256": "baa30cff7ab46f6507501c27b88bdde543cd8b78bf7b545eceab29beff950715",
+      "public_bytes": 2047
+    },
+    {
+      "file": "kokoro082-startup-failure.json",
+      "source_sha256": "2f0d7ff18fa3d40819ebd347ad989b3947c5284fc7857ff5bd1c7df30fc20223",
+      "source_bytes": 3422,
+      "public_sha256": "2ffc54cb95d212c0439917e60f435dd615c293ba6d470f8320a3a5a369544b54",
+      "public_bytes": 3491
+    }
+  ]
+}

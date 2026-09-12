@@ -64,6 +64,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-09-08 | [M4 Max local voice refresh](2026-09-08-m4-max-voice-refresh.md) | Historical same-host MLX candidate evidence published September 12: strict output/tool/JSON failures retained, no LLM promotion, separate Kokoro runtime-update receipt; no current deployment claim |
 | 2026-09-09 | [GLM-5.3-Flash ormandj v0.4.2 runtime qualification](2026-09-09-glm53-ormandj-v042.md) | Pinned candidate runtime has faster bounded 4K/120K matched cells and direct gates, but strict 60-request turnover remains 58/60 then 57/60; user selected `retain-baseline/no-promotion` and the exact baseline was restored |
 | 2026-09-09 | [GLM-5.3-Flash native NCCL P2P transport A/B](2026-09-09-glm53-native-nccl-p2p.md) | P2P enabled on the pinned native TP2/C1 profile after bounded 4K/120K latency evidence and routed restoration; both 380K strict capacity cells and the raw PowerShell diagnostic marker failure remain explicit limitations |
 | 2026-09-08 | [GLM-5.3-Flash native Linux versus Windows/WSL](2026-09-08-glm53-linux-wsl-comparison.md) | Same pinned model/image and physical dual-PRO pair; historical-style C1 decode +20.5–33.0% across 4K–380K targets, endurance 60/60 at +39.6%; coding 15/15, images 12/12, agentic 30/30, official SWE smoke 1/1; extended context 128/150 through 376,484 actual tokens with 9 empty and 13 incorrect answers; strict output and canary failures excluded, routed context/reasoning limits retained; whole-stack comparison, `no-promotion` |

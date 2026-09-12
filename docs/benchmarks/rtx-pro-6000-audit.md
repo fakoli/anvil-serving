@@ -174,6 +174,7 @@ local measurement).
 `docs/adr/0018-router-transition-safety.md`;
 `docs/adr/0034-fleet-control-plane-and-node-runtime-classes.md`;
 `docs/benchmarks/rtx-pro-6000-audit.md`;
+`docs/benchmarks/models/voice-llm-mlx.md`;
 `docs/findings/2026-07-12-green-context-mps-capability.md`;
 `docs/findings/2026-07-18-lifecycle-aware-wsl-cache-reclaim.md`;
 `docs/findings/2026-08-01-dual-pro-tp2-campaign-evidence/compatibility-brief.md`;

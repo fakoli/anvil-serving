@@ -1,0 +1,27 @@
+{
+  "command": "models recipes logs kokoro --registry <operator-config>/voice-tts-candidate-recipes.toml --topology <operator-config>/voice-tts-candidate-topology.toml --command-host host:apple-m4-max-laptop --command-runtime runtime:apple-m4-max-laptop-native --target host:apple-m4-max-laptop --transport local --tail 35",
+  "context": {
+    "command": "models-recipes-logs",
+    "command_host": "apple-m4-max-laptop",
+    "command_runtime": "apple-m4-max-laptop-native",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "apple-m4-max-laptop",
+    "execution_runtime": "apple-m4-max-laptop-native",
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": "voice-tts-candidate",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "apple-m4-max-laptop",
+    "resource_runtime": "apple-m4-max-laptop-native",
+    "target": "host:apple-m4-max-laptop",
+    "topology": "apple-m4-max-laptop-benchmark-worker",
+    "transport": "local"
+  },
+  "data": "    return await anext(self.gen)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"<operator-home>/voice/Kokoro-FastAPI-v0.8.2/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 240, in merged_lifespan\n    async with original_context(app) as maybe_original_state:\n               ^^^^^^^^^^^^^^^^^^^^^\n  File \"<operator-home>/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py\", line 210, in __aenter__\n    return await anext(self.gen)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"<operator-home>/voice/Kokoro-FastAPI-v0.8.2/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 240, in merged_lifespan\n    async with original_context(app) as maybe_original_state:\n               ^^^^^^^^^^^^^^^^^^^^^\n  File \"<operator-home>/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py\", line 210, in __aenter__\n    return await anext(self.gen)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"<operator-home>/voice/Kokoro-FastAPI-v0.8.2/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 240, in merged_lifespan\n    async with original_context(app) as maybe_original_state:\n               ^^^^^^^^^^^^^^^^^^^^^\n  File \"<operator-home>/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py\", line 210, in __aenter__\n    return await anext(self.gen)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"<operator-home>/voice/Kokoro-FastAPI-v0.8.2/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 240, in merged_lifespan\n    async with original_context(app) as maybe_original_state:\n               ^^^^^^^^^^^^^^^^^^^^^\n  File \"<operator-home>/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py\", line 210, in __aenter__\n    return await anext(self.gen)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"<operator-home>/voice/Kokoro-FastAPI-v0.8.2/api/src/main.py\", line 75, in lifespan\n    device, model, voicepack_count = await model_manager.initialize_with_warmup(\n                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<operator-home>/voice/Kokoro-FastAPI-v0.8.2/api/src/inference/model_manager.py\", line 105, in initialize_with_warmup\n    exit(0)\n  File \"<frozen _sitebuiltins>\", line 26, in __call__\nSystemExit: 0\n\nERROR:    Application startup failed. Exiting.\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

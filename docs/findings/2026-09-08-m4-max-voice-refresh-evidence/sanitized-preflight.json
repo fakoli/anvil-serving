@@ -1,0 +1,29 @@
+{
+  "schema": "anvil-serving.voice-refresh-preflight-summary/v1",
+  "derived_from_native_schemas": ["preflight/v2"],
+  "redaction": "Model snapshot paths were replaced with <model-snapshot>; endpoint is loopback. Response bodies were omitted except for bounded validation detail.",
+  "baseline": {
+    "model": "mlx-community/Qwen3-4B-Instruct-2507-4bit@50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "runtime": {"engine": "mlx-lm", "version": "0.31.3", "mlx": "0.31.2"},
+    "passed": false,
+    "checks": {"smoke": "pass", "json": "pass", "tools": "0/3 fail", "streaming-tools": "pass", "tool-result": "pass"}
+  },
+  "candidate": {
+    "model": "mlx-community/Qwen3.5-9B-4bit@8b2b98c00a6b4d291155e4890773ca8f769aee53",
+    "served_model": "<model-snapshot>",
+    "thinking": {"mode": "disabled", "chat_template_kwargs": {"enable_thinking": false}},
+    "passed": true,
+    "checks": {"smoke": "pass", "json": "pass", "needle_at_4096": "pass", "tools": "3/3 pass", "streaming-tools": "pass", "tool-result": "pass"}
+  },
+  "qwen38_incomplete": {
+    "model": "mlx-community/Qwen3.8-27B-4bit@3e6447f082e89cc7f0bc6e5441afd38dfce760ff",
+    "served_model": "<model-snapshot>",
+    "status": "completed bounded compatibility evidence; preliminary preflight must not be treated as a qualification decision"
+  },
+  "qwen36_incomplete": {
+    "model": "mlx-community/Qwen3.6-35B-A3B-4bit@38740b847e4cb78f352aba30aa41c76e08e6eb46",
+    "passed": false,
+    "checks": {"smoke": "pass", "json": "fail: exact model answer did not match required language/ok schema", "needle_at_4096": "pass in 2.5 s", "tools": "3/3 pass", "streaming-tools": "pass in 0.7 s", "tool-result": "pass in 0.8 s"},
+    "status": "preflight 5/6 groups; spoken 36/36 strict and one SDK voice session completed separately"
+  }
+}
