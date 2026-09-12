@@ -405,7 +405,8 @@ vllm:prefix_cache_hits_total{model_name="qwen35-122b-a10b-nvfp4",engine="1"} 15
     }
 
 
-def test_engine_metrics_aggregates_sglang_data_parallel_schedulers_without_tp_pp_duplicates():
+@pytest.mark.parametrize("engine", ["sglang", "SGLang-v0.4.3-custom"])
+def test_engine_metrics_aggregates_sglang_data_parallel_schedulers_without_tp_pp_duplicates(engine):
     payload = b"""\
 sglang:num_running_reqs{model_name="qwen35-122b-a10b-nvfp4",dp_rank="0",tp_rank="0",pp_rank="0"} 2
 sglang:num_running_reqs{model_name="qwen35-122b-a10b-nvfp4",dp_rank="0",tp_rank="1",pp_rank="0"} 2
@@ -439,7 +440,7 @@ vllm:num_requests_running{model_name="qwen35-122b-a10b-nvfp4"} 100
             return payload
 
     result = fetch_engine_metrics(
-        replace(_tier(), engine="sglang"), env={}, opener=lambda *_args, **_kwargs: _Response()
+        replace(_tier(), engine=engine), env={}, opener=lambda *_args, **_kwargs: _Response()
     )
     assert result == MetricsSnapshot("available", {
         "requests_running": 5.0,
@@ -451,7 +452,8 @@ vllm:num_requests_running{model_name="qwen35-122b-a10b-nvfp4"} 100
     })
 
 
-def test_engine_metrics_normalizes_llamacpp_and_marks_unknown_engines_unavailable():
+@pytest.mark.parametrize("engine", ["llamacpp", "llama.cpp-b12345", "llama-cpp+custom"])
+def test_engine_metrics_normalizes_llamacpp_and_marks_unknown_engines_unavailable(engine):
     payload = b"""\
 llamacpp:requests_processing 2
 llamacpp:requests_deferred 1
@@ -477,7 +479,7 @@ llamacpp:predicted_tokens_seconds 48.5
         seen["url"] = request.full_url
         return _Response()
 
-    tier = replace(_tier(), engine="llamacpp")
+    tier = replace(_tier(), engine=engine)
     result = fetch_engine_metrics(tier, env={}, opener=opener)
     assert result == MetricsSnapshot("available", {
         "requests_running": 2.0,

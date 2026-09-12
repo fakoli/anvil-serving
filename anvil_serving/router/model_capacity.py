@@ -536,6 +536,9 @@ def fetch_engine_metrics(
 ) -> MetricsSnapshot:
     """Read documented metrics for the tier's declared engine, bounded once."""
     engine = tier.engine.casefold() if isinstance(tier.engine, str) else ""
+    # Build/version suffixes are descriptive metadata, not a different adapter.
+    family = re.match(r"^(vllm|sglang|llamacpp|llama\.cpp|llama-cpp)(?:$|[-+@:/])", engine)
+    engine = family.group(1) if family is not None else ""
     if engine == "vllm":
         metrics, llama_router = _VLLM_METRICS, False
     elif engine == "sglang":
