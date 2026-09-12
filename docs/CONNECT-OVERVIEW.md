@@ -165,9 +165,17 @@ sudo anvil-serving connect edge-apply --manifest <PATH> --edge-config <PATH> --c
 
 A repeated apply converges without API writes; ingress rules for hosts not
 declared in the manifest are preserved untouched, and the apply verifies the
-tunnel is reporting an active connector before it reports success. API access
-uses the environment reference only — the token value never appears in
-configuration, output, or evidence.
+tunnel is reporting an active connector before it reports success. Withdrawn
+hosts are handled deliberately: the plan reports every host this tunnel still
+routes that the declaration no longer declares (ingress rules owned by this
+family's origin service and CNAMEs pointing at this tunnel), and
+`connect edge-apply --retire-orphans --confirm` retires them — removing the
+rule and deleting the record — while routes owned by other systems are never
+touched. Every completed mutation is tracked: if a later step fails, the error
+reports exactly what the edge already received and which step failed, so a
+partial application is always visible and reconcilable by repeating the apply.
+API access uses the environment reference only — the token value never appears
+in configuration, output, or evidence.
 
 ## Where the boundary sits
 

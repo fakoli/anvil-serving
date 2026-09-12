@@ -91,15 +91,26 @@ class ScriptedCloudflare:
             self.ingress = json.loads(body)["config"]["ingress"]  # type: ignore[union-attr]
             return {"success": True, "result": self.ingress}
         if "/dns_records" in url and method == "GET":
-            name = url.split("name=")[1].split("&")[0]
-            host = name.replace("%2F", "/").replace("%40", "@")
-            found = self.dns.get(host)
-            return {"success": True, "result": [found] if found else []}
+            from urllib.parse import parse_qs, urlparse
+            query = parse_qs(urlparse(url).query)
+            wanted_name = query.get("name", [None])[0]
+            wanted_content = query.get("content", [None])[0]
+            matches = [
+                record for record in self.dns.values()
+                if (wanted_name is None or record.get("name") == wanted_name)
+                and (wanted_content is None or record.get("content") == wanted_content)
+            ]
+            return {"success": True, "result": matches}
         if "/dns_records" in url and method == "POST":
             payload = json.loads(body)  # type: ignore[union-attr]
             self.counter += 1
             self.dns[payload["name"]] = {"id": f"rec{self.counter}", **payload}
             return {"success": True, "result": self.dns[payload["name"]]}
+        if "/dns_records/" in url and method == "DELETE":
+            record_id = url.rsplit("/", 1)[1]
+            for name in [name for name, record in self.dns.items() if record.get("id") == record_id]:
+                del self.dns[name]
+            return {"success": True, "result": {"id": record_id}}
         if "/dns_records/" in url and method == "PUT":
             payload = json.loads(body)  # type: ignore[union-attr]
             record_id = url.rsplit("/", 1)[1]
@@ -272,3 +283,88 @@ def test_config_carries_only_the_token_env_reference(tmp_path: Path) -> None:
     names = {item.name for item in dataclasses.fields(config)}
     assert not names & {"token", "api_token", "secret", "key"}
     assert config.api_token_env == "ANVIL_CLOUDFLARE_API_TOKEN"
+
+# --- Greptile finding 1: withdrawn hosts must be reported and retired --------
+
+
+def test_plan_reports_withdrawn_hosts_as_orphans(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    old_manifest = _manifest(tmp_path, ("a.example.test", "old.example.test"))
+    api = ScriptedCloudflare(ingress=[])
+    edge.apply(config, old_manifest, confirm=True, fetch=api)
+    renamed_manifest = _manifest(tmp_path, ("a.example.test", "b.example.test"))
+    report = edge.plan(config, renamed_manifest, fetch=api)
+    assert report["orphans"]["ingress_hosts"] == ["old.example.test"]
+    assert report["orphans"]["dns_hosts"] == ["old.example.test"]
+    assert report["orphans"]["retire_with"].endswith("--retire-orphans --confirm")
+
+
+def test_withdrawn_host_keeps_routing_until_deliberate_retirement(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    old_manifest = _manifest(tmp_path, ("a.example.test", "old.example.test"))
+    api = ScriptedCloudflare(ingress=[])
+    edge.apply(config, old_manifest, confirm=True, fetch=api)
+    renamed_manifest = _manifest(tmp_path, ("a.example.test", "b.example.test"))
+    result = edge.apply(config, renamed_manifest, confirm=True, fetch=api)
+    assert result["orphans_retired"] is False
+    routes = [rule.get("hostname") for rule in api.ingress if isinstance(rule, dict)]
+    assert "old.example.test" in routes  # still routed by default
+    assert api.dns["old.example.test"]["content"].endswith("cfargotunnel.com")
+    retired = edge.apply(config, renamed_manifest, confirm=True, retire_orphans=True, fetch=api)
+    assert "ingress_orphans_retired" in retired["applied"]
+    assert "dns_orphan_deleted:old.example.test" in retired["applied"]
+    assert "old.example.test" not in [rule.get("hostname") for rule in api.ingress if isinstance(rule, dict)]
+    assert "old.example.test" not in api.dns
+
+
+def test_retirement_never_touches_foreign_service_rules(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    manifest = _manifest(tmp_path, ("a.example.test",))
+    legacy = {"hostname": "legacy.example.test", "service": "http://localhost:8446"}
+    api = ScriptedCloudflare(ingress=[legacy], dns={
+        "legacy.example.test": {"id": "rec9", "name": "legacy.example.test",
+                                 "content": "someone-elses-tunnel.cfargotunnel.com", "proxied": True},
+    })
+    result = edge.apply(config, manifest, confirm=True, retire_orphans=True, fetch=api)
+    assert legacy in api.ingress  # different origin service: not ours
+    assert api.dns["legacy.example.test"]["content"].startswith("someone-elses-tunnel")
+
+
+def test_orphan_ownership_requires_zone_membership(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    manifest = _manifest(tmp_path, ("a.example.test",))
+    foreign_zone = {"hostname": "host.other-zone.example", "service": config.origin_service}
+    api = ScriptedCloudflare(ingress=[foreign_zone])
+    report = edge.plan(config, manifest, fetch=api)
+    assert report["orphans"]["ingress_hosts"] == []  # outside the zone: never ours
+
+
+# --- Greptile finding 2: partial mutations must be reported on failure -------
+
+
+def test_dns_failure_reports_completed_tunnel_write(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    manifest = _manifest(tmp_path, ("a.example.test",))
+
+    class TunnelOkDnsFail(ScriptedCloudflare):
+        def __call__(self, url: str, method: str, body: bytes | None, token: str) -> object:
+            if "/dns_records" in url and method == "POST":
+                raise OSError("dns write refused")
+            return super().__call__(url, method, body, token)
+
+    api = TunnelOkDnsFail(ingress=[])
+    with pytest.raises(EdgeError) as raised:
+        edge.apply(config, manifest, confirm=True, fetch=api)
+    assert raised.value.applied == ("tunnel_ingress",)
+    assert raised.value.failed_step == "edge apply"
+    assert "tunnel_ingress" in str(raised.value)
+
+
+def test_connector_failure_reports_all_completed_mutations(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    manifest = _manifest(tmp_path, ("a.example.test",))
+    api = ScriptedCloudflare(ingress=[], tunnel_status="down")
+    with pytest.raises(EdgeError) as raised:
+        edge.apply(config, manifest, confirm=True, fetch=api)
+    assert raised.value.failed_step == "connector_verification"
+    assert set(raised.value.applied) == {"tunnel_ingress", "dns:a.example.test"}

@@ -78,6 +78,7 @@ def commands() -> CommandNode:
             )),
             _command("edge-apply", "Apply declared DNS records and tunnel ingress rules through Cloudflare.", service=False, mutation=True, extra=(
                 _option("--edge-config", summary="Private edge-publishing configuration; defaults to the operator-home connect/edge-cloudflare.json.", value_name="PATH"),
+                _option("--retire-orphans", summary="Retire DNS and ingress state for hosts the declaration withdrew; the default reports them and leaves them routed."),
             )),
         ),
         docs_anchor="docs/cli/connect.md",

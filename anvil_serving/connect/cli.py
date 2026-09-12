@@ -45,7 +45,12 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
                 "--edge-config", action=_Once,
                 help="Private edge-publishing configuration; defaults to the operator-home connect/edge-cloudflare.json.",
             )
-        elif action not in {"render", "admin", "backup", "restore", "migration"}:
+        if action == "edge-apply":
+            leaf.add_argument(
+                "--retire-orphans", action="store_true",
+                help="Retire DNS records and ingress rules for hosts the declaration withdrew; the default reports them and leaves them routed.",
+            )
+        if action not in {"render", "admin", "backup", "restore", "migration", "up", "edge-status", "edge-apply"}:
             leaf.add_argument("--service", required=action not in {"validate", "status", "doctor"}, action=_Once)
         if action in {"render", "up", "down", "init", "admin", "keygen", "backup", "restore", "edge-apply"}:
             leaf.add_argument("--dry-run", action="store_true")
@@ -197,9 +202,15 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         elif action == "edge-apply":
             from .edge import EdgeError, apply as edge_apply, load_config
             try:
-                result = edge_apply(load_config(getattr(args, "edge_config", None)), args.manifest, confirm=apply)
+                result = edge_apply(
+                    load_config(getattr(args, "edge_config", None)), args.manifest,
+                    confirm=apply, retire_orphans=bool(getattr(args, "retire_orphans", False)),
+                )
             except EdgeError as exc:
-                return CommandResult(error=OperatorError(str(exc), code="connect_edge_invalid"))
+                return CommandResult(
+                    error=OperatorError(str(exc), code="connect_edge_invalid"),
+                    data={"applied": list(exc.applied), "failed_step": exc.failed_step} if exc.applied else None,
+                )
         else:
             result = manage.keygen(args.manifest, target, output_path=args.output, apply=apply)
         return CommandResult(data=result)

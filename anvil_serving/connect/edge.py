@@ -39,6 +39,13 @@ _HOSTNAME_RE = re.compile(
 class EdgeError(ValueError):
     """The Cloudflare edge declaration, credentials, or state is not usable."""
 
+    def __init__(
+        self, message: str, *, applied: tuple[str, ...] = (), failed_step: str | None = None
+    ) -> None:
+        super().__init__(message)
+        self.applied = applied
+        self.failed_step = failed_step
+
 
 def _absolute_path(value: object, label: str) -> Path:
     if type(value) is not str:
@@ -205,6 +212,10 @@ def _ingress_rule(
     return {"hostname": host, "service": config.origin_service, "originRequest": origin_request}
 
 
+def _owned_zone_host(host: str, zone_name: str) -> bool:
+    return host == zone_name or host.endswith("." + zone_name)
+
+
 def _managed_ingress(
     config: EdgeConfig, hosts: tuple[str, ...], current: Mapping[str, object]
 ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
@@ -229,6 +240,61 @@ def _managed_ingress(
         catch_all = {"service": "http_status:404"}
     desired = [_ingress_rule(config, host) for host in hosts] + preserved + [catch_all]
     return desired, preserved
+
+
+def _ingress_orphans(
+    config: EdgeConfig, hosts: tuple[str, ...], current: Mapping[str, object]
+) -> tuple[str, ...]:
+    """Hosts this tunnel still routes that the closed declaration withdrew.
+
+    Ownership requires the configured zone AND this family's origin service, so
+    routes owned by other systems are never reported or retired.
+    """
+    managed = set(hosts)
+    rules = current.get("ingress")
+    orphans: set[str] = set()
+    if isinstance(rules, list):
+        for rule in rules:
+            if not isinstance(rule, Mapping):
+                continue
+            hostname = rule.get("hostname")
+            if not isinstance(hostname, str) or not hostname:
+                continue
+            lowered = hostname.lower()
+            if lowered in managed or not _owned_zone_host(lowered, config.zone_name):
+                continue
+            if rule.get("service") != config.origin_service:
+                continue
+            orphans.add(lowered)
+    return tuple(sorted(orphans))
+
+
+def _dns_orphans(
+    opener: Callable[[str, str, str | None], object],
+    config: EdgeConfig,
+    zone_id: str,
+    hosts: tuple[str, ...],
+) -> tuple[tuple[str, ...], list[dict[str, object]]]:
+    """CNAME records still pointing at this tunnel for withdrawn hosts."""
+    target = f"{config.tunnel_id}.cfargotunnel.com"
+    records = _fetch_json(
+        opener, config, "GET",
+        f"/zones/{zone_id}/dns_records?type=CNAME&content={urllib.parse.quote(target, safe='')}&per_page=100",
+    )
+    managed = set(hosts)
+    orphans: list[dict[str, object]] = []
+    for record in records or []:
+        if not isinstance(record, Mapping):
+            continue
+        name = str(record.get("name", "")).lower()
+        if not name or name in managed or not _owned_zone_host(name, config.zone_name):
+            continue
+        orphans.append({
+            "id": str(record.get("id", "")),
+            "name": name,
+            "content": str(record.get("content", "")),
+        })
+    return tuple(sorted({str(item["name"]) for item in orphans})), orphans
 
 
 def _dns_state(
@@ -271,7 +337,7 @@ def plan(
 
     data = manage.read_manifest(manifest_path)
     hosts = published_hosts(data)
-    outside = [host for host in hosts if not host.endswith("." + config.zone_name)]
+    outside = [host for host in hosts if not _owned_zone_host(host, config.zone_name)]
     if outside:
         raise EdgeError(f"declared hosts outside the configured zone {config.zone_name}: {outside}")
     fetch = fetch or _default_opener
@@ -283,7 +349,10 @@ def plan(
     current_config = _fetch_json(
         fetch, config, "GET", f"/accounts/{config.account_id}/cfd_tunnel/{config.tunnel_id}/configurations"
     )
-    desired, preserved = _managed_ingress(config, hosts, current_config if isinstance(current_config, Mapping) else {})
+    current_mapping = current_config if isinstance(current_config, Mapping) else {}
+    desired, preserved = _managed_ingress(config, hosts, current_mapping)
+    ingress_orphans = _ingress_orphans(config, hosts, current_mapping)
+    dns_orphan_hosts, _dns_orphan_records = _dns_orphans(fetch, config, zone_id, hosts)
     dns_state = _dns_state(fetch, config, zone_id, hosts)
     ingress_changed = desired != (
         current_config.get("ingress") if isinstance(current_config, Mapping) else None
@@ -302,6 +371,11 @@ def plan(
             "preserved_rules": len(preserved),
             "changed": ingress_changed,
         },
+        "orphans": {
+            "ingress_hosts": list(ingress_orphans),
+            "dns_hosts": list(dns_orphan_hosts),
+            "retire_with": "edge-apply --retire-orphans --confirm",
+        },
     }
 
 
@@ -310,9 +384,16 @@ def apply(
     manifest_path: str | os.PathLike[str],
     *,
     confirm: bool,
+    retire_orphans: bool = False,
     fetch: Callable[[str, str, str | None], object] | None = None,
 ) -> dict[str, object]:
-    """Apply exactly the declared edge difference; idempotent on repetition."""
+    """Apply exactly the declared edge difference; idempotent on repetition.
+
+    Every completed mutation is tracked so a later failure reports what the
+    edge already received (the may-have-executed pattern). Withdrawn hosts are
+    retired only with ``retire_orphans=True``; the default leaves them routed
+    and reported for a deliberate follow-up.
+    """
 
     report = plan(config, manifest_path, fetch=fetch)
     if not confirm:
@@ -320,47 +401,92 @@ def apply(
     fetch = fetch or _default_opener
     hosts = tuple(report["ingress"]["managed_hosts"])  # type: ignore[index]
     applied: list[str] = []
-    if report["ingress"]["changed"]:  # type: ignore[index]
-        current_config = _fetch_json(
-            fetch, config, "GET", f"/accounts/{config.account_id}/cfd_tunnel/{config.tunnel_id}/configurations"
+
+    def _failed(step: str, exc: Exception) -> EdgeError:
+        return EdgeError(
+            f"{step} failed after applying: {', '.join(applied) or 'nothing'}; original error: {exc}",
+            applied=tuple(applied),
+            failed_step=step,
         )
-        desired, _ = _managed_ingress(
-            config, hosts, current_config if isinstance(current_config, Mapping) else {}
+
+    try:
+        ingress_change_needed = bool(report["ingress"]["changed"]) or (
+            retire_orphans and bool(report["orphans"]["ingress_hosts"])
         )
-        _fetch_json(
-            fetch, config, "PUT",
-            f"/accounts/{config.account_id}/cfd_tunnel/{config.tunnel_id}/configurations",
-            {"config": {"ingress": desired}},
-        )
-        applied.append("tunnel_ingress")
-    zone_id = str(_fetch_json(
-        fetch, config, "GET", f"/zones?name={urllib.parse.quote(config.zone_name, safe='')}"
-    )[0].get("id", ""))
-    target = f"{config.tunnel_id}.cfargotunnel.com"
-    for host in hosts:
-        action = report["dns"][host]  # type: ignore[index]
-        if action == "unchanged":
-            continue
-        if action == "create":
-            _fetch_json(fetch, config, "POST", f"/zones/{zone_id}/dns_records", {
-                "type": "CNAME", "name": host, "content": target, "proxied": True, "ttl": 1,
-            })
-        else:
-            records = _fetch_json(
-                fetch, config, "GET",
-                f"/zones/{zone_id}/dns_records?type=CNAME&name={urllib.parse.quote(host, safe='')}&per_page=5",
+        if ingress_change_needed:  # type: ignore[index]
+            current_config = _fetch_json(
+                fetch, config, "GET", f"/accounts/{config.account_id}/cfd_tunnel/{config.tunnel_id}/configurations"
             )
-            record_id = str(records[0].get("id", ""))
-            _fetch_json(fetch, config, "PUT", f"/zones/{zone_id}/dns_records/{record_id}", {
-                "type": "CNAME", "name": host, "content": target, "proxied": True, "ttl": 1,
-            })
-        applied.append(f"dns:{host}")
+            current_mapping = current_config if isinstance(current_config, Mapping) else {}
+            desired, _ = _managed_ingress(config, hosts, current_mapping)
+            if retire_orphans:
+                orphan_rules = set(report["orphans"]["ingress_hosts"])  # type: ignore[index]
+                preserved_live = [
+                    rule for rule in _managed_ingress(config, hosts, current_mapping)[1]
+                    if not (
+                        isinstance(rule, Mapping)
+                        and isinstance(rule.get("hostname"), str)
+                        and rule["hostname"].lower() in orphan_rules
+                        and rule.get("service") == config.origin_service
+                    )
+                ]
+                desired = [_ingress_rule(config, host) for host in hosts] + preserved_live
+                catch_all = [
+                    rule for rule in (current_mapping.get("ingress") or [])
+                    if isinstance(rule, Mapping) and "hostname" not in rule
+                ][-1:]
+                desired.extend(catch_all)
+                if not desired or desired[-1].get("hostname") is not None:
+                    desired.append({"service": "http_status:404"})
+            _fetch_json(
+                fetch, config, "PUT",
+                f"/accounts/{config.account_id}/cfd_tunnel/{config.tunnel_id}/configurations",
+                {"config": {"ingress": desired}},
+            )
+            applied.append("tunnel_ingress")
+            if retire_orphans and report["orphans"]["ingress_hosts"]:  # type: ignore[index]
+                applied.append("ingress_orphans_retired")
+        zone_id = str(_fetch_json(
+            fetch, config, "GET", f"/zones?name={urllib.parse.quote(config.zone_name, safe='')}"
+        )[0].get("id", ""))
+        target = f"{config.tunnel_id}.cfargotunnel.com"
+        for host in hosts:
+            action = report["dns"][host]  # type: ignore[index]
+            if action == "unchanged":
+                continue
+            if action == "create":
+                _fetch_json(fetch, config, "POST", f"/zones/{zone_id}/dns_records", {
+                    "type": "CNAME", "name": host, "content": target, "proxied": True, "ttl": 1,
+                })
+            else:
+                records = _fetch_json(
+                    fetch, config, "GET",
+                    f"/zones/{zone_id}/dns_records?type=CNAME&name={urllib.parse.quote(host, safe='')}&per_page=5",
+                )
+                record_id = str(records[0].get("id", ""))
+                _fetch_json(fetch, config, "PUT", f"/zones/{zone_id}/dns_records/{record_id}", {
+                    "type": "CNAME", "name": host, "content": target, "proxied": True, "ttl": 1,
+                })
+            applied.append(f"dns:{host}")
+        if retire_orphans:
+            _, orphan_records = _dns_orphans(fetch, config, zone_id, hosts)
+            for record in orphan_records:
+                _fetch_json(fetch, config, "DELETE", f"/zones/{zone_id}/dns_records/{record['id']}")
+                applied.append(f"dns_orphan_deleted:{record['name']}")
+    except EdgeError as exc:
+        if exc.applied or exc.failed_step:
+            raise
+        raise _failed("edge apply", exc) from exc
+    except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+        raise _failed("edge apply", exc) from exc
     verified = plan(config, manifest_path, fetch=fetch)
     tunnel = verified["tunnel"]  # type: ignore[index]
     if tunnel["status"] != "connected" or not tunnel["connections"]:  # type: ignore[index]
         raise EdgeError(
             "edge applied but the tunnel is not reporting an active connector; "
-            "verify the cloudflared agent is running with this tunnel's token"
+            "verify the cloudflared agent is running with this tunnel's token",
+            applied=tuple(applied),
+            failed_step="connector_verification",
         )
     return {
         "schema": "anvil-connect.edge-apply/v1",
@@ -368,5 +494,6 @@ def apply(
         "preserved_rules": verified["ingress"]["preserved_rules"],  # type: ignore[index]
         "tunnel": tunnel,
         "dns": verified["dns"],  # type: ignore[index]
+        "orphans_retired": bool(retire_orphans),
         "converged": not applied,
     }

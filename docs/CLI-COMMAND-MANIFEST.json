@@ -42290,6 +42290,15 @@
         },
         {
           "flags": [
+            "--retire-orphans"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Retire DNS and ingress state for hosts the declaration withdrew; the default reports them and leaves them routed.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--dry-run"
           ],
           "output_policy": null,

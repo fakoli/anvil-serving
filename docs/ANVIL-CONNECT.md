@@ -165,11 +165,21 @@ connector before it reports success. Hosts declared outside the configured
 zone are rejected, and the token is read from the environment reference only —
 it never appears in output, configuration, or evidence.
 
-Rules of the road: apply after every manifest change that adds or renames a
-published host (a `render`/`up` alone does not touch Cloudflare), keep the
-token scoped to the two permissions above plus reads, and treat a degraded
-`edge-status` tunnel status as an agent problem first (the cloudflared unit's
-journal) before suspecting the API.
+Retirement is deliberate: a host removed from the declaration keeps routing
+until it is retired. `edge-status` reports those orphans (ingress rules owned
+by this family's origin service and CNAMEs pointing at this tunnel, both
+restricted to the configured zone), and
+`edge-apply --retire-orphans --confirm` removes exactly that state — routes
+owned by other systems are never reported or retired. If an apply fails part
+way (a DNS write, or connector verification), the error carries the list of
+already-completed mutations and the failed step, so a partial application is
+visible and repaired by repeating the apply. Rules of the road: apply after
+every manifest change that adds, renames, or removes a published host (a
+`render`/`up` alone does not touch Cloudflare — renames and removals additionally
+want `edge-apply --retire-orphans --confirm`), keep the token scoped to the
+two permissions above plus reads, and treat a degraded `edge-status` tunnel
+status as an agent problem first (the cloudflared unit's journal) before
+suspecting the API.
 
 ## Recovery
 
