@@ -92,9 +92,9 @@ recognizes these public Prometheus metric families without changing selection:
 
 | Engine | Normalized observations when exposed |
 | --- | --- |
-| vLLM | Running/waiting requests, KV utilization, prompt/completion counters, prefix-cache hits and queries. |
+| vLLM | Running/waiting requests, KV utilization, completion counters, prefix-cache hits and queries. |
 | SGLang | Running/waiting requests, token/KV utilization, generation throughput, cache hit rate and available counters. |
-| llama.cpp | Processing/deferred requests, KV utilization, prompt/prediction counters and throughput. |
+| llama.cpp | Processing/deferred requests, KV utilization, prediction counters and throughput. |
 
 Separate scheduler replicas are aggregated; tensor/pipeline-rank copies are
 deduplicated. Missing or conflicting measurements remain unknown. Counters
