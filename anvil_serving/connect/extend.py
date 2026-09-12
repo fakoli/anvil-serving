@@ -240,18 +240,17 @@ def _admin_exchange(
             request_path.unlink()
         except FileNotFoundError:
             pass
-        if output_path is not None and output_name is None:
+        if output_path is not None and output_path.exists():
             try:
                 output_path.unlink()
             except FileNotFoundError:
                 pass
     if output_path is not None and output_path.is_file():
         value = json.loads(output_path.read_text(encoding="utf-8"))
-        if output_name is None:
-            try:
-                output_path.unlink()
-            except FileNotFoundError:
-                pass
+        try:
+            output_path.unlink()
+        except FileNotFoundError:
+            pass
         return value
     return result
 
@@ -339,16 +338,23 @@ def extend(
     connector_id = target.name or ""
     connector_unit = _target_units((target,))[0]
     root, system_root = Path(data["config_root"]), Path(unit_root)
-    checked = manage._validate_data(data, target, runner)
     with manage._deployment_lock(root):
+        # Re-plan inside the lock: another activation may have converged the
+        # same extension while this call waited for the deployment lock.
+        preview = extend_plan(data, target)
+        if not preview["extendable"]:
+            result.update({"applied": False, "already_extended": True})
+            return result
         report = plan(data, root)
         if report["state"] not in {"update", "current"}:
             raise ExtendError("rendered ownership is not safe to extend")
+        checked = manage._validate_data(data, target, runner)
         prior_connector = manage._unit_state(runner, connector_unit)
         gateway_units = _target_units((Target("gateway"),))
         prior_gateway = {unit: manage._unit_state(runner, unit) for unit in gateway_units}
         transaction: _Activation | None = None
         fingerprint: str | None = None
+        redeemed = False
         try:
             staged = stage(data, root)
             transaction = _extend_activate_gateway(
@@ -356,25 +362,38 @@ def extend(
                 unit_root=system_root,
             )
             for unit in gateway_units:
-                active, _ = prior_gateway[unit]
-                if active:
-                    manage._action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
-                else:
-                    manage._action(runner, (_SYSTEMCTL, "enable", "--now", unit), _SYSTEMD_TIMEOUT, "managed unit failed to start")
+                active, unit_file_state = prior_gateway[unit]
+                _apply_unit_lifecycle(runner, unit, active, unit_file_state, start=True)
             manage._gateway_ready(data, runner)
             declared = list(preview["declared"])
             bundle = _revoke_and_invite(data, manifest_path, connector_id, declared, runner)
+            redeemed = True
             fingerprint = _enroll_and_approve(data, manifest_path, target, bundle, runner)
-            active_connector, _ = prior_connector
-            if active_connector:
-                manage._action(runner, (_SYSTEMCTL, "restart", connector_unit), _SYSTEMD_TIMEOUT, "connector failed to restart")
-            else:
-                manage._action(runner, (_SYSTEMCTL, "enable", "--now", connector_unit), _SYSTEMD_TIMEOUT, "connector failed to start")
+            active_connector, unit_file_state = prior_connector
+            _apply_unit_lifecycle(runner, connector_unit, active_connector, unit_file_state, start=True)
             manage._started_units(runner, system_root, (connector_unit,))
             if transaction.pending_record is not None:
                 _write_activation_record(root, transaction.pending_record)
             transaction.commit()
         except Exception as exc:
+            if redeemed:
+                # The invitation is redeemed: the connector's enrollment state
+                # holds the new resource set and cannot return to the old one.
+                # Compensate by completing forward, keeping the new generation.
+                completed, completion_error = _best_effort_completion(
+                    data, manifest_path, target, connector_unit, runner, system_root,
+                    transaction,
+                )
+                if completed:
+                    result["completed_after_error"] = str(exc)
+                    result["fingerprint"] = completion_error
+                    return result
+                raise ExtendError(
+                    f"extend failed after invitation redemption: {exc}; the connector "
+                    "enrollment holds the new resource set — complete with 'connect "
+                    "admin approve' plus a connector restart, or re-run extend",
+                    may_have_executed=True,
+                ) from exc
             if transaction is not None and not transaction.committed:
                 try:
                     transaction.rollback(runner)
@@ -384,11 +403,10 @@ def extend(
                     _restore_gateway_units(runner, root, data, prior_gateway)
                 except ManageError as restore_error:
                     raise restore_error from exc
-            note = (
-                "connector enrollment state may already be re-redeemed; re-run extend "
-                "to complete the sequence"
-            ) if fingerprint is not None else "no enrollment changes were committed"
-            raise ExtendError(f"extend failed: {exc}; {note}", may_have_executed=True) from exc
+            raise ExtendError(
+                f"extend failed: {exc}; no enrollment changes were committed",
+                may_have_executed=True,
+            ) from exc
     readback = extend_plan(read_manifest(manifest_path), target)
     result.update({
         "activated": True,
@@ -403,9 +421,76 @@ def extend(
     return result
 
 
-def _restore_gateway_units(runner: Any, root: Path, data: dict[str, Any], prior: dict[str, tuple[bool, str]]) -> None:
-    for unit, (active, _enabled) in prior.items():
-        if active:
-            manage._action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restore")
+def _apply_unit_lifecycle(
+    runner: Any, unit: str, was_active: bool, unit_file_state: str, *, start: bool
+) -> None:
+    """Drive one unit to its exact prior lifecycle during rollback.
+
+    ``enable --now`` used for startup makes a previously disabled unit
+    boot-persistent; rollback therefore disables it again when the prior
+    unit-file state was disabled, and never leaves an inactive unit enabled.
+    """
+    if start:
+        if was_active:
+            manage._action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
         else:
-            manage._action(runner, (_SYSTEMCTL, "stop", unit), _SYSTEMD_TIMEOUT, "managed unit failed to stop")
+            manage._action(runner, (_SYSTEMCTL, "enable", "--now", unit), _SYSTEMD_TIMEOUT, "managed unit failed to start")
+        return
+    if was_active:
+        manage._action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restore")
+    else:
+        if unit_file_state == "disabled":
+            manage._action(runner, (_SYSTEMCTL, "disable", unit), _SYSTEMD_TIMEOUT, "managed unit failed to disable")
+        manage._action(runner, (_SYSTEMCTL, "stop", unit), _SYSTEMD_TIMEOUT, "managed unit failed to stop")
+
+
+def _restore_gateway_units(runner: Any, root: Path, data: dict[str, Any], prior: dict[str, tuple[bool, str]]) -> None:
+    for unit, (active, unit_file_state) in prior.items():
+        _apply_unit_lifecycle(runner, unit, active, unit_file_state, start=False)
+
+def _best_effort_completion(
+    data: dict[str, Any],
+    manifest_path: str | Path,
+    target: Target,
+    connector_unit: str,
+    runner: Any,
+    system_root: Path,
+    transaction: "_Activation | None",
+) -> tuple[bool, str]:
+    """Finish a redeemed-but-failed extension forward, best effort.
+
+    Returns (completed, fingerprint_or_error). The new generation stays
+    active; only the fingerprint approval and the connector restart remain.
+    """
+    try:
+        identity = manage.identity(manifest_path, target, runner=runner)
+        fingerprint = identity.get("fingerprint") if isinstance(identity, dict) else None
+        if not isinstance(fingerprint, str) or not fingerprint:
+            return False, "identity did not report a fingerprint"
+        gateway_dir = _gateway_state_dir(data)
+        gateway_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        request_path = gateway_dir / "extend-admin-request.json"
+        request_path.write_text(
+            json.dumps({
+                "operation": "approve",
+                "installation": target.name or "",
+                "fingerprint": fingerprint,
+            }) + "\n",
+            encoding="utf-8",
+        )
+        os.chmod(request_path, 0o600)
+        try:
+            manage.admin(manifest_path, request_path=request_path, output_path=None, apply=True, runner=runner)
+        finally:
+            try:
+                request_path.unlink()
+            except FileNotFoundError:
+                pass
+        manage._action(runner, (_SYSTEMCTL, "restart", connector_unit), _SYSTEMD_TIMEOUT, "connector failed to restart")
+        manage._started_units(runner, system_root, (connector_unit,))
+        if transaction is not None and transaction.pending_record is not None and not transaction.committed:
+            _write_activation_record(Path(data["config_root"]), transaction.pending_record)
+            transaction.commit()
+        return True, fingerprint
+    except Exception as exc:  # noqa: BLE001 - completion is best effort by contract
+        return False, str(exc)
