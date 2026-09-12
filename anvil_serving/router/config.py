@@ -124,6 +124,7 @@ _TIER_KEYS = frozenset({
     "model",
     "extra_body",
     "extra_body_defaults",
+    "strip_reasoning_history",
     "engine",
     "quantization",
     "params",
@@ -251,6 +252,8 @@ class Tier:
     # default a caller can dial per request. A key present in BOTH -> ``extra_body`` (the
     # hard override) still wins. ``hash=False`` for the same reason as ``extra_body``.
     extra_body_defaults: Optional[Mapping[str, Any]] = field(default=None, hash=False)
+    # Explicit history policy for qualified OpenAI-compatible endpoints.
+    strip_reasoning_history: bool = False
     # ---- flexibility:T007 — additive, default-unset descriptive/tuning fields ----
     # None of these is REQUIRED (none appears in ``_REQUIRED_TIER_KEYS``); every
     # existing config parses unchanged with all four reading as ``None``.
@@ -941,6 +944,11 @@ def _parse_tier(raw: object) -> Tier:
 
     extra_body = _parse_body(raw.get("extra_body"), "extra_body")
     extra_body_defaults = _parse_body(raw.get("extra_body_defaults"), "extra_body_defaults")
+    strip_reasoning_history = raw.get("strip_reasoning_history", False)
+    if not isinstance(strip_reasoning_history, bool):
+        raise ConfigError(f"tier {tid!r}: strip_reasoning_history must be a boolean")
+    if strip_reasoning_history and dialect != DIALECT_OPENAI:
+        raise ConfigError(f"tier {tid!r}: strip_reasoning_history requires an openai endpoint")
 
     # Optional (flexibility:T007): additive, default-unset descriptive/tuning
     # fields. None is required, so an absent field reads as None and existing
@@ -1225,6 +1233,7 @@ def _parse_tier(raw: object) -> Tier:
         context_admission=context_admission,
         extra_body=extra_body,
         extra_body_defaults=extra_body_defaults,
+        strip_reasoning_history=strip_reasoning_history,
         engine=engine,
         quantization=quantization,
         params=params,
