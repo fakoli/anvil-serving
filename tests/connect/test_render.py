@@ -410,3 +410,218 @@ def test_loopback_edge_keeps_tls_without_implicit_public_listeners() -> None:
     value['caddy']['tls'] = {'mode': 'acme', 'certificate_file': '', 'key_file': ''}
     with pytest.raises(ManifestError, match='provided TLS'):
         validate_manifest(value)
+
+
+def local_tunnel_manifest(value: dict | None = None) -> dict:
+    value = isolated_manifest() if value is None else copy.deepcopy(value)
+    value["gateway"]["local_tunnel"] = {
+        "listen": "127.0.0.1:18443", "server_name": "local-tls.example.test",
+        "http_host": "local-http.example.test", "certificate_file": "/etc/connect-local/leaf.pem",
+        "private_key_file": "/etc/connect-local/leaf.key", "trust_file": "/etc/connect-local/root.pem",
+    }
+    value["connectors"][0]["local_tunnel"] = {
+        "address": "127.0.0.1:18443", "server_name": "local-tls.example.test",
+        "http_host": "local-http.example.test", "trust_file": "/etc/connector-local/root.pem",
+    }
+    return value
+
+
+def test_local_tunnel_omission_preserves_pre_slice_bytes() -> None:
+    import hashlib
+
+    # Captured from the supported isolated fixture before Slice 1 changed either reader.
+    expected = {
+        "authelia/configuration.yml": "6fd41c28c45c359715c3376df165fc2b74175df7433ccea42ec1e940ec766f43",
+        "caddy.json": "c3810b3ba1096c911f9983d5999f8d8436d1fee169ae262a99704b74c383bec8",
+        "clients/dashboard-api.json": "797df756cc7391a94bf230a3a5e8ba84545c5bc7a8a31e099218f5834f15a672",
+        "connectors/dashboard.json": "2d6b1299fe15ea09c10a2438c035a15413ab78df31b39c379c0d25bede593716",
+        "gateway.json": "9eba949a2b1679b1f7cfb8907116635b851da9f32fc48a6c62a4b0b37034c56b",
+        "systemd/anvil-connect-authelia.service": "c5beb1942112e17a3d872e6ce2bb6ee15195f6f0bf3d6eac5f5be6cb6a5383ab",
+        "systemd/anvil-connect-caddy.service": "9ac3db1502ec08f5e7205aa6a5156a933c4e1dc96d1ecfc2ecb5e4b9202069e5",
+        "systemd/anvil-connect-client-dashboard-api.service": "213a3fd28ca1ce71e1288ddb249021763a4a08149b05b6eea2ec447d6dfbdacb",
+        "systemd/anvil-connect-connector-dashboard.service": "c7d6da3ae0e75e203ae3dd6f3f7bce042d895e00351019aceb92f36d693b4f13",
+        "systemd/anvil-connect-gateway.service": "d41891ef4907ca24a554827f6de463c2b5714269ef946bbeb0f437f44c381214",
+        "managed.json": "40b11470c384731d629a59edc4b1f71507c876d13e7ff5922abab0f02c93ce0f",
+    }
+    value = isolated_manifest()
+    normalized = connect_config.canonical_manifest(value)
+    generation = "e9b86d9f9ad8acb44d686138a714f43ad610bb0be372fa80e268a4882d817b81"
+    assert hashlib.sha256(normalized).hexdigest() == generation
+    assert b"local_tunnel" not in normalized
+    result = render(value)
+    assert result["generation"] == generation
+    assert {name: hashlib.sha256(content.encode()).hexdigest() for name, content in result["files"].items()} == expected
+    assert result["ownership"]["files"] == {name: digest for name, digest in expected.items() if name != "managed.json"}
+    assert render(validate_manifest(value)) == result
+
+
+def test_local_tunnel_exact_projection_and_staged_listener() -> None:
+    original = render(isolated_manifest())
+    value = local_tunnel_manifest()
+    result = render(value)
+    assert json.loads(result["files"]["gateway.json"])["local_tunnel"] == value["gateway"]["local_tunnel"]
+    connector = json.loads(result["files"]["connectors/dashboard.json"])
+    assert connector["local_tunnel"] == value["connectors"][0]["local_tunnel"]
+    assert connector["http_proxy_url"] == value["connectors"][0]["http_proxy_url"]
+    assert {name for name in result["files"] if result["files"][name] != original["files"][name]} == {
+        "gateway.json", "connectors/dashboard.json", "managed.json",
+    }
+    assert result["generation"] != original["generation"]
+    assert validate_manifest(validate_manifest(value)) == validate_manifest(value)
+    del value["connectors"][0]["local_tunnel"]
+    staged = render(value)
+    assert staged["files"]["connectors/dashboard.json"] == original["files"]["connectors/dashboard.json"]
+    del value["gateway"]["local_tunnel"]
+    assert render(value) == original
+
+
+def _invalid_local_objects(local: dict) -> list[tuple[str, str]]:
+    # One raw corpus exercises both Python and the actual Go readers, including
+    # duplicate keys that cannot be represented by a Python dict.
+    cases = [(raw, "") for raw in ('null', '{}', '[]', '""', 'false', '1')]
+    raw = json.dumps(local)
+    for key in local:
+        for value in (None, "", False, 1):
+            cases.append((json.dumps({**local, key: value}), ""))
+        cases.append((json.dumps({k: v for k, v in local.items() if k != key}), ""))
+        cases.append((raw.replace('"' + key + '":', '"' + key.upper() + '":'), ""))
+        cases.append((raw.replace('"' + key + '":', '"' + key + '": "duplicate", "' + key + '":'), ""))
+    for key in ("proxy", "http_proxy_url", "enabled", "path", "unknown"):
+        cases.append((json.dumps({**local, key: "forbidden"}), ""))
+    address = "listen" if "listen" in local else "address"
+    for value in ("localhost:443", "0.0.0.0:443", "127.0.0.2:443", "[::1]:443", "127.1:443", "127.0.0.1:0",
+                  "127.0.0.1:65536", "127.0.0.1:0443", "127.0.0.1:+443", "https://127.0.0.1:443",
+                  "user@127.0.0.1:443", "127.0.0.1:443?q", "127.0.0.1:443#f"):
+        cases.append((json.dumps({**local, address: value}), "127.0.0.1 TCP address"))
+    for key in ("server_name", "http_host"):
+        for value in ("LOCAL.example.test", "localhost", "127.0.0.1", "bad..example.test", "*.example.test",
+                      "local.example.test.", "local.example.test:443", "https://local.example.test", "-bad.example.test"):
+            cases.append((json.dumps({**local, key: value}), "lower-case DNS host"))
+    for key in (key for key in local if key.endswith("_file")):
+        for value in ("relative.pem", "/", "//etc/root.pem", "/etc/../root.pem", "/etc/./root.pem", "/etc//root.pem", "/etc/root.pem/"):
+            cases.append((json.dumps({**local, key: value}), "clean absolute path"))
+    return cases
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the Go runtime reader contract compiles POSIX-only")
+def test_local_tunnel_python_go_reader_parity(tmp_path: Path) -> None:
+    selected_go = os.environ.get("ANVIL_CONNECT_GO") or shutil.which("go")
+    if not selected_go:
+        pytest.skip("Anvil Connect Go toolchain is unavailable")
+    value = local_tunnel_manifest()
+    normalized = validate_manifest(value)
+    cases = []
+    for mode, role in (("gateway", normalized["gateway"]), ("connector", normalized["connectors"][0])):
+        raw_role = json.dumps(role)
+        cases.append({"mode": mode, "raw": raw_role, "valid": True})
+        local = role["local_tunnel"]
+        needle = json.dumps(local)
+        for raw_local, reason in _invalid_local_objects(local):
+            malformed = json.dumps(normalized).replace(needle, raw_local, 1)
+            with pytest.raises(ManifestError, match=reason or None):
+                parse_manifest_text(malformed)
+            cases.append({"mode": mode, "raw": raw_role.replace(needle, raw_local, 1), "reason": reason})
+        # Closed decoding rejects ambiguity of the optional field itself too.
+        for spelling in ('"Local_Tunnel":', '"local_tunnel": ' + needle + ', "local_tunnel":'):
+            marker = '"local_tunnel": ' + needle
+            malformed = json.dumps(normalized).replace(marker, spelling + ' ' + needle, 1)
+            with pytest.raises(ManifestError):
+                parse_manifest_text(malformed)
+            cases.append({"mode": mode, "raw": raw_role.replace(marker, spelling + ' ' + needle, 1)})
+        for port in (1, 65535):
+            candidate = local_tunnel_manifest()
+            candidate["gateway"]["local_tunnel"]["listen"] = f"127.0.0.1:{port}"
+            candidate["connectors"][0]["local_tunnel"]["address"] = f"127.0.0.1:{port}"
+            rendered = render(candidate)["files"]
+            cases.append({"mode": mode, "raw": rendered["gateway.json" if mode == "gateway" else "connectors/dashboard.json"], "valid": True})
+        omitted = copy.deepcopy(role)
+        del omitted["local_tunnel"]
+        cases.append({"mode": mode, "raw": json.dumps(omitted), "valid": True})
+    # Joint validation uses the explicit Go pairing seam; role JSON alone has
+    # no gateway, IdP, edge, client, or rendered-root deployment context.
+    for mutation in ("staged", "missing", "address", "server_name", "http_host", "public_trust", "gateway_trust", "leaf_trust"):
+        candidate = local_tunnel_manifest()
+        endpoint = candidate["connectors"][0]["local_tunnel"]
+        reason = "must match gateway local_tunnel"
+        if mutation == "staged":
+            del candidate["connectors"][0]["local_tunnel"]
+        elif mutation == "missing":
+            del candidate["gateway"]["local_tunnel"]
+        elif mutation in {"address", "server_name", "http_host"}:
+            endpoint[mutation] = "127.0.0.1:18444" if mutation == "address" else "other.example.test"
+        else:
+            reason = "must not reuse an existing trust reference"
+            if mutation == "public_trust":
+                endpoint["trust_file"] = candidate["connectors"][0]["public_trust_file"]
+            elif mutation == "gateway_trust":
+                candidate["gateway"]["local_tunnel"]["trust_file"] = candidate["connectors"][0]["public_trust_file"]
+            else:
+                endpoint["trust_file"] = candidate["gateway"]["local_tunnel"]["certificate_file"]
+        valid = mutation == "staged"
+        if valid:
+            validate_manifest(candidate)
+        else:
+            with pytest.raises(ManifestError, match=reason):
+                validate_manifest(candidate)
+        cases.append({"mode": "connector", "raw": json.dumps(candidate["connectors"][0]),
+                      "gateway": json.dumps(candidate["gateway"]), "reason": reason, "valid": valid})
+    corpus = tmp_path / "local-tunnel-readers.json"
+    corpus.write_text(json.dumps(cases))
+    checked = subprocess.run(
+        [selected_go, "-C", str(ROOT / "connect"), "test", "./internal/runtime", "-run", "^TestLocalTunnelReaderParity$", "-count=1"],
+        env={**os.environ, "ANVIL_CONNECT_SCHEMA_CASES": str(corpus)},
+        capture_output=True, text=True, timeout=60,
+    )
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+
+
+@pytest.mark.parametrize("key", ["server_name", "http_host"])
+def test_local_tunnel_identity_collisions(key: str) -> None:
+    base = local_tunnel_manifest()
+    for host in (base["gateway"]["control_host"], base["gateway"]["tunnel_host"], base["authelia"]["host"],
+                 *(r["rule"]["host"] for r in base["gateway"]["gateway"]["resources"]),
+                 "admin.anvil-connect.internal", "gateway.anvil-connect.internal", "tunnel.anvil-connect.internal", "tunnel-gate.anvil-connect.internal",
+                 "dashboard.connector.anvil-connect.internal"):
+        value = copy.deepcopy(base)
+        value["gateway"]["local_tunnel"][key] = value["connectors"][0]["local_tunnel"][key] = host
+        with pytest.raises(ManifestError, match="existing service identity"):
+            validate_manifest(value)
+
+
+def test_local_tunnel_listener_and_trust_collisions() -> None:
+    base = local_tunnel_manifest()
+    addresses = [base["gateway"]["gateway"]["listen"], base["gateway"]["tunnel_listen"], base["authelia"]["listen"],
+                 base["clients"][0]["listen"], "127.0.0.1:443"]
+    for resource in base["connectors"][0]["resources"]:
+        addresses.extend((resource["reverse_address"], resource["envelope"]["listen"], resource["envelope"]["origin_url"].removeprefix("http://").removesuffix("/")))
+    for address in addresses:
+        value = copy.deepcopy(base)
+        value["gateway"]["local_tunnel"]["listen"] = value["connectors"][0]["local_tunnel"]["address"] = address
+        with pytest.raises(ManifestError, match="existing listener"):
+            validate_manifest(value)
+    for mode in ("gateway", "connector"):
+        for file in (base["connectors"][0]["public_trust_file"], base["gateway"]["state_directory"] + "/tunnel-roots.pem",
+                     base["connectors"][0]["state_directory"] + "/inner.pem", base["config_root"] + "/roots.pem", base["config_root"]):
+            value = copy.deepcopy(base)
+            role = value["gateway"] if mode == "gateway" else value["connectors"][0]
+            role["local_tunnel"]["trust_file"] = file
+            with pytest.raises(ManifestError, match="trust reference|outside runtime state|outside rendered output"):
+                validate_manifest(value)
+    for key in ("certificate_file", "private_key_file"):
+        value = copy.deepcopy(base)
+        value["connectors"][0]["local_tunnel"]["trust_file"] = value["gateway"]["local_tunnel"][key]
+        with pytest.raises(ManifestError, match="trust reference"):
+            validate_manifest(value)
+    value = copy.deepcopy(base)
+    value["gateway"]["local_tunnel"]["private_key_file"] = value["gateway"]["local_tunnel"]["certificate_file"]
+    with pytest.raises(ManifestError, match="file references must be distinct"):
+        validate_manifest(value)
+    value = copy.deepcopy(base)
+    value["caddy"]["listen"] = base["gateway"]["local_tunnel"]["listen"]
+    value["caddy"]["tls"] = {"mode": "provided", "certificate_file": "/etc/edge/leaf.pem", "key_file": "/etc/edge/leaf.key"}
+    with pytest.raises(ManifestError, match="existing listener"):
+        validate_manifest(value)
+    value["caddy"].pop("listen")
+    value["gateway"]["local_tunnel"]["trust_file"] = "/etc/edge/leaf.pem"
+    with pytest.raises(ManifestError, match="trust reference"):
+        validate_manifest(value)
