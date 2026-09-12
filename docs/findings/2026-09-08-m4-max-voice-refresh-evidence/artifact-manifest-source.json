@@ -131,7 +131,8 @@
       "role": "decision-summary",
       "status": "retained",
       "files": [
-        "summary.json"
+        "summary.json",
+        "sanitized-voice-summary.json"
       ],
       "reason": "derivative bounded no-promotion decision"
     },

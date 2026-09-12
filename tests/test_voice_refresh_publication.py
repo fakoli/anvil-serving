@@ -17,14 +17,18 @@ def read(name):
 def test_artifact_manifest_binds_all_retained_files():
     manifest = read("artifact-manifest.json")
     assert len(manifest["artifact_roles"]) == 10
+    bound = set()
     for role in manifest["artifact_roles"]:
         assert role["status"] in {"retained", "missing", "not-applicable"}
         for item in role["files"]:
+            bound.add(item["path"])
             path = (BUNDLE / item["path"]).resolve()
             assert path.is_relative_to(BUNDLE)
             raw = path.read_bytes()
             assert len(raw) == item["bytes"]
             assert hashlib.sha256(raw).hexdigest() == item["sha256"]
+    retained = {str(path.relative_to(BUNDLE)) for path in BUNDLE.rglob("*") if path.is_file()}
+    assert bound == retained - {"artifact-manifest.json", "artifact-manifest-source.json"}
 
 
 def test_spoken_headlines_match_native_attempts():
