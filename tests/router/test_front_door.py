@@ -7,6 +7,7 @@ import socket
 import threading
 from contextlib import contextmanager
 from dataclasses import replace
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,23 @@ from anvil_serving.router.serve import RoutingBackend
 
 _CONFIG = Path(__file__).resolve().parents[2] / "configs" / "example.toml"
 _TOKEN = "test-gateway-token"
+
+
+def test_accept_backlog_is_kernel_maximum_before_listener_activation(monkeypatch):
+    observed = []
+    activate = ThreadingHTTPServer.server_activate
+
+    def record_backlog(server):
+        observed.append(server.request_queue_size)
+        activate(server)
+
+    monkeypatch.setattr(ThreadingHTTPServer, "server_activate", record_backlog)
+    server = make_server("127.0.0.1", 0, StaticBackend(["ok"]))
+    try:
+        assert observed == [socket.SOMAXCONN]
+        assert server.request_queue_size == socket.SOMAXCONN
+    finally:
+        server.server_close()
 
 
 @contextmanager
