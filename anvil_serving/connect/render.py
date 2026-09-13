@@ -81,6 +81,26 @@ def _upgrade_match() -> dict[str, Any]:
     }}
 
 
+def _origin_proxy(origin_proxy: dict[str, Any]) -> dict[str, Any]:
+    """Render the authenticated resource's loopback-only origin path mux."""
+    routes = []
+    for route in origin_proxy["routes"]:
+        prefix = route["path_prefix"]
+        paths = ["/", "/*"] if prefix == "/" else [prefix, prefix + "/*"]
+        # Only the declared native receiver gets the signed assertion. Other
+        # applications keep their own authentication without receiving it.
+        routes.append({
+            "match": [{"path": paths}],
+            "handle": [{
+                "handler": "reverse_proxy",
+                **({} if route["preserve_identity"] else {"headers": {"request": {"delete": ["X-Anvil-Connect-Identity"]}}}),
+                "upstreams": [{"dial": route["origin_url"].removeprefix("http://")}],
+                "transport": {"protocol": "http", "versions": ["1.1"]},
+            }],
+        })
+    return {"listen": [origin_proxy["listen"]], "routes": routes}
+
+
 def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
     gateway = manifest["gateway"]
     authelia = manifest["authelia"]
@@ -123,7 +143,10 @@ def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
             # port-80 redirect listener, and TLS even on a nonstandard port.
             server["automatic_https"]["disable_redirects"] = True
             server["tls_connection_policies"] = [{}]
-    return {"admin": {"disabled": True}, "apps": {"http": {"grace_period": _CADDY_GRACE_PERIOD, "servers": {"anvil_connect": server}}, "tls": tls}}
+    servers = {"anvil_connect": server}
+    if "origin_proxy" in manifest["caddy"]:
+        servers["anvil_connect_origin_proxy"] = _origin_proxy(manifest["caddy"]["origin_proxy"])
+    return {"admin": {"disabled": True}, "apps": {"http": {"grace_period": _CADDY_GRACE_PERIOD, "servers": servers}, "tls": tls}}
 
 
 def _quote(value: str) -> str:
@@ -158,6 +181,16 @@ def _authelia(manifest: dict[str, Any]) -> str:
         "    clients:", f"      - client_id: {_quote(gateway['oidc']['client_id'])}", "        client_secret: |-", f"          {{{{- fileContent {_template_quote(auth['client_secret_file'])} | nindent 10 }}}}", "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256", "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:", "          - openid", "        id_token_signed_response_alg: RS256", "        token_endpoint_auth_method: client_secret_basic", "        redirect_uris:",
     ]
     lines.extend(f"          - {_quote(callback)}" for callback in callbacks)
+    for client in auth.get("additional_oidc_clients", []):
+        lines.extend([
+            f"      - client_id: {_quote(client['client_id'])}", f"        client_name: {_quote(client['client_name'])}",
+            "        client_secret: |-", f"          {{{{- fileContent {_template_quote(client['client_secret_file'])} | nindent 10 }}}}",
+            "        consent_mode: implicit", "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256",
+            "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:",
+            "          - openid", "          - email", "          - profile", "        id_token_signed_response_alg: RS256",
+            "        token_endpoint_auth_method: client_secret_post", "        redirect_uris:",
+        ])
+        lines.extend(f"          - {_quote(redirect)}" for redirect in client["redirect_uris"])
     if "webauthn" in auth:
         webauthn = auth["webauthn"]
         lines.extend([

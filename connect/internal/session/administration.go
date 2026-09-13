@@ -56,12 +56,22 @@ func (m *Manager) preserveAdministrators(tx *store.Tx, proposed Human) error {
 
 // UpdateHumanTx updates one existing human in the caller's transaction. Both
 // web administration and local SetHuman retain the last configured operator.
-func (m *Manager) UpdateHumanTx(tx *store.Tx, id string, expected uint64, resources []string, disabled bool) error {
+func (m *Manager) UpdateHumanTx(tx *store.Tx, id string, expected uint64, resources []string, disabled bool, roleInput ...map[string]string) error {
 	if tx == nil || !config.ValidHumanID(id) || expected == 0 {
 		return ErrDenied
 	}
+	if len(roleInput) > 1 {
+		return ErrDenied
+	}
+	var applicationRoles map[string]string
+	if len(roleInput) == 1 {
+		applicationRoles = roleInput[0]
+	}
 	resources, ok := m.validateResources(resources)
 	if !ok {
+		return ErrDenied
+	}
+	if applicationRoles, ok = m.validateApplicationRoles(resources, applicationRoles); !ok {
 		return ErrDenied
 	}
 	var human Human
@@ -74,9 +84,18 @@ func (m *Manager) UpdateHumanTx(tx *store.Tx, id string, expected uint64, resour
 	if human.Generation == math.MaxUint64 {
 		return ErrUnavailable
 	}
+	if human.ApplicationRoles != nil {
+		if _, valid := m.validateApplicationRoles(human.Resources, human.ApplicationRoles); !valid {
+			return ErrUnavailable
+		}
+	}
+	if applicationRoles == nil {
+		applicationRoles = retainApplicationRoles(human.ApplicationRoles, resources)
+	}
 	human.Generation++
 	human.Resources = resources
 	human.Disabled = disabled
+	human.ApplicationRoles = applicationRoles
 	if err := m.preserveAdministrators(tx, human); err != nil {
 		return err
 	}

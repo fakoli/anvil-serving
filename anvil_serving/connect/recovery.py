@@ -97,16 +97,24 @@ def backup(manifest_path: str | Path, *, output_path: str | Path, apply: bool = 
     if not apply:
         return result
     with manage._deployment_lock(Path(data["config_root"])):
-        _recovery_current(data)
-        manage._bound_active(data, target, manage._verified_binaries(data, target))
-        try:
-            response = manage._run(runner, (data["binary"], "backup", "--config", str(manage._config_path(data, target)), "--output", str(output)), 20, identity)
-            manage._fail(response, "native backup failed")
-            metadata = _response(response.stdout, operation="backup")
-        except (OSError, RuntimeError) as exc:
-            raise manage.ManageError("backup may have created its exclusive output; inspect recovery status", may_have_executed=True) from exc
+        metadata = _backup_locked(data, output, runner, identity)
     result.update({"applied": True, "sha256": metadata["sha256"], "retain_digest_separately": True})
     return result
+
+
+def _backup_locked(data: dict[str, Any], output: Path, runner: manage.Runner | None,
+                   identity: manage.ServiceIdentity | None = None) -> dict[str, str]:
+    """Run the native exclusive backup while the caller owns deployment lock."""
+    target = manage.Target("gateway")
+    _recovery_current(data)
+    identity = identity if identity is not None else _recovery_identity(data)[0]
+    manage._bound_active(data, target, manage._verified_binaries(data, target))
+    try:
+        response = manage._run(runner, (data["binary"], "backup", "--config", str(manage._config_path(data, target)), "--output", str(output)), 20, identity)
+        manage._fail(response, "native backup failed")
+        return _response(response.stdout, operation="backup")
+    except (OSError, RuntimeError) as exc:
+        raise manage.ManageError("backup may have created its exclusive output; inspect recovery status", may_have_executed=True) from exc
 
 
 def restore(manifest_path: str | Path, *, input_path: str | Path, destination: str | Path, sha256: str, native_sha256: str, apply: bool = False, runner: manage.Runner | None = None) -> dict[str, Any]:

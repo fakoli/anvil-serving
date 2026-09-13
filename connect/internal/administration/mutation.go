@@ -19,14 +19,15 @@ import (
 )
 
 type Mutation struct {
-	Action             string   `json:"action"`
-	RequestID          string   `json:"request_id"`
-	ExpectedGeneration string   `json:"expected_generation"`
-	Principal          string   `json:"principal,omitempty"`
-	Disabled           *bool    `json:"disabled,omitempty"`
-	Resources          []string `json:"resources,omitempty"`
-	SessionType        string   `json:"session_type,omitempty"`
-	SessionID          string   `json:"session_id,omitempty"`
+	Action             string            `json:"action"`
+	RequestID          string            `json:"request_id"`
+	ExpectedGeneration string            `json:"expected_generation"`
+	Principal          string            `json:"principal,omitempty"`
+	Disabled           *bool             `json:"disabled,omitempty"`
+	Resources          []string          `json:"resources,omitempty"`
+	ApplicationRoles   map[string]string `json:"application_roles,omitempty"`
+	SessionType        string            `json:"session_type,omitempty"`
+	SessionID          string            `json:"session_id,omitempty"`
 }
 
 var requestIDPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
@@ -73,7 +74,7 @@ func (a *Authority) Mutate(ctx context.Context, admitted session.Admission, requ
 		}
 		target = request.Principal
 	case "session-revoke":
-		if request.Principal != "" || request.Disabled != nil || request.Resources != nil || !objectIDPattern.MatchString(request.SessionID) || (request.SessionType != "browser" && request.SessionType != "terminal") {
+		if request.Principal != "" || request.Disabled != nil || request.Resources != nil || request.ApplicationRoles != nil || !objectIDPattern.MatchString(request.SessionID) || (request.SessionType != "browser" && request.SessionType != "terminal") {
 			return ErrInvalid
 		}
 		target = request.SessionType + ":" + request.SessionID
@@ -125,7 +126,7 @@ func (a *Authority) Mutate(ctx context.Context, admitted session.Admission, requ
 		}
 		switch request.Action {
 		case "human-update":
-			if err := a.sessions.UpdateHumanTx(tx, request.Principal, generation, request.Resources, *request.Disabled); err != nil {
+			if err := a.sessions.UpdateHumanTx(tx, request.Principal, generation, request.Resources, *request.Disabled, request.ApplicationRoles); err != nil {
 				if errors.Is(err, session.ErrConflict) {
 					return ErrConflict
 				}

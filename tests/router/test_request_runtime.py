@@ -210,16 +210,17 @@ def _gateway(upstream, config: ServerConfig, *, auth_token=None, policy=None, ro
         thread.join(timeout=3)
 
 
-def _post(sock, *, stream=True, token=None, session_id=None, payload=None):
+def _post(sock, *, stream=True, token=None, session_id=None, request_id=None, payload=None):
     payload = payload if payload is not None else json.dumps({
         "model": "chat", "stream": stream,
         "messages": [{"role": "user", "content": "hi"}],
     }).encode()
     headers = b"" if token is None else f"Authorization: Bearer {token}\r\n".encode()
     session = b"" if session_id is None else f"X-Anvil-Session-Id: {session_id}\r\n".encode()
+    request = b"" if request_id is None else f"X-Request-Id: {request_id}\r\n".encode()
     sock.sendall(
         b"POST /v1/chat/completions HTTP/1.1\r\nHost: 127.0.0.1\r\n"
-        b"Content-Type: application/json\r\nConnection: close\r\n" + headers + session
+        b"Content-Type: application/json\r\nConnection: close\r\n" + headers + session + request
         + f"Content-Length: {len(payload)}\r\n\r\n".encode() + payload
     )
 
@@ -232,7 +233,8 @@ def _post_headers_only(sock, *, token, content_length):
     )
 
 
-def _read_until(sock, needle, timeout=1.0):
+def _read_until(sock, needle, timeout=1.0, *, body_only=False):
+    """Read until ``needle``, optionally requiring it after HTTP headers."""
     end = time.monotonic() + timeout
     chunks = []
     sock.settimeout(0.05)
@@ -244,7 +246,11 @@ def _read_until(sock, needle, timeout=1.0):
         if not part:
             break
         chunks.append(part)
-        if needle in b"".join(chunks):
+        wire = b"".join(chunks)
+        header_end = wire.find(b"\r\n\r\n")
+        if needle in (wire[header_end + 4:] if body_only and header_end >= 0 else wire) and (
+            not body_only or header_end >= 0
+        ):
             break
     return b"".join(chunks)
 
@@ -269,7 +275,7 @@ def test_silent_upstream_hits_startup_deadline_despite_heartbeats():
         with socket.create_connection((host, port), timeout=1) as client:
             _post(client)
             assert upstream.opened.wait(1)
-            wire = _read_until(client, b"0\r\n\r\n", timeout=1)
+            wire = _read_until(client, b"0\r\n\r\n", timeout=1, body_only=True)
     assert b": keepalive\n\n" in wire
     assert routing._decision_log.last is not None
     assert routing._decision_log.last.attempts[0].outcome == "error"
@@ -280,9 +286,11 @@ def test_dripped_response_headers_cannot_outlive_startup_deadline_or_admission()
                             heartbeat_interval_s=0.02)
     with _DripHeadersUpstream() as upstream, _gateway(upstream, settings) as ((host, port), routing):
         with socket.create_connection((host, port), timeout=1) as client:
-            _post(client)
+            # The response mirrors this ID in a header.  Its final ``0`` plus
+            # the header terminator must not be mistaken for a chunk terminator.
+            _post(client, request_id="dripped-response-id0")
             assert upstream.opened.wait(1)
-            wire = _read_until(client, b"0\r\n\r\n", timeout=1)
+            wire = _read_until(client, b"0\r\n\r\n", timeout=1, body_only=True)
     # Dispatch can commit SSE headers before the upstream finishes parsing
     # headers.  A startup deadline is therefore a typed 504 before commitment
     # or the native terminal SSE error after commitment; it must never become
@@ -338,7 +346,7 @@ def test_first_byte_then_silence_obeys_idle_and_total_deadlines(idle_timeout_s, 
         with socket.create_connection((host, port), timeout=1) as client:
             _post(client)
             assert upstream.opened.wait(1)
-            wire = _read_until(client, b"0\r\n\r\n", timeout=1)
+            wire = _read_until(client, b"0\r\n\r\n", timeout=1, body_only=True)
     assert b'"content":"first"' in wire
     assert routing._decision_log.last.attempts[0].outcome == "error"
 

@@ -79,6 +79,18 @@ def test_ambient_credentials_are_not_inherited(tmp_path, monkeypatch):
     assert result.returncode == 0 and result.output == b"ok\n"
 
 
+def test_child_disallows_locked_memory_without_changing_parent_or_memory_bounds(tmp_path):
+    import resource
+
+    before = resource.getrlimit(resource.RLIMIT_MEMLOCK)
+    result = run(tmp_path, "import resource; "
+                 "assert resource.getrlimit(resource.RLIMIT_MEMLOCK) == (0, 0); "
+                 "assert resource.getrlimit(resource.RLIMIT_AS) == (8 * 1024**3,) * 2; "
+                 "assert resource.getrlimit(resource.RLIMIT_FSIZE) == (9 * 1024**3,) * 2")
+    assert result.returncode == 0
+    assert resource.getrlimit(resource.RLIMIT_MEMLOCK) == before
+
+
 def test_resource_sample_failure_terminates_owned_child(tmp_path, monkeypatch):
     monkeypatch.setattr(subject, "_rss", lambda pid: (_ for _ in ()).throw(OSError()))
     with pytest.raises(QualificationError) as failure:

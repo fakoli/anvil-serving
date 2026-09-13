@@ -15,11 +15,12 @@ import (
 )
 
 type userItem struct {
-	ID            string   `json:"id"`
-	Generation    string   `json:"generation"`
-	Disabled      bool     `json:"disabled"`
-	Resources     []string `json:"resources"`
-	Administrator bool     `json:"administrator"`
+	ID               string            `json:"id"`
+	Generation       string            `json:"generation"`
+	Disabled         bool              `json:"disabled"`
+	Resources        []string          `json:"resources"`
+	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
+	Administrator    bool              `json:"administrator"`
 }
 type sessionItem struct {
 	ID            string    `json:"id"`
@@ -100,6 +101,10 @@ func (a *Authority) List(ctx context.Context, admitted session.Admission, kind, 
 				if json.Unmarshal(record.Value, &human) != nil || human.ID != record.ID || !config.ValidHumanID(human.ID) || human.Generation == 0 || len(human.Resources) < 1 || len(human.Resources) > 64 {
 					return ErrUnavailable
 				}
+				roles, valid := a.sessions.ApplicationRoles(human)
+				if !valid {
+					return ErrUnavailable
+				}
 				seen := map[string]bool{}
 				for _, resource := range human.Resources {
 					rule, configured := a.rules[resource]
@@ -114,7 +119,7 @@ func (a *Authority) List(ctx context.Context, admitted session.Admission, kind, 
 						administrator = true
 					}
 				}
-				result.Items = append(result.Items, userItem{human.ID, strconv.FormatUint(human.Generation, 10), human.Disabled, append([]string(nil), human.Resources...), administrator})
+				result.Items = append(result.Items, userItem{human.ID, strconv.FormatUint(human.Generation, 10), human.Disabled, append([]string(nil), human.Resources...), roles, administrator})
 			}
 			if more {
 				result.NextCursor = encodeCursor(kind, phase, records[len(records)-1].ID)
@@ -139,7 +144,7 @@ func (a *Authority) List(ctx context.Context, admitted session.Admission, kind, 
 					return ErrUnavailable
 				}
 				status := issuedStatus(current.Revoked, current.ExpiresAt, tx.Now())
-				if status == "issued" && a.sessions.CheckTx(tx, session.Admission{SessionID: current.ID, SessionGeneration: current.Generation, Principal: current.Principal, PrincipalGeneration: current.PrincipalGeneration, Resource: current.Resource, Host: current.Host, Epoch: current.Epoch, ExpiresAt: current.ExpiresAt}) != nil {
+				if status == "issued" && a.checkStoredSession(tx, current) != nil {
 					status = "invalidated"
 				}
 				result.Items = append(result.Items, sessionItem{current.ID, "browser", current.Principal, current.Resource, status, current.IssuedAt, current.ExpiresAt, strconv.FormatUint(current.Generation, 10), ""})
@@ -195,6 +200,16 @@ func (a *Authority) List(ctx context.Context, admitted session.Admission, kind, 
 		return Inventory{}, err
 	}
 	return result, nil
+}
+
+// Inventory reconstructs an admission from stored state, including its role.
+// CheckTx still verifies the session and human generations before accepting it.
+func (a *Authority) checkStoredSession(tx *store.Tx, current session.Session) error {
+	var human session.Human
+	if tx.Get("principals", current.Principal, &human) != nil {
+		return session.ErrDenied
+	}
+	return a.sessions.CheckTx(tx, session.Admission{SessionID: current.ID, SessionGeneration: current.Generation, Principal: current.Principal, PrincipalGeneration: current.PrincipalGeneration, Resource: current.Resource, Host: current.Host, Epoch: current.Epoch, ExpiresAt: current.ExpiresAt, ApplicationRole: human.ApplicationRoles[current.Resource]})
 }
 func validTimes(issued, expires time.Time) bool {
 	return !issued.IsZero() && expires.After(issued) && expires.Sub(issued) <= access.MaximumKeyLifetime
