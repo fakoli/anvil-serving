@@ -39751,6 +39751,15 @@
         },
         {
           "flags": [
+            "--include-gateway"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Also capture gateway authority after the authentication backup.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--sha256"
           ],
           "output_policy": null,
