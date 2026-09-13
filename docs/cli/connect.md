@@ -85,7 +85,7 @@ Use only synthetic identities in tests and published evidence. This is a local
 handling label, not a legal compliance certification.
 
 ```sh
-sudo anvil-connect-ctl users backup --confirm
+sudo anvil-connect-ctl users backup --include-gateway --confirm
 sudo anvil-connect-ctl users schedule --confirm
 sudo anvil-connect-ctl users restore --input /etc/anvil-connect/backups/ARCHIVE.zip --sha256 DIGEST --destination /etc/anvil-connect/backups/recovery --confirm
 ```
@@ -102,6 +102,14 @@ Archives are limited to 64 MiB and are **not encrypted**. These are local rollba
 copies; they cannot recover a lost disk. Encrypt any copy taken to another device; host configuration, other
 secrets and the separate Connect gateway authority need their own backups.
 
+Add `--include-gateway` for the nightly recovery set. It takes the Authelia
+snapshot first, then stops only the native gateway for its offline authority
+archive and starts that exact prior gateway again. Caddy and Authelia remain
+running for that gateway step. The two archives are sequential rather than
+atomic, and the gateway receipt binds the auth archive digest, gateway archive
+digest, and native digest. Validated pairs use the same 14-day and seven-recent
+retention policy. Both archive types are bounded local copies and are unencrypted.
+
 Restore requires the independently retained digest, checks archive and SQLite integrity, then extracts only into a fresh
 root-only directory. It does not overwrite live accounts or activate recovered
 factors. Review account/factor revocations before a separately managed recovery
@@ -113,8 +121,8 @@ below separately handle gateway authorization state.
 for **03:17 UTC daily**. It supports the default manifest and the verified
 standalone gateway installation under `/opt/anvil-connect`; install this manager
 release before enabling it. It uses the same backup operation, including its
-brief Authelia stop/restart. The timer catches up after downtime. It does not
-schedule the separate gateway-authority backup or send email notifications.
+sequential Authelia and gateway snapshots. The timer catches up after downtime.
+It does not send email notifications.
 An existing unrelated unit with the same name is refused.
 
 ### Service home and application roles
@@ -161,6 +169,24 @@ Authelia 4.39.20's file backend does not enforce first-login password replacemen
 or annual password expiry. Its supported password plus WebAuthn flow stays
 upstream-owned; passkey-only login satisfying two factors remains experimental.
 Do not describe the current manual welcome/reset flow as enforcing those policies.
+
+### Root Observatory with Grafana
+
+A browser resource rooted at `/` can use the managed Caddy origin mux when a
+single authenticated host must serve Observatory and Grafana. The mux is
+loopback-only and uses longest-prefix routing. Its required `/` fallback points
+to Observatory and is the only route that may set `preserve_identity: true`;
+that resource must use `native_auth: signed-identity`. Route `/grafana` points
+to Grafana with `preserve_identity: false`, so Connect identity assertions do
+not enter Grafana. Keep Grafana's own authentication URL loopback-only and use
+relative `/grafana/...` links so browser navigation stays behind the same
+Connect resource.
+
+For Observatory's optional fallback login, `fallback_authentication.origin` is
+an exact HTTPS origin distinct from the Connect origin, and
+`fallback_authentication.grafana_url` is a loopback HTTP(S) URL. Its `users`
+list may contain only existing allowlisted native user IDs; it does not create
+accounts or widen Connect access.
 
 ## Qualify
 

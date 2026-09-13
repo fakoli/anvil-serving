@@ -81,6 +81,26 @@ def _upgrade_match() -> dict[str, Any]:
     }}
 
 
+def _origin_proxy(origin_proxy: dict[str, Any]) -> dict[str, Any]:
+    """Render the authenticated resource's loopback-only origin path mux."""
+    routes = []
+    for route in origin_proxy["routes"]:
+        prefix = route["path_prefix"]
+        paths = ["/", "/*"] if prefix == "/" else [prefix, prefix + "/*"]
+        # Only the declared native receiver gets the signed assertion. Other
+        # applications keep their own authentication without receiving it.
+        routes.append({
+            "match": [{"path": paths}],
+            "handle": [{
+                "handler": "reverse_proxy",
+                **({} if route["preserve_identity"] else {"headers": {"request": {"delete": ["X-Anvil-Connect-Identity"]}}}),
+                "upstreams": [{"dial": route["origin_url"].removeprefix("http://")}],
+                "transport": {"protocol": "http", "versions": ["1.1"]},
+            }],
+        })
+    return {"listen": [origin_proxy["listen"]], "routes": routes}
+
+
 def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
     gateway = manifest["gateway"]
     authelia = manifest["authelia"]
@@ -123,7 +143,10 @@ def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
             # port-80 redirect listener, and TLS even on a nonstandard port.
             server["automatic_https"]["disable_redirects"] = True
             server["tls_connection_policies"] = [{}]
-    return {"admin": {"disabled": True}, "apps": {"http": {"grace_period": _CADDY_GRACE_PERIOD, "servers": {"anvil_connect": server}}, "tls": tls}}
+    servers = {"anvil_connect": server}
+    if "origin_proxy" in manifest["caddy"]:
+        servers["anvil_connect_origin_proxy"] = _origin_proxy(manifest["caddy"]["origin_proxy"])
+    return {"admin": {"disabled": True}, "apps": {"http": {"grace_period": _CADDY_GRACE_PERIOD, "servers": servers}, "tls": tls}}
 
 
 def _quote(value: str) -> str:

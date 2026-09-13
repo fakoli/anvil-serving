@@ -95,17 +95,17 @@ This preserves application sign-in configuration; it does not grant Connect acce
 ## Keep recovery copies
 
 ```sh
-sudo anvil-connect-ctl users backup --confirm
+sudo anvil-connect-ctl users backup --include-gateway --confirm
 sudo anvil-connect-ctl users schedule --confirm
 ```
 
-Take a snapshot after enrollment, then enable the daily authentication backup.
-It retains the newest snapshot for each of the last 14 UTC days and seven recent
-event snapshots. Backups briefly stop Authelia and clear its in-memory sessions.
-Account and factor data are classified `restricted-authentication`, stored with
-owner-only permissions, and kept outside Git. These local, unencrypted copies do
-not protect against disk loss. Gateway entitlements and API authority are separate;
-retain their existing [gateway backups](cli/connect.md#backup) as well.
+Take a combined snapshot after enrollment, then enable the daily schedule. It
+first snapshots Authelia accounts and factors, then snapshots gateway authorities
+and entitlements; this is sequential, not atomic. The daily job briefly restarts
+Authelia, then stops and restores only the native gateway while Caddy remains up.
+Validated archive/receipt pairs retain the newest copy for each of the last 14 UTC
+days and seven recent copies. Account, factor, and authority backups are owner-only,
+outside Git, local, and unencrypted; they do not protect against disk loss.
 
 The [user command reference](cli/connect.md#users) documents checksum-verified
 restore into a fresh private directory, retention, and recovery limitations.

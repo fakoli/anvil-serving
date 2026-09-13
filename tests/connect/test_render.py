@@ -205,6 +205,82 @@ def test_caddy_routes_keep_h2c_and_bound_websocket_path() -> None:
     assert document["apps"]["http"]["servers"]["anvil_connect"]["automatic_https"] == {"disable_certificates": True}
 
 
+def origin_proxy_manifest() -> dict:
+    value = isolated_manifest()
+    browser = value["gateway"]["gateway"]["resources"][0]["rule"]
+    envelope = value["connectors"][0]["resources"][0]["envelope"]
+    browser["path_prefix"] = envelope["rule"]["path_prefix"] = "/"
+    envelope["origin_url"] = "http://127.0.0.1:18768"
+    value["caddy"]["origin_proxy"] = {
+        "listen": "127.0.0.1:18768",
+        "routes": [
+            {"path_prefix": "/", "origin_url": "http://127.0.0.1:8768", "preserve_identity": False},
+            {"path_prefix": "/grafana", "origin_url": "http://127.0.0.1:3000", "preserve_identity": False},
+        ],
+    }
+    return value
+
+
+def test_caddy_origin_proxy_routes_longest_prefix_first_and_strips_identity_by_default() -> None:
+    value = origin_proxy_manifest()
+    before = render(isolated_manifest())
+    rendered = render(value)
+    document = json.loads(rendered["files"]["caddy.json"])
+    proxy = document["apps"]["http"]["servers"]["anvil_connect_origin_proxy"]
+    assert proxy["listen"] == ["127.0.0.1:18768"]
+    assert [route["match"][0]["path"] for route in proxy["routes"]] == [["/grafana", "/grafana/*"], ["/", "/*"]]
+    assert [route["handle"][0]["upstreams"][0]["dial"] for route in proxy["routes"]] == ["127.0.0.1:3000", "127.0.0.1:8768"]
+    assert all(route["handle"] == [route["handle"][0]] for route in proxy["routes"])
+    assert all(route["handle"][0]["headers"]["request"]["delete"] == ["X-Anvil-Connect-Identity"] for route in proxy["routes"])
+    assert rendered["generation"] != before["generation"]
+    assert {name for name in rendered["files"] if rendered["files"][name] != before["files"][name]} == {
+        "caddy.json", "connectors/dashboard.json", "managed.json",
+    }
+
+
+def test_caddy_origin_proxy_is_closed_bound_and_loopback_only() -> None:
+    base = origin_proxy_manifest()
+    assert validate_manifest(base)["caddy"]["origin_proxy"]["routes"][0]["path_prefix"] == "/grafana"
+    invalid = [
+        (lambda value: value["caddy"]["origin_proxy"]["routes"].pop(0), "fallback"),
+        (lambda value: value["caddy"]["origin_proxy"]["routes"].append({"path_prefix": "/grafana", "origin_url": "http://127.0.0.1:3001", "preserve_identity": False}), "duplicate"),
+        (lambda value: value["caddy"]["origin_proxy"]["routes"].__setitem__(0, {"path_prefix": "/grafana/", "origin_url": "http://127.0.0.1:3000", "preserve_identity": False}), "canonical path prefix"),
+        (lambda value: value["caddy"]["origin_proxy"].__setitem__("listen", "127.0.0.1:443"), "native listener"),
+        (lambda value: value["caddy"]["origin_proxy"]["routes"].__setitem__(0, {"path_prefix": "/grafana", "origin_url": "http://127.0.0.1:18768", "preserve_identity": False}), "origin proxy listener"),
+        (lambda value: value["caddy"]["origin_proxy"]["routes"].__setitem__(1, {"path_prefix": "/grafana", "origin_url": "http://127.0.0.1:17080", "preserve_identity": False}), "managed native listener"),
+        (lambda value: value["caddy"]["origin_proxy"]["routes"][0].__setitem__("preserve_identity", True), "only the signed-identity root"),
+    ]
+    for mutate, message in invalid:
+        value = copy.deepcopy(base)
+        mutate(value)
+        with pytest.raises(ManifestError, match=message):
+            validate_manifest(value)
+    value = copy.deepcopy(base)
+    value["caddy"]["origin_proxy"]["extra"] = True
+    with pytest.raises(ManifestError, match="unknown keys"):
+        validate_manifest(value)
+    value = copy.deepcopy(base)
+    value["connectors"][0]["resources"][0]["envelope"]["origin_url"] = "http://127.0.0.1:8768"
+    with pytest.raises(ManifestError, match="root browser resource"):
+        validate_manifest(value)
+
+
+def test_origin_proxy_limits_signed_identity_to_the_native_root_receiver() -> None:
+    value = origin_proxy_manifest()
+    resource = value["gateway"]["gateway"]["resources"][0]
+    resource["rule"]["native_auth"] = "signed-identity"
+    resource.update(identity_key_env="ANVIL_DASHBOARD_IDENTITY_KEY", identity_key_id="dashboard-v1")
+    value["connectors"][0]["resources"][0]["envelope"]["rule"]["native_auth"] = "signed-identity"
+    value["environment_files"]["gateway_identity"] = "/etc/anvil-connect/identity/gateway.env"
+    value["caddy"]["origin_proxy"]["routes"][0]["preserve_identity"] = True
+    routes = json.loads(render(value)["files"]["caddy.json"])["apps"]["http"]["servers"]["anvil_connect_origin_proxy"]["routes"]
+    assert routes[0]["handle"][0]["headers"]["request"]["delete"] == ["X-Anvil-Connect-Identity"]
+    assert "headers" not in routes[1]["handle"][0]
+    value["caddy"]["origin_proxy"]["routes"][1]["preserve_identity"] = True
+    with pytest.raises(ManifestError, match="only the signed-identity root"):
+        validate_manifest(value)
+
+
 def test_authelia_template_has_explicit_pkce_rs256_and_callbacks() -> None:
     text = render(isolated_manifest())["files"]["authelia/configuration.yml"]
     assert "require_pkce: true" in text

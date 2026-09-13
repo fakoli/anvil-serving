@@ -38,7 +38,7 @@ def _invalid(message: str) -> UsageError:
 
 def _partial(message: str, result: dict) -> manage.ManageError:
     error = manage.ManageError(message, may_have_executed=True)
-    error.recovery = {key: result[key] for key in ("backup", "handoff_file", "classification", "destination", "sha256") if key in result}
+    error.recovery = {key: result[key] for key in ("backup", "gateway_backup", "handoff_file", "classification", "destination", "sha256") if key in result}
     return error
 
 
@@ -334,12 +334,14 @@ def _human_set(data: dict, manifest: str, subject: str, grants: dict[str, str], 
 
 def operate(manifest: str, operation: str, username: str | None, *, email: str | None = None, role: str | None = None,
             output: str | None = None, grants: list[str] | None = None, apply: bool = False, runner=None,
-            unit_root: Path = Path("/etc/systemd/system")) -> dict:
+            unit_root: Path = Path("/etc/systemd/system"), include_gateway: bool = False) -> dict:
     _require_root()
     if operation not in {"create", "access", "reset-password", "reset-mfa", "code", "backup"}:
         raise _invalid("Unsupported account operation.")
     if operation == "backup" and username is not None:
         raise _invalid("Authentication backup includes all accounts; omit the username.")
+    if include_gateway and operation != "backup":
+        raise _invalid("--include-gateway is only accepted for authentication backup.")
     if operation != "backup" and (not isinstance(username, str) or not _USER.fullmatch(username)):
         raise _invalid("Use a lowercase username containing letters, digits, dots, underscores or hyphens.")
     if operation == "create":
@@ -389,6 +391,9 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
     if operation not in {"code", "access"}:
         result["impact"] = "If active, briefly stops Authelia and clears its in-memory sessions; existing Connect sessions and API keys are not revoked."
         result["backup_directory"] = str(Path(manifest).parent / "backups")
+    if include_gateway:
+        result["include_gateway"] = True
+        result["impact"] += " Then briefly stops only the native gateway for a sequential authority backup and restores its prior running state."
     if destination is not None:
         result["handoff_file"] = str(destination)
     if not apply:
@@ -531,15 +536,31 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                     if identity_attempted:
                         raise _partial("Authelia activation failed after account and OpenID Connect identity provisioning; restart completed. Inspect the retained backup before retrying.", result) from exc
                     raise _partial("Authelia activation failed; password rollback and restart completed. Inspect the retained backup before retrying.", result) from exc
-        from .user_backup import prune
-        try:
-            result["backup"].update(prune(Path(result["backup"]["file"]).parent))
-        except BaseException as exc:
-            raise _partial("Account operation completed, but backup retention did not finish.", result) from exc
+        if not include_gateway:
+            from .user_backup import prune
+            try:
+                result["backup"].update(prune(Path(result["backup"]["file"]).parent))
+            except BaseException as exc:
+                raise _partial("Account operation completed, but backup retention did not finish.", result) from exc
         if operation == "create" and grant_map is not None:
             try:
                 _human_set(data, manifest, oidc_subject, grant_map, runner)
             except BaseException as exc:
                 raise _partial("Account and OpenID Connect identity were created, but access provisioning may not have completed; inspect the account, then use users access with the intended grants to retry access provisioning.", result) from exc
             result.update({"grants_changed": True, "principal": _principal(data["gateway"]["oidc"]["issuer"], oidc_subject)})
-        return result
+        completed = result
+    if include_gateway:
+        try:
+            from .gateway_backup import snapshot
+            completed["gateway_backup"] = snapshot(data, manifest, completed["backup"], runner=runner, unit_root=unit_root)
+            from .gateway_backup import prune
+            gateway_root = Path(data["gateway"]["state_directory"]).parent / "gateway-backups"
+            gateway_uid, _ = role_identity(data, "gateway")
+            from .user_backup import prune as prune_auth
+            with manage._deployment_lock(Path(data["config_root"])):
+                completed["gateway_backup"].update(prune(Path(completed["backup"]["file"]).parent, gateway_root, gateway_uid))
+                completed["backup"].update(prune_auth(Path(completed["backup"]["file"]).parent))
+        except BaseException as exc:
+            partial = {**completed, **getattr(exc, "recovery", {})}
+            raise _partial("Authentication backup completed, but gateway authority backup failed; inspect the retained authentication backup and gateway state.", partial) from exc
+    return completed
