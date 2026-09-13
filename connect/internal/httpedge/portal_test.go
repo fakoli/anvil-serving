@@ -1,7 +1,9 @@
 package httpedge
 
 import (
+	"bytes"
 	"encoding/json"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -53,10 +55,21 @@ func TestPortalGrantsAndReservedRoutes(t *testing.T) {
 	if w := get(home, false); w.Code != 302 || !strings.Contains(w.Header().Get("Location"), "return=%2Fapp%2F_anvil-connect%2Fhome") {
 		t.Fatalf("login redirect: %d", w.Code)
 	}
-	for _, suffix := range []string{"", "/home.css", "/home.js", "/data"} {
+	for _, suffix := range []string{"", "/home.css", "/home.js", "/logo.png", "/favicon.ico", "/data"} {
 		w := get(home+suffix, true)
 		if w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" || w.Header().Get("Content-Security-Policy") == "" {
 			t.Fatalf("portal %s: %d", suffix, w.Code)
+		}
+		if suffix == "/logo.png" {
+			if _, err := png.DecodeConfig(bytes.NewReader(w.Body.Bytes())); err != nil || w.Header().Get("Content-Type") != "image/png" {
+				t.Fatal("logo is not a valid served PNG")
+			}
+		}
+		if suffix == "/favicon.ico" && (w.Header().Get("Content-Type") != "image/x-icon" || !bytes.HasPrefix(w.Body.Bytes(), []byte{0, 0, 1, 0})) {
+			t.Fatal("favicon is not a served ICO")
+		}
+		if suffix == "" && (!strings.Contains(w.Body.String(), home+"/logo.png") || !strings.Contains(w.Header().Get("Content-Security-Policy"), "img-src 'self';")) {
+			t.Fatal("logo missing from markup or denied by content security policy")
 		}
 		if suffix == "/data" {
 			var result struct {
@@ -75,14 +88,14 @@ func TestPortalGrantsAndReservedRoutes(t *testing.T) {
 	if get(home+"/unknown", true).Code != 404 {
 		t.Fatal("unknown portal route not reserved")
 	}
-	// Both assets must load even while the single login/control slot is busy.
+	// All assets must load even while the single login/control slot is busy.
 	resource := browser.resources["dash.example.test"]
 	resource.control <- struct{}{}
-	assetCodes := make(chan int, 2)
-	for _, suffix := range []string{"/home.css", "/home.js"} {
+	assetCodes := make(chan int, 4)
+	for _, suffix := range []string{"/home.css", "/home.js", "/logo.png", "/favicon.ico"} {
 		go func() { assetCodes <- get(home+suffix, false).Code }()
 	}
-	for range 2 {
+	for range 4 {
 		if code := <-assetCodes; code != 200 {
 			t.Fatalf("static asset competed for login budget: %d", code)
 		}
