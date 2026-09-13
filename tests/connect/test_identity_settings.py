@@ -158,6 +158,7 @@ def test_passkey_policy_requires_explicit_opt_in_and_keeps_two_factor():
     value = isolated_declaration()
     assert "webauthn" not in validate_manifest(value)["authelia"]
     assert "enable_passkey_login" not in render(value)["files"]["authelia/configuration.yml"]
+    assert "remember_me:" not in render(value)["files"]["authelia/configuration.yml"]
     value["authelia"]["webauthn"] = passkeys()
     text = render(value)["files"]["authelia/configuration.yml"]
     assert "enable_passkey_login: true" in text
@@ -165,8 +166,16 @@ def test_passkey_policy_requires_explicit_opt_in_and_keeps_two_factor():
     assert "user_verification: 'required'" in text
     assert "discoverability: 'required'" in text
     assert "default_policy: two_factor" in text
+    assert "      remember_me: -1\n" in text
     assert "prohibit_backup_eligibility" not in text  # permits synced passkey providers
     assert "totp:" not in text  # existing recovery credentials are not removed
+
+
+def test_password_only_profile_retains_existing_session_behavior():
+    value = isolated_declaration()
+    value["authelia"]["webauthn"] = {**passkeys(), "enable_passkey_login": False,
+                                     "experimental_enable_passkey_uv_two_factors": False}
+    assert "remember_me:" not in render(value)["files"]["authelia/configuration.yml"]
 
 
 @pytest.mark.parametrize(("field", "bad"), [

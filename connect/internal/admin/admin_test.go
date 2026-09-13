@@ -157,6 +157,14 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 	if err != nil || response.Principal != human.ID || response.Generation != human.Generation+2 || len(response.Resources) != 1 || response.Resources[0] != "dashboard" {
 		t.Fatalf("human suspend response = %#v, %v", response, err)
 	}
+	missing, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-suspend", Issuer: issuer.URL, Subject: "missing"})
+	if err != nil || !config.ValidHumanID(missing.Principal) || missing.Generation != 0 || len(missing.Resources) != 0 || missing.ApplicationRoles != nil {
+		t.Fatalf("missing human suspend response = %#v, %v", missing, err)
+	}
+	missing, err = Call(context.Background(), pinned.Path(), Request{Operation: "human-revoke-sessions", Issuer: issuer.URL, Subject: "missing"})
+	if err != nil || !config.ValidHumanID(missing.Principal) || missing.Generation != 0 || len(missing.Resources) != 0 || missing.ApplicationRoles != nil {
+		t.Fatalf("missing human revoke response = %#v, %v", missing, err)
+	}
 	if _, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-suspend", Issuer: issuer.URL, Subject: "unprovisioned", Resources: []string{"dashboard"}}); !errors.Is(err, ErrAdmin) {
 		t.Fatalf("human suspend accepted extra fields: %v", err)
 	}
