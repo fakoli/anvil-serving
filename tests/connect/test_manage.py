@@ -1508,7 +1508,8 @@ def test_gateway_only_change_preserves_unchanged_connector(tmp_path, monkeypatch
     runner.events.clear()
     commit = manage._write_activation_record
     def checked_commit(root, record):
-        assert runner.registered
+        if not public:
+            assert runner.registered
         commit(root, record)
     monkeypatch.setattr(manage, "_write_activation_record", checked_commit)
     probes = 0
@@ -1523,7 +1524,10 @@ def test_gateway_only_change_preserves_unchanged_connector(tmp_path, monkeypatch
             if probes >= 3: runner.registered = True
         return runner(argv, timeout, identity)
     manage.up(manifest, manage.Target("gateway"), apply=True, runner=run, unit_root=units)
-    assert probes >= 3
+    if public:
+        assert not runner.registered
+    else:
+        assert probes >= 3
     assert ("restart", "anvil-connect-gateway.service") in runner.events
     assert ("restart", "anvil-connect-connector-dashboard.service") not in runner.events
     assert ("stop", "anvil-connect-connector-dashboard.service") not in runner.events
@@ -1545,6 +1549,46 @@ def test_gateway_status_requires_admitted_resources_not_just_listener(tmp_path, 
     runner.registered = False
     tunnel = manage.status(manifest, manage.Target("gateway"), runner=runner)["targets"][0]["tunnel"]
     assert tunnel["readiness"] == "not-ready" and tunnel["state"] == "degraded"
+
+
+def test_idle_public_connector_does_not_restart_on_unchanged_up(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    del value["gateway"]["local_tunnel"]
+    del value["connectors"][0]["local_tunnel"]
+    manifest.write_text(json.dumps(value))
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+    runner.active = True
+    runner.registered = False
+    runner.calls.clear()
+
+    tunnel = manage.status(manifest, manage.Target("connector", "dashboard"), runner=runner)["targets"][0]["tunnel"]
+    result = manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+
+    assert tunnel["readiness"] == "idle" and tunnel["state"] == "unknown"
+    assert "not origin readiness" in tunnel["evidence"]
+    assert not result["activated"] and result["restarted_units"] == []
+    assert not any(call[0] == manage._SYSTEMCTL and call[1] != "show" for call in runner.calls)
+
+
+def test_partially_active_public_connector_is_not_ready(tmp_path, monkeypatch):
+    manifest, value, units, runner, targets = local_deployment(tmp_path, monkeypatch)
+    del value["gateway"]["local_tunnel"]
+    del value["connectors"][0]["local_tunnel"]
+    manifest.write_text(json.dumps(value))
+    manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
+
+    def partial_runner(argv, timeout, identity):
+        observed = runner(argv, timeout, identity)
+        if argv[1] != "admin":
+            return observed
+        snapshot = json.loads(observed.stdout)
+        snapshot["entries"][0]["resources"][1]["registrations"] = 0
+        return manage.RunResult(0, json.dumps(snapshot).encode())
+
+    tunnel = manage.status(manifest, manage.Target("connector", "dashboard"), runner=partial_runner)["targets"][0]["tunnel"]
+
+    assert tunnel["state"] == "unknown" and tunnel["readiness"] == "unknown"
+    assert "partially active" in tunnel["evidence"]
 
 
 def test_local_initialization_creates_authority_before_material_preflight(tmp_path, monkeypatch):
