@@ -578,11 +578,17 @@ func ValidateBrowserResponse(response *http.Response, rule config.Rule) error {
 		if err != nil || u.User != nil || u.Opaque != "" || u.RawPath != "" || u.Fragment != "" || strings.HasPrefix(locations[0], "//") {
 			return ErrRequest
 		}
-		if u.IsAbs() && (u.Scheme != "https" || u.Host != rule.Host) {
-			return ErrRequest
-		}
-		if !sameResourcePath(rule, u.Path) {
-			return ErrRequest
+		if u.IsAbs() && u.Host != rule.Host {
+			if (response.StatusCode != http.StatusFound && response.StatusCode != http.StatusSeeOther) || !rule.AllowsExternalRedirect(locations[0]) {
+				return ErrRequest
+			}
+		} else {
+			if u.IsAbs() && u.Scheme != "https" {
+				return ErrRequest
+			}
+			if !sameResourcePath(rule, u.Path) {
+				return ErrRequest
+			}
 		}
 	}
 	for _, value := range response.Header.Values("Set-Cookie") {

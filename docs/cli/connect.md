@@ -187,6 +187,16 @@ administrative access. Those endpoints still require their existing entitlements
 Root sign-ins return to the chooser; explicit links to deeper application pages
 retain their destination.
 
+A browser resource may declare up to eight fixed external OIDC return endpoints:
+
+```json
+"external_redirects": ["https://auth.example.test/api/oidc/authorization"]
+```
+
+Each endpoint is an exact HTTPS host and non-root path on a host different from
+the browser resource. Connect permits only `302` or `303` responses to a
+declared scheme, host, and path; the response may add its query parameters.
+
 The operator's home on the configured `browser_administration.browser_resource`
 also has an access editor. It uses the existing CSRF-protected, generation-checked
 administration endpoint. Choose no access, member, or admin for each service;
