@@ -203,11 +203,15 @@ func TestAdminReservesOutputBeforeMutationAndNeverPrintsKey(t *testing.T) {
 		return code, stdout.String(), stderr.String()
 	}
 	grants := []access.Grant{{Resource: "router", Methods: []string{"GET"}}}
+	before := calls.Load()
+	if code, _, _ := invoke(admin.Request{Operation: "unknown-operation"}, ""); code != 2 || calls.Load() != before {
+		t.Fatal("unknown administrative operation reached the local authority")
+	}
 	if code, _, _ := invoke(admin.Request{Operation: "principal-set", Principal: "owner", Grants: grants}, ""); code != 0 {
 		t.Fatal("principal setup failed")
 	}
 	issue := admin.Request{Operation: "api-key-issue", Principal: "owner", Grants: grants, LifetimeSeconds: 60}
-	before := calls.Load()
+	before = calls.Load()
 	if code, _, _ := invoke(issue, ""); code != 2 || calls.Load() != before {
 		t.Fatal("credential RPC sent without output reservation")
 	}

@@ -219,8 +219,9 @@ def test_simple_yaml_adoption_and_ambiguous_yaml_rejected():
             users._database(bad)
 
 
-def notice(email, when):
-    return (f"Date: {when.strftime('%Y-%m-%d %H:%M:%S %z')} UTC\nRecipient: <{email}>\nSubject: Confirm your identity\n"
+def notice(email, when, recipient=None):
+    recipient = recipient or "{Existing owner " + email + "}"
+    return (f"Date: {when.strftime('%Y-%m-%d %H:%M:%S %z')} UTC\nRecipient: {recipient}\nSubject: Confirm your identity\n"
             "A ONE-TIME CODE HAS BEEN GENERATED TO COMPLETE A REQUESTED ACTION\n"
             "----------------------------------------\n\nABCDEFGH\n\n----------------------------------------\n").encode()
 
@@ -237,6 +238,25 @@ def test_code_is_recent_exact_recipient_and_never_returned(environment):
     for email, when in (("other@example.test", now), ("owner@example.test", now - timedelta(minutes=6))):
         with pytest.raises(UsageError):
             users._notification(notice(email, when), "owner@example.test", now)
+
+
+def test_code_accepts_one_authelia_brace_recipient_only():
+    now = datetime.now(timezone.utc)
+    assert users._notification(
+        notice("owner@example.test", now, "{Existing owner owner@example.test}"),
+        "owner@example.test",
+        now,
+    ) == "ABCDEFGH"
+
+    assert users._notification(notice("owner@example.test", now, "<owner@example.test>"), "owner@example.test", now) == "ABCDEFGH"
+    for recipient in (
+        "{Existing owner other@example.test}",
+        "{Existing owner other@example.test owner@example.test}",
+        "<owner@example.test>, <other@example.test>",
+        "{Existing owner <owner@example.test>}",
+    ):
+        with pytest.raises(UsageError):
+            users._notification(notice("owner@example.test", now, recipient), "owner@example.test", now)
 
 
 def test_cli_default_manifest_and_conditional_apply(monkeypatch):
@@ -475,7 +495,8 @@ def test_real_authelia_accepts_created_and_reset_passwords_and_factor_reset(envi
                         break
                 except (OSError, urllib.error.URLError):
                     time.sleep(0.05)
-            assert authenticate(allowed) == 200
+            if allowed is not None:
+                assert authenticate(allowed) == 200
             if denied:
                 assert authenticate(denied) == 401
         finally:
@@ -500,3 +521,30 @@ def test_real_authelia_accepts_created_and_reset_passwords_and_factor_reset(envi
     # Repeating the reset with missing factors is idempotent.
     run("reset-mfa", "dev", apply=True)
     check_passwords(second_password)
+    # Exercise suspension, explicit access restoration and deletion against the
+    # pinned provider. Only the gateway authority is replaced by a local stub;
+    # its real generation fences are covered by the native session/admin tests.
+    subject = "00000000-0000-4000-8000-000000000001"
+    added = subprocess.run([binary, "storage", "user", "identifiers", "add", "dev", "--identifier", subject,
+                            "--service", "openid", "--sector", "", "--config", str(root / "authelia/configuration.yml")],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+    assert added.returncode == 0
+    data["gateway"] = {"oidc": {"issuer": "https://auth.example.test"}, "gateway": {"resources": [
+        {"rule": {"id": "pi", "access": "browser"}},
+    ]}}
+    requests = []
+    monkeypatch.setattr(users, "_human_admin", lambda data, manifest, payload, runner: requests.append(payload) or {"applied": True})
+    generate_totp()
+    assert run("suspend", "dev", apply=True)["account_disabled"]
+    check_passwords(None, second_password)
+    retained = subprocess.run([binary, "storage", "user", "totp", "generate", "dev", "--config", str(root / "authelia/configuration.yml")],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+    assert retained.returncode != 0
+    run("access", "dev", grants=["pi:member"], apply=True)
+    check_passwords(second_password)
+    assert run("delete", "dev", apply=True)["account_deleted"]
+    check_passwords(None, second_password)
+    assert [request["operation"] for request in requests] == ["human-suspend", "human-set", "human-suspend"]
+    generate_totp()  # Deletion removed the former factor.
+    with pytest.raises(UsageError, match="retained OpenID identifier"):
+        run("create", email="new@example.test", apply=True)
