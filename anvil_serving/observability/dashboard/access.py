@@ -377,10 +377,10 @@ class Access:
             existing = self._sessions.get(existing_key) if existing_key else None
             if existing is not None:
                 return existing, True
-            mapped = self._connect_roles.get(assertion.role) if assertion.role is not None else self._connect_principals.get(assertion.binding.subject)
+            mapped = self._connect_roles.get(assertion.role) if self.connect.role_mode else self._connect_principals.get(assertion.binding.subject)
             profile_id = None
             if mapped is None:
-                if assertion.role is not None:
+                if self.connect.role_mode:
                     _connect_denied()
                 profile = self.profile_store.connect_profile(assertion.binding.subject)
                 profile_id = profile["id"]
