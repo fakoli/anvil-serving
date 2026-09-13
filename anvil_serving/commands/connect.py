@@ -33,6 +33,22 @@ def commands() -> CommandNode:
         "connect", "Manage authenticated API and browser access with Anvil Connect.",
         children=(
             _node(
+                "users", "Manage local accounts, service entitlements, enrollment codes and authentication backups.",
+                handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("users",), forward_confirm_flag=True),
+                options=(
+                    _option("--manifest", summary="Deployment JSON; defaults to /etc/anvil-connect/deployment.json.", value_name="PATH"),
+                    _option("--email", summary="Recipient address for a new account.", value_name="EMAIL"),
+                    _option("--role", summary="Creation role: member (default) or admin; stores members/admins group.", value_name="ROLE"),
+                    _option("--grant", summary="Exact service:member or service:admin grant; repeat for each service on create/access.", value_name="GRANT"),
+                    _option("--output", summary="Exclusive private handoff file; default is beside the manifest.", value_name="PATH"),
+                    _option("--input", summary="Private authentication archive to restore.", value_name="PATH"),
+                    _option("--sha256", summary="Independently retained authentication archive checksum for restore.", value_name="DIGEST"),
+                    _option("--destination", summary="Fresh private recovery directory; does not activate restored accounts.", value_name="PATH"),
+                ) + _CONFIRM,
+                mutation_class="mutate", execution_policy="offline",
+                docs_anchor="docs/cli/connect.md#users",
+            ),
+            _node(
                 "qualify", "Run an isolated Connect qualification lane using saved local settings.",
                 handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("qualify",)),
                 options=(

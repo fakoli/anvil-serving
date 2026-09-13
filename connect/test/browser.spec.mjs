@@ -71,6 +71,7 @@ async function startFixture() {
     });
     value.browser = await chromium.launch({
       headless: true, timeout: 10_000,
+      ...(process.env.ANVIL_CONNECT_CHROMIUM ? {executablePath: process.env.ANVIL_CONNECT_CHROMIUM} : {}),
       args: [
         '--no-proxy-server', '--disable-quic',
         `--host-resolver-rules=MAP dash.example.test:443 ${ready.resolver},MAP idp.example.test:443 ${ready.resolver}`,
@@ -110,6 +111,60 @@ test('real Chromium login preserves native controls and host-only cookies', asyn
   }
   expect(await page.evaluate(() => fetch('/native-grant', { method: 'POST', headers: { 'X-CSRF-Token': 'fixture-csrf' } }).then(response => response.status))).toBe(204);
   await context.close();
+});
+
+test('service home renders current grants and signs out in Chromium', async () => {
+  const context = await fixture.browser.newContext({viewport:{width:1280,height:960}});
+  const page = await context.newPage();
+  const errors=[]; page.on('pageerror', error => errors.push(error.message));
+  await page.goto(fixture.url+'/_anvil-connect/home', {waitUntil:'domcontentloaded'});
+  await expect(page.locator('#services .tile')).toHaveCount(1);
+  await expect(page.locator('#services .tile')).toHaveAttribute('href', fixture.url+'/');
+  await expect(page.locator('#services .tile svg')).toBeVisible();
+  await expect(page.locator('#services .tile h3')).toHaveText('dash');
+  const desktopTile = await page.locator('#services .tile').boundingBox();
+  expect(Math.abs(desktopTile.width - desktopTile.height)).toBeLessThan(1);
+  expect(desktopTile.width).toBeLessThanOrEqual(180);
+  await expect(page.locator('#administration')).toBeHidden();
+  await expect(page.locator('#account-link')).toHaveAttribute('href','https://idp.example.test/');
+  await expect(page.locator('#install-link')).toHaveAttribute('href','https://github.com/fakoli/anvil-serving/releases/tag/connect-v0.2.0');
+  await expect(page.locator('#install-link')).toBeVisible();
+  await page.locator('#terminal').click();
+  await expect(page.locator('#terminal-help')).toBeVisible();
+  await expect(page.locator('#login-command')).toHaveText('anvil-connect login');
+  await expect(page.locator('#terminal')).toHaveAttribute('aria-expanded','true');
+  await expect(page.locator('#terminal-help')).toContainText('Ctrl+C');
+  await expect(page.locator('#install-guide')).toHaveAttribute('href','https://github.com/fakoli/anvil-serving/blob/connect-v0.2.0/docs/ANVIL-CONNECT-INSTALL.md#install-a-bundle');
+  await page.screenshot({path:test.info().outputPath('connect-home-desktop.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  const mobileTile = await page.locator('#services .tile').boundingBox();
+  expect(Math.abs(mobileTile.width - mobileTile.height)).toBeLessThan(1);
+  await page.screenshot({path:test.info().outputPath('connect-home-mobile.png'),fullPage:true});
+  await page.locator('#logout').click();
+  await expect(page.locator('#notice')).toContainText('Signed out of Connect');
+  expect(await page.evaluate(()=>fetch('/_anvil-connect/home/data').then(r=>r.status))).toBe(401);
+  expect(errors).toEqual([]);
+  await context.close();
+});
+
+test('operator service editor changes access and invalidates the member session', async () => {
+  const member=await fixture.browser.newContext(), memberPage=await member.newPage();
+  await memberPage.goto(fixture.url+'/_anvil-connect/home');
+  await expect(memberPage.locator('#services .tile')).toHaveCount(1);
+  await fixture.command('subject operator');
+  const operator=await fixture.browser.newContext(), page=await operator.newPage();
+  await page.goto(fixture.url+'/_anvil-connect/home');
+  const form=page.locator('.user').filter({hasText:fixture.member_id});
+  await expect(form).toBeVisible();
+  await form.locator('select').selectOption('member');
+  await form.getByRole('button',{name:'Save access'}).click();
+  await expect(page.locator('#notice')).toContainText('Access saved');
+  expect(await memberPage.evaluate(()=>fetch('/_anvil-connect/home/data').then(r=>r.status))).toBe(401);
+  await expect(form.locator('select')).toHaveValue('member');
+  await page.screenshot({path:test.info().outputPath('connect-access-editor.png'),fullPage:true});
+  await member.close(); await operator.close();
+  await fixture.command('subject allowed');
 });
 
 test('unprovisioned OIDC subject is denied in Chromium', async () => {

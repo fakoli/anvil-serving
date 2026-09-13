@@ -158,6 +158,16 @@ def _authelia(manifest: dict[str, Any]) -> str:
         "    clients:", f"      - client_id: {_quote(gateway['oidc']['client_id'])}", "        client_secret: |-", f"          {{{{- fileContent {_template_quote(auth['client_secret_file'])} | nindent 10 }}}}", "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256", "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:", "          - openid", "        id_token_signed_response_alg: RS256", "        token_endpoint_auth_method: client_secret_basic", "        redirect_uris:",
     ]
     lines.extend(f"          - {_quote(callback)}" for callback in callbacks)
+    for client in auth.get("additional_oidc_clients", []):
+        lines.extend([
+            f"      - client_id: {_quote(client['client_id'])}", f"        client_name: {_quote(client['client_name'])}",
+            "        client_secret: |-", f"          {{{{- fileContent {_template_quote(client['client_secret_file'])} | nindent 10 }}}}",
+            "        consent_mode: implicit", "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256",
+            "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:",
+            "          - openid", "          - email", "          - profile", "        id_token_signed_response_alg: RS256",
+            "        token_endpoint_auth_method: client_secret_post", "        redirect_uris:",
+        ])
+        lines.extend(f"          - {_quote(redirect)}" for redirect in client["redirect_uris"])
     if "webauthn" in auth:
         webauthn = auth["webauthn"]
         lines.extend([

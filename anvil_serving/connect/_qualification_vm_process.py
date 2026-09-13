@@ -130,6 +130,11 @@ def execute(argv: list[str], *, home: Path, timeout: float, cpus: tuple[int, ...
     def limits() -> None:
         os.sched_setaffinity(0, cpus)
         resource.setrlimit(resource.RLIMIT_AS, (address_limit, address_limit))
+        # Offline qualification needs no locked memory. QEMU 10.2 requires
+        # io_uring in every AioContext once its first ring succeeds; a later
+        # ring allocation failure then aborts startup instead of using epoll.
+        # Deny it from the first ring so QEMU consistently selects epoll.
+        resource.setrlimit(resource.RLIMIT_MEMLOCK, (0, 0))
         resource.setrlimit(resource.RLIMIT_FSIZE, (file_limit, file_limit))
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 

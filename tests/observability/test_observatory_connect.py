@@ -268,6 +268,46 @@ def test_connect_profile_has_no_grants_and_only_session_is_available(tmp_path):
         console.close()
 
 
+def test_connect_application_roles_use_only_the_explicit_role_mapping(tmp_path):
+    current = config(tmp_path)
+    current["users"].append({
+        "id": "member-fixture", "username": "member", "role": "viewer", "resources": [], "actions": [],
+    })
+    current["authentication"]["connect"]["roles"] = {"member": "member-fixture", "admin": "operator-fixture"}
+    console = Console(current, metrics=Metrics(), environment={"CONNECT_ASSERTION_CURRENT": SECRET_TEXT})
+    target = BASE + "api/observatory/v1/session"
+    try:
+        missing_role = Message()
+        missing_role[_header_name()] = assertion("GET", target)
+        with pytest.raises(ObservatoryError) as error:
+            console.access.connect_session(missing_role, method="GET", target=target, bootstrap=True)
+        assert error.value.status == 401
+        message = Message()
+        message[_header_name()] = assertion("GET", target, role="member")
+        session, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
+        assert issued and session.principal.identity == "member-fixture"
+        assert session.principal.role == "viewer" and not session.principal.resources
+
+        message = Message()
+        message[_header_name()] = assertion("GET", target, role="admin")
+        session, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
+        assert issued and session.principal.identity == "operator-fixture"
+
+        missing = config(tmp_path)
+        missing["authentication"]["connect"]["roles"] = {"admin": "operator-fixture"}
+        denied = Console(missing, metrics=Metrics(), environment={"CONNECT_ASSERTION_CURRENT": SECRET_TEXT})
+        try:
+            message = Message()
+            message[_header_name()] = assertion("GET", target, role="member")
+            with pytest.raises(ObservatoryError) as error:
+                denied.access.connect_session(message, method="GET", target=target, bootstrap=True)
+            assert error.value.status == 401
+        finally:
+            denied.close()
+    finally:
+        console.close()
+
+
 def test_connect_verifier_rejects_duplicate_headers_signature_schema_and_skew():
     verifier = ConnectVerifier(
         {"resource": "observatory", "keys": [{"id": "current", "secret_env": "CONNECT_ASSERTION_CURRENT"}], "principals": {}},
@@ -278,6 +318,7 @@ def test_connect_verifier_rejects_duplicate_headers_signature_schema_and_skew():
     for token in (
         assertion("GET", target, secret=b"x" * 32),
         assertion("GET", target, v=2),
+        assertion("GET", target, role="operator"),
         assertion("GET", target, exp=int(time.time()) - 10, iat=int(time.time()) - 20),
     ):
         message = Message()

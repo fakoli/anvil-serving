@@ -337,6 +337,10 @@ func (b *Browser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	if home := portalPath(resource); r.URL.Path == home || strings.HasPrefix(r.URL.Path, home+"/") {
+		b.portalRoute(w, r, resource, cookies, home)
+		return
+	}
 	switch r.URL.Path {
 	case BrowserLoginPath:
 		release, ok := b.controlAdmission(w, resource.control, false)

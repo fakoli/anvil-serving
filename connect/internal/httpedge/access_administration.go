@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"regexp"
 	"sort"
@@ -178,11 +179,12 @@ func (a *AccessAdministration) validCSRF(token string, admitted session.Admissio
 }
 
 type accessUser struct {
-	ID            string   `json:"id"`
-	Generation    string   `json:"generation"`
-	Disabled      bool     `json:"disabled"`
-	Resources     []string `json:"resources"`
-	Administrator bool     `json:"administrator"`
+	ID               string            `json:"id"`
+	Generation       string            `json:"generation"`
+	Disabled         bool              `json:"disabled"`
+	Resources        []string          `json:"resources"`
+	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
+	Administrator    bool              `json:"administrator"`
 }
 
 type accessSession struct {
@@ -207,6 +209,22 @@ func accessResources(resources []string) bool {
 			return false
 		}
 		seen[resource] = true
+	}
+	return true
+}
+
+func accessApplicationRoles(resources []string, roles map[string]string) bool {
+	if roles == nil || len(roles) > len(resources) {
+		return false
+	}
+	allowed := make(map[string]bool, len(resources))
+	for _, resource := range resources {
+		allowed[resource] = true
+	}
+	for resource, role := range roles {
+		if !allowed[resource] || (role != "member" && role != "admin") {
+			return false
+		}
 	}
 	return true
 }
@@ -257,11 +275,16 @@ func normalizeInventory(inventory administration.Inventory, requested string) ([
 		}
 		result := make([]any, 0, len(decoded.Items))
 		for index, item := range decoded.Items {
-			if !exactAccessObject(objects.Items[index], "id", "generation", "disabled", "resources", "administrator") || !config.ValidHumanID(item.ID) || !accessDecimal.MatchString(item.Generation) || !accessResources(item.Resources) {
+			fields := []string{"id", "generation", "disabled", "resources", "administrator"}
+			if item.ApplicationRoles != nil {
+				fields = append(fields, "application_roles")
+			}
+			if !exactAccessObject(objects.Items[index], fields...) || !config.ValidHumanID(item.ID) || !accessDecimal.MatchString(item.Generation) || !accessResources(item.Resources) || (item.ApplicationRoles != nil && !accessApplicationRoles(item.Resources, item.ApplicationRoles)) {
 				return nil, nil, false
 			}
 			item.Resources = append([]string(nil), item.Resources...)
 			sort.Strings(item.Resources)
+			item.ApplicationRoles = maps.Clone(item.ApplicationRoles)
 			result = append(result, item)
 		}
 		return result, inventory.NextCursor, true
@@ -293,15 +316,16 @@ func normalizeInventory(inventory administration.Inventory, requested string) ([
 }
 
 type accessMutationInput struct {
-	Action             string   `json:"action"`
-	RequestID          string   `json:"request_id"`
-	ExpectedGeneration string   `json:"expected_generation"`
-	CSRF               string   `json:"csrf"`
-	Principal          string   `json:"principal"`
-	Disabled           *bool    `json:"disabled"`
-	Resources          []string `json:"resources"`
-	SessionType        string   `json:"session_type"`
-	SessionID          string   `json:"session_id"`
+	Action             string            `json:"action"`
+	RequestID          string            `json:"request_id"`
+	ExpectedGeneration string            `json:"expected_generation"`
+	CSRF               string            `json:"csrf"`
+	Principal          string            `json:"principal"`
+	Disabled           *bool             `json:"disabled"`
+	Resources          []string          `json:"resources"`
+	ApplicationRoles   map[string]string `json:"application_roles"`
+	SessionType        string            `json:"session_type"`
+	SessionID          string            `json:"session_id"`
 }
 
 func exactMutationFields(raw []byte, expected ...string) bool {
@@ -346,10 +370,16 @@ func decodeAccessMutation(w http.ResponseWriter, r *http.Request, admitted sessi
 	mutation := administration.Mutation{Action: input.Action, RequestID: input.RequestID, ExpectedGeneration: input.ExpectedGeneration}
 	switch input.Action {
 	case "human-update":
-		if !exactMutationFields(body, "action", "request_id", "expected_generation", "csrf", "principal", "disabled", "resources") || !config.ValidHumanID(input.Principal) || input.Disabled == nil || !accessResources(input.Resources) {
+		baseFields := []string{"action", "request_id", "expected_generation", "csrf", "principal", "disabled", "resources"}
+		withRoles := append(append([]string(nil), baseFields...), "application_roles")
+		rolesProvided := exactMutationFields(body, withRoles...)
+		if (!rolesProvided && !exactMutationFields(body, baseFields...)) || !config.ValidHumanID(input.Principal) || input.Disabled == nil || !accessResources(input.Resources) || (rolesProvided && !accessApplicationRoles(input.Resources, input.ApplicationRoles)) {
 			return administration.Mutation{}, http.StatusBadRequest
 		}
 		mutation.Principal, mutation.Disabled, mutation.Resources = input.Principal, input.Disabled, append([]string(nil), input.Resources...)
+		if rolesProvided {
+			mutation.ApplicationRoles = maps.Clone(input.ApplicationRoles)
+		}
 	case "session-revoke":
 		if !exactMutationFields(body, "action", "request_id", "expected_generation", "csrf", "session_type", "session_id") || (input.SessionType != "browser" && input.SessionType != "terminal") || !accessObjectID.MatchString(input.SessionID) {
 			return administration.Mutation{}, http.StatusBadRequest

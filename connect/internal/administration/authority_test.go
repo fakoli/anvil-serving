@@ -164,6 +164,38 @@ func TestMutationRechecksOperatorAndIsIdempotent(t *testing.T) {
 		t.Fatal("local last-operator bypass", err)
 	}
 }
+
+func TestApplicationRoleMutationInvalidatesSessionsWithoutGatewayOperator(t *testing.T) {
+	f := setup(t)
+	targetSession := f.seedSession(t, f.target, strings.Repeat("3", 32))
+	disabled := false
+	mutation := Mutation{Action: "human-update", RequestID: request(20), ExpectedGeneration: fmt.Sprint(f.target.Generation), Principal: f.target.ID, Disabled: &disabled, Resources: []string{f.a.settings.BrowserResource}, ApplicationRoles: map[string]string{f.a.settings.BrowserResource: "admin"}}
+	if err := f.a.Mutate(context.Background(), f.ownerSession, mutation); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.sessions.Check(targetSession); err == nil {
+		t.Fatal("role change left prior browser session admitted")
+	}
+	var updated session.Human
+	if err := f.state.View(func(tx *store.Tx) error { return tx.Get("principals", f.target.ID, &updated) }); err != nil || updated.ApplicationRoles[f.a.settings.BrowserResource] != "admin" {
+		t.Fatalf("role mutation was not stored: %#v, %v", updated, err)
+	}
+	roleSession := f.seedSession(t, updated, strings.Repeat("4", 32))
+	roleSession.ApplicationRole = "admin"
+	if err := f.a.Mutate(context.Background(), roleSession, update(updated, f.a.settings.BrowserResource, 21)); !errors.Is(err, ErrDenied) {
+		t.Fatal("application admin role granted gateway administration", err)
+	}
+	inventory, err := f.a.List(context.Background(), f.ownerSession, "users", "", 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range inventory.Items {
+		user := raw.(userItem)
+		if user.ID == updated.ID && user.ApplicationRoles[f.a.settings.BrowserResource] != "admin" {
+			t.Fatal("role inventory omitted target role")
+		}
+	}
+}
 func TestConcurrentCrossDisablePreservesOneOperator(t *testing.T) {
 	f := setup(t)
 	var wait sync.WaitGroup
@@ -191,6 +223,44 @@ func TestConcurrentCrossDisablePreservesOneOperator(t *testing.T) {
 	}
 	if successes != 1 {
 		t.Fatal("cross-disable was not serialized", successes)
+	}
+}
+func TestRoleSessionInventoryTracksBrowserAndTerminalValidity(t *testing.T) {
+	f := setup(t)
+	resource := f.a.settings.BrowserResource
+	human, err := f.sessions.SetHuman(f.issuer, "target", []string{resource}, false, map[string]string{resource: "admin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := f.seedSession(t, human, strings.Repeat("3", 32))
+	source.ApplicationRole = "admin"
+	key := f.seedKey(t, human, source, true)
+	for _, expected := range []string{"issued", "invalidated"} {
+		if expected == "invalidated" {
+			if _, err := f.sessions.SetHuman(f.issuer, "target", []string{resource}, false, map[string]string{resource: "member"}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if (f.sessions.Check(source) == nil) != (expected == "issued") {
+			t.Fatal("browser admission disagrees with expected inventory status")
+		}
+		inventory, err := f.a.List(context.Background(), f.ownerSession, "sessions", "", 50)
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := 0
+		for _, raw := range inventory.Items {
+			item := raw.(sessionItem)
+			if item.ID == source.SessionID || item.ID == key.ID {
+				found++
+				if item.Status != expected {
+					t.Fatalf("%s session status = %s, want %s", item.Type, item.Status, expected)
+				}
+			}
+		}
+		if found != 2 {
+			t.Fatal("browser or terminal missing from inventory")
+		}
 	}
 }
 func TestRevocationTargetsOneBrowserAndOnlyDeviceKeys(t *testing.T) {

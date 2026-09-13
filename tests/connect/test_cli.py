@@ -19,7 +19,7 @@ from anvil_serving.connect.cli import dispatch
 
 
 ROOT = Path(__file__).parents[2]
-LEAVES = {"validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "extend", "qualify"}
+LEAVES = {"validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "extend", "qualify", "users"}
 
 
 def test_connect_registry_help_has_no_runtime_discovery(capsys, monkeypatch):

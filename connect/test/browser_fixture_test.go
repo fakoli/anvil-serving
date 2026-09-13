@@ -32,6 +32,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/fakoli/anvil-serving/connect/internal/access"
+	"github.com/fakoli/anvil-serving/connect/internal/administration"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/httpedge"
 	"github.com/fakoli/anvil-serving/connect/internal/origin"
@@ -312,7 +313,17 @@ func TestBrowserFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer manager.Close()
-	if _, err := manager.SetHuman(issuerURL, "allowed-subject", []string{"dash"}, false); err != nil {
+	member, err := manager.SetHuman(issuerURL, "allowed-subject", []string{"dash"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operator, err := manager.SetHuman(issuerURL, "operator-subject", []string{"dash"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gateway.BrowserAdministration = &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{operator.ID}}
+	adminAuthority, err := administration.New(state, manager, gateway)
+	if err != nil {
 		t.Fatal(err)
 	}
 	edge, err := httpedge.NewBrowser(gateway, manager, dispatcher.BrowserDispatch)
@@ -320,9 +331,13 @@ func TestBrowserFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer edge.Close()
+	adminEdge, err := httpedge.NewAccessAdministration(gateway, adminAuthority)
+	if err != nil || edge.SetAccessAdministration(adminEdge) != nil {
+		t.Fatal("fixture administration setup failed", err)
+	}
 	fixture.edge.Store(edge)
 
-	ready := map[string]string{"url": "https://" + dashHost, "spki": base64.StdEncoding.EncodeToString(spki[:]), "resolver": "127.0.0.1:" + strings.Split(dialAddress, ":")[1]}
+	ready := map[string]string{"url": "https://" + dashHost, "spki": base64.StdEncoding.EncodeToString(spki[:]), "resolver": "127.0.0.1:" + strings.Split(dialAddress, ":")[1], "member_id": member.ID}
 	if err := json.NewEncoder(os.Stdout).Encode(ready); err != nil {
 		t.Fatal(err)
 	}
@@ -347,6 +362,10 @@ func TestBrowserFixture(t *testing.T) {
 			case "subject allowed":
 				idp.mu.Lock()
 				idp.subject = "allowed-subject"
+				idp.mu.Unlock()
+			case "subject operator":
+				idp.mu.Lock()
+				idp.subject = "operator-subject"
 				idp.mu.Unlock()
 			case "subject denied":
 				idp.mu.Lock()
