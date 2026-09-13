@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 
 import pytest
@@ -243,19 +244,20 @@ def test_sampling_controls_validate_wire_and_record(monkeypatch, tmp_path):
     monkeypatch.setattr(multimodal, "_endpoint_models", lambda *_args: ["agents-a1"])
     seen = []
 
-    def fake_chat(*_args, **kwargs):
-        seen.append({key: kwargs[key] for key in ("temperature", "top_p") if key in kwargs})
-        return {
+    def fake_urlopen(request, timeout):
+        body = json.loads(request.data)
+        seen.append({key: body[key] for key in ("temperature", "top_p") if key in body})
+        return io.BytesIO(json.dumps({
             "choices": [{
                 "finish_reason": "stop",
                 "message": {"content": "READY. RED changes to GREEN."},
             }],
             "usage": {"prompt_tokens": 12, "completion_tokens": 7},
-        }, 0.25
+        }).encode())
 
+    monkeypatch.setattr(multimodal.urllib.request, "urlopen", fake_urlopen)
     assert multimodal.main(
         _argv(corpus, output) + ["--temperature", "1", "--top-p", "0.95"],
-        chat_request=fake_chat,
     ) == 0
     artifact = json.loads(output.read_text(encoding="utf-8"))
     assert seen == [{"temperature": 1.0, "top_p": 0.95}] * 2
