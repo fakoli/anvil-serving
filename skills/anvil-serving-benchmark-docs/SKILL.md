@@ -309,12 +309,12 @@ Report p50 and p95 when retained, keep TTFT distinct from first reasoning
 output, and label effective prefill as including queueing, scheduling, prefill,
 and first-token work.
 
-After the evidence and restoration are final, use the installed
-`engineering-learning` skill for any reusable lesson exposed by the campaign.
-Capture one evidence-linked lesson per entry—for example a runtime-version
-fence, effective-concurrency rule, or restoration invariant—not a duplicate of
-the benchmark summary. Keep raw benchmark artifacts and decisions in this
-repository; the learning entry points back to them.
+After the evidence and restoration are final, follow
+`../anvil-serving-llm-qualification/references/improvement-loop.md` for reusable
+process lessons and independently evaluated skill edits. Use a compatible
+`engineering-learning` helper if installed; its absence does not block closure.
+Keep each lesson scoped and evidence-linked, not a duplicate of the benchmark
+summary. Retain protected raw evidence separately from sanitized publication.
 
 Close every friction-log entry with a fix-forward disposition. Prefer an
 in-scope code, recipe, test, or skill fix when the root cause belongs to Anvil
