@@ -186,6 +186,37 @@ def test_output_workload_controls_are_bound(tmp_path, field):
         build_report(path, tmp_path)
 
 
+def test_sampling_controls_are_bound_validated_and_rendered(tmp_path):
+    path, catalog = fixture(tmp_path)
+    artifact = tmp_path / "docs/raw.json"
+    raw = json.loads(artifact.read_text())
+    raw["sampling"] = {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
+    artifact.write_text(json.dumps(raw))
+    catalog["entries"][0]["expected"].update({
+        "sampling_recorded": True,
+        "sampling_temperature_requested": 1.0,
+        "sampling_temperature_effective_request": 1.0,
+        "sampling_temperature_sent": True,
+        "sampling_top_p_requested": 0.95,
+        "sampling_top_p_effective_request": 0.95,
+        "sampling_top_p_sent": True,
+    })
+    path.write_text(json.dumps(catalog))
+
+    report = build_report(path, tmp_path)
+    assert report["entries"][0]["conditions"]["sampling_top_p_effective_request"] == 0.95
+    rendered = render_markdown(report, tmp_path / "result.md", tmp_path)
+    assert "sampling temperature=1.0 (requested=1.0); top_p=0.95" in rendered
+
+    raw["sampling"]["top_p"].update(requested=0.9, effective_request=0.9)
+    artifact.write_text(json.dumps(raw))
+    with pytest.raises(ValueError, match="identity/workload mismatch: sampling_top_p_requested"):
+        build_report(path, tmp_path)
+
+
 @pytest.mark.parametrize("value", ['"bad"', '[]'])
 def test_malformed_recipe_serve_returns_clean_cli_error(tmp_path, value):
     path, _ = fixture(tmp_path)
