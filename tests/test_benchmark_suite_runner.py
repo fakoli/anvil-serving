@@ -321,6 +321,53 @@ def test_agentic_runner_executes_real_long_session_turns_with_token_growth():
     assert len(result["request_ids"]) == 5
 
 
+def test_long_session_preserves_declared_budget_telemetry_and_reasoning_replay():
+    class LongSessionFailureCaller:
+        def __init__(self):
+            self.calls = []
+
+        def __call__(self, base, model, key, messages, max_tokens, timeout, **_kwargs):
+            self.calls.append((copy.deepcopy(messages), max_tokens))
+            first = len(self.calls) == 1
+            message = (
+                {"content": "ACK", "reasoning_content": "first-turn reasoning"}
+                if first
+                else {"content": "", "reasoning_content": "second-turn reasoning"}
+            )
+            return {
+                "latency_s": 0.1,
+                "response": {
+                    "choices": [{"message": message, "finish_reason": "length"}],
+                    "usage": {"prompt_tokens": 28 * len(self.calls), "completion_tokens": 64},
+                },
+            }
+
+    profile = copy.deepcopy(load_profile("deep"))
+    profile["suites"]["agentic"]["repetitions"] = 1
+    caller = LongSessionFailureCaller()
+    result = run_agentic_suite(
+        profile,
+        spec("agentic", case_ids=["long-session"], session_turns=2),
+        caller=caller,
+    )
+
+    observation = result["observations"][0]
+    assert [max_tokens for _messages, max_tokens in caller.calls] == [16384, 16384]
+    replayed_assistant = caller.calls[1][0][-2]
+    assert replayed_assistant == {
+        "role": "assistant", "content": "ACK", "reasoning_content": "first-turn reasoning"
+    }
+    assert observation["failure"]["code"] == "parser_error"
+    assert observation["turns"][-1] == {
+        "latency_ms": 100.0,
+        "prompt_tokens": 56,
+        "completion_tokens": 64,
+        "finish_reason": "length",
+        "reasoning_chars": len("second-turn reasoning"),
+        "tool_call_count": 0,
+    }
+
+
 @pytest.mark.parametrize("case_ids", [[], ["tool-recovery", "tool-recovery"], ["unknown"]])
 def test_agentic_runner_rejects_invalid_case_selection(case_ids):
     with pytest.raises(BenchmarkJobError):
