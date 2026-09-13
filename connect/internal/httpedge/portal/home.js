@@ -87,6 +87,7 @@ byID("logout").addEventListener("click", async () => {
     byID("services").replaceChildren(...settings.services.map(serviceTile));
     byID("service-count").textContent = settings.services.length + " enabled";
     const account=byID("account-link"); account.href=settings.account_url; account.hidden=false;
+    const passkeys=byID("passkeys-link"); passkeys.href=settings.passkeys_url; passkeys.hidden=false;
     notice(settings.services.length ? "" : "No services have been assigned. Contact your operator.");
     if(settings.administration_path) { byID("administration").hidden=false; await loadUsers(""); }
   } catch(error) { notice(error.message); }

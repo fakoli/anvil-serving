@@ -344,6 +344,50 @@ def test_authelia_branding_rejects_unknown_themes(theme: object) -> None:
         validate_manifest(value)
 
 
+def test_authelia_landing_resource_uses_same_host_trampoline_and_preserves_oidc() -> None:
+    baseline = render(isolated_manifest())
+    value = isolated_manifest()
+    value["gateway"]["gateway"]["resources"][0]["rule"]["path_prefix"] = "/console"
+    value["connectors"][0]["resources"][0]["envelope"]["rule"]["path_prefix"] = "/console"
+    pre_landing = render(copy.deepcopy(value))
+    value["authelia"]["landing_resource"] = "dashboard"
+
+    rendered = render(value)
+    authelia = rendered["files"]["authelia/configuration.yml"]
+    assert "domain: 'auth.example.test'" in authelia
+    assert "authelia_url: 'https://auth.example.test'" in authelia
+    assert "default_redirection_url: 'https://auth.example.test/_anvil-connect/home'" in authelia
+    assert "https://dash.example.test/_anvil-connect/callback" in authelia
+    assert "default_policy: two_factor" in authelia
+    baseline_authelia = baseline["files"]["authelia/configuration.yml"]
+    assert "default_redirection_url:" not in baseline_authelia
+    assert authelia.replace("      default_redirection_url: 'https://auth.example.test/_anvil-connect/home'\n", "") == baseline_authelia
+    assert json.loads(rendered["files"]["gateway.json"]) == json.loads(pre_landing["files"]["gateway.json"])
+
+    routes = json.loads(rendered["files"]["caddy.json"])["apps"]["http"]["servers"]["anvil_connect"]["routes"]
+    trampoline, auth_proxy = routes[:2]
+    assert trampoline["match"] == [{"host": ["auth.example.test"], "method": ["GET", "HEAD"], "path": ["/_anvil-connect/home"]}]
+    assert trampoline["handle"][1] == {"handler": "static_response", "status_code": 302, "headers": {
+        "Location": ["https://dash.example.test/console/_anvil-connect/home"], "Cache-Control": ["no-store"],
+    }}
+    assert auth_proxy["match"] == [{"host": ["auth.example.test"]}]
+
+
+@pytest.mark.parametrize("landing_resource", ["missing", "dashboard-api"])
+def test_authelia_landing_resource_must_be_a_declared_get_browser_resource(landing_resource: str) -> None:
+    value = manifest()
+    value["authelia"]["landing_resource"] = landing_resource
+    with pytest.raises(ManifestError, match="declared GET browser resource"):
+        validate_manifest(value)
+
+    value = manifest()
+    value["authelia"]["landing_resource"] = "dashboard"
+    value["gateway"]["gateway"]["resources"][0]["rule"]["methods"] = ["POST"]
+    value["connectors"][0]["resources"][0]["envelope"]["rule"]["methods"] = ["POST"]
+    with pytest.raises(ManifestError, match="declared GET browser resource"):
+        validate_manifest(value)
+
+
 def test_authelia_additional_oidc_client_is_fixed_profile_with_protected_secret_ref() -> None:
     value = isolated_manifest()
     value["authelia"]["additional_oidc_clients"] = [{
