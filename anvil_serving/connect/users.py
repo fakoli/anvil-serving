@@ -515,10 +515,10 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
     data = read_manifest(manifest)
     auth = data["authelia"]
     delivery = _password_setup_delivery(auth)
+    passkey_login = auth.get("webauthn", {}).get("enable_passkey_login") is True
+    passkey_uv_two_factors = passkey_login and auth.get("webauthn", {}).get("experimental_enable_passkey_uv_two_factors") is True
     if operation in {"create", "reset-password"}:
         manage._safe_authelia_users_file(data, writable=True)
-    if operation in {"create", "reset-password"} and auth.get("webauthn", {}).get("enable_passkey_login") is True:
-        raise _invalid("Password setup requires Authelia passkey first-factor login to be disabled.")
     uid, gid = role_identity(data, "idp")
     path, root = Path(auth["users_file"]), Path(data["config_root"])
     raw, info = _read_users(data)
@@ -564,7 +564,10 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         else:
             result["impact"] = "Requires active Authelia, stores only an unknown password hash, and writes a private five-minute password setup link after Authelia resumes."
         if operation == "reset-password":
-            result["impact"] += " Invalidates existing Connect browser sessions, pending login transactions, and human-approved terminal credentials."
+            result["impact"] += " Registered factors are preserved."
+            if passkey_uv_two_factors:
+                result["impact"] += " A registered qualifying passkey can continue passwordless sign-in."
+            result["impact"] += " Choose a new password before password sign-in. Invalidates existing Connect browser sessions, pending login transactions, and human-approved terminal credentials."
     if operation == "code" and delivery == "email":
         result["code_delivery"] = "email"
         result["impact"] = "Authelia sends enrollment codes and password setup links directly to the account email; this command does not copy them to a handoff file."

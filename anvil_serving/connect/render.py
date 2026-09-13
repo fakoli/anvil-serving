@@ -196,6 +196,9 @@ def _authelia(manifest: dict[str, Any]) -> str:
         *notifier,
         "session:", "  secret: |-", f"    {{{{- fileContent {_template_quote(auth['session_secret_file'])} | nindent 4 }}}}",
         "  cookies:", f"    - domain: {_quote(auth['host'])}", f"      authelia_url: {_quote('https://' + auth['host'])}",
+        # Pinned Authelia automatically remembers passkey logins otherwise,
+        # bypassing its normal inactivity and expiration limits.
+        *(["      remember_me: -1"] if auth.get("webauthn", {}).get("enable_passkey_login") else []),
         *([] if "landing_resource" not in auth else [f"      default_redirection_url: {_quote('https://' + auth['host'] + '/_anvil-connect/home')}"]),
         "storage:", "  encryption_key: |-", f"    {{{{- fileContent {_template_quote(auth['storage_encryption_key_file'])} | nindent 4 }}}}", "  local:", f"    path: {_quote(auth['state_directory'] + '/authelia.sqlite3')}",
         "identity_providers:", "  oidc:", "    hmac_secret: |-", f"      {{{{- fileContent {_template_quote(auth['oidc_hmac_secret_file'])} | nindent 6 }}}}", "    jwks:", "      - key_id: 'anvil-connect-rs256'", "        algorithm: RS256", "        use: sig", "        key: |-",

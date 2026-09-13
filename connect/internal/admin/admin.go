@@ -293,7 +293,7 @@ func (h *Handler) apply(input Request) (Response, error) {
 		var human session.Human
 		human, err = h.sessions.SuspendHuman(input.Issuer, input.Subject)
 		if err == nil {
-			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
+			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string{}, human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
 	case "human-revoke-sessions":
 		if h.sessions == nil || input.Issuer == "" || input.Subject == "" || input.Principal != "" || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
@@ -302,7 +302,7 @@ func (h *Handler) apply(input Request) (Response, error) {
 		var human session.Human
 		human, err = h.sessions.RevokeHumanSessions(input.Issuer, input.Subject)
 		if err == nil {
-			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
+			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string{}, human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
 	case "authority-reset":
 		err = h.state.ResetAuthority()

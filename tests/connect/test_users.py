@@ -124,13 +124,19 @@ def test_create_reset_preserve_other_accounts_and_secrets(environment):
     assert db.read_bytes() == before
 
 
-def test_password_setup_refuses_passkey_first_factor_before_mutating(environment):
+@pytest.mark.parametrize("passkey_uv_two_factors", (False, True))
+def test_password_setup_allows_passkey_first_factor_with_accurate_reset_impact(environment, passkey_uv_two_factors):
     run, db, state, _ = environment
-    users.read_manifest("unused")["authelia"]["webauthn"] = {"enable_passkey_login": True}
-    before = db.read_bytes()
-    with pytest.raises(UsageError, match="passkey first-factor"):
-        run("create", email="dev@example.test", apply=True)
-    assert db.read_bytes() == before and not state["calls"]
+    users.read_manifest("unused")["authelia"]["webauthn"] = {
+        "enable_passkey_login": True,
+        "experimental_enable_passkey_uv_two_factors": passkey_uv_two_factors,
+    }
+    created = run("create", email="dev@example.test", apply=True)
+    assert created["password_setup_required"] and state["calls"]
+    reset = run("reset-password", "owner", apply=True)
+    assert reset["password_setup_required"]
+    assert "Registered factors are preserved" in reset["impact"]
+    assert ("registered qualifying passkey" in reset["impact"]) is passkey_uv_two_factors
 
 
 def test_failed_password_setup_delivery_keeps_the_unknown_replacement(environment, monkeypatch):
@@ -418,6 +424,13 @@ def test_cli_default_manifest_and_conditional_apply(monkeypatch):
     assert len(calls) == count
 
 
+def test_users_cli_help_describes_smtp_invitation():
+    from anvil_serving.connect import cli
+    users_parser = next(action.choices["users"] for action in cli._parser()._actions if getattr(action, "choices", None))
+    assert "create adds an account" in users_parser.format_help()
+    assert "password-setup email" in users_parser.format_help()
+
+
 def test_product_cli_forwards_users_operands_and_confirmation(monkeypatch, capsys):
     from anvil_serving import cli
     calls = []
@@ -576,7 +589,9 @@ def test_partial_backup_receipt_survives_cli_error(monkeypatch, capsys):
     assert envelope["data"]["backup"] == backup
 
 
-def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(environment, monkeypatch, capsys):
+@pytest.mark.parametrize(("passkey_login", "passkey_uv_two_factors"), ((False, False), (True, False), (True, True)))
+def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(
+        environment, monkeypatch, capsys, passkey_login, passkey_uv_two_factors):
     """Opt-in real provider smoke, isolated files/loopback; no live systemd calls."""
     binary = os.environ.get("ANVIL_CONNECT_TEST_AUTHELIA")
     if not binary:
@@ -588,6 +603,10 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(environm
     data = users.read_manifest("unused")
     data["components"]["authelia"] = binary
     data["authelia"]["listen"] = f"127.0.0.1:{port}"
+    data["authelia"]["webauthn"] = {
+        "enable_passkey_login": passkey_login,
+        "experimental_enable_passkey_uv_two_factors": passkey_uv_two_factors,
+    }
     legacy = private.parent / "legacy-users.yml"
     legacy.write_bytes(db.read_bytes())
     legacy.chmod(0o600)
@@ -602,10 +621,16 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(environm
         "server": {"address": f"tcp://127.0.0.1:{port}"},
         "authentication_backend": {"file": {"path": str(legacy)}},
         "access_control": {"default_policy": "deny", "rules": [{"domain": "auth.example.test", "policy": "one_factor"}]},
-        "session": {"secret": "synthetic-session-secret-for-isolated-test", "cookies": [{"domain": "auth.example.test", "authelia_url": "https://auth.example.test"}]},
+        "session": {"secret": "synthetic-session-secret-for-isolated-test", "cookies": [{
+            "domain": "auth.example.test", "authelia_url": "https://auth.example.test",
+            **({"remember_me": -1} if passkey_login else {}),
+        }]},
         "identity_validation": {"reset_password": {"jwt_secret": "synthetic-reset-secret-for-isolated-test"}},
         "storage": {"encryption_key": "synthetic-storage-secret-for-isolated-test", "local": {"path": str(private / "authelia.sqlite3")}},
         "notifier": {"filesystem": {"filename": str(private / "notifications.txt")}},
+        "webauthn": {"disable": False, "enable_passkey_login": passkey_login,
+                      "experimental_enable_passkey_uv_two_factors": passkey_uv_two_factors,
+                      "selection_criteria": {"discoverability": "required", "user_verification": "required"}},
     })
     monkeypatch.setattr(users, "_authelia", lambda _: config)
     (root / "authelia/configuration.yml").write_text(config)
@@ -707,6 +732,7 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(environm
             process.wait(timeout=10)
 
     created = run("create", email="dev@example.test", apply=True)
+    assert created["password_setup_required"]
     create_handoff = Path(created["handoff_file"]).read_text()
     assert "Password:" not in create_handoff and "Random Password:" not in create_handoff
     assert "Password:" not in json.dumps(created) and not capsys.readouterr().out
@@ -714,6 +740,9 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(environm
     complete_setup(create_handoff, first_password)
     check_passwords(first_password)
     reset = run("reset-password", apply=True)
+    assert reset["password_setup_required"]
+    assert "Registered factors are preserved" in reset["impact"]
+    assert ("registered qualifying passkey" in reset["impact"]) is passkey_uv_two_factors
     reset_handoff = Path(reset["handoff_file"]).read_text()
     assert "Password:" not in reset_handoff and "Random Password:" not in reset_handoff
     check_passwords(None, first_password)
