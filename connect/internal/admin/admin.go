@@ -295,6 +295,15 @@ func (h *Handler) apply(input Request) (Response, error) {
 		if err == nil {
 			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
+	case "human-revoke-sessions":
+		if h.sessions == nil || input.Issuer == "" || input.Subject == "" || input.Principal != "" || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
+			return Response{}, ErrAdmin
+		}
+		var human session.Human
+		human, err = h.sessions.RevokeHumanSessions(input.Issuer, input.Subject)
+		if err == nil {
+			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
+		}
 	case "authority-reset":
 		err = h.state.ResetAuthority()
 		if err == nil {
@@ -331,7 +340,7 @@ func (h *Handler) installationStatus(id string) (InstallationStatus, error) {
 // ValidOperation is the closed native administrative operation vocabulary.
 func ValidOperation(operation string) bool {
 	switch operation {
-	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "authority-reset":
+	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "human-revoke-sessions", "authority-reset":
 		return true
 	default:
 		return false

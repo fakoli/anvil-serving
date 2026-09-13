@@ -1,8 +1,10 @@
 # Invite a developer to Anvil Connect
 
 This small-scale flow uses Authelia's supported password plus WebAuthn login.
-The operator delivers credentials and verification codes directly. Email delivery,
-enforced first-login password changes, and annual password expiry are not enabled.
+Authelia sends short-lived password-setup links and verification codes through
+the configured SMTP provider. Developers choose their own password before signing
+in; no usable starter password is saved or delivered. Annual password expiry is
+not enabled. Installations without SMTP retain private operator handoffs.
 
 ## Create the account
 
@@ -18,21 +20,26 @@ browser service. Repeat `--grant` for additional services. Each grant selects
 `--role admin` selects `admins`, but does not automatically grant other services or
 Connect operator privileges.
 
-The command returns a root-only handoff file path. Deliver its contents privately
-to the developer, then remove the handoff file. It includes the generated password,
-sign-in URL, and service-home URL. Credentials are not printed in command output.
+With SMTP configured, the command asks Authelia to email the developer a
+password-setup link. Without SMTP, it returns a root-only handoff file path;
+deliver that file's contents privately and remove it. The link expires after five
+minutes and can be used once. Credentials are not printed in command output.
+Authelia must be running
+so it can issue the setup link; the command refuses an inactive provider before
+changing the account.
 If creation reports that the account exists but access provisioning failed,
 inspect the retained account and retry with `users access` and the intended grants;
 do not create the same account again.
 
 ## Complete the first sign-in
 
-1. The developer opens the supplied service-home URL and signs in with the supplied
-   username and password.
-2. Ask them to replace their initial password through Authelia's password flow.
-   This is a manual step; the file backend does not force it.
-3. They register a passkey in Authelia. When Authelia requests identity verification,
-   export the current code and deliver it directly:
+1. The developer opens the supplied password-setup link and chooses a password in
+   Authelia. They cannot sign in using a supplied starter password: none is handed
+   out, and the random bootstrap value is discarded after hashing.
+2. They open the service-home URL and sign in with their username and chosen
+   password.
+3. They register a passkey in Authelia and enter the verification code emailed to
+   them. With filesystem delivery, the operator exports and delivers the code:
 
    ```sh
    sudo anvil-connect-ctl users code developer --confirm
@@ -41,8 +48,13 @@ do not create the same account again.
 4. After authentication, the service home shows square tiles for their assigned
    browser services, account/passkey settings, installation, and terminal help.
 
-Codes must have been requested within five minutes. The filesystem notifier
-retains only the newest message, so handle invitations one at a time. Password
+If the setup link expires, the developer requests a new password reset on the
+Authelia page. SMTP sends the fresh link directly. With filesystem delivery,
+the operator runs `users code` to export it; that command recognizes both
+password-reset links and passkey verification codes.
+
+Links and codes must have been requested within five minutes. The filesystem notifier
+retains only the newest message, so handle manual invitations one at a time. Password
 changes may also require a fresh verification code. See Authelia's
 [WebAuthn flow](https://www.authelia.com/overview/authentication/security-key/) and
 [file backend](https://www.authelia.com/configuration/first-factor/file/).
@@ -74,10 +86,14 @@ sudo anvil-connect-ctl users reset-mfa developer --confirm
 
 Run only the operation needed. `access` replaces the complete browser grant list
 and invalidates existing Connect browser and terminal sessions. Operators can also
-use **Manage access** on the service home. Password reset preserves registered
-factors; MFA reset removes that person's passkeys and TOTP for fresh enrollment.
-These resets do not themselves revoke existing Connect credentials. Disable Connect
-access or revoke sessions first when responding to a lost or compromised device.
+use **Manage access** on the service home. Password reset invalidates the old
+password, Connect browser sessions, pending browser sign-ins, and human-approved
+terminal credentials, then requests a new password-setup link. It preserves groups,
+service grants and registered factors. Old welcome-password handoffs for that
+account are removed after a successful replacement.
+MFA reset removes that person's passkeys and TOTP for fresh enrollment; it does
+not revoke Connect credentials. Suspend the account first when responding to a
+lost or compromised device. Separately issued API keys need separate revocation.
 
 Workbench enforces a signed role only after its receiver maps `member` and `admin`
 to existing native application principals. Applications using passthrough auth keep
@@ -105,6 +121,34 @@ Existing applications with their own Authelia sign-in can be retained through
 `client_secret_post`, and the `openid`, `email`, and `profile` scopes. Keep existing
 credentials in protected files outside the rendered configuration and state trees.
 This preserves application sign-in configuration; it does not grant Connect access.
+
+## Configure email delivery
+
+Add `authelia.smtp` to the private deployment manifest, then use the normal managed
+preview/apply flow. For example, Resend accepts its API key as the SMTP password:
+
+```json
+{
+  "address": "submissions://smtp.resend.com:465",
+  "username": "resend",
+  "password_file": "/etc/anvil-connect/secrets/smtp-password",
+  "sender": "Anvil Connect <auth@access.example.test>"
+}
+```
+
+Use a verified sending domain. Store the key outside Git in a root-owned file,
+grouped to the declared Authelia identity with mode `0640`. TLS and certificate
+verification remain required. No mailbox server or separate mail client is needed.
+See [Resend SMTP](https://resend.com/docs/send-with-smtp) and
+[Authelia SMTP](https://www.authelia.com/configuration/notifications/smtp/).
+
+The users file must be writable by Authelia for self-service password changes.
+Keep it inside `authelia.state_directory`, owned by that service identity with mode
+`0600`; the managed service permits writes there without opening the shared secrets
+directory. SMTP delivery does not create local code or setup-link handoff files.
+The reset endpoint conceals delivery failures to prevent account enumeration;
+a successful request alone does not prove receipt. Check provider delivery status
+if the message does not arrive.
 
 ## Keep recovery copies
 

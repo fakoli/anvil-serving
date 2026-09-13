@@ -85,6 +85,20 @@ def test_gateway_preflight_uses_three_distinct_role_identities(tmp_path: Path, m
     ]
 
 
+def test_gateway_preflight_validates_nested_smtp_password_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    data = isolated_data(tmp_path)
+    secret = tmp_path / "secrets" / "resend-smtp-key"
+    data["authelia"]["smtp"] = {
+        "address": "submission://smtp.resend.com:587", "username": "resend",
+        "password_file": str(secret), "sender": "auth@auth.example.test",
+    }
+    seen: list[Path] = []
+    monkeypatch.setattr(manage, "_safe_consumed_file", lambda path, *_args, **_kwargs: seen.append(path))
+    monkeypatch.setattr(manage, "_validate_local_files", lambda *_: None)
+    manage._validate_gateway_files(data)
+    assert secret in seen
+
+
 def test_environment_metadata_is_role_specific_and_root_identity_is_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     data = isolated_data(tmp_path)
     gateway = tmp_path / "gateway.env"

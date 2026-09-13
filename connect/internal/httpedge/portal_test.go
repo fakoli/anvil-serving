@@ -15,14 +15,22 @@ import (
 
 type portalStub struct {
 	*browserAuthorityStub
-	human session.Human
+	human      session.Human
+	portalOnly bool
 }
 
-func (s *portalStub) CurrentHuman(admitted session.Admission) (session.Human, error) {
-	if err := s.Check(admitted); err != nil {
-		return session.Human{}, err
+func (s *portalStub) PortalSession(raw, host string) (session.Admission, session.Human, error) {
+	if raw != "opaque-session" || host != s.admitted.Host || s.revoked.Load() {
+		return session.Admission{}, session.Human{}, session.ErrDenied
 	}
-	return s.human, nil
+	return s.admitted, s.human, nil
+}
+
+func (s *portalStub) Check(admitted session.Admission) error {
+	if s.portalOnly {
+		return session.ErrDenied
+	}
+	return s.browserAuthorityStub.Check(admitted)
 }
 func (s *portalStub) AccountURL() string { return "https://idp.example.test/" }
 
@@ -112,5 +120,40 @@ func TestPortalGrantsAndReservedRoutes(t *testing.T) {
 	}
 	if dispatched {
 		t.Fatal("portal request reached origin")
+	}
+}
+
+func TestPortalOnlyIdentityCannotEnterLandingApplication(t *testing.T) {
+	declaration := browserDeclaration("none")
+	other := declaration.Resources[0]
+	other.Rule.ID, other.Rule.Host = "private-pi", "pi.example.test"
+	other.TunnelAddress = "127.0.0.1:17892"
+	declaration.Resources = append(declaration.Resources, other)
+	authority := &portalStub{browserAuthorityStub: newBrowserAuthorityStub(), portalOnly: true, human: session.Human{ID: "human-id", Generation: 1, Resources: []string{"private-pi"}, ApplicationRoles: map[string]string{"private-pi": "member"}}}
+	dispatched := false
+	browser, err := NewBrowser(declaration, authority, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) { dispatched = true })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(browser.Close)
+	request := func(host, path string) *httptest.ResponseRecorder {
+		r := browserRequest("GET", path, nil)
+		r.Host = host
+		r.Header.Set("Accept", "text/html")
+		r.AddCookie(&http.Cookie{Name: BrowserSessionCookie, Value: "opaque-session"})
+		w := httptest.NewRecorder()
+		browser.ServeHTTP(w, r)
+		return w
+	}
+	home := "/_anvil-connect/home"
+	data := request("dash.example.test", home+"/data")
+	var result struct {
+		Services []portalService `json:"services"`
+	}
+	if data.Code != http.StatusOK || json.Unmarshal(data.Body.Bytes(), &result) != nil || len(result.Services) != 1 || result.Services[0].ID != "private-pi" {
+		t.Fatalf("portal-only chooser = %d %#v", data.Code, result)
+	}
+	if w := request("dash.example.test", "/"); w.Code != http.StatusUnauthorized || dispatched {
+		t.Fatalf("landing application accepted portal-only identity: %d", w.Code)
 	}
 }

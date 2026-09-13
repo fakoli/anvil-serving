@@ -100,10 +100,11 @@ extension. See [1Password's instructions](https://support.1password.com/save-use
 Set optional `authelia.landing_resource` to the ID of a declared browser resource
 that accepts `GET`, for example `dashboard`. After a direct Authelia login, its
 same-host `/_anvil-connect/home` default redirects with `302` to that resource's
-`<path_prefix>/_anvil-connect/home` chooser. The landing resource must already
-be accessible to the signing-in person; this setting neither grants an
-application entitlement nor changes password, passkey, two-factor, or OIDC
-callback policy.
+`<path_prefix>/_anvil-connect/home` chooser. Every enabled, provisioned Connect
+account can open this chooser, including a person without access to its host
+application. It shows only that person's current grants. Application, device
+approval and administration endpoints retain their separate entitlement checks.
+Root sign-ins return to the chooser; deeper application links keep their target.
 
 The trampoline stays on the Authelia host because Authelia requires
 `default_redirection_url` to read and write the configured session-cookie
@@ -116,8 +117,8 @@ The chooser's **Change password** action opens Authelia's authenticated
 `/settings/two-factor-authentication`, where **Add** registers another passkey.
 These settings links do not return through the default landing. The existing
 elevated-session verification still applies: with the filesystem notifier,
-the operator must deliver the generated verification code. Forgotten-password
-recovery remains a separate operator-assisted flow.
+the operator must deliver the generated verification code. With `authelia.smtp`,
+Authelia emails verification codes and forgotten-password reset links directly.
 
 ## Authelia branding
 

@@ -28,6 +28,10 @@ _MAX_LINUX_ID = 2147483647
 _MAX_MEMORY_MAX_BYTES = (1 << 63) - 1
 _MAX_TASKS_MAX = 2147483647
 _AUTHELIA_THEMES = {"light", "dark", "grey", "oled", "auto"}
+_SMTP_ADDRESS = re.compile(r"(submission|submissions)://([^/:?#]+):([1-9][0-9]{0,4})")
+_SMTP_MAILBOX = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,63}@([A-Za-z0-9.-]+)")
+_SMTP_USERNAME = re.compile(r"[A-Za-z0-9._+-]{1,128}")
+_SMTP_SENDER = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._-]{0,63} <([A-Za-z0-9][A-Za-z0-9._+-]{0,63}@[A-Za-z0-9.-]+)>")
 
 
 class ManifestError(ValueError):
@@ -460,6 +464,26 @@ def _authelia_asset_path(value: Any, path: str, state_directory: str) -> str:
     return asset_path
 
 
+def _authelia_smtp(value: Any, path: str) -> dict[str, str]:
+    """Validate the narrow TLS-only SMTP notifier declaration."""
+    raw = _mapping(value, path, {"address", "username", "password_file", "sender"})
+    address = _string(raw["address"], path + ".address")
+    match = _SMTP_ADDRESS.fullmatch(address)
+    if match is None or int(match[3]) > 65535:
+        raise _error(path + ".address", "must be a submission:// or submissions:// SMTP address with an explicit port")
+    _host(match[2], path + ".address")
+    username = _string(raw["username"], path + ".username")
+    if not _SMTP_USERNAME.fullmatch(username):
+        raise _error(path + ".username", "must be a simple SMTP username")
+    sender = _string(raw["sender"], path + ".sender")
+    sender_match = _SMTP_SENDER.fullmatch(sender)
+    mailbox_match = _SMTP_MAILBOX.fullmatch(sender) if sender_match is None else _SMTP_MAILBOX.fullmatch(sender_match[1])
+    if mailbox_match is None:
+        raise _error(path + ".sender", "must be a simple mailbox or display name plus mailbox")
+    _host(mailbox_match[1], path + ".sender")
+    return {"address": address, "username": username, "password_file": _secret_file(raw["password_file"], path + ".password_file"), "sender": sender}
+
+
 def _list(value: Any, path: str, maximum: int = _MAX_ITEMS) -> list[Any]:
     if not isinstance(value, list) or not value or len(value) > maximum:
         raise _error(path, f"must contain between 1 and {maximum} items")
@@ -543,7 +567,7 @@ def _authelia_secret_files(auth: dict[str, Any]) -> list[str]:
     """Return every protected Authelia input, including optional OIDC clients."""
     return [value for key, value in auth.items() if key.endswith("_file")] + [
         client["client_secret_file"] for client in auth.get("additional_oidc_clients", [])
-    ]
+    ] + ([auth["smtp"]["password_file"]] if "smtp" in auth else [])
 
 
 def validate_manifest(value: Any) -> dict[str, Any]:
@@ -945,6 +969,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         authelia_fields.add("asset_path")
     if isinstance(raw["authelia"], dict) and "landing_resource" in raw["authelia"]:
         authelia_fields.add("landing_resource")
+    if isinstance(raw["authelia"], dict) and "smtp" in raw["authelia"]:
+        authelia_fields.add("smtp")
     authelia_raw = _mapping(raw["authelia"], "$.authelia", authelia_fields)
     authelia = {key: _secret_file(authelia_raw[key], "$.authelia." + key) for key in ("users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file")}
     authelia_name = _ident(authelia_raw["service_name"], "$.authelia.service_name")
@@ -966,6 +992,13 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         if resource is None or resource["rule"]["access"] != "browser" or "GET" not in resource["rule"]["methods"]:
             raise _error("$.authelia.landing_resource", "must name a declared GET browser resource")
         authelia["landing_resource"] = landing_resource
+    if "smtp" in authelia_raw:
+        smtp = _authelia_smtp(authelia_raw["smtp"], "$.authelia.smtp")
+        password_file = smtp["password_file"]
+        if (password_file == config_root or password_file.startswith(config_root + "/")
+                or password_file == authelia["state_directory"] or password_file.startswith(authelia["state_directory"] + "/")):
+            raise _error("$.authelia.smtp.password_file", "must be outside rendered output and Authelia state")
+        authelia["smtp"] = smtp
     if "webauthn" in authelia_raw:
         webauthn = _mapping(authelia_raw["webauthn"], "$.authelia.webauthn", {
             "enable_passkey_login", "experimental_enable_passkey_uv_two_factors", "discoverability", "user_verification",
@@ -1001,10 +1034,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
                 "client_secret_file": _secret_file(client["client_secret_file"], path + ".client_secret_file"),
                 "redirect_uris": sorted(redirects),
             })
-        secret_files = _authelia_secret_files(authelia) + [client["client_secret_file"] for client in additional_clients]
-        if len(secret_files) != len(set(secret_files)):
-            raise _error("$.authelia.additional_oidc_clients", "must use distinct protected client secret files")
         authelia["additional_oidc_clients"] = sorted(additional_clients, key=lambda client: client["client_id"])
+    secret_files = _authelia_secret_files(authelia)
+    if len(secret_files) != len(set(secret_files)):
+        raise _error("$.authelia", "must use distinct protected secret files")
     all_hosts = {gateway["control_host"], gateway["tunnel_host"], *(r["rule"]["host"] for r in gateway["gateway"]["resources"])}
     if authelia["host"] in all_hosts:
         raise _error("$.authelia.host", "must be distinct from public resource, control, and tunnel hosts")
