@@ -41,6 +41,7 @@ func NewGateway(declaration config.Gateway, keys *access.Keys, dispatch Dispatch
 	}
 	for _, resource := range declaration.Resources {
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
+		resource.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
 		g.resources[resource.Rule.Host] = gatewayResource{declaration: resource, slots: make(chan struct{}, resource.Rule.Limits.Concurrent)}
 	}
 	return g, nil
@@ -136,5 +137,6 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	declaration := resource.declaration
 	declaration.Rule.Methods = append([]string(nil), declaration.Rule.Methods...)
+	declaration.Rule.ExternalRedirects = append([]string(nil), declaration.Rule.ExternalRedirects...)
 	g.dispatch(w, clean, declaration, admitted)
 }
