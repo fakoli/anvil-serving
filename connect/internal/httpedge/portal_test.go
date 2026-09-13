@@ -85,7 +85,7 @@ func TestPortalGrantsAndReservedRoutes(t *testing.T) {
 			if strings.Contains(w.Body.String(), "private-pi") {
 				t.Fatal("hidden app leaked")
 			}
-			if result.Account != "https://idp.example.test/settings" || result.Passkeys != "https://idp.example.test/settings/two-factor-authentication" {
+			if result.Account != "https://idp.example.test/settings/security" || result.Passkeys != "https://idp.example.test/settings/two-factor-authentication" {
 				t.Fatal("account actions must use settings routes without bouncing through the default landing")
 			}
 		}
