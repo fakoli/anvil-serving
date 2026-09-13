@@ -3,9 +3,15 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
+import sys
 import zipfile
 
+import pytest
+
 from anvil_serving.connect import user_backup
+
+
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="local Linux account administration")
 
 
 _USERS = b'{"users":{"owner":{"displayname":"Owner","password":"$argon2id$fixture","email":"owner@example.test","groups":[]}}}'
