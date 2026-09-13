@@ -34,7 +34,7 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
     users = actions.add_parser("users", allow_abbrev=False)
-    users.add_argument("operation", choices=("create", "access", "reset-password", "reset-mfa", "code", "backup", "schedule", "restore"))
+    users.add_argument("operation", choices=("create", "access", "suspend", "delete", "reset-password", "reset-mfa", "code", "backup", "schedule", "restore"))
     users.add_argument("username", nargs="?")
     users.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
     users.add_argument("--email", action=_Once)

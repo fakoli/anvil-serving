@@ -3,12 +3,14 @@ package admin
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,6 +21,7 @@ import (
 	"github.com/fakoli/anvil-serving/connect/internal/identity"
 	"github.com/fakoli/anvil-serving/connect/internal/localhttp"
 	"github.com/fakoli/anvil-serving/connect/internal/privatefiles"
+	"github.com/fakoli/anvil-serving/connect/internal/session"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
 	"github.com/fakoli/anvil-serving/connect/internal/testpki"
 )
@@ -93,6 +96,69 @@ func TestCallIssuesAndRevokesKey(t *testing.T) {
 	}
 	if _, err := keys.Authenticate(issued.Secret, "router", "POST"); err == nil {
 		t.Fatal("revoked key authenticated")
+	}
+}
+
+func TestAdministrativeOperationVocabularyIsClosed(t *testing.T) {
+	if !ValidOperation("human-suspend") || ValidOperation("human-delete") {
+		t.Fatal("administrative operation vocabulary changed")
+	}
+}
+
+func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
+	state, keys, identities, _ := testAdmin(t)
+	var issuer *httptest.Server
+	issuer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"issuer": issuer.URL, "authorization_endpoint": issuer.URL + "/authorize", "token_endpoint": issuer.URL + "/token", "jwks_uri": issuer.URL + "/keys"})
+	}))
+	t.Cleanup(issuer.Close)
+	rule := config.Rule{ID: "dashboard", Host: "dash.example.test", PathPrefix: "/", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: config.Limits{RequestBytes: 4096, Concurrent: 1, BufferBytes: 4096, IdleSeconds: 1, DurationSeconds: 1}}
+	sessions, err := session.New(context.Background(), state, []config.Rule{rule}, session.Config{Issuer: issuer.URL, ClientID: "test-client", ClientSecret: "test-secret", CallbackPath: "/_connect/callback", TransactionLifetime: time.Minute, SessionLifetime: time.Hour, MaxTransactions: 1, MaxPerBrowser: 1, HTTPClient: issuer.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(sessions.Close)
+	human, err := sessions.SetHuman(issuer.URL, "target", []string{"dashboard"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := New(state, keys, identities, sessions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory, err := privatefiles.Open(filepath.Join(t.TempDir(), "runtime"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer directory.Close()
+	listener, err := localhttp.Listen(directory, "admin.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	pinned, err := directory.PinPath("admin.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pinned.Close()
+	server := &http.Server{Handler: handler, ReadHeaderTimeout: time.Second}
+	done := make(chan error, 1)
+	go func() { done <- server.Serve(listener) }()
+	defer func() {
+		_ = server.Close()
+		<-done
+	}()
+	response, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-suspend", Issuer: issuer.URL, Subject: "target"})
+	if err != nil || response.Principal != human.ID || response.Generation != human.Generation+1 || len(response.Resources) != 1 || response.Resources[0] != "dashboard" {
+		t.Fatalf("human suspend response = %#v, %v", response, err)
+	}
+	if _, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-suspend", Issuer: issuer.URL, Subject: "unprovisioned", Resources: []string{"dashboard"}}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("human suspend accepted extra fields: %v", err)
+	}
+	created, err := sessions.SetHuman(issuer.URL, "unprovisioned", []string{"dashboard"}, false)
+	if err != nil || created.Generation != 1 {
+		t.Fatalf("rejected request provisioned a grant: %#v, %v", created, err)
 	}
 }
 

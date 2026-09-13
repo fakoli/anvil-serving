@@ -49,6 +49,29 @@ The command resolves the user's actual Authelia OpenID identifier; a username
 is not an OIDC subject. Resources omitted from this list are withdrawn. A
 successful access change enables the Connect account and invalidates existing browser and terminal
 credentials for the person. API principal grants remain separately declared.
+For a suspended account, it also re-enables the Authelia account, preserving its
+password, groups and registered factors, after applying the explicit grant list.
+
+Suspend or delete a person by username:
+
+```sh
+sudo anvil-connect-ctl users suspend developer --confirm
+sudo anvil-connect-ctl users delete developer --confirm
+```
+
+Omit `--confirm` to preview. Both first back up authentication state, then disable
+the Connect identity and revoke its browser sessions and human-approved terminal
+credentials. They briefly restart Authelia if active and preserve the last Connect
+operator. Suspension preserves the password, factors and service grants; use
+`users access` with the intended grants to resume. Deletion additionally removes
+the password-file account and its passkeys/TOTP. A failed factor deletion leaves
+the account disabled so deletion can be retried.
+
+The pinned Authelia CLI does not delete opaque identifiers. They remain with
+disabled Connect authority history, and a retained OpenID identifier reserves that
+username against recreation. Use suspension when access may be needed again.
+Backups, application data and separately issued API keys are retained; these keys
+have no automatic username association and require separate revocation.
 
 The result names an exclusive, root-only credential handoff file beneath
 `/etc/anvil-connect/handoffs`; credentials never appear in command output.
@@ -73,7 +96,7 @@ that user's WebAuthn/passkeys and TOTP so they can enroll again. Password reset
 alone retains those factors. Both website login and terminal browser approval
 continue to use Authelia's existing browser flow.
 
-Account changes and manual backups briefly stop and restart Authelia if it was
+Password/factor changes and manual backups briefly stop and restart Authelia if it was
 running, clearing its in-memory sessions. They leave an inactive service
 inactive. They do not revoke existing Connect sessions, CLI credentials or API
 keys; use the existing Connect administration commands for access revocation.
@@ -90,7 +113,8 @@ sudo anvil-connect-ctl users schedule --confirm
 sudo anvil-connect-ctl users restore --input /etc/anvil-connect/backups/ARCHIVE.zip --sha256 DIGEST --destination /etc/anvil-connect/backups/recovery --confirm
 ```
 
-A backup runs automatically before create/reset operations. Run `users backup`
+A backup runs automatically before create/reset/suspend/delete operations and
+when resuming a suspended account. Run `users backup`
 after a developer finishes enrollment or changes their own password/passkeys,
 and before maintenance. It includes the users file and, when initialized, a
 consistent SQLite copy plus its storage encryption key. The root-only archive
