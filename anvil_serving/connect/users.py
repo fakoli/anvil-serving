@@ -12,6 +12,7 @@ import re
 import secrets
 import stat
 import tempfile
+import time
 from urllib.parse import parse_qsl, urlsplit
 import uuid
 
@@ -43,6 +44,7 @@ _SETUP_URL = re.compile(r"https://[^\s]+")
 _RESET_TOKEN = re.compile(r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\Z")
 _NOTIFICATION_MAX = 32768
 _SETUP_TIMEOUT = 5
+_SETUP_RETRY_DELAY = 0.1
 
 
 def _invalid(message: str) -> UsageError:
@@ -52,6 +54,9 @@ def _invalid(message: str) -> UsageError:
 def _partial(message: str, result: dict) -> manage.ManageError:
     error = manage.ManageError(message, may_have_executed=True)
     error.recovery = {key: result[key] for key in ("operation", "username", "backup", "gateway_backup", "handoff_file", "classification", "destination", "sha256", "existing_connect_sessions_revoked", "account_disabled", "account_deleted") if key in result}
+    # This is selected by this module's fixed call sites. Keep child-process and
+    # exception output out of the CLI receipt.
+    error.recovery["recovery_hint"] = message
     return error
 
 
@@ -276,12 +281,36 @@ def _notification_file(auth: dict, uid: int, gid: int) -> bytes:
 
 
 def _start_password_setup(auth: dict, username: str) -> None:
-    """Start Authelia's reset flow over its declared loopback listener only."""
+    """Start the reset flow after the just-restarted loopback listener accepts connections."""
+    connection = None
     try:
         endpoint = urlsplit("http://" + auth["listen"])
         if endpoint.hostname is None or endpoint.port is None or endpoint.path or endpoint.query or endpoint.fragment:
             raise ValueError("invalid listener")
-        connection = http.client.HTTPConnection(endpoint.hostname, endpoint.port, timeout=_SETUP_TIMEOUT)
+        deadline = time.monotonic() + _SETUP_TIMEOUT
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ConnectionRefusedError("Authelia listener did not become ready")
+            connection = http.client.HTTPConnection(endpoint.hostname, endpoint.port, timeout=remaining)
+            try:
+                # Retrying is safe only before the POST has been sent. A failed
+                # request or response is deliberately not replayed.
+                connection.connect()
+                break
+            except ConnectionRefusedError:
+                connection.close()
+                connection = None
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise
+                time.sleep(min(_SETUP_RETRY_DELAY, remaining))
+        if connection.sock is None:
+            raise OSError("Authelia listener connection is unavailable")
+        # The readiness deadline only bounds establishing a connection. Once it
+        # succeeds, retain the request/response bound even if that took nearly
+        # the whole readiness window.
+        connection.sock.settimeout(_SETUP_TIMEOUT)
         body = json.dumps({"username": username}, separators=(",", ":")).encode()
         connection.request("POST", "/api/reset-password/identity/start", body=body, headers={
             "Content-Type": "application/json", "Host": auth["host"],
@@ -294,10 +323,8 @@ def _start_password_setup(auth: dict, username: str) -> None:
     except (OSError, ValueError, http.client.HTTPException) as exc:
         raise manage.ManageError("Authelia password setup request failed") from exc
     finally:
-        try:
+        if connection is not None:
             connection.close()
-        except UnboundLocalError:
-            pass
 
 
 def _password_setup_url(auth: dict, uid: int, gid: int, username: str, email: str) -> str:
@@ -767,7 +794,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 _remove_legacy_password_handoffs(manifest, username, destination)
             except BaseException as exc:
                 if delivery == "email":
-                    raise _partial("Password was replaced with an unknown value, but Authelia did not accept the password setup email request; inspect the retained backup and account state before retrying.", result) from exc
+                    raise _partial("Password was replaced with an unknown value, but the password setup email request could not be confirmed; inspect the retained backup and account state before retrying.", result) from exc
                 raise _partial("Password was replaced with an unknown value, but the password setup link was not delivered; inspect the retained backup and account state before retrying.", result) from exc
         if not include_gateway:
             from .user_backup import prune
