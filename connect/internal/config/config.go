@@ -47,13 +47,14 @@ func (l Limits) Validate() error {
 // Rule is explicitly copied into both declarations by the operator renderer.
 // It is never downloaded from the gateway to widen a running connector.
 type Rule struct {
-	ID         string   `json:"id"`
-	Host       string   `json:"host"`
-	PathPrefix string   `json:"path_prefix"`
-	Methods    []string `json:"methods"`
-	Access     string   `json:"access"`
-	NativeAuth string   `json:"native_auth"`
-	Limits     Limits   `json:"limits"`
+	ID                string   `json:"id"`
+	Host              string   `json:"host"`
+	PathPrefix        string   `json:"path_prefix"`
+	Methods           []string `json:"methods"`
+	Access            string   `json:"access"`
+	NativeAuth        string   `json:"native_auth"`
+	ExternalRedirects []string `json:"external_redirects,omitempty"`
+	Limits            Limits   `json:"limits"`
 }
 
 type Resource struct {
@@ -160,6 +161,17 @@ func (r Rule) Validate() error {
 	if (r.Access == "api" && r.NativeAuth != "delegate-bearer") || (r.Access == "browser" && r.NativeAuth != "none" && r.NativeAuth != "passthrough" && r.NativeAuth != "signed-identity") {
 		return errors.New("unsupported access and native-auth combination")
 	}
+	if len(r.ExternalRedirects) > 8 || (r.Access != "browser" && len(r.ExternalRedirects) != 0) {
+		return errors.New("external redirects are limited to browser resources")
+	}
+	redirects := map[string]bool{}
+	for _, value := range r.ExternalRedirects {
+		redirect, ok := canonicalExternalRedirect(value, r.Host)
+		if !ok || redirects[redirect.String()] {
+			return errors.New("invalid or duplicate external redirect")
+		}
+		redirects[redirect.String()] = true
+	}
 	if len(r.Methods) < 1 || len(r.Methods) > 7 {
 		return errors.New("explicit methods required")
 	}
@@ -171,6 +183,39 @@ func (r Rule) Validate() error {
 		seen[method] = true
 	}
 	return r.Limits.Validate()
+}
+
+// AllowsExternalRedirect reports whether value is a configured external
+// browser redirect. The configured endpoint fixes scheme, host, and path;
+// applications may add a runtime query for an OIDC state or code.
+func (r Rule) AllowsExternalRedirect(value string) bool {
+	redirect, ok := runtimeExternalRedirect(value, r.Host)
+	if !ok {
+		return false
+	}
+	for _, configured := range r.ExternalRedirects {
+		endpoint, valid := canonicalExternalRedirect(configured, r.Host)
+		if valid && redirect.Scheme == endpoint.Scheme && redirect.Host == endpoint.Host && redirect.Path == endpoint.Path {
+			return true
+		}
+	}
+	return false
+}
+
+func canonicalExternalRedirect(value, resourceHost string) (*url.URL, bool) {
+	redirect, ok := runtimeExternalRedirect(value, resourceHost)
+	if !ok || redirect.RawQuery != "" || redirect.ForceQuery {
+		return nil, false
+	}
+	return redirect, true
+}
+
+func runtimeExternalRedirect(value, resourceHost string) (*url.URL, bool) {
+	redirect, err := url.Parse(value)
+	if err != nil || !strings.HasPrefix(value, "https://") || strings.Contains(value, "#") || redirect.String() != value || redirect.Scheme != "https" || redirect.Host == resourceHost || !ValidHost(redirect.Host) || redirect.User != nil || redirect.Opaque != "" || redirect.RawPath != "" || redirect.Fragment != "" || redirect.Path == "" || redirect.Path == "/" || !CanonicalPath(redirect.Path) {
+		return nil, false
+	}
+	return redirect, true
 }
 
 func (r Rule) Allows(host, requestPath, method string) bool {

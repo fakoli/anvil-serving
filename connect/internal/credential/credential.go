@@ -112,6 +112,7 @@ func New(manager *identity.Manager, state *store.Store, gateway config.Gateway, 
 		// owned slice backing arrays.
 		copied := resource
 		copied.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
+		copied.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
 		issuer.resources[copied.Rule.ID] = copied
 	}
 	return issuer, nil

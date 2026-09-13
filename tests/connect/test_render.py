@@ -109,6 +109,80 @@ def test_literal_credentials_and_unbound_bindings_are_rejected() -> None:
         validate_manifest(value)
 
 
+def test_browser_external_redirects_are_closed_and_bound_to_the_connector() -> None:
+    redirect = "https://auth.example.test/api/oidc/authorization"
+
+    def browser_rules(value: dict) -> tuple[dict, dict]:
+        gateway_rule = next(resource["rule"] for resource in value["gateway"]["gateway"]["resources"]
+                            if resource["rule"]["access"] == "browser")
+        connector_rule = next(resource["envelope"]["rule"] for resource in value["connectors"][0]["resources"]
+                              if resource["envelope"]["rule"]["id"] == gateway_rule["id"])
+        return gateway_rule, connector_rule
+
+    value = manifest()
+    gateway_rule, connector_rule = browser_rules(value)
+    gateway_rule["external_redirects"] = connector_rule["external_redirects"] = [redirect]
+    normalized = validate_manifest(value)
+    assert normalized["gateway"]["gateway"]["resources"][0]["rule"]["external_redirects"] == [redirect]
+
+    value = manifest()
+    gateway_rule, connector_rule = browser_rules(value)
+    gateway_rule["external_redirects"] = [redirect]
+    with pytest.raises(ManifestError, match="fixed connector binding"):
+        validate_manifest(value)
+    connector_rule["external_redirects"] = [redirect]
+    assert validate_manifest(value)
+
+    value = manifest()
+    gateway_rule, connector_rule = browser_rules(value)
+    gateway_rule["external_redirects"] = connector_rule["external_redirects"] = [redirect]
+    gateway_rule["external_redirect"] = [redirect]
+    with pytest.raises(ManifestError, match="unknown keys"):
+        validate_manifest(value)
+
+    invalid_redirects = (
+        "http://auth.example.test/api/oidc/authorization",
+        "https://auth.example.test/",
+        "https://auth.example.test:443/api/oidc/authorization",
+        "https://user@auth.example.test/api/oidc/authorization",
+        "https://auth.example.test/api/oidc/authorization?next=/",
+        "https://auth.example.test/api/oidc/authorization#fragment",
+        "https://auth.example.test/api%2Foidc/authorization",
+    )
+    for invalid in invalid_redirects:
+        value = manifest()
+        gateway_rule, connector_rule = browser_rules(value)
+        gateway_rule["external_redirects"] = connector_rule["external_redirects"] = [invalid]
+        with pytest.raises(ManifestError, match="external redirect"):
+            validate_manifest(value)
+
+    value = manifest()
+    gateway_rule, connector_rule = browser_rules(value)
+    same_host = f"https://{gateway_rule['host']}/api/oidc/authorization"
+    gateway_rule["external_redirects"] = connector_rule["external_redirects"] = [same_host]
+    with pytest.raises(ManifestError, match="differ from the resource host"):
+        validate_manifest(value)
+
+    value = manifest()
+    gateway_rule, connector_rule = browser_rules(value)
+    gateway_rule["external_redirects"] = connector_rule["external_redirects"] = [redirect, redirect]
+    with pytest.raises(ManifestError, match="duplicate external redirects"):
+        validate_manifest(value)
+    value = manifest()
+    gateway_rule, connector_rule = browser_rules(value)
+    redirects = [f"https://auth.example.test/api/oidc/authorization-{index}" for index in range(9)]
+    gateway_rule["external_redirects"] = connector_rule["external_redirects"] = redirects
+    with pytest.raises(ManifestError, match="between 1 and 8"):
+        validate_manifest(value)
+    value = manifest()
+    gateway_rule, connector_rule = browser_rules(value)
+    gateway_rule["access"] = connector_rule["access"] = "api"
+    gateway_rule["native_auth"] = connector_rule["native_auth"] = "delegate-bearer"
+    gateway_rule["external_redirects"] = connector_rule["external_redirects"] = [redirect]
+    with pytest.raises(ManifestError, match="requires browser access"):
+        validate_manifest(value)
+
+
 def test_gateway_bindings_reject_native_control_and_tunnel_collisions() -> None:
     value = manifest()
     resource = value["gateway"]["gateway"]["resources"][0]

@@ -112,6 +112,7 @@ func NewKeys(state *store.Store, rules []config.Rule) (*Keys, error) {
 			return nil, ErrGrant
 		}
 		rule.Methods = append([]string(nil), rule.Methods...)
+		rule.ExternalRedirects = append([]string(nil), rule.ExternalRedirects...)
 		k.rules[rule.ID] = rule
 	}
 	return k, nil
