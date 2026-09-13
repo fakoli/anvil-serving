@@ -76,12 +76,17 @@ func TestPortalGrantsAndReservedRoutes(t *testing.T) {
 				Services       []portalService `json:"services"`
 				Choices        []portalService `json:"choices"`
 				Administration string          `json:"administration_path"`
+				Account        string          `json:"account_url"`
+				Passkeys       string          `json:"passkeys_url"`
 			}
 			if json.Unmarshal(w.Body.Bytes(), &result) != nil || len(result.Services) != 1 || result.Services[0].ID != "dash" || result.Services[0].Role != "member" || result.Services[0].URL != "https://dash.example.test/app" || len(result.Choices) != 0 || result.Administration != "" {
 				t.Fatal("portal widened grants or exposed operator inventory")
 			}
 			if strings.Contains(w.Body.String(), "private-pi") {
 				t.Fatal("hidden app leaked")
+			}
+			if result.Account != "https://idp.example.test/settings" || result.Passkeys != "https://idp.example.test/settings/two-factor-authentication" {
+				t.Fatal("account actions must use settings routes without bouncing through the default landing")
 			}
 		}
 	}
