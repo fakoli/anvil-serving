@@ -160,6 +160,7 @@ func New(host string, declaration config.Gateway, leases *Leases, backends map[s
 			ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) { gateFailure(w, http.StatusBadGateway) },
 		}
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
+		resource.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
 		g.routes[resource.Rule.ID] = gateRoute{resource, backend, proxy, make(chan struct{}, min(258, resource.Rule.Limits.Concurrent+2))}
 	}
 	return g, nil

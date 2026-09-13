@@ -494,6 +494,24 @@ func TestBrowserResponseValidationAllowsConfiguredExternalOIDCRedirect(t *testin
 	}
 }
 
+func TestBrowserCopiesExternalRedirectPolicy(t *testing.T) {
+	declaration := browserDeclaration("none")
+	declaration.Resources[0].Rule.ExternalRedirects = []string{"https://login.example.test/oauth/oidc/login"}
+	browser, err := NewBrowser(declaration, newBrowserAuthorityStub(), func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(browser.Close)
+	declaration.Resources[0].Rule.ExternalRedirects[0] = "https://login.example.test/oauth/oidc/other"
+	retained := browser.resources["dash.example.test"].declaration.Rule
+	if err := ValidateBrowserResponse(&http.Response{StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/login?state=opaque"}}}, retained); err != nil {
+		t.Fatal("constructor lost the configured redirect policy", err)
+	}
+	if ValidateBrowserResponse(&http.Response{StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/other?state=opaque"}}}, retained) == nil {
+		t.Fatal("caller mutation widened retained browser redirect policy")
+	}
+}
+
 func TestBrowserCapacityAndRevocationCancelDispatch(t *testing.T) {
 	started, stopped := make(chan struct{}), make(chan struct{})
 	browser, authority := browserFixture(t, "none", func(_ http.ResponseWriter, r *http.Request, _ config.Resource, _ session.Admission) {

@@ -106,6 +106,7 @@ func newBrowser(declaration config.Gateway, authority BrowserAuthority, identiti
 			continue
 		}
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
+		resource.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
 		if resource.Rule.NativeAuth == "signed-identity" {
 			signer := identities[resource.Rule.ID]
 			if signer == nil {
@@ -442,6 +443,7 @@ func (b *Browser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	declaration := resource.declaration
 	declaration.Rule.Methods = append([]string(nil), declaration.Rule.Methods...)
+	declaration.Rule.ExternalRedirects = append([]string(nil), declaration.Rule.ExternalRedirects...)
 	if declaration.Rule.NativeAuth == "signed-identity" {
 		assertion, signErr := b.identities[declaration.Rule.ID].Sign(admitted, declaration.Rule, clean)
 		if signErr != nil {
