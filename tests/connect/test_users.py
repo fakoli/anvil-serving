@@ -195,7 +195,7 @@ def test_failed_smtp_password_setup_request_keeps_the_unknown_replacement(enviro
     accounts["users"]["owner"]["password"] = _HASH.replace("B" * 43, "C" * 43)
     db.write_text(json.dumps(accounts))
     monkeypatch.setattr(users, "_start_password_setup", lambda *_: (_ for _ in ()).throw(manage.ManageError("synthetic request failure")))
-    with pytest.raises(manage.ManageError, match="did not accept") as error:
+    with pytest.raises(manage.ManageError, match="could not be confirmed") as error:
         run("reset-password", "owner", apply=True)
     assert json.loads(db.read_text())["users"]["owner"]["password"] == _HASH
     assert state["active"] and error.value.recovery["backup"]["sha256"]
@@ -582,11 +582,129 @@ def test_partial_backup_receipt_survives_cli_error(monkeypatch, capsys):
     from anvil_serving import cli
     backup = {"file": "/private/backup.zip", "sha256": "a" * 64}
     def fail(*args, **kwargs):
-        raise users._partial("synthetic failure", {"backup": backup})
+        try:
+            raise RuntimeError("synthetic-child-secret")
+        except RuntimeError as exc:
+            raise users._partial("Account operation completed, but backup retention did not finish.", {"backup": backup}) from exc
     monkeypatch.setattr(users, "operate", fail)
     assert cli.main(["connect", "users", "reset-mfa", "dev", "--confirm", "--json"]) != 0
     envelope = json.loads(capsys.readouterr().out)
     assert envelope["data"]["backup"] == backup
+    assert envelope["data"]["recovery_hint"] == "Account operation completed, but backup retention did not finish."
+    assert envelope["error"]["message"] == "Connect operation failed; inspect declared ownership and component status."
+    assert "synthetic-child-secret" not in json.dumps(envelope)
+
+
+def test_password_setup_retries_only_connection_refusals(monkeypatch):
+    attempts, requests, sleeps, socket_timeouts = [], [], [], []
+
+    class Response:
+        status = 200
+
+        def read(self, _size):
+            return b""
+
+    class Connection:
+        def __init__(self, *_args, **_kwargs):
+            attempts.append(self)
+            self.sock = type("Socket", (), {"settimeout": socket_timeouts.append})()
+
+        def connect(self):
+            if len(attempts) == 1:
+                raise ConnectionRefusedError
+
+        def request(self, *args, **kwargs):
+            requests.append((args, kwargs))
+
+        def getresponse(self):
+            return Response()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(users.http.client, "HTTPConnection", Connection)
+    monkeypatch.setattr(users.time, "sleep", sleeps.append)
+    users._start_password_setup({"listen": "127.0.0.1:19091", "host": "auth.example.test"}, "dev")
+    assert len(attempts) == 2 and len(requests) == 1 and sleeps and socket_timeouts == [users._SETUP_TIMEOUT]
+
+
+def test_password_setup_accepts_near_deadline_with_full_request_timeout(monkeypatch):
+    connect_timeouts, socket_timeouts = [], []
+
+    class Response:
+        status = 200
+
+        def read(self, _size):
+            return b""
+
+    class Connection:
+        def __init__(self, *_args, timeout, **_kwargs):
+            connect_timeouts.append(timeout)
+            self.sock = type("Socket", (), {"settimeout": socket_timeouts.append})()
+
+        def connect(self):
+            pass
+
+        def request(self, *_args, **_kwargs):
+            pass
+
+        def getresponse(self):
+            return Response()
+
+        def close(self):
+            pass
+
+    moments = iter((0.0, 4.99))
+    monkeypatch.setattr(users.http.client, "HTTPConnection", Connection)
+    monkeypatch.setattr(users.time, "monotonic", lambda: next(moments))
+    users._start_password_setup({"listen": "127.0.0.1:19091", "host": "auth.example.test"}, "dev")
+    assert connect_timeouts == [pytest.approx(0.01)] and socket_timeouts == [users._SETUP_TIMEOUT]
+
+
+def test_password_setup_does_not_replay_an_ambiguous_post(monkeypatch):
+    attempts, requests = [], []
+
+    class Connection:
+        def __init__(self, *_args, **_kwargs):
+            attempts.append(self)
+            self.sock = type("Socket", (), {"settimeout": lambda _self, _timeout: None})()
+
+        def connect(self):
+            pass
+
+        def request(self, *args, **kwargs):
+            requests.append((args, kwargs))
+            raise OSError("synthetic ambiguous write")
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(users.http.client, "HTTPConnection", Connection)
+    with pytest.raises(manage.ManageError, match="password setup request failed"):
+        users._start_password_setup({"listen": "127.0.0.1:19091", "host": "auth.example.test"}, "dev")
+    assert len(attempts) == len(requests) == 1
+
+
+def test_password_setup_refusal_timeout_is_bounded(monkeypatch):
+    attempts, sleeps = [], []
+
+    class Connection:
+        def __init__(self, *_args, **_kwargs):
+            attempts.append(self)
+
+        def connect(self):
+            raise ConnectionRefusedError
+
+        def close(self):
+            pass
+
+    moments = iter((0.0, 0.0, 0.0, 6.0))
+    monkeypatch.setattr(users.http.client, "HTTPConnection", Connection)
+    monkeypatch.setattr(users.time, "monotonic", lambda: next(moments))
+    monkeypatch.setattr(users.time, "sleep", sleeps.append)
+    with pytest.raises(manage.ManageError, match="password setup request failed"):
+        users._start_password_setup({"listen": "127.0.0.1:19091", "host": "auth.example.test"}, "dev")
+    assert len(attempts) == 1 and sleeps == [users._SETUP_RETRY_DELAY]
 
 
 @pytest.mark.parametrize(("passkey_login", "passkey_uv_two_factors"), ((False, False), (True, False), (True, True)))
@@ -661,10 +779,18 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(
         process.wait(timeout=10)
         raise AssertionError("isolated Authelia did not become healthy")
 
+    def starting():
+        process = subprocess.Popen([binary, "--config", str(root / "authelia/configuration.yml")],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        assert process.poll() is None, "isolated Authelia startup failed"
+        return process
+
     start_setup = users._start_password_setup
 
     def password_setup_url(auth, uid, gid, username, email):
-        process = running()
+        # Exercise the production helper immediately after startup. The other
+        # provider checks intentionally wait for health before authenticating.
+        process = starting()
         try:
             start_setup(auth, username)
             return users._setup_url(users._notification_file(auth, uid, gid), email, auth["host"], datetime.now(timezone.utc))
