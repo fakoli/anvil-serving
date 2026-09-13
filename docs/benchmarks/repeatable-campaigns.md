@@ -53,6 +53,23 @@ their request count, completion distribution, cache state, or output contract
 differs from the finalist workload. A performance winner is not a qualified
 deployment until its independent quality and integration gates pass.
 
+## Investigate before rejecting candidates
+
+Use `skills/anvil-serving-llm-qualification/references/configuration-search.md`
+whenever a gate fails: capture and diagnose, research the observed error, test
+a supported versioned remedy, then freeze and fully qualify the selected
+configuration. Keep all failed artifacts. A command or stage stops on failure;
+the campaign owner continues investigation or dispatches another bounded trial
+while supported options, authority, and budget remain. Budget-limited candidates are unresolved, not defective.
+
+Before the run, record ranked objectives, investigation allocations, and a
+reserve for final qualification and authorized promotion or restoration.
+Give promising candidates fair configuration coverage before picking the first
+pass. Assess coding with independently checked repository tasks; strict output
+adherence and speed are separate evidence. Report native, configured, measured,
+and simultaneous context capacity separately; do not call a tested default a
+proven maximum.
+
 ## Make comparable capacity cells
 
 - Pin model, runtime image, engine revision, recipe, hardware/topology, context,
@@ -112,7 +129,8 @@ history.
 ## Fail fast and fix forward
 
 Run one independently checkable command per step. Stop immediately on a
-nonzero native exit. On PowerShell, do not assume `$ErrorActionPreference`
+nonzero native exit before dependent work; follow the investigation loop above
+rather than abandoning the candidate. On PowerShell, do not assume `$ErrorActionPreference`
 turns a failed external executable into a terminating error; either run the
 external command alone or check `$LASTEXITCODE` before continuing.
 

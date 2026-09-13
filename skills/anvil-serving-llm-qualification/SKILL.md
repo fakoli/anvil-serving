@@ -1,6 +1,6 @@
 ---
 name: anvil-serving-llm-qualification
-description: Qualify a pinned local LLM or VLM on Anvil Serving with reproducible text, image, video, capacity, router, and storage evidence. Use for model bakeoffs, quant comparisons, context/concurrency qualification, multimodal enablement, or production-role recommendations that must remain human-gated.
+description: Qualify a pinned local LLM or VLM on Anvil Serving with reproducible text, image, video, capacity, router, and storage evidence. Use for model bakeoffs, failure diagnosis and researched configuration trials, quant comparisons, context/concurrency qualification, multimodal enablement, or production-role recommendations that must remain human-gated.
 ---
 
 # Anvil Serving LLM Qualification
@@ -8,7 +8,15 @@ description: Qualify a pinned local LLM or VLM on Anvil Serving with reproducibl
 Use the product CLI for lifecycle, cache, preflight, benchmark, and router work.
 Do not create skill-local operational scripts or promote a route.
 
-Read `references/evidence-contract.md` before starting.
+The maintained layout is `PRODUCT_ROOT/skills/anvil-serving-llm-qualification`.
+For global discovery, symlink that directory rather than copying it. Resolve
+its real path and verify the product root contains `pyproject.toml` and
+`anvil_serving/` before using repository-relative paths. For a copied install,
+use the available workspace-resolution skill to locate the product checkout
+and read its canonical skill; never infer the checkout from the caller's cwd.
+Read `references/evidence-contract.md` and `references/configuration-search.md`
+before starting. The latter owns failure investigation and candidate stopping
+rules; preserve failed configurations while testing supported successors.
 
 ## Workflow
 
@@ -30,9 +38,10 @@ Read `references/evidence-contract.md` before starting.
    recipe, managed switch, or restore transaction, use
    `.agents/skills/anvil-serving-candidate-operations/SKILL.md`. Do not change
    a live alias.
-7. Diagnose startup failures down-stack: caller, product status/logs, container
-   exit/health, then engine/model-download error. Retain the earliest actionable
-   error.
+7. Diagnose startup and request failures down-stack: caller, product status/logs,
+   container exit/health, then engine/model-download error. Retain the earliest
+   actionable error, research it, and test a versioned configuration remedy
+   under `references/configuration-search.md` before rejecting a candidate.
 8. For a hardware-gated upstream kernel patch, pin the upstream commit, verify
    the exact source and result hashes, and fail startup unless the required
    symbol imports or the engine logs prove the intended path loaded. Treat the
@@ -40,13 +49,15 @@ Read `references/evidence-contract.md` before starting.
 9. For missing hardware-specific MoE/GEMM config warnings or measured kernel
    bottlenecks, use `skills/anvil-serving-kernel-tuning/SKILL.md`. Do not
    recommend a generated tune without the identical untuned-versus-tuned A/B.
-10. Run thinking-disabled functional gates first. Use default thinking only as a
-   bounded diagnostic lane.
+10. Declare and qualify the model-native reasoning and sampling policy intended
+    for the role. Use thinking-disabled probes only when supported and relevant;
+    they do not qualify a deployment that will use a different reasoning policy.
 11. Run capacity at declared context/concurrency points. Keep at least the
    campaign’s output/reasoning headroom.
 12. For images/video, run direct endpoint preflight and
     `eval benchmark multimodal` before router work. If direct `video_url` fails,
-    publish the failure and stop routed video qualification.
+    retain the failure and pause routed video qualification while investigating
+    the direct configuration. Resume only after its direct gates pass.
 13. If direct video passes, verify same-dialect preservation, fail-closed
     unsupported translation, admission/count/token limits, streaming, tools,
     malformed media, and an isolated router configuration.
@@ -82,7 +93,9 @@ Read `references/evidence-contract.md` before starting.
 ## Decisions
 
 - Separate official/community claims from locally measured results.
-- Compare quantized profiles only after every hard gate passes.
+- Compare quantized profiles only after every hard gate passes for the exact
+  frozen profile. A failed profile returns to configuration search; it does
+  not automatically reject the checkpoint or engine.
 - Compare speculation to an otherwise identical no-speculation control. Keep
   model, revision, image, patch, TP, context, concurrency, KV dtype, memory
   fraction, backends, batching, graph capture, transport, parsers, and offload
