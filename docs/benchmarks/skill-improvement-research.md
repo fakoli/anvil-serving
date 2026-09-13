@@ -9,7 +9,7 @@ independently. Keep one canonical source of workflow rules, one evidence store,
 and one owner of live experiments. The initial implementation kept the loop integrated. After the operator
 requested reuse across projects, the shared research and improvement methods
 were extracted into the
-[agent-methods plugin](https://github.com/fakoli/fakoli-plugins/tree/main/plugins/agent-methods).
+[session-improvement-loop plugin](https://github.com/fakoli/agent-plugins/tree/main/plugins/session-improvement-loop).
 Anvil retains thin bindings for its tools, evidence contracts, and gates.
 
 This is an engineering recommendation based on external research and the
