@@ -219,8 +219,9 @@ def test_simple_yaml_adoption_and_ambiguous_yaml_rejected():
             users._database(bad)
 
 
-def notice(email, when):
-    return (f"Date: {when.strftime('%Y-%m-%d %H:%M:%S %z')} UTC\nRecipient: <{email}>\nSubject: Confirm your identity\n"
+def notice(email, when, recipient=None):
+    recipient = recipient or "{Existing owner " + email + "}"
+    return (f"Date: {when.strftime('%Y-%m-%d %H:%M:%S %z')} UTC\nRecipient: {recipient}\nSubject: Confirm your identity\n"
             "A ONE-TIME CODE HAS BEEN GENERATED TO COMPLETE A REQUESTED ACTION\n"
             "----------------------------------------\n\nABCDEFGH\n\n----------------------------------------\n").encode()
 
@@ -237,6 +238,25 @@ def test_code_is_recent_exact_recipient_and_never_returned(environment):
     for email, when in (("other@example.test", now), ("owner@example.test", now - timedelta(minutes=6))):
         with pytest.raises(UsageError):
             users._notification(notice(email, when), "owner@example.test", now)
+
+
+def test_code_accepts_one_authelia_brace_recipient_only():
+    now = datetime.now(timezone.utc)
+    assert users._notification(
+        notice("owner@example.test", now, "{Existing owner owner@example.test}"),
+        "owner@example.test",
+        now,
+    ) == "ABCDEFGH"
+
+    assert users._notification(notice("owner@example.test", now, "<owner@example.test>"), "owner@example.test", now) == "ABCDEFGH"
+    for recipient in (
+        "{Existing owner other@example.test}",
+        "{Existing owner other@example.test owner@example.test}",
+        "<owner@example.test>, <other@example.test>",
+        "{Existing owner <owner@example.test>}",
+    ):
+        with pytest.raises(UsageError):
+            users._notification(notice("owner@example.test", now, recipient), "owner@example.test", now)
 
 
 def test_cli_default_manifest_and_conditional_apply(monkeypatch):

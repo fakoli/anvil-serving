@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from email.utils import parseaddr
+from email.utils import getaddresses, parseaddr
 import hashlib
 import json
 import os
@@ -30,6 +30,7 @@ _CODE = re.compile(
     r".*?^----------------------------------------\n\n"
     r"([ABCDEFGHJKLMNPQRTUVWYXZ2346789]{8})\n\n----------------------------------------(?:\n|$)"
 )
+_AUTHELIA_RECIPIENT = re.compile(r"\{([^{}\r\n]+) ([^{}\s]+)\}\Z")
 
 
 def _invalid(message: str) -> UsageError:
@@ -188,10 +189,22 @@ def _password(binary: str, runner) -> tuple[str, str]:
     return passwords[0], digests[0]
 
 
+def _recipient_matches(recipient: str, email: str) -> bool:
+    """Accept one RFC mailbox or Authelia's pinned brace-formatted recipient."""
+    addresses = getaddresses([recipient])
+    if len(addresses) == 1 and parseaddr(recipient)[1] == email and addresses[0][1] == email:
+        return True
+    brace = _AUTHELIA_RECIPIENT.fullmatch(recipient)
+    if brace is None:
+        return False
+    display, candidate = brace.groups()
+    return display == display.strip() and "@" not in display and candidate == email and parseaddr(candidate)[1] == candidate and getaddresses([candidate]) == [("", candidate)]
+
+
 def _notification(raw: bytes, email: str, now: datetime) -> str:
     text = raw.decode("utf-8").replace("\r\n", "\n")
     header = re.match(r"\ADate: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)(?:\.\d+)? ([+-]\d{4}) [^\n]+\nRecipient: ([^\n]+)\nSubject: Confirm your identity\n", text)
-    if header is None or parseaddr(header[3])[1] != email:
+    if header is None or not _recipient_matches(header[3], email):
         raise _invalid("No enrollment notification for this account; request a new code in Authelia first.")
     created = datetime.strptime(header[1] + " " + header[2], "%Y-%m-%d %H:%M:%S %z")
     if not 0 <= (now - created).total_seconds() < 300:
