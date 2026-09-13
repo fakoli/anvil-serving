@@ -99,8 +99,9 @@ Keep that digest separately. The command retains the newest verified snapshot
 for each of the last 14 UTC calendar days, plus the seven newest event snapshots.
 It preserves unrecognized, future-dated, and timestamp-mismatched archives.
 Archives are limited to 64 MiB and are **not encrypted**. These are local rollback
-copies; they cannot recover a lost disk. Encrypt any copy taken to another device; host configuration, other
-secrets and the separate Connect gateway authority need their own backups.
+copies; they cannot recover a lost disk. Encrypt any copy taken to another device.
+Host configuration and other secrets need their own backups; the gateway authority
+is included by the option below.
 
 Add `--include-gateway` for the nightly recovery set. It takes the Authelia
 snapshot first, then stops only the native gateway for its offline authority
