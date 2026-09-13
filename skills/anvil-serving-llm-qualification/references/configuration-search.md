@@ -23,14 +23,37 @@ intermittency, but must retain all outcomes and cannot erase a failed gate.
 
 ## Parallel research and three-answer synthesis
 
-When the user requests parallel research or a fusion approach, use three
-independent research sub-agents for a material shortlist, ambiguous failure,
-or competing recipe decision. Use fewer or sequential answers when concurrency
-or the remaining shared budget requires it, and disclose the reduced coverage.
-Do not repeat this panel for every routine setting change.
+Apply this dispatch policy by default in qualification campaigns; the user
+need not request fusion again. First reuse applicable retained research and
+verify any decisive claim whose date, revision, or hardware assumptions changed.
+Handle routine lookups and a documented single-setting remedy in the lead.
+Use three independent research sub-agents when a material shortlist, ambiguous
+failure, or competing recipe decision remains unresolved and independent
+answers can change the next experiment. Do not repeat the panel for every
+setting change or merely to restate an established conclusion.
 
-Give all three the same compact question, observed evidence, hardware/runtime
-constraints, ranked objectives, authority boundary, and per-agent budget.
+Choose concurrency for useful elapsed-time savings, not agent count. Run the
+three answers concurrently when slots and the shared budget permit. With fewer
+slots, complete remaining answers sequentially without exposing peer answers;
+with insufficient budget, reduce coverage and disclose it. Do not claim a
+three-answer result when fewer answers finished. Preserve the qualification
+reserve and the user's stop limit even when research remains incomplete.
+
+Prepare neutral inventory and failure facts once. Give all three the same
+compact question, observed evidence, hardware/runtime constraints, ranked
+objectives, authority boundary, and per-agent time/usage budget. Use a no-history
+or minimal-history fork with exact artifact paths and bounded excerpts, not
+the campaign transcript. Default to a packet of at most 800 words and answers
+of at most 400 words with 3–5 decisive sources; expand only when essential
+identity, uncertainty, or counterevidence would otherwise be lost. These are
+communication limits, not measurements or hard caps on total inference tokens.
+
+Use the project's economical research-agent defaults; do not put all workers
+on the strongest model or highest effort automatically. Reserve deeper
+reasoning for a demonstrated conflict or difficult diagnosis. Check available
+usage before fan-out and after the first round; include input/context, tool
+results, reasoning, answers, and synthesis where usage is observable. Never
+infer exact token cost from answer length; retain unknown usage as unknown.
 Ask each for a complete independent answer before sharing peer answers or the
 lead's preferred conclusion. They may emphasize different sources, but each
 must address the same decision so their answers can be compared. Prefer
@@ -62,6 +85,44 @@ inspection or an already-authorized download/test. Research agents never own
 GPU lifecycle, routes, or competing cache writers. Keep live trials under one
 campaign owner, use bounded dispatch packets, and count all agents plus synthesis
 against the campaign's shared usage/time budget and qualification reserve.
+
+Use one initial answer round and one concise synthesis. The lead does useful
+independent work while research runs, rather than generating a fourth duplicate
+answer. Reuse the source registry and artifact identities instead of fetching
+unchanged inventories repeatedly. Retain permitted full evidence in the existing
+protected artifacts; carry only compact findings and evidence paths into
+synthesis or resumed context, fetching decisive excerpts when needed. Verify
+decisive sources and disputed claims,
+not every peripheral link. If a gap remains, send only that gap and the needed
+evidence to the relevant worker; do not rerun all three with full histories.
+Stop or cancel work that cannot change the decision, while retaining partial
+results and unresolved coverage. Record elapsed time and available usage at
+decision boundaries so later campaigns can tune these defaults from evidence;
+do not claim a speed or token saving that has not been measured.
+
+## Reuse existing orchestration
+
+Use the host's native sub-agent tools and existing dispatch/evidence records;
+this skill supplies the benchmark decision policy, not a second orchestrator.
+Do not add an SDK, Pi extension, or multi-agent framework just to implement
+fan-out and synthesis. Installed parallel-dispatch or compact-output skills
+may supply compatible mechanics; preserve this skill's evidence requirements.
+
+Primary reference patterns, inspected 2026-09-13:
+
+- [OpenAI's parallelization example](https://github.com/openai/openai-agents-python/blob/main/examples/agent_patterns/parallelization.py)
+  runs three independent attempts and one selection pass. It is an SDK example,
+  not a required dependency or a native Codex fusion switch.
+- [Pi Fusion](https://github.com/alexei-led/pi-fusion) provides a parallel panel
+  followed by a judge. Treat its Pi integration as a reference, not a drop-in
+  Codex tool; verify current configuration before adopting any implementation.
+- [leblancfg/pi-fusion](https://github.com/leblancfg/pi-fusion) separates
+  archived worker transcripts from bounded context handoffs. Reuse that evidence
+  boundary through existing artifacts; do not assume Pi's storage hooks exist
+  in Codex or silently discard counterevidence to meet a summary limit.
+- [Mixture-of-Agents](https://github.com/togethercomputer/MoA) demonstrates
+  answer aggregation across multiple models and layers. Extra layers are
+  optional research variants, not the default for this bounded campaign.
 
 ## On failure
 
