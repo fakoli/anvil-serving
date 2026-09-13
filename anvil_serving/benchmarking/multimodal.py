@@ -20,6 +20,7 @@ from typing import Any
 from ..model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
 from ..preflight import chat, resolve_api_key, response_observation
 from .artifacts import atomic_write_json, path_is_within, real_path, validate_write_target
+from .evaluation import resolve_sampling_settings
 from .runner import percentile
 
 MANIFEST_SCHEMA = "multimodal-corpus/v1"
@@ -361,6 +362,8 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
         ),
     )
     ap.add_argument("--max-tokens", type=int, default=1024)
+    ap.add_argument("--temperature", type=float)
+    ap.add_argument("--top-p", type=float)
     ap.add_argument("--timeout-seconds", type=float, default=900.0)
     ap.add_argument(
         "--thinking-mode",
@@ -411,6 +414,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
             no_thinking=False,
             reasoning_effort=args.reasoning_effort,
         )
+        sampling_controls = resolve_sampling_settings(args)
         corpus = load_corpus(
             args.corpus,
             max_images_per_request=args.max_images_per_request,
@@ -484,8 +488,10 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
                 _messages(case),
                 api_key,
                 max_tokens=args.max_tokens,
-                temperature=0.0,
+                temperature=sampling_controls["temperature"]["effective_request"],
                 timeout=args.timeout_seconds,
+                **({"top_p": sampling_controls["top_p"]["effective_request"]}
+                   if sampling_controls["top_p"]["sent"] else {}),
                 chat_template_kwargs=ctk,
                 reasoning_effort=args.reasoning_effort,
                 mm_processor_kwargs=case["sampling"],
@@ -604,6 +610,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
             "max_videos_per_request": args.max_videos_per_request,
             "max_tokens": args.max_tokens,
             "timeout_seconds": args.timeout_seconds,
+            "sampling": sampling_controls,
             "thinking_mode": args.thinking_mode,
             "chat_template_kwargs": ctk,
             "reasoning_effort": args.reasoning_effort,

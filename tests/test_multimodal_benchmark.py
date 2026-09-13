@@ -200,9 +200,13 @@ def test_runner_records_identity_media_sampling_outputs_and_aggregates(
     monkeypatch.setattr(multimodal, "_endpoint_models", lambda *_args: ["agents-a1"])
 
     seen_sampling = []
+    seen_sampler_controls = []
 
     def fake_chat(*_args, **kwargs):
         seen_sampling.append(kwargs["mm_processor_kwargs"])
+        seen_sampler_controls.append({
+            key: kwargs[key] for key in ("temperature", "top_p") if key in kwargs
+        })
         return {
             "choices": [{
                 "finish_reason": "stop",
@@ -225,6 +229,45 @@ def test_runner_records_identity_media_sampling_outputs_and_aggregates(
     assert artifact["configuration"]["max_videos_per_request"] == 1
     assert artifact["passed"] is True
     assert seen_sampling == [None, None]
+    assert seen_sampler_controls == [{"temperature": 0.0}] * 2
+    assert artifact["configuration"]["sampling"] == {
+        "temperature": {"requested": None, "effective_request": 0.0, "sent": True},
+        "top_p": {"requested": None, "effective_request": None, "sent": False},
+    }
+
+
+def test_sampling_controls_validate_wire_and_record(monkeypatch, tmp_path):
+    image = _media(tmp_path, "scene.png", b"\x89PNG\r\n\x1a\nscene")
+    corpus = _manifest(tmp_path, [_case([image])])
+    output = tmp_path / "evidence.json"
+    monkeypatch.setattr(multimodal, "_endpoint_models", lambda *_args: ["agents-a1"])
+    seen = []
+
+    def fake_chat(*_args, **kwargs):
+        seen.append({key: kwargs[key] for key in ("temperature", "top_p") if key in kwargs})
+        return {
+            "choices": [{
+                "finish_reason": "stop",
+                "message": {"content": "READY. RED changes to GREEN."},
+            }],
+            "usage": {"prompt_tokens": 12, "completion_tokens": 7},
+        }, 0.25
+
+    assert multimodal.main(
+        _argv(corpus, output) + ["--temperature", "1", "--top-p", "0.95"],
+        chat_request=fake_chat,
+    ) == 0
+    artifact = json.loads(output.read_text(encoding="utf-8"))
+    assert seen == [{"temperature": 1.0, "top_p": 0.95}] * 2
+    assert artifact["configuration"]["sampling"] == {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
+    for flag, value in (("--temperature", "-0.1"), ("--top-p", "0")):
+        with pytest.raises(SystemExit):
+            multimodal.main(_argv(corpus, tmp_path / (flag[2:] + ".json")) + [
+                flag, value, "--dry-run",
+            ])
 
 
 def test_runner_records_explicit_image_ceiling(monkeypatch, tmp_path):
