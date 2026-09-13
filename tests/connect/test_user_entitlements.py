@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import uuid
 
 import pytest
@@ -13,6 +14,9 @@ from anvil_serving.connect import manage, users
 from anvil_serving.operator_output import UsageError
 from tests.connect.test_render import isolated_manifest
 from tests.connect import test_users
+
+
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="local Linux account administration")
 
 
 def _data(tmp_path: Path) -> dict:
