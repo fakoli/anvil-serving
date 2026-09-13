@@ -46,6 +46,7 @@ from ..internal import (
     ModelDelta,
     StructuredResult,
 )
+from ..reasoning import REASONING_TEXT_FIELDS, extract_reasoning_text
 from ..request_control import (
     RequestControl,
     RequestDeadlineExceeded,
@@ -806,13 +807,7 @@ class RelayBackend:
         finish_reason = first.get("finish_reason")
         message = first.get("message") or {}
         raw_tc = message.get("tool_calls") if isinstance(message, Mapping) else None
-        reasoning = (
-            message.get("reasoning_content")
-            if isinstance(message, Mapping)
-            and isinstance(message.get("reasoning_content"), str)
-            and message.get("reasoning_content")
-            else None
-        )
+        reasoning = extract_reasoning_text(message)
         tool_calls = None
         if isinstance(raw_tc, list):
             tc_list = []
@@ -1119,7 +1114,7 @@ class RelayBackend:
             and any(
                 isinstance(message, Mapping)
                 and message.get("role") == "assistant"
-                and isinstance(message.get("reasoning_content"), str)
+                and any(isinstance(message.get(field), str) for field in REASONING_TEXT_FIELDS)
                 for message in raw_messages
             )
         )
@@ -1293,9 +1288,9 @@ class RelayBackend:
             messages = []
             for message in body["messages"]:
                 if isinstance(message, Mapping) and message.get("role") == "assistant":
-                    fields = ("reasoning_content", "reasoning", "reasoning_text")
-                    had_reasoning = any(key in message for key in fields)
-                    message = {key: value for key, value in message.items() if key not in fields}
+                    had_reasoning = any(key in message for key in REASONING_TEXT_FIELDS)
+                    message = {key: value for key, value in message.items()
+                               if key not in REASONING_TEXT_FIELDS}
                     if (had_reasoning and not message.get("content")
                             and not message.get("tool_calls") and not message.get("function_call")
                             and not message.get("reasoning_details")):
