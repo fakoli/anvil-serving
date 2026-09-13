@@ -164,7 +164,7 @@ def _run_suite(
         run_id=spec["run_id"],
         request_controls={
             key: parameters[key]
-            for key in ("thinking_mode", "reasoning_effort")
+            for key in ("thinking_mode", "reasoning_effort", "temperature", "top_p")
             if key in parameters
         },
     )
