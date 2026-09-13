@@ -112,7 +112,7 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 		}
 		sort.Slice(services, func(i, j int) bool { return services[i].ID < services[j].ID })
 		sort.Slice(choices, func(i, j int) bool { return choices[i].ID < choices[j].ID })
-		account := strings.TrimSuffix(authority.AccountURL(), "/") + "/"
+		account := strings.TrimSuffix(authority.AccountURL(), "/") + "/settings"
 		if !safeAuthorizationURL(account) {
 			browserFailure(w, http.StatusServiceUnavailable)
 			return
@@ -121,9 +121,10 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 			Services       []portalService `json:"services"`
 			Choices        []portalService `json:"choices"`
 			Account        string          `json:"account_url"`
+			Passkeys       string          `json:"passkeys_url"`
 			Administration string          `json:"administration_path"`
 			Logout         string          `json:"logout_path"`
-		}{services, choices, account, adminPath, BrowserLogoutPath})
+		}{services, choices, account, account + "/two-factor-authentication", adminPath, BrowserLogoutPath})
 	default:
 		browserFailure(w, http.StatusNotFound)
 	}
