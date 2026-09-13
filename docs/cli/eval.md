@@ -133,6 +133,8 @@ anvil-serving eval benchmark capacity `
   --concurrency 8 `
   --ctx-tokens 4096 `
   --max-tokens 512 `
+  --temperature 1.0 `
+  --top-p 0.95 `
   --response-words 256 `
   --controlled-output-policy strict `
   --prompt-cache-mode unique `
@@ -141,6 +143,13 @@ anvil-serving eval benchmark capacity `
   --output artifacts/capacity.json `
   --confirm
 ```
+
+`--temperature` accepts a finite value from 0 through 2; `--top-p` accepts a
+finite value greater than 0 through 1. Both are optional for capacity and
+quality. Without `--temperature`, the existing 0.0 request behavior remains;
+without `--top-p`, no `top_p` field is sent. Artifacts retain requested,
+effective, and sent sampler values. Comparison and recipe reporting bind those
+values, so runs with different or unrecorded sampling are not comparable.
 
 The capacity artifact records the requested context distribution, the sampling
 seed, engine/hardware target, completed and failed requests, sanitized failure
@@ -192,6 +201,8 @@ anvil-serving eval benchmark quality `
   --candidate-id MODEL `
   --config-id vllm-primary-v1 `
   --suite-file suites/quality.json `
+  --temperature 1.0 `
+  --top-p 0.95 `
   --output artifacts/quality.json `
   --confirm
 ```
