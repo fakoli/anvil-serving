@@ -6,8 +6,11 @@ Extend the existing LLM qualification skill with a small, conditional
 improvement loop. Use the campaign's retained failures and successful recoveries
 to propose changes to the agent's instructions, then evaluate those changes
 independently. Keep one canonical source of workflow rules, one evidence store,
-and one owner of live experiments. A separate self-improvement plugin is not
-justified until a second actual workflow needs the same lifecycle.
+and one owner of live experiments. The initial implementation kept the loop integrated. After the operator
+requested reuse across projects, the shared research and improvement methods
+were extracted into the
+[agent-methods plugin](https://github.com/fakoli/fakoli-plugins/tree/main/plugins/agent-methods).
+Anvil retains thin bindings for its tools, evidence contracts, and gates.
 
 This is an engineering recommendation based on external research and the
 existing skill structure. It is not a claim that Astra has become more capable,
@@ -175,7 +178,8 @@ state store or an autonomous optimizer service would duplicate those roles.
 | `session-retro` | Existing local session accounting when deeper cost analysis is warranted | A usage report does not establish causality |
 | Optional learning helper | Capture a compact evidence-linked lesson if available | An unavailable helper must not block campaign closure |
 
-This inventory favors an integrated reference. The main skill needs only an
+This inventory initially favored an integrated reference. The later portable
+extraction reuses the same records and keeps project bindings in Anvil. The main skill needs only an
 entrypoint describing when to load it. The reference can own the lesson and
 validation lifecycle, while the research report remains optional reading.
 This keeps ordinary benchmarking prompts smaller than embedding a literature
