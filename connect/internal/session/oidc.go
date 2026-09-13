@@ -277,7 +277,9 @@ func (m *Manager) issueSession(principal string, record transaction, tokenExpiry
 			return ErrDenied
 		}
 		var human Human
-		if tx.Get("principals", principal, &human) != nil || human.Disabled || human.Generation == 0 || !hasResource(human.Resources, record.Resource) {
+		rule, configured := m.rules[record.Resource]
+		portalReturn := strings.TrimSuffix(rule.PathPrefix, "/") + "/_anvil-connect/home"
+		if tx.Get("principals", principal, &human) != nil || !configured || human.Disabled || human.Generation == 0 || !record.IssuedAt.After(human.BrowserNotBefore) || (!hasResource(human.Resources, record.Resource) && record.ReturnPath != portalReturn) {
 			return ErrDenied
 		}
 		if err := m.boundSessions(tx, principal); err != nil {

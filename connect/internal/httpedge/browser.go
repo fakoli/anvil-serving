@@ -38,6 +38,7 @@ type BrowserAuthority interface {
 	Begin(resource, returnPath, binding string) (session.Challenge, error)
 	Complete(context.Context, session.Callback) (session.Completion, error)
 	Authenticate(raw, host string) (session.Admission, error)
+	PortalSession(raw, host string) (session.Admission, session.Human, error)
 	Check(session.Admission) error
 	Logout(raw, host string) error
 }
@@ -488,9 +489,12 @@ func (b *Browser) login(w http.ResponseWriter, r *http.Request, resource browser
 		browserFailure(w, http.StatusBadRequest)
 		return
 	}
-	returnPath := resource.declaration.Rule.PathPrefix
+	returnPath := portalPath(resource)
 	if query.Has("return") {
 		returnPath = query.Get("return")
+	}
+	if returnPath == resource.declaration.Rule.PathPrefix {
+		returnPath = portalPath(resource)
 	}
 	if !sameResourcePath(resource.declaration.Rule, returnPath) {
 		browserFailure(w, http.StatusBadRequest)
@@ -521,6 +525,9 @@ func (b *Browser) callback(w http.ResponseWriter, r *http.Request, resource brow
 		return
 	}
 	completion, err := b.authority.Complete(r.Context(), session.Callback{Host: r.Host, State: query.Get("state"), Code: query.Get("code"), Binding: cookies.transaction, Issuer: query.Get("iss")})
+	if completion.ReturnPath == resource.declaration.Rule.PathPrefix {
+		completion.ReturnPath = portalPath(resource)
+	}
 	if err != nil || completion.Host != r.Host || completion.Resource != resource.declaration.Rule.ID || !sameResourcePath(resource.declaration.Rule, completion.ReturnPath) || completion.Cookie == "" || completion.ExpiresAt.IsZero() {
 		browserFailure(w, http.StatusUnauthorized)
 		return

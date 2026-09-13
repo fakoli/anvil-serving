@@ -32,6 +32,32 @@ type browserAuthorityStub struct {
 	admitted session.Admission
 }
 
+type loginCaptureAuthority struct {
+	*browserAuthorityStub
+	returnPaths      []string
+	completionReturn string
+}
+
+func (s *loginCaptureAuthority) Begin(resource, returnPath, binding string) (session.Challenge, error) {
+	if resource != "dash" || binding == "" {
+		return session.Challenge{}, session.ErrDenied
+	}
+	s.mu.Lock()
+	s.begin++
+	s.binding = binding
+	s.returnPaths = append(s.returnPaths, returnPath)
+	s.mu.Unlock()
+	return session.Challenge{AuthorizationURL: "https://idp.example.test/authorize?state=opaque", Binding: binding}, nil
+}
+
+func (s *loginCaptureAuthority) Complete(ctx context.Context, callback session.Callback) (session.Completion, error) {
+	completion, err := s.browserAuthorityStub.Complete(ctx, callback)
+	if err == nil && s.completionReturn != "" {
+		completion.ReturnPath = s.completionReturn
+	}
+	return completion, err
+}
+
 func newBrowserAuthorityStub() *browserAuthorityStub {
 	return &browserAuthorityStub{admitted: session.Admission{SessionID: "session-id", SessionGeneration: 1, Principal: "human-id", PrincipalGeneration: 1, Resource: "dash", Host: "dash.example.test", Epoch: "epoch", ExpiresAt: time.Date(2026, 9, 9, 13, 0, 0, 0, time.UTC)}}
 }
@@ -62,6 +88,11 @@ func (s *browserAuthorityStub) Authenticate(raw, host string) (session.Admission
 		return session.Admission{}, session.ErrDenied
 	}
 	return s.admitted, nil
+}
+
+func (s *browserAuthorityStub) PortalSession(raw, host string) (session.Admission, session.Human, error) {
+	admitted, err := s.Authenticate(raw, host)
+	return admitted, session.Human{ID: admitted.Principal, Generation: admitted.PrincipalGeneration, Resources: []string{admitted.Resource}}, err
 }
 
 func (s *browserAuthorityStub) Check(admitted session.Admission) error {
@@ -109,6 +140,35 @@ func browserFixture(t *testing.T, nativeAuth string, dispatch BrowserDispatch) (
 	}
 	t.Cleanup(browser.Close)
 	return browser, authority
+}
+
+func TestLoginUsesPortalHomeForDefaultAndRootReturn(t *testing.T) {
+	declaration := browserDeclaration("none")
+	declaration.Resources[0].Rule.PathPrefix = "/app"
+	authority := &loginCaptureAuthority{browserAuthorityStub: newBrowserAuthorityStub(), completionReturn: "/app"}
+	browser, err := NewBrowser(declaration, authority, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(browser.Close)
+	for _, target := range []string{BrowserLoginPath, BrowserLoginPath + "?return=%2Fapp", BrowserLoginPath + "?return=%2Fapp%2Fdeep"} {
+		w := httptest.NewRecorder()
+		browser.ServeHTTP(w, browserRequest(http.MethodGet, target, nil))
+		if w.Code != http.StatusFound {
+			t.Fatalf("login %s = %d", target, w.Code)
+		}
+	}
+	want := []string{"/app/_anvil-connect/home", "/app/_anvil-connect/home", "/app/deep"}
+	if strings.Join(authority.returnPaths, ",") != strings.Join(want, ",") {
+		t.Fatalf("login return paths = %#v", authority.returnPaths)
+	}
+	callback := browserRequest(http.MethodGet, BrowserCallbackPath+"?state=state&code=code", nil)
+	callback.AddCookie(&http.Cookie{Name: BrowserTransactionCookie, Value: authority.binding})
+	w := httptest.NewRecorder()
+	browser.ServeHTTP(w, callback)
+	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/app/_anvil-connect/home" {
+		t.Fatalf("legacy root callback = %d %q", w.Code, w.Header().Get("Location"))
+	}
 }
 
 func signedBrowserFixture(t *testing.T, dispatch BrowserDispatch) (*Browser, *browserAuthorityStub) {

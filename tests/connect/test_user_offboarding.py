@@ -60,6 +60,27 @@ def test_suspend_preserves_password_groups_and_factors_then_access_resumes(offbo
     assert resumed["grants_changed"] and resumed["existing_connect_sessions_revoked"]
 
 
+def test_password_reset_replaces_hash_before_revoking_existing_connect_sessions(offboarding, monkeypatch):
+    run, db, state, requests = offboarding
+    accounts = json.loads(db.read_text())
+    accounts["users"]["dev"]["password"] = test_users._HASH.replace("B" * 43, "C" * 43)
+    db.write_text(json.dumps(accounts))
+    before = json.loads(db.read_text())["users"]["dev"]
+    original = users._human_admin
+
+    def revoke(*args):
+        assert json.loads(db.read_text())["users"]["dev"]["password"] == test_users._HASH
+        return original(*args)
+
+    monkeypatch.setattr(users, "_human_admin", revoke)
+    result = run("reset-password", "dev", apply=True)
+    after = json.loads(db.read_text())["users"]["dev"]
+    assert after == {**before, "password": test_users._HASH}
+    assert requests == [{"operation": "human-revoke-sessions", "subject": _SUBJECT}]
+    assert result["existing_connect_sessions_revoked"] and result["password_setup_required"]
+    assert not result["initial_password_saved"] and state["active"]
+
+
 def test_delete_removes_only_selected_account_and_factors(offboarding):
     run, db, state, requests = offboarding
     result = run("delete", apply=True)
@@ -84,6 +105,16 @@ def test_authority_rejection_preserves_account_and_factors(offboarding, operatio
         run(operation, apply=True)
     assert db.read_bytes() == before and state["active"]
     assert not any(c[1:3] == ("storage", "user") for c in state["calls"])
+
+
+def test_password_reset_authority_rejection_restores_the_prior_hash_before_restart(offboarding):
+    run, db, state, requests = offboarding
+    before = db.read_bytes()
+    state["fail_authority"] = True
+    with pytest.raises(manage.ManageError):
+        run("reset-password", apply=True)
+    assert db.read_bytes() == before and state["active"]
+    assert requests == [{"operation": "human-revoke-sessions", "subject": _SUBJECT}]
 
 
 @pytest.mark.parametrize("failure", ["factor", "start"])

@@ -1,6 +1,7 @@
 """Account isolation, rollback, secret boundaries and the public CLI contract."""
 from datetime import datetime, timedelta, timezone
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path
@@ -11,6 +12,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 
@@ -50,11 +52,15 @@ def environment(tmp_path, monkeypatch):
     source = f"[Service]\nExecStart={binary} --config {root}/authelia/configuration.yml\n".encode()
     (root / "systemd" / users._UNIT).write_bytes(source)
     (unit_root / users._UNIT).write_bytes(source)
-    auth = {"users_file": str(db), "state_directory": str(private), "host": "auth.example.test"}
+    auth = {"users_file": str(db), "state_directory": str(private), "host": "auth.example.test", "listen": "127.0.0.1:19091"}
     data = {"authelia": auth, "config_root": str(root), "components": {"authelia": str(binary)},
             "service_identities": {"idp": {"uid": os.geteuid(), "gid": os.getegid()}}, "service_limits": {}}
     monkeypatch.setattr(users, "read_manifest", lambda _: data)
     monkeypatch.setattr(users, "_authelia", lambda _: "test configuration")
+    notification = private / "notifications.txt"
+    notification.write_bytes(b"")
+    notification.chmod(0o600)
+    monkeypatch.setattr(users, "_password_setup_url", lambda *_: "https://auth.example.test/reset-password/step2?token=a.b.c")
     (root / "authelia/configuration.yml").write_text("test configuration")
     monkeypatch.setattr(manage, "_component_lock", lambda: {"authelia": hashlib.sha256(binary.read_bytes()).hexdigest()})
     monkeypatch.setattr(manage, "_role_service_identity", lambda *args: None)
@@ -99,7 +105,8 @@ def test_create_reset_preserve_other_accounts_and_secrets(environment):
     assert not state["calls"]
     created = run("create", email="dev@example.test", apply=True)
     handoff = Path(created["handoff_file"])
-    assert _PASSWORD in handoff.read_text()
+    assert "Setup URL: https://auth.example.test/reset-password/step2?token=a.b.c" in handoff.read_text()
+    assert "Password:" not in handoff.read_text()
     assert _PASSWORD not in json.dumps(created) and _PASSWORD not in db.read_text()
     assert stat.S_IMODE(handoff.stat().st_mode) == 0o600
     assert stat.S_IMODE(handoff.parent.stat().st_mode) == 0o700
@@ -108,11 +115,105 @@ def test_create_reset_preserve_other_accounts_and_secrets(environment):
     assert state["active"]
     reset = run("reset-password", apply=True)
     assert reset["handoff_file"] != created["handoff_file"]
+    assert not handoff.exists()
+    assert reset["password_setup_required"] and not reset["initial_password_saved"]
     assert json.loads(db.read_text())["users"]["owner"] == original
     before = db.read_bytes()
     with pytest.raises(UsageError):
         run("create", email="dev@example.test", apply=True)
     assert db.read_bytes() == before
+
+
+def test_password_setup_refuses_passkey_first_factor_before_mutating(environment):
+    run, db, state, _ = environment
+    users.read_manifest("unused")["authelia"]["webauthn"] = {"enable_passkey_login": True}
+    before = db.read_bytes()
+    with pytest.raises(UsageError, match="passkey first-factor"):
+        run("create", email="dev@example.test", apply=True)
+    assert db.read_bytes() == before and not state["calls"]
+
+
+def test_failed_password_setup_delivery_keeps_the_unknown_replacement(environment, monkeypatch):
+    run, db, state, _ = environment
+    accounts = json.loads(db.read_text())
+    accounts["users"]["owner"]["password"] = _HASH.replace("B" * 43, "C" * 43)
+    db.write_text(json.dumps(accounts))
+    monkeypatch.setattr(users, "_password_setup_url", lambda *_: (_ for _ in ()).throw(manage.ManageError("synthetic delivery failure")))
+    with pytest.raises(manage.ManageError) as error:
+        run("reset-password", "owner", apply=True)
+    assert json.loads(db.read_text())["users"]["owner"]["password"] == _HASH
+    assert state["active"] and error.value.recovery["backup"]["sha256"]
+
+
+def test_smtp_password_setup_requests_email_without_a_handoff(environment, monkeypatch, tmp_path):
+    run, db, state, _ = environment
+    users.read_manifest("unused")["authelia"]["smtp"] = {
+        "address": "smtp.example.test:465", "username": "smtp-user",
+        "password_file": "/private/smtp-password", "sender": "Connect <connect@example.test>",
+    }
+    requested = []
+    monkeypatch.setattr(users, "_start_password_setup", lambda auth, username: requested.append(username))
+    monkeypatch.setattr(users, "_password_setup_url", lambda *_: pytest.fail("SMTP must not read a setup URL"))
+    preview = run("create", email="dev@example.test")
+    assert preview["password_setup_delivery"] == "email"
+    assert "handoff_file" not in preview and "without confirming email delivery" in preview["impact"]
+    created = run("create", email="dev@example.test", apply=True)
+    assert created["password_setup_email_requested"] and "handoff_file" not in created
+    handoffs = db.parent.parent / "handoffs"
+    handoffs.mkdir(mode=0o700)
+    legacy = handoffs / "dev-create-0001.txt"
+    legacy.write_text("old generated password")
+    legacy.chmod(0o600)
+    other = handoffs / "owner-create-0001.txt"
+    other.write_text("other account handoff")
+    other.chmod(0o600)
+    reset = run("reset-password", apply=True)
+    assert reset["password_setup_email_requested"] and requested == ["dev", "dev"]
+    assert not legacy.exists() and other.exists()
+    assert "pending login transactions" in reset["impact"]
+    with pytest.raises(UsageError, match="SMTP delivery"):
+        run("reset-password", output=str(tmp_path / "handoff.txt"), apply=True)
+    code = run("code", apply=True)
+    assert code["code_delivery"] == "email" and "handoff_file" not in code
+    assert "directly to the account email" in code["impact"] and requested == ["dev", "dev"]
+    assert state["active"]
+
+
+def test_failed_smtp_password_setup_request_keeps_the_unknown_replacement(environment, monkeypatch):
+    run, db, state, _ = environment
+    users.read_manifest("unused")["authelia"]["smtp"] = {
+        "address": "smtp.example.test:465", "username": "smtp-user",
+        "password_file": "/private/smtp-password", "sender": "Connect <connect@example.test>",
+    }
+    accounts = json.loads(db.read_text())
+    accounts["users"]["owner"]["password"] = _HASH.replace("B" * 43, "C" * 43)
+    db.write_text(json.dumps(accounts))
+    monkeypatch.setattr(users, "_start_password_setup", lambda *_: (_ for _ in ()).throw(manage.ManageError("synthetic request failure")))
+    with pytest.raises(manage.ManageError, match="did not accept") as error:
+        run("reset-password", "owner", apply=True)
+    assert json.loads(db.read_text())["users"]["owner"]["password"] == _HASH
+    assert state["active"] and error.value.recovery["backup"]["sha256"]
+
+
+def test_state_backed_users_file_requires_idp_private_file_metadata(environment):
+    run, db, state, _ = environment
+    db.chmod(0o640)
+    with pytest.raises(manage.ManageError, match="declared service file is unsafe"):
+        run("code", "owner", apply=True)
+    assert not state["calls"]
+
+
+def test_password_setup_rejects_legacy_users_file_before_mutation(environment):
+    run, db, state, private = environment
+    legacy = private.parent / "legacy-users.yml"
+    legacy.write_bytes(db.read_bytes())
+    legacy.chmod(0o600)
+    users.read_manifest("unused")["authelia"]["users_file"] = str(legacy)
+    before = legacy.read_bytes()
+    with pytest.raises(UsageError, match="migrate the declared users file"):
+        run("create", email="dev@example.test", apply=True)
+    assert legacy.read_bytes() == before and db.read_bytes() == before
+    assert not state["calls"] and not list((private.parent / "handoffs").glob("*.txt"))
 
 
 def test_admin_role_is_explicit_and_resets_preserve_groups(environment):
@@ -152,7 +253,8 @@ def test_restart_failure_rolls_back_and_inactive_service_stays_inactive(environm
     assert not list((db.parent.parent / "handoffs").glob("*.txt"))
     state["active"] = False
     state["calls"].clear()
-    run("create", email="dev@example.test", apply=True)
+    with pytest.raises(UsageError, match="must be active"):
+        run("create", email="dev@example.test", apply=True)
     assert not state["active"]
     assert not any(c[:2] == (manage._SYSTEMCTL, "start") for c in state["calls"])
 
@@ -226,6 +328,12 @@ def notice(email, when, recipient=None):
             "----------------------------------------\n\nABCDEFGH\n\n----------------------------------------\n").encode()
 
 
+def reset_notice(email, when, recipient=None, url="https://auth.example.test/reset-password/step2?token=a.b.c"):
+    recipient = recipient or "{Existing owner " + email + "}"
+    return (f"Date: {when.strftime('%Y-%m-%d %H:%M:%S %z')} UTC\nRecipient: {recipient}\nSubject: Reset your password\n"
+            f"Use this link:\n{url}\nhttps://auth.example.test/revoke/reset-password?token=a.b.c\n").encode()
+
+
 def test_code_is_recent_exact_recipient_and_never_returned(environment):
     run, _, state, private = environment
     now = datetime.now(timezone.utc)
@@ -257,6 +365,33 @@ def test_code_accepts_one_authelia_brace_recipient_only():
     ):
         with pytest.raises(UsageError):
             users._notification(notice("owner@example.test", now, recipient), "owner@example.test", now)
+
+
+def test_password_setup_notification_is_recipient_bound_fresh_and_exact():
+    now = datetime.now(timezone.utc)
+    raw = reset_notice("owner@example.test", now)
+    assert users._setup_url(raw, "owner@example.test", "auth.example.test", now).endswith("token=a.b.c")
+    for raw in (
+        reset_notice("other@example.test", now),
+        reset_notice("owner@example.test", now, url="https://other.example.test/reset-password/step2?token=a.b.c"),
+        reset_notice("owner@example.test", now, url="https://auth.example.test/reset-password/step2?token=a.b.c&next=bad"),
+        reset_notice("owner@example.test", now, url="https://auth.example.test/reset-password/step2?token=a.b.c#fragment"),
+        reset_notice("owner@example.test", now - timedelta(minutes=6)),
+    ):
+        with pytest.raises(UsageError):
+            users._setup_url(raw, "owner@example.test", "auth.example.test", now)
+
+
+def test_code_exports_a_fresh_password_setup_link(environment):
+    run, _, state, private = environment
+    path = private / "notifications.txt"
+    path.write_bytes(reset_notice("owner@example.test", datetime.now(timezone.utc)))
+    path.chmod(0o600)
+    result = run("code", "owner", apply=True)
+    handoff = Path(result["handoff_file"]).read_text()
+    assert result["handoff_kind"] == "password-setup"
+    assert "Username: owner\nSetup URL: https://auth.example.test/reset-password/step2?token=a.b.c\n" == handoff
+    assert not state["calls"]
 
 
 def test_cli_default_manifest_and_conditional_apply(monkeypatch):
@@ -430,7 +565,7 @@ def test_partial_backup_receipt_survives_cli_error(monkeypatch, capsys):
     assert envelope["data"]["backup"] == backup
 
 
-def test_real_authelia_accepts_created_and_reset_passwords_and_factor_reset(environment, monkeypatch):
+def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(environment, monkeypatch, capsys):
     """Opt-in real provider smoke, isolated files/loopback; no live systemd calls."""
     binary = os.environ.get("ANVIL_CONNECT_TEST_AUTHELIA")
     if not binary:
@@ -441,6 +576,7 @@ def test_real_authelia_accepts_created_and_reset_passwords_and_factor_reset(envi
         port = listener.getsockname()[1]
     data = users.read_manifest("unused")
     data["components"]["authelia"] = binary
+    data["authelia"]["listen"] = f"127.0.0.1:{port}"
     monkeypatch.setattr(manage, "_component_lock", lambda: {"authelia": hashlib.sha256(Path(binary).read_bytes()).hexdigest()})
     root = Path(data["config_root"])
     key = private / "storage-key"
@@ -470,8 +606,33 @@ def test_real_authelia_accepts_created_and_reset_passwords_and_factor_reset(envi
         return original_run(runner, argv, timeout, identity)
 
     monkeypatch.setattr(manage, "_run", provider_run)
-    created = run("create", email="dev@example.test", apply=True)
-    first_password = Path(created["handoff_file"]).read_text().split("Password: ", 1)[1].splitlines()[0]
+
+    def running():
+        process = subprocess.Popen([binary, "--config", str(root / "authelia/configuration.yml")],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        for _ in range(100):
+            assert process.poll() is None, "isolated Authelia startup failed"
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=0.2):
+                    return process
+            except (OSError, urllib.error.URLError):
+                time.sleep(0.05)
+        process.terminate()
+        process.wait(timeout=10)
+        raise AssertionError("isolated Authelia did not become healthy")
+
+    start_setup = users._start_password_setup
+
+    def password_setup_url(auth, uid, gid, username, email):
+        process = running()
+        try:
+            start_setup(auth, username)
+            return users._setup_url(users._notification_file(auth, uid, gid), email, auth["host"], datetime.now(timezone.utc))
+        finally:
+            process.terminate()
+            process.wait(timeout=10)
+
+    monkeypatch.setattr(users, "_password_setup_url", password_setup_url)
 
     def authenticate(password):
         payload = json.dumps({"username": "dev", "password": password, "keepMeLoggedIn": False,
@@ -485,16 +646,8 @@ def test_real_authelia_accepts_created_and_reset_passwords_and_factor_reset(envi
             return error.code
 
     def check_passwords(allowed, denied=None):
-        process = subprocess.Popen([binary, "--config", str(root / "authelia/configuration.yml")],
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        process = running()
         try:
-            for _ in range(100):
-                assert process.poll() is None, "isolated Authelia startup failed"
-                try:
-                    with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=0.2):
-                        break
-                except (OSError, urllib.error.URLError):
-                    time.sleep(0.05)
             if allowed is not None:
                 assert authenticate(allowed) == 200
             if denied:
@@ -503,10 +656,54 @@ def test_real_authelia_accepts_created_and_reset_passwords_and_factor_reset(envi
             process.terminate()
             process.wait(timeout=10)
 
+    def complete_setup(handoff, chosen_password):
+        setup_url = handoff.split("Setup URL: ", 1)[1].splitlines()[0]
+        parsed = urllib.parse.urlsplit(setup_url)
+        path = parsed.path + "?" + parsed.query
+        cookies = {}
+
+        def call(method, path, body=None):
+            headers = {"Host": "auth.example.test", "Origin": "https://auth.example.test", "X-Forwarded-Proto": "https"}
+            if body is not None:
+                headers["Content-Type"] = "application/json"
+            if cookies:
+                headers["Cookie"] = "; ".join(name + "=" + value for name, value in cookies.items())
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            connection.request(method, path, body=body, headers=headers)
+            response = connection.getresponse()
+            status, headers = response.status, response.getheaders()
+            response.read()
+            connection.close()
+            for name, value in headers:
+                if name.lower() == "set-cookie":
+                    key, value = value.split(";", 1)[0].split("=", 1)
+                    cookies[key] = value
+            return status
+
+        process = running()
+        try:
+            assert call("GET", path) == 200
+            token = urllib.parse.parse_qs(parsed.query, strict_parsing=True)["token"][0]
+            assert call("POST", "/api/reset-password/identity/finish", json.dumps({"token": token}).encode()) == 200
+            assert call("POST", "/api/reset-password", json.dumps({"password": chosen_password}).encode()) == 200
+            assert authenticate(chosen_password) == 200
+        finally:
+            process.terminate()
+            process.wait(timeout=10)
+
+    created = run("create", email="dev@example.test", apply=True)
+    create_handoff = Path(created["handoff_file"]).read_text()
+    assert "Password:" not in create_handoff and "Random Password:" not in create_handoff
+    assert "Password:" not in json.dumps(created) and not capsys.readouterr().out
+    first_password = "chosen-password-" + "A" * 30
+    complete_setup(create_handoff, first_password)
     check_passwords(first_password)
     reset = run("reset-password", apply=True)
-    second_password = Path(reset["handoff_file"]).read_text().split("Password: ", 1)[1].splitlines()[0]
-    assert second_password != first_password
+    reset_handoff = Path(reset["handoff_file"]).read_text()
+    assert "Password:" not in reset_handoff and "Random Password:" not in reset_handoff
+    check_passwords(None, first_password)
+    second_password = "chosen-password-" + "B" * 30
+    complete_setup(reset_handoff, second_password)
     check_passwords(second_password, first_password)
     # Native generation without --force succeeds only when the factor is absent.
     # Keep the generated TOTP secret out of assertion diagnostics and logs.

@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from email.utils import getaddresses, parseaddr
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path
@@ -11,6 +12,7 @@ import re
 import secrets
 import stat
 import tempfile
+from urllib.parse import parse_qsl, urlsplit
 import uuid
 
 from ..operator_output import UsageError
@@ -25,12 +27,22 @@ _UNIT = "anvil-connect-authelia.service"
 _MAX_FILE = 1024 * 1024
 _RESOURCE = re.compile(r"[a-z][a-z0-9_.-]{0,63}\Z")
 _ROLE = frozenset(("member", "admin"))
+_USER_FIELDS = frozenset((
+    "displayname", "password", "email", "groups", "disabled", "given_name", "middle_name", "family_name",
+    "nickname", "profile", "picture", "website", "gender", "birthdate", "zoneinfo", "locale", "phone_number",
+    "phone_extension", "address", "extra",
+))
+_USER_TEXT_FIELDS = _USER_FIELDS - {"groups", "disabled", "address", "extra"}
 _CODE = re.compile(
     r"(?ms)^A ONE-TIME CODE HAS BEEN GENERATED TO COMPLETE A REQUESTED ACTION\n"
     r".*?^----------------------------------------\n\n"
     r"([ABCDEFGHJKLMNPQRTUVWYXZ2346789]{8})\n\n----------------------------------------(?:\n|$)"
 )
 _AUTHELIA_RECIPIENT = re.compile(r"\{([^{}\r\n]+) ([^{}\s]+)\}\Z")
+_SETUP_URL = re.compile(r"https://[^\s]+")
+_RESET_TOKEN = re.compile(r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\Z")
+_NOTIFICATION_MAX = 32768
+_SETUP_TIMEOUT = 5
 
 
 def _invalid(message: str) -> UsageError:
@@ -50,11 +62,11 @@ def _require_root() -> None:
 
 def _scalar(value: str):
     """Only unambiguous scalars from the provisioned file format are accepted."""
-    if value.startswith(('"', '[')) or value in {"true", "false"}:
+    if value.startswith(('"', '[', '{')) or value in {"true", "false", "null"}:
         return _json_load(value)
     if re.fullmatch(r"'([^']|'')*'", value):
         return value[1:-1].replace("''", "'")
-    if re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_.$/@+=,-]*", value) and value.lower() not in {
+    if value == value.strip() and re.fullmatch(r"[A-Za-z0-9_$][A-Za-z0-9_.$/@+=, -]*", value) and value.lower() not in {
         "yes", "no", "on", "off", "null", "true", "false",
     }:
         return value
@@ -70,7 +82,9 @@ def _database(raw: bytes) -> dict:
         # YAML aliases/tags/multiline values; use a YAML library if needed later.
         data = {"users": {}}
         current = None
+        user_indent = None
         field_indent = None
+        group_indent = None
         groups = False
         header = False
         for line in text.splitlines():
@@ -82,27 +96,34 @@ def _database(raw: bytes) -> dict:
             match = re.fullmatch(r"( +)([a-z][a-z0-9_.-]*):(?: (.*))?", line)
             if match and header:
                 indent, key, value = len(match[1]), match[2], match[3]
-                if value is None and (field_indent is None or indent == field_indent - 2):
+                if value is None and (user_indent is None or indent == user_indent):
                     if key in data["users"] or not _USER.fullmatch(key):
                         raise _invalid("Duplicate or unsupported username in users file.")
                     current = data["users"][key] = {}
-                    field_indent = indent + 2
+                    user_indent = indent
+                    field_indent = None
+                    group_indent = None
                     groups = False
                     continue
-                if current is not None and indent == field_indent and key not in current:
+                if current is not None and indent > user_indent and (field_indent is None or indent == field_indent) and key not in current:
+                    field_indent = indent
                     groups = key == "groups" and value is None
+                    group_indent = None
                     current[key] = [] if groups else _scalar(value or "")
                     continue
-            if groups and re.fullmatch(r" {" + str(field_indent + 2) + r"}- .+", line):
-                current["groups"].append(_scalar(line.strip()[2:]))
-                continue
+            if groups:
+                match = re.fullmatch(r"( +)- (.+)", line)
+                if match and len(match[1]) > field_indent and (group_indent is None or len(match[1]) == group_indent):
+                    group_indent = len(match[1])
+                    current["groups"].append(_scalar(match[2]))
+                    continue
             raise _invalid("Unsupported users-file YAML; use simple mappings or JSON-compatible YAML.")
     if not isinstance(data, dict) or set(data) != {"users"} or not isinstance(data["users"], dict):
         raise _invalid("Expected an Authelia users mapping.")
     for name, user in data["users"].items():
         if not _USER.fullmatch(name) or not isinstance(user, dict):
             raise _invalid("Unsupported account record.")
-        if set(user) - {"displayname", "password", "email", "groups", "disabled"}:
+        if set(user) - _USER_FIELDS:
             raise _invalid("Account attributes outside the simple file backend are not supported by this command.")
         if any(not isinstance(user.get(field), str) for field in ("displayname", "password", "email")):
             raise _invalid("Account requires displayname, password hash and email.")
@@ -112,11 +133,17 @@ def _database(raw: bytes) -> dict:
             raise _invalid("Account disabled flag must be boolean.")
         if not isinstance(user.get("groups", []), list) or any(not isinstance(g, str) for g in user.get("groups", [])):
             raise _invalid("Account groups must be strings.")
+        if any(not isinstance(user[field], str) for field in _USER_TEXT_FIELDS & set(user)):
+            raise _invalid("Account text attributes must be strings.")
+        if "address" in user and user["address"] is not None:
+            raise _invalid("Account address is outside the simple file backend format.")
+        if "extra" in user and (not isinstance(user["extra"], dict) or any(not isinstance(key, str) for key in user["extra"])):
+            raise _invalid("Account extra attributes are outside the simple file backend format.")
     return data
 
 
-def _read_users(path: Path, uid: int, gid: int) -> tuple[bytes, os.stat_result]:
-    manage._safe_consumed_file(path, uid, gid)
+def _read_users(data: dict) -> tuple[bytes, os.stat_result]:
+    path = manage._safe_authelia_users_file(data)
     info = path.lstat()
     if info.st_nlink != 1:
         raise _invalid("Users file must not have hard links.")
@@ -177,16 +204,16 @@ def _replace_users(path: Path, raw: bytes, info: os.stat_result) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def _password(binary: str, runner) -> tuple[str, str]:
+def _password_digest(binary: str, runner) -> str:
+    """Generate an unknown native password and retain only its hash."""
     result = manage._run(runner, (binary, "crypto", "hash", "generate", "argon2", "--random",
                                   "--random.length", "40", "--no-confirm"), 15)
     manage._fail(result, "Authelia password generation failed")
     output = result.stdout.decode("utf-8")
-    passwords = re.findall(r"(?m)^Random Password: ([A-Za-z0-9]{40})\s*$", output)
     digests = re.findall(r"(?m)^Digest: (\$argon2id\$v=19\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/]+\$[A-Za-z0-9+/]+)\s*$", output)
-    if len(passwords) != 1 or len(digests) != 1:
+    if len(re.findall(r"(?m)^Random Password: [A-Za-z0-9]{40}\s*$", output)) != 1 or len(digests) != 1:
         raise manage.ManageError("Authelia returned an unexpected password result")
-    return passwords[0], digests[0]
+    return digests[0]
 
 
 def _recipient_matches(recipient: str, email: str) -> bool:
@@ -201,18 +228,120 @@ def _recipient_matches(recipient: str, email: str) -> bool:
     return display == display.strip() and "@" not in display and candidate == email and parseaddr(candidate)[1] == candidate and getaddresses([candidate]) == [("", candidate)]
 
 
-def _notification(raw: bytes, email: str, now: datetime) -> str:
+def _notification_text(raw: bytes, email: str, subject: str, now: datetime, kind: str) -> str:
     text = raw.decode("utf-8").replace("\r\n", "\n")
-    header = re.match(r"\ADate: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)(?:\.\d+)? ([+-]\d{4}) [^\n]+\nRecipient: ([^\n]+)\nSubject: Confirm your identity\n", text)
+    header = re.match(r"\ADate: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)(?:\.\d+)? ([+-]\d{4}) [^\n]+\nRecipient: ([^\n]+)\nSubject: " + re.escape(subject) + r"\n", text)
     if header is None or not _recipient_matches(header[3], email):
-        raise _invalid("No enrollment notification for this account; request a new code in Authelia first.")
+        raise _invalid("No current " + kind + " notification for this account; request a new one in Authelia first.")
     created = datetime.strptime(header[1] + " " + header[2], "%Y-%m-%d %H:%M:%S %z")
     if not 0 <= (now - created).total_seconds() < 300:
-        raise _invalid("Enrollment notification is stale; request a new code in Authelia.")
+        raise _invalid(kind.capitalize() + " notification is stale; request a new one in Authelia.")
+    return text
+
+
+def _notification(raw: bytes, email: str, now: datetime) -> str:
+    text = _notification_text(raw, email, "Confirm your identity", now, "enrollment")
     matches = _CODE.findall(text)
     if len(matches) != 1:
         raise _invalid("Enrollment notification format is not recognized.")
     return matches[0]
+
+
+def _setup_url(raw: bytes, email: str, host: str, now: datetime) -> str:
+    text = _notification_text(raw, email, "Reset your password", now, "password setup")
+    prefix = "https://" + host + "/reset-password/step2"
+    matches = [value for value in _SETUP_URL.findall(text) if value.startswith(prefix)]
+    if len(matches) != 1:
+        raise _invalid("Password setup notification format is not recognized.")
+    value = matches[0]
+    try:
+        parsed = urlsplit(value)
+        query = parse_qsl(parsed.query, keep_blank_values=True, strict_parsing=True)
+    except ValueError as exc:
+        raise _invalid("Password setup notification format is not recognized.") from exc
+    if (parsed.scheme != "https" or parsed.netloc != host or parsed.path != "/reset-password/step2"
+            or parsed.fragment or len(query) != 1 or query[0][0] != "token"
+            or parsed.query != "token=" + query[0][1] or not _RESET_TOKEN.fullmatch(query[0][1])):
+        raise _invalid("Password setup notification format is not recognized.")
+    return value
+
+
+def _notification_file(auth: dict, uid: int, gid: int) -> bytes:
+    notice = Path(auth["state_directory"]) / "notifications.txt"
+    manage._safe_private_runtime_directory(notice.parent, uid, gid)
+    info = notice.lstat()
+    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != uid or stat.S_IMODE(info.st_mode) != 0o600:
+        raise _invalid("Notification file has unsafe ownership or permissions.")
+    return manage._read_regular(notice, _NOTIFICATION_MAX) or b""
+
+
+def _start_password_setup(auth: dict, username: str) -> None:
+    """Start Authelia's reset flow over its declared loopback listener only."""
+    try:
+        endpoint = urlsplit("http://" + auth["listen"])
+        if endpoint.hostname is None or endpoint.port is None or endpoint.path or endpoint.query or endpoint.fragment:
+            raise ValueError("invalid listener")
+        connection = http.client.HTTPConnection(endpoint.hostname, endpoint.port, timeout=_SETUP_TIMEOUT)
+        body = json.dumps({"username": username}, separators=(",", ":")).encode()
+        connection.request("POST", "/api/reset-password/identity/start", body=body, headers={
+            "Content-Type": "application/json", "Host": auth["host"],
+            "Origin": "https://" + auth["host"], "X-Forwarded-Proto": "https",
+        })
+        response = connection.getresponse()
+        response.read(4096)
+        if response.read(1) or response.status != 200:
+            raise manage.ManageError("Authelia password setup request failed")
+    except (OSError, ValueError, http.client.HTTPException) as exc:
+        raise manage.ManageError("Authelia password setup request failed") from exc
+    finally:
+        try:
+            connection.close()
+        except UnboundLocalError:
+            pass
+
+
+def _password_setup_url(auth: dict, uid: int, gid: int, username: str, email: str) -> str:
+    _start_password_setup(auth, username)
+    return _setup_url(_notification_file(auth, uid, gid), email, auth["host"], datetime.now(timezone.utc))
+
+
+def _password_setup_delivery(auth: dict) -> str:
+    """Choose the declared notifier without reading its password material."""
+    smtp = auth.get("smtp")
+    if smtp is None:
+        return "filesystem"
+    if (not isinstance(smtp, dict) or set(smtp) != {"address", "username", "password_file", "sender"}
+            or any(not isinstance(smtp[key], str) or not smtp[key] for key in smtp)):
+        raise _invalid("Authelia SMTP notifier declaration is invalid.")
+    return "email"
+
+
+def _setup_handoff(username: str, url: str, service_home: str | None) -> bytes:
+    handoff = f"Username: {username}\nSetup URL: {url}\n"
+    if service_home is not None:
+        handoff += f"Your services: {service_home}\n"
+    return (handoff + "Open the setup URL in a new browser session and choose your password within five minutes.\n").encode()
+
+
+def _remove_legacy_password_handoffs(manifest: str, username: str, destination: Path | None) -> None:
+    directory = Path(manifest).parent / "handoffs"
+    try:
+        info = directory.lstat()
+    except FileNotFoundError:
+        return
+    if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_uid != os.geteuid()
+            or stat.S_IMODE(info.st_mode) != 0o700):
+        raise _invalid("Handoff directory has unsafe ownership or permissions.")
+    for operation in ("create", "reset-password"):
+        for candidate in directory.glob(username + "-" + operation + "-[0-9][0-9][0-9][0-9].txt"):
+            if candidate == destination:
+                continue
+            candidate_info = candidate.lstat()
+            if (not stat.S_ISREG(candidate_info.st_mode) or stat.S_ISLNK(candidate_info.st_mode)
+                    or candidate_info.st_nlink != 1 or candidate_info.st_uid != os.geteuid()
+                    or stat.S_IMODE(candidate_info.st_mode) != 0o600):
+                raise _invalid("Legacy password handoff has unsafe ownership or permissions.")
+            candidate.unlink()
 
 
 def _grant_map(grants: list[str] | None, data: dict) -> dict[str, str] | None:
@@ -319,6 +448,8 @@ def _oidc_subject(data: dict, config: Path, username: str, runner, *, missing_ok
     export = directory / "identifiers.yml"
     try:
         result = manage._run(runner, (data["components"]["authelia"], "storage", "user", "identifiers", "export", "--file", str(export), "--config", str(config), "--config.experimental.filters", "template"), 15, manage._role_service_identity(data, "idp"))
+        if missing_ok and result.returncode == 1 and not result.stdout and result.stderr.splitlines()[:1] == [b"Error: no data to export"]:
+            return None
         manage._fail(result, "Authelia opaque-identifier export failed")
         info = export.lstat()
         if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_nlink != 1 or stat.S_IMODE(info.st_mode) != 0o600 or info.st_uid != uid or info.st_gid != gid):
@@ -383,9 +514,15 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
     _path(manifest)
     data = read_manifest(manifest)
     auth = data["authelia"]
+    delivery = _password_setup_delivery(auth)
+    if (operation in {"create", "reset-password"}
+            and Path(auth["users_file"]).parent != Path(auth["state_directory"])):
+        raise _invalid("Password setup requires users_file directly in Authelia state_directory; migrate the declared users file before creating or resetting accounts.")
+    if operation in {"create", "reset-password"} and auth.get("webauthn", {}).get("enable_passkey_login") is True:
+        raise _invalid("Password setup requires Authelia passkey first-factor login to be disabled.")
     uid, gid = role_identity(data, "idp")
     path, root = Path(auth["users_file"]), Path(data["config_root"])
-    raw, info = _read_users(path, uid, gid)
+    raw, info = _read_users(data)
     database = _database(raw)
     users = database["users"]
     if operation != "backup" and (operation == "create") == (username in users):
@@ -399,10 +536,12 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         raise _invalid("--grant is only accepted for account creation or access provisioning.")
     if operation == "access" and grant_map is None:
         raise _invalid("Access provisioning requires at least one --grant.")
-    destination = (_path(output) if output else _next_handoff(Path(manifest).parent / "handoffs", username or "all", operation)) if operation in {"create", "reset-password", "code"} else None
+    uses_handoff = delivery == "filesystem" and operation in {"create", "reset-password", "code"}
+    if output is not None and not uses_handoff:
+        raise _invalid("Configured SMTP delivery does not produce a credential handoff file.")
+    destination = (_path(output) if output else _next_handoff(Path(manifest).parent / "handoffs", username or "all", operation)) if uses_handoff else None
     result = {"operation": operation, "username": username, "applied": False,
               "grants_changed": False, "existing_connect_sessions_revoked": False,
-              "force_password_change": False,
               "authelia_restart_if_active": operation not in {"code", "access"}, "classification": "restricted-authentication"}
     if grant_map is not None:
         result["resources"] = list(grant_map)
@@ -410,12 +549,26 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
     if operation == "create":
         result["role"] = role
         result["groups"] = ["admins" if role == "admin" else "members"]
+    if operation in {"create", "reset-password"}:
+        result["password_setup_required"] = True
+        result["initial_password_saved"] = False
+        result["password_setup_delivery"] = delivery
     if operation == "access":
         result["impact"] = "Replaces the complete browser grant list and enables the account; invalidates existing Connect browser and terminal credentials. Resuming a suspended account briefly restarts Authelia."
         result["authelia_restart_if_active"] = users[username].get("disabled", False)
     if operation not in {"code", "access"}:
         result["impact"] = "If active, briefly stops Authelia and clears its in-memory sessions; existing Connect sessions and API keys are not revoked."
         result["backup_directory"] = str(Path(manifest).parent / "backups")
+    if operation in {"create", "reset-password"}:
+        if delivery == "email":
+            result["impact"] = "Requires active Authelia, stores only an unknown password hash, and requests a password setup email after Authelia resumes. Authelia accepts reset requests without confirming email delivery."
+        else:
+            result["impact"] = "Requires active Authelia, stores only an unknown password hash, and writes a private five-minute password setup link after Authelia resumes."
+        if operation == "reset-password":
+            result["impact"] += " Invalidates existing Connect browser sessions, pending login transactions, and human-approved terminal credentials."
+    if operation == "code" and delivery == "email":
+        result["code_delivery"] = "email"
+        result["impact"] = "Authelia sends enrollment codes and password setup links directly to the account email; this command does not copy them to a handoff file."
     if operation in {"suspend", "delete"}:
         result["impact"] = "Disables sign-in and invalidates Connect browser and human-approved terminal credentials. Briefly restarts Authelia if active. Separately issued API keys and application data remain unchanged."
         result["account_disabled"] = False
@@ -432,7 +585,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
     if operation == "access" and not users[username].get("disabled", False):
         with manage._deployment_lock(root):
             # Do not re-enable a human after a concurrent suspension/deletion.
-            latest, _ = _read_users(path, uid, gid)
+            latest, _ = _read_users(data)
             if latest != raw:
                 raise _invalid("Users file changed during preparation; retry the command.")
             config = root / "authelia/configuration.yml"
@@ -468,14 +621,18 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             if os.path.lexists(destination):
                 raise _invalid("Handoff output already exists; select a new file.")
         if operation == "code":
-            notice = Path(auth["state_directory"]) / "notifications.txt"
-            manage._safe_private_runtime_directory(notice.parent, uid, gid)
-            notice_info = notice.lstat()
-            if not stat.S_ISREG(notice_info.st_mode) or notice_info.st_nlink != 1 or notice_info.st_uid != uid or stat.S_IMODE(notice_info.st_mode) != 0o600:
-                raise _invalid("Notification file has unsafe ownership or permissions.")
-            code = _notification(manage._read_regular(notice, 32768) or b"", users[username]["email"], datetime.now(timezone.utc))
-            _exclusive(destination, (code + "\n").encode())
-            return {**result, "applied": True}
+            if delivery == "email":
+                return {**result, "applied": True}
+            notice = _notification_file(auth, uid, gid)
+            now = datetime.now(timezone.utc)
+            try:
+                handoff = (_notification(notice, users[username]["email"], now) + "\n").encode()
+                kind = "enrollment-code"
+            except UsageError:
+                handoff = ("Username: " + username + "\nSetup URL: " + _setup_url(notice, users[username]["email"], auth["host"], now) + "\n").encode()
+                kind = "password-setup"
+            _exclusive(destination, handoff)
+            return {**result, "applied": True, "handoff_kind": kind}
         source = manage._read_unit(root / "systemd" / _UNIT)
         if source is None or manage._unit_exec_path(source) != Path(binary):
             raise _invalid("Authelia unit does not match its declared executable.")
@@ -484,7 +641,9 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         active, _ = manage._unit_state(runner, _UNIT)
         result["authelia_was_active"] = active
         result["restarted"] = False
-        password, digest = _password(binary, runner) if operation in {"create", "reset-password"} else (None, None)
+        if operation in {"create", "reset-password"} and not active:
+            raise _invalid("Authelia must be active to issue a password setup link.")
+        digest = _password_digest(binary, runner) if operation in {"create", "reset-password"} else None
         changed = False
         replaced = False
         stopped = False
@@ -499,7 +658,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 raise manage.ManageError("Authelia is still active")
             # Read again after stopping the writer. Never overwrite a concurrent
             # self-service password change using the earlier preview snapshot.
-            latest, info = _read_users(path, uid, gid)
+            latest, info = _read_users(data)
             if latest != raw:
                 raise _invalid("Users file changed during preparation; retry the command.")
             from .user_backup import snapshot
@@ -542,15 +701,15 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 if operation == "create":
                     users[username] = {"displayname": username, "email": email, "groups": result["groups"], "disabled": False}
                 users[username]["password"] = digest
-                service_home = _service_home(data, grant_map)
-                handoff = f"Username: {username}\nPassword: {password}\nSign in: https://{auth['host']}\n"
-                if service_home is not None:
-                    handoff += f"Your services: {service_home}\n"
-                handoff += "Change your password after signing in. This password does not automatically expire.\n"
-                handoff_inode = _exclusive(destination, handoff.encode())
                 changed = True
-                _replace_users(path, (json.dumps(database, indent=2, ensure_ascii=True) + "\n").encode(), info)
                 replaced = True
+                _replace_users(path, (json.dumps(database, indent=2, ensure_ascii=True) + "\n").encode(), info)
+                if operation == "reset-password":
+                    subject = _oidc_subject(data, config, username, runner, missing_ok=True)
+                    if subject is not None:
+                        _human_admin(data, manifest, {"operation": "human-revoke-sessions", "subject": subject}, runner)
+                        result["existing_connect_sessions_revoked"] = True
+                        result["principal"] = _principal(data["gateway"]["oidc"]["issuer"], subject)
                 if operation == "create" and grant_map is not None:
                     oidc_subject = str(uuid.uuid4())
                     identity_attempted = True
@@ -560,10 +719,11 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                                    15, "Authelia OpenID Connect identifier provisioning failed", manage._role_service_identity(data, "idp"))
             result["applied"] = True
         except BaseException as exc:
-            if handoff_inode is not None and not identity_attempted:
+            if replaced and not identity_attempted:
                 try:
                     _replace_users(path, raw, info)
-                    _remove_owned(destination, handoff_inode)
+                    if handoff_inode is not None:
+                        _remove_owned(destination, handoff_inode)
                     replaced = False
                 except BaseException as rollback_error:
                     raise _partial("Account rollback failed; inspect the retained backup and account state.", result) from rollback_error
@@ -593,7 +753,20 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                         raise _partial("Authelia activation failed; account changes were retained and restart completed. Inspect the retained backup and account state.", result) from exc
                     if identity_attempted:
                         raise _partial("Authelia activation failed after account and OpenID Connect identity provisioning; restart completed. Inspect the retained backup before retrying.", result) from exc
-                    raise _partial("Authelia activation failed; password rollback and restart completed. Inspect the retained backup before retrying.", result) from exc
+                    raise _partial("Authelia activation failed; password replacement was rolled back and restart completed. Inspect the retained backup before retrying.", result) from exc
+        if operation in {"create", "reset-password"}:
+            try:
+                if delivery == "email":
+                    _start_password_setup(auth, username)
+                    result["password_setup_email_requested"] = True
+                else:
+                    setup_url = _password_setup_url(auth, uid, gid, username, users[username]["email"])
+                    handoff_inode = _exclusive(destination, _setup_handoff(username, setup_url, _service_home(data, grant_map)))
+                _remove_legacy_password_handoffs(manifest, username, destination)
+            except BaseException as exc:
+                if delivery == "email":
+                    raise _partial("Password was replaced with an unknown value, but Authelia did not accept the password setup email request; inspect the retained backup and account state before retrying.", result) from exc
+                raise _partial("Password was replaced with an unknown value, but the password setup link was not delivered; inspect the retained backup and account state before retrying.", result) from exc
         if not include_gateway:
             from .user_backup import prune
             try:

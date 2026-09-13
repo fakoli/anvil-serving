@@ -82,7 +82,8 @@ func (f *syntheticIDP) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		f.onToken = nil
 		f.mu.Unlock()
 		clientID, clientSecret, basic := r.BasicAuth()
-		if !basic || clientID != "connect-browser" || clientSecret != "fixture-secret" || r.Form.Get("grant_type") != "authorization_code" || r.Form.Get("code") != "code" || r.Form.Get("redirect_uri") != "https://dash.example.test/_connect/callback" || r.Form.Get("code_verifier") == "" || oauth2.S256ChallengeFromVerifier(r.Form.Get("code_verifier")) != challenge {
+		redirectURI := r.Form.Get("redirect_uri")
+		if !basic || clientID != "connect-browser" || clientSecret != "fixture-secret" || r.Form.Get("grant_type") != "authorization_code" || r.Form.Get("code") != "code" || (redirectURI != "https://dash.example.test/_connect/callback" && redirectURI != "https://other.example.test/_connect/callback") || r.Form.Get("code_verifier") == "" || oauth2.S256ChallengeFromVerifier(r.Form.Get("code_verifier")) != challenge {
 			http.Error(w, "exchange rejected", http.StatusBadRequest)
 			return
 		}
@@ -183,13 +184,17 @@ func challengeValues(t *testing.T, challenge Challenge) url.Values {
 }
 
 func complete(t *testing.T, manager *Manager, idp *syntheticIDP, challenge Challenge, subject string) Completion {
+	return completeOnHost(t, manager, idp, challenge, subject, "dash.example.test")
+}
+
+func completeOnHost(t *testing.T, manager *Manager, idp *syntheticIDP, challenge Challenge, subject, host string) Completion {
 	t.Helper()
 	query := challengeValues(t, challenge)
 	idp.mu.Lock()
 	idp.challenge = query.Get("code_challenge")
 	idp.claims = tokenClaims{Issuer: idp.issuer(), Audience: "connect-browser", Subject: subject, Nonce: query.Get("nonce")}
 	idp.mu.Unlock()
-	result, err := manager.Complete(context.Background(), Callback{Host: "dash.example.test", State: query.Get("state"), Code: "code", Binding: challenge.Binding})
+	result, err := manager.Complete(context.Background(), Callback{Host: host, State: query.Get("state"), Code: "code", Binding: challenge.Binding})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -503,6 +508,115 @@ func TestTransactionBoundsHumanGenerationAndLogout(t *testing.T) {
 	}
 	if _, err := manager.SetHuman(idp.issuer(), "unprovisioned", []string{"dash"}, true); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestPortalSessionAndBrowserTransactionFence(t *testing.T) {
+	manager, _, idp, now, _ := sessionFixture(t, 8, 2)
+	human, err := manager.SetHuman(idp.issuer(), "person-1", []string{"other"}, false, map[string]string{"other": "member"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	portalBinding, _ := NewBinding()
+	portal, err := manager.Begin("dash", "/_anvil-connect/home", portalBinding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	portalSession := complete(t, manager, idp, portal, "person-1")
+	if _, err := manager.Authenticate(portalSession.Cookie, "dash.example.test"); err == nil {
+		t.Fatal("portal-only session authenticated to the landing application")
+	}
+	admitted, observed, err := manager.PortalSession(portalSession.Cookie, "dash.example.test")
+	if err != nil || admitted.Resource != "dash" || observed.ID != human.ID || len(observed.Resources) != 1 || observed.Resources[0] != "other" {
+		t.Fatalf("portal session = %#v %#v, %v", admitted, observed, err)
+	}
+	if _, _, err := manager.PortalSession(portalSession.Cookie, "other.example.test"); err == nil {
+		t.Fatal("portal session crossed host boundary")
+	}
+	normalBinding, _ := NewBinding()
+	normal, err := manager.Begin("dash", "/", normalBinding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Complete(context.Background(), Callback{Host: "dash.example.test", State: configureToken(idp, normal, tokenClaims{Subject: "person-1"}).Get("state"), Code: "code", Binding: normalBinding}); err == nil {
+		t.Fatal("ungranted application return minted a portal session")
+	}
+
+	// A pending transaction from before the local credential reset must fail,
+	// while a transaction started strictly after the atomic revocation fence can
+	// mint the current generation.
+	pendingBinding, _ := NewBinding()
+	pending, err := manager.Begin("other", "/", pendingBinding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	*now = now.Add(time.Second)
+	revoked, err := manager.RevokeHumanSessions(idp.issuer(), "person-1")
+	if err != nil || revoked.Generation != human.Generation+1 || !revoked.BrowserNotBefore.Equal(*now) || revoked.Disabled || len(revoked.Resources) != 1 || revoked.Resources[0] != "other" || revoked.ApplicationRoles["other"] != "member" {
+		t.Fatalf("revoke changed human policy: %#v, %v", revoked, err)
+	}
+	if _, _, err := manager.PortalSession(portalSession.Cookie, "dash.example.test"); err == nil {
+		t.Fatal("generation fence retained prior portal session")
+	}
+	if _, err := manager.Complete(context.Background(), Callback{Host: "other.example.test", State: configureToken(idp, pending, tokenClaims{Subject: "person-1"}).Get("state"), Code: "code", Binding: pendingBinding}); err == nil {
+		t.Fatal("pre-fence OIDC transaction minted a session")
+	}
+	updated, err := manager.SetHuman(idp.issuer(), "person-1", []string{"other"}, false, map[string]string{"other": "member"})
+	if err != nil || !updated.BrowserNotBefore.Equal(revoked.BrowserNotBefore) {
+		t.Fatalf("grant update lost transaction fence: %#v, %v", updated, err)
+	}
+	*now = now.Add(time.Second)
+	freshBinding, _ := NewBinding()
+	fresh, err := manager.Begin("other", "/", freshBinding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := completeOnHost(t, manager, idp, fresh, "person-1", "other.example.test"); result.Cookie == "" {
+		t.Fatal("post-fence transaction did not mint a session")
+	}
+	if _, err := manager.SuspendHuman(idp.issuer(), "person-1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := manager.PortalSession(portalSession.Cookie, "dash.example.test"); err == nil {
+		t.Fatal("disabled human retained portal session")
+	}
+}
+
+func TestRevokeHumanSessionsPreservesLastOperator(t *testing.T) {
+	manager, _, idp, now, _ := sessionFixture(t, 8, 2)
+	human, err := manager.SetHuman(idp.issuer(), "operator", []string{"dash"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.ConfigureAdministration(config.BrowserAdministration{BrowserResource: "dash", Operators: []string{human.ID}}); err != nil {
+		t.Fatal(err)
+	}
+	*now = now.Add(time.Second)
+	revoked, err := manager.RevokeHumanSessions(idp.issuer(), "operator")
+	if err != nil || revoked.Generation != human.Generation+1 || revoked.Disabled || len(revoked.Resources) != 1 || revoked.Resources[0] != "dash" {
+		t.Fatalf("last operator revoke = %#v, %v", revoked, err)
+	}
+	if _, err := manager.RevokeHumanSessions(idp.issuer(), "missing"); err != nil {
+		t.Fatalf("missing human revoke was not a no-op: %v", err)
+	}
+}
+
+func TestPortalOnlySessionCanLogout(t *testing.T) {
+	manager, _, idp, _, _ := sessionFixture(t, 8, 2)
+	if _, err := manager.SetHuman(idp.issuer(), "person-1", []string{"other"}, false); err != nil {
+		t.Fatal(err)
+	}
+	binding, _ := NewBinding()
+	challenge, err := manager.Begin("dash", "/_anvil-connect/home", binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed := complete(t, manager, idp, challenge, "person-1")
+	if err := manager.Logout(completed.Cookie, "dash.example.test"); err != nil {
+		t.Fatalf("portal-only logout: %v", err)
+	}
+	if _, _, err := manager.PortalSession(completed.Cookie, "dash.example.test"); err == nil {
+		t.Fatal("logout retained portal-only session")
 	}
 }
 

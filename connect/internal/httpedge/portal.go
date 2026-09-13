@@ -16,10 +16,10 @@ var portalFiles embed.FS
 
 var portalTemplate = template.Must(template.ParseFS(portalFiles, "portal/home.html"))
 
-// These reads expose only the admitted person's current grants and the public
+// These reads expose only the portal's credential-bound human view and public
 // account URL. Authentication and mutations retain their existing authorities.
 type portalAuthority interface {
-	CurrentHuman(session.Admission) (session.Human, error)
+	PortalSession(raw, host string) (session.Admission, session.Human, error)
 	AccountURL() string
 }
 
@@ -66,23 +66,18 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 		return
 	}
 	defer release()
-	admitted, ok := b.browserAdmission(r, resource, cookies)
-	if !ok {
-		if r.URL.Path == home && browserDocument(r) {
-			browserRedirect(w, r, BrowserLoginPath+"?"+url.Values{"return": {home}}.Encode(), http.StatusFound)
-		} else {
-			browserFailure(w, http.StatusUnauthorized)
-		}
-		return
-	}
 	authority, ok := b.authority.(portalAuthority)
 	if !ok {
 		browserFailure(w, http.StatusServiceUnavailable)
 		return
 	}
-	human, err := authority.CurrentHuman(admitted)
-	if err != nil || human.ID != admitted.Principal || human.Disabled || human.Generation != admitted.PrincipalGeneration {
-		browserFailure(w, http.StatusUnauthorized)
+	admitted, human, err := authority.PortalSession(cookies.session, r.Host)
+	if err != nil || admitted.Resource != resource.declaration.Rule.ID || admitted.Host != r.Host || admitted.SessionID == "" || admitted.Principal == "" || admitted.ExpiresAt.IsZero() || human.ID != admitted.Principal || human.Disabled || human.Generation != admitted.PrincipalGeneration {
+		if r.URL.Path == home && browserDocument(r) {
+			browserRedirect(w, r, BrowserLoginPath+"?"+url.Values{"return": {home}}.Encode(), http.StatusFound)
+		} else {
+			browserFailure(w, http.StatusUnauthorized)
+		}
 		return
 	}
 	switch r.URL.Path {
@@ -97,7 +92,7 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 		services := []portalService{}
 		choices := []portalService{}
 		adminPath := ""
-		if b.administration != nil && b.administration.permits(admitted) {
+		if b.administration != nil && b.authority.Check(admitted) == nil && b.administration.permits(admitted) {
 			adminPath = b.administration.path
 		}
 		for _, candidate := range b.resources {

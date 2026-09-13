@@ -621,6 +621,25 @@ def _safe_consumed_file(path: Path, uid: int, gid: int, *, public: bool = False,
         raise ManageError("declared service file is unsafe")
 
 
+def _safe_authelia_users_file(data: dict[str, Any]) -> Path:
+    """Validate the mutable file backend without relaxing other secret paths."""
+    auth = data["authelia"]
+    uid, gid = role_identity(data, "idp")
+    path = Path(auth["users_file"])
+    if path.parent != Path(auth["state_directory"]):
+        _safe_consumed_file(path, uid, gid)
+        return path
+    _safe_private_runtime_directory(path.parent, uid, gid)
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        raise ManageError("declared service file is unavailable") from exc
+    if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_nlink != 1
+            or info.st_uid != uid or info.st_gid != gid or stat.S_IMODE(info.st_mode) != 0o600):
+        raise ManageError("declared service file is unsafe")
+    return path
+
+
 def _validate_gateway_files(data: dict[str, Any]) -> None:
     edge_uid, edge_gid = role_identity(data, "edge")
     idp_uid, idp_gid = role_identity(data, "idp")
@@ -628,11 +647,14 @@ def _validate_gateway_files(data: dict[str, Any]) -> None:
     if tls["mode"] == "provided":
         _safe_consumed_file(Path(tls["certificate_file"]), edge_uid, edge_gid, public=True)
         _safe_consumed_file(Path(tls["key_file"]), edge_uid, edge_gid)
+    _safe_authelia_users_file(data)
     for name in (
-        "users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file",
+        "client_secret_file", "session_secret_file", "storage_encryption_key_file",
         "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file",
     ):
         _safe_consumed_file(Path(data["authelia"][name]), idp_uid, idp_gid)
+    if "smtp" in data["authelia"]:
+        _safe_consumed_file(Path(data["authelia"]["smtp"]["password_file"]), idp_uid, idp_gid)
     for client in data["authelia"].get("additional_oidc_clients", []):
         _safe_consumed_file(Path(client["client_secret_file"]), idp_uid, idp_gid)
     _validate_local_files(data, Target("gateway"))
@@ -2244,7 +2266,7 @@ def _admin_preview(request: Path) -> dict[str, str]:
     value = _strict_json(raw, "administrative request is invalid")
     allowed = {"operation", "principal", "grants", "disabled", "key_id", "installation", "role", "resources", "application_roles", "lifetime_seconds", "fingerprint", "issuer", "subject"}
     operation = value.get("operation")
-    operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "authority-reset"}
+    operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "human-revoke-sessions", "authority-reset"}
     if set(value) - allowed or not isinstance(operation, str) or operation not in operations:
         raise ManageError("administrative request is invalid")
     fingerprint = value.get("fingerprint")

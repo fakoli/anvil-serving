@@ -10,7 +10,7 @@
     "session_secret_file": "/etc/anvil-connect/secrets/authelia-session",
     "state_directory": "/var/lib/anvil-connect/authelia",
     "storage_encryption_key_file": "/etc/anvil-connect/secrets/authelia-storage",
-    "users_file": "/etc/anvil-connect/users.yml"
+    "users_file": "/var/lib/anvil-connect/authelia/users.yml"
   },
   "binary": "/usr/local/bin/anvil-connect",
   "caddy": {
