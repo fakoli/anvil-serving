@@ -180,6 +180,77 @@ func TestResourceMatching(t *testing.T) {
 	}
 }
 
+func TestBrowserExternalRedirects(t *testing.T) {
+	rule := Rule{
+		ID:                "dash",
+		Host:              "dash.example.test",
+		PathPrefix:        "/",
+		Methods:           []string{"GET"},
+		Access:            "browser",
+		NativeAuth:        "none",
+		ExternalRedirects: []string{"https://login.example.test/oauth/oidc/login"},
+		Limits:            Limits{RequestBytes: 1024, Concurrent: 1, BufferBytes: 4096, IdleSeconds: 1, DurationSeconds: 1},
+	}
+	if err := rule.Validate(); err != nil {
+		t.Fatal("valid browser redirect rejected", err)
+	}
+	for _, value := range []string{
+		"https://login.example.test/oauth/oidc/login?state=opaque",
+		"https://login.example.test/oauth/oidc/login?code=opaque&state=opaque",
+	} {
+		if !rule.AllowsExternalRedirect(value) {
+			t.Fatalf("configured redirect rejected: %q", value)
+		}
+	}
+	for _, value := range []string{
+		"https://login.example.test/oauth/oidc/other",
+		"https://other.example.test/oauth/oidc/login",
+		"https://user@login.example.test/oauth/oidc/login",
+		"https://login.example.test/oauth/oidc/login#fragment",
+		"https://login.example.test/oauth/oidc/login#",
+		"HTTPS://login.example.test/oauth/oidc/login",
+		"https://login.example.test/oauth/%6fidc/login",
+		"//login.example.test/oauth/oidc/login",
+	} {
+		if rule.AllowsExternalRedirect(value) {
+			t.Fatalf("unconfigured redirect accepted: %q", value)
+		}
+	}
+	for name, mutate := range map[string]func(*Rule){
+		"api": func(r *Rule) { r.Access, r.NativeAuth = "api", "delegate-bearer" },
+		"too-many": func(r *Rule) {
+			r.ExternalRedirects = []string{
+				"https://one.example.test/login", "https://two.example.test/login", "https://three.example.test/login",
+				"https://four.example.test/login", "https://five.example.test/login", "https://six.example.test/login",
+				"https://seven.example.test/login", "https://eight.example.test/login", "https://nine.example.test/login",
+			}
+		},
+		"duplicate":    func(r *Rule) { r.ExternalRedirects = append(r.ExternalRedirects, r.ExternalRedirects[0]) },
+		"same-host":    func(r *Rule) { r.ExternalRedirects = []string{"https://dash.example.test/login"} },
+		"root-path":    func(r *Rule) { r.ExternalRedirects = []string{"https://login.example.test/"} },
+		"missing-path": func(r *Rule) { r.ExternalRedirects = []string{"https://login.example.test"} },
+		"port":         func(r *Rule) { r.ExternalRedirects = []string{"https://login.example.test:443/login"} },
+		"credentials":  func(r *Rule) { r.ExternalRedirects = []string{"https://user@login.example.test/login"} },
+		"query":        func(r *Rule) { r.ExternalRedirects = []string{"https://login.example.test/login?state=bad"} },
+		"fragment":     func(r *Rule) { r.ExternalRedirects = []string{"https://login.example.test/login#bad"} },
+		"empty-fragment": func(r *Rule) {
+			r.ExternalRedirects = []string{"https://login.example.test/login#"}
+		},
+		"uppercase-scheme": func(r *Rule) { r.ExternalRedirects = []string{"HTTPS://login.example.test/login"} },
+		"escaped-path":     func(r *Rule) { r.ExternalRedirects = []string{"https://login.example.test/%6cogin"} },
+		"dot-path":         func(r *Rule) { r.ExternalRedirects = []string{"https://login.example.test/one/../login"} },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := rule
+			candidate.ExternalRedirects = append([]string(nil), rule.ExternalRedirects...)
+			mutate(&candidate)
+			if candidate.Validate() == nil {
+				t.Fatal("unsafe external redirect accepted")
+			}
+		})
+	}
+}
+
 func TestSignedIdentityGatewayBinding(t *testing.T) {
 	valid := gateway(t)
 	resource := &valid.Resources[0]

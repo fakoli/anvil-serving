@@ -451,6 +451,20 @@ def _redirect_uri(value: Any, path: str) -> str:
     return text
 
 
+def _external_redirect(value: Any, path: str) -> tuple[str, str]:
+    """Accept one fixed external browser redirect endpoint and its host."""
+    text = _string(value, path)
+    match = re.fullmatch(r"https://([^/:?#]+)(/.*)", text)
+    if not match:
+        raise _error(path, "must be a canonical HTTPS external redirect")
+    try:
+        host = _host(match.group(1), path)
+        _canonical_nonroot_path(match.group(2), path)
+    except ManifestError as exc:
+        raise _error(path, "must be a canonical HTTPS external redirect") from exc
+    return text, host
+
+
 def _secret_file(value: Any, path: str) -> str:
     return _abs_path(value, path)
 
@@ -493,7 +507,10 @@ def _list(value: Any, path: str, maximum: int = _MAX_ITEMS) -> list[Any]:
 
 
 def _rule(value: Any, path: str) -> dict[str, Any]:
-    raw = _mapping(value, path, {"id", "host", "path_prefix", "methods", "access", "native_auth", "limits"})
+    fields = {"id", "host", "path_prefix", "methods", "access", "native_auth", "limits"}
+    if isinstance(value, dict) and "external_redirects" in value:
+        fields.add("external_redirects")
+    raw = _mapping(value, path, fields)
     rule_id = _ident(raw["id"], path + ".id")
     host = _host(raw["host"], path + ".host")
     prefix = _canonical_path_prefix(raw["path_prefix"], path + ".path_prefix")
@@ -510,6 +527,18 @@ def _rule(value: Any, path: str) -> dict[str, Any]:
         raise _error(path + ".native_auth", "API resources require delegate-bearer")
     if access == "browser" and native_auth not in {"none", "passthrough", "signed-identity"}:
         raise _error(path + ".native_auth", "browser resources require none, passthrough, or signed-identity")
+    external_redirects: list[str] | None = None
+    if "external_redirects" in raw:
+        if access != "browser":
+            raise _error(path + ".external_redirects", "requires browser access")
+        validated_redirects = [_external_redirect(item, path + ".external_redirects")
+                               for item in _list(raw["external_redirects"], path + ".external_redirects", 8)]
+        external_redirects = [redirect for redirect, _ in validated_redirects]
+        if len(external_redirects) != len(set(external_redirects)):
+            raise _error(path + ".external_redirects", "contains duplicate external redirects")
+        if any(redirect_host == host for _, redirect_host in validated_redirects):
+            raise _error(path + ".external_redirects", "hosts must differ from the resource host")
+        external_redirects.sort()
     raw_limits = _mapping(raw["limits"], path + ".limits", {"request_bytes", "concurrent", "buffer_bytes", "idle_seconds", "duration_seconds"})
     limits = {
         "request_bytes": _positive(raw_limits["request_bytes"], path + ".limits.request_bytes", 64 * 1024 * 1024),
@@ -522,7 +551,7 @@ def _rule(value: Any, path: str) -> dict[str, Any]:
         raise _error(path + ".limits.buffer_bytes", "must be between 4096 and 262144")
     if limits["duration_seconds"] < limits["idle_seconds"]:
         raise _error(path + ".limits.duration_seconds", "must be at least idle_seconds")
-    return {
+    rule = {
         "id": rule_id,
         "host": host,
         "path_prefix": prefix,
@@ -531,6 +560,9 @@ def _rule(value: Any, path: str) -> dict[str, Any]:
         "native_auth": native_auth,
         "limits": limits,
     }
+    if external_redirects is not None:
+        rule["external_redirects"] = external_redirects
+    return rule
 
 
 def _envelope(value: Any, path: str) -> dict[str, Any]:
