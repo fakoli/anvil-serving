@@ -12,6 +12,9 @@ import pytest
 
 from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
+from anvil_serving.benchmarking import swe as swe_benchmark
+from anvil_serving.benchmarking import worker as benchmark_worker
+from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking.worker import execute_benchmark_job, launch_benchmark_job
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 
@@ -73,6 +76,43 @@ def test_worker_claims_once_and_retains_cross_suite_evidence(monkeypatch, tmp_pa
         "asset_preparation", "preflight", "context"
     ]
     assert evidence["promotion"]["authorized"] is False
+
+
+def test_worker_forwards_swe_sampler_controls_into_mini_config_and_result(monkeypatch, tmp_path):
+    value = spec()
+    value["suite"] = "swe"
+    value["parameters"] = {
+        "instance_ids": ["astropy__astropy-12907"],
+        "temperature": 1.0,
+        "top_p": 0.95,
+    }
+    profile = load_profile("smoke")
+    captured = {}
+
+    def fake_plan(profile, assets, *, endpoint, request_controls, **_kwargs):
+        controls = swe_benchmark._validate_request_controls(request_controls)
+        captured["plan"] = {
+            "request_controls": controls,
+            "config_text": swe_benchmark._mini_config(
+                endpoint, profile["suites"]["swe"], controls, "docker"
+            ),
+        }
+        return captured["plan"]
+
+    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", fake_plan)
+    monkeypatch.setattr(
+        benchmark_worker, "run_swe_benchmark", lambda plan: dict(plan)
+    )
+    result = benchmark_worker._run_suite(
+        SimpleNamespace(run_root=str(tmp_path / "runs")),
+        {"spec": value}, profile, {"assets": {}},
+    )
+
+    assert result["request_controls"]["sampling"] == {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
+    assert "    temperature: 1.0\n    top_p: 0.95\n" in result["config_text"]
 
 
 def test_detached_launcher_keeps_credentials_out_of_argv(tmp_path):

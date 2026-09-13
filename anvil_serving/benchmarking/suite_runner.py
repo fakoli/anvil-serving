@@ -8,6 +8,7 @@ import math
 from typing import Any, Callable, Mapping
 
 from .agentic import build_agentic_scenario, score_agentic_trace
+from .evaluation import normalize_sampling, request_sampling_kwargs
 from .context import (
     NATIVE_CONTEXT_CASES,
     build_native_context_case,
@@ -181,6 +182,27 @@ def _context_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) 
     }
 
 
+def _sampling_request_controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize sampler provenance while omitting implicit optional call kwargs."""
+    temperature = parameters.get("temperature")
+    top_p = parameters.get("top_p")
+    try:
+        return normalize_sampling({
+            "temperature": {
+                "requested": temperature,
+                "effective_request": 0.0 if temperature is None else temperature,
+                "sent": True,
+            },
+            "top_p": {
+                "requested": top_p,
+                "effective_request": top_p,
+                "sent": top_p is not None,
+            },
+        })
+    except ValueError as exc:
+        raise BenchmarkJobError("bad_sampling", str(exc)) from exc
+
+
 def _context_request_controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
     thinking_mode = parameters.get("thinking_mode", "default")
     if thinking_mode not in {"default", "enabled", "disabled"}:
@@ -211,6 +233,7 @@ def _context_request_controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
         "thinking_mode": thinking_mode,
         "reasoning_effort": reasoning_effort,
         "chat_template_kwargs": chat_template_kwargs,
+        "sampling": _sampling_request_controls(parameters),
     }
 
 
@@ -257,6 +280,7 @@ def run_context_suite(
         )
         if value is not None
     }
+    request_kwargs.update(request_sampling_kwargs(request_controls["sampling"]))
     counter, calibration = _calibrated_counter(
         endpoint=endpoint, key=key, caller=lambda *args, **kwargs: caller(
             *args, **kwargs, **request_kwargs
@@ -419,6 +443,7 @@ def _run_long_session_case(
     caller: ChatCaller,
     chat_template_kwargs: Mapping[str, Any] | None,
     reasoning_effort: str | None,
+    sampling_kwargs: Mapping[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
     """Execute every scripted user turn so endurance evidence has real token growth."""
     scripted_users = [
@@ -444,6 +469,7 @@ def _run_long_session_case(
                 tools=None,
                 chat_template_kwargs=chat_template_kwargs,
                 reasoning_effort=reasoning_effort,
+                **sampling_kwargs,
             )
             payload = response["response"]
             prompt_tokens = _usage_tokens(payload, "prompt_tokens")
@@ -515,6 +541,7 @@ def _run_agentic_case(
     caller: ChatCaller,
     chat_template_kwargs: Mapping[str, Any] | None = None,
     reasoning_effort: str | None = None,
+    sampling_kwargs: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     if expected.get("require_token_growth"):
         return _run_long_session_case(
@@ -527,8 +554,10 @@ def _run_agentic_case(
             caller=caller,
             chat_template_kwargs=chat_template_kwargs,
             reasoning_effort=reasoning_effort,
+            sampling_kwargs=sampling_kwargs or {},
         )
     messages = copy.deepcopy(scenario["messages"])
+    sampling_kwargs = sampling_kwargs or {}
     observed_calls = []
     growth = []
     request_ids = []
@@ -548,6 +577,7 @@ def _run_agentic_case(
                 tools=scenario.get("tools") or None,
                 chat_template_kwargs=chat_template_kwargs,
                 reasoning_effort=reasoning_effort,
+                **sampling_kwargs,
             )
             payload = response["response"]
             prompt_tokens = _usage_tokens(payload, "prompt_tokens")
@@ -620,6 +650,8 @@ def run_agentic_suite(
     endpoint = spec["endpoint"]
     key = resolve_api_key(endpoint.get("auth_env"))
     parameters = spec.get("parameters", {})
+    sampling = _sampling_request_controls(parameters)
+    sampling_kwargs = request_sampling_kwargs(sampling)
     thinking_mode = parameters.get("thinking_mode", "default")
     if thinking_mode not in {"default", "enabled", "disabled"}:
         raise BenchmarkJobError(
@@ -687,6 +719,7 @@ def run_agentic_suite(
                 caller=caller,
                 chat_template_kwargs=chat_template_kwargs,
                 reasoning_effort=reasoning_effort,
+                sampling_kwargs=sampling_kwargs,
             )
             observation["repetition"] = repetition
             observations.append(observation)
@@ -712,6 +745,7 @@ def run_agentic_suite(
             "thinking_mode": thinking_mode,
             "chat_template_kwargs": chat_template_kwargs,
             "reasoning_effort": reasoning_effort,
+            "sampling": sampling,
         },
         "passed": passed / len(observations) >= suite["scoring"]["pass_rate_floor"],
     }

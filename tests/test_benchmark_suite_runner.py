@@ -122,12 +122,24 @@ def test_context_runner_forwards_controls_and_retains_bounded_reasoning_capture(
             thinking_mode="enabled",
             reasoning_effort="max",
             clear_thinking=False,
+            temperature=1.0,
+            top_p=0.95,
         ),
         caller=caller,
     )
 
-    assert all(call == {"chat_template_kwargs": {"enable_thinking": True, "clear_thinking": False}, "reasoning_effort": "max"} for call in calls)
-    assert result["request_controls"] == {"thinking_mode": "enabled", "reasoning_effort": "max", "chat_template_kwargs": {"enable_thinking": True, "clear_thinking": False}}
+    assert all(call == {
+        "chat_template_kwargs": {"enable_thinking": True, "clear_thinking": False},
+        "reasoning_effort": "max", "temperature": 1.0, "top_p": 0.95,
+    } for call in calls)
+    assert result["request_controls"] == {
+        "thinking_mode": "enabled", "reasoning_effort": "max",
+        "chat_template_kwargs": {"enable_thinking": True, "clear_thinking": False},
+        "sampling": {
+            "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+            "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+        },
+    }
     observation = result["observations"][0]
     assert observation["passed"] is True
     assert len(observation["visible_answer"]) == 8192
@@ -137,6 +149,51 @@ def test_context_runner_forwards_controls_and_retains_bounded_reasoning_capture(
     assert observation["raw_reasoning"] == "r" * 8192
     assert observation["raw_reasoning_truncated"] is True
     assert observation["finish_reason"] == "stop"
+
+
+def test_context_runner_preserves_legacy_optional_sampler_kwargs():
+    calls = []
+
+    def caller(base, model, key, messages, max_tokens, timeout, **kwargs):
+        calls.append(kwargs)
+        prompt = messages[-1]["content"]
+        answer = "ok" if prompt.startswith("token calibration") else re.search(
+            r"access marker for ORCHID is (K\d+)\.", prompt
+        ).group(1)
+        return {
+            "latency_s": 0.1,
+            "response": {
+                "choices": [{"message": {"content": answer}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": max(2, math.ceil(len(prompt) / 4)), "completion_tokens": 2},
+            },
+        }
+
+    result = run_context_suite(
+        load_profile("smoke"),
+        spec("context", case_ids=["native-needle"], token_buckets=[512], positions=[0.5]),
+        caller=caller,
+    )
+
+    assert calls == [{}, {}]
+    assert result["request_controls"]["sampling"] == {
+        "temperature": {"requested": None, "effective_request": 0.0, "sent": True},
+        "top_p": {"requested": None, "effective_request": None, "sent": False},
+    }
+
+
+@pytest.mark.parametrize(
+    ("suite", "parameters", "caller"),
+    (
+        ("context", {"temperature": -0.1}, context_caller),
+        ("agentic", {"top_p": 0.0}, context_caller),
+    ),
+)
+def test_suite_runners_reject_invalid_optional_sampler_controls(suite, parameters, caller):
+    with pytest.raises(BenchmarkJobError) as exc:
+        run = run_context_suite if suite == "context" else run_agentic_suite
+        run(load_profile("smoke"), spec(suite, **parameters), caller=caller)
+
+    assert exc.value.code == "bad_sampling"
 
 
 def test_context_runner_marks_reasoning_only_reply_as_empty_visible_failure():
@@ -246,13 +303,20 @@ def test_agentic_runner_forwards_one_explicit_reasoning_control():
             recovery_result="error",
             case_ids=["tool-recovery"],
             reasoning_effort="xhigh",
+            temperature=1.0,
+            top_p=0.95,
         ),
         caller=caller,
     )
 
     assert result["request_controls"]["reasoning_effort"] == "xhigh"
+    assert result["request_controls"]["sampling"] == {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
     assert all(item["reasoning_effort"] == "xhigh" for item in caller.kwargs)
     assert all(item["chat_template_kwargs"] is None for item in caller.kwargs)
+    assert all(item["temperature"] == 1.0 and item["top_p"] == 0.95 for item in caller.kwargs)
 
 
 def test_agentic_runner_rejects_conflicting_reasoning_controls():
