@@ -62,6 +62,7 @@ type Human struct {
 	Disabled         bool              `json:"disabled"`
 	Resources        []string          `json:"resources"`
 	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
+	BrowserNotBefore time.Time         `json:"browser_not_before"`
 }
 
 // Session is the persisted server-side half of a host-only opaque cookie.
@@ -350,7 +351,7 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 		if applicationRoles == nil {
 			applicationRoles = retainApplicationRoles(old.ApplicationRoles, resources)
 		}
-		result = Human{ID: id, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles}
+		result = Human{ID: id, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles, BrowserNotBefore: old.BrowserNotBefore}
 		if err := m.preserveAdministrators(tx, result); err != nil {
 			return err
 		}
@@ -384,13 +385,13 @@ func (m *Manager) SuspendHuman(issuer, subject string) (Human, error) {
 			return ErrUnavailable
 		}
 		if human.Disabled {
-			result = Human{ID: human.ID, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles)}
+			result = Human{ID: human.ID, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserNotBefore: human.BrowserNotBefore}
 			return nil
 		}
 		if err := m.UpdateHumanTx(tx, id, human.Generation, human.Resources, true); err != nil {
 			return err
 		}
-		result = Human{ID: human.ID, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles)}
+		result = Human{ID: human.ID, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserNotBefore: human.BrowserNotBefore}
 		return nil
 	})
 	if err != nil {
@@ -421,6 +422,30 @@ func (m *Manager) CurrentHuman(admitted Admission) (Human, error) {
 		return Human{}, ErrDenied
 	}
 	return result, nil
+}
+
+// PortalSession verifies an existing browser credential for the local service
+// chooser. It deliberately omits only the landing-resource grant check.
+// Application, device, and administration paths continue to use Authenticate
+// and Check, which retain that check.
+func (m *Manager) PortalSession(raw, host string) (Admission, Human, error) {
+	var admitted Admission
+	var result Human
+	err := m.state.View(func(tx *store.Tx) error {
+		session, human, err := m.authorize(tx, raw, host, false)
+		if err != nil {
+			return err
+		}
+		admitted = Admission{SessionID: session.ID, SessionGeneration: session.Generation, Principal: session.Principal, PrincipalGeneration: session.PrincipalGeneration, Resource: session.Resource, Host: session.Host, Epoch: session.Epoch, ExpiresAt: session.ExpiresAt, ApplicationRole: human.ApplicationRoles[session.Resource]}
+		result = human
+		result.Resources = append([]string(nil), human.Resources...)
+		result.ApplicationRoles = maps.Clone(human.ApplicationRoles)
+		return nil
+	})
+	if err != nil {
+		return Admission{}, Human{}, ErrDenied
+	}
+	return admitted, result, nil
 }
 
 // AccountURL returns the configured, validated issuer for a local account
@@ -510,7 +535,7 @@ func sessionID(raw string) (string, bool) {
 	return parts[1], true
 }
 
-func (m *Manager) authorize(tx *store.Tx, raw, host string) (Session, Human, error) {
+func (m *Manager) authorize(tx *store.Tx, raw, host string, requireResource bool) (Session, Human, error) {
 	id, ok := sessionID(raw)
 	if !ok || !config.ValidHost(host) {
 		return Session{}, Human{}, ErrDenied
@@ -522,7 +547,7 @@ func (m *Manager) authorize(tx *store.Tx, raw, host string) (Session, Human, err
 		return Session{}, Human{}, ErrDenied
 	}
 	rule, configured := m.rules[session.Resource]
-	if !configured || rule.Host != host || session.ID != id || session.Host != host || session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || subtle.ConstantTimeCompare(session.Digest[:], digest[:]) != 1 || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || !hasResource(human.Resources, session.Resource) {
+	if !configured || rule.Host != host || session.ID != id || session.Host != host || session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || subtle.ConstantTimeCompare(session.Digest[:], digest[:]) != 1 || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || (requireResource && !hasResource(human.Resources, session.Resource)) {
 		return Session{}, Human{}, ErrDenied
 	}
 	if _, valid := m.validateApplicationRoles(human.Resources, human.ApplicationRoles); !valid {
@@ -543,7 +568,7 @@ func hasResource(resources []string, resource string) bool {
 func (m *Manager) Authenticate(raw, host string) (Admission, error) {
 	var admitted Admission
 	err := m.state.View(func(tx *store.Tx) error {
-		session, human, err := m.authorize(tx, raw, host)
+		session, human, err := m.authorize(tx, raw, host, true)
 		if err != nil {
 			return err
 		}
@@ -635,7 +660,7 @@ func (m *Manager) Logout(raw, host string) error {
 		return ErrDenied
 	}
 	return m.state.Update(func(tx *store.Tx) error {
-		session, human, err := m.authorize(tx, raw, host)
+		session, human, err := m.authorize(tx, raw, host, false)
 		if err != nil {
 			return ErrDenied
 		}

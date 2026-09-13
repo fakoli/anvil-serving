@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
+	"maps"
 	"math"
 )
 
@@ -100,4 +101,55 @@ func (m *Manager) UpdateHumanTx(tx *store.Tx, id string, expected uint64, resour
 		return err
 	}
 	return tx.Put("principals", id, human)
+}
+
+// RevokeHumanSessions advances an existing human generation and sets a
+// monotonic transaction cutoff. It leaves grants, roles, and disabled state
+// unchanged; a missing human is intentionally a no-op.
+func (m *Manager) RevokeHumanSessions(issuer, subject string) (Human, error) {
+	if issuer != m.issuer {
+		return Human{}, ErrDenied
+	}
+	id, ok := humanID(issuer, subject)
+	if !ok {
+		return Human{}, ErrDenied
+	}
+	result := Human{ID: id}
+	err := m.state.Update(func(tx *store.Tx) error {
+		var human Human
+		err := tx.Get("principals", id, &human)
+		if errors.Is(err, store.ErrMissing) {
+			return nil
+		}
+		if err != nil || human.ID != id || human.Generation == 0 || human.Generation == math.MaxUint64 {
+			return ErrUnavailable
+		}
+		resources, valid := m.validateResources(human.Resources)
+		if !valid {
+			return ErrUnavailable
+		}
+		roles, valid := m.validateApplicationRoles(resources, human.ApplicationRoles)
+		if !valid {
+			return ErrUnavailable
+		}
+		human.Resources, human.ApplicationRoles = resources, roles
+		human.Generation++
+		if !human.BrowserNotBefore.After(tx.Now()) {
+			human.BrowserNotBefore = tx.Now()
+		}
+		if err := m.preserveAdministrators(tx, human); err != nil {
+			return err
+		}
+		if err := tx.Put("principals", id, human); err != nil {
+			return ErrUnavailable
+		}
+		result = human
+		result.Resources = append([]string(nil), human.Resources...)
+		result.ApplicationRoles = maps.Clone(human.ApplicationRoles)
+		return nil
+	})
+	if err != nil {
+		return Human{}, err
+	}
+	return result, nil
 }

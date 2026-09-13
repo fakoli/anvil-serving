@@ -294,6 +294,57 @@ def test_authelia_template_has_explicit_pkce_rs256_and_callbacks() -> None:
     assert "default_policy: two_factor" in text
 
 
+def test_authelia_smtp_notifier_uses_a_protected_secret_reference() -> None:
+    value = isolated_manifest()
+    value["authelia"]["smtp"] = {
+        "address": "submission://smtp.resend.com:587",
+        "username": "resend",
+        "password_file": "/etc/anvil-connect/secrets/resend-smtp-key",
+        "sender": "Anvil Connect <auth@auth.example.test>",
+    }
+    text = render(value)["files"]["authelia/configuration.yml"]
+    assert "  smtp:\n    address: 'submission://smtp.resend.com:587'" in text
+    assert "{{- fileContent \"/etc/anvil-connect/secrets/resend-smtp-key\" | nindent 6 }}" in text
+    assert "    identifier: 'auth.example.test'" in text
+    assert "    subject: '[Anvil Connect] {title}'" in text
+    assert "filesystem:" not in text
+
+
+def test_authelia_filesystem_notifier_remains_the_default() -> None:
+    text = render(isolated_manifest())["files"]["authelia/configuration.yml"]
+    assert "  filesystem:\n    filename: '/var/lib/anvil-connect/authelia/notifications.txt'" in text
+    assert "  smtp:" not in text
+
+
+def test_authelia_smtp_rejects_unsafe_or_unmanaged_declarations() -> None:
+    base = isolated_manifest()
+    valid = {
+        "address": "submissions://smtp.resend.com:465",
+        "username": "resend",
+        "password_file": "/etc/anvil-connect/secrets/resend-smtp-key",
+        "sender": "auth@auth.example.test",
+    }
+    invalid = [
+        ({**valid, "address": "smtp://smtp.resend.com:25"}, "submission:// or submissions://"),
+        ({**valid, "address": "submission://resend@smtp.resend.com:587"}, "lower-case DNS host"),
+        ({**valid, "username": "{{ .Secret }}"}, "simple SMTP username"),
+        ({**valid, "sender": "auth@auth.example.test\nBcc: victim@example.test"}, "unsafe control"),
+        ({**valid, "sender": "{{ .Secret }} <auth@auth.example.test>"}, "simple mailbox"),
+        ({**valid, "password_file": base["config_root"] + "/resend-key"}, "outside rendered output"),
+        ({**valid, "password_file": base["authelia"]["state_directory"] + "/resend-key"}, "outside rendered output"),
+        ({**valid, "password": "do-not-inline"}, "literal credentials"),
+    ]
+    for smtp, message in invalid:
+        value = copy.deepcopy(base)
+        value["authelia"]["smtp"] = smtp
+        with pytest.raises(ManifestError, match=message):
+            validate_manifest(value)
+    value = copy.deepcopy(base)
+    value["authelia"]["smtp"] = {**valid, "password_file": value["authelia"]["client_secret_file"]}
+    with pytest.raises(ManifestError, match="distinct protected secret files"):
+        validate_manifest(value)
+
+
 @pytest.mark.parametrize("theme", ["light", "dark", "grey", "oled", "auto"])
 def test_authelia_branding_is_optional_and_preserves_authentication_contract(theme: str) -> None:
     value = isolated_manifest()
@@ -417,7 +468,7 @@ def test_authelia_additional_oidc_client_is_fixed_profile_with_protected_secret_
         validate_manifest(invalid)
     invalid = copy.deepcopy(value)
     invalid["authelia"]["additional_oidc_clients"][0]["client_secret_file"] = invalid["authelia"]["client_secret_file"]
-    with pytest.raises(ManifestError, match="distinct protected client secret files"):
+    with pytest.raises(ManifestError, match="distinct protected secret files"):
         validate_manifest(invalid)
     invalid = copy.deepcopy(value)
     invalid["authelia"]["additional_oidc_clients"][0]["client_secret_file"] = invalid["authelia"]["state_directory"] + "/client-secret"
@@ -651,6 +702,7 @@ def test_local_tunnel_omission_preserves_pre_slice_bytes() -> None:
         "managed.json": "40b11470c384731d629a59edc4b1f71507c876d13e7ff5922abab0f02c93ce0f",
     }
     value = isolated_manifest()
+    value["authelia"]["users_file"] = "/etc/anvil-connect/users.yml"
     normalized = connect_config.canonical_manifest(value)
     generation = "e9b86d9f9ad8acb44d686138a714f43ad610bb0be372fa80e268a4882d817b81"
     assert hashlib.sha256(normalized).hexdigest() == generation
