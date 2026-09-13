@@ -439,7 +439,7 @@ def _run_long_session_case(
                 endpoint["model"],
                 key,
                 messages,
-                max_tokens=max_tokens if index == len(scripted_users) - 1 else min(max_tokens, 64),
+                max_tokens=max_tokens,
                 timeout=timeout,
                 tools=None,
                 chat_template_kwargs=chat_template_kwargs,
@@ -452,21 +452,12 @@ def _run_long_session_case(
             if response.get("request_id"):
                 request_ids.append(response["request_id"])
             message = _message(payload)
-            calls = _normalized_tool_calls(message)
-            if calls:
-                raise BenchmarkJobError(
-                    "parser_error", "long-session response unexpectedly contained tool calls"
-                )
-            content = message.get("content")
-            if not isinstance(content, str) or not content.strip():
-                raise BenchmarkJobError(
-                    "parser_error", "long-session response has no visible assistant content"
-                )
             reasoning = message.get("reasoning_content") or message.get("reasoning")
             reasoning_chars = len(reasoning) if isinstance(reasoning, str) else 0
             reasoning_present = reasoning_present or reasoning_chars > 0
             choices = payload.get("choices")
             first_choice = choices[0] if isinstance(choices, list) and choices else {}
+            raw_calls = message.get("tool_calls")
             turns.append({
                 "latency_ms": response["latency_s"] * 1000,
                 "prompt_tokens": prompt_tokens,
@@ -477,12 +468,23 @@ def _run_long_session_case(
                     else None
                 ),
                 "reasoning_chars": reasoning_chars,
-                "tool_call_count": 0,
+                "tool_call_count": len(raw_calls) if isinstance(raw_calls, list) else 0,
             })
+            calls = _normalized_tool_calls(message)
+            if calls:
+                raise BenchmarkJobError(
+                    "parser_error", "long-session response unexpectedly contained tool calls"
+                )
+            content = message.get("content")
+            if not isinstance(content, str) or not content.strip():
+                raise BenchmarkJobError(
+                    "parser_error", "long-session response has no visible assistant content"
+                )
             if index == len(scripted_users) - 1:
                 final_answer = content
             else:
-                messages.append({"role": "assistant", "content": content})
+                message.setdefault("role", "assistant")
+                messages.append(message)
         except BenchmarkJobError as exc:
             failure = {"code": exc.code, "message": exc.message}
             break
