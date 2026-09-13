@@ -26,6 +26,7 @@ import json
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple
 
 from ..internal import BackendDelta, ModelDelta, StructuredResult
+from ..reasoning import extract_reasoning_text
 
 #: OpenAI's stream terminator payload.
 DONE_SENTINEL = "[DONE]"
@@ -169,12 +170,7 @@ class OpenAIStreamAssembler:
                         slot["arguments"] += args
         content = delta.get("content")
         text = content if isinstance(content, str) and content else None
-        raw_reasoning = delta.get("reasoning_content")
-        reasoning = (
-            raw_reasoning
-            if isinstance(raw_reasoning, str) and raw_reasoning
-            else None
-        )
+        reasoning = extract_reasoning_text(delta)
         if reasoning is not None:
             self._reasoning_parts.append(reasoning)
             return ModelDelta(text=text, reasoning=reasoning)
