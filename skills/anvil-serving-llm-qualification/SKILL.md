@@ -93,6 +93,13 @@ for unresolved material decisions, and budget one synthesis.
     refresh backed by complete retained artifacts, reconcile the published
     values without restarting the serve or rerunning the benchmark.
 
+## Improve the workflow from evidence
+
+At campaign closure or after a material process failure, read
+`references/improvement-loop.md`. Capture scoped lessons in existing evidence,
+then evaluate authorized skill changes independently. Preserve the running
+qualification baseline and the budget for the requested model outcome.
+
 ## Decisions
 
 - Separate official/community claims from locally measured results.

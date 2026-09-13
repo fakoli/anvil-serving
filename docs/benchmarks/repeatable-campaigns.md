@@ -141,6 +141,14 @@ evidence, immediate disposition, durable ticket/code/recipe/skill follow-up,
 independent verification, and open/closed status. A manual retry is recovery,
 not the fix-forward result.
 
+## Improve the campaign method
+
+Use the qualification skill's `references/improvement-loop.md` at closure or
+a material process failure. The [research review](skill-improvement-research.md)
+explains the external evidence, Astra adaptations, and validation limits.
+Keep instruction revisions distinct from model/recipe revisions and evaluate
+actual behavior before treating a reflection as a reusable rule.
+
 ## Finalize and report
 
 Generate graphs from retained numeric paths, combine synchronized replicas,
