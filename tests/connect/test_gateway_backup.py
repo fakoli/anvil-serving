@@ -4,11 +4,15 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import sys
 import zipfile
 import pytest
 
 from anvil_serving.connect import gateway_backup, user_backup
 from anvil_serving.connect import manage, recovery
+
+
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="local Linux account administration")
 
 
 def _pair(root: Path, gateway_root: Path, created: datetime, suffix: str) -> tuple[Path, Path, Path]:

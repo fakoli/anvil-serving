@@ -2,10 +2,14 @@
 from contextlib import nullcontext
 import hashlib
 import json
+import sys
 
 import pytest
 
 from anvil_serving.connect import manage, user_schedule
+
+
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="local Linux account administration")
 
 
 def _release(prefix, version, content=b"#!/usr/bin/env python3\n"):
