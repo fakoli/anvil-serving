@@ -97,7 +97,7 @@ func (f *edgeFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (f *edgeFixture) nativeDashboard(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/":
+	case "/", "/deep":
 		http.SetCookie(w, &http.Cookie{Name: "native_session", Value: "present", Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 		_, _ = io.WriteString(w, "<!doctype html><title>Connect dashboard</title><main id=dashboard>native dashboard</main>")
 	case "/native-grant":
@@ -424,6 +424,13 @@ func edgeStableTOTP(secret string) string {
 	return edgeTOTP(secret, now)
 }
 
+func edgeNextTOTP(secret string) string {
+	now := time.Now()
+	next := time.Unix((now.Unix()/30+1)*30, 0)
+	time.Sleep(time.Until(next) + time.Second)
+	return edgeTOTP(secret, time.Now())
+}
+
 func edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey string, redirectURIs ...string) string {
 	q := func(value string) string { encoded, _ := json.Marshal(value); return string(encoded) }
 	template := func(path string, indent int) string {
@@ -450,12 +457,22 @@ func edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKe
 	return strings.Join(append(lines, redirectLines...), "\n") + "\n"
 }
 
+func edgeLandingConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey string, redirectURIs ...string) string {
+	configuration := edgeConfig(authListen, state, users, clientSecret, sessionSecret, storageKey, validationSecret, hmacSecret, rsaKey, redirectURIs...)
+	needle := "      authelia_url: \"https://" + edgeAuthHost + "\"\n"
+	return strings.Replace(configuration, needle, needle+"      default_redirection_url: \"https://"+edgeAuthHost+"/_anvil-connect/home\"\n", 1)
+}
+
 func edgeCaddyConfig(listen, authListen, socket, certificate, key string) map[string]any {
 	headers := []string{"Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP", "X-Anvil-Connect-User", "X-Anvil-Connect-Groups", "X-Auth-Request-User", "X-Auth-Request-Email", "X-Authenticated-User", "X-Authenticated-Groups", "Remote-User", "Remote-Groups", "Remote-Email", "Remote-Name", "Cf-Access-Jwt-Assertion", "X-Goog-Authenticated-User", "X-Goog-Authenticated-User-Email", "X-Amzn-Oidc-Data", "X-Amzn-Oidc-Identity", "X-Amzn-Oidc-Accesstoken", "Tailscale-User-Login"}
 	proxy := func(destination string, versions []string) map[string]any {
 		return map[string]any{"handler": "reverse_proxy", "upstreams": []any{map[string]any{"dial": destination}}, "transport": map[string]any{"protocol": "http", "versions": versions}}
 	}
 	clean := map[string]any{"handler": "headers", "request": map[string]any{"delete": headers}}
+	landingRoute := map[string]any{
+		"match":  []any{map[string]any{"host": []string{edgeAuthHost}, "method": []string{"GET", "HEAD"}, "path": []string{"/_anvil-connect/home"}}},
+		"handle": []any{clean, map[string]any{"handler": "static_response", "status_code": 302, "headers": map[string]any{"Location": []string{"https://" + dashHost + "/_anvil-connect/home"}, "Cache-Control": []string{"no-store"}}}},
+	}
 	authRoute := map[string]any{"match": []any{map[string]any{"host": []string{edgeAuthHost}}}, "handle": []any{clean, proxy(authListen, []string{"1.1"})}}
 	upgradeMatch := map[string]any{"header_regexp": map[string]any{"Connection": map[string]any{"pattern": `(?i)(^|,)[\t ]*upgrade[\t ]*(,|$)`}, "Upgrade": map[string]any{"pattern": `(?i)^websocket$`}}}
 	websocketMatch := map[string]any{"host": []string{dashHost}, "header_regexp": upgradeMatch["header_regexp"]}
@@ -467,6 +484,7 @@ func edgeCaddyConfig(listen, authListen, socket, certificate, key string) map[st
 		"tls_connection_policies": []any{map[string]any{}},
 		"automatic_https":         map[string]any{"disable_redirects": true, "disable_certificates": true},
 		"routes": []any{
+			landingRoute,
 			authRoute,
 			websocketRoute,
 			ordinaryRoute,
@@ -544,7 +562,7 @@ func TestBrowserEdgeFixture(t *testing.T) {
 	edgeWrite(t, oidcPath, string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: oidcDER})))
 	authListen, caddyListen := edgeReserve(t), edgeReserve(t)
 	authConfig := filepath.Join(directory, "authelia.yml")
-	edgeWrite(t, authConfig, edgeConfig(authListen, state, users, clientSecretPath, secretPaths["session"], secretPaths["storage"], secretPaths["validation"], secretPaths["hmac"], oidcPath))
+	edgeWrite(t, authConfig, edgeLandingConfig(authListen, state, users, clientSecretPath, secretPaths["session"], secretPaths["storage"], secretPaths["validation"], secretPaths["hmac"], oidcPath))
 	edgeRun(t, childHome, authelia, "storage", "migrate", "up", "--config", authConfig, "--config.experimental.filters", "template")
 	allowedTOTP := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(edgeRandom(t, 20)))
 	deniedTOTP := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(edgeRandom(t, 20)))
@@ -670,6 +688,8 @@ func TestBrowserEdgeFixture(t *testing.T) {
 			}
 		case "totp allowed":
 			response["code"] = edgeStableTOTP(allowedTOTP)
+		case "totp next allowed":
+			response["code"] = edgeNextTOTP(allowedTOTP)
 		case "totp denied":
 			response["code"] = edgeStableTOTP(deniedTOTP)
 		case "mode session-bypass":
