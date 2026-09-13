@@ -83,8 +83,9 @@ the usable value is discarded and never written to a handoff. The handoff instea
 contains Authelia's one-time password-setup link, valid for five minutes. With SMTP,
 Authelia emails this link and no local handoff file is created. The
 developer opens it and chooses a password before signing in. Authelia must be
-running, and passkey-as-first-factor login must be disabled, for this command's
-password-setup guarantee. These checks run before account mutation. Keep the
+running to issue the setup link. A newly created account has no passkey, so it
+must complete this setup before signing in. These checks run before account
+mutation. Keep the
 users file owned by the Authelia service identity with mode `0600`, so the
 provider can save the password chosen by the developer. The managed service
 permits writes to this exact file; existing installations do not need to move it.
@@ -228,9 +229,13 @@ grant or restrict an action inside such an application.
 
 Authelia 4.39.20's file backend has no forced-first-login-change or annual-expiry
 flag. Connect requires initial password setup by withholding the discarded
-bootstrap password and using Authelia's supported reset flow before sign-in.
-Annual password expiry is not enabled. Password plus WebAuthn remains the
-supported login flow; passkey-only login satisfying two factors is experimental.
+bootstrap password and using Authelia's supported reset flow. When passkey login
+is enabled, reset preserves registered factors; with the experimental
+verified-passkey-as-two-factors option, a registered qualifying passkey can
+continue passwordless sign-in. The reset link establishes the new password before
+password sign-in. Annual password expiry is not enabled. The managed passkey
+profile disables remembered sessions and retains its five-minute inactivity and
+one-hour expiry limits. Passkey-only login satisfying two factors is experimental.
 
 ### Root Observatory with Grafana
 
