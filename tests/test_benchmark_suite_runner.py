@@ -87,6 +87,78 @@ def test_context_runner_honors_recorded_case_bucket_position_and_headroom_select
     assert result["observations"][0]["position"] == 0.97
 
 
+def test_context_runner_forwards_controls_and_retains_bounded_reasoning_capture():
+    calls = []
+
+    def caller(base, model, key, messages, max_tokens, timeout, **kwargs):
+        calls.append(kwargs)
+        prompt = messages[-1]["content"]
+        calibration = prompt.startswith("token calibration")
+        answer = "ok" if calibration else re.search(
+            r"access marker for ORCHID is (K\d+)\.", prompt
+        ).group(1)
+        if not calibration:
+            answer += " " * 9000
+        return {
+            "latency_s": 0.1,
+            "request_id": "context-control",
+            "response": {
+                "choices": [{"message": {
+                    "content": answer,
+                    "reasoning": "",
+                    "reasoning_content": "r" * 9000,
+                }, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": max(2, math.ceil(len(prompt) / 4)), "completion_tokens": 2},
+            },
+        }
+
+    result = run_context_suite(
+        load_profile("smoke"),
+        spec(
+            "context",
+            case_ids=["native-needle"],
+            token_buckets=[512],
+            positions=[0.5],
+            thinking_mode="enabled",
+            reasoning_effort="max",
+            clear_thinking=False,
+        ),
+        caller=caller,
+    )
+
+    assert all(call == {"chat_template_kwargs": {"enable_thinking": True, "clear_thinking": False}, "reasoning_effort": "max"} for call in calls)
+    assert result["request_controls"] == {"thinking_mode": "enabled", "reasoning_effort": "max", "chat_template_kwargs": {"enable_thinking": True, "clear_thinking": False}}
+    observation = result["observations"][0]
+    assert observation["passed"] is True
+    assert len(observation["visible_answer"]) == 8192
+    assert observation["visible_answer_truncated"] is True
+    assert "raw_visible_answer" not in observation
+    assert observation["raw_reasoning_field"] == "reasoning_content"
+    assert observation["raw_reasoning"] == "r" * 8192
+    assert observation["raw_reasoning_truncated"] is True
+    assert observation["finish_reason"] == "stop"
+
+
+def test_context_runner_marks_reasoning_only_reply_as_empty_visible_failure():
+    def caller(base, model, key, messages, max_tokens, timeout, **_kwargs):
+        prompt = messages[-1]["content"]
+        return {
+            "latency_s": 0.1,
+            "response": {
+                "choices": [{"message": {"content": "ok" if prompt.startswith("token calibration") else "", "reasoning": "hidden"}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": max(2, math.ceil(len(prompt) / 4)), "completion_tokens": 2},
+            },
+        }
+
+    result = run_context_suite(
+        load_profile("smoke"),
+        spec("context", case_ids=["native-needle"], token_buckets=[512], positions=[0.5]),
+        caller=caller,
+    )
+
+    assert result["observations"][0]["failure"]["code"] == "empty_visible_answer"
+
+
 def test_context_runner_rejects_selection_beyond_advertised_capacity():
     with pytest.raises(BenchmarkJobError) as exc:
         run_context_suite(

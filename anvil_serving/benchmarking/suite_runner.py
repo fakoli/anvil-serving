@@ -15,7 +15,12 @@ from .context import (
     summarize_context_degradation,
 )
 from .jobs import BenchmarkJobError
-from .requests import post_chat, resolve_api_key, response_observation
+from .requests import (
+    VISIBLE_CONTENT_CAPTURE_LIMIT,
+    post_chat,
+    resolve_api_key,
+    response_observation,
+)
 from ..model_controls import REASONING_EFFORT_CHOICES
 
 
@@ -176,6 +181,61 @@ def _context_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) 
     }
 
 
+def _context_request_controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
+    thinking_mode = parameters.get("thinking_mode", "default")
+    if thinking_mode not in {"default", "enabled", "disabled"}:
+        raise BenchmarkJobError(
+            "bad_thinking_mode", "thinking_mode must be default, enabled, or disabled"
+        )
+    reasoning_effort = parameters.get("reasoning_effort")
+    if reasoning_effort is not None and reasoning_effort not in REASONING_EFFORT_CHOICES:
+        raise BenchmarkJobError(
+            "bad_reasoning_effort", "reasoning_effort is not supported by the harness"
+        )
+    clear_thinking = parameters.get("clear_thinking")
+    if clear_thinking is not None and not isinstance(clear_thinking, bool):
+        raise BenchmarkJobError("bad_clear_thinking", "clear_thinking must be boolean")
+    if clear_thinking is not None and thinking_mode != "enabled":
+        raise BenchmarkJobError(
+            "clear_thinking_requires_enabled_thinking",
+            "clear_thinking requires thinking_mode=enabled",
+        )
+    chat_template_kwargs = (
+        {"enable_thinking": True}
+        if thinking_mode == "enabled"
+        else {"enable_thinking": False} if thinking_mode == "disabled" else None
+    )
+    if clear_thinking is not None:
+        chat_template_kwargs = {"enable_thinking": True, "clear_thinking": clear_thinking}
+    return {
+        "thinking_mode": thinking_mode,
+        "reasoning_effort": reasoning_effort,
+        "chat_template_kwargs": chat_template_kwargs,
+    }
+
+
+def _bounded_context_capture(response: Mapping[str, Any]) -> dict[str, Any]:
+    observation = response_observation(response)
+    message = _message(response)
+    reasoning_field = None
+    reasoning = ""
+    for field in ("reasoning", "reasoning_content"):
+        value = message.get(field)
+        if isinstance(value, str):
+            reasoning_field = field
+            if value:
+                reasoning = value
+                break
+    visible = observation["content"]
+    return {
+        "visible_answer": visible[:VISIBLE_CONTENT_CAPTURE_LIMIT],
+        "visible_answer_truncated": len(visible) > VISIBLE_CONTENT_CAPTURE_LIMIT,
+        "raw_reasoning_field": reasoning_field,
+        "raw_reasoning": reasoning[:VISIBLE_CONTENT_CAPTURE_LIMIT],
+        "raw_reasoning_truncated": len(reasoning) > VISIBLE_CONTENT_CAPTURE_LIMIT,
+    }
+
+
 def run_context_suite(
     profile: Mapping[str, Any],
     spec: Mapping[str, Any],
@@ -187,10 +247,21 @@ def run_context_suite(
     endpoint = spec["endpoint"]
     key = resolve_api_key(endpoint.get("auth_env"))
     timeout = min(float(spec["timeout_s"]), 900.0)
-    counter, calibration = _calibrated_counter(
-        endpoint=endpoint, key=key, caller=caller, timeout=timeout
-    )
     parameters = spec.get("parameters", {})
+    request_controls = _context_request_controls(parameters)
+    request_kwargs = {
+        key: value
+        for key, value in (
+            ("chat_template_kwargs", request_controls["chat_template_kwargs"]),
+            ("reasoning_effort", request_controls["reasoning_effort"]),
+        )
+        if value is not None
+    }
+    counter, calibration = _calibrated_counter(
+        endpoint=endpoint, key=key, caller=lambda *args, **kwargs: caller(
+            *args, **kwargs, **request_kwargs
+        ), timeout=timeout
+    )
     selection = _context_selection(suite, parameters)
     case_limit = parameters.get("case_limit")
     if case_limit is not None and (
@@ -223,9 +294,11 @@ def run_context_suite(
                             [{"role": "user", "content": case["prompt"]}],
                             max_tokens=selection["output_headroom_tokens"],
                             timeout=timeout,
+                            **request_kwargs,
                         )
                         response = result["response"]
                         observation = response_observation(response)
+                        capture = _bounded_context_capture(response)
                         prompt_tokens = _usage_tokens(response, "prompt_tokens")
                         completion_tokens = _usage_tokens(response, "completion_tokens")
                         throughput = (
@@ -241,7 +314,16 @@ def run_context_suite(
                             latency_ms=result["latency_s"] * 1000,
                             throughput_tps=throughput,
                             finish_reason=observation["finish_reason"],
+                            failure=(
+                                {
+                                    "code": "empty_visible_answer",
+                                    "message": "response has no visible assistant content",
+                                }
+                                if not observation["content"].strip()
+                                else None
+                            ),
                         )
+                        scored.update(capture)
                         if result.get("request_id"):
                             request_ids.append(result["request_id"])
                     except Exception as exc:  # retained per sample; lower evidence survives
@@ -275,6 +357,7 @@ def run_context_suite(
         "calibration": calibration,
         "selection": selection,
         "request_ids": sorted(set(request_ids)),
+        "request_controls": request_controls,
         "observations": observations,
         "curve": curve,
         "passed": all(item["passed"] for item in observations),
