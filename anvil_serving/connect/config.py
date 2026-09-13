@@ -27,6 +27,7 @@ _MAX_MANIFEST_BYTES = 1024 * 1024
 _MAX_LINUX_ID = 2147483647
 _MAX_MEMORY_MAX_BYTES = (1 << 63) - 1
 _MAX_TASKS_MAX = 2147483647
+_AUTHELIA_THEMES = {"light", "dark", "grey", "oled", "auto"}
 
 
 class ManifestError(ValueError):
@@ -448,6 +449,15 @@ def _redirect_uri(value: Any, path: str) -> str:
 
 def _secret_file(value: Any, path: str) -> str:
     return _abs_path(value, path)
+
+
+def _authelia_asset_path(value: Any, path: str, state_directory: str) -> str:
+    """Allow only caller-provisioned assets below the managed Authelia state."""
+    asset_path = _abs_path(value, path)
+    assets_root = state_directory + "/assets"
+    if asset_path != assets_root and PurePosixPath(asset_path).parent != PurePosixPath(assets_root):
+        raise _error(path, "must be the Authelia assets directory or one versioned child")
+    return asset_path
 
 
 def _list(value: Any, path: str, maximum: int = _MAX_ITEMS) -> list[Any]:
@@ -929,12 +939,25 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         authelia_fields.add("webauthn")
     if isinstance(raw["authelia"], dict) and "additional_oidc_clients" in raw["authelia"]:
         authelia_fields.add("additional_oidc_clients")
+    if isinstance(raw["authelia"], dict) and "theme" in raw["authelia"]:
+        authelia_fields.add("theme")
+    if isinstance(raw["authelia"], dict) and "asset_path" in raw["authelia"]:
+        authelia_fields.add("asset_path")
     authelia_raw = _mapping(raw["authelia"], "$.authelia", authelia_fields)
     authelia = {key: _secret_file(authelia_raw[key], "$.authelia." + key) for key in ("users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file")}
     authelia_name = _ident(authelia_raw["service_name"], "$.authelia.service_name")
     if authelia_name != "anvil-connect-authelia":
         raise _error("$.authelia.service_name", "must equal anvil-connect-authelia")
     authelia.update({"service_name": authelia_name, "host": _host(authelia_raw["host"], "$.authelia.host"), "listen": _loopback(authelia_raw["listen"], "$.authelia.listen"), "state_directory": _abs_path(authelia_raw["state_directory"], "$.authelia.state_directory")})
+    if "theme" in authelia_raw:
+        theme = _string(authelia_raw["theme"], "$.authelia.theme")
+        if theme not in _AUTHELIA_THEMES:
+            raise _error("$.authelia.theme", "must be light, dark, grey, oled, or auto")
+        authelia["theme"] = theme
+    if "asset_path" in authelia_raw:
+        authelia["asset_path"] = _authelia_asset_path(
+            authelia_raw["asset_path"], "$.authelia.asset_path", authelia["state_directory"]
+        )
     if "webauthn" in authelia_raw:
         webauthn = _mapping(authelia_raw["webauthn"], "$.authelia.webauthn", {
             "enable_passkey_login", "experimental_enable_passkey_uv_two_factors", "discoverability", "user_verification",

@@ -95,6 +95,20 @@ performs enrollment and the device's biometric/PIN prompt.
 1Password can store the site's passkey and offer it through its browser
 extension. See [1Password's instructions](https://support.1password.com/save-use-passkeys/).
 
+## Authelia branding
+
+The optional `authelia.theme` declaration accepts only `light`, `dark`,
+`grey`, `oled`, or `auto`. It only selects Authelia's supported portal preset;
+it does not change Connect's password, two-factor, passkey, or OIDC policy.
+
+The optional `authelia.asset_path` declares a caller-provisioned directory
+under `authelia.state_directory/assets` or a single versioned child such as
+`authelia.state_directory/assets/v1`. Anvil Connect does not copy, generate,
+or inspect these files. The directory may contain Authelia's supported
+`logo.png`, `favicon.ico`, and `locales/` overrides. CSS overrides are outside
+this contract. See Authelia's [theme reference](https://www.authelia.com/configuration/miscellaneous/introduction/)
+and [server asset overrides reference](https://www.authelia.com/reference/guides/server-asset-overrides/).
+
 ## Deployment and rotation
 
 Provision the separate key without changing existing bootstrap receipts. Make

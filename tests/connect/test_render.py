@@ -294,6 +294,56 @@ def test_authelia_template_has_explicit_pkce_rs256_and_callbacks() -> None:
     assert "default_policy: two_factor" in text
 
 
+@pytest.mark.parametrize("theme", ["light", "dark", "grey", "oled", "auto"])
+def test_authelia_branding_is_optional_and_preserves_authentication_contract(theme: str) -> None:
+    value = isolated_manifest()
+    value["authelia"].update({
+        "theme": theme,
+        "asset_path": value["authelia"]["state_directory"] + "/assets/v1",
+        "webauthn": {
+            "enable_passkey_login": False,
+            "experimental_enable_passkey_uv_two_factors": False,
+            "discoverability": "required",
+            "user_verification": "required",
+        },
+    })
+    text = render(value)["files"]["authelia/configuration.yml"]
+    assert f"theme: '{theme}'" in text
+    assert "  asset_path: '/var/lib/anvil-connect/authelia/assets/v1'" in text
+    assert "default_policy: two_factor" in text
+    assert "enable_passkey_login: false" in text
+    assert "experimental_enable_passkey_uv_two_factors: false" in text
+    assert "require_pkce: true" in text
+    assert "id_token_signed_response_alg: RS256" in text
+
+
+@pytest.mark.parametrize("asset_path", [
+    "/var/lib/anvil-connect/authelia",
+    "/var/lib/anvil-connect/authelia/authelia.sqlite3",
+    "/var/lib/anvil-connect/authelia/assets/v1/locale",
+    "/etc/anvil-connect/secrets",
+])
+def test_authelia_branding_rejects_paths_outside_the_asset_contract(asset_path: str) -> None:
+    value = manifest()
+    value["authelia"]["asset_path"] = asset_path
+    with pytest.raises(ManifestError, match="Authelia assets directory"):
+        validate_manifest(value)
+
+
+def test_authelia_branding_accepts_the_unversioned_asset_directory() -> None:
+    value = manifest()
+    value["authelia"]["asset_path"] = value["authelia"]["state_directory"] + "/assets"
+    assert validate_manifest(value)["authelia"]["asset_path"] == value["authelia"]["asset_path"]
+
+
+@pytest.mark.parametrize("theme", ["blue", "LIGHT", "", True])
+def test_authelia_branding_rejects_unknown_themes(theme: object) -> None:
+    value = manifest()
+    value["authelia"]["theme"] = theme
+    with pytest.raises(ManifestError):
+        validate_manifest(value)
+
+
 def test_authelia_additional_oidc_client_is_fixed_profile_with_protected_secret_ref() -> None:
     value = isolated_manifest()
     value["authelia"]["additional_oidc_clients"] = [{
