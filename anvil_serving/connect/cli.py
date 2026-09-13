@@ -34,10 +34,11 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
     users = actions.add_parser("users", allow_abbrev=False)
-    users.add_argument("operation", choices=("create", "access", "suspend", "delete", "reset-password", "reset-mfa", "code", "backup", "schedule", "restore"))
+    users.add_argument("operation", choices=("create", "access", "suspend", "delete", "reset-password", "reset-mfa", "code", "backup", "schedule", "restore"),
+                       help="create adds an account and, with SMTP, requests Authelia's password-setup email.")
     users.add_argument("username", nargs="?")
     users.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
-    users.add_argument("--email", action=_Once)
+    users.add_argument("--email", action=_Once, help="Creation email; SMTP requests an Authelia password-setup email.")
     users.add_argument("--role", choices=("member", "admin"), action=_Once, help="Creation role; defaults to member. Resets preserve existing groups.")
     users.add_argument("--grant", action="append", help="Exact service:member or service:admin entitlement; repeat for each service. Create/access only.")
     users.add_argument("--output", action=_Once, help="Exclusive private handoff file; defaults beside the deployment manifest.")

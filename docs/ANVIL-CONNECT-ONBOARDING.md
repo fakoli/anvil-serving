@@ -1,6 +1,6 @@
 # Invite a developer to Anvil Connect
 
-This small-scale flow uses Authelia's supported password plus WebAuthn login.
+This small-scale flow uses Authelia's supported password setup plus WebAuthn login.
 Authelia sends short-lived password-setup links and verification codes through
 the configured SMTP provider. Developers choose their own password before signing
 in; no usable starter password is saved or delivered. Annual password expiry is
@@ -27,6 +27,8 @@ minutes and can be used once. Credentials are not printed in command output.
 Authelia must be running
 so it can issue the setup link; the command refuses an inactive provider before
 changing the account.
+With passkey login enabled, a new account still must complete this setup because
+it has no registered passkey yet.
 If creation reports that the account exists but access provisioning failed,
 inspect the retained account and retry with `users access` and the intended grants;
 do not create the same account again.
@@ -91,6 +93,11 @@ password, Connect browser sessions, pending browser sign-ins, and human-approved
 terminal credentials, then requests a new password-setup link. It preserves groups,
 service grants and registered factors. Old welcome-password handoffs for that
 account are removed after a successful replacement.
+When both passkey login and its experimental verified-passkey-as-two-factors
+option are enabled, a registered
+qualifying passkey can continue passwordless sign-in; the emailed link establishes
+the new password before the next password sign-in. Use MFA reset when factors
+must be removed for fresh enrollment.
 MFA reset removes that person's passkeys and TOTP for fresh enrollment; it does
 not revoke Connect credentials. Suspend the account first when responding to a
 lost or compromised device. Separately issued API keys need separate revocation.
