@@ -145,7 +145,8 @@ def test_plan_forwards_and_records_reasoning_effort(tmp_path):
         "thinking_mode": "default",
         "reasoning_effort": "xhigh",
     }
-    assert 'reasoning_effort: "xhigh"' in value["config_text"]
+    assert '    extra_body:\n      reasoning_effort: "xhigh"\n' in value["config_text"]
+    assert '\n    reasoning_effort: "xhigh"\n' not in value["config_text"]
 
 
 def test_plan_rejects_conflicting_reasoning_controls(tmp_path):
