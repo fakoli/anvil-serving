@@ -245,6 +245,53 @@ def test_body_has_no_chat_template_kwargs_by_default():
     body = benchmark_requests.build_body("m", "hi", 64)
     assert "chat_template_kwargs" not in body
     assert body["stream"] is True and body["max_tokens"] == 64
+    assert body["temperature"] == 0.0
+    assert "top_p" not in body
+
+
+def test_sampler_body_forwards_explicit_controls_only():
+    body = benchmark_requests.build_body("m", "hi", 64, temperature=1.0, top_p=0.95)
+    assert body["temperature"] == 1.0
+    assert body["top_p"] == 0.95
+
+
+def test_post_chat_sampler_controls_reach_openai_wire_body(monkeypatch):
+    seen = {}
+
+    class _Response:
+        headers = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"choices": []}'
+
+    def fake_urlopen(request, timeout):
+        seen["body"] = json.loads(request.data)
+        seen["timeout"] = timeout
+        return _Response()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    benchmark_requests.post_chat(
+        "http://127.0.0.1:30002/v1", "model", None,
+        [{"role": "user", "content": "hi"}],
+        temperature=1.0, top_p=0.95,
+    )
+    assert seen == {
+        "body": {
+            "model": "model",
+            "messages": [{"role": "user", "content": "hi"}],
+            "max_tokens": 128,
+            "temperature": 1.0,
+            "top_p": 0.95,
+            "stream": False,
+        },
+        "timeout": 120,
+    }
 
 
 def test_reasoning_effort_uses_top_level_openai_field():
@@ -2008,6 +2055,91 @@ def test_gpt_oss_accepts_published_reasoning_effort(monkeypatch, capsys):
         "--dry-run",
     ]) == 0
     assert json.loads(capsys.readouterr().out)["workload"] == "capacity"
+
+
+def test_capacity_dry_plan_records_explicit_sampling(capsys):
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "candidate",
+        "--temperature", "1.0",
+        "--top-p", "0.95",
+        "--dry-run",
+    ]) == 0
+    sampling = json.loads(capsys.readouterr().out)["sampling"]
+    assert sampling == {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
+
+
+@pytest.mark.parametrize("flag,value,expected", [
+    ("--temperature", "nan", "--temperature must be finite"),
+    ("--temperature", "-0.01", "--temperature must be finite"),
+    ("--temperature", "2.01", "--temperature must be finite"),
+    ("--top-p", "nan", "--top-p must be finite"),
+    ("--top-p", "0", "--top-p must be finite"),
+    ("--top-p", "1.01", "--top-p must be finite"),
+])
+def test_sampler_cli_rejects_invalid_values_before_endpoint_work(flag, value, expected, capsys):
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:39015/v1",
+            "--model", "candidate",
+            flag, value,
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+    assert expected in capsys.readouterr().err
+
+
+def test_quality_sampler_forwards_explicit_controls_and_records_evidence(monkeypatch, tmp_path):
+    suite = tmp_path / "quality.json"
+    suite.write_text(json.dumps({
+        "suite": "sampling",
+        "evidence_use": "ranking",
+        "validator_strength": "exact_choice",
+        "evals": [{
+            "id": "choice",
+            "prompt": "Reply only FINAL=A.",
+            "checks": [{"name": "answer", "matches_regex": r"^FINAL=A$"}],
+        }],
+    }), encoding="utf-8")
+    seen = []
+
+    def fake_post_chat(*args, **kwargs):
+        seen.append(kwargs)
+        return {"latency_s": 0.01, "response": {"choices": [{
+            "finish_reason": "stop", "message": {"content": "FINAL=A"},
+        }]}}
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "quality-evidence.json"
+    assert bm.main([
+        "quality",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "candidate",
+        "--candidate-id", "candidate",
+        "--config-id", "sampling",
+        "--suite-file", str(suite),
+        "--temperature", "1.0",
+        "--top-p", "0.95",
+        "--eval-repetitions", "1",
+        "--output", str(out),
+    ]) == 0
+    assert seen == [{
+        "max_tokens": 256,
+        "timeout": 900.0,
+        "tools": None,
+        "chat_template_kwargs": None,
+        "temperature": 1.0,
+        "top_p": 0.95,
+    }]
+    assert json.loads(out.read_text(encoding="utf-8"))["sampling"] == {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
 
 
 def test_deepseek_accepts_max_reasoning_effort(capsys):
