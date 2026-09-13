@@ -362,6 +362,43 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 	return result, nil
 }
 
+// SuspendHuman disables an existing issuer+subject grant without changing its
+// resource or application-role policy. Missing identities are intentionally a
+// no-op: suspension must never create a grant.
+func (m *Manager) SuspendHuman(issuer, subject string) (Human, error) {
+	if issuer != m.issuer {
+		return Human{}, ErrDenied
+	}
+	id, ok := humanID(issuer, subject)
+	if !ok {
+		return Human{}, ErrDenied
+	}
+	result := Human{ID: id}
+	err := m.state.Update(func(tx *store.Tx) error {
+		var human Human
+		err := tx.Get("principals", id, &human)
+		if errors.Is(err, store.ErrMissing) {
+			return nil
+		}
+		if err != nil || human.ID != id || human.Generation == 0 {
+			return ErrUnavailable
+		}
+		if human.Disabled {
+			result = Human{ID: human.ID, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles)}
+			return nil
+		}
+		if err := m.UpdateHumanTx(tx, id, human.Generation, human.Resources, true); err != nil {
+			return err
+		}
+		result = Human{ID: human.ID, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles)}
+		return nil
+	})
+	if err != nil {
+		return Human{}, err
+	}
+	return result, nil
+}
+
 // CurrentHuman returns only the principal bound to an already admitted browser
 // session. It is for local browser surfaces that need their own current-user
 // view; it never permits lookup by an arbitrary human identifier.
