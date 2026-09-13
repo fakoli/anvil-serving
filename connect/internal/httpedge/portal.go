@@ -42,20 +42,22 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
 	// Static assets contain no account data and do not consume the login budget.
-	if r.URL.Path == home+"/home.css" || r.URL.Path == home+"/home.js" {
+	assetType := map[string]string{
+		home + "/home.css":    "text/css; charset=utf-8",
+		home + "/home.js":     "text/javascript; charset=utf-8",
+		home + "/logo.png":    "image/png",
+		home + "/favicon.ico": "image/x-icon",
+	}[r.URL.Path]
+	if assetType != "" {
 		name := strings.TrimPrefix(r.URL.Path, home+"/")
 		content, err := portalFiles.ReadFile("portal/" + name)
 		if err != nil {
 			browserFailure(w, http.StatusNotFound)
 			return
 		}
-		if name == "home.css" {
-			w.Header().Set("Content-Type", "text/css; charset=utf-8")
-		} else {
-			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-		}
+		w.Header().Set("Content-Type", assetType)
 		_, _ = w.Write(content)
 		return
 	}
