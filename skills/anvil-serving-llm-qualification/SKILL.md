@@ -17,6 +17,9 @@ and read its canonical skill; never infer the checkout from the caller's cwd.
 Read `references/evidence-contract.md` and `references/configuration-search.md`
 before starting. The latter owns failure investigation and candidate stopping
 rules; preserve failed configurations while testing supported successors.
+Apply its economical parallel-research dispatch policy without requiring the
+user to ask for fusion: reuse evidence first, use three independent answers
+for unresolved material decisions, and budget one synthesis.
 
 ## Workflow
 
