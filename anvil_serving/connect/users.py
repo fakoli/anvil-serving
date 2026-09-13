@@ -38,7 +38,7 @@ def _invalid(message: str) -> UsageError:
 
 def _partial(message: str, result: dict) -> manage.ManageError:
     error = manage.ManageError(message, may_have_executed=True)
-    error.recovery = {key: result[key] for key in ("backup", "gateway_backup", "handoff_file", "classification", "destination", "sha256") if key in result}
+    error.recovery = {key: result[key] for key in ("operation", "username", "backup", "gateway_backup", "handoff_file", "classification", "destination", "sha256", "existing_connect_sessions_revoked", "account_disabled", "account_deleted") if key in result}
     return error
 
 
@@ -242,7 +242,7 @@ def _identifier_value(value: str) -> str:
     raise _invalid("Authelia opaque-identifier export is invalid.")
 
 
-def _identifier_subject(raw: bytes, username: str) -> str:
+def _identifier_subject(raw: bytes, username: str, *, missing_ok: bool = False) -> str | None:
     """Read exactly the one OIDC identifier this account is entitled through."""
     try:
         lines = raw.decode("utf-8").splitlines()
@@ -255,7 +255,7 @@ def _identifier_subject(raw: bytes, username: str) -> str:
     for line in lines:
         if not line or line.startswith("#") or line in {"---", "..."}:
             continue
-        if line == "identifiers:" and not header:
+        if line in {"identifiers:", "identifiers: []"} and not header:
             header = True
             continue
         match = re.fullmatch(r"( +)- ([a-z_]+): (.*)", line)
@@ -278,6 +278,10 @@ def _identifier_subject(raw: bytes, username: str) -> str:
     # The rendered OIDC client omits sector_identifier_uri, so only Authelia's
     # blank-sector OpenID identifier is the subject Connect will receive.
     matches = [record["identifier"] for record in records if set(record) == {"service", "sector_id", "username", "identifier"} and record["username"] == username and record["service"] == "openid" and record["sector_id"] == ""]
+    if header and not records and missing_ok:
+        return None
+    if not matches and missing_ok and records and all(set(record) == {"service", "sector_id", "username", "identifier"} for record in records):
+        return None
     if len(matches) != 1:
         raise _invalid("The account has no unambiguous OpenID Connect subject; sign in once or repair its Authelia identifier.")
     try:
@@ -289,9 +293,11 @@ def _identifier_subject(raw: bytes, username: str) -> str:
     return str(subject)
 
 
-def _oidc_subject(data: dict, config: Path, username: str, runner) -> str:
+def _oidc_subject(data: dict, config: Path, username: str, runner, *, missing_ok: bool = False) -> str | None:
     """Export all opaque identifiers privately, then discard the PII-bearing file."""
     state = Path(data["authelia"]["state_directory"])
+    if missing_ok and not os.path.lexists(state / "authelia.sqlite3"):
+        return None
     uid, gid = role_identity(data, "idp")
     manage._safe_private_runtime_directory(state, uid, gid)
     directory = Path(tempfile.mkdtemp(prefix=".anvil-connect-identifiers-", dir=state))
@@ -307,7 +313,7 @@ def _oidc_subject(data: dict, config: Path, username: str, runner) -> str:
         raw = manage._read_regular(export, _MAX_FILE)
         if raw is None:
             raise _invalid("Authelia opaque-identifier export is unavailable.")
-        return _identifier_subject(raw, username)
+        return _identifier_subject(raw, username, missing_ok=missing_ok)
     finally:
         try:
             export.unlink()
@@ -321,11 +327,16 @@ def _oidc_subject(data: dict, config: Path, username: str, runner) -> str:
 
 def _human_set(data: dict, manifest: str, subject: str, grants: dict[str, str], runner) -> dict:
     """Use the pinned same-user native admin socket; never touch Connect storage."""
+    return _human_admin(data, manifest, {"operation": "human-set", "subject": subject,
+                                       "resources": list(grants), "application_roles": grants}, runner)
+
+
+def _human_admin(data: dict, manifest: str, payload: dict, runner) -> dict:
     state = Path(data["gateway"]["state_directory"])
     uid, gid = role_identity(data, "gateway")
     manage._safe_private_runtime_directory(state, uid, gid)
-    request = state / (".anvil-connect-human-set-" + secrets.token_hex(12) + ".json")
-    inode = _exclusive(request, (json.dumps({"operation": "human-set", "issuer": data["gateway"]["oidc"]["issuer"], "subject": subject, "resources": list(grants), "application_roles": grants}) + "\n").encode(), uid, gid)
+    request = state / (".anvil-connect-human-" + secrets.token_hex(12) + ".json")
+    inode = _exclusive(request, (json.dumps({**payload, "issuer": data["gateway"]["oidc"]["issuer"]}) + "\n").encode(), uid, gid)
     try:
         return manage.admin(manifest, request_path=request, apply=True, runner=runner)
     finally:
@@ -336,7 +347,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             output: str | None = None, grants: list[str] | None = None, apply: bool = False, runner=None,
             unit_root: Path = Path("/etc/systemd/system"), include_gateway: bool = False) -> dict:
     _require_root()
-    if operation not in {"create", "access", "reset-password", "reset-mfa", "code", "backup"}:
+    if operation not in {"create", "access", "suspend", "delete", "reset-password", "reset-mfa", "code", "backup"}:
         raise _invalid("Unsupported account operation.")
     if operation == "backup" and username is not None:
         raise _invalid("Authentication backup includes all accounts; omit the username.")
@@ -368,7 +379,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         raise _invalid("Account already exists; use reset-password." if operation == "create" else "Account does not exist.")
     if operation == "create" and any(u["email"].casefold() == email.casefold() for u in users.values()):
         raise _invalid("Email is already assigned to another account.")
-    if operation not in {"create", "backup"} and users[username].get("disabled", False):
+    if operation not in {"create", "backup", "access", "suspend", "delete"} and users[username].get("disabled", False):
         raise _invalid("Account is disabled; this command does not enable accounts or grant access.")
     grant_map = _grant_map(grants, data)
     if operation not in {"create", "access"} and grant_map is not None:
@@ -387,10 +398,17 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         result["role"] = role
         result["groups"] = ["admins" if role == "admin" else "members"]
     if operation == "access":
-        result["impact"] = "Replaces the complete browser grant list and enables the Connect account; invalidates existing Connect browser and terminal credentials."
+        result["impact"] = "Replaces the complete browser grant list and enables the account; invalidates existing Connect browser and terminal credentials. Resuming a suspended account briefly restarts Authelia."
+        result["authelia_restart_if_active"] = users[username].get("disabled", False)
     if operation not in {"code", "access"}:
         result["impact"] = "If active, briefly stops Authelia and clears its in-memory sessions; existing Connect sessions and API keys are not revoked."
         result["backup_directory"] = str(Path(manifest).parent / "backups")
+    if operation in {"suspend", "delete"}:
+        result["impact"] = "Disables sign-in and invalidates Connect browser and human-approved terminal credentials. Briefly restarts Authelia if active. Separately issued API keys and application data remain unchanged."
+        result["account_disabled"] = False
+        result["account_deleted"] = False
+        if operation == "delete":
+            result["impact"] += " Removes the account and registered factors; retained OIDC identifiers reserve the username. Backups and disabled authority history remain."
     if include_gateway:
         result["include_gateway"] = True
         result["impact"] += " Then briefly stops only the native gateway for a sequential authority backup and restores its prior running state."
@@ -398,7 +416,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         result["handoff_file"] = str(destination)
     if not apply:
         return result
-    if operation == "access":
+    if operation == "access" and not users[username].get("disabled", False):
         root = Path(data["config_root"])
         config = root / "authelia/configuration.yml"
         manage._verify_owned_tree(root)
@@ -418,7 +436,9 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         binary = data["components"]["authelia"]
         if manage._digest(Path(binary)) != manage._component_lock()["authelia"]:
             raise _invalid("Authelia executable does not match the pinned component.")
-        if operation not in {"reset-mfa", "backup"}:
+        if operation == "create" and _oidc_subject(data, config, username, runner, missing_ok=True) is not None:
+            raise _invalid("Username has a retained OpenID identifier; use a new username, or use users access to resume an existing suspended account.")
+        if destination is not None:
             if output is None:
                 manage._safe_root_ancestors(destination.parent)
                 destination.parent.mkdir(mode=0o700, exist_ok=True)
@@ -469,7 +489,22 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             result["backup"] = snapshot(data, manifest, users_raw=raw)
             if operation == "backup":
                 pass
-            elif operation == "reset-mfa":
+            elif operation in {"suspend", "delete", "access"}:
+                subject = _oidc_subject(data, config, username, runner, missing_ok=operation != "access")
+                if subject is not None:
+                    changed = True
+                    if operation == "access":
+                        _human_set(data, manifest, subject, grant_map, runner)
+                    else:
+                        _human_admin(data, manifest, {"operation": "human-suspend", "subject": subject}, runner)
+                    result["existing_connect_sessions_revoked"] = True
+                    result["principal"] = _principal(data["gateway"]["oidc"]["issuer"], subject)
+                changed = True
+                users[username]["disabled"] = operation != "access"
+                _replace_users(path, (json.dumps(database, indent=2, ensure_ascii=True) + "\n").encode(), info)
+                result["account_disabled"] = operation != "access"
+                result["grants_changed"] = operation == "access"
+            if operation in {"reset-mfa", "delete"}:
                 identity = manage._role_service_identity(data, "idp")
                 for factor, extra in (("webauthn", ("--all",)), ("totp", ())):
                     changed = True
@@ -482,7 +517,11 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                     first_line = deletion.stderr.decode("utf-8", "replace").splitlines()[:1]
                     if not (factor == "totp" and deletion.returncode == 1 and first_line == [missing]):
                         manage._fail(deletion, "Authelia factor reset failed")
-            else:
+                if operation == "delete":
+                    del users[username]
+                    _replace_users(path, (json.dumps(database, indent=2, ensure_ascii=True) + "\n").encode(), info)
+                    result["account_deleted"] = True
+            elif operation in {"create", "reset-password"}:
                 if operation == "create":
                     users[username] = {"displayname": username, "email": email, "groups": result["groups"], "disabled": False}
                 users[username]["password"] = digest

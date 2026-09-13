@@ -123,7 +123,7 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	if command == "admin" {
 		data, err := readDeclaration(request)
 		var input admin.Request
-		if err != nil || config.Decode(bytes.NewReader(data), &input) != nil || socket == "" {
+		if err != nil || config.Decode(bytes.NewReader(data), &input) != nil || !admin.ValidOperation(input.Operation) || socket == "" {
 			return invalid()
 		}
 		secret := input.Operation == "invite" || input.Operation == "api-key-issue"

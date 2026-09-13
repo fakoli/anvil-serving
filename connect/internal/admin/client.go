@@ -21,7 +21,7 @@ import (
 // socket. The caller supplies a privatefiles.PinnedPath pathname and keeps its
 // handle live for the call; this helper does not read environment state.
 func Call(ctx context.Context, socketPath string, input Request) (Response, error) {
-	if ctx == nil || !validSocket(socketPath) {
+	if ctx == nil || !ValidOperation(input.Operation) || !validSocket(socketPath) {
 		return Response{}, ErrAdmin
 	}
 	input.Grants = append([]access.Grant{}, input.Grants...)

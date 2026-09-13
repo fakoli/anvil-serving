@@ -84,6 +84,20 @@ to existing native application principals. Applications using passthrough auth k
 their own internal roles. Follow [the role configuration](cli/connect.md#service-home-and-application-roles)
 before treating a grant label as application permission.
 
+Suspend a developer without discarding their password or passkeys, or remove
+their account and factors:
+
+```sh
+sudo anvil-connect-ctl users suspend developer --confirm
+sudo anvil-connect-ctl users delete developer --confirm
+```
+
+Both back up authentication state and invalidate Connect browser and
+human-approved terminal credentials. Use `users access` with the intended grants
+to resume a suspended account. Deletion retains backups and disabled authority
+history; retained OpenID identifiers reserve the username against reuse.
+Application data and separately issued API keys need separate removal/revocation.
+
 Existing applications with their own Authelia sign-in can be retained through
 `authelia.additional_oidc_clients` in the deployment manifest. Each entry declares
 `client_id`, `client_name`, a protected `client_secret_file`, and HTTPS

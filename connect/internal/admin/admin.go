@@ -210,7 +210,7 @@ func validHead(request *http.Request) bool {
 }
 
 func (h *Handler) apply(input Request) (Response, error) {
-	if !knownOperation(input.Operation) {
+	if !ValidOperation(input.Operation) {
 		return Response{}, ErrAdmin
 	}
 	response := Response{Operation: input.Operation, Grants: []access.Grant{}, Resources: []string{}, Status: InstallationStatus{Resources: []string{}}}
@@ -286,6 +286,15 @@ func (h *Handler) apply(input Request) (Response, error) {
 		if err == nil {
 			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
+	case "human-suspend":
+		if h.sessions == nil || input.Issuer == "" || input.Subject == "" || input.Principal != "" || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
+			return Response{}, ErrAdmin
+		}
+		var human session.Human
+		human, err = h.sessions.SuspendHuman(input.Issuer, input.Subject)
+		if err == nil {
+			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
+		}
 	case "authority-reset":
 		err = h.state.ResetAuthority()
 		if err == nil {
@@ -319,9 +328,10 @@ func (h *Handler) installationStatus(id string) (InstallationStatus, error) {
 	return InstallationStatus{ID: installation.ID, Status: installation.Status, Fingerprint: installation.Fingerprint, Epoch: installation.Epoch, Generation: installation.Generation, Resources: append([]string(nil), installation.Resources...)}, nil
 }
 
-func knownOperation(operation string) bool {
+// ValidOperation is the closed native administrative operation vocabulary.
+func ValidOperation(operation string) bool {
 	switch operation {
-	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "authority-reset":
+	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "authority-reset":
 		return true
 	default:
 		return false

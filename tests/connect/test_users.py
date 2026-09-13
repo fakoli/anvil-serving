@@ -475,7 +475,8 @@ def test_real_authelia_accepts_created_and_reset_passwords_and_factor_reset(envi
                         break
                 except (OSError, urllib.error.URLError):
                     time.sleep(0.05)
-            assert authenticate(allowed) == 200
+            if allowed is not None:
+                assert authenticate(allowed) == 200
             if denied:
                 assert authenticate(denied) == 401
         finally:
@@ -500,3 +501,30 @@ def test_real_authelia_accepts_created_and_reset_passwords_and_factor_reset(envi
     # Repeating the reset with missing factors is idempotent.
     run("reset-mfa", "dev", apply=True)
     check_passwords(second_password)
+    # Exercise suspension, explicit access restoration and deletion against the
+    # pinned provider. Only the gateway authority is replaced by a local stub;
+    # its real generation fences are covered by the native session/admin tests.
+    subject = "00000000-0000-4000-8000-000000000001"
+    added = subprocess.run([binary, "storage", "user", "identifiers", "add", "dev", "--identifier", subject,
+                            "--service", "openid", "--sector", "", "--config", str(root / "authelia/configuration.yml")],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+    assert added.returncode == 0
+    data["gateway"] = {"oidc": {"issuer": "https://auth.example.test"}, "gateway": {"resources": [
+        {"rule": {"id": "pi", "access": "browser"}},
+    ]}}
+    requests = []
+    monkeypatch.setattr(users, "_human_admin", lambda data, manifest, payload, runner: requests.append(payload) or {"applied": True})
+    generate_totp()
+    assert run("suspend", "dev", apply=True)["account_disabled"]
+    check_passwords(None, second_password)
+    retained = subprocess.run([binary, "storage", "user", "totp", "generate", "dev", "--config", str(root / "authelia/configuration.yml")],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+    assert retained.returncode != 0
+    run("access", "dev", grants=["pi:member"], apply=True)
+    check_passwords(second_password)
+    assert run("delete", "dev", apply=True)["account_deleted"]
+    check_passwords(None, second_password)
+    assert [request["operation"] for request in requests] == ["human-suspend", "human-set", "human-suspend"]
+    generate_totp()  # Deletion removed the former factor.
+    with pytest.raises(UsageError, match="retained OpenID identifier"):
+        run("create", email="new@example.test", apply=True)

@@ -2244,7 +2244,7 @@ def _admin_preview(request: Path) -> dict[str, str]:
     value = _strict_json(raw, "administrative request is invalid")
     allowed = {"operation", "principal", "grants", "disabled", "key_id", "installation", "role", "resources", "application_roles", "lifetime_seconds", "fingerprint", "issuer", "subject"}
     operation = value.get("operation")
-    operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "authority-reset"}
+    operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "authority-reset"}
     if set(value) - allowed or not isinstance(operation, str) or operation not in operations:
         raise ManageError("administrative request is invalid")
     fingerprint = value.get("fingerprint")
