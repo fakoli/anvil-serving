@@ -447,6 +447,10 @@ remain separate from generated service configuration.
 
 ## Status
 
+Public reverse tunnels open connections on demand. Zero idle registrations are
+reported as idle, not a failed tunnel, and do not trigger a connector restart on
+an unchanged apply. Status does not replace an authenticated application request.
+
 `connect status` reports bounded owned service metadata. `--service` narrows it.
 A process reported as running is not a claim that its origin is ready.
 

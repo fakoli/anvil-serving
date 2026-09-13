@@ -1474,7 +1474,14 @@ def _entry_ready(value: dict[str, Any], data: dict[str, Any], connectors: tuple[
         if entry is None or not entry["listening"]:
             return False
         counts = {r["resource"]: r["registrations"] for r in entry["resources"]}
-        if set(counts) != expected or any(counts.get(r["envelope"]["rule"]["id"], 0) < 1 for r in connector["resources"]):
+        if set(counts) != expected:
+            return False
+        # Public wstunnel reverse registrations are demand-driven. Local tunnel
+        # admission remains a positive trust gate before activation.
+        if path == "local" and any(
+            counts.get(resource["envelope"]["rule"]["id"], 0) < 1
+            for resource in connector["resources"]
+        ):
             return False
     return True
 
@@ -2068,9 +2075,38 @@ def _tunnel_observation(data: dict[str, Any], target: Target, runner: Runner | N
         if value.get("entries"):
             connectors = tuple(c for c in data["connectors"] if target.kind == "gateway" or c["id"] == target.name)
             ready = _entry_ready(value, data, connectors)
-            result.update(state="ready" if ready else "degraded", readiness="ready" if ready else "not-ready",
-                          entries=[e for e in value["entries"] if e["path"] in selected["paths"]],
-                          evidence="native entry health and admitted registrations; not origin readiness")
+            entries = [entry for entry in value["entries"] if entry["path"] in selected["paths"]]
+            expected = (
+                {(path, resource) for path in selected["paths"] for resource in resources}
+                if target.kind == "connector"
+                else {
+                    ("local" if "local_tunnel" in connector else "public", resource["envelope"]["rule"]["id"])
+                    for connector in connectors
+                    for resource in connector["resources"]
+                }
+            )
+            registrations = {
+                (entry["path"], resource["resource"]): resource["registrations"]
+                for entry in entries
+                for resource in entry["resources"]
+                if resource["resource"] in resources
+            }
+            active = any(registrations.get(resource, 0) > 0 for resource in expected)
+            complete = bool(expected) and all(registrations.get(resource, 0) > 0 for resource in expected)
+            result.update(
+                state=("ready" if complete else "unknown") if ready else "degraded",
+                readiness=("ready" if complete else "unknown" if active else "idle") if ready else "not-ready",
+                entries=entries,
+                evidence=(
+                    "native entry health and observed active registrations; not origin readiness"
+                    if ready and complete
+                    else "native entry health with partially active registrations; not origin readiness"
+                    if ready and active
+                    else "native entry health with idle demand-driven registrations; not origin readiness"
+                    if ready
+                    else "native entry health is incomplete; not origin readiness"
+                ),
+            )
     except (ManageError, ManifestError):
         # Legacy or otherwise unparsable generations stay inspectable with
         # unknown readiness rather than failing the status call.
