@@ -229,6 +229,7 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 	d := &Dispatcher{resources: map[string]binding{}, peers: peers, active: active}
 	for _, resource := range declaration.Resources {
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
+		resource.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
 		idle := time.Duration(resource.Rule.Limits.IdleSeconds) * time.Second
 		conns := newConnRegistry()
 		tr := &http.Transport{

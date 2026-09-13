@@ -65,6 +65,7 @@ func NewBrowser(envelope config.Envelope, gatewayPeer string, lease *access.Leas
 
 func newProxy(envelope config.Envelope, gatewayPeer string, lease *access.Lease, secrets SecretSource, browser bool) (*Proxy, error) {
 	envelope.Rule.Methods = append([]string(nil), envelope.Rule.Methods...)
+	envelope.Rule.ExternalRedirects = append([]string(nil), envelope.Rule.ExternalRedirects...)
 	u, err := url.Parse(envelope.OriginURL)
 	if err != nil {
 		return nil, ErrConfiguration

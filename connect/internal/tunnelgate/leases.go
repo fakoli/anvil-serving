@@ -72,6 +72,7 @@ func NewLeases(declaration config.Gateway, authority InstallationAuthority, now 
 	l := &Leases{authority: authority, now: now, routes: map[string]config.Resource{}, tokens: map[string]transportToken{}, groups: map[string]permission{}}
 	for _, resource := range declaration.Resources {
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
+		resource.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
 		l.routes[resource.Rule.ID] = resource
 	}
 	return l, nil

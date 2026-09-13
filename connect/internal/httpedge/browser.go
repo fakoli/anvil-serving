@@ -106,6 +106,7 @@ func newBrowser(declaration config.Gateway, authority BrowserAuthority, identiti
 			continue
 		}
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
+		resource.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
 		if resource.Rule.NativeAuth == "signed-identity" {
 			signer := identities[resource.Rule.ID]
 			if signer == nil {
@@ -442,6 +443,7 @@ func (b *Browser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	declaration := resource.declaration
 	declaration.Rule.Methods = append([]string(nil), declaration.Rule.Methods...)
+	declaration.Rule.ExternalRedirects = append([]string(nil), declaration.Rule.ExternalRedirects...)
 	if declaration.Rule.NativeAuth == "signed-identity" {
 		assertion, signErr := b.identities[declaration.Rule.ID].Sign(admitted, declaration.Rule, clean)
 		if signErr != nil {
@@ -578,11 +580,17 @@ func ValidateBrowserResponse(response *http.Response, rule config.Rule) error {
 		if err != nil || u.User != nil || u.Opaque != "" || u.RawPath != "" || u.Fragment != "" || strings.HasPrefix(locations[0], "//") {
 			return ErrRequest
 		}
-		if u.IsAbs() && (u.Scheme != "https" || u.Host != rule.Host) {
-			return ErrRequest
-		}
-		if !sameResourcePath(rule, u.Path) {
-			return ErrRequest
+		if u.IsAbs() && u.Host != rule.Host {
+			if (response.StatusCode != http.StatusFound && response.StatusCode != http.StatusSeeOther) || !rule.AllowsExternalRedirect(locations[0]) {
+				return ErrRequest
+			}
+		} else {
+			if u.IsAbs() && u.Scheme != "https" {
+				return ErrRequest
+			}
+			if !sameResourcePath(rule, u.Path) {
+				return ErrRequest
+			}
 		}
 	}
 	for _, value := range response.Header.Values("Set-Cookie") {

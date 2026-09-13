@@ -465,6 +465,53 @@ func TestBrowserResponseValidationPreservesNativeHeaders(t *testing.T) {
 	}
 }
 
+func TestBrowserResponseValidationAllowsConfiguredExternalOIDCRedirect(t *testing.T) {
+	rule := browserDeclaration("none").Resources[0].Rule
+	rule.ExternalRedirects = []string{"https://login.example.test/oauth/oidc/login"}
+	for _, status := range []int{http.StatusFound, http.StatusSeeOther} {
+		response := &http.Response{StatusCode: status, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/login?state=opaque"}}}
+		if err := ValidateBrowserResponse(response, rule); err != nil {
+			t.Fatalf("configured %d redirect rejected: %v", status, err)
+		}
+	}
+	for name, response := range map[string]*http.Response{
+		"off-path":           {StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/other?state=opaque"}}},
+		"off-host":           {StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://other.example.test/oauth/oidc/login?state=opaque"}}},
+		"temporary-redirect": {StatusCode: http.StatusTemporaryRedirect, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/login?state=opaque"}}},
+		"credentials":        {StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://user@login.example.test/oauth/oidc/login"}}},
+		"fragment":           {StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/login#fragment"}}},
+		"empty-fragment":     {StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/login#"}}},
+		"uppercase-scheme":   {StatusCode: http.StatusFound, Header: http.Header{"Location": {"HTTPS://login.example.test/oauth/oidc/login"}}},
+		"escaped-path":       {StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://login.example.test/oauth/%6fidc/login"}}},
+		"domain-cookie":      {StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/login?state=opaque"}, "Set-Cookie": {"native=value; Domain=example.test; Path=/"}}},
+		"reserved-cookie":    {StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/login?state=opaque"}, "Set-Cookie": {BrowserSessionCookie + "=forged; Path=/; Secure; HttpOnly"}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if ValidateBrowserResponse(response, rule) == nil {
+				t.Fatal("unsafe external browser response accepted")
+			}
+		})
+	}
+}
+
+func TestBrowserCopiesExternalRedirectPolicy(t *testing.T) {
+	declaration := browserDeclaration("none")
+	declaration.Resources[0].Rule.ExternalRedirects = []string{"https://login.example.test/oauth/oidc/login"}
+	browser, err := NewBrowser(declaration, newBrowserAuthorityStub(), func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(browser.Close)
+	declaration.Resources[0].Rule.ExternalRedirects[0] = "https://login.example.test/oauth/oidc/other"
+	retained := browser.resources["dash.example.test"].declaration.Rule
+	if err := ValidateBrowserResponse(&http.Response{StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/login?state=opaque"}}}, retained); err != nil {
+		t.Fatal("constructor lost the configured redirect policy", err)
+	}
+	if ValidateBrowserResponse(&http.Response{StatusCode: http.StatusFound, Header: http.Header{"Location": {"https://login.example.test/oauth/oidc/other?state=opaque"}}}, retained) == nil {
+		t.Fatal("caller mutation widened retained browser redirect policy")
+	}
+}
+
 func TestBrowserCapacityAndRevocationCancelDispatch(t *testing.T) {
 	started, stopped := make(chan struct{}), make(chan struct{})
 	browser, authority := browserFixture(t, "none", func(_ http.ResponseWriter, r *http.Request, _ config.Resource, _ session.Admission) {

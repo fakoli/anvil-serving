@@ -101,6 +101,7 @@ func New(rule config.Rule, listen, localKey, remoteKeyEnv string, secrets Secret
 // the owned standard transport and cannot choose a runtime destination.
 func newForwarder(rule config.Rule, listen, localKey, remoteKeyEnv string, secrets SecretSource, options Options, dial func(context.Context, string, string) (net.Conn, error)) (*Forwarder, error) {
 	rule.Methods = append([]string(nil), rule.Methods...)
+	rule.ExternalRedirects = append([]string(nil), rule.ExternalRedirects...)
 	if rule.Validate() != nil || rule.Access != "api" || rule.NativeAuth != "delegate-bearer" || !config.LoopbackAddress(listen) || !config.ValidEnv(remoteKeyEnv) || secrets == nil {
 		return nil, ErrConfiguration
 	}

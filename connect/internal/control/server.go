@@ -56,6 +56,7 @@ func NewServer(host string, gateway config.Gateway, manager *identity.Manager, i
 			return nil, ErrDenied
 		}
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
+		resource.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
 		s.routes[resource.Rule.ID] = resource
 	}
 	return s, nil

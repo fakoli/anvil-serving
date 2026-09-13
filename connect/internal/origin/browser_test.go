@@ -37,11 +37,14 @@ func browserEnvelope(origin string, nativeAuth string) config.Envelope {
 	}
 }
 
-func browserProxyFixture(t *testing.T, handler http.HandlerFunc, nativeAuth string, active bool) browserOriginFixture {
+func browserProxyFixture(t *testing.T, handler http.HandlerFunc, nativeAuth string, active bool, mutate ...func(*config.Envelope)) browserOriginFixture {
 	t.Helper()
 	native := httptest.NewServer(handler)
 	t.Cleanup(native.Close)
 	envelope := browserEnvelope(native.URL, nativeAuth)
+	for _, change := range mutate {
+		change(&envelope)
+	}
 	binding := access.LeaseBinding{Installation: "origin-a", Resource: envelope.Rule.ID, Epoch: strings.Repeat("a", 64), Generation: 1}
 	lease, err := access.NewLease(binding, nil)
 	if err != nil {
@@ -157,6 +160,24 @@ func TestBrowserProxyResponseConfinement(t *testing.T) {
 	response.Body.Close()
 	if response.StatusCode != http.StatusBadGateway || dispatched.Load() != 1 {
 		t.Fatal("domain browser cookie escaped resource")
+	}
+}
+
+func TestBrowserProxyCopiesExternalRedirectPolicy(t *testing.T) {
+	f := browserProxyFixture(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Location", "https://login.example.test/oauth/oidc/other?state=opaque")
+		w.WriteHeader(http.StatusFound)
+	}, "none", true, func(envelope *config.Envelope) {
+		envelope.Rule.ExternalRedirects = []string{"https://login.example.test/oauth/oidc/login"}
+	})
+	f.envelope.Rule.ExternalRedirects[0] = "https://login.example.test/oauth/oidc/other"
+	response, err := f.client.Do(f.request(t, http.MethodGet, "/"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusBadGateway {
+		t.Fatal("caller mutation widened retained origin redirect policy")
 	}
 }
 

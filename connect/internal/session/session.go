@@ -190,6 +190,7 @@ func New(ctx context.Context, state *store.Store, rules []config.Rule, settings 
 			return nil, ErrConfiguration
 		}
 		rule.Methods = append([]string(nil), rule.Methods...)
+		rule.ExternalRedirects = append([]string(nil), rule.ExternalRedirects...)
 		m.rules[rule.ID] = rule
 		hosts[rule.Host] = true
 	}
