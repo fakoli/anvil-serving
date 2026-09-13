@@ -5,7 +5,12 @@ description: Publish and maintain hardware-first, publication-ready benchmark do
 
 # Anvil Serving Benchmark Docs
 
-Use this skill for the publication phase of every meaningful model run. Read
+Use this skill for the publication phase of every meaningful model run.
+The maintained layout is `PRODUCT_ROOT/skills/anvil-serving-benchmark-docs`.
+Global discovery uses a symlink to that directory. Resolve its real path and
+verify the product root contains `pyproject.toml` and `anvil_serving/` before
+using repository-relative paths. For a copied install, use the available
+workspace-resolution skill and read the canonical product skill. Read
 `references/artifact-set-contract.md`, `references/publication-contract.md`,
 `README.md`, `CLAUDE.md`,
 `docs/benchmarks/index.md`, and the applicable model or modality skill before
@@ -27,8 +32,14 @@ For a multi-cell, delegated, or resumable campaign, also read
    `quality`, or `historical-invalid`. Classify research as `external-prior`.
 4. Choose a separate decision label: `current`, `rollback`, `challenger`,
    `no-promotion`, or `rejected`.
-5. Stop rather than converting missing identity, failed loads, reasoning
-   exhaustion, partial artifacts, or topology observations into qualification.
+5. Stop qualification claims rather than converting missing identity, failed
+   loads, reasoning exhaustion, partial artifacts, or topology observations
+   into qualification. During an active qualification campaign with existing
+   authority and budget, follow diagnosis, research, and supported trials in
+   `../anvil-serving-llm-qualification/references/configuration-search.md`.
+   Publication-only work records an unresolved evidence gap without live trials.
+   Record investigation status separately from the publication decision:
+   a rejected configuration or budget-limited investigation is not a model defect.
 
 ## 2. Create the common artifact set
 
@@ -153,6 +164,10 @@ nearest-rank p99 is still one tail order statistic; publish the population and
 method, and do not call it a stable service-level tail without more evidence.
 
 Run one concise command per verification step and stop on its nonzero exit.
+Stop dependent steps. In an authorized active qualification campaign, the
+campaign owner enters the diagnostic loop rather than abandoning the candidate.
+Preserve failed runs and qualify a new configuration version after a researched
+remedy. Publication-only work retains the gap without running live trials.
 Do not continue a compound shell block into hashing, finalization, or a broad
 worktree inventory after a native command fails. Keep reviews path-scoped and
 record the earliest actionable error in `friction-log.md` with a durable

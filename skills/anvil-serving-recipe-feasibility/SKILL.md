@@ -45,7 +45,9 @@ a campaign input.
    - `policy-infeasible`: it could fit physically, but not inside the declared
      safe operating envelope.
    - `empirically-disqualified`: measured capacity or a deterministic hard gate
-     already failed.
+     already failed for this exact recipe version. Follow the qualification
+     skill's configuration-search loop before rejecting the model; a supported
+     settings change creates a new version to evaluate.
    - `requirements-disqualified`: measured quality or speed misses a declared
      threshold.
    - `unresolved`: bounds overlap or a load-bearing variable is unbounded.
