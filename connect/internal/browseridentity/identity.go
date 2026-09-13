@@ -60,6 +60,7 @@ type claims struct {
 	PrincipalGen uint64 `json:"pg"`
 	Epoch        string `json:"epoch"`
 	Resource     string `json:"resource"`
+	Role         string `json:"role,omitempty"`
 	Host         string `json:"host"`
 	Method       string `json:"method"`
 	TargetSHA256 string `json:"target_sha256"`
@@ -85,7 +86,7 @@ func validOpaquePrincipal(value string) bool {
 }
 
 func validAdmission(admitted session.Admission, rule config.Rule, request *http.Request, now time.Time) bool {
-	return request != nil && request.URL != nil && validOpaquePrincipal(admitted.Principal) && lowerHex(admitted.SessionID, 16) && admitted.SessionGeneration > 0 && admitted.PrincipalGeneration > 0 && lowerHex(admitted.Epoch, 32) && admitted.Resource == rule.ID && admitted.Host == rule.Host && !admitted.ExpiresAt.IsZero() && config.ValidID(rule.ID) && config.ValidHost(rule.Host) && config.ValidMethod(request.Method) && rule.Allows(request.Host, request.URL.Path, request.Method) && admitted.ExpiresAt.After(now)
+	return request != nil && request.URL != nil && validOpaquePrincipal(admitted.Principal) && lowerHex(admitted.SessionID, 16) && admitted.SessionGeneration > 0 && admitted.PrincipalGeneration > 0 && lowerHex(admitted.Epoch, 32) && admitted.Resource == rule.ID && admitted.Host == rule.Host && !admitted.ExpiresAt.IsZero() && (admitted.ApplicationRole == "" || admitted.ApplicationRole == "member" || admitted.ApplicationRole == "admin") && config.ValidID(rule.ID) && config.ValidHost(rule.Host) && config.ValidMethod(request.Method) && rule.Allows(request.Host, request.URL.Path, request.Method) && admitted.ExpiresAt.After(now)
 }
 
 // Sign creates a request-bound assertion after browser admission has been
@@ -115,7 +116,7 @@ func (s *Signer) Sign(admitted session.Admission, rule config.Rule, request *htt
 	payload, err := json.Marshal(claims{
 		V: 1, Issuer: "anvil-connect", KeyID: s.kid, Subject: admitted.Principal,
 		SessionID: admitted.SessionID, SessionGen: admitted.SessionGeneration, PrincipalGen: admitted.PrincipalGeneration,
-		Epoch: admitted.Epoch, Resource: rule.ID, Host: rule.Host, Method: request.Method,
+		Epoch: admitted.Epoch, Resource: rule.ID, Role: admitted.ApplicationRole, Host: rule.Host, Method: request.Method,
 		TargetSHA256: hex.EncodeToString(target[:]), IssuedAt: now.Unix(), ExpiresAt: expires,
 		SessionExp: sessionExp, JTI: hex.EncodeToString(jtiRaw),
 	})

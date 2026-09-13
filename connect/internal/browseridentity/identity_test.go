@@ -2,6 +2,8 @@ package browseridentity
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -41,6 +43,31 @@ func TestSignWireVector(t *testing.T) {
 	const want = "acai1.eyJ2IjoxLCJpc3MiOiJhbnZpbC1jb25uZWN0Iiwia2lkIjoib2JzZXJ2YXRvcnktdjEiLCJzdWIiOiJodW1hbjphYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhIiwic2lkIjoiMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTEiLCJzZyI6MywicGciOjcsImVwb2NoIjoiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYiIsInJlc291cmNlIjoiZGFzaCIsImhvc3QiOiJkYXNoLmV4YW1wbGUudGVzdCIsIm1ldGhvZCI6IkdFVCIsInRhcmdldF9zaGEyNTYiOiIyNTlmYzM1YjI0NGMwMmFkNzQ5YjFkMWI5MjNjZWRlNGRhNDc0MjI3MGMzZGQ3ZDgwYjk3MTY5MzhhODNkNTNjIiwiaWF0IjoxNzg5MDAwMDAwLCJleHAiOjE3ODkwMDAwMzAsInNlc3Npb25fZXhwIjoxNzg5MDAwMTAwLCJqdGkiOiI0MjQyNDI0MjQyNDI0MjQyNDI0MjQyNDI0MjQyNDI0MiJ9.R0uvUBMc8ZiV8yDMsvG0gkzhHzt1wCHIHK2iB6wOAMs"
 	if assertion != want {
 		t.Fatal("cross-language assertion vector changed")
+	}
+}
+
+func TestSignIncludesBoundApplicationRole(t *testing.T) {
+	signer := testSigner(t)
+	admitted := testAdmission()
+	admitted.ApplicationRole = "member"
+	request := httptest.NewRequest("GET", "https://dash.example.test/", nil)
+	request.Host = "dash.example.test"
+	assertion, err := signer.Sign(admitted, testRule(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.Split(assertion, ".")
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var claims map[string]any
+	if json.Unmarshal(payload, &claims) != nil || claims["role"] != "member" {
+		t.Fatal("signed assertion omitted selected application role")
+	}
+	admitted.ApplicationRole = "operator"
+	if _, err := signer.Sign(admitted, testRule(), request); err == nil {
+		t.Fatal("unsupported application role signed")
 	}
 }
 

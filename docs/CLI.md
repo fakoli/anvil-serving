@@ -374,6 +374,7 @@ required operands, choices, and defaults.
 | `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `connect` | Manage authenticated API and browser access with Anvil Connect. | `read` / `bounded` | - |
+| `connect users` | Manage local accounts, service entitlements, enrollment codes and authentication backups. | `mutate` / `bounded` | `--manifest`<br>`--email`<br>`--role`<br>`--grant`<br>`--output`<br>`--input`<br>`--include-gateway`<br>`--sha256`<br>`--destination`<br>`--dry-run`<br>`--confirm` |
 | `connect qualify` | Run an isolated Connect qualification lane using saved local settings. | `process` / `bounded` | `--prepare-container`<br>`--lane`<br>`--config` |
 | `connect validate` | Validate declarations and selected native components. | `read` / `bounded` | `--manifest`<br>`--service` |
 | `connect render` | Preview or stage an owned configuration generation. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
