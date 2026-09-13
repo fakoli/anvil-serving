@@ -268,6 +268,26 @@ def test_connect_profile_has_no_grants_and_only_session_is_available(tmp_path):
         console.close()
 
 
+@pytest.mark.parametrize("mapping", [False, True])
+def test_connect_legacy_receiver_preserves_subject_access_with_signed_role(tmp_path, mapping):
+    console = Console(config(tmp_path, mapping=mapping), metrics=Metrics(),
+                      environment={"CONNECT_ASSERTION_CURRENT": SECRET_TEXT})
+    target = BASE + "api/observatory/v1/session"
+    try:
+        message = Message()
+        message[_header_name()] = assertion("GET", target, role="admin")
+        session, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
+        assert issued
+        if mapping:
+            assert session.principal.identity == "operator-fixture"
+            assert session.principal.can_operate("fixture", "configuration.apply")
+        else:
+            assert session.profile_id.startswith("connect-")
+            assert not session.principal.resources and not session.principal.actions
+    finally:
+        console.close()
+
+
 def test_connect_application_roles_use_only_the_explicit_role_mapping(tmp_path):
     current = config(tmp_path)
     current["users"].append({
