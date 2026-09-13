@@ -18,6 +18,10 @@
   reasoning presence, finish reason, tool calls, validation results, and
   sanitized failure. Label effective prefill as queueing/scheduling-inclusive,
   not kernel-only.
+- For failure diagnosis, retain bounded, sanitized effective requests and raw
+  response/SSE content, including available reasoning and tool arguments, in
+  protected operator evidence. Record capture limits and missing content.
+  Preserve diagnostic detail privately; publish only safe excerpts and hashes.
 - Never retain authorization values or media bytes in evidence/logs.
 - Preserve the lowest actionable startup/request error and chronological
   friction, including harness timeouts that leave a child container running.
@@ -31,7 +35,16 @@ no OOM, malformed response, parser corruption, or unexplained request loss.
 Multimodal router work begins only after direct `video_url` and image gates
 pass. Unsupported cross-dialect video translation fails closed.
 
+A failed gate disqualifies that configuration/run from acceptance, not all
+supported configurations of the model. Follow `configuration-search.md` before
+candidate rejection. Keep coding correctness, strict formatting, budget stops,
+and runtime failures distinct in the decision record.
+
 ## Comparison and publication
+
+Record native, configured, and measured context separately, including input
+size, output/reasoning reserve, and simultaneous requests. An untested larger
+window remains unknown even if advertised or configured.
 
 Report logical checkpoint bytes separately from runtime GPU allocation, KV
 capacity, throughput, and latency. A quant is Pareto-preferred only after every

@@ -134,3 +134,26 @@ All LLM, vision, Omni, STT, and TTS publication phases use
 Classify other GPUs as measured, protected/co-resident, topology-only, or
 unrelated. Publication preserves failures and `no-promotion`; it never grants
 serve or alias authority.
+
+## Shared research and skill improvement
+
+The qualification skill uses the `session-improvement-loop` plugin's `research-synthesis`
+and `skill-improvement` skills. Install from the configured Fakoli marketplace:
+
+```bash
+codex plugin add session-improvement-loop@fakoli-agent-plugins
+```
+
+For first-time marketplace setup, follow the
+[plugin repository instructions](https://github.com/fakoli/agent-plugins#marketplace).
+Start a fresh task after installation so native skill discovery refreshes.
+Resolve resources from the discovered skill directory, never an assumed cache
+version or a parent of the calling checkout. Record plugin and instruction
+identities with the campaign baseline.
+
+The shared skills own the reusable method; Anvil's
+`references/configuration-search.md` and `references/improvement-loop.md` bind
+it to the source/friction records, selected agent roles, managed lifecycle,
+qualification gates, user authority, and budget reserve. A plugin installation
+does not authorize a serving change. If discovery fails, retain explicit
+coverage/proposal limitations and continue independent diagnosis and closure.

@@ -53,6 +53,23 @@ their request count, completion distribution, cache state, or output contract
 differs from the finalist workload. A performance winner is not a qualified
 deployment until its independent quality and integration gates pass.
 
+## Investigate before rejecting candidates
+
+Use `skills/anvil-serving-llm-qualification/references/configuration-search.md`
+whenever a gate fails: capture and diagnose, research the observed error, test
+a supported versioned remedy, then freeze and fully qualify the selected
+configuration. Keep all failed artifacts. A command or stage stops on failure;
+the campaign owner continues investigation or dispatches another bounded trial
+while supported options, authority, and budget remain. Budget-limited candidates are unresolved, not defective.
+
+Before the run, record ranked objectives, investigation allocations, and a
+reserve for final qualification and authorized promotion or restoration.
+Give promising candidates fair configuration coverage before picking the first
+pass. Assess coding with independently checked repository tasks; strict output
+adherence and speed are separate evidence. Report native, configured, measured,
+and simultaneous context capacity separately; do not call a tested default a
+proven maximum.
+
 ## Make comparable capacity cells
 
 - Pin model, runtime image, engine revision, recipe, hardware/topology, context,
@@ -112,7 +129,8 @@ history.
 ## Fail fast and fix forward
 
 Run one independently checkable command per step. Stop immediately on a
-nonzero native exit. On PowerShell, do not assume `$ErrorActionPreference`
+nonzero native exit before dependent work; follow the investigation loop above
+rather than abandoning the candidate. On PowerShell, do not assume `$ErrorActionPreference`
 turns a failed external executable into a terminating error; either run the
 external command alone or check `$LASTEXITCODE` before continuing.
 
@@ -122,6 +140,14 @@ result. Record every actionable failure in `friction-log.md` with its earliest
 evidence, immediate disposition, durable ticket/code/recipe/skill follow-up,
 independent verification, and open/closed status. A manual retry is recovery,
 not the fix-forward result.
+
+## Improve the campaign method
+
+Use the qualification skill's `references/improvement-loop.md` at closure or
+a material process failure. The [research review](skill-improvement-research.md)
+explains the external evidence, Astra adaptations, and validation limits.
+Keep instruction revisions distinct from model/recipe revisions and evaluate
+actual behavior before treating a reflection as a reusable rule.
 
 ## Finalize and report
 
