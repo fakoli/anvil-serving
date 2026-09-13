@@ -54,8 +54,7 @@ func (a *Authority) deviceKeyStatus(tx *store.Tx, key access.Key) (string, error
 	if tx.Get("sessions", "session:"+key.DeviceSession, &source) != nil || source.ID != key.DeviceSession || source.Generation != key.DeviceSessionGeneration || source.Principal != key.DeviceHuman || source.PrincipalGeneration != key.DeviceHumanGeneration || source.Resource != binding.Browser.ID || key.ExpiresAt.After(source.ExpiresAt) {
 		return "invalidated", nil
 	}
-	admitted := session.Admission{SessionID: source.ID, SessionGeneration: source.Generation, Principal: source.Principal, PrincipalGeneration: source.PrincipalGeneration, Resource: source.Resource, Host: source.Host, Epoch: source.Epoch, ExpiresAt: source.ExpiresAt}
-	if a.sessions.CheckTx(tx, admitted) != nil {
+	if a.checkStoredSession(tx, source) != nil {
 		return "invalidated", nil
 	}
 	return "issued", nil

@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"io"
+	"maps"
 	"math"
 	"mime"
 	"net/http"
@@ -38,18 +39,19 @@ var ErrAdmin = errors.New("local administrative request denied")
 // Request contains only scalar administrative inputs. Operations select which
 // fields are meaningful; unsupported capabilities fail closed.
 type Request struct {
-	Operation       string         `json:"operation"`
-	Principal       string         `json:"principal"`
-	Grants          []access.Grant `json:"grants"`
-	Disabled        bool           `json:"disabled"`
-	KeyID           string         `json:"key_id"`
-	Installation    string         `json:"installation"`
-	Role            string         `json:"role"`
-	Resources       []string       `json:"resources"`
-	LifetimeSeconds int64          `json:"lifetime_seconds"`
-	Fingerprint     string         `json:"fingerprint"`
-	Issuer          string         `json:"issuer"`
-	Subject         string         `json:"subject"`
+	Operation        string            `json:"operation"`
+	Principal        string            `json:"principal"`
+	Grants           []access.Grant    `json:"grants"`
+	Disabled         bool              `json:"disabled"`
+	KeyID            string            `json:"key_id"`
+	Installation     string            `json:"installation"`
+	Role             string            `json:"role"`
+	Resources        []string          `json:"resources"`
+	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
+	LifetimeSeconds  int64             `json:"lifetime_seconds"`
+	Fingerprint      string            `json:"fingerprint"`
+	Issuer           string            `json:"issuer"`
+	Subject          string            `json:"subject"`
 }
 
 // InstallationStatus intentionally excludes public-key bodies and all prior
@@ -67,23 +69,24 @@ type InstallationStatus struct {
 // Response returns a bearer credential only for issue and invite. It must be
 // written by the native CLI to an exclusive owner-only file, never stdout.
 type Response struct {
-	Operation    string             `json:"operation"`
-	Epoch        string             `json:"epoch"`
-	Secret       string             `json:"secret"`
-	KeyID        string             `json:"key_id"`
-	Principal    string             `json:"principal"`
-	Grants       []access.Grant     `json:"grants"`
-	Invitation   string             `json:"invitation"`
-	Installation string             `json:"installation"`
-	Role         string             `json:"role"`
-	Resources    []string           `json:"resources"`
-	Generation   uint64             `json:"generation"`
-	Fingerprint  string             `json:"fingerprint"`
-	ControlHost  string             `json:"control_host,omitempty"`
-	TunnelHost   string             `json:"tunnel_host,omitempty"`
-	InnerCAPEM   string             `json:"inner_ca_pem,omitempty"`
-	Status       InstallationStatus `json:"status"`
-	Entries      []EntryStatus      `json:"entries,omitempty"`
+	Operation        string             `json:"operation"`
+	Epoch            string             `json:"epoch"`
+	Secret           string             `json:"secret"`
+	KeyID            string             `json:"key_id"`
+	Principal        string             `json:"principal"`
+	Grants           []access.Grant     `json:"grants"`
+	Invitation       string             `json:"invitation"`
+	Installation     string             `json:"installation"`
+	Role             string             `json:"role"`
+	Resources        []string           `json:"resources"`
+	ApplicationRoles map[string]string  `json:"application_roles,omitempty"`
+	Generation       uint64             `json:"generation"`
+	Fingerprint      string             `json:"fingerprint"`
+	ControlHost      string             `json:"control_host,omitempty"`
+	TunnelHost       string             `json:"tunnel_host,omitempty"`
+	InnerCAPEM       string             `json:"inner_ca_pem,omitempty"`
+	Status           InstallationStatus `json:"status"`
+	Entries          []EntryStatus      `json:"entries,omitempty"`
 }
 
 // Handler invokes only existing authority managers. keys and sessions can be
@@ -279,9 +282,9 @@ func (h *Handler) apply(input Request) (Response, error) {
 			return Response{}, ErrAdmin
 		}
 		var human session.Human
-		human, err = h.sessions.SetHuman(input.Issuer, input.Subject, input.Resources, input.Disabled)
+		human, err = h.sessions.SetHuman(input.Issuer, input.Subject, input.Resources, input.Disabled, input.ApplicationRoles)
 		if err == nil {
-			response.Principal, response.Generation, response.Resources = human.ID, human.Generation, append([]string(nil), human.Resources...)
+			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
 	case "authority-reset":
 		err = h.state.ResetAuthority()

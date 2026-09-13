@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sqlite3
 import subprocess
 
 from ..operator_output import CommandResult, OperatorError, PartialResultError, UsageError
@@ -32,6 +33,19 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     qualify_mode.add_argument("--prepare-container", action="store_true")
     qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
+    users = actions.add_parser("users", allow_abbrev=False)
+    users.add_argument("operation", choices=("create", "access", "reset-password", "reset-mfa", "code", "backup", "schedule", "restore"))
+    users.add_argument("username", nargs="?")
+    users.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
+    users.add_argument("--email", action=_Once)
+    users.add_argument("--role", choices=("member", "admin"), action=_Once, help="Creation role; defaults to member. Resets preserve existing groups.")
+    users.add_argument("--grant", action="append", help="Exact service:member or service:admin entitlement; repeat for each service. Create/access only.")
+    users.add_argument("--output", action=_Once, help="Exclusive private handoff file; defaults beside the deployment manifest.")
+    users.add_argument("--input", action=_Once, help="Private authentication archive for recovery.")
+    users.add_argument("--sha256", action=_Once, help="Independently retained authentication archive checksum for recovery.")
+    users.add_argument("--destination", action=_Once, help="Fresh private recovery directory; never activates restored accounts.")
+    users.add_argument("--dry-run", action="store_true")
+    users.add_argument("--confirm", action="store_true")
     for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "extend"):
         leaf = actions.add_parser(action, allow_abbrev=False)
         leaf.add_argument("--manifest", required=True, action=_Once)
@@ -161,7 +175,24 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         target = manage.Target.parse(args.service) if getattr(args, "service", None) else None
         apply = bool(getattr(args, "confirm", False) and not getattr(args, "dry_run", False))
         action = args.action
-        if action in {"validate", "status", "doctor"}:
+        if action == "users":
+            from .users import DEFAULT_MANIFEST, operate
+            if args.operation == "schedule":
+                if any((args.username, args.email, args.role, args.output, args.input, args.sha256, args.destination, args.grant)):
+                    raise UsageError("Use users schedule --confirm to install the daily authentication backup timer.", code="connect_users_invalid")
+                from .user_schedule import schedule
+                result = schedule(args.manifest or DEFAULT_MANIFEST, apply=apply)
+            elif args.operation == "restore":
+                if not args.input or not args.destination or not args.sha256 or any((args.username, args.manifest, args.email, args.role, args.output, args.grant)):
+                    raise UsageError("Use users restore --input ARCHIVE --sha256 DIGEST --destination NEW_DIRECTORY.", code="connect_users_invalid")
+                from .user_backup import restore
+                result = restore(args.input, args.destination, sha256=args.sha256, apply=apply)
+            else:
+                if args.input or args.destination or args.sha256:
+                    raise UsageError("--input, --sha256 and --destination are only accepted for restore.", code="connect_users_invalid")
+                result = operate(args.manifest or DEFAULT_MANIFEST, args.operation, args.username,
+                                 email=args.email, role=args.role, grants=args.grant, output=args.output, apply=apply)
+        elif action in {"validate", "status", "doctor"}:
             result = getattr(manage, action)(args.manifest, target=target)
         elif action == "render":
             result = manage.render(args.manifest, apply=apply)
@@ -227,10 +258,10 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         return CommandResult(error=exc)
     except ManifestError:
         return CommandResult(error=UsageError("Invalid Connect deployment declaration.", code="connect_manifest_invalid"))
-    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
+    except (OSError, ValueError, RuntimeError, sqlite3.Error, subprocess.SubprocessError) as exc:
         partial = getattr(exc, "may_have_executed", False) is True
         error_type = PartialResultError if partial else OperatorError
-        return CommandResult(error=error_type(
+        return CommandResult(data=getattr(exc, "recovery", None), error=error_type(
             "Connect operation failed; inspect declared ownership and component status.",
             code="connect_operation_partial" if partial else "connect_operation_failed",
             details={"may_have_executed": partial},

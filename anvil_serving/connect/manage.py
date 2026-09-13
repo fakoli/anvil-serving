@@ -633,6 +633,8 @@ def _validate_gateway_files(data: dict[str, Any]) -> None:
         "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file",
     ):
         _safe_consumed_file(Path(data["authelia"][name]), idp_uid, idp_gid)
+    for client in data["authelia"].get("additional_oidc_clients", []):
+        _safe_consumed_file(Path(client["client_secret_file"]), idp_uid, idp_gid)
     _validate_local_files(data, Target("gateway"))
 
 
@@ -2204,7 +2206,7 @@ def _admin_preview(request: Path) -> dict[str, str]:
     if raw is None:
         raise ManageError("administrative request is unavailable")
     value = _strict_json(raw, "administrative request is invalid")
-    allowed = {"operation", "principal", "grants", "disabled", "key_id", "installation", "role", "resources", "lifetime_seconds", "fingerprint", "issuer", "subject"}
+    allowed = {"operation", "principal", "grants", "disabled", "key_id", "installation", "role", "resources", "application_roles", "lifetime_seconds", "fingerprint", "issuer", "subject"}
     operation = value.get("operation")
     operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "authority-reset"}
     if set(value) - allowed or not isinstance(operation, str) or operation not in operations:

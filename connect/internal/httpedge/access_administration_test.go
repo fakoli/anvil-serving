@@ -79,11 +79,12 @@ func administrationBrowser(t *testing.T, authority *accessAuthorityStub) *Browse
 
 func administrationUsers() administration.Inventory {
 	return administration.Inventory{Kind: "users", Items: []any{map[string]any{
-		"id":            "human:" + strings.Repeat("a", 64),
-		"generation":    "1",
-		"disabled":      false,
-		"resources":     []string{"dash"},
-		"administrator": true,
+		"id":                "human:" + strings.Repeat("a", 64),
+		"generation":        "1",
+		"disabled":          false,
+		"resources":         []string{"dash"},
+		"application_roles": map[string]string{"dash": "admin"},
+		"administrator":     true,
 	}}}
 }
 
@@ -115,6 +116,10 @@ func TestAccessAdministrationListAndMutationAreSameOriginBound(t *testing.T) {
 		t.Fatal("configured operator could not read the bounded inventory", response.Code)
 	}
 	value := decodeAccessResponse(t, response)
+	items := value["items"].([]any)
+	if items[0].(map[string]any)["application_roles"].(map[string]any)["dash"] != "admin" {
+		t.Fatal("role inventory was not preserved")
+	}
 	csrf, ok := value["csrf"].(string)
 	if !ok || len(csrf) != 43 || value["current_principal"] != authority.admitted.Principal || value["current_session"] != authority.admitted.SessionID {
 		t.Fatal("Access inventory did not bind its CSRF response to the browser admission")
@@ -137,6 +142,25 @@ func TestAccessAdministrationListAndMutationAreSameOriginBound(t *testing.T) {
 	}
 	if decodeAccessResponse(t, response)["request_id"] != "00000000-0000-4000-8000-000000000001" {
 		t.Fatal("mutation receipt omitted request identity")
+	}
+	if authority.mutations[0].ApplicationRoles != nil {
+		t.Fatal("legacy browser update gained a role map")
+	}
+	body, err = json.Marshal(map[string]any{
+		"action": "human-update", "request_id": "00000000-0000-4000-8000-000000000005", "expected_generation": "1", "csrf": csrf,
+		"principal": authority.admitted.Principal, "disabled": false, "resources": []string{"dash"}, "application_roles": map[string]string{"dash": "member"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	post = accessRequest(http.MethodPost, accessAdministrationPath, string(body))
+	post.Header.Set("Origin", "https://dash.example.test")
+	post.Header.Set("Content-Type", "application/json")
+	post.Header.Set("X-CSRF-Token", csrf)
+	response = httptest.NewRecorder()
+	browser.ServeHTTP(response, post)
+	if response.Code != http.StatusOK || len(authority.mutations) != 2 || authority.mutations[1].ApplicationRoles["dash"] != "member" {
+		t.Fatal("role-bearing browser update was not forwarded exactly")
 	}
 }
 
@@ -228,6 +252,7 @@ func TestAccessAdministrationRejectsDuplicateAndOversizedMutationBodies(t *testi
 		"oversized":       `{"action":"` + strings.Repeat("a", maxAccessBody) + `"}`,
 		"wildcard-grant":  `{"action":"human-update","request_id":"00000000-0000-4000-8000-000000000003","expected_generation":"1","csrf":"` + csrf + `","principal":"` + authority.admitted.Principal + `","disabled":false,"resources":["*"]}`,
 		"empty-grants":    `{"action":"human-update","request_id":"00000000-0000-4000-8000-000000000003","expected_generation":"1","csrf":"` + csrf + `","principal":"` + authority.admitted.Principal + `","disabled":true,"resources":[]}`,
+		"invalid-role":    `{"action":"human-update","request_id":"00000000-0000-4000-8000-000000000003","expected_generation":"1","csrf":"` + csrf + `","principal":"` + authority.admitted.Principal + `","disabled":false,"resources":["dash"],"application_roles":{"dash":"operator"}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			r := accessRequest(http.MethodPost, accessAdministrationPath, body)

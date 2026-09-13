@@ -10,7 +10,8 @@ from .cli import dispatch
 def main() -> None:
     result = dispatch(sys.argv[1:], prog="anvil-connect-ctl")
     if result.error:
-        print(json.dumps({"ok": False, "code": result.error.code, "error": str(result.error)}))
+        print(json.dumps({"ok": False, "code": result.error.code, "error": str(result.error),
+                          **({"data": result.data} if result.data is not None else {})}))
     else:
         print(json.dumps({"ok": True, "data": result.data}, sort_keys=True))
     raise SystemExit(result.exit_code)

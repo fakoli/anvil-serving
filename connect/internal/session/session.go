@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"maps"
 	"math"
 	"net/http"
 	"sort"
@@ -56,10 +57,11 @@ type Config struct {
 // issuer and subject so the authority store need not retain an IdP identifier.
 // A generation change invalidates every previously issued Connect session.
 type Human struct {
-	ID         string   `json:"id"`
-	Generation uint64   `json:"generation"`
-	Disabled   bool     `json:"disabled"`
-	Resources  []string `json:"resources"`
+	ID               string            `json:"id"`
+	Generation       uint64            `json:"generation"`
+	Disabled         bool              `json:"disabled"`
+	Resources        []string          `json:"resources"`
+	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
 }
 
 // Session is the persisted server-side half of a host-only opaque cookie.
@@ -89,6 +91,7 @@ type Admission struct {
 	Host                string
 	Epoch               string
 	ExpiresAt           time.Time
+	ApplicationRole     string
 }
 
 // Challenge is returned to the browser adapter. Binding is an opaque value for
@@ -258,9 +261,63 @@ func (m *Manager) validateResources(resources []string) ([]string, bool) {
 	return copy, true
 }
 
+func validApplicationRole(value string) bool { return value == "member" || value == "admin" }
+
+func (m *Manager) validateApplicationRoles(resources []string, roles map[string]string) (map[string]string, bool) {
+	if roles == nil {
+		return nil, true
+	}
+	if len(roles) > len(resources) {
+		return nil, false
+	}
+	allowed := make(map[string]bool, len(resources))
+	for _, resource := range resources {
+		allowed[resource] = true
+	}
+	copy := make(map[string]string, len(roles))
+	for resource, role := range roles {
+		if !allowed[resource] || !validApplicationRole(role) {
+			return nil, false
+		}
+		copy[resource] = role
+	}
+	return copy, true
+}
+
+func retainApplicationRoles(roles map[string]string, resources []string) map[string]string {
+	if roles == nil {
+		return nil
+	}
+	allowed := make(map[string]bool, len(resources))
+	for _, resource := range resources {
+		allowed[resource] = true
+	}
+	result := make(map[string]string, len(roles))
+	for resource, role := range roles {
+		if allowed[resource] {
+			result[resource] = role
+		}
+	}
+	return result
+}
+
+// ApplicationRoles returns a clone of a structurally valid role map for an
+// already-loaded human. Callers use it only after their own authority check.
+func (m *Manager) ApplicationRoles(human Human) (map[string]string, bool) {
+	roles, ok := m.validateApplicationRoles(human.Resources, human.ApplicationRoles)
+	return roles, ok
+}
+
 // SetHuman provisions an exact issuer+subject identity. Valid OIDC assertions
 // for identities absent here are denied; there is no implicit administrator.
-func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled bool) (Human, error) {
+func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled bool, roleInput ...map[string]string) (Human, error) {
+	if len(roleInput) > 1 {
+		return Human{}, ErrDenied
+	}
+	var applicationRoles map[string]string
+	if len(roleInput) == 1 {
+		applicationRoles = roleInput[0]
+	}
 	if issuer != m.issuer {
 		return Human{}, ErrDenied
 	}
@@ -270,6 +327,9 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 	}
 	resources, ok = m.validateResources(resources)
 	if !ok {
+		return Human{}, ErrDenied
+	}
+	if applicationRoles, ok = m.validateApplicationRoles(resources, applicationRoles); !ok {
 		return Human{}, ErrDenied
 	}
 	var result Human
@@ -282,7 +342,15 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 		if old.Generation == math.MaxUint64 {
 			return ErrUnavailable
 		}
-		result = Human{ID: id, Generation: old.Generation + 1, Disabled: disabled, Resources: resources}
+		if old.ApplicationRoles != nil {
+			if _, valid := m.validateApplicationRoles(old.Resources, old.ApplicationRoles); !valid {
+				return ErrUnavailable
+			}
+		}
+		if applicationRoles == nil {
+			applicationRoles = retainApplicationRoles(old.ApplicationRoles, resources)
+		}
+		result = Human{ID: id, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles}
 		if err := m.preserveAdministrators(tx, result); err != nil {
 			return err
 		}
@@ -293,6 +361,34 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 	}
 	return result, nil
 }
+
+// CurrentHuman returns only the principal bound to an already admitted browser
+// session. It is for local browser surfaces that need their own current-user
+// view; it never permits lookup by an arbitrary human identifier.
+func (m *Manager) CurrentHuman(admitted Admission) (Human, error) {
+	var result Human
+	err := m.state.View(func(tx *store.Tx) error {
+		if m.CheckTx(tx, admitted) != nil {
+			return ErrDenied
+		}
+		if tx.Get("principals", admitted.Principal, &result) != nil || result.ID != admitted.Principal {
+			return ErrDenied
+		}
+		result.Resources = append([]string(nil), result.Resources...)
+		if result.ApplicationRoles != nil {
+			result.ApplicationRoles = maps.Clone(result.ApplicationRoles)
+		}
+		return nil
+	})
+	if err != nil {
+		return Human{}, ErrDenied
+	}
+	return result, nil
+}
+
+// AccountURL returns the configured, validated issuer for a local account
+// settings link. The value is fixed at manager construction.
+func (m *Manager) AccountURL() string { return m.issuer }
 
 // NewBinding mints a 256-bit value for a host-only transaction cookie.
 func NewBinding() (string, error) { return randomURLValue(32) }
@@ -392,6 +488,9 @@ func (m *Manager) authorize(tx *store.Tx, raw, host string) (Session, Human, err
 	if !configured || rule.Host != host || session.ID != id || session.Host != host || session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || subtle.ConstantTimeCompare(session.Digest[:], digest[:]) != 1 || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || !hasResource(human.Resources, session.Resource) {
 		return Session{}, Human{}, ErrDenied
 	}
+	if _, valid := m.validateApplicationRoles(human.Resources, human.ApplicationRoles); !valid {
+		return Session{}, Human{}, ErrDenied
+	}
 	return session, human, nil
 }
 
@@ -407,11 +506,11 @@ func hasResource(resources []string, resource string) bool {
 func (m *Manager) Authenticate(raw, host string) (Admission, error) {
 	var admitted Admission
 	err := m.state.View(func(tx *store.Tx) error {
-		session, _, err := m.authorize(tx, raw, host)
+		session, human, err := m.authorize(tx, raw, host)
 		if err != nil {
 			return err
 		}
-		admitted = Admission{SessionID: session.ID, SessionGeneration: session.Generation, Principal: session.Principal, PrincipalGeneration: session.PrincipalGeneration, Resource: session.Resource, Host: session.Host, Epoch: session.Epoch, ExpiresAt: session.ExpiresAt}
+		admitted = Admission{SessionID: session.ID, SessionGeneration: session.Generation, Principal: session.Principal, PrincipalGeneration: session.PrincipalGeneration, Resource: session.Resource, Host: session.Host, Epoch: session.Epoch, ExpiresAt: session.ExpiresAt, ApplicationRole: human.ApplicationRoles[session.Resource]}
 		return nil
 	})
 	if err != nil {
@@ -440,6 +539,9 @@ func (m *Manager) CheckTx(tx *store.Tx, admitted Admission) error {
 	}
 	var human Human
 	if session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || !hasResource(human.Resources, session.Resource) {
+		return ErrDenied
+	}
+	if _, valid := m.validateApplicationRoles(human.Resources, human.ApplicationRoles); !valid || human.ApplicationRoles[session.Resource] != admitted.ApplicationRole {
 		return ErrDenied
 	}
 	return nil

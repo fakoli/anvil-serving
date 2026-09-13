@@ -61,22 +61,24 @@ class ConnectBinding:
     session_generation: int
     policy_generation: int
     epoch: str
+    role: str | None
 
-    def key(self) -> tuple[str, str, int, int, str]:
-        return (self.subject, self.sid, self.session_generation, self.policy_generation, self.epoch)
+    def key(self) -> tuple[str, str, int, int, str, str | None]:
+        return (self.subject, self.sid, self.session_generation, self.policy_generation, self.epoch, self.role)
 
 
 @dataclass(frozen=True)
 class ConnectAssertion:
     binding: ConnectBinding
     session_exp: int
+    role: str | None
 
 
 class ConnectVerifier:
     """Verify compact, manager-injected Anvil Connect identity assertions."""
 
     def __init__(self, config: object, *, origin: str, environment, clock=time.time):
-        if type(config) is not dict or set(config) != {"resource", "keys", "principals"}:
+        if type(config) is not dict or set(config) - {"resource", "keys", "principals", "roles"} or not {"resource", "keys", "principals"} <= set(config):
             raise ValueError("invalid Connect authentication configuration")
         if type(config["resource"]) is not str or not _CONNECT_ID.fullmatch(config["resource"]):
             raise ValueError("invalid Connect resource")
@@ -102,6 +104,10 @@ class ConnectVerifier:
         if type(config["principals"]) is not dict or len(config["principals"]) > 256:
             raise ValueError("invalid Connect principal mapping")
         self.principals = dict(config["principals"])
+        if "roles" in config and (type(config["roles"]) is not dict or set(config["roles"]) - {"member", "admin"}):
+            raise ValueError("invalid Connect role mapping")
+        self.roles = dict(config.get("roles", {}))
+        self.role_mode = "roles" in config
         self._replays: dict[str, int] = {}
         self._lock = threading.Lock()
 
@@ -117,10 +123,13 @@ class ConnectVerifier:
             payload_raw = _raw_base64url(encoded)
             mac = _raw_base64url(encoded_mac, size=32)
             payload = strict_json(payload_raw)
-            if type(payload) is not dict or set(payload) != {
+            if type(payload) is not dict or set(payload) - {
+                "v", "iss", "kid", "sub", "sid", "sg", "pg", "epoch", "resource", "host",
+                "method", "target_sha256", "iat", "exp", "session_exp", "jti", "role",
+            } or not {
                 "v", "iss", "kid", "sub", "sid", "sg", "pg", "epoch", "resource", "host",
                 "method", "target_sha256", "iat", "exp", "session_exp", "jti",
-            }:
+            } <= set(payload):
                 raise ValueError("invalid assertion schema")
             kid = identifier(payload["kid"])
             secret = self.keys[kid]
@@ -137,6 +146,8 @@ class ConnectVerifier:
                     or type(payload["target_sha256"]) is not str or not re.fullmatch(r"[a-f0-9]{64}", payload["target_sha256"])
                     or type(payload["jti"]) is not str or not _CONNECT_HEX32.fullmatch(payload["jti"])):
                 raise ValueError("invalid assertion fields")
+            if "role" in payload and payload["role"] not in {"member", "admin"}:
+                raise ValueError("invalid application role")
             target_hash = hashlib.sha256(target.encode("ascii")).hexdigest()
             if not hmac.compare_digest(payload["target_sha256"], target_hash):
                 raise ValueError("wrong target")
@@ -148,8 +159,9 @@ class ConnectVerifier:
         except (KeyError, TypeError, UnicodeEncodeError, ValueError, ObservatoryError):
             _connect_denied()
         assertion = ConnectAssertion(
-            ConnectBinding(payload["sub"], payload["sid"], payload["sg"], payload["pg"], payload["epoch"]),
+            ConnectBinding(payload["sub"], payload["sid"], payload["sg"], payload["pg"], payload["epoch"], payload.get("role")),
             payload["session_exp"],
+            payload.get("role"),
         )
         if consume_replay:
             with self._lock:
@@ -252,11 +264,12 @@ class Access:
                 raise ValueError("duplicate principal identity")
             self.users_by_id[principal.identity] = principal
         self._sessions: dict[str, Session] = {}
-        self._connect_sessions: dict[tuple[str, str, int, int, str], str] = {}
+        self._connect_sessions: dict[tuple[str, str, int, int, str, str | None], str] = {}
         self._attempts: dict[str, deque] = defaultdict(deque)
         self._lock = threading.RLock()
         self.connect = None
         self._connect_principals = {}
+        self._connect_roles = {}
         self.profile_store = profile_store
         if connect is not None:
             if profile_store is None:
@@ -266,6 +279,10 @@ class Access:
                 if not _opaque_connect_principal(subject) or type(native_id) is not str or native_id not in self.users_by_id:
                     raise ValueError("invalid Connect principal mapping")
                 self._connect_principals[subject] = self.users_by_id[native_id]
+            for role, native_id in self.connect.roles.items():
+                if role not in {"member", "admin"} or type(native_id) is not str or native_id not in self.users_by_id:
+                    raise ValueError("invalid Connect role mapping")
+                self._connect_roles[role] = self.users_by_id[native_id]
 
     def require_origin(self, headers) -> None:
         values = headers.get_all("Origin") or []
@@ -337,6 +354,8 @@ class Access:
         if self.connect is None:
             raise RuntimeError("Connect authentication is not configured")
         assertion = self.connect.verify(headers, method=method, target=target, consume_replay=consume_replay)
+        if self.connect.role_mode and assertion.role is None:
+            _connect_denied()
         now = self.clock()
         cookie_session = self.session(headers, required=False)
         if cookie_session and cookie_session.connect_binding == assertion.binding:
@@ -358,9 +377,11 @@ class Access:
             existing = self._sessions.get(existing_key) if existing_key else None
             if existing is not None:
                 return existing, True
-            mapped = self._connect_principals.get(assertion.binding.subject)
+            mapped = self._connect_roles.get(assertion.role) if assertion.role is not None else self._connect_principals.get(assertion.binding.subject)
             profile_id = None
             if mapped is None:
+                if assertion.role is not None:
+                    _connect_denied()
                 profile = self.profile_store.connect_profile(assertion.binding.subject)
                 profile_id = profile["id"]
                 mapped = Principal(profile_id, profile_id, "viewer", frozenset(), frozenset())

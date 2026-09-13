@@ -301,7 +301,7 @@ def _validate_local_tunnels(data: dict[str, Any]) -> None:
         raise _error("$.gateway.local_tunnel", "must not reuse an existing listener")
     existing_files = {c["public_trust_file"] for c in connectors}
     existing_files.update(data["caddy"]["tls"][key] for key in ("certificate_file", "key_file"))
-    existing_files.update(value for key, value in data["authelia"].items() if key.endswith("_file"))
+    existing_files.update(_authelia_secret_files(data["authelia"]))
     env = data["environment_files"]
     existing_files.update([env["gateway"], *env["connectors"].values(), *env["clients"].values()])
     if "gateway_identity" in env:
@@ -385,6 +385,28 @@ def _issuer(value: Any, path: str) -> str:
     if not match:
         raise _error(path, "must be an https issuer URL without path or port")
     _host(match.group(1), path)
+    return text
+
+
+def _redirect_uri(value: Any, path: str) -> str:
+    """Accept one canonical HTTPS redirect URI without query ambiguity."""
+    text = _string(value, path)
+    match = re.fullmatch(r"https://([^/:?#]+)(?::([1-9][0-9]{0,4}))?(/.*)", text)
+    if not match:
+        raise _error(path, "must be a canonical HTTPS redirect URI")
+    try:
+        _host(match.group(1), path)
+    except ManifestError as exc:
+        raise _error(path, "must be a canonical HTTPS redirect URI") from exc
+    port = match.group(2)
+    if (port is not None and (int(port) > 65535 or port == "443")):
+        raise _error(path, "must be a canonical HTTPS redirect URI")
+    redirect_path = match.group(3)
+    if redirect_path != "/":
+        try:
+            _canonical_nonroot_path(redirect_path, path)
+        except ManifestError as exc:
+            raise _error(path, "must be a canonical HTTPS redirect URI") from exc
     return text
 
 
@@ -475,6 +497,13 @@ def _reject_literal_credentials(value: Any, path: str = "$") -> None:
         if _LITERAL_SECRET.search(lower) and not (lower.endswith("_env") or lower.endswith("_file")):
             raise _error(f"{path}.{key}", "literal credentials are forbidden; use an _env or _file reference")
         _reject_literal_credentials(child, f"{path}.{key}")
+
+
+def _authelia_secret_files(auth: dict[str, Any]) -> list[str]:
+    """Return every protected Authelia input, including optional OIDC clients."""
+    return [value for key, value in auth.items() if key.endswith("_file")] + [
+        client["client_secret_file"] for client in auth.get("additional_oidc_clients", [])
+    ]
 
 
 def validate_manifest(value: Any) -> dict[str, Any]:
@@ -846,6 +875,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     authelia_fields = {"service_name", "host", "listen", "state_directory", "users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file"}
     if isinstance(raw["authelia"], dict) and "webauthn" in raw["authelia"]:
         authelia_fields.add("webauthn")
+    if isinstance(raw["authelia"], dict) and "additional_oidc_clients" in raw["authelia"]:
+        authelia_fields.add("additional_oidc_clients")
     authelia_raw = _mapping(raw["authelia"], "$.authelia", authelia_fields)
     authelia = {key: _secret_file(authelia_raw[key], "$.authelia." + key) for key in ("users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file")}
     authelia_name = _ident(authelia_raw["service_name"], "$.authelia.service_name")
@@ -867,6 +898,30 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         if webauthn["experimental_enable_passkey_uv_two_factors"] and not webauthn["enable_passkey_login"]:
             raise _error("$.authelia.webauthn", "passkey two-factor acceptance requires passkey login")
         authelia["webauthn"] = dict(webauthn)
+    if "additional_oidc_clients" in authelia_raw:
+        raw_clients = _list(authelia_raw["additional_oidc_clients"], "$.authelia.additional_oidc_clients", 16)
+        additional_clients: list[dict[str, Any]] = []
+        client_ids = {gateway["oidc"]["client_id"]}
+        for index, raw_client in enumerate(raw_clients):
+            path = f"$.authelia.additional_oidc_clients[{index}]"
+            client = _mapping(raw_client, path, {"client_id", "client_name", "client_secret_file", "redirect_uris"})
+            client_id = _client_id(client["client_id"], path + ".client_id")
+            if client_id in client_ids:
+                raise _error(path + ".client_id", "must be unique including the Connect client")
+            client_ids.add(client_id)
+            redirects = [_redirect_uri(item, path + ".redirect_uris") for item in _list(client["redirect_uris"], path + ".redirect_uris", 16)]
+            if len(redirects) != len(set(redirects)):
+                raise _error(path + ".redirect_uris", "contains duplicate redirect URIs")
+            additional_clients.append({
+                "client_id": client_id,
+                "client_name": _device_label(client["client_name"], path + ".client_name"),
+                "client_secret_file": _secret_file(client["client_secret_file"], path + ".client_secret_file"),
+                "redirect_uris": sorted(redirects),
+            })
+        secret_files = _authelia_secret_files(authelia) + [client["client_secret_file"] for client in additional_clients]
+        if len(secret_files) != len(set(secret_files)):
+            raise _error("$.authelia.additional_oidc_clients", "must use distinct protected client secret files")
+        authelia["additional_oidc_clients"] = sorted(additional_clients, key=lambda client: client["client_id"])
     all_hosts = {gateway["control_host"], gateway["tunnel_host"], *(r["rule"]["host"] for r in gateway["gateway"]["resources"])}
     if authelia["host"] in all_hosts:
         raise _error("$.authelia.host", "must be distinct from public resource, control, and tunnel hosts")
@@ -875,6 +930,11 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     issuer_host = gateway["oidc"]["issuer"].removeprefix("https://")
     if issuer_host != authelia["host"]:
         raise _error("$.gateway.oidc.issuer", "must equal the managed Authelia HTTPS host")
+    for client in authelia.get("additional_oidc_clients", []):
+        secret_file = client["client_secret_file"]
+        if (secret_file == config_root or secret_file.startswith(config_root + "/")
+                or secret_file == authelia["state_directory"] or secret_file.startswith(authelia["state_directory"] + "/")):
+            raise _error("$.authelia.additional_oidc_clients", "client secret files must be outside rendered output and Authelia state")
 
     result = {"schema": SCHEMA, "binary": binary, "components": components, "config_root": config_root, "environment_files": environment_files, "gateway": gateway, "connectors": connectors, "clients": clients, "caddy": caddy, "authelia": authelia}
     _validate_local_tunnels(result)

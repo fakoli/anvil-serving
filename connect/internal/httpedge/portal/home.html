@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Your services · Anvil Connect</title>
+  <link rel="stylesheet" href="{{.}}/home.css">
+  <script defer src="{{.}}/home.js"></script>
+</head>
+<body data-home="{{.}}">
+  <header><a class="brand" href="{{.}}"><span class="mark" aria-hidden="true">A/</span> ANVIL <span>CONNECT</span></a></header>
+  <main>
+    <p id="notice" role="status" aria-live="polite">Loading your services…</p>
+    <section aria-labelledby="services-heading"><div class="section-heading"><h1 id="services-heading">Your services</h1><span id="service-count"></span></div><div id="services" class="services"></div></section>
+    <section class="account" aria-labelledby="account-heading"><div><h2 id="account-heading">Your account</h2><p>Need a password or passkey reset? Contact your operator.</p></div><div class="account-actions"><a id="account-link" hidden>Account &amp; passkeys <span aria-hidden="true">↗</span></a><a id="install-link" href="https://github.com/fakoli/anvil-serving/releases/tag/connect-v0.2.0" target="_blank" rel="noopener noreferrer" title="Downloads (opens in a new tab)">Install Anvil Connect <span aria-hidden="true">↗</span></a><button id="terminal" type="button" aria-expanded="false" aria-controls="terminal-help">Connect from a terminal <span aria-hidden="true">→</span></button><button id="logout" type="button">Sign out of Connect</button></div></section>
+    <section id="terminal-help" hidden aria-labelledby="terminal">
+      <p><a id="install-guide" href="https://github.com/fakoli/anvil-serving/blob/connect-v0.2.0/docs/ANVIL-CONNECT-INSTALL.md#install-a-bundle" target="_blank" rel="noopener noreferrer" title="Client installation guide (opens in a new tab)">Client setup guide</a> · Get your connection setup from your operator, then run:</p>
+      <pre><code id="login-command">anvil-connect login</code></pre>
+      <ol>
+        <li>Open the URL shown in your terminal and sign in with your passkey or permitted login method.</li>
+        <li>Enter the terminal’s code, review access, and approve.</li>
+        <li>Keep Connect running. Use the printed API URL and your local API key in your SDK. Press <kbd>Ctrl+C</kbd> to disconnect.</li>
+      </ol>
+      <p>Run Connect on the same machine as your SDK. Over SSH, that means the remote machine. Run the command again when your session expires.</p>
+    </section>
+    <section id="administration" hidden aria-labelledby="admin-heading"><div class="section-heading"><div><h2 id="admin-heading">Manage access</h2></div><button id="refresh-users" type="button">Refresh accounts</button></div><p>Choose which services each person can open and their role inside each app. Saving access changes invalidates their current Connect sessions. An app admin does not become a Connect operator.</p><div id="users"></div><button id="next-users" type="button" hidden>Next accounts →</button></section>
+  </main>
+  <noscript><p>Enable JavaScript to load your current services and manage access.</p></noscript>
+</body>
+</html>

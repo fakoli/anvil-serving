@@ -218,6 +218,43 @@ def test_authelia_template_has_explicit_pkce_rs256_and_callbacks() -> None:
     assert "default_policy: two_factor" in text
 
 
+def test_authelia_additional_oidc_client_is_fixed_profile_with_protected_secret_ref() -> None:
+    value = isolated_manifest()
+    value["authelia"]["additional_oidc_clients"] = [{
+        "client_id": "existing-integration", "client_name": "Existing Integration",
+        "client_secret_file": "/etc/anvil-connect/secrets/existing-integration-oidc-client-secret",
+        "redirect_uris": ["https://app.example.test/oidc/callback"],
+    }]
+    text = render(value)["files"]["authelia/configuration.yml"]
+    assert "client_id: 'existing-integration'" in text
+    assert "client_name: 'Existing Integration'" in text
+    assert '{{- fileContent "/etc/anvil-connect/secrets/existing-integration-oidc-client-secret" | nindent 10 }}' in text
+    assert "consent_mode: implicit" in text
+    assert "token_endpoint_auth_method: client_secret_basic" in text
+    assert "token_endpoint_auth_method: client_secret_post" in text
+    assert "          - openid\n          - email\n          - profile" in text
+    assert "https://app.example.test/oidc/callback" in text
+
+    for redirect in ("http://app.example.test/callback", "https://app.example.test:443/callback",
+                     "https://app.example.test/callback?next=/", "https://APP.example.test/callback"):
+        invalid = copy.deepcopy(value)
+        invalid["authelia"]["additional_oidc_clients"][0]["redirect_uris"] = [redirect]
+        with pytest.raises(ManifestError, match="canonical HTTPS redirect URI"):
+            validate_manifest(invalid)
+    invalid = copy.deepcopy(value)
+    invalid["authelia"]["additional_oidc_clients"][0]["client_id"] = invalid["gateway"]["oidc"]["client_id"]
+    with pytest.raises(ManifestError, match="unique including the Connect client"):
+        validate_manifest(invalid)
+    invalid = copy.deepcopy(value)
+    invalid["authelia"]["additional_oidc_clients"][0]["client_secret_file"] = invalid["authelia"]["client_secret_file"]
+    with pytest.raises(ManifestError, match="distinct protected client secret files"):
+        validate_manifest(invalid)
+    invalid = copy.deepcopy(value)
+    invalid["authelia"]["additional_oidc_clients"][0]["client_secret_file"] = invalid["authelia"]["state_directory"] + "/client-secret"
+    with pytest.raises(ManifestError, match="outside rendered output and Authelia state"):
+        validate_manifest(invalid)
+
+
 @_NATIVE
 def test_plan_and_staging_preserve_drift_and_are_idempotent(tmp_path: Path) -> None:
     output = tmp_path / "rendered"
