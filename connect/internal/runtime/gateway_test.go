@@ -21,15 +21,26 @@ import (
 
 func availableAddress(t *testing.T) string {
 	t.Helper()
-	listener, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	return availableAddresses(t, 1)[0]
+}
+
+func availableAddresses(t *testing.T, count int) []string {
+	t.Helper()
+	listeners := make([]net.Listener, count)
+	addresses := make([]string, count)
+	for i := range listeners {
+		listener, err := net.Listen("tcp4", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		listeners[i], addresses[i] = listener, listener.Addr().String()
 	}
-	address := listener.Addr().String()
-	if err := listener.Close(); err != nil {
-		t.Fatal(err)
+	for _, listener := range listeners {
+		if err := listener.Close(); err != nil {
+			t.Fatal(err)
+		}
 	}
-	return address
+	return addresses
 }
 
 func gatewaySettings(t *testing.T) GatewayConfig {
@@ -43,13 +54,14 @@ func gatewaySettings(t *testing.T) GatewayConfig {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gateway.Listen = availableAddress(t)
-	gateway.Resources[0].TunnelAddress = availableAddress(t)
+	addresses := availableAddresses(t, 3)
+	gateway.Listen = addresses[0]
+	gateway.Resources[0].TunnelAddress = addresses[1]
 	binary := os.Getenv("ANVIL_CONNECT_WSTUNNEL")
 	if binary == "" {
 		binary = "/usr/bin/wstunnel"
 	}
-	return GatewayConfig{Schema: "anvil-connect.gateway-runtime/v1", Gateway: gateway, ControlHost: "connect.example.test", TunnelHost: "tunnel.example.test", StateDirectory: filepath.Join(t.TempDir(), "gateway"), TunnelBinary: binary, TunnelListen: availableAddress(t)}
+	return GatewayConfig{Schema: "anvil-connect.gateway-runtime/v1", Gateway: gateway, ControlHost: "connect.example.test", TunnelHost: "tunnel.example.test", StateDirectory: filepath.Join(t.TempDir(), "gateway"), TunnelBinary: binary, TunnelListen: addresses[2]}
 }
 
 func TestGatewayInitializationIsExclusiveAndPreservesAuthorities(t *testing.T) {
