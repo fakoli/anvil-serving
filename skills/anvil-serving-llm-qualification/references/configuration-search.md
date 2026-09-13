@@ -1,0 +1,156 @@
+# Research and configuration search
+
+Use this loop for candidate bakeoffs and for startup, generation, capacity,
+quality, or client failures. A failed configuration is evidence to investigate;
+it is not by itself a verdict on the checkpoint or inference engine.
+
+## Declare the campaign
+
+Record the user's ranked objectives, required capabilities, workload and
+acceptance criteria, candidate priorities, authorized changes, and stopping
+budget before testing. Allocate investigation time to promising candidates and
+reserve enough budget for final qualification, authorized promotion or
+restoration, and reporting. Do not select the first passing candidate while
+higher-priority candidates have unexplored, supported configuration remedies.
+Record deferred investigations when the budget prevents fair coverage.
+
+Separate configuration search from final qualification. Search may use cheap,
+bounded probes; final qualification uses a frozen configuration and the
+predeclared workload, validators, repetitions, and acceptance thresholds.
+Preserve every failed run. Never relax a validator or rerun an unchanged
+configuration until it happens to pass. Diagnostic repetitions may estimate
+intermittency, but must retain all outcomes and cannot erase a failed gate.
+
+## Shared research method and Anvil bindings
+
+Use `session-improvement-loop:research-synthesis` from the installed `session-improvement-loop`
+plugin for economical independent research and evidence-based synthesis.
+Resolve the skill through the host's available-skill catalog, not a hardcoded
+cache path or assumed checkout. Installation and discovery are documented in
+`docs/OPERATOR-SKILLS-AND-SUBAGENTS.md` in the product checkout.
+
+Supply the shared skill with the campaign's ranked objectives, stop limit,
+qualification/restoration reserve, exact model/quant/runtime revisions,
+hardware inventory, failure evidence, and authorized operations. Use the
+selected repository's configured agent roles. Keep findings in the existing
+source registry and decision record; record the loaded plugin version and
+skill/reference identities alongside the campaign instructions.
+
+Research workers remain read-only. The campaign owner alone coordinates GPU
+lifecycle, routes, cache writers, and local trials through Anvil Serving.
+Independent research answers nominate experiments; measured qualification
+under the gates below establishes a local winner. Comparing served-model
+answers still uses the Anvil evaluation harness, not research-agent voting.
+
+If the shared skill is unavailable, identify the missing dependency and use
+an authorized installation or its verified source from the plugin repository.
+Do not silently claim the full shared method ran. Continue independent Anvil
+diagnosis and evidence capture under this reference while resolving discovery;
+mark unavailable research coverage explicitly without weakening qualification.
+
+## On failure
+
+1. **Capture and diagnose.** Preserve the failing case, exact configuration,
+   effective request, finish reason, token usage, bounded response, and earliest
+   actionable logs. Follow caller, router, serving process, and engine evidence.
+   Distinguish formatting, coding correctness, reasoning-budget exhaustion,
+   transport timeout, parser/template mismatch, resource exhaustion, and crash.
+   If capture is missing or truncated, mark the cause unknown; do not invent
+   a refusal, repetition loop, or model defect from a failed counter alone.
+2. **Research the observed error.** Consult current model-card recommendations,
+   engine documentation and issues, and relevant quant/recipe sources. Use
+   hardware- and revision-matched community reports as leads. Record source,
+   date, applicability, and a testable hypothesis. One unsuccessful fix calls
+   for revisiting the diagnosis and other applicable sources, not blind retries.
+3. **Create a new configuration version.** Change the smallest relevant setting
+   or coupled setting group supported by that hypothesis. Record the parent
+   version, rationale, exact delta, and expected observation. Verify effective
+   settings at the engine and request path; a config-file edit alone proves
+   nothing. Use managed lifecycle and existing authority boundaries.
+4. **Test the hypothesis.** Replay the failing probe, then a nearby regression
+   probe. Compare with the retained parent result. If it fails, update the
+   hypothesis and continue while supported remedies and budget remain.
+5. **Qualify the selected version.** Freeze its identity and rerun the complete
+   applicable gates. Success on a diagnostic probe is recovery evidence, not
+   qualification. A failure returns to this loop and remains attached to the
+   failed version; changing settings invalidates qualification of the old one.
+
+Stopping a command or dependent benchmark stage on an error prevents invalid
+follow-on work. It does not stop the campaign's diagnostic branch. A bounded
+worker returns the evidence and next hypotheses to the campaign owner, who
+owns continued investigation.
+
+## Choose relevant settings
+
+Investigate only settings implicated by evidence; do not run a Cartesian sweep.
+
+- Reasoning policy, supported effort levels, sampling, stop tokens, and output
+  budget. Qualify the model-native policy intended for actual coding use.
+  Reasoning-off is a control only when supported; unsupported effort values
+  are integration failures. A reasoning-only length stop calls for budget and
+  policy investigation before any conclusion about coding ability.
+- Chat template, tokenizer, tool/reasoning parser, request translation, router
+  output clamps, client deadlines, and stream-idle timeouts. Compare effective
+  direct and routed requests. Verify actual local backing identity and detect
+  client fallback; a cloud answer cannot pass a local-model gate.
+- Memory fraction, compile/graph workspace, KV/state dtype, context, batching,
+  concurrency, TP/replica topology, speculation, and supported kernel controls.
+  Locate the allocation phase before treating an OOM as physical infeasibility.
+  Switching quant, engine revision, or checkpoint creates a distinct candidate
+  identity requiring qualification, not an invisible settings adjustment.
+
+Keep histories and cache conditions explicit. Apply fresh-session and
+contaminated-history tests symmetrically across candidates; shared failures
+are not grounds for rejecting only one model.
+
+## Compare the right evidence
+
+For coding recommendations, include representative repository tasks with
+independent executable acceptance checks, valid tool use, and repeated-session
+reliability. Report synthetic format adherence separately. A strict-output
+failure stays performance-ineligible for that cell, but alone does not prove
+inferior coding quality. Keep required functional gates intact.
+
+Models may use their own documented settings for a best-configuration coding
+comparison under the same task and resource budget. Label configuration
+and budget differences. Causal tuning or performance claims require matched
+controls; never attribute an unmatched improvement to one changed setting.
+
+Report context as four distinct facts: native advertised limit, configured
+limit, largest measured successful workload, and measured simultaneous
+capacity. Include input tokens, output/reasoning reserve, and concurrency.
+Choose a deployment limit from the requested workload and retained evidence;
+a conservative passing limit is not proof of the model's maximum. Test larger
+windows when capacity is an objective and budget permits; otherwise record
+that range as untested.
+
+## Stop with a supported conclusion
+
+- **Continue configuration search:** a plausible, supported remedy remains
+  within the campaign budget and authority.
+- **Blocked by engine or artifact:** a minimal reproducer using supported
+  settings and corroborating evidence isolates an implementation limitation
+  beyond the authorized repair scope. State exact affected revisions and
+  remaining alternatives; do not generalize it to the whole model family.
+- **Rejected for the declared role:** independent qualification under the
+  selected supported configurations demonstrates a requirement failure, or
+  sourced optimistic physical bounds rule out the required deployment. Record
+  configurations investigated and why remaining options cannot meet the role.
+- **Unresolved:** time, usage budget, missing evidence, or authority ends the
+  investigation before a cause or adequate configuration is established.
+  This is not a model/engine defect and must remain visible in the shortlist.
+
+Use these as investigation notes in the existing friction/coverage records,
+not new native-artifact schema values. Promotion needs both passing evidence
+and user authorization; existing explicit authorization need not be requested
+again. If no new candidate qualifies, retain or restore the known qualified
+baseline and report the unmet objective rather than promoting a failed model.
+
+## Minimal trial record
+
+In the existing friction log, link each configuration version and parent to:
+the failure evidence; hypothesis and source; intended and effective settings;
+targeted and regression results; final qualification artifact when available;
+and next action or evidenced stopping reason. Keep native artifacts immutable.
+Retain sensitive diagnostic content only in protected operator evidence;
+publish sanitized configuration and evidence links, never credentials.
