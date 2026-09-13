@@ -29,6 +29,7 @@ SWE_PLAN_SCHEMA = "anvil-serving.swe-plan/v1"
 SWE_DATASET = "princeton-nlp/SWE-bench_Verified"
 SWE_SUBSET = "verified"
 SWE_SPLIT = "test"
+TASK_CONTAINER_NETWORK = "none"
 SWE_FAILURE_CLASSES = frozenset({
     "broken_harness",
     "image_failure",
@@ -232,7 +233,8 @@ def _mini_config(
     container_executable: str,
 ) -> str:
     # This is intentionally a small YAML overlay. It contains endpoint identity only;
-    # the credential is mapped into OPENAI_API_KEY in the child process environment.
+    # mini-SWE-agent's model client runs in the host process. Its Docker environment
+    # receives only task commands, so its network is explicitly disabled here.
     base = json.dumps(endpoint["base_url"], ensure_ascii=True)
     model = json.dumps(f"openai/{endpoint['model']}", ensure_ascii=True)
     executable = json.dumps(container_executable, ensure_ascii=True)
@@ -266,6 +268,8 @@ def _mini_config(
         "  run_args:\n"
         "    - --platform\n"
         "    - linux/amd64\n"
+        "    - --network\n"
+        f"    - {TASK_CONTAINER_NETWORK}\n"
         "    - --rm\n"
     )
 
@@ -349,6 +353,7 @@ def build_swe_run_plan(
             "sha256": hashlib.sha256(canonical_json_bytes(selected)).hexdigest(),
         },
         "endpoint": target,
+        "task_container_network": TASK_CONTAINER_NETWORK,
         "request_controls": controls,
         "harnesses": {
             "agent": {"name": "mini-swe-agent", "revision": assets["mini-swe-agent"]["revision"]},
@@ -478,6 +483,7 @@ def _base_result(plan: Mapping[str, Any]) -> dict[str, Any]:
         "split": plan["split"],
         "selection": plan["selection"],
         "endpoint": plan["endpoint"],
+        "task_container_network": plan["task_container_network"],
         "request_controls": plan["request_controls"],
         "harnesses": plan["harnesses"],
         "state": "incomplete",
