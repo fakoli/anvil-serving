@@ -1,6 +1,7 @@
 """Offboarding fails closed without deleting another account or its factors."""
 import json
 import sys
+from contextlib import contextmanager
 
 import pytest
 
@@ -113,6 +114,24 @@ def test_deleted_identity_cannot_be_silently_reused(offboarding):
     with pytest.raises(UsageError, match="retained OpenID identifier"):
         run("create", email="new@example.test", apply=True)
     assert db.read_bytes() == before and not state["calls"]
+
+
+def test_access_refuses_stale_account_after_waiting_for_offboarding(offboarding, monkeypatch):
+    run, db, _, requests = offboarding
+    lock = manage._deployment_lock
+
+    @contextmanager
+    def suspended_before_lock(root):
+        with lock(root):
+            accounts = json.loads(db.read_text())
+            accounts["users"]["dev"]["disabled"] = True
+            db.write_text(json.dumps(accounts))
+            yield
+
+    monkeypatch.setattr(manage, "_deployment_lock", suspended_before_lock)
+    with pytest.raises(UsageError, match="changed during preparation"):
+        run("access", grants=["pi:member"], apply=True)
+    assert not requests and json.loads(db.read_text())["users"]["dev"]["disabled"]
 
 
 @pytest.mark.parametrize("operation", ["suspend", "delete"])
