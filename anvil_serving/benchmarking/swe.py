@@ -241,7 +241,10 @@ def _mini_config(
     control_lines = ""
     if request_controls["reasoning_effort"] is not None:
         effort = json.dumps(request_controls["reasoning_effort"], ensure_ascii=True)
-        control_lines = f"    reasoning_effort: {effort}\n"
+        control_lines = (
+            "    extra_body:\n"
+            f"      reasoning_effort: {effort}\n"
+        )
     elif request_controls["thinking_mode"] != "default":
         enabled = "true" if request_controls["thinking_mode"] == "enabled" else "false"
         control_lines = (
