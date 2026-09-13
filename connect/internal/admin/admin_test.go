@@ -100,7 +100,7 @@ func TestCallIssuesAndRevokesKey(t *testing.T) {
 }
 
 func TestAdministrativeOperationVocabularyIsClosed(t *testing.T) {
-	if !ValidOperation("human-suspend") || ValidOperation("human-delete") {
+	if !ValidOperation("human-suspend") || !ValidOperation("human-revoke-sessions") || ValidOperation("human-delete") {
 		t.Fatal("administrative operation vocabulary changed")
 	}
 }
@@ -149,12 +149,19 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 		_ = server.Close()
 		<-done
 	}()
+	revoked, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-revoke-sessions", Issuer: issuer.URL, Subject: "target"})
+	if err != nil || revoked.Principal != human.ID || revoked.Generation != human.Generation+1 || len(revoked.Resources) != 1 || revoked.Resources[0] != "dashboard" {
+		t.Fatalf("human revoke response = %#v, %v", revoked, err)
+	}
 	response, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-suspend", Issuer: issuer.URL, Subject: "target"})
-	if err != nil || response.Principal != human.ID || response.Generation != human.Generation+1 || len(response.Resources) != 1 || response.Resources[0] != "dashboard" {
+	if err != nil || response.Principal != human.ID || response.Generation != human.Generation+2 || len(response.Resources) != 1 || response.Resources[0] != "dashboard" {
 		t.Fatalf("human suspend response = %#v, %v", response, err)
 	}
 	if _, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-suspend", Issuer: issuer.URL, Subject: "unprovisioned", Resources: []string{"dashboard"}}); !errors.Is(err, ErrAdmin) {
 		t.Fatalf("human suspend accepted extra fields: %v", err)
+	}
+	if _, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-revoke-sessions", Issuer: issuer.URL, Subject: "unprovisioned", Resources: []string{"dashboard"}}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("human revoke accepted extra fields: %v", err)
 	}
 	created, err := sessions.SetHuman(issuer.URL, "unprovisioned", []string{"dashboard"}, false)
 	if err != nil || created.Generation != 1 {

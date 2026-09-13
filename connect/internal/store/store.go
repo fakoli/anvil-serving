@@ -170,6 +170,26 @@ func (s *Store) Update(fn func(*Tx) error) error {
 func (t *Tx) Now() time.Time { return t.now }
 func (t *Tx) Epoch() string  { return string(t.tx.Bucket([]byte("meta")).Get([]byte("epoch"))) }
 
+// NextSequence returns a durable authority-local sequence. It is never derived
+// from wall time, so callers can order security fences across clock rollback.
+func (t *Tx) NextSequence() (uint64, error) {
+	if t == nil || t.tx == nil {
+		return 0, ErrState
+	}
+	meta := t.tx.Bucket([]byte("meta"))
+	if meta == nil {
+		return 0, ErrState
+	}
+	if meta.Sequence() == ^uint64(0) {
+		return 0, ErrState
+	}
+	next, err := meta.NextSequence()
+	if err != nil || next == 0 {
+		return 0, ErrState
+	}
+	return next, nil
+}
+
 func (t *Tx) bucket(name string) (*bolt.Bucket, error) {
 	for _, allowed := range buckets {
 		if allowed == name {

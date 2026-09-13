@@ -294,6 +294,57 @@ def test_authelia_template_has_explicit_pkce_rs256_and_callbacks() -> None:
     assert "default_policy: two_factor" in text
 
 
+def test_authelia_smtp_notifier_uses_a_protected_secret_reference() -> None:
+    value = isolated_manifest()
+    value["authelia"]["smtp"] = {
+        "address": "submission://smtp.resend.com:587",
+        "username": "resend",
+        "password_file": "/etc/anvil-connect/secrets/resend-smtp-key",
+        "sender": "Anvil Connect <auth@auth.example.test>",
+    }
+    text = render(value)["files"]["authelia/configuration.yml"]
+    assert "  smtp:\n    address: 'submission://smtp.resend.com:587'" in text
+    assert "{{- fileContent \"/etc/anvil-connect/secrets/resend-smtp-key\" | nindent 6 }}" in text
+    assert "    identifier: 'auth.example.test'" in text
+    assert "    subject: '[Anvil Connect] {title}'" in text
+    assert "filesystem:" not in text
+
+
+def test_authelia_filesystem_notifier_remains_the_default() -> None:
+    text = render(isolated_manifest())["files"]["authelia/configuration.yml"]
+    assert "  filesystem:\n    filename: '/var/lib/anvil-connect/authelia/notifications.txt'" in text
+    assert "  smtp:" not in text
+
+
+def test_authelia_smtp_rejects_unsafe_or_unmanaged_declarations() -> None:
+    base = isolated_manifest()
+    valid = {
+        "address": "submissions://smtp.resend.com:465",
+        "username": "resend",
+        "password_file": "/etc/anvil-connect/secrets/resend-smtp-key",
+        "sender": "auth@auth.example.test",
+    }
+    invalid = [
+        ({**valid, "address": "smtp://smtp.resend.com:25"}, "submission:// or submissions://"),
+        ({**valid, "address": "submission://resend@smtp.resend.com:587"}, "lower-case DNS host"),
+        ({**valid, "username": "{{ .Secret }}"}, "simple SMTP username"),
+        ({**valid, "sender": "auth@auth.example.test\nBcc: victim@example.test"}, "unsafe control"),
+        ({**valid, "sender": "{{ .Secret }} <auth@auth.example.test>"}, "simple mailbox"),
+        ({**valid, "password_file": base["config_root"] + "/resend-key"}, "outside rendered output"),
+        ({**valid, "password_file": base["authelia"]["state_directory"] + "/resend-key"}, "outside rendered output"),
+        ({**valid, "password": "do-not-inline"}, "literal credentials"),
+    ]
+    for smtp, message in invalid:
+        value = copy.deepcopy(base)
+        value["authelia"]["smtp"] = smtp
+        with pytest.raises(ManifestError, match=message):
+            validate_manifest(value)
+    value = copy.deepcopy(base)
+    value["authelia"]["smtp"] = {**valid, "password_file": value["authelia"]["client_secret_file"]}
+    with pytest.raises(ManifestError, match="distinct protected secret files"):
+        validate_manifest(value)
+
+
 @pytest.mark.parametrize("theme", ["light", "dark", "grey", "oled", "auto"])
 def test_authelia_branding_is_optional_and_preserves_authentication_contract(theme: str) -> None:
     value = isolated_manifest()
@@ -417,7 +468,7 @@ def test_authelia_additional_oidc_client_is_fixed_profile_with_protected_secret_
         validate_manifest(invalid)
     invalid = copy.deepcopy(value)
     invalid["authelia"]["additional_oidc_clients"][0]["client_secret_file"] = invalid["authelia"]["client_secret_file"]
-    with pytest.raises(ManifestError, match="distinct protected client secret files"):
+    with pytest.raises(ManifestError, match="distinct protected secret files"):
         validate_manifest(invalid)
     invalid = copy.deepcopy(value)
     invalid["authelia"]["additional_oidc_clients"][0]["client_secret_file"] = invalid["authelia"]["state_directory"] + "/client-secret"
@@ -643,12 +694,12 @@ def test_local_tunnel_omission_preserves_pre_slice_bytes() -> None:
         "clients/dashboard-api.json": "797df756cc7391a94bf230a3a5e8ba84545c5bc7a8a31e099218f5834f15a672",
         "connectors/dashboard.json": "2d6b1299fe15ea09c10a2438c035a15413ab78df31b39c379c0d25bede593716",
         "gateway.json": "9eba949a2b1679b1f7cfb8907116635b851da9f32fc48a6c62a4b0b37034c56b",
-        "systemd/anvil-connect-authelia.service": "c5beb1942112e17a3d872e6ce2bb6ee15195f6f0bf3d6eac5f5be6cb6a5383ab",
+        "systemd/anvil-connect-authelia.service": "5209fa0cdd415eae7300f507591894251e3ce131438701a65534fdfef032e333",
         "systemd/anvil-connect-caddy.service": "9ac3db1502ec08f5e7205aa6a5156a933c4e1dc96d1ecfc2ecb5e4b9202069e5",
         "systemd/anvil-connect-client-dashboard-api.service": "213a3fd28ca1ce71e1288ddb249021763a4a08149b05b6eea2ec447d6dfbdacb",
         "systemd/anvil-connect-connector-dashboard.service": "c7d6da3ae0e75e203ae3dd6f3f7bce042d895e00351019aceb92f36d693b4f13",
         "systemd/anvil-connect-gateway.service": "d41891ef4907ca24a554827f6de463c2b5714269ef946bbeb0f437f44c381214",
-        "managed.json": "40b11470c384731d629a59edc4b1f71507c876d13e7ff5922abab0f02c93ce0f",
+        "managed.json": "70b4e2eff91bb4f460a937b54d84399b47b432ec3aafa51ca6f744ee1ce82b01",
     }
     value = isolated_manifest()
     normalized = connect_config.canonical_manifest(value)
