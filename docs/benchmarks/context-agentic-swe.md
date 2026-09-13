@@ -38,6 +38,11 @@ Routine operation uses the CLI or controller tools; it does not require SSH or
 operator-issued Docker commands. The managed SWE adapter may use the worker's
 container runtime internally.
 
+The model client runs in the worker process. Each SWE task container is started
+with `--network none`, so an evaluated task cannot fetch a solution over the
+network or reach the endpoint directly. Image and pinned-asset preparation happen
+before the task container starts.
+
 Before a measured campaign, verify:
 
 - the worker differs from the model host;
@@ -138,7 +143,9 @@ in JSON:
     "model_host_id": "model-host",
     "case_limit": 1,
     "advertised_context": 650000,
-    "reasoning_effort": "xhigh"
+    "reasoning_effort": "xhigh",
+    "temperature": 1.0,
+    "top_p": 0.95
   }
 }
 ```
@@ -146,9 +153,20 @@ in JSON:
 `reasoning_effort` is optional and may be `none`, `minimal`, `low`, `medium`,
 `high`, `max`, or `xhigh` when the selected model supports it. For model
 families that use chat-template thinking controls, set `thinking_mode` to
-`enabled` or `disabled` instead. The two controls are mutually exclusive and
-the artifact records the exact requested control. Agentic and SWE jobs forward
-the control to every model request; context jobs ignore these parameters.
+`enabled` or `disabled` instead. Agentic and SWE jobs require these controls
+to be mutually exclusive. Context jobs can combine them when the selected
+model supports both, and accept `clear_thinking` only with enabled thinking.
+All three suites forward the selected controls and record them in evidence.
+
+`parameters.temperature` and `parameters.top_p` are optional sampler controls
+for context, agentic, and SWE jobs. Temperature must be finite from 0 through
+2; top-p must be finite, greater than 0, and at most 1. Context and agentic
+jobs retain the existing omitted-control behavior: temperature 0.0 and no
+`top_p` request field; their request controls record the effective and sent
+values. For SWE, sampler fields are added to the generated LiteLLM
+`model_kwargs` only when a sampler control is supplied. Legacy SWE artifacts
+without sampler evidence retain their exact legacy defaults as unknown; they
+must not be treated as temperature 0 or as comparable to a recorded sampler.
 
 `case_limit` is useful for the first smoke only; omit it for the complete
 profile matrix. For SWE, replace the context parameters with
@@ -224,7 +242,9 @@ SWE artifacts retain the prompt/dataset identity, trajectory hash, request IDs
 when exposed, token counts, duration, exit status, prediction hash, pinned agent
 harness, pinned grader, and exact reasoning/thinking request control. A
 trajectory or prediction without an official
-grader report is `incomplete`, even when the agent exited normally.
+grader report is `incomplete`, even when the agent exited normally. When
+provided, sampler controls and their effective request policy are retained;
+missing legacy sampler fields remain unknown.
 
 The common evidence envelope labels a record `measured` or `external_prior`,
 records ordered stage references with SHA-256 hashes, and preserves one of
