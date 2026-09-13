@@ -15,7 +15,9 @@ from .evaluation import (
     eval_budget,
     failure_class as _failure_class,
     request_control_kwargs as _request_control_kwargs,
+    request_sampling_kwargs as _request_sampling_kwargs,
     resolve_thinking_settings,
+    resolve_sampling_settings,
 )
 from .limits import (
     MAX_TOTAL_CONTEXT_TARGET_TOKENS as _MAX_TOTAL_CONTEXT_TARGET_TOKENS,
@@ -493,6 +495,8 @@ def run_bakeoff(
     cap = ctx_cap(max_model_len, completion_cap, a.margin)
     ctk, reasoning_effort, thinking_section = resolve_thinking_settings(a)
     control_kwargs = _request_control_kwargs(ctk, reasoning_effort)
+    sampling_section = resolve_sampling_settings(a)
+    sampling_kwargs = _request_sampling_kwargs(sampling_section)
     failures = []
     chat_results = []
     context_results = []
@@ -521,7 +525,7 @@ def run_bakeoff(
             try:
                 result = validate_stream_result(stream_request(
                     a.base_url, a.model, prompt, api_key, completion_cap,
-                    timeout=a.timeout, **control_kwargs,
+                    timeout=a.timeout, **control_kwargs, **sampling_kwargs,
                 ))
                 timing = result_timing(result)
                 row.update({
@@ -584,7 +588,7 @@ def run_bakeoff(
                     max_tokens=budget["max_completion_tokens"],
                     timeout=a.timeout,
                     tools=[BAKEOFF_TOOL],
-                    **control_kwargs,
+                    **control_kwargs, **sampling_kwargs,
                 )
                 response = result.get("response", {})
                 messages = _choice_messages(response)
@@ -662,7 +666,7 @@ def run_bakeoff(
                     SESSION_RECALL_PROMPT,
                     max_tokens=budget["max_completion_tokens"],
                     timeout=a.timeout,
-                    **control_kwargs,
+                    **control_kwargs, **sampling_kwargs,
                 )
                 response = result.get("response", {})
                 observation = response_observation(response)
@@ -726,7 +730,7 @@ def run_bakeoff(
                         [{"role": "user", "content": spec["prompt"]}],
                         max_tokens=budget["max_completion_tokens"],
                         timeout=a.timeout,
-                        **control_kwargs,
+                        **control_kwargs, **sampling_kwargs,
                     )
                     observation = response_observation(result.get("response", {}))
                     text_checks = evaluate_text_checks(observation["content"], spec["checks"])
@@ -804,7 +808,7 @@ def run_bakeoff(
                         max_tokens=budget["max_completion_tokens"],
                         timeout=a.timeout,
                         tools=item.get("tools"),
-                        **control_kwargs,
+                        **control_kwargs, **sampling_kwargs,
                     )
                     response = result.get("response", {})
                     messages = _choice_messages(response)
@@ -976,6 +980,7 @@ def run_bakeoff(
         "intelligence": intelligence_section,
         "suites": external_suites,
         "thinking": thinking_section,
+        "sampling": sampling_section,
         "voice": voice_section,
         "score_inputs": {
             "voice_latency_ms": a.voice_latency_ms,

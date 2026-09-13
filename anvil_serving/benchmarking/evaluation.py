@@ -57,6 +57,38 @@ def request_control_kwargs(chat_template_kwargs, reasoning_effort):
     return kwargs
 
 
+def resolve_sampling_settings(args):
+    """Resolve explicitly requested sampler values without guessing engine defaults."""
+    requested_temperature = getattr(args, "temperature", None)
+    requested_top_p = getattr(args, "top_p", None)
+    return {
+        "temperature": {
+            "requested": requested_temperature,
+            "effective_request": (
+                requested_temperature if requested_temperature is not None else 0.0
+            ),
+            "sent": True,
+        },
+        "top_p": {
+            "requested": requested_top_p,
+            "effective_request": requested_top_p,
+            "sent": requested_top_p is not None,
+        },
+    }
+
+
+def request_sampling_kwargs(sampling):
+    """Forward sampler kwargs only when the operator explicitly requested them."""
+    kwargs = {}
+    temperature = sampling["temperature"]
+    top_p = sampling["top_p"]
+    if temperature["requested"] is not None:
+        kwargs["temperature"] = temperature["effective_request"]
+    if top_p["requested"] is not None:
+        kwargs["top_p"] = top_p["effective_request"]
+    return kwargs
+
+
 def eval_budget(item, args, *, default_visible=256):
     """Resolve a quality-eval completion allocation."""
     cli_visible = getattr(args, "visible_answer_tokens", None)
