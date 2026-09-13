@@ -3,11 +3,117 @@ package store
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestDurableSequenceFailsClosedOnInvalidMetadata(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "authority"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if err := s.Update(func(tx *Tx) error {
+		first, err := tx.NextSequence()
+		if err != nil || first != 1 {
+			t.Fatalf("first sequence = %d, %v", first, err)
+		}
+		second, err := tx.NextSequence()
+		if err != nil || second != 2 {
+			t.Fatalf("second sequence = %d, %v", second, err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Update(func(tx *Tx) error {
+		if err := tx.tx.Bucket([]byte("meta")).SetSequence(math.MaxUint64); err != nil {
+			return err
+		}
+		if _, err := tx.NextSequence(); !errors.Is(err, ErrState) {
+			t.Fatalf("overflow sequence metadata = %v", err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSequencePersistsAndRecoveryClearsTransactionFloors(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "authority")
+	source, err := Open(directory, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := source.Update(func(tx *Tx) error {
+		sequence, err := tx.NextSequence()
+		if err != nil || sequence != 1 {
+			t.Fatalf("initial sequence = %d, %v", sequence, err)
+		}
+		return tx.Put("principals", "owner", map[string]any{"id": "owner", "generation": 1, "disabled": false, "resources": []string{"dash"}, "browser_transaction_floor": 9, "Browser_Transaction_Floor": 10})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := source.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := source.Close(); err != nil {
+		t.Fatal(err)
+	}
+	source, err = Open(directory, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer source.Close()
+	if err := source.Update(func(tx *Tx) error {
+		sequence, err := tx.NextSequence()
+		if err != nil || sequence != 2 {
+			t.Fatalf("reopened sequence = %d, %v", sequence, err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	target, err := Open(filepath.Join(t.TempDir(), "recovered"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer target.Close()
+	if err := target.RestoreSnapshot(data); err != nil {
+		t.Fatal(err)
+	}
+	if err := target.View(func(tx *Tx) error {
+		var human map[string]any
+		if err := tx.Get("principals", "owner", &human); err != nil {
+			return err
+		}
+		if human["disabled"] != true {
+			t.Fatal("recovery did not disable human")
+		}
+		for key := range human {
+			if strings.EqualFold(key, "browser_transaction_floor") {
+				t.Fatal("recovery retained a fence without its transactions")
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := target.Update(func(tx *Tx) error {
+		sequence, err := tx.NextSequence()
+		if err != nil || sequence != 1 {
+			t.Fatalf("recovered sequence = %d, %v", sequence, err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestBoundedNamespacedSnapshots(t *testing.T) {
 	s, err := Open(filepath.Join(t.TempDir(), "authority"), nil)

@@ -192,7 +192,7 @@ def test_isolated_units_are_numeric_and_role_scoped() -> None:
     assert "MemoryMax=268435456\nTasksMax=32" in client
     assert "ReadWritePaths=/run/anvil-connect/ingress /var/lib/anvil-connect/gateway" in gateway
     assert "ReadWritePaths=/var/lib/anvil-connect/caddy" in caddy
-    assert "ReadWritePaths=/var/lib/anvil-connect/authelia" in authelia
+    assert "ReadWritePaths=/etc/anvil-connect/users.yml /var/lib/anvil-connect/authelia" in authelia
     assert "ReadWritePaths=/var/lib/anvil-connect/connectors/dashboard" in connector
     assert "ReadWritePaths=\n" in client
     assert "Environment=XDG_CONFIG_HOME=/var/lib/anvil-connect/caddy/config" in caddy

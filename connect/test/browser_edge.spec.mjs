@@ -15,6 +15,7 @@ const controlHost = 'control.example.test';
 const retainHost = 'retain.example.test';
 const connectRoot = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const defaultFixtureTest = 'pinned Caddy and Authelia browser edge retains Connect and native controls';
+const simpleEdgeFixtureTests = new Set([defaultFixtureTest, 'native Authelia root login lands on the chooser and retains direct resource paths']);
 let fixture;
 
 async function waitForExit(child, milliseconds) {
@@ -349,6 +350,17 @@ async function login(page, identity, expectedCallbackStatus = 303) {
   else await page.waitForURL(callbackResponse.url(), { waitUntil: 'domcontentloaded', timeout: 10_000 });
 }
 
+async function rootLogin(page, identity, nextCode = false) {
+  await page.goto(`https://${authHost}/`, { waitUntil: 'domcontentloaded' });
+  await page.getByLabel(/username/i).fill(fixture[`${identity}_user`]);
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(fixture[`${identity}_password`]);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const digits = page.getByRole('textbox', { name: /Please enter verification code|Digit [1-6]/i });
+  await expect(digits).toHaveCount(6);
+  const { code } = await fixture.command(`${nextCode ? 'totp next' : 'totp'} ${identity}`, nextCode ? 35_000 : 10_000);
+  for (const [index, digit] of [...code].entries()) await digits.nth(index).fill(digit);
+}
+
 async function resumeGrantedAuthorization(page) {
   const callback = page.waitForResponse(response => response.url().startsWith(`https://${dashHost}/_anvil-connect/callback`));
   await page.goto(fixture.url, { waitUntil: 'domcontentloaded' });
@@ -494,10 +506,10 @@ async function expectFreshBrowserStreamsDenied(page) {
 // simple edge fixture globally would leave an unused Caddy/Authelia pair alive
 // for those cases and exhaust the deliberately small container PID budget.
 test.beforeEach(async ({}, testInfo) => {
-  if (testInfo.title === defaultFixtureTest) fixture = await startFixture();
+  if (simpleEdgeFixtureTests.has(testInfo.title)) fixture = await startFixture();
 });
 test.afterEach(async ({}, testInfo) => {
-  if (testInfo.title !== defaultFixtureTest || !fixture) return;
+  if (!simpleEdgeFixtureTests.has(testInfo.title) || !fixture) return;
   const defaultFixture = fixture;
   fixture = undefined;
   await cleanup(defaultFixture);
@@ -510,7 +522,7 @@ test(defaultFixtureTest, async () => {
   let page = await freshPage();
   await login(page, 'allowed', 401);
   await fixture.command('grant allowed');
-  await resumeGrantedAuthorization(page);
+  await resumeGrantedAuthorizationAt(page, `${fixture.url}/deep`);
   await expect(page.locator('#dashboard')).toHaveText('native dashboard');
   const cookies = await fixture.context.cookies(fixture.url);
   for (const name of ['__Host-anvil-connect', 'native_session']) {
@@ -548,6 +560,29 @@ test(defaultFixtureTest, async () => {
   await expect(page.locator('#dashboard')).toHaveText('native dashboard');
   await fixture.command('mode session-enforce');
 
+});
+
+test('native Authelia root login lands on the chooser and retains direct resource paths', async () => {
+  let page = await freshPage();
+  // Authelia creates the opaque file-user identifier only after its first
+  // successful login, so provision Connect access after its real denied
+  // callback, then repeat a fresh native root login after access is provisioned.
+  await rootLogin(page, 'allowed');
+  await page.getByRole('button', { name: 'Accept', exact: true }).click();
+  await expect(page.locator('body')).toContainText('Unauthorized');
+  await fixture.command('grant allowed');
+  const freshRoot = await freshPage();
+  await rootLogin(freshRoot, 'allowed', true);
+  await freshRoot.getByRole('button', { name: 'Accept', exact: true }).click();
+  page = freshRoot;
+  await page.waitForURL(`https://${dashHost}/_anvil-connect/home`, { waitUntil: 'domcontentloaded', timeout: 10_000 });
+  await expect(page.locator('#services .tile')).toHaveCount(1);
+  await expect(page.locator('#services .tile')).toHaveAttribute('href', `https://${dashHost}/`);
+
+  const deep = await fixture.context.newPage();
+  await deep.goto(`https://${dashHost}/deep`, { waitUntil: 'domcontentloaded' });
+  await expect(deep).toHaveURL(`https://${dashHost}/deep`);
+  await expect(deep.locator('#dashboard')).toHaveText('native dashboard');
 });
 
 

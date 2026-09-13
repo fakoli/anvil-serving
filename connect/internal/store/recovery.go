@@ -168,11 +168,14 @@ func (s *Store) RestoreSnapshot(data []byte) error {
 				return ErrState
 			}
 			for key := range object {
-				if strings.EqualFold(key, "disabled") {
+				if strings.EqualFold(key, "disabled") || strings.EqualFold(key, "browser_transaction_floor") {
 					delete(object, key)
 				}
 			}
 			object["disabled"] = json.RawMessage("true")
+			// Recovery imports no pending browser transactions. Clear every
+			// case variant of the transaction fence so an owner-approved re-enable
+			// can start a fresh sequence on this new authority.
 			encoded, err := json.Marshal(object)
 			if err != nil || len(encoded) > 65536 {
 				return ErrState

@@ -515,9 +515,8 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
     data = read_manifest(manifest)
     auth = data["authelia"]
     delivery = _password_setup_delivery(auth)
-    if (operation in {"create", "reset-password"}
-            and Path(auth["users_file"]).parent != Path(auth["state_directory"])):
-        raise _invalid("Password setup requires users_file directly in Authelia state_directory; migrate the declared users file before creating or resetting accounts.")
+    if operation in {"create", "reset-password"}:
+        manage._safe_authelia_users_file(data, writable=True)
     if operation in {"create", "reset-password"} and auth.get("webauthn", {}).get("enable_passkey_login") is True:
         raise _invalid("Password setup requires Authelia passkey first-factor login to be disabled.")
     uid, gid = role_identity(data, "idp")

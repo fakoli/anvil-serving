@@ -85,8 +85,9 @@ Authelia emails this link and no local handoff file is created. The
 developer opens it and chooses a password before signing in. Authelia must be
 running, and passkey-as-first-factor login must be disabled, for this command's
 password-setup guarantee. These checks run before account mutation. Keep the
-users file inside the writable Authelia state directory with service-owned mode
-`0600`, so the provider can save the password chosen by the developer.
+users file owned by the Authelia service identity with mode `0600`, so the
+provider can save the password chosen by the developer. The managed service
+permits writes to this exact file; existing installations do not need to move it.
 Authelia still requires an email attribute for identity-verification messages,
 even with manual delivery through its filesystem notifier.
 

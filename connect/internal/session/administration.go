@@ -103,8 +103,8 @@ func (m *Manager) UpdateHumanTx(tx *store.Tx, id string, expected uint64, resour
 	return tx.Put("principals", id, human)
 }
 
-// RevokeHumanSessions advances an existing human generation and sets a
-// monotonic transaction cutoff. It leaves grants, roles, and disabled state
+// RevokeHumanSessions advances an existing human generation and records a
+// monotonic transaction sequence floor. It leaves grants, roles, and disabled state
 // unchanged; a missing human is intentionally a no-op.
 func (m *Manager) RevokeHumanSessions(issuer, subject string) (Human, error) {
 	if issuer != m.issuer {
@@ -133,9 +133,13 @@ func (m *Manager) RevokeHumanSessions(issuer, subject string) (Human, error) {
 			return ErrUnavailable
 		}
 		human.Resources, human.ApplicationRoles = resources, roles
+		sequence, err := tx.NextSequence()
+		if err != nil {
+			return ErrUnavailable
+		}
 		human.Generation++
-		if !human.BrowserNotBefore.After(tx.Now()) {
-			human.BrowserNotBefore = tx.Now()
+		if sequence > human.BrowserTransactionFloor {
+			human.BrowserTransactionFloor = sequence
 		}
 		if err := m.preserveAdministrators(tx, human); err != nil {
 			return err
