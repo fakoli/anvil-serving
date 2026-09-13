@@ -124,7 +124,7 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 			Passkeys       string          `json:"passkeys_url"`
 			Administration string          `json:"administration_path"`
 			Logout         string          `json:"logout_path"`
-		}{services, choices, account, account + "/two-factor-authentication", adminPath, BrowserLogoutPath})
+		}{services, choices, account + "/security", account + "/two-factor-authentication", adminPath, BrowserLogoutPath})
 	default:
 		browserFailure(w, http.StatusNotFound)
 	}

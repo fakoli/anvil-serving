@@ -112,7 +112,7 @@ browser resource then performs its normal OIDC session flow. No arbitrary URL
 or redirect path is accepted. See Authelia's [session cookie reference](https://www.authelia.com/configuration/session/introduction/).
 
 The chooser's **Change password** action opens Authelia's authenticated
-`/settings` overview; **Manage passkeys** opens
+`/settings/security` page; **Manage passkeys** opens
 `/settings/two-factor-authentication`, where **Add** registers another passkey.
 These settings links do not return through the default landing. The existing
 elevated-session verification still applies: with the filesystem notifier,
