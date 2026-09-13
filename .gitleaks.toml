@@ -55,6 +55,6 @@ regexTarget = "line"
 paths = ['''(^|/)tests/connect/test_render\.py$''']
 regexes = [
   '''797df756cc7391a94bf230a3a5e8ba84545c5bc7a8a31e099218f5834f15a672''',
-  '''c5beb1942112e17a3d872e6ce2bb6ee15195f6f0bf3d6eac5f5be6cb6a5383ab''',
+  '''5209fa0cdd415eae7300f507591894251e3ce131438701a65534fdfef032e333''',
   '''213a3fd28ca1ce71e1288ddb249021763a4a08149b05b6eea2ec447d6dfbdacb''',
 ]
