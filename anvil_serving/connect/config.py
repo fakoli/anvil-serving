@@ -943,6 +943,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         authelia_fields.add("theme")
     if isinstance(raw["authelia"], dict) and "asset_path" in raw["authelia"]:
         authelia_fields.add("asset_path")
+    if isinstance(raw["authelia"], dict) and "landing_resource" in raw["authelia"]:
+        authelia_fields.add("landing_resource")
     authelia_raw = _mapping(raw["authelia"], "$.authelia", authelia_fields)
     authelia = {key: _secret_file(authelia_raw[key], "$.authelia." + key) for key in ("users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file")}
     authelia_name = _ident(authelia_raw["service_name"], "$.authelia.service_name")
@@ -958,6 +960,12 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         authelia["asset_path"] = _authelia_asset_path(
             authelia_raw["asset_path"], "$.authelia.asset_path", authelia["state_directory"]
         )
+    if "landing_resource" in authelia_raw:
+        landing_resource = _ident(authelia_raw["landing_resource"], "$.authelia.landing_resource")
+        resource = gateway_resource_index.get(landing_resource)
+        if resource is None or resource["rule"]["access"] != "browser" or "GET" not in resource["rule"]["methods"]:
+            raise _error("$.authelia.landing_resource", "must name a declared GET browser resource")
+        authelia["landing_resource"] = landing_resource
     if "webauthn" in authelia_raw:
         webauthn = _mapping(authelia_raw["webauthn"], "$.authelia.webauthn", {
             "enable_passkey_login", "experimental_enable_passkey_uv_two_factors", "discoverability", "user_verification",

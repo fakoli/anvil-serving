@@ -109,6 +109,16 @@ def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
     hosts = [authelia["host"], gateway["control_host"], gateway["tunnel_host"]]
     hosts.extend(resource["rule"]["host"] for resource in gateway["gateway"]["resources"])
     routes: list[dict[str, Any]] = []
+    if "landing_resource" in authelia:
+        landing = next(resource["rule"] for resource in gateway["gateway"]["resources"]
+                       if resource["rule"]["id"] == authelia["landing_resource"])
+        landing_path = landing["path_prefix"].removesuffix("/") + "/_anvil-connect/home"
+        routes.append({
+            "match": [{"host": [authelia["host"]], "method": ["GET", "HEAD"], "path": ["/_anvil-connect/home"]}],
+            "handle": [_headers(), {"handler": "static_response", "status_code": 302, "headers": {
+                "Location": ["https://" + landing["host"] + landing_path], "Cache-Control": ["no-store"],
+            }}],
+        })
     routes.append({
         "match": [{"host": [authelia["host"]]}],
         "handle": [_headers(), {"handler": "reverse_proxy", "upstreams": [{"dial": authelia["listen"]}], "transport": {"protocol": "http", "versions": ["1.1"]}}],
@@ -177,6 +187,7 @@ def _authelia(manifest: dict[str, Any]) -> str:
         "notifier:", "  filesystem:", f"    filename: {_quote(auth['state_directory'] + '/notifications.txt')}",
         "session:", "  secret: |-", f"    {{{{- fileContent {_template_quote(auth['session_secret_file'])} | nindent 4 }}}}",
         "  cookies:", f"    - domain: {_quote(auth['host'])}", f"      authelia_url: {_quote('https://' + auth['host'])}",
+        *([] if "landing_resource" not in auth else [f"      default_redirection_url: {_quote('https://' + auth['host'] + '/_anvil-connect/home')}"]),
         "storage:", "  encryption_key: |-", f"    {{{{- fileContent {_template_quote(auth['storage_encryption_key_file'])} | nindent 4 }}}}", "  local:", f"    path: {_quote(auth['state_directory'] + '/authelia.sqlite3')}",
         "identity_providers:", "  oidc:", "    hmac_secret: |-", f"      {{{{- fileContent {_template_quote(auth['oidc_hmac_secret_file'])} | nindent 6 }}}}", "    jwks:", "      - key_id: 'anvil-connect-rs256'", "        algorithm: RS256", "        use: sig", "        key: |-",
         f"          {{{{- fileContent {_template_quote(auth['oidc_rsa_private_key_file'])} | nindent 10 }}}}",

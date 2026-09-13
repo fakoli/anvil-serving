@@ -95,6 +95,30 @@ performs enrollment and the device's biometric/PIN prompt.
 1Password can store the site's passkey and offer it through its browser
 extension. See [1Password's instructions](https://support.1password.com/save-use-passkeys/).
 
+## Auth portal landing
+
+Set optional `authelia.landing_resource` to the ID of a declared browser resource
+that accepts `GET`, for example `dashboard`. After a direct Authelia login, its
+same-host `/_anvil-connect/home` default redirects with `302` to that resource's
+`<path_prefix>/_anvil-connect/home` chooser. The landing resource must already
+be accessible to the signing-in person; this setting neither grants an
+application entitlement nor changes password, passkey, two-factor, or OIDC
+callback policy.
+
+The trampoline stays on the Authelia host because Authelia requires
+`default_redirection_url` to read and write the configured session-cookie
+domain. It preserves the existing narrow auth-host cookie scope; the selected
+browser resource then performs its normal OIDC session flow. No arbitrary URL
+or redirect path is accepted. See Authelia's [session cookie reference](https://www.authelia.com/configuration/session/introduction/).
+
+The chooser's **Change password** action opens Authelia's authenticated
+`/settings/security` page; **Manage passkeys** opens
+`/settings/two-factor-authentication`, where **Add** registers another passkey.
+These settings links do not return through the default landing. The existing
+elevated-session verification still applies: with the filesystem notifier,
+the operator must deliver the generated verification code. Forgotten-password
+recovery remains a separate operator-assisted flow.
+
 ## Authelia branding
 
 The optional `authelia.theme` declaration accepts only `light`, `dark`,
