@@ -2073,6 +2073,25 @@ def test_capacity_dry_plan_records_explicit_sampling(capsys):
     }
 
 
+@pytest.mark.parametrize("sampling", [
+    {
+        "temperature": {"requested": "1.0", "effective_request": "1.0", "sent": True},
+        "top_p": {"requested": None, "effective_request": None, "sent": False},
+    },
+    {
+        "temperature": {"requested": None, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": None, "effective_request": None, "sent": False},
+    },
+    {
+        "temperature": {"requested": None, "effective_request": 0.0, "sent": True},
+        "top_p": {"requested": True, "effective_request": True, "sent": True},
+    },
+])
+def test_sampling_normalizer_rejects_malformed_or_inconsistent_provenance(sampling):
+    with pytest.raises(ValueError):
+        benchmark_evaluation.normalize_sampling(sampling)
+
+
 @pytest.mark.parametrize("flag,value,expected", [
     ("--temperature", "nan", "--temperature must be finite"),
     ("--temperature", "-0.01", "--temperature must be finite"),

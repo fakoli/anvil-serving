@@ -24,7 +24,7 @@ Reviewed 2026-09-05. [Comparison history](comparison.md) · [Container reconstru
 <div class="bench-recipe__metric"><dt>E2E P50</dt><dd>4,856.4 ms</dd></div>
 <div class="bench-recipe__metric"><dt>Aggregate output</dt><dd>764.3 tok/s</dd></div>
 </dl>
-<p class="bench-recipe__meta">n=100/100; failed=0; C8; prompt target=4096; configured context=262144; output cap=512; response word target=256; output policy=not recorded (legacy); shared prefix target=not recorded; cache=unique; thinking=disabled.</p>
+<p class="bench-recipe__meta">n=100/100; failed=0; C8; prompt target=4096; configured context=262144; output cap=512; response word target=256; output policy=not recorded (legacy); shared prefix target=not recorded; cache=unique; thinking=disabled; sampling=not recorded (legacy).</p>
 <p class="bench-recipe__meta">Actual prompt tokens min/P50/max: 3,613.0 / 3,655.0 / 3,689.0. Actual completion tokens min/mean/max: 512.0 / 512.0 / 512.0.</p>
 <div class="bench-recipe__strengths"><h3>Strengths</h3><ul>
 <li>Selected one-card sustained-output and end-to-end latency arm in the matched campaign.</li>
@@ -59,7 +59,7 @@ Reviewed 2026-09-05. [Comparison history](comparison.md) · [Container reconstru
 <div class="bench-recipe__metric"><dt>E2E P50</dt><dd>5,186.3 ms</dd></div>
 <div class="bench-recipe__metric"><dt>Aggregate output</dt><dd>746.7 tok/s</dd></div>
 </dl>
-<p class="bench-recipe__meta">n=100/100; failed=0; C8; prompt target=4096; configured context=262144; output cap=512; response word target=256; output policy=not recorded (legacy); shared prefix target=not recorded; cache=unique; thinking=disabled.</p>
+<p class="bench-recipe__meta">n=100/100; failed=0; C8; prompt target=4096; configured context=262144; output cap=512; response word target=256; output policy=not recorded (legacy); shared prefix target=not recorded; cache=unique; thinking=disabled; sampling=not recorded (legacy).</p>
 <p class="bench-recipe__meta">Actual prompt tokens min/P50/max: 3,613.0 / 3,655.0 / 3,689.0. Actual completion tokens min/mean/max: 267.0 / 494.4 / 512.0.</p>
 <div class="bench-recipe__strengths"><h3>Strengths</h3><ul>
 <li>Lower time to first token than the selected Inferact sustained-output arm.</li>
@@ -94,7 +94,7 @@ Reviewed 2026-09-05. [Comparison history](comparison.md) · [Container reconstru
 <div class="bench-recipe__metric"><dt>E2E P50</dt><dd>7,858.4 ms</dd></div>
 <div class="bench-recipe__metric"><dt>Aggregate output</dt><dd>503.4 tok/s</dd></div>
 </dl>
-<p class="bench-recipe__meta">n=100/100; failed=0; C8; prompt target=4096; configured context=262144; output cap=512; response word target=256; output policy=not recorded (legacy); shared prefix target=not recorded; cache=unique; thinking=disabled.</p>
+<p class="bench-recipe__meta">n=100/100; failed=0; C8; prompt target=4096; configured context=262144; output cap=512; response word target=256; output policy=not recorded (legacy); shared prefix target=not recorded; cache=unique; thinking=disabled; sampling=not recorded (legacy).</p>
 <p class="bench-recipe__meta">Actual prompt tokens min/P50/max: 3,613.0 / 3,655.0 / 3,689.0. Actual completion tokens min/mean/max: 310.0 / 509.3 / 512.0.</p>
 <div class="bench-recipe__strengths"><h3>Strengths</h3><ul>
 <li>Verified alternate-runtime speculative gain over the exact vLLM no-speculation control.</li>
@@ -129,7 +129,7 @@ Reviewed 2026-09-05. [Comparison history](comparison.md) · [Container reconstru
 <div class="bench-recipe__metric"><dt>E2E P50</dt><dd>12,617.4 ms</dd></div>
 <div class="bench-recipe__metric"><dt>Aggregate output</dt><dd>315.2 tok/s</dd></div>
 </dl>
-<p class="bench-recipe__meta">n=100/100; failed=0; C8; prompt target=4096; configured context=262144; output cap=512; response word target=256; output policy=not recorded (legacy); shared prefix target=not recorded; cache=unique; thinking=disabled.</p>
+<p class="bench-recipe__meta">n=100/100; failed=0; C8; prompt target=4096; configured context=262144; output cap=512; response word target=256; output policy=not recorded (legacy); shared prefix target=not recorded; cache=unique; thinking=disabled; sampling=not recorded (legacy).</p>
 <p class="bench-recipe__meta">Actual prompt tokens min/P50/max: 3,613.0 / 3,655.0 / 3,689.0. Actual completion tokens min/mean/max: 387.0 / 510.4 / 512.0.</p>
 <div class="bench-recipe__strengths"><h3>Strengths</h3><ul>
 <li>Exact same-checkpoint and same-runtime control for the vLLM MTP2 arm.</li>
@@ -164,7 +164,7 @@ Reviewed 2026-09-05. [Comparison history](comparison.md) · [Container reconstru
 <div class="bench-recipe__metric"><dt>E2E P50</dt><dd>6,047.0 ms</dd></div>
 <div class="bench-recipe__metric"><dt>Aggregate output</dt><dd>587.9 tok/s</dd></div>
 </dl>
-<p class="bench-recipe__meta">n=100/100; failed=0; C8; prompt target=4096; configured context=262144; output cap=512; response word target=256; output policy=not recorded (legacy); shared prefix target=not recorded; cache=unique; thinking=disabled.</p>
+<p class="bench-recipe__meta">n=100/100; failed=0; C8; prompt target=4096; configured context=262144; output cap=512; response word target=256; output policy=not recorded (legacy); shared prefix target=not recorded; cache=unique; thinking=disabled; sampling=not recorded (legacy).</p>
 <p class="bench-recipe__meta">Actual prompt tokens min/P50/max: 3,613.0 / 3,655.0 / 3,689.0. Actual completion tokens min/mean/max: 512.0 / 512.0 / 512.0.</p>
 <div class="bench-recipe__strengths"><h3>Strengths</h3><ul>
 <li>Retained as a matched topology control with complete latency distributions.</li>

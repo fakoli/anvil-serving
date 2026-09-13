@@ -1,5 +1,8 @@
 """Evaluation budgets, attempt classification, and aggregation."""
 
+import math
+from collections.abc import Mapping
+
 from .limits import MAX_QUALITY_COMPLETION_TOKENS
 
 
@@ -61,7 +64,7 @@ def resolve_sampling_settings(args):
     """Resolve explicitly requested sampler values without guessing engine defaults."""
     requested_temperature = getattr(args, "temperature", None)
     requested_top_p = getattr(args, "top_p", None)
-    return {
+    return normalize_sampling({
         "temperature": {
             "requested": requested_temperature,
             "effective_request": (
@@ -74,11 +77,63 @@ def resolve_sampling_settings(args):
             "effective_request": requested_top_p,
             "sent": requested_top_p is not None,
         },
-    }
+    })
+
+
+def normalize_sampling(sampling: object) -> dict:
+    """Validate and normalize producer sampler provenance without inferred values."""
+    if not isinstance(sampling, Mapping) or set(sampling) != {"temperature", "top_p"}:
+        raise ValueError("sampling must contain exactly temperature and top_p")
+    normalized: dict[str, dict[str, int | float | bool | None]] = {}
+    for field, fallback, minimum, maximum, sent_when_none in (
+        ("temperature", 0.0, 0.0, 2.0, True),
+        ("top_p", None, 0.0, 1.0, False),
+    ):
+        entry = sampling[field]
+        if not isinstance(entry, Mapping) or set(entry) != {
+            "requested", "effective_request", "sent",
+        }:
+            raise ValueError(
+                f"sampling.{field} must contain exactly requested, effective_request, and sent"
+            )
+        requested = entry["requested"]
+        if requested is not None:
+            if (
+                isinstance(requested, bool)
+                or not isinstance(requested, (int, float))
+                or not math.isfinite(requested)
+                or not minimum <= requested <= maximum
+                or field == "top_p" and requested == 0
+            ):
+                raise ValueError(f"sampling.{field}.requested is outside the supported range")
+        expected_effective = requested if requested is not None else fallback
+        effective = entry["effective_request"]
+        if effective != expected_effective:
+            raise ValueError(
+                f"sampling.{field}.effective_request is inconsistent with requested"
+            )
+        if effective is not None and (
+            isinstance(effective, bool)
+            or not isinstance(effective, (int, float))
+            or not math.isfinite(effective)
+            or not minimum <= effective <= maximum
+            or field == "top_p" and effective == 0
+        ):
+            raise ValueError(f"sampling.{field}.effective_request is outside the supported range")
+        expected_sent = requested is not None or sent_when_none
+        if entry["sent"] is not expected_sent:
+            raise ValueError(f"sampling.{field}.sent is inconsistent with requested")
+        normalized[field] = {
+            "requested": requested,
+            "effective_request": effective,
+            "sent": entry["sent"],
+        }
+    return normalized
 
 
 def request_sampling_kwargs(sampling):
     """Forward sampler kwargs only when the operator explicitly requested them."""
+    sampling = normalize_sampling(sampling)
     kwargs = {}
     temperature = sampling["temperature"]
     top_p = sampling["top_p"]
