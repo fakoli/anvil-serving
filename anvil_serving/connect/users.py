@@ -417,15 +417,19 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
     if not apply:
         return result
     if operation == "access" and not users[username].get("disabled", False):
-        root = Path(data["config_root"])
-        config = root / "authelia/configuration.yml"
-        manage._verify_owned_tree(root)
-        if manage._read_regular(config, _MAX_FILE) != _authelia(data).encode():
-            raise _invalid("Authelia configuration differs from this declaration; reconcile it before user administration.")
-        if manage._digest(Path(data["components"]["authelia"])) != manage._component_lock()["authelia"]:
-            raise _invalid("Authelia executable does not match the pinned component.")
-        subject = _oidc_subject(data, config, username, runner)
-        _human_set(data, manifest, subject, grant_map, runner)
+        with manage._deployment_lock(root):
+            # Do not re-enable a human after a concurrent suspension/deletion.
+            latest, _ = _read_users(path, uid, gid)
+            if latest != raw:
+                raise _invalid("Users file changed during preparation; retry the command.")
+            config = root / "authelia/configuration.yml"
+            manage._verify_owned_tree(root)
+            if manage._read_regular(config, _MAX_FILE) != _authelia(data).encode():
+                raise _invalid("Authelia configuration differs from this declaration; reconcile it before user administration.")
+            if manage._digest(Path(data["components"]["authelia"])) != manage._component_lock()["authelia"]:
+                raise _invalid("Authelia executable does not match the pinned component.")
+            subject = _oidc_subject(data, config, username, runner)
+            _human_set(data, manifest, subject, grant_map, runner)
         return {**result, "applied": True, "grants_changed": True, "existing_connect_sessions_revoked": True,
                 "principal": _principal(data["gateway"]["oidc"]["issuer"], subject)}
     with manage._deployment_lock(root):
@@ -572,6 +576,8 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                             raise manage.ManageError("Authelia recovery did not become active")
                     except BaseException as recovery_error:
                         raise _partial("Authelia recovery failed; inspect service health and the retained backup.", result) from recovery_error
+                    if operation in {"suspend", "delete", "access"}:
+                        raise _partial("Authelia activation failed; account changes were retained and restart completed. Inspect the retained backup and account state.", result) from exc
                     if identity_attempted:
                         raise _partial("Authelia activation failed after account and OpenID Connect identity provisioning; restart completed. Inspect the retained backup before retrying.", result) from exc
                     raise _partial("Authelia activation failed; password rollback and restart completed. Inspect the retained backup before retrying.", result) from exc
