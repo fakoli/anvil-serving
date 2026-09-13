@@ -42,6 +42,7 @@ def commands() -> CommandNode:
                     _option("--grant", summary="Exact service:member or service:admin grant; repeat for each service on create/access.", value_name="GRANT"),
                     _option("--output", summary="Exclusive private handoff file; default is beside the manifest.", value_name="PATH"),
                     _option("--input", summary="Private authentication archive to restore.", value_name="PATH"),
+                    _option("--include-gateway", summary="Also capture gateway authority after the authentication backup."),
                     _option("--sha256", summary="Independently retained authentication archive checksum for restore.", value_name="DIGEST"),
                     _option("--destination", summary="Fresh private recovery directory; does not activate restored accounts.", value_name="PATH"),
                 ) + _CONFIRM,

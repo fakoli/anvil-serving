@@ -44,6 +44,7 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     users.add_argument("--input", action=_Once, help="Private authentication archive for recovery.")
     users.add_argument("--sha256", action=_Once, help="Independently retained authentication archive checksum for recovery.")
     users.add_argument("--destination", action=_Once, help="Fresh private recovery directory; never activates restored accounts.")
+    users.add_argument("--include-gateway", action="store_true", help="With users backup, also retain gateway authorities after the authentication snapshot.")
     users.add_argument("--dry-run", action="store_true")
     users.add_argument("--confirm", action="store_true")
     for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "extend"):
@@ -178,20 +179,23 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         if action == "users":
             from .users import DEFAULT_MANIFEST, operate
             if args.operation == "schedule":
-                if any((args.username, args.email, args.role, args.output, args.input, args.sha256, args.destination, args.grant)):
+                if args.include_gateway or any((args.username, args.email, args.role, args.output, args.input, args.sha256, args.destination, args.grant)):
                     raise UsageError("Use users schedule --confirm to install the daily authentication backup timer.", code="connect_users_invalid")
                 from .user_schedule import schedule
                 result = schedule(args.manifest or DEFAULT_MANIFEST, apply=apply)
             elif args.operation == "restore":
-                if not args.input or not args.destination or not args.sha256 or any((args.username, args.manifest, args.email, args.role, args.output, args.grant)):
+                if not args.input or not args.destination or not args.sha256 or args.include_gateway or any((args.username, args.manifest, args.email, args.role, args.output, args.grant)):
                     raise UsageError("Use users restore --input ARCHIVE --sha256 DIGEST --destination NEW_DIRECTORY.", code="connect_users_invalid")
                 from .user_backup import restore
                 result = restore(args.input, args.destination, sha256=args.sha256, apply=apply)
             else:
                 if args.input or args.destination or args.sha256:
                     raise UsageError("--input, --sha256 and --destination are only accepted for restore.", code="connect_users_invalid")
-                result = operate(args.manifest or DEFAULT_MANIFEST, args.operation, args.username,
-                                 email=args.email, role=args.role, grants=args.grant, output=args.output, apply=apply)
+                options = {"email": args.email, "role": args.role, "grants": args.grant,
+                           "output": args.output, "apply": apply}
+                if args.include_gateway:
+                    options["include_gateway"] = True
+                result = operate(args.manifest or DEFAULT_MANIFEST, args.operation, args.username, **options)
         elif action in {"validate", "status", "doctor"}:
             result = getattr(manage, action)(args.manifest, target=target)
         elif action == "render":

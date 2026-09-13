@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import copy
 import html
 import json
 import mimetypes
@@ -24,13 +25,33 @@ PREVIEW_FIELDS = frozenset({"id", "host_id", "resource_id", "action_id", "label"
 _SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings", "logs", "access", "bench", "playground", "models", "work", "observability", "compute", "docs"})
 
 
+def _fallback_authentication(config, mode):
+    fallback = config.get("fallback_authentication")
+    if fallback is None:
+        return None
+    if mode != "connect":
+        raise ValueError("fallback authentication requires Connect authentication")
+    fields(fallback, required=("origin", "grafana_url", "users"))
+    parsed = urllib.parse.urlsplit(fallback["origin"])
+    login = urllib.parse.urlsplit(fallback["grafana_url"])
+    native_ids = {item.get("id") for item in config["users"] if type(item) is dict}
+    if (parsed.scheme != "https" or parsed.path or parsed.query or parsed.fragment or parsed.username or parsed.password
+            or not parsed.hostname or fallback["origin"] == config["origin"] or login.scheme not in {"http", "https"}
+            or login.hostname != "127.0.0.1" or login.username or login.password or login.query or login.fragment
+            or type(fallback["users"]) is not list or not fallback["users"] or len(fallback["users"]) > len(native_ids)
+            or any(type(item) is not str or item not in native_ids for item in fallback["users"])
+            or len(set(fallback["users"])) != len(fallback["users"])):
+        raise ValueError("invalid fallback authentication configuration")
+    return fallback
+
+
 def load_config(path: str) -> dict:
     source = Path(path)
     if not source.is_absolute() or source.stat().st_size > 262144:
         raise ValueError("use an absolute bounded private Observatory config")
     config = strict_json(source.read_bytes())
     fields(config, required=("schema", "origin", "base_path", "users", "authentication", "inventory", "prometheus_url", "state_path"),
-           optional=("operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence", "logs", "connect_access", "workbench"))
+           optional=("operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence", "logs", "connect_access", "workbench", "fallback_authentication"))
     if config["schema"] != "anvil-observatory/config/v1":
         raise ValueError("unsupported Observatory configuration")
     if type(config.get("operate", False)) is not bool or type(config.get("fixture", False)) is not bool:
@@ -49,6 +70,7 @@ def load_config(path: str) -> dict:
         raise ValueError("invalid Connect access setting")
     if config.get("connect_access", False) and mode != "connect":
         raise ValueError("Connect access requires Connect authentication")
+    _fallback_authentication(config, mode)
     if not Path(config["state_path"]).is_absolute():
         raise ValueError("journal path must be absolute")
     return config
@@ -72,11 +94,18 @@ class Console:
             raise ValueError("invalid Connect access setting")
         if config.get("connect_access", False) and mode != "connect":
             raise ValueError("Connect access requires Connect authentication")
+        fallback = _fallback_authentication(config, mode)
         self.store = IntentStore(config["state_path"])
         self.access = Access(config["users"], authenticate=authenticating,
                              origin=config["origin"], base_path=config["base_path"], operate=config.get("operate", False),
                              connect=authentication["connect"] if mode == "connect" else None,
                              environment=env, profile_store=self.store)
+        self.fallback_access = None
+        if fallback:
+            users = [item for item in config["users"] if item["id"] in fallback["users"]]
+            self.fallback_access = Access(users, authenticate=GrafanaLogin(fallback["grafana_url"]),
+                                          origin=fallback["origin"], base_path=config["base_path"],
+                                          operate=config.get("operate", False))
         if metrics is None:
             from .metrics_client import MetricsClient
             metrics = MetricsClient(prometheus_url=config["prometheus_url"], inventory=config["inventory"], grafana_url=config.get("grafana_url"))
@@ -113,6 +142,22 @@ class Console:
         self._workers.shutdown(wait=True)
         self.store.close()
 
+    def _view_for_host(self, headers):
+        try:
+            self.access.check_host(headers)
+            return self
+        except ObservatoryError:
+            if self.fallback_access is None:
+                raise
+        self.fallback_access.check_host(headers)
+        # Do not initialize another Console or Workbench: their stores, workers,
+        # locks, and Pi state are process-local shared runtime state. The shared
+        # Workbench only uses Access for permit/operate, which depends on this
+        # session's immutable principal and the identical operate policy.
+        view = copy.copy(self)
+        view.access = self.fallback_access
+        return view
+
     def session_view(self, session):
         result = {"authenticated": session is not None, "identity": session.principal.identity if session else None,
                 "role": session.principal.role if session else "viewer", "operate": bool(session and self.access.operate and session.principal.actions),
@@ -120,7 +165,7 @@ class Console:
                 "base_path": self.config["base_path"], "build": self.config.get("build", "development"), "fixture": self.config.get("fixture", False),
                 "authentication_mode": "connect" if self.access.connect is not None else "legacy",
                 "profile_id": session.profile_id if session else None}
-        if self.config.get("connect_access", False):
+        if self.config.get("connect_access", False) and self.access.connect is not None:
             result["connect_access_path"] = self.config["base_path"].rstrip("/") + "/_anvil-connect/access"
         return result
 
@@ -504,22 +549,20 @@ def attach_console(server, console: Console):
             relative, raw_query = self._relative()
             if relative is None:
                 return False
+            selected = console._view_for_host(self.headers)
             workbench_route = relative.startswith("api/workbench/v1/")
             if not relative.startswith("api/observatory/v1/") and not workbench_route:
                 if method != "GET":
                     return False
                 if relative in assets and not raw_query:
-                    console.access.check_host(self.headers)
                     self._asset(200, *assets[relative])
                     return True
                 if relative in {"", "index.html"} or relative.split("/", 1)[0] in _SHELL_ROUTES:
-                    console.access.check_host(self.headers)
                     document = root.joinpath("observatory.html").read_bytes()
                     document = document.replace(b"__OBSERVATORY_BASE__", html.escape(base, quote=True).encode())
                     self._asset(200, "text/html; charset=utf-8", document)
                     return True
                 return False
-            console.access.check_host(self.headers)
             prefix = "api/workbench/v1/" if workbench_route else "api/observatory/v1/"
             route = relative[len(prefix):]
             session_route = route == "session" and not workbench_route
@@ -534,56 +577,56 @@ def attach_console(server, console: Console):
                 if session_route:
                     fields(query)
                 cookie = None
-                if console.access.connect is not None:
-                    session, issued = console.access.connect_session(
+                if selected.access.connect is not None:
+                    session, issued = selected.access.connect_session(
                         self.headers, method=method, target=self.path, bootstrap=session_route
                     )
-                    cookie = console.access.cookie(session) if issued else None
+                    cookie = selected.access.cookie(session) if issued else None
                 else:
-                    session = console.access.session(self.headers, required=not session_route)
+                    session = selected.access.session(self.headers, required=not session_route)
                 if workbench_route:
-                    console._require_readable(session)
-                    data = console.workbench.read(self._workbench_route(route), query, session)
+                    selected._require_readable(session)
+                    data = selected.workbench.read(self._workbench_route(route), query, session)
                 else:
-                    data = console.session_view(session) if session_route else console.read(route, query, session)
+                    data = selected.session_view(session) if session_route else selected.read(route, query, session)
                 self._respond(200, {"ok": True, "data": data}, cookie=cookie)
                 return True
             if query:
                 raise ObservatoryError("invalid_query", "Mutations do not accept URL parameters.")
             if session_route and method == "POST":
-                console.access.require_origin(self.headers)
-                if console.access.connect is not None:
+                selected.access.require_origin(self.headers)
+                if selected.access.connect is not None:
                     raise ObservatoryError("connect_login_disabled", "Sign in through Anvil Connect.", 405)
                 body = self._body()
                 fields(body, required=("username", "password"))
-                session = console.access.login(body["username"], body["password"], client=self.client_address[0], previous=console.access.session(self.headers, required=False))
-                self._respond(200, {"ok": True, "data": console.session_view(session)}, cookie=console.access.cookie(session))
+                session = selected.access.login(body["username"], body["password"], client=self.client_address[0], previous=selected.access.session(self.headers, required=False))
+                self._respond(200, {"ok": True, "data": selected.session_view(session)}, cookie=selected.access.cookie(session))
                 return True
-            if session_route and method == "DELETE" and console.access.connect is not None:
-                console.access.require_origin(self.headers)
+            if session_route and method == "DELETE" and selected.access.connect is not None:
+                selected.access.require_origin(self.headers)
                 raise ObservatoryError("connect_logout_required", "Sign out through Anvil Connect.", 405)
-            if console.access.connect is not None:
-                session, _ = console.access.connect_session(
+            if selected.access.connect is not None:
+                session, _ = selected.access.connect_session(
                     self.headers, method=method, target=self.path, consume_replay=method in {"POST", "DELETE"}
                 )
-                session = console.access.mutation(self.headers, session=session)
+                session = selected.access.mutation(self.headers, session=session)
             else:
-                session = console.access.mutation(self.headers)
+                session = selected.access.mutation(self.headers)
             if session_route and method == "DELETE":
-                console.access.logout(session)
-                self._respond(200, {"ok": True, "data": {"authenticated": False}}, cookie=console.access.cookie(None))
+                selected.access.logout(session)
+                self._respond(200, {"ok": True, "data": {"authenticated": False}}, cookie=selected.access.cookie(None))
                 return True
             if workbench_route:
-                console._require_readable(session)
+                selected._require_readable(session)
                 if method != "POST":
                     raise ObservatoryError("method_denied", "This Workbench route does not accept this method.", 405)
-                data = console.workbench.mutate(self._workbench_route(route), self._body(), session)
+                data = selected.workbench.mutate(self._workbench_route(route), self._body(), session)
                 self._respond(200, {"ok": True, "data": data})
                 return True
             if method != "POST" or route not in {"drafts", "previews", "operations"}:
                 raise ObservatoryError("method_denied", "This route does not accept mutations.", 405)
             body = self._body()
-            call = {"drafts": console.create_draft, "previews": console.create_preview, "operations": console.apply}[route]
+            call = {"drafts": selected.create_draft, "previews": selected.create_preview, "operations": selected.apply}[route]
             data = call(session, body)
             self._respond(202 if route == "operations" else 200, {"ok": True, "data": data})
             return True

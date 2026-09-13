@@ -63,7 +63,7 @@ def test_schedule_writes_exact_owned_units_and_reports_interruption(tmp_path, mo
     units = tmp_path / "units"
     units.mkdir()
     monkeypatch.setattr(user_schedule, "DEFAULT_MANIFEST", str(manifest))
-    monkeypatch.setattr(user_schedule, "_manifest", lambda _: ({"config_root": str(root)}, root, manifest.parent / "backups"))
+    monkeypatch.setattr(user_schedule, "_manifest", lambda _: ({"config_root": str(root), "gateway": {"state_directory": str(tmp_path / "gateway-state")}}, root, manifest.parent / "backups"))
     monkeypatch.setattr(user_schedule, "_require_root", lambda: None)
     monkeypatch.setattr(manage, "_deployment_lock", lambda _: nullcontext())
     monkeypatch.setattr(manage, "_safe_dir", lambda *_: None)
@@ -84,12 +84,12 @@ def test_schedule_writes_exact_owned_units_and_reports_interruption(tmp_path, mo
 
     preview = user_schedule.schedule(str(manifest), runner=runner, unit_root=units)
     assert preview["manager"] == str(manager)
-    assert preview["calendar"] == "daily 03:17 UTC" and "briefly stops" in preview["impact"]
+    assert preview["calendar"] == "daily 03:17 UTC" and "stops and restores" in preview["impact"]
     applied = user_schedule.schedule(str(manifest), apply=True, runner=runner, unit_root=units)
     service = (units / "anvil-connect-auth-backup.service").read_text()
     timer = (units / "anvil-connect-auth-backup.timer").read_text()
-    assert "ExecStart=" + str(manager) + " users backup --confirm" in service
-    assert "ReadWritePaths=" + str(manifest.parent) in service
+    assert "ExecStart=" + str(manager) + " users backup --include-gateway --confirm" in service
+    assert str(tmp_path) in service
     assert "Persistent=true" in timer and applied["retention_days"] == 14
     assert (manage._SYSTEMCTL, "enable", "--now", "anvil-connect-auth-backup.timer") in calls
 
@@ -99,7 +99,7 @@ def test_schedule_writes_exact_owned_units_and_reports_interruption(tmp_path, mo
     (tmp_path / "opt/anvil-connect/current").symlink_to(release_name)
     upgraded = user_schedule.schedule(str(manifest), apply=True, runner=runner, unit_root=units)
     assert upgraded["manager"] == str(replacement)
-    assert "ExecStart=" + str(replacement) + " users backup --confirm" in (units / "anvil-connect-auth-backup.service").read_text()
+    assert "ExecStart=" + str(replacement) + " users backup --include-gateway --confirm" in (units / "anvil-connect-auth-backup.service").read_text()
     assert (units / "anvil-connect-auth-backup.service").read_bytes() != old_service
     user_schedule.schedule(str(manifest), apply=True, runner=runner, unit_root=units)
     assert calls.count((manage._SYSTEMCTL, "enable", "--now", "anvil-connect-auth-backup.timer")) == 1
@@ -116,7 +116,7 @@ def test_schedule_refuses_foreign_or_corrupt_prior_release_unit(tmp_path, monkey
     units = tmp_path / "units"
     units.mkdir()
     monkeypatch.setattr(user_schedule, "DEFAULT_MANIFEST", str(manifest))
-    monkeypatch.setattr(user_schedule, "_manifest", lambda _: ({"config_root": str(root)}, root, manifest.parent / "backups"))
+    monkeypatch.setattr(user_schedule, "_manifest", lambda _: ({"config_root": str(root), "gateway": {"state_directory": str(tmp_path / "gateway-state")}}, root, manifest.parent / "backups"))
     monkeypatch.setattr(user_schedule, "_require_root", lambda: None)
     monkeypatch.setattr(manage, "_deployment_lock", lambda _: nullcontext())
     monkeypatch.setattr(manage, "_safe_dir", lambda *_: None)
@@ -170,11 +170,11 @@ def test_schedule_rolls_back_timer_after_interruption(tmp_path, monkeypatch, fre
     units = tmp_path / "units"
     units.mkdir()
     monkeypatch.setattr(user_schedule, "DEFAULT_MANIFEST", str(manifest))
-    monkeypatch.setattr(user_schedule, "_manifest", lambda _: ({"config_root": str(root)}, root, manifest.parent / "backups"))
+    monkeypatch.setattr(user_schedule, "_manifest", lambda _: ({"config_root": str(root), "gateway": {"state_directory": str(tmp_path / "gateway-state")}}, root, manifest.parent / "backups"))
     monkeypatch.setattr(user_schedule, "_require_root", lambda: None)
     monkeypatch.setattr(manage, "_deployment_lock", lambda _: nullcontext())
     monkeypatch.setattr(manage, "_safe_dir", lambda *_: None)
-    old_service = user_schedule._service(manager, (manifest.parent,))
+    old_service = user_schedule._service(manager, tuple(sorted({root.parent, manifest.parent, tmp_path}, key=str)))
     if not fresh:
         (units / "anvil-connect-auth-backup.service").write_bytes(old_service)
         (units / "anvil-connect-auth-backup.timer").write_bytes(user_schedule._timer())

@@ -104,7 +104,7 @@ def _manifest(path: str) -> tuple[dict, Path, Path]:
 
 def _service(manager: Path, writable: tuple[Path, ...]) -> bytes:
     paths = " ".join(_unit_argument(str(path)) for path in writable)
-    command = " ".join(_unit_argument(value) for value in (str(manager), "users", "backup", "--confirm"))
+    command = " ".join(_unit_argument(value) for value in (str(manager), "users", "backup", "--include-gateway", "--confirm"))
     return ("\n".join((
         "[Unit]", "Description=Anvil Connect daily authentication backup", "After=network-online.target", "Wants=network-online.target", "",
         "[Service]", "Type=oneshot", "User=root", "Group=root", "UMask=0077", "NoNewPrivileges=true",
@@ -131,11 +131,12 @@ def _prior_service(current: bytes, desired: bytes) -> bool:
     current_end = current.find(b"\n", start)
     if end < 0 or current_end < 0 or current[:start] != desired[:start] or current[current_end:] != desired[end:]:
         return False
-    arguments = b" users backup --confirm"
-    if not current[start:current_end].endswith(arguments):
+    arguments = (b" users backup --confirm", b" users backup --include-gateway --confirm")
+    matched = next((value for value in arguments if current[start:current_end].endswith(value)), None)
+    if matched is None:
         return False
     try:
-        manager = current[start:current_end - len(arguments)].decode("ascii")
+        manager = current[start:current_end - len(matched)].decode("ascii")
         relative = Path(manager).relative_to(_PREFIX)
     except (UnicodeDecodeError, ValueError):
         return False
@@ -180,14 +181,14 @@ def schedule(manifest: str = DEFAULT_MANIFEST, *, apply: bool = False, runner=No
     """Preview or install the fixed daily default-manifest backup schedule."""
     _require_root()
     manager = _manager()
-    _, root, backup = _manifest(manifest)
-    writable = tuple(sorted({root.parent, backup.parent}, key=str))
+    data, root, backup = _manifest(manifest)
+    writable = tuple(sorted({root.parent, backup.parent, Path(data["gateway"]["state_directory"]).parent}, key=str))
     units = {_SERVICE: _service(manager, writable), _TIMER: _timer()}
     result = {
         "schema": "anvil-connect.auth-backup-schedule/v1", "action": "schedule", "applied": bool(apply),
         "manifest": manifest, "manager": str(manager), "units": sorted(units), "calendar": "daily 03:17 UTC",
         "persistent": True, "retention_days": 14, "retention_recent_copies": 7,
-        "impact": "Daily authentication backup briefly stops and restarts Authelia.",
+        "impact": "Daily backup briefly restarts Authelia, then stops and restores the native gateway while Caddy remains running.",
     }
     if not apply:
         return result

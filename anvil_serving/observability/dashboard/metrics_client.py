@@ -143,6 +143,8 @@ def validate_inventory(inventory):
 def _origin(value, *, grafana=False):
     if not isinstance(value, str) or len(value) > 512 or any(ord(c) < 33 for c in value):
         raise MetricsError("Invalid integration origin")
+    if grafana and value == "/grafana":
+        return value
     parsed = urlsplit(value)
     try:
         port = parsed.port

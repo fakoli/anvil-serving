@@ -357,6 +357,42 @@ def _canonical_nonroot_path(value: Any, path: str) -> str:
     return text
 
 
+def _canonical_path_prefix(value: Any, path: str) -> str:
+    """Accept one conservative path prefix, including the root fallback."""
+    text = _string(value, path)
+    segments = text.split("/")
+    if (not text.startswith("/") or any(char in text for char in "%\\?#")
+            or "//" in text or any(ord(char) < 33 or ord(char) > 126 for char in text)
+            or any(segment in {".", ".."} for segment in segments)
+            or (text != "/" and text.endswith("/")) or posixpath.normpath(text) != text):
+        raise _error(path, "must be a conservative canonical path prefix")
+    return text
+
+
+def _origin_proxy(value: Any, path: str) -> dict[str, Any]:
+    """Validate the fixed loopback path mux run by managed Caddy."""
+    raw = _mapping(value, path, {"listen", "routes"})
+    listen = _loopback(raw["listen"], path + ".listen")
+    routes: list[dict[str, Any]] = []
+    for index, item in enumerate(_list(raw["routes"], path + ".routes")):
+        route_path = f"{path}.routes[{index}]"
+        route = _mapping(item, route_path, {"path_prefix", "origin_url", "preserve_identity"})
+        prefix = _canonical_path_prefix(route["path_prefix"], route_path + ".path_prefix")
+        origin_url = _proxy_url(route["origin_url"], route_path + ".origin_url")
+        if origin_url.removeprefix("http://") == listen:
+            raise _error(route_path + ".origin_url", "must not point to the origin proxy listener")
+        if type(route["preserve_identity"]) is not bool:
+            raise _error(route_path + ".preserve_identity", "must be a boolean")
+        routes.append({"path_prefix": prefix, "origin_url": origin_url, "preserve_identity": route["preserve_identity"]})
+    if "/" not in {route["path_prefix"] for route in routes}:
+        raise _error(path + ".routes", "must include the / fallback route")
+    if len({route["path_prefix"] for route in routes}) != len(routes):
+        raise _error(path + ".routes", "contains duplicate canonical path prefixes")
+    # Caddy uses first match.  A longest-prefix ordering makes the fallback
+    # explicit and leaves request paths intact for each upstream application.
+    return {"listen": listen, "routes": sorted(routes, key=lambda route: (-len(route["path_prefix"]), route["path_prefix"]))}
+
+
 def _device_label(value: Any, path: str) -> str:
     text = _string(value, path)
     try:
@@ -426,13 +462,7 @@ def _rule(value: Any, path: str) -> dict[str, Any]:
     raw = _mapping(value, path, {"id", "host", "path_prefix", "methods", "access", "native_auth", "limits"})
     rule_id = _ident(raw["id"], path + ".id")
     host = _host(raw["host"], path + ".host")
-    prefix = _string(raw["path_prefix"], path + ".path_prefix")
-    segments = prefix.split("/")
-    if (not prefix.startswith("/") or any(char in prefix for char in "%\\?#")
-            or "//" in prefix or any(ord(char) < 33 or ord(char) > 126 for char in prefix)
-            or any(segment in {".", ".."} for segment in segments)
-            or (prefix != "/" and prefix.endswith("/")) or posixpath.normpath(prefix) != prefix):
-        raise _error(path + ".path_prefix", "must be a conservative canonical path prefix")
+    prefix = _canonical_path_prefix(raw["path_prefix"], path + ".path_prefix")
     methods = _list(raw["methods"], path + ".methods", 7)
     if any(not isinstance(method, str) or method not in _METHODS for method in methods):
         raise _error(path + ".methods", "contains an unsupported HTTP method")
@@ -840,6 +870,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         caddy_fields.add("listen")
     if isinstance(raw["caddy"], dict) and "state_directory" in raw["caddy"]:
         caddy_fields.add("state_directory")
+    if isinstance(raw["caddy"], dict) and "origin_proxy" in raw["caddy"]:
+        caddy_fields.add("origin_proxy")
     caddy_raw = _mapping(raw["caddy"], "$.caddy", caddy_fields)
     caddy_listen = caddy_raw.get("listen", ":443")
     if caddy_listen != ":443":
@@ -871,6 +903,26 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         caddy["state_directory"] = _abs_path(caddy_raw["state_directory"], "$.caddy.state_directory")
     elif "state_directory" in caddy_raw:
         caddy["state_directory"] = _abs_path(caddy_raw["state_directory"], "$.caddy.state_directory")
+    if "origin_proxy" in caddy_raw:
+        origin_proxy = _origin_proxy(caddy_raw["origin_proxy"], "$.caddy.origin_proxy")
+        origin_listener = origin_proxy["listen"]
+        edge_port = caddy_listen.rsplit(":", 1)[1]
+        if (origin_listener in all_listens or origin_listener == caddy_listen
+                or origin_listener.rsplit(":", 1)[1] == edge_port):
+            raise _error("$.caddy.origin_proxy.listen", "must not reuse a native listener")
+        native_listeners = {*all_listens, caddy_listen}
+        if any(route["origin_url"].removeprefix("http://") in native_listeners for route in origin_proxy["routes"]):
+            raise _error("$.caddy.origin_proxy.routes", "origins must not target a managed native listener")
+        bindings = [resource["envelope"]["rule"] for connector in connectors for resource in connector["resources"]
+                    if resource["envelope"]["origin_url"].removeprefix("http://").removesuffix("/") == origin_listener]
+        if (len(bindings) != 1 or bindings[0]["access"] != "browser"
+                or bindings[0]["path_prefix"] != "/"):
+            raise _error("$.caddy.origin_proxy", "must be the origin of exactly one root browser resource")
+        preserving = [route["path_prefix"] for route in origin_proxy["routes"] if route["preserve_identity"]]
+        if preserving != (["/"] if bindings[0]["native_auth"] == "signed-identity" else []):
+            raise _error("$.caddy.origin_proxy.routes", "only the signed-identity root fallback must preserve identity")
+        all_listens.add(origin_listener)
+        caddy["origin_proxy"] = origin_proxy
 
     authelia_fields = {"service_name", "host", "listen", "state_directory", "users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file"}
     if isinstance(raw["authelia"], dict) and "webauthn" in raw["authelia"]:
@@ -925,6 +977,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     all_hosts = {gateway["control_host"], gateway["tunnel_host"], *(r["rule"]["host"] for r in gateway["gateway"]["resources"])}
     if authelia["host"] in all_hosts:
         raise _error("$.authelia.host", "must be distinct from public resource, control, and tunnel hosts")
+    if ("origin_proxy" in caddy and any(
+            route["origin_url"].removeprefix("http://") == authelia["listen"]
+            for route in caddy["origin_proxy"]["routes"])):
+        raise _error("$.caddy.origin_proxy.routes", "origins must not target a managed native listener")
     if authelia["listen"] in all_listens or authelia["listen"] == caddy_listen:
         raise _error("$.authelia.listen", "must not reuse a native listener")
     issuer_host = gateway["oidc"]["issuer"].removeprefix("https://")

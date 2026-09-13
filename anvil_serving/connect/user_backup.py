@@ -146,6 +146,18 @@ def prune(root: Path, *, now: datetime | None = None) -> dict:
         if created_at.date().toordinal() >= first_day:
             newest_by_day[created_at.date()] = candidate
     retained.update(newest_by_day.values())
+    # Paired authority receipts own these auth snapshots until paired retention
+    # removes them. Ordinary password changes must not orphan gateway backups.
+    for receipt in root.glob("gateway-*.receipt.json"):
+        try:
+            record = _json_load((manage._read_regular(receipt, 8192) or b"").decode())
+            referenced = Path(record["auth_file"])
+            if record.get("schema") != "anvil-connect.gateway-backup-receipt/v1" or referenced.parent != root:
+                raise ValueError("invalid paired backup reference")
+            retained.add(referenced)
+        except (OSError, ValueError, TypeError, KeyError, RuntimeError):
+            # Preserve ambiguous recovery material for operator inspection.
+            retained.update(candidate for _, candidate, _ in candidates)
     for _, old, inode in candidates:
         if old in retained:
             continue
