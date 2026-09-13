@@ -141,6 +141,11 @@ func (m *Manager) putTransaction(record transaction) error {
 		record.IssuedAt = tx.Now()
 		record.ExpiresAt = record.IssuedAt.Add(m.transactionLifetime)
 		record.Epoch = tx.Epoch()
+		sequence, err := tx.NextSequence()
+		if err != nil {
+			return ErrUnavailable
+		}
+		record.Sequence = sequence
 		records, err := tx.List("transactions", transactionPrefix, maxTransactionsStored)
 		if err != nil {
 			return ErrUnavailable
@@ -279,7 +284,7 @@ func (m *Manager) issueSession(principal string, record transaction, tokenExpiry
 		var human Human
 		rule, configured := m.rules[record.Resource]
 		portalReturn := strings.TrimSuffix(rule.PathPrefix, "/") + "/_anvil-connect/home"
-		if tx.Get("principals", principal, &human) != nil || !configured || human.Disabled || human.Generation == 0 || !record.IssuedAt.After(human.BrowserNotBefore) || (!hasResource(human.Resources, record.Resource) && record.ReturnPath != portalReturn) {
+		if tx.Get("principals", principal, &human) != nil || !configured || human.Disabled || human.Generation == 0 || (human.BrowserTransactionFloor != 0 && record.Sequence <= human.BrowserTransactionFloor) || (!hasResource(human.Resources, record.Resource) && record.ReturnPath != portalReturn) {
 			return ErrDenied
 		}
 		if err := m.boundSessions(tx, principal); err != nil {

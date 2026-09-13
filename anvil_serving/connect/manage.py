@@ -621,12 +621,21 @@ def _safe_consumed_file(path: Path, uid: int, gid: int, *, public: bool = False,
         raise ManageError("declared service file is unsafe")
 
 
-def _safe_authelia_users_file(data: dict[str, Any]) -> Path:
+def _safe_authelia_users_file(data: dict[str, Any], *, writable: bool = False) -> Path:
     """Validate the mutable file backend without relaxing other secret paths."""
     auth = data["authelia"]
     uid, gid = role_identity(data, "idp")
     path = Path(auth["users_file"])
     if path.parent != Path(auth["state_directory"]):
+        if writable:
+            try:
+                info = path.lstat()
+            except OSError as exc:
+                raise ManageError("declared service file is unavailable") from exc
+            if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_nlink != 1
+                    or info.st_uid != uid or info.st_gid != gid
+                    or stat.S_IMODE(info.st_mode) != 0o600):
+                raise ManageError("Authelia users file must be idp-owned with mode 0600 for password setup")
         _safe_consumed_file(path, uid, gid)
         return path
     _safe_private_runtime_directory(path.parent, uid, gid)
@@ -647,7 +656,7 @@ def _validate_gateway_files(data: dict[str, Any]) -> None:
     if tls["mode"] == "provided":
         _safe_consumed_file(Path(tls["certificate_file"]), edge_uid, edge_gid, public=True)
         _safe_consumed_file(Path(tls["key_file"]), edge_uid, edge_gid)
-    _safe_authelia_users_file(data)
+    _safe_authelia_users_file(data, writable=True)
     for name in (
         "client_secret_file", "session_secret_file", "storage_encryption_key_file",
         "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file",

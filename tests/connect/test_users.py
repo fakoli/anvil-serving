@@ -203,17 +203,28 @@ def test_state_backed_users_file_requires_idp_private_file_metadata(environment)
     assert not state["calls"]
 
 
-def test_password_setup_rejects_legacy_users_file_before_mutation(environment):
+def test_password_setup_supports_writable_legacy_users_file(environment):
     run, db, state, private = environment
     legacy = private.parent / "legacy-users.yml"
     legacy.write_bytes(db.read_bytes())
     legacy.chmod(0o600)
     users.read_manifest("unused")["authelia"]["users_file"] = str(legacy)
+    result = run("create", email="dev@example.test", apply=True)
+    assert result["applied"] and "dev" in json.loads(legacy.read_text())["users"]
+    assert json.loads(db.read_text())["users"] == {"owner": record()}
+    assert state["active"]
+
+
+def test_password_setup_requires_writable_legacy_users_file(environment):
+    run, db, state, private = environment
+    legacy = private.parent / "legacy-users.yml"
+    legacy.write_bytes(db.read_bytes())
+    legacy.chmod(0o640)
+    users.read_manifest("unused")["authelia"]["users_file"] = str(legacy)
     before = legacy.read_bytes()
-    with pytest.raises(UsageError, match="migrate the declared users file"):
+    with pytest.raises(manage.ManageError, match="idp-owned with mode 0600"):
         run("create", email="dev@example.test", apply=True)
-    assert legacy.read_bytes() == before and db.read_bytes() == before
-    assert not state["calls"] and not list((private.parent / "handoffs").glob("*.txt"))
+    assert legacy.read_bytes() == before and db.read_bytes() == before and not state["calls"]
 
 
 def test_admin_role_is_explicit_and_resets_preserve_groups(environment):
@@ -577,6 +588,10 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(environm
     data = users.read_manifest("unused")
     data["components"]["authelia"] = binary
     data["authelia"]["listen"] = f"127.0.0.1:{port}"
+    legacy = private.parent / "legacy-users.yml"
+    legacy.write_bytes(db.read_bytes())
+    legacy.chmod(0o600)
+    data["authelia"]["users_file"] = str(legacy)
     monkeypatch.setattr(manage, "_component_lock", lambda: {"authelia": hashlib.sha256(Path(binary).read_bytes()).hexdigest()})
     root = Path(data["config_root"])
     key = private / "storage-key"
@@ -585,7 +600,7 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(environm
     data["authelia"]["storage_encryption_key_file"] = str(key)
     config = json.dumps({
         "server": {"address": f"tcp://127.0.0.1:{port}"},
-        "authentication_backend": {"file": {"path": str(db)}},
+        "authentication_backend": {"file": {"path": str(legacy)}},
         "access_control": {"default_policy": "deny", "rules": [{"domain": "auth.example.test", "policy": "one_factor"}]},
         "session": {"secret": "synthetic-session-secret-for-isolated-test", "cookies": [{"domain": "auth.example.test", "authelia_url": "https://auth.example.test"}]},
         "identity_validation": {"reset_password": {"jwt_secret": "synthetic-reset-secret-for-isolated-test"}},

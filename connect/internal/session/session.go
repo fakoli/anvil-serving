@@ -57,12 +57,12 @@ type Config struct {
 // issuer and subject so the authority store need not retain an IdP identifier.
 // A generation change invalidates every previously issued Connect session.
 type Human struct {
-	ID               string            `json:"id"`
-	Generation       uint64            `json:"generation"`
-	Disabled         bool              `json:"disabled"`
-	Resources        []string          `json:"resources"`
-	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
-	BrowserNotBefore time.Time         `json:"browser_not_before"`
+	ID                      string            `json:"id"`
+	Generation              uint64            `json:"generation"`
+	Disabled                bool              `json:"disabled"`
+	Resources               []string          `json:"resources"`
+	ApplicationRoles        map[string]string `json:"application_roles,omitempty"`
+	BrowserTransactionFloor uint64            `json:"browser_transaction_floor"`
 }
 
 // Session is the persisted server-side half of a host-only opaque cookie.
@@ -137,6 +137,7 @@ type transaction struct {
 	IssuedAt     time.Time `json:"issued_at"`
 	ExpiresAt    time.Time `json:"expires_at"`
 	Epoch        string    `json:"epoch"`
+	Sequence     uint64    `json:"sequence"`
 }
 
 type Manager struct {
@@ -351,7 +352,7 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 		if applicationRoles == nil {
 			applicationRoles = retainApplicationRoles(old.ApplicationRoles, resources)
 		}
-		result = Human{ID: id, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles, BrowserNotBefore: old.BrowserNotBefore}
+		result = Human{ID: id, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles, BrowserTransactionFloor: old.BrowserTransactionFloor}
 		if err := m.preserveAdministrators(tx, result); err != nil {
 			return err
 		}
@@ -385,13 +386,13 @@ func (m *Manager) SuspendHuman(issuer, subject string) (Human, error) {
 			return ErrUnavailable
 		}
 		if human.Disabled {
-			result = Human{ID: human.ID, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserNotBefore: human.BrowserNotBefore}
+			result = Human{ID: human.ID, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
 			return nil
 		}
 		if err := m.UpdateHumanTx(tx, id, human.Generation, human.Resources, true); err != nil {
 			return err
 		}
-		result = Human{ID: human.ID, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserNotBefore: human.BrowserNotBefore}
+		result = Human{ID: human.ID, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
 		return nil
 	})
 	if err != nil {

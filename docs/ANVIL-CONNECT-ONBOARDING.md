@@ -143,9 +143,10 @@ See [Resend SMTP](https://resend.com/docs/send-with-smtp) and
 [Authelia SMTP](https://www.authelia.com/configuration/notifications/smtp/).
 
 The users file must be writable by Authelia for self-service password changes.
-Keep it inside `authelia.state_directory`, owned by that service identity with mode
-`0600`; the managed service permits writes there without opening the shared secrets
-directory. SMTP delivery does not create local code or setup-link handoff files.
+Keep it owned by that service identity with mode `0600`. The managed service
+permits writes to the declared users file and its state directory; an existing
+users file can remain in place without making its parent secrets directory writable.
+SMTP delivery does not create local code or setup-link handoff files.
 The reset endpoint conceals delivery failures to prevent account enumeration;
 a successful request alone does not prove receipt. Check provider delivery status
 if the message does not arrive.

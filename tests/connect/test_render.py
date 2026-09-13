@@ -694,15 +694,14 @@ def test_local_tunnel_omission_preserves_pre_slice_bytes() -> None:
         "clients/dashboard-api.json": "797df756cc7391a94bf230a3a5e8ba84545c5bc7a8a31e099218f5834f15a672",
         "connectors/dashboard.json": "2d6b1299fe15ea09c10a2438c035a15413ab78df31b39c379c0d25bede593716",
         "gateway.json": "9eba949a2b1679b1f7cfb8907116635b851da9f32fc48a6c62a4b0b37034c56b",
-        "systemd/anvil-connect-authelia.service": "c5beb1942112e17a3d872e6ce2bb6ee15195f6f0bf3d6eac5f5be6cb6a5383ab",
+        "systemd/anvil-connect-authelia.service": "5209fa0cdd415eae7300f507591894251e3ce131438701a65534fdfef032e333",
         "systemd/anvil-connect-caddy.service": "9ac3db1502ec08f5e7205aa6a5156a933c4e1dc96d1ecfc2ecb5e4b9202069e5",
         "systemd/anvil-connect-client-dashboard-api.service": "213a3fd28ca1ce71e1288ddb249021763a4a08149b05b6eea2ec447d6dfbdacb",
         "systemd/anvil-connect-connector-dashboard.service": "c7d6da3ae0e75e203ae3dd6f3f7bce042d895e00351019aceb92f36d693b4f13",
         "systemd/anvil-connect-gateway.service": "d41891ef4907ca24a554827f6de463c2b5714269ef946bbeb0f437f44c381214",
-        "managed.json": "40b11470c384731d629a59edc4b1f71507c876d13e7ff5922abab0f02c93ce0f",
+        "managed.json": "70b4e2eff91bb4f460a937b54d84399b47b432ec3aafa51ca6f744ee1ce82b01",
     }
     value = isolated_manifest()
-    value["authelia"]["users_file"] = "/etc/anvil-connect/users.yml"
     normalized = connect_config.canonical_manifest(value)
     generation = "e9b86d9f9ad8acb44d686138a714f43ad610bb0be372fa80e268a4882d817b81"
     assert hashlib.sha256(normalized).hexdigest() == generation

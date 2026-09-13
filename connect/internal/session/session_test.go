@@ -512,7 +512,7 @@ func TestTransactionBoundsHumanGenerationAndLogout(t *testing.T) {
 }
 
 func TestPortalSessionAndBrowserTransactionFence(t *testing.T) {
-	manager, _, idp, now, _ := sessionFixture(t, 8, 2)
+	manager, state, idp, now, _ := sessionFixture(t, 8, 2)
 	human, err := manager.SetHuman(idp.issuer(), "person-1", []string{"other"}, false, map[string]string{"other": "member"})
 	if err != nil {
 		t.Fatal(err)
@@ -546,23 +546,33 @@ func TestPortalSessionAndBrowserTransactionFence(t *testing.T) {
 	// while a transaction started strictly after the atomic revocation fence can
 	// mint the current generation.
 	pendingBinding, _ := NewBinding()
+	*now = now.Add(100 * time.Second)
 	pending, err := manager.Begin("other", "/", pendingBinding)
 	if err != nil {
 		t.Fatal(err)
 	}
-	*now = now.Add(time.Second)
+	var pendingRecord transaction
+	if err := state.View(func(tx *store.Tx) error {
+		return tx.Get("transactions", transactionKey(challengeValues(t, pending).Get("state")), &pendingRecord)
+	}); err != nil || pendingRecord.Sequence == 0 {
+		t.Fatalf("pending transaction sequence = %#v, %v", pendingRecord, err)
+	}
+	// Reset while the wall clock is behind the pending transaction, then let it
+	// recover. A timestamp fence would accept this old future-stamped record.
+	*now = now.Add(-time.Second)
 	revoked, err := manager.RevokeHumanSessions(idp.issuer(), "person-1")
-	if err != nil || revoked.Generation != human.Generation+1 || !revoked.BrowserNotBefore.Equal(*now) || revoked.Disabled || len(revoked.Resources) != 1 || revoked.Resources[0] != "other" || revoked.ApplicationRoles["other"] != "member" {
+	if err != nil || revoked.Generation != human.Generation+1 || revoked.BrowserTransactionFloor <= pendingRecord.Sequence || revoked.Disabled || len(revoked.Resources) != 1 || revoked.Resources[0] != "other" || revoked.ApplicationRoles["other"] != "member" {
 		t.Fatalf("revoke changed human policy: %#v, %v", revoked, err)
 	}
 	if _, _, err := manager.PortalSession(portalSession.Cookie, "dash.example.test"); err == nil {
 		t.Fatal("generation fence retained prior portal session")
 	}
+	*now = now.Add(2 * time.Second)
 	if _, err := manager.Complete(context.Background(), Callback{Host: "other.example.test", State: configureToken(idp, pending, tokenClaims{Subject: "person-1"}).Get("state"), Code: "code", Binding: pendingBinding}); err == nil {
-		t.Fatal("pre-fence OIDC transaction minted a session")
+		t.Fatal("future-stamped pre-fence OIDC transaction minted a session")
 	}
 	updated, err := manager.SetHuman(idp.issuer(), "person-1", []string{"other"}, false, map[string]string{"other": "member"})
-	if err != nil || !updated.BrowserNotBefore.Equal(revoked.BrowserNotBefore) {
+	if err != nil || updated.BrowserTransactionFloor != revoked.BrowserTransactionFloor {
 		t.Fatalf("grant update lost transaction fence: %#v, %v", updated, err)
 	}
 	*now = now.Add(time.Second)
@@ -574,8 +584,9 @@ func TestPortalSessionAndBrowserTransactionFence(t *testing.T) {
 	if result := completeOnHost(t, manager, idp, fresh, "person-1", "other.example.test"); result.Cookie == "" {
 		t.Fatal("post-fence transaction did not mint a session")
 	}
-	if _, err := manager.SuspendHuman(idp.issuer(), "person-1"); err != nil {
-		t.Fatal(err)
+	suspended, err := manager.SuspendHuman(idp.issuer(), "person-1")
+	if err != nil || suspended.BrowserTransactionFloor != revoked.BrowserTransactionFloor {
+		t.Fatalf("suspend lost transaction fence: %#v, %v", suspended, err)
 	}
 	if _, _, err := manager.PortalSession(portalSession.Cookie, "dash.example.test"); err == nil {
 		t.Fatal("disabled human retained portal session")

@@ -93,10 +93,12 @@ def test_gateway_preflight_validates_nested_smtp_password_file(tmp_path: Path, m
         "password_file": str(secret), "sender": "auth@auth.example.test",
     }
     seen: list[Path] = []
+    checks: list[bool] = []
     monkeypatch.setattr(manage, "_safe_consumed_file", lambda path, *_args, **_kwargs: seen.append(path))
+    monkeypatch.setattr(manage, "_safe_authelia_users_file", lambda _data, *, writable=False: checks.append(writable) or Path(_data["authelia"]["users_file"]))
     monkeypatch.setattr(manage, "_validate_local_files", lambda *_: None)
     manage._validate_gateway_files(data)
-    assert secret in seen
+    assert secret in seen and checks == [True]
 
 
 def test_environment_metadata_is_role_specific_and_root_identity_is_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -275,7 +277,8 @@ def test_gateway_direct_files_require_role_readability_and_safe_ancestry(tmp_pat
             metadata[parent] = (0, 0, 0o755)
     metadata[Path(tls["certificate_file"])] = (0, 0, 0o644)
     metadata[Path(tls["key_file"])] = (1202, 2202, 0o600)
-    for path in paths[2:]:
+    metadata[paths[2]] = (1203, 2203, 0o600)
+    for path in paths[3:]:
         metadata[path] = (0, 2203, 0o640)
     original = Path.lstat
 
@@ -288,6 +291,10 @@ def test_gateway_direct_files_require_role_readability_and_safe_ancestry(tmp_pat
 
     monkeypatch.setattr(Path, "lstat", lstat)
     manage._validate_gateway_files(data)
+    metadata[paths[2]] = (0, 2203, 0o640)
+    with pytest.raises(manage.ManageError, match="idp-owned with mode 0600"):
+        manage._validate_gateway_files(data)
+    metadata[paths[2]] = (1203, 2203, 0o600)
     metadata[Path(tls["key_file"])] = (0, 0, 0o600)
     with pytest.raises(manage.ManageError, match="service file is unsafe"):
         manage._validate_gateway_files(data)

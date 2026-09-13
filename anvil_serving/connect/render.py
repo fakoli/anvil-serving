@@ -275,13 +275,18 @@ def _render(data: dict[str, Any]) -> dict[str, Any]:
     else:
         ingress = gateway["ingress"]["directory"]
         caddy_state = data["caddy"]["state_directory"]
+        authelia_writable = [data["authelia"]["state_directory"]]
+        if Path(data["authelia"]["users_file"]).parent != Path(data["authelia"]["state_directory"]):
+            # Authelia v4.39.20 updates this backend with os.WriteFile, so an
+            # exact-file mount permits its in-place write without its parent.
+            authelia_writable.append(data["authelia"]["users_file"])
         files = {
             "gateway.json": _json(gateway),
             "caddy.json": _json(_caddy(data)),
             "authelia/configuration.yml": _authelia(data),
             "systemd/anvil-connect-gateway.service": _isolated_unit("Anvil Connect gateway", [data["binary"], "gateway", "--config", data["config_root"] + "/gateway.json"], role_identity(data, "gateway"), role_limits(data, "gateway"), [gateway["state_directory"], ingress], environment_file=data["environment_files"]["gateway"], identity_environment_file=data["environment_files"].get("gateway_identity")),
             "systemd/anvil-connect-caddy.service": _isolated_unit("Anvil Connect Caddy", [data["components"]["caddy"], "run", "--config", data["config_root"] + "/caddy.json"], role_identity(data, "edge"), role_limits(data, "edge"), [caddy_state], supplementary_group=data["service_identities"]["ingress"]["group_id"], bind_public_tls=int(data["caddy"].get("listen", ":443").rsplit(":", 1)[1]) < 1024, environment={"XDG_CONFIG_HOME": caddy_state + "/config", "XDG_DATA_HOME": caddy_state + "/data"}),
-            "systemd/anvil-connect-authelia.service": _isolated_unit("Anvil Connect Authelia", [data["components"]["authelia"], "--config", data["config_root"] + "/authelia/configuration.yml", "--config.experimental.filters", "template"], role_identity(data, "idp"), role_limits(data, "idp"), [data["authelia"]["state_directory"]]),
+            "systemd/anvil-connect-authelia.service": _isolated_unit("Anvil Connect Authelia", [data["components"]["authelia"], "--config", data["config_root"] + "/authelia/configuration.yml", "--config.experimental.filters", "template"], role_identity(data, "idp"), role_limits(data, "idp"), authelia_writable),
         }
     for connector in data["connectors"]:
         name = connector["id"]
