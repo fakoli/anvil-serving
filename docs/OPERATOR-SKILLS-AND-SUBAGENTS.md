@@ -137,15 +137,15 @@ serve or alias authority.
 
 ## Shared research and skill improvement
 
-The qualification skill uses the `agent-methods` plugin's `research-synthesis`
+The qualification skill uses the `session-improvement-loop` plugin's `research-synthesis`
 and `skill-improvement` skills. Install from the configured Fakoli marketplace:
 
 ```bash
-codex plugin add agent-methods@fakoli-plugins
+codex plugin add session-improvement-loop@fakoli-agent-plugins
 ```
 
 For first-time marketplace setup, follow the
-[plugin repository instructions](https://github.com/fakoli/fakoli-plugins#quick-start).
+[plugin repository instructions](https://github.com/fakoli/agent-plugins#marketplace).
 Start a fresh task after installation so native skill discovery refreshes.
 Resolve resources from the discovered skill directory, never an assumed cache
 version or a parent of the calling checkout. Record plugin and instruction

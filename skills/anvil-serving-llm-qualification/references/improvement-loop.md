@@ -1,7 +1,7 @@
 # Skill improvement: Anvil Serving bindings
 
 At campaign closure, a material process failure, or an explicit improvement
-request, use `agent-methods:skill-improvement` from the installed `agent-methods`
+request, use `session-improvement-loop:skill-improvement` from the installed `session-improvement-loop`
 plugin. Resolve it through host skill discovery; see
 `docs/OPERATOR-SKILLS-AND-SUBAGENTS.md` in the product checkout for installation.
 The shared skill owns proposal, independent evaluation, adoption, cost, and

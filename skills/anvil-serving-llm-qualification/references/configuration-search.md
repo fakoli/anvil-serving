@@ -23,7 +23,7 @@ intermittency, but must retain all outcomes and cannot erase a failed gate.
 
 ## Shared research method and Anvil bindings
 
-Use `agent-methods:research-synthesis` from the installed `agent-methods`
+Use `session-improvement-loop:research-synthesis` from the installed `session-improvement-loop`
 plugin for economical independent research and evidence-based synthesis.
 Resolve the skill through the host's available-skill catalog, not a hardcoded
 cache path or assumed checkout. Installation and discovery are documented in
