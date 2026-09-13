@@ -32,6 +32,9 @@ it has no registered passkey yet.
 If creation reports that the account exists but access provisioning failed,
 inspect the retained account and retry with `users access` and the intended grants;
 do not create the same account again.
+Partial failures include a `recovery_hint` describing the step that stopped.
+If password setup failed after creation, finish the intended grants with
+`users access`, then request a new setup email with `users reset-password`.
 
 ## Complete the first sign-in
 
