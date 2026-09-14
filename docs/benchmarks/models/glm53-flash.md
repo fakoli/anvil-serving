@@ -6,22 +6,25 @@
 
 !!! info "Decision snapshot"
 
-    - **Product role:** qualified native text, tools, image and OCR reference.
-    - **Selected or best-qualified configuration:** v0.4.3 (`ec4243f9`), unchanged
-      ormandj `c3cbb989`, TP2/524,288 shared tokens/C4, FP8 KV, adaptive EAGLE,
-      HiCache off, verified thinking template, output cap 4K.
+    - **Product role:** selected current text-only reference.
+    - **Selected or best-qualified configuration:** GLM Flash EXL3 r7 no-spec,
+      4-bpw EXL3, 327,680 total tokens, 65,536-token output reserve, C4.
     - **Measured hardware:** two RTX PRO 6000 Blackwell Max-Q cards, native Linux.
-    - **Evidence:** [qualification](../../findings/2026-09-11-glm53-v043-native-linux-qualification.md)
-      passed Pi 14/14, retrieval 12/12 through 497,724 actual tokens, C4 probes,
-      and fresh Pi/Hermes/OpenClaw terminal turns. No matched speedup claim.
-    - **Decision:** dated human-authorized promotion gate passed; recovery to native rc14
-      393K/C1 was verified. Current route and startup assignments are private. EXL3 profiles below are historical.
-    - **Important limitation:** no video; sampled free memory reached 567 MiB per
-      card under the existing model-only reserve approval. Bounded evidence,
-      not a live status API or long-duration stability guarantee.
-    - **Review dates:** locally measured and reviewed 2026-09-11 UTC.
+    - **Evidence:** [selected-current finding](../../findings/2026-09-13-intelligence-context-scout.md):
+      MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5, strict120 120/120,
+      context 9/9, and Pi, Hermes, and OpenClaw tool checks passing.
+    - **Decision:** selected current text-only lane. Earlier SGLang and EXL3 decisions below
+      are historical; current route and startup assignments are private.
+    - **Important limitation:** one matched C4 no-spec population measured 38.908 tok/s;
+      it is not a general speed claim. No exhaustive intelligence winner, full-window
+      concurrency soak, or fresh boot/reboot proof is retained.
+    - **Review dates:** locally measured 2026-09-13–14 UTC; dossier reviewed 2026-09-14 UTC.
 
 ### Review narrative
+
+#### 2026-09-14 — selected EXL3 r7 no-spec text lane
+
+**Status:** `quality`, `functional`, and bounded `capacity`; selected `current` for text only. **Measured:** 4-bpw EXL3 at 327,680 total tokens with a 65,536-token output reserve and C4. The fixed one-pass MMLU-Pro scout scored 90/100; native agentic completed 30/30; the frozen official SWE scout resolved 4/5; strict120 completed 120/120; and Pi, Hermes, and OpenClaw tool checks passed. Post-promotion context completed 9/9 at 255,647–255,672 actual prompt tokens plus the 65,536-token reserve. The one matched no-spec C4 population had 38.908 tok/s median decode. **Limits:** no exhaustive intelligence winner, broad speed ranking, full-window concurrency soak, or fresh boot/reboot proof. **Evidence:** [dated finding](../../findings/2026-09-13-intelligence-context-scout.md) and [sanitized evidence index](../../findings/2026-09-13-intelligence-context-scout-evidence/README.md).
 
 #### 2026-09-11 — completion-budget diagnosis
 
@@ -161,6 +164,12 @@ No new promotion occurred. See the
 
 ## Immutable identity
 
+The selected 2026-09-14 text lane retains `brandonmusic/GLM-5.3-Flash-tr3-4bpw`
+at `a5fee929cf4888b1824323e33e8a19b60129e025` and
+`verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692`.
+See the [native promoted-context artifact](../../findings/2026-09-13-intelligence-context-scout-evidence/native/glm-r7-nospec-promoted-context258k-r1/artifact.json)
+and [configuration identity](../../findings/2026-09-13-intelligence-context-scout-evidence/configuration-identity.json).
+
 The selected native v0.4.3 profile uses ormandj revision
 `c3cbb9891b67c741bcbf6b176dd7af9265b069db`, image
 `sha256:ec4243f940a179a27fea21895077efd47cd050501f99a1d2a5fecf7df2e7be71`,
@@ -230,8 +239,9 @@ FP8 target KV, and the DFlash2 draft.
 
 | Recipe | Role | Context | Decision |
 |---|---|---:|---|
-| [SGLang W4A16 adaptive MTP](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp-recipe.toml) | selected text/image/OCR default | 393,216 | `verified`, `current` |
-| [DFlash2 K5, corrected xgrammar](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-dflash2-k5-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml) | immediate exact rollback | 524,288 | `verified`, rollback |
+| EXL3 r7 no-spec (public-safe configuration in [dated finding](../../findings/2026-09-13-intelligence-context-scout.md)) | selected text-only reference | 327,680 total / 65,536 output, C4 | `current`; bounded evidence |
+| [SGLang W4A16 adaptive MTP](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp-recipe.toml) | historical 2026-09-02 text/image/OCR selection | 393,216 | `verified`, historical |
+| [DFlash2 K5, corrected xgrammar](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-dflash2-k5-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml) | historical rollback | 524,288 | `verified`, historical |
 | [SGLang W4A16 adaptive MTP, conservative](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp-recipe.toml) | conservative fallback | 245,760 | `verified`, fallback |
 | [Matched no-speculation control](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-nospec-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml) | reliability/performance control | 524,288 | `verified`, control |
 | [Former DFlash2 K5, batch 2,048](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-dflash2-fp8-1m-vision-sm120-tp2-wsl2-recipe.toml) | first rollback | 1,048,576 | historical `verified`, rollback |
@@ -240,6 +250,13 @@ FP8 target KV, and the DFlash2 draft.
 | [TR3 vision fixed K5](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-cardillo-tpurtell-fixed-mtp5-vision-sm120-tp2-262k-wsl2-v2-no-owner-exchange-recipe.toml) | prior interactive profile and image rollback | 262,144 | historical `verified` |
 | [TR3 no spec](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-cardillo-tpurtell-nospec-sm120-tp2-524k-wsl2-v2-no-owner-exchange-recipe.toml) | prior maximum-context/headroom lane | 524,288 | historical `verified` |
 
+The current EXL3 r7 no-spec lane admits C4 at 327,680 total tokens with a
+65,536-token output reserve. It completed 9/9 post-promotion context cases at
+255,647–255,672 actual prompt tokens plus reserve; this does not establish
+concurrent full-window capacity. See the [dated finding](../../findings/2026-09-13-intelligence-context-scout.md).
+
+### Historical capacity profiles
+
 The corrected 524K engine reported 19.18 GiB of available KV memory per rank
 and 2,493,817 KV tokens, or 4.76 complete configured windows. Router c16 is a
 scheduling ceiling for short requests, not proof of sixteen simultaneous 524K
@@ -247,7 +264,7 @@ prompts. The measured long-context concurrency gate is C2 at a nominal 250K
 target. The locally qualified media contract is up to 16 images and zero
 videos.
 
-The selected SGLang profile uses C1, 4,096 maximum output tokens, adaptive
+The historical SGLang profile uses C1, 4,096 maximum output tokens, adaptive
 EAGLE, FP8 KV, and the multimodal visual tower. At 393,216 configured tokens
 it retained 2,101 MiB free on each card after qualification and 2,543 MiB after
 the promotion's routed/client work. The operator explicitly waived the
@@ -256,15 +273,24 @@ safety evidence. The 245,760 profile retained 3,487 MiB/card and remains the
 conservative fallback. The 499,712/C4 profile is rejected and the C1 variant
 is unverified.
 
-For planning only, the current 393,216-token shared pool divides to 196,608
+For planning only, the historical 393,216-token shared pool divides to 196,608
 total tokens/request at C2 and 98,304 at C4 before output, media, protocol, and
 runtime headroom. A first C2 text gate at 180,000 prompt + 4,096 output per
 request would leave 25,024 tokens in the shared pool. This is not qualified:
-the current recipe also fixes one running request and batch-size-one decode
+that historical recipe also fixes one running request and batch-size-one decode
 graphs, so increasing concurrency requires a managed candidate load and the
 full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
+
+### Selected EXL3 r7 no-spec, 2026-09-14
+
+**Status:** `quality`, `functional`, bounded `capacity`; `current` text-only.
+**Measured:** MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5,
+strict120 120/120 at C4, and context 9/9 at 255,647–255,672 prompt tokens plus
+65,536 reserve. **Limits:** one 38.908 tok/s C4 median, no exhaustive
+intelligence ranking, full-window soak, or fresh boot/reboot proof.
+**Evidence:** [finding and sanitized evidence](../../findings/2026-09-13-intelligence-context-scout.md).
 
 ### Native Linux comparison, 2026-09-08
 
@@ -337,28 +363,31 @@ model-intelligence ranking.
 
 ## Decision and promotion state
 
-The 2026-09-08 migrated-stack measurement is `no-promotion`. It does not
-replace the historical human gate or establish a new all-gates qualification;
-strict performance and routed failures remain open. The selections below
-refer to their recorded historical qualification and promotion decisions.
+The 2026-09-14 EXL3 r7 no-spec lane is the selected current text-only reference.
+It does not establish an exhaustive intelligence winner, a general performance
+ranking, or full-window concurrent capacity. The 2026-09-08 migrated-stack
+measurement is `no-promotion`; all earlier selections below are retained
+historical qualification and promotion decisions.
 
 
-The 393K/C1 SGLang adaptive-MTP profile is the selected published
-text/image/OCR default. It combines the complete direct qualification with
-managed, routed, and real-client promotion acceptance. The corrected 524K K5
-profile with 2,048-token batching is the immediate exact rollback; it retains
-measured C2 headroom at a 250K-class prompt and its corrected structured-output
-behavior. Raising its batching to 4,096 remains rejected.
+The 393K/C1 SGLang adaptive-MTP profile was the selected published text/image/OCR
+default in its dated record. The corrected 524K K5 profile was its immediate
+exact rollback; it retains measured C2 headroom at a 250K-class prompt and its
+corrected structured-output behavior. Raising its batching to 4,096 remains rejected.
 
-The selected SGLang contract advertises 393,216 context, 4,096 maximum output,
-C1, and image/OCR without video. During the recorded promotion,
+The historical SGLang contract advertises 393,216 context, 4,096 maximum output,
+C1, and image/OCR without video. During its recorded promotion,
 `llm.primary`, `llm.secondary`, `llm.auxiliary`, `llm.voice`,
 `vision.general`, and `vision.ocr` select the same exact service during this
 evaluation. Qwen3.8 Flash Next remains the retained video-capable rollback.
-The 524K EXL3/DFlash2 profile is the immediate same-model rollback, and the
-245,760/C1 SGLang lane is the conservative same-engine fallback.
+The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
+245,760/C1 SGLang lane is its conservative same-engine fallback.
 
 ## Failures and gotchas
+
+- **Current EXL3 r7 limits (2026-09-14):** no exhaustive intelligence comparison,
+  full-window concurrency soak, or fresh boot/reboot test is retained. The 38.908 tok/s
+  C4 no-spec median is one matched population, not a general speed claim.
 
 - **Native comparison limits (2026-09-08):** strict controlled output passed
   0/3; unique natural canaries 1/10. Both populations are excluded. Routed
@@ -405,6 +434,7 @@ The 524K EXL3/DFlash2 profile is the immediate same-model rollback, and the
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-09-14 | Intelligence and context qualification, EXL3 r7 no-spec | Selected current text-only lane: MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5, strict120 120/120, context 9/9 at 255,647–255,672 prompt tokens plus 65,536 reserve, and Pi, Hermes, and OpenClaw tool checks pass; one C4 no-spec population 38.908 tok/s median; no exhaustive intelligence, full-window soak, or fresh boot/reboot claim; [finding and evidence](../../findings/2026-09-13-intelligence-context-scout.md). |
 | 2026-09-09 | ormandj v0.4.2 runtime qualification | Bounded direct gates and matched capacity improve, but strict turnover is 58/60 then 57/60; user selected `retain-baseline/no-promotion` and the exact baseline was restored; [finding](../../findings/2026-09-09-glm53-ormandj-v042.md) |
 | 2026-09-09 | Native NCCL P2P transport A/B | User-authorized native default retains P2P enabled after direct/routed gates and bounded 4K n12/120K n3 latency evidence; both 380K strict-output cells and the raw PowerShell diagnostic marker failure remain explicit; [finding](../../findings/2026-09-09-glm53-native-nccl-p2p.md) |
 | 2026-09-08 | Native Linux versus retained WSL on the same dual-card GLM image/model | C1/n3 historical-style decode +20.5–33.0%; bounded quality and SWE smoke pass, extended context 128/150 (9 empty, 13 incorrect), strict-output/canary and routed failures retained; whole-stack comparison, `no-promotion`; [finding](../../findings/2026-09-08-glm53-linux-wsl-comparison.md) |

@@ -572,7 +572,7 @@ body:has(.anvil-home) .md-content__button {
 /* Benchmark decision and recipe surfaces. */
 .bench-paths {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.85rem;
   margin: 1.25rem 0 2rem;
 }
@@ -861,4 +861,62 @@ body:has(.anvil-home) .md-content__button {
   .bench-recipe__actions > p {
     grid-template-columns: 1fr;
   }
+}
+
+/* Reading rhythm shared by documentation pages; keep the homepage independent. */
+body:not(:has(.anvil-home)) .md-grid {
+  max-width: 76rem;
+}
+
+body:not(:has(.anvil-home)) .md-typeset {
+  font-size: 0.85rem;
+  line-height: 1.65;
+}
+
+.md-typeset > p,
+.md-typeset > ul,
+.md-typeset > ol {
+  max-width: 76ch;
+}
+
+body:not(:has(.anvil-home)) .md-typeset h2 {
+  margin-top: 2rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--anvil-border);
+}
+
+.md-typeset table:not([class]) {
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.md-typeset table:not([class]) th,
+.md-typeset table:not([class]) td {
+  vertical-align: top;
+  padding: 0.65rem 0.8rem;
+}
+
+.md-typeset table:not([class]) th {
+  background: var(--anvil-surface-raised);
+  color: var(--anvil-text);
+}
+
+.md-typeset table:not([class]) tbody tr:nth-child(even) {
+  background: var(--anvil-surface);
+}
+
+.md-typeset :not(pre) > code {
+  overflow-wrap: anywhere;
+}
+
+.md-nav__link {
+  line-height: 1.45;
+}
+
+body:not(:has(.anvil-home)) .md-typeset h1 {
+  margin-bottom: 1rem;
+}
+
+.bench-recipe > h3 {
+  margin: 0.5rem 0;
 }

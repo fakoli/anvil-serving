@@ -31,6 +31,7 @@ These records synthesize retained measurements without claiming a new run.
 
 | Date | Capability / configuration | Measured hardware | Evidence | Decision | Dossier / finding |
 |---|---|---|---|---|---|
+| 2026-09-14 | GLM-5.3-Flash EXL3 4-bpw r7, no speculation; 327,680 total / 65,536 output, C4 | 2x RTX PRO 6000 Blackwell Max-Q | quality, functional, capacity; MMLU-Pro 90/100 one pass, agentic 30/30, SWE 4/5, strict120 120/120, post-promotion context 9/9 | selected current text-only lane; Pi/Hermes/OpenClaw tool checks pass; no exhaustive intelligence winner or full-window concurrency claim | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-13-intelligence-context-scout.md) |
 | 2026-09-11 | GLM v0.4.3, fixed ormandj weights, 524K/C4 | 2x RTX PRO 6000 Blackwell Max-Q | functional, capacity, bounded quality; Pi 14/14, retrieval 12/12 | user-authorized promotion; 4K output retained | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-11-glm53-v043-native-linux-qualification.md) |
 | 2026-09-11 | GLM rc14 Pi completion budget 4096 vs 16384; same 393K/C1 backend | 2x RTX PRO 6000 Blackwell Max-Q | bounded functional; 16 valid / 24 tasks, eight coding runs invalid | no-promotion; retain 4096 | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-11-glm53-output-budget.md) |
 

@@ -1,6 +1,6 @@
 # RTX PRO 6000 benchmark view
 
-**2026-09-11 update:** [GLM v0.4.3](../../findings/2026-09-11-glm53-v043-native-linux-qualification.md) is the latest qualified native 524K/C4 reference, with Pi 14/14 and 4K output retained. Recovery to native rc14 was verified during the campaign; current assignments are private. Earlier deployment descriptions below are historical.
+**2026-09-14 update:** [GLM Flash EXL3 r7 no-spec](../../findings/2026-09-13-intelligence-context-scout.md) is the selected current text-only lane: 327,680 total tokens with a 65,536-token output reserve at C4, 90/100 one-pass MMLU-Pro, agentic 30/30, SWE 4/5, strict120 120/120, and 9/9 post-promotion 258K-class context. The one matched no-spec C4 population measured 38.908 tok/s median decode. This is not an exhaustive intelligence ranking, a general speed claim, or proof of concurrent full-window capacity; fresh boot/reboot coverage is absent. Earlier deployment descriptions below are historical.
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
@@ -22,14 +22,14 @@ the cards. Exclusive TP=2 mode assigns both roles to one declared owner and
 blocks every other inference workload until the mode is left; the cards are
 connected over PCIe without NVLink, so 192 GB is aggregate rather than unified
 memory. The public 2026-09-02 promotion finding records the pinned ormandj
-GLM-5.3-Flash SGLang W4A16/NVFP4 adaptive-MTP profile as the published
+GLM-5.3-Flash SGLang W4A16/NVFP4 adaptive-MTP profile as the 2026-09-02
 exclusive TP=2 text/image/OCR reference at 393,216 tokens and C1. It passed
 the complete direct qualification, managed and routed promotion gates, and
 real Pi/OpenClaw/Hermes acceptance under an explicit model-only reserve
-waiver. The corrected 524K EXL3 K3 plus DFlash2 K5 profile is the immediate
-same-model rollback.
-The 2026-08-26 RadixArk Qwen3.8 Flash Next NVFP4 profile remains the immediate
-video-capable rollback.
+waiver. The corrected 524K EXL3 K3 plus DFlash2 K5 profile was its immediate
+same-model rollback. The 2026-08-26 RadixArk Qwen3.8 Flash Next NVFP4 profile
+was its immediate video-capable rollback. The retained current rollback is the
+original Qwen3.8 27B FP8 path; it was not exercised after the 2026-09-14 promotion.
 The 2026-09-04 Qwen3.8 27B campaign measured current-SGLang TP1, TP2, and two
 independent TP1 replicas, plus Inferact/RadixArk targets and kelnei/vLLM
 MTP2/no-spec. DP2 won the bounded aggregate-throughput workload; TP2 was slower
@@ -69,7 +69,7 @@ prior promotion decisions remain dated history. See the
 
 Latest functional measurement (2026-09-11): [GLM Pi completion-budget comparison](../../findings/2026-09-11-glm53-output-budget.md) on this native Max-Q pair. Same rc14/393K/C1 backend; 16 valid runs and eight invalid coding runs. No output-default or hardware-setting change; this is not throughput qualification.
 
-The pinned GLM TP=2/C1 native recipe now retains P2P enabled after the bounded
+The 2026-09-09 pinned GLM TP=2/C1 native recipe retained P2P enabled after the bounded
 transport A/B: 4K n12 and 120K n3 matched cells lowered median TTFT by about
 9% and E2E by 7.4–8.9%, while decode changed by +1.4–2.1%. Both 380K strict
 capacity cells failed the required 32-word count and are excluded from
@@ -84,17 +84,19 @@ selected `retain-baseline/no-promotion`; the exact baseline was restored. See th
 
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
-| 1 | [GLM-5.3-Flash SGLang W4A16](../models/glm53-flash.md) | `current`, 2026-09-02 human-approved 393K/C1 profile | Exact rc14 SGLang image and W4A16/NVFP4 checkpoint at exclusive TP=2, 393,216 tokens, C1, 4,096 maximum output, FP8 KV, adaptive EAGLE, image/OCR, and explicit thinking control; direct, managed, routed, and real-client gates passed under a recorded model-only reserve waiver |
-| 2 | [GLM-5.3-Flash](../models/glm53-flash.md) | immediate exact rollback | EXL3 K3 target plus DFlash2 K5 at exclusive TP=2, 524,288 tokens, router c16, up to 16 images, and 8,192 maximum output; both matched arms passed 28/28 functional observations, C2 nominal 250K completed 2/2, and exact router plus real Hermes/Pi/OpenClaw acceptance passed; no video; noncommercial draft boundary |
-| 3 | [Qwen3.8 Flash Next](../models/qwen38-flash-next.md) | immediate video-capable rollback | RadixArk ModelOpt NVFP4 retains text/image/OCR/video evidence at exclusive TP=2, 262,144 tokens, router concurrency one, four-image/one-video admission, and an 8,192-token output reserve; direct vision 30/30, live repeats 57/60 strict, edges 8/8, full-reserve capacity, routed identity, and real-client acceptance passed |
-| 4 | [Qwen3.8 27B](../models/qwen38-27b.md) | dual-card DP2 throughput winner, TP2 rejected, `no-promotion` | Current SGLang/Inferact NVFP4 plus DFlash2 K12/chunk1K: two TP1 replicas 1,401.8–1,423.4 aggregate tok/s at C16 versus one TP1 764.3 and TP2 587.9; 100/100 canaries, but TP2 strict JSON failed twice; RadixArk is the TTFT tradeoff and kelnei/vLLM MTP2 is an alternate-runtime gain; exact GLM baseline restored |
-| 5 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | former `current`, 2026-08-21 r18 promotion | Retained Infernal Invocation r18 B12X/DSpark K5 TP=2/1,048,576 promotion evidence |
-| 6 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | former `current`, 2026-08-16 r15 promotion | Retained Infernal Invocation r15 B12X/DSpark K5 TP=2/393,216 promotion evidence |
-| 7 | [Qwen3.8 27B](../models/qwen38-27b.md) | former single service and split | Retained official-FP8 SGLang text/image/OCR/video profile and FP8/BF16 vLLM split recipes |
-| 8 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Historical qualification evidence |
-| 9 | [Agents-A1](../models/agents-a1.md) plus Omni | historical managed split | Agents-A1 retains FP8 text/image/video evidence |
-| 10 | [Laguna S 2.1](../models/laguna-s-2.1.md) | retained historical recipe | Thinking disabled |
-| 11 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | retained historical recipe | Strict unified-diff caveat |
+| 1 | [GLM-5.3-Flash EXL3 r7 no-spec](../models/glm53-flash.md) | `current`, selected 2026-09-14 text-only lane | EXL3 4-bpw, 327,680 total / 65,536 output tokens at C4; one-pass MMLU-Pro 90/100, agentic 30/30, SWE 4/5, strict120 120/120, and context 9/9 through 255,647–255,672 prompt tokens plus reserve. Pi, Hermes, and OpenClaw tool checks pass; no full-window concurrency soak or fresh boot/reboot proof. |
+| 2 | [GLM-5.3-Flash SGLang W4A16](../models/glm53-flash.md) | historical 2026-09-02 human-approved 393K/C1 profile | Exact rc14 SGLang image and W4A16/NVFP4 checkpoint at exclusive TP=2, 393,216 tokens, C1, 4,096 maximum output, FP8 KV, adaptive EAGLE, image/OCR, and explicit thinking control; direct, managed, routed, and real-client gates passed under a recorded model-only reserve waiver |
+| 3 | [GLM-5.3-Flash](../models/glm53-flash.md) | historical same-model rollback | EXL3 K3 target plus DFlash2 K5 at exclusive TP=2, 524,288 tokens, router c16, up to 16 images, and 8,192 maximum output; both matched arms passed 28/28 functional observations, C2 nominal 250K completed 2/2, and exact router plus real Hermes/Pi/OpenClaw acceptance passed; no video; noncommercial draft boundary |
+| 4 | [Qwen3.8 27B FP8](../models/qwen38-27b.md) | retained current rollback | Original FP8 text-only rollback path; declared but unexercised after the 2026-09-14 promotion |
+| 5 | [Qwen3.8 Flash Next](../models/qwen38-flash-next.md) | historical 2026-08-26 video-capable rollback | RadixArk ModelOpt NVFP4 retains text/image/OCR/video evidence at exclusive TP=2, 262,144 tokens, router concurrency one, four-image/one-video admission, and an 8,192-token output reserve; direct vision 30/30, live repeats 57/60 strict, edges 8/8, full-reserve capacity, routed identity, and real-client acceptance passed |
+| 6 | [Qwen3.8 27B](../models/qwen38-27b.md) | historical DP2 throughput winner, TP2 rejected, `no-promotion` | Current SGLang/Inferact NVFP4 plus DFlash2 K12/chunk1K: two TP1 replicas 1,401.8–1,423.4 aggregate tok/s at C16 versus one TP1 764.3 and TP2 587.9; 100/100 canaries, but TP2 strict JSON failed twice; RadixArk is the TTFT tradeoff and kelnei/vLLM MTP2 is an alternate-runtime gain; exact GLM baseline restored |
+| 7 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | former `current`, 2026-08-21 r18 promotion | Retained Infernal Invocation r18 B12X/DSpark K5 TP=2/1,048,576 promotion evidence |
+| 8 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | former `current`, 2026-08-16 r15 promotion | Retained Infernal Invocation r15 B12X/DSpark K5 TP=2/393,216 promotion evidence |
+| 9 | [Qwen3.8 27B](../models/qwen38-27b.md) | former single service and split | Retained official-FP8 SGLang text/image/OCR/video profile and FP8/BF16 vLLM split recipes |
+| 10 | [Qwen3.5 122B](../models/qwen35-122b.md) | retained qualified recipe | Historical qualification evidence |
+| 11 | [Agents-A1](../models/agents-a1.md) plus Omni | historical managed split | Agents-A1 retains FP8 text/image/video evidence |
+| 12 | [Laguna S 2.1](../models/laguna-s-2.1.md) | retained historical recipe | Thinking disabled |
+| 13 | [GPT-OSS Puzzle 88B](../models/gpt-oss-puzzle-88b.md) | retained historical recipe | Strict unified-diff caveat |
 
 ## Comparable quality and context
 
@@ -102,9 +104,10 @@ selected `retain-baseline/no-promotion`; the exact baseline was restored. See th
 
 | Candidate | Repeated quality | Capacity and context evidence | Decision |
 |---|---|---|---|
-| GLM-5.3-Flash ormandj W4A16/NVFP4, SGLang adaptive EAGLE, TP=2, 393K/C1 | thinking-disabled preflight 10/10, tools 20/20, long needle/tool, and image/OCR; thinking-enabled contract; coding 15/15, media 12/12, endurance 60/60; managed/routed gates and real Pi/OpenClaw/Hermes pass; fixed SWE-bench Verified smoke officially resolved 1/1 through 11 routed requests | 304,491 actual prompt tokens at the 380K target; median decode 112.07/96.17/102.42/99.79 tok/s and effective prefill 16,729/5,749/5,579/5,457 tok/s at 4K/120K/262K/380K; 2,101 MiB/card after qualification and 2,543 after client work; SWE agent/grader 34.216/29.076 s | `current` text/image/OCR; C1 and 4,096 output; explicit model-only zero-reserve waiver; one-instance SWE smoke only; 240K conservative fallback; 499K rejected/unverified |
-| GLM-5.3-Flash EXL3 K3 target plus corrected DFlash2 K5, TP=2, 524K/c16 | intelligence 6/6, session 3/3, tools 20/20 plus repeated tools 3/3; image/OCR; authenticated route and fresh Hermes/Pi/OpenClaw acceptance | 206,296-actual-token retrieval; 2,493,817 KV tokens / 4.76 complete windows; median decode 83.08 tok/s at 4K and pooled 69.99 at 240K; C2 nominal 250K 2/2 | immediate exact rollback; K5/batch2,048; 16 images, no video; DFlash2 noncommercial boundary |
-| Qwen3.8 Flash Next RadixArk NVFP4, SGLang QSA-fast MTP3, TP=2, 262K/c1 | thinking-disabled intelligence 6/6, session 3/3, tools 3/3; direct media 30/30; isolated router 27/30 then 30/30; live router 29/30 then 28/30; edge suite 8/8; exact routed identity and fresh OpenClaw/Hermes/Pi acceptance | 253,703 actual prompt tokens with 8,192 output request; 516,032 maximum server tokens; 6.275 GiB KV per rank; six-size sweep 25/25; median decode 155.9/114.7/112.9 tok/s at 4K/128K/254K targets and 102.0 at full reserve | immediate retained text/image/OCR/video rollback; hash-gated PR #36556 SM120 fast path; c1, four images or one video |
+| GLM-5.3-Flash EXL3 r7 no-spec, TP=2/C4 | MMLU-Pro 90/100 one pass; agentic 30/30; frozen SWE 4/5; Pi/Hermes/OpenClaw tool checks pass | 327,680 total / 65,536 output; 9/9 through 255,647–255,672 actual prompt tokens plus reserve; concurrent full-window capacity unmeasured | `current` text-only; strict120 120/120; one C4 no-spec median 38.908 tok/s; no full-window soak or fresh boot/reboot proof |
+| GLM-5.3-Flash ormandj W4A16/NVFP4, SGLang adaptive EAGLE, TP=2, 393K/C1 | thinking-disabled preflight 10/10, tools 20/20, long needle/tool, and image/OCR; thinking-enabled contract; coding 15/15, media 12/12, endurance 60/60; managed/routed gates and real Pi/OpenClaw/Hermes pass; fixed SWE-bench Verified smoke officially resolved 1/1 through 11 routed requests | 304,491 actual prompt tokens at the 380K target; median decode 112.07/96.17/102.42/99.79 tok/s and effective prefill 16,729/5,749/5,579/5,457 tok/s at 4K/120K/262K/380K; 2,101 MiB/card after qualification and 2,543 after client work; SWE agent/grader 34.216/29.076 s | historical 2026-09-02 text/image/OCR selection; C1 and 4,096 output; explicit model-only zero-reserve waiver; one-instance SWE smoke only; 240K conservative fallback; 499K rejected/unverified |
+| GLM-5.3-Flash EXL3 K3 target plus corrected DFlash2 K5, TP=2, 524K/c16 | intelligence 6/6, session 3/3, tools 20/20 plus repeated tools 3/3; image/OCR; authenticated route and fresh Hermes/Pi/OpenClaw acceptance | 206,296-actual-token retrieval; 2,493,817 KV tokens / 4.76 complete windows; median decode 83.08 tok/s at 4K and pooled 69.99 at 240K; C2 nominal 250K 2/2 | historical rollback; K5/batch2,048; 16 images, no video; DFlash2 noncommercial boundary |
+| Qwen3.8 Flash Next RadixArk NVFP4, SGLang QSA-fast MTP3, TP=2, 262K/c1 | thinking-disabled intelligence 6/6, session 3/3, tools 3/3; direct media 30/30; isolated router 27/30 then 30/30; live router 29/30 then 28/30; edge suite 8/8; exact routed identity and fresh OpenClaw/Hermes/Pi acceptance | 253,703 actual prompt tokens with 8,192 output request; 516,032 maximum server tokens; 6.275 GiB KV per rank; six-size sweep 25/25; median decode 155.9/114.7/112.9 tok/s at 4K/128K/254K targets and 102.0 at full reserve | historical text/image/OCR/video rollback; hash-gated PR #36556 SM120 fast path; c1, four images or one video |
 | GLM-5.3-Flash TR3/EXL3 4 bpw, fixed K5/no-spec, TP=2 | vision/OCR, tools 20/20, agent protocols, and high-reasoning bounded coding 15/15 pass; adaptive arm tools only 12/20 and rejected | vision fixed K5 72.8/55.7 tok/s decode at 4K/128K, exact retrieval at a 250K target / 206,296 actual prompt tokens, and 560,866 KV tokens; 524K text arms pass 495,045-token retrieval and 497,976-token tool use; no-spec reports 1,603,111 KV tokens | historical GLM starting point and GLM-specific rollback evidence |
 | DeepSeek V4 Flash 0731, Infernal Invocation r18 B12X + DSpark K5, batch 4,096, maxseq8, 1M | complete direct and routed functional gates; clean post-reload gate; intelligence/session/tools 12/12; additional structured tools 160/160; real Hermes/Pi/OpenClaw acceptance | K5/no-spec 4K decode 142.1/76.4 tok/s and 32K decode 129.5/76.3; calibrated 1,040,063 actual prompt tokens pass; c8 short 8/8 and c2 at 490,861 prompt tokens/request; 1,323,176 KV tokens / 1.26 full windows | former human-approved text Primary; retained evidence |
 | DeepSeek V4 Flash 0731, Infernal Invocation r15 B12X + DSpark K5, batch 4,096, maxseq8, 393K | full direct functional gate; repeated tools/session/unified-diff/timeout 12/12; authenticated routed tools and OpenClaw-compatible Anthropic basic/tool paths pass | K5/no-spec 4K decode 150.0/76.4 tok/s and 32K decode 119.245/76.767; direct 351,118 and routed 340,119 actual prompt tokens pass; c8 short 8/8 and c2 long 2/2; 797,689 KV tokens / 2.03 full windows | former human-approved text Primary; retained evidence; actual Mini OpenClaw turn remained open |
@@ -121,8 +124,8 @@ selected `retain-baseline/no-promotion`; the exact baseline was restored. See th
 | DeepSeek V4 Flash 0731, earlier SGLang lane | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 11/12; 2.70 s TTFO, 29.11 s first-visible TTFT, 11.5 tok/s combined reasoning/visible decode | retained low-reasoning point-in-time lane; one reasoning-only exhaustion; see the r16 and r15 rows for later DSpark evidence |
 | Inkling Small NVFP4 | intelligence 6/6, session 3/3, tools 3/3 at low reasoning | 32K 12/12; 2.79 s TTFO, 4.63 s first-visible TTFT, 73.5 tok/s combined reasoning/visible decode; reasoning-off lane also 12/12 | `no-promotion`; reasoning-off Responses caveat retained |
 
-All rows used both physical cards as measured hardware, exclusive ownership,
-one admitted request, and no co-resident inference. See the
+The historical rows below used both physical cards as measured hardware, exclusive
+ownership, one admitted request, and no co-resident inference. See the
 [dated campaign](../../findings/2026-08-01-dual-pro-tp2-model-campaign.md) for
 exact revisions, raw artifacts, protocol differences, and failure records.
 
@@ -157,7 +160,7 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 | Candidate | Repeated quality | Context evidence | Decision |
 |---|---|---|---|
-| Qwen3.8 27B current SGLang comprehensive campaign | TP1/DP2, RadixArk, and kelnei/vLLM passed smoke/JSON/tools/Responses; all 100-request headline cells passed 100/100 canaries; TP2 failed JSON twice | sustained-output aggregate: TP1 764.3, TP2 587.9, DP2 1,401.8–1,423.4 tok/s; RadixArk 746.7 with 46.9% lower median TTFT but 6.8% higher median E2E; kelnei MTP2 503.4 versus 315.2 no-spec; unique 82K/C8 median E2E 93.7-137.6 s | DP2 bounded throughput winner, TP2 rejected, all `no-promotion`; balancing/failover, broad quality, clients, multimodal, and power/energy remain open; exact baseline restored |
+| Qwen3.8 27B 2026-09-04 SGLang comprehensive campaign | TP1/DP2, RadixArk, and kelnei/vLLM passed smoke/JSON/tools/Responses; all 100-request headline cells passed 100/100 canaries; TP2 failed JSON twice | sustained-output aggregate: TP1 764.3, TP2 587.9, DP2 1,401.8–1,423.4 tok/s; RadixArk 746.7 with 46.9% lower median TTFT but 6.8% higher median E2E; kelnei MTP2 503.4 versus 315.2 no-spec; unique 82K/C8 median E2E 93.7-137.6 s | DP2 bounded throughput winner, TP2 rejected, all `no-promotion`; balancing/failover, broad quality, clients, multimodal, and power/energy remain open; exact baseline restored |
 | Qwen3.8 27B SGLang official FP8, remote AI-MBP25 worker | agentic smoke 2/2; agentic scout 16/18 with both failures in debug-loop; fixed SWE-bench Verified scout 5/5 officially graded and resolved | 393,216-token service; SWE tasks required 19-57 model requests and completed in 42m29s overall | bounded coding-agent evidence from the former service; larger stratified SWE and efficiency-aware debugging follow-up |
 | Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, MTP=3 multimodal | All pass the same earlier 18/18 image corpus; the official FP8 arm later passed direct 30/30 including video 14/14 and live admitted 28/28 | 393,216 configured tokens; at 4K BF16/FP8/NVFP4 measure 62.7/111.4/97.7 decode tok/s; official-FP8 direct video p50/p95 is 2.935/9.904 s | Official FP8 is the former human-promoted single service; NVFP4 is the lowest-latency third-party `no-promotion` alternative with video still open |
 | Qwen3.8 27B official BF16 / official FP8 vLLM split | Both passed intelligence/session/tools at 3/3 and adaptive low/medium/xhigh control; final routed BF16 media 30/30 and 32-image request 1/1; all 16 TP/MTP matrix arms passed complete functional gates | Split TP=1 and exclusive TP=2 passed 388,979 actual tokens; TP=2 also passed 598,729 and 985,107 on both checkpoints, with 13.0-13.7 minute near-1M TTFT | managed rollback at TP=1/393K/MTP=3; TP=2 remains batch-like |
@@ -175,23 +178,24 @@ the publisher-reasoning/DSpark/NVFP4 qualification sequence.
 
 Configured concurrency is not full-window capacity. In the GLM rows below,
 `maxseq16` means the scheduler may run sixteen requests; it does not mean the
-KV pool can hold sixteen requests at the served context ceiling. The current
-SGLang profile is configured and qualified at C1. The corrected 524K rollback
+KV pool can hold sixteen requests at the served context ceiling. The historical
+393K SGLang profile was configured and qualified at C1. The corrected 524K rollback
 proved C2 at 206,630 prompt tokens/request, while the historical BrandonMusic
 C16 artifacts used 4K prompts. See the
 [cross-run capacity interpretation](../../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md).
 
 | Model/configuration | Served context | Admission | Capacity note |
 |---|---:|---:|---|
-| GLM-5.3-Flash ormandj W4A16/NVFP4, SGLang adaptive EAGLE, TP=2 | 393,216 | 1; image/OCR; video zero | published current; FP8 KV; 304,491 actual prompt tokens at the 380K target; 2,101 MiB/card after qualification and 2,543 after client work under an explicit model-only zero-reserve waiver; 240K remains the conservative verified fallback |
-| GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5, TP=2 | 524,288 | router 16; measured C2 at nominal 250K; up to 16 images, no video | immediate exact rollback; FP8 DS-MLA target KV and BF16 draft KV; 2,493,817 KV tokens / 4.76 complete windows; 206,296-actual-token retrieval; C2 2/2; batch4,096 rejected |
-| Qwen3.8 Flash Next RadixArk NVFP4, SGLang QSA-fast MTP3, TP=2 | 262,144 | 1; four images or one video | immediate video-capable rollback; 516,032 maximum server tokens; 6.275 GiB KV per rank / 12.55 GiB aggregate; 253,703 actual prompt tokens with an 8,192-token output request; direct media 30/30; BF16 KV, no PLE CPU offload; exact PR #36556 SM120 QSA path; matched NEXTN `3/1/4` qualification |
+| GLM-5.3-Flash EXL3 r7 no-spec, TP=2 | 327,680 | C4; text only | Selected 2026-09-14; 65,536 output reserve; 9/9 context through 255,647–255,672 prompt tokens; [1,638,400 reported shared KV tokens](../../findings/2026-09-13-intelligence-context-scout-evidence/native/glm-r7/mtp3-nospec-matched120-comparison.json) is allocation, not proof of simultaneous full-window correctness |
+| GLM-5.3-Flash ormandj W4A16/NVFP4, SGLang adaptive EAGLE, TP=2 | 393,216 | 1; image/OCR; video zero | historical 2026-09-02 selection; FP8 KV; 304,491 actual prompt tokens at the 380K target; 2,101 MiB/card after qualification and 2,543 after client work under an explicit model-only zero-reserve waiver; 240K remains the conservative verified fallback |
+| GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5, TP=2 | 524,288 | router 16; measured C2 at nominal 250K; up to 16 images, no video | historical rollback; FP8 DS-MLA target KV and BF16 draft KV; 2,493,817 KV tokens / 4.76 complete windows; 206,296-actual-token retrieval; C2 2/2; batch4,096 rejected |
+| Qwen3.8 Flash Next RadixArk NVFP4, SGLang QSA-fast MTP3, TP=2 | 262,144 | 1; four images or one video | historical video-capable rollback; 516,032 maximum server tokens; 6.275 GiB KV per rank / 12.55 GiB aggregate; 253,703 actual prompt tokens with an 8,192-token output request; direct media 30/30; BF16 KV, no PLE CPU offload; exact PR #36556 SM120 QSA path; matched NEXTN `3/1/4` qualification |
 | GLM-5.3-Flash TR3/EXL3 4 bpw, vision fixed K5, TP=2 | 262,144 | 16 configured; c1 long-context measured; one image proven | NVFP4 DS-MLA KV; reports 560,866 KV tokens / 2.14 configured windows, measures 72.8/55.7 tok/s decode at 4K/128K, passes a 250K target / 206,296 actual prompt-token retrieval, and completes c16 short 16/16 at 28.3 aggregate output tok/s; image/OCR pass, video disabled |
 | GLM-5.3-Flash TR3/EXL3 4 bpw, text fixed K5, TP=2 | 262,144 / 524,288 | 16 configured; c1 long-context measured | NVFP4 DS-MLA KV; 262K lane reports 688,890 KV tokens and measures 69.8/61.9 tok/s decode at 4K/128K; 524K lane reports 565,898 KV tokens, passes 495,045-token retrieval and 497,976-token tool use, and is single-user due to the 1.08x KV envelope |
 | GLM-5.3-Flash TR3/EXL3 4 bpw, no spec, TP=2 | 262,144 / 524,288 | 16 configured; c1 long-context measured | NVFP4 DS-MLA KV; 262K lane reports 1,775,814 KV tokens and completes c16 short 16/16; 524K lane reports 1,603,111 KV tokens, passes 495,045-token retrieval and 497,976-token tool use, and is the preferred maximum-context/headroom profile |
 | DeepSeek V4 Flash 0731 Infernal Invocation r18 B12X + DSpark K5, batch 4,096, TP=2 | 1,048,576 | 8 engine; router 1 | FP8 compressed MLA KV, GPU-only; 1,323,176 reported KV tokens; 1,040,063 actual prompt tokens pass; c8 short and c2 at 490,861 tokens/request pass; matched no-spec control retained; former Primary |
 | DeepSeek V4 Flash 0731 Infernal Invocation r15 B12X + DSpark K5, batch 4,096, TP=2 | 393,216 | 8 engine; router 2 | FP8 compressed MLA KV, GPU-only; 797,689 reported KV tokens; 351,118 direct and 340,119 routed actual prompt tokens passed; c8 short and c2 at 99,175 tokens/request passed; matched no-spec control retained |
-| Qwen3.8 27B current SGLang Inferact/RadixArk and kelnei/vLLM | 262,144 | C8 per TP1/TP2 service; aggregate C16 across two TP1 replicas | SGLang K12/chunk1K/Mamba96 selected; TP1/TP2/DP2 and RadixArk measured; kelnei vLLM MTP2/no-spec measured; all unique 82K/C8 arms completed but were non-interactive; TP2 rejected for speed and strict JSON |
+| Qwen3.8 27B 2026-09-04 SGLang Inferact/RadixArk and kelnei/vLLM | 262,144 | C8 per TP1/TP2 service; aggregate C16 across two TP1 replicas | SGLang K12/chunk1K/Mamba96 selected; TP1/TP2/DP2 and RadixArk measured; kelnei vLLM MTP2/no-spec measured; all unique 82K/C8 arms completed but were non-interactive; TP2 rejected for speed and strict JSON |
 | Qwen3.8 27B SGLang official BF16 / official FP8 / Inferact NVFP4, TP=1 MTP=3 multimodal | 393,216 | 1 each | All pass the earlier 18/18 image corpus; official FP8 later passed video 14/14 and live admitted 28/28 at two images/one video; NVFP4 video plus broader concurrency, memory-pressure, and quality gates remain open |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, TP=1 MTP=3 | 393,216 | 1 each | Both pass 389K retrieval and cross-card gates; official FP8 averages 111.3 decode tok/s, NVFP4 98.1 with 0.448 s TTFT; CPU transport passes bounded image/OCR on both but full media and host-memory-pressure gates remain open |
 | Qwen3.8 27B SGLang official FP8 / Inferact NVFP4, TP=1 no-spec | 393,216 | 1 each | Both pass 388,979 actual prompt tokens and cross-card functional gates; official FP8 reports 1,665,740 KV tokens and 48.0 tok/s 4K decode, NVFP4 1,805,068 and 57.9 tok/s; text-only because WSL2 CUDA-IPC multimodal warmup failed |
