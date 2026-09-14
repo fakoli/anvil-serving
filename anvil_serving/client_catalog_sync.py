@@ -384,8 +384,16 @@ def _render_openclaw_document(catalog: Mapping, openclaw: Mapping) -> dict:
             primary = image_model.get("primary")
             if isinstance(primary, str) and primary.startswith("anvil/"):
                 image_model.pop("primary")
-                if not image_model:
-                    defaults.pop("imageModel")
+            fallbacks = image_model.get("fallbacks")
+            if isinstance(fallbacks, list):
+                retained = [item for item in fallbacks
+                            if not (isinstance(item, str) and item.startswith("anvil/"))]
+                if retained:
+                    image_model["fallbacks"] = retained
+                else:
+                    image_model.pop("fallbacks")
+            if not image_model:
+                defaults.pop("imageModel")
         elif isinstance(image_model, str) and image_model.startswith("anvil/"):
             defaults.pop("imageModel")
     compaction_models = [

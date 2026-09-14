@@ -1124,6 +1124,25 @@ def test_openclaw_text_only_catalog_removes_only_anvil_image_selection(tmp_path)
     assert rendered["models"]["providers"]["other"] == {"models": [{"id": "other"}]}
 
 
+@pytest.mark.parametrize(("selection", "expected"), [
+    ({"primary": "anvil/vision.general",
+      "fallbacks": ["anvil/vision.ocr", "cloud/image", "other/image"]},
+     {"fallbacks": ["cloud/image", "other/image"]}),
+    ({"primary": "cloud/image", "fallbacks": ["anvil/vision.general", "other/image"]},
+     {"primary": "cloud/image", "fallbacks": ["other/image"]}),
+    ({"primary": "anvil/vision.general", "fallbacks": ["anvil/vision.ocr"]}, None),
+])
+def test_openclaw_text_only_sync_filters_anvil_vision_fallbacks(tmp_path, selection, expected):
+    openclaw_path, _, _ = _write_inputs(tmp_path)
+    config = json.loads(openclaw_path.read_text())
+    config["agents"]["defaults"]["imageModel"] = selection
+    openclaw_path.write_text(json.dumps(config))
+    _run(tmp_path, clients="openclaw", opener=_Opener(*_catalog(include_vision=False)),
+         confirm=True, dry_run=False)
+    rendered = json.loads(openclaw_path.read_text())
+    assert rendered["agents"]["defaults"].get("imageModel") == expected
+
+
 def test_hermes_profile_sync_rejects_unsafe_compaction_before_write(tmp_path):
     _write_inputs(tmp_path)
     home, states = _write_hermes_profiles(tmp_path)
