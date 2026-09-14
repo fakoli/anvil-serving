@@ -1,0 +1,153 @@
+{
+  "created_at": "2026-09-14T02:33:22.133735Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "<redacted-secret-reference>",
+      "base_url": "<redacted-local-endpoint>",
+      "model": "llm.primary"
+    },
+    "finished_at": "2026-09-14T02:33:22.133649Z",
+    "started_at": "2026-09-14T02:28:33.676766Z",
+    "submitted_at": "2026-09-14T02:28:33.378021+00:00",
+    "worker": {
+      "id": "<redacted-host>"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-09-14T02:33:22.123985Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "dataset": {
+          "name": "deterministic-native",
+          "profile_sha256": "6cc9e66696ae5fafed7af738cae898b59b7370574c829a9740300762dfbb92a7"
+        },
+        "hardware": {
+          "architecture": "x86_64",
+          "container_capable": true,
+          "free_disk_bytes": "<redacted-host-capacity>",
+          "harness_assets": [],
+          "id": "<redacted-host>",
+          "owned_output_writable": true,
+          "platform": "linux"
+        },
+        "harnesses": {
+          "native": {
+            "schema": "anvil-serving.agentic/v1"
+          }
+        },
+        "image": {
+          "status": "not-applicable"
+        },
+        "model": {
+          "quantization": "EXL3 uniform K4 routed experts; native non-routed weights; FP8 DS-MLA KV",
+          "repo": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+          "revision": "a5fee929cf4888b1824323e33e8a19b60129e025"
+        },
+        "runtime": {
+          "configured_context": 327680,
+          "dcp": 2,
+          "engine": "vllm-glm53-exl3-b12x-v84-fp8-control",
+          "ep": 2,
+          "harness_commit": "f5d8fbc4308d27bdc964abac73d7801e738dcd2a",
+          "image": "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+          "kv_cache": "fp8_ds_mla",
+          "max_concurrency": 4,
+          "mtp": 0,
+          "reasoning_config": {},
+          "source_commit": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+          "source_recipe": "<redacted-private-source_recipe>",
+          "source_recipe_sha256": "030fb4775b70d891f4075f0f42e197eaa60f09b0d98817acc15e4eb3b0550064",
+          "tp": 2
+        },
+        "served_model": {
+          "configured_context": null,
+          "id": "llm.primary"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "<redacted-host>"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "intelligence-context-20260913",
+        "profile": "deep",
+        "run_id": "glm-r7-nospec-agentic-thinking49152-r1",
+        "spec_sha256": "0a802d4463ea01754b7b3161cf44eff2438201800134fd25e458d576d7a2551e",
+        "suite": "agentic"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 569,
+              "path": "evidence/0-assets.json",
+              "sha256": "82160c4fe36e4df870d02e1c26d86c13418dc8eecee2e551a459f686f8b7f4a4"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2015,
+              "path": "evidence/0-preflight.json",
+              "sha256": "bb87c39afd7ef46c8f8a5eb57d92e405805b0fc45057e145e965ff7b42f82fe7"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 77256,
+              "path": "evidence/0-agentic.json",
+              "sha256": "e83c409db6010f5d241e41d3e04a36d0ac046d78d41c3006bdd56069c8c0c3b6"
+            }
+          ],
+          "name": "agentic",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "attempted": 30,
+        "pass_rate": 1.0,
+        "passed": 30,
+        "required_pass_rate": 0.7
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "intelligence-context-20260913",
+    "profile": "deep",
+    "run_id": "glm-r7-nospec-agentic-thinking49152-r1",
+    "spec_sha256": "0a802d4463ea01754b7b3161cf44eff2438201800134fd25e458d576d7a2551e",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

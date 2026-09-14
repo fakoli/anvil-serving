@@ -1,0 +1,79 @@
+{
+  "artifact_sha256": {
+    "retry1/hermes/input.json": "<redacted-identifier>",
+    "retry1/hermes/output.json": "<redacted-identifier>",
+    "retry1/hermes/prompt.txt": "<redacted-identifier>",
+    "retry1/hermes/result.json": "<redacted-identifier>",
+    "retry1/hermes/session.trace.jsonl": "<redacted-identifier>",
+    "retry1/hermes/stderr.log": "<redacted-identifier>",
+    "retry1/hermes/stdout.log": "<redacted-identifier>",
+    "retry1/hermes/usage.json": "<redacted-identifier>",
+    "retry1/openclaw/input.json": "<redacted-identifier>",
+    "retry1/openclaw/output.json": "<redacted-identifier>",
+    "retry1/openclaw/prompt.txt": "<redacted-identifier>",
+    "retry1/openclaw/result.json": "<redacted-identifier>",
+    "retry1/openclaw/stderr.log": "<redacted-identifier>",
+    "retry1/openclaw/stdout.log": "<redacted-identifier>"
+  },
+  "closure": {
+    "hermes": "passed_bounded_retry_after_absolute-path correction",
+    "openclaw": "passed_bounded_retry_with_supported client label and effective router MAX",
+    "overall": "pass",
+    "pi": "passed_initial_run"
+  },
+  "created_at": "2026-09-14T03:39:53.382984+00:00",
+  "diagnosis": {
+    "hermes_initial": "The retained native trace shows read_file targeted <redacted-private-path> (not found) and write_file successfully wrote the exact expected JSON to <redacted-private-path> The test-created stray file was removed after exact-content validation. The retry uses explicit isolated absolute paths.",
+    "openclaw_initial": "Client-side capability validation rejected requested label max before inference."
+  },
+  "policy": {
+    "basis": "<redacted-private-path>",
+    "basis_sha256": "<redacted-identifier>",
+    "effective_production_policy": "max",
+    "openclaw_requested_label": "high"
+  },
+  "preserved_initial_evidence": "acceptance-summary.json",
+  "retry": {
+    "hermes": {
+      "api_calls": 3,
+      "duration_s": 28.439,
+      "exit_code": 0,
+      "marker_present": true,
+      "model_reported": "llm.primary",
+      "native_tool_paths_isolated": true,
+      "native_tools": [
+        "read_file",
+        "write_file"
+      ],
+      "output_sha256": "<redacted-identifier>",
+      "output_valid": true,
+      "provider_reported": "custom",
+      "status": "pass"
+    },
+    "openclaw": {
+      "duration_s": 30.523,
+      "effective_router_thinking": "max",
+      "exit_code": 0,
+      "marker_present": true,
+      "model_reported": "llm.primary",
+      "native_tools": [
+        "read",
+        "write"
+      ],
+      "output_sha256": "<redacted-identifier>",
+      "output_valid": true,
+      "provider_reported": "anvil",
+      "requested_thinking": "high",
+      "status": "pass",
+      "tool_calls": 2,
+      "tool_failures": 0
+    }
+  },
+  "safety": {
+    "client_configs_mutated": false,
+    "external_delivery": false,
+    "network_tools_in_prompt": false,
+    "new_dependencies": false
+  },
+  "schema": "anvil.client_acceptance_retry.v1"
+}

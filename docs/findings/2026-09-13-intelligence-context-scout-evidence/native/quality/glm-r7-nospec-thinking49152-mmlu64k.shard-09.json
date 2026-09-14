@@ -1,0 +1,972 @@
+{
+  "context": {
+    "cap_tokens": null,
+    "max_model_len": null,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 65280,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 1,
+    "version": 3,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "exact_answer",
+      "eval_id": "mmlu-pro-test-6412",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-test-100-stratified-v1-rr10-shard-09"
+    },
+    {
+      "error": "exact_answer",
+      "eval_id": "mmlu-pro-test-10338",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-test-100-stratified-v1-rr10-shard-09"
+    }
+  ],
+  "identity": {
+    "base_url": "<redacted-local-endpoint>",
+    "candidate_id": "glm53-r7-nospec-thinking49152",
+    "config_id": "glm53-r7-nospec-327k-thinking49152",
+    "engine": "vllm-glm53-exl3-r7",
+    "gpu": "two equivalent RTX PRO 6000 Blackwell Max-Q GPUs",
+    "model": "llm.primary",
+    "started_at": "2026-09-14T02:20:27Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260914T022027Z",
+  "sampling": {
+    "temperature": {
+      "effective_request": 0.6,
+      "requested": 0.6,
+      "sent": true
+    },
+    "top_p": {
+      "effective_request": 0.95,
+      "requested": 0.95,
+      "sent": true
+    }
+  },
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "default",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "private-recipe-sha256:030fb4775b70d891f4075f0f42e197eaa60f09b0d98817acc15e4eb3b0550064",
+    "serve_command": null
+  },
+  "suites": {
+    "hf-mmlu-pro-test-100-stratified-v1-rr10-shard-09": {
+      "checks": [
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 65280,
+                "visible_answer_tokens": 256
+              },
+              "content": "FINAL=D",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=D",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2656.886990997009,
+              "reasoning_chars": 590,
+              "reasoning_excerpt": "<redacted-reasoning>",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 152,
+                "prompt_tokens": 289,
+                "total_tokens": 441
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 65280,
+            "visible_answer_tokens": 256
+          },
+          "content": "FINAL=D",
+          "content_excerpt": "FINAL=D",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-test-329",
+          "latency_ms": 2656.886990997009,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 590,
+          "reasoning_excerpt": "<redacted-reasoning>",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "exact_answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 152,
+            "prompt_tokens": 289,
+            "total_tokens": 441
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 65280,
+                "visible_answer_tokens": 256
+              },
+              "content": "FINAL=I",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=I",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 20339.329135022126,
+              "reasoning_chars": 3534,
+              "reasoning_excerpt": "<redacted-reasoning>",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1339,
+                "prompt_tokens": 227,
+                "total_tokens": 1566
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 65280,
+            "visible_answer_tokens": 256
+          },
+          "content": "FINAL=I",
+          "content_excerpt": "FINAL=I",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-test-4578",
+          "latency_ms": 20339.329135022126,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 3534,
+          "reasoning_excerpt": "<redacted-reasoning>",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "exact_answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 1339,
+            "prompt_tokens": 227,
+            "total_tokens": 1566
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 65280,
+                "visible_answer_tokens": 256
+              },
+              "content": "FINAL=B",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=B",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12852.39279497182,
+              "reasoning_chars": 3836,
+              "reasoning_excerpt": "<redacted-reasoning>",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 837,
+                "prompt_tokens": 268,
+                "total_tokens": 1105
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 65280,
+            "visible_answer_tokens": 256
+          },
+          "content": "FINAL=B",
+          "content_excerpt": "FINAL=B",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-test-7311",
+          "latency_ms": 12852.39279497182,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 3836,
+          "reasoning_excerpt": "<redacted-reasoning>",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "exact_answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 837,
+            "prompt_tokens": 268,
+            "total_tokens": 1105
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 65280,
+                "visible_answer_tokens": 256
+              },
+              "content": "FINAL=J",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=J",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4498.940273013432,
+              "reasoning_chars": 720,
+              "reasoning_excerpt": "<redacted-reasoning>",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 279,
+                "prompt_tokens": 903,
+                "total_tokens": 1182
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 65280,
+            "visible_answer_tokens": 256
+          },
+          "content": "FINAL=J",
+          "content_excerpt": "FINAL=J",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-test-11501",
+          "latency_ms": 4498.940273013432,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 720,
+          "reasoning_excerpt": "<redacted-reasoning>",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "exact_answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 279,
+            "prompt_tokens": 903,
+            "total_tokens": 1182
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 65280,
+                "visible_answer_tokens": 256
+              },
+              "content": "FINAL=D",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=D",
+              "error": "exact_answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 52199.73271799972,
+              "reasoning_chars": 13588,
+              "reasoning_excerpt": "<redacted-reasoning>",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "exact_answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 3426,
+                "prompt_tokens": 91,
+                "total_tokens": 3517
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 65280,
+            "visible_answer_tokens": 256
+          },
+          "content": "FINAL=D",
+          "content_excerpt": "FINAL=D",
+          "error": "exact_answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-test-6412",
+          "latency_ms": 52199.73271799972,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 13588,
+          "reasoning_excerpt": "<redacted-reasoning>",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "exact_answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 3426,
+            "prompt_tokens": 91,
+            "total_tokens": 3517
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 65280,
+                "visible_answer_tokens": 256
+              },
+              "content": "FINAL=D",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=D",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 143710.65982902655,
+              "reasoning_chars": 47776,
+              "reasoning_excerpt": "<redacted-reasoning>",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 9908,
+                "prompt_tokens": 305,
+                "total_tokens": 10213
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 65280,
+            "visible_answer_tokens": 256
+          },
+          "content": "FINAL=D",
+          "content_excerpt": "FINAL=D",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-test-1399",
+          "latency_ms": 143710.65982902655,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 47776,
+          "reasoning_excerpt": "<redacted-reasoning>",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "exact_answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 9908,
+            "prompt_tokens": 305,
+            "total_tokens": 10213
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 65280,
+                "visible_answer_tokens": 256
+              },
+              "content": "FINAL=F",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=F",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4095.0732679921202,
+              "reasoning_chars": 1119,
+              "reasoning_excerpt": "<redacted-reasoning>",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 297,
+                "prompt_tokens": 149,
+                "total_tokens": 446
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 65280,
+            "visible_answer_tokens": 256
+          },
+          "content": "FINAL=F",
+          "content_excerpt": "FINAL=F",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-test-8200",
+          "latency_ms": 4095.0732679921202,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 1119,
+          "reasoning_excerpt": "<redacted-reasoning>",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "exact_answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 297,
+            "prompt_tokens": 149,
+            "total_tokens": 446
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 65280,
+                "visible_answer_tokens": 256
+              },
+              "content": "FINAL=J",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=J",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2179.6584029798396,
+              "reasoning_chars": 811,
+              "reasoning_excerpt": "<redacted-reasoning>",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 154,
+                "prompt_tokens": 98,
+                "total_tokens": 252
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 65280,
+            "visible_answer_tokens": 256
+          },
+          "content": "FINAL=J",
+          "content_excerpt": "FINAL=J",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-test-5490",
+          "latency_ms": 2179.6584029798396,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 811,
+          "reasoning_excerpt": "<redacted-reasoning>",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "exact_answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 154,
+            "prompt_tokens": 98,
+            "total_tokens": 252
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 65280,
+                "visible_answer_tokens": 256
+              },
+              "content": "FINAL=D",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=D",
+              "error": "exact_answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 173765.34458401147,
+              "reasoning_chars": 50104,
+              "reasoning_excerpt": "<redacted-reasoning>",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "exact_answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 12917,
+                "prompt_tokens": 184,
+                "total_tokens": 13101
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 65280,
+            "visible_answer_tokens": 256
+          },
+          "content": "FINAL=D",
+          "content_excerpt": "FINAL=D",
+          "error": "exact_answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-test-10338",
+          "latency_ms": 173765.34458401147,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 50104,
+          "reasoning_excerpt": "<redacted-reasoning>",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "exact_answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 12917,
+            "prompt_tokens": 184,
+            "total_tokens": 13101
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 65280,
+                "visible_answer_tokens": 256
+              },
+              "content": "FINAL=I",
+              "content_chars": 7,
+              "content_excerpt": "FINAL=I",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2574.8004189808853,
+              "reasoning_chars": 415,
+              "reasoning_excerpt": "<redacted-reasoning>",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 181,
+                "prompt_tokens": 332,
+                "total_tokens": 513
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 65280,
+            "visible_answer_tokens": 256
+          },
+          "content": "FINAL=I",
+          "content_excerpt": "FINAL=I",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-test-2186",
+          "latency_ms": 2574.8004189808853,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 415,
+          "reasoning_excerpt": "<redacted-reasoning>",
+          "reasoning_field": "reasoning_content",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "exact_answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 181,
+            "prompt_tokens": 332,
+            "total_tokens": 513
+          },
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-09-13",
+      "evidence_use": "ranking",
+      "source": "<redacted-private-path>",
+      "source_sha256": "780552002ced44ac34308838e5197c3f4a97444003acf0bd1d343319fadcaec9",
+      "status": "failed",
+      "validator_strength": "exact_choice",
+      "work_class": "stratified-multidomain-general-reasoning"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": "<redacted-private-path>",
+    "control_evidence_sha256": "7d6130b2f83d00673890067b697c0990275e743569a7f3d8a65c0991285d30a5",
+    "control_mechanism": "reasoning_effort",
+    "control_requested": "max",
+    "control_status": "verified",
+    "mode": "default",
+    "reasoning_effort": "max",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": null,
+      "completion_tokens_mean": null,
+      "completion_tokens_mean_ci95_high": null,
+      "completion_tokens_mean_ci95_low": null,
+      "completion_tokens_min": null,
+      "completion_tokens_p25": null,
+      "completion_tokens_p50": null,
+      "completion_tokens_p75": null,
+      "completion_tokens_p90": null,
+      "completion_tokens_p95": null,
+      "completion_tokens_p99": null,
+      "completion_tokens_samples": 0,
+      "completion_tokens_stddev": null,
+      "content_chunks": 0,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": null,
+      "decode_tok_s_mean": null,
+      "decode_tok_s_mean_ci95_high": null,
+      "decode_tok_s_mean_ci95_low": null,
+      "decode_tok_s_min": null,
+      "decode_tok_s_p25": null,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p75": null,
+      "decode_tok_s_p90": null,
+      "decode_tok_s_p95": null,
+      "decode_tok_s_p99": null,
+      "decode_tok_s_samples": 0,
+      "decode_tok_s_stddev": null,
+      "e2e_max_ms": null,
+      "e2e_mean_ci95_high_ms": null,
+      "e2e_mean_ci95_low_ms": null,
+      "e2e_mean_ms": null,
+      "e2e_min_ms": null,
+      "e2e_p25_ms": null,
+      "e2e_p50_ms": null,
+      "e2e_p75_ms": null,
+      "e2e_p90_ms": null,
+      "e2e_p95_ms": null,
+      "e2e_p99_ms": null,
+      "e2e_samples": 0,
+      "e2e_stddev_ms": null,
+      "effective_prefill_tok_s_max": null,
+      "effective_prefill_tok_s_mean": null,
+      "effective_prefill_tok_s_mean_ci95_high": null,
+      "effective_prefill_tok_s_mean_ci95_low": null,
+      "effective_prefill_tok_s_min": null,
+      "effective_prefill_tok_s_p25": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p75": null,
+      "effective_prefill_tok_s_p90": null,
+      "effective_prefill_tok_s_p95": null,
+      "effective_prefill_tok_s_p99": null,
+      "effective_prefill_tok_s_samples": 0,
+      "effective_prefill_tok_s_stddev": null,
+      "generation_max_ms": null,
+      "generation_mean_ci95_high_ms": null,
+      "generation_mean_ci95_low_ms": null,
+      "generation_mean_ms": null,
+      "generation_min_ms": null,
+      "generation_p25_ms": null,
+      "generation_p50_ms": null,
+      "generation_p75_ms": null,
+      "generation_p90_ms": null,
+      "generation_p95_ms": null,
+      "generation_p99_ms": null,
+      "generation_samples": 0,
+      "generation_stddev_ms": null,
+      "mean_inter_token_latency_ms_max": "<redacted>",
+      "mean_inter_token_latency_ms_mean": "<redacted>",
+      "mean_inter_token_latency_ms_mean_ci95_high": "<redacted>",
+      "mean_inter_token_latency_ms_mean_ci95_low": "<redacted>",
+      "mean_inter_token_latency_ms_min": "<redacted>",
+      "mean_inter_token_latency_ms_p25": "<redacted>",
+      "mean_inter_token_latency_ms_p50": "<redacted>",
+      "mean_inter_token_latency_ms_p75": "<redacted>",
+      "mean_inter_token_latency_ms_p90": "<redacted>",
+      "mean_inter_token_latency_ms_p95": "<redacted>",
+      "mean_inter_token_latency_ms_p99": "<redacted>",
+      "mean_inter_token_latency_ms_samples": "<redacted>",
+      "mean_inter_token_latency_ms_stddev": "<redacted>",
+      "mean_time_per_output_token_max_ms": "<redacted>",
+      "mean_time_per_output_token_mean_ci95_high_ms": "<redacted>",
+      "mean_time_per_output_token_mean_ci95_low_ms": "<redacted>",
+      "mean_time_per_output_token_mean_ms": "<redacted>",
+      "mean_time_per_output_token_min_ms": "<redacted>",
+      "mean_time_per_output_token_p25_ms": "<redacted>",
+      "mean_time_per_output_token_p50_ms": "<redacted>",
+      "mean_time_per_output_token_p75_ms": "<redacted>",
+      "mean_time_per_output_token_p90_ms": "<redacted>",
+      "mean_time_per_output_token_p95_ms": "<redacted>",
+      "mean_time_per_output_token_p99_ms": "<redacted>",
+      "mean_time_per_output_token_samples": "<redacted>",
+      "mean_time_per_output_token_stddev_ms": "<redacted>",
+      "output_tokens": 0,
+      "prompt_token_samples": "<redacted>",
+      "prompt_tokens": null,
+      "prompt_tokens_max": null,
+      "prompt_tokens_mean": null,
+      "prompt_tokens_mean_ci95_high": null,
+      "prompt_tokens_mean_ci95_low": null,
+      "prompt_tokens_min": null,
+      "prompt_tokens_p25": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p75": null,
+      "prompt_tokens_p90": null,
+      "prompt_tokens_p95": null,
+      "prompt_tokens_p99": null,
+      "prompt_tokens_samples": 0,
+      "prompt_tokens_stddev": null,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": null,
+      "time_to_first_output_mean_ci95_high_ms": null,
+      "time_to_first_output_mean_ci95_low_ms": null,
+      "time_to_first_output_mean_ms": null,
+      "time_to_first_output_min_ms": null,
+      "time_to_first_output_p25_ms": null,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p75_ms": null,
+      "time_to_first_output_p90_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "time_to_first_output_p99_ms": null,
+      "time_to_first_output_samples": 0,
+      "time_to_first_output_stddev_ms": null,
+      "tpot_max_ms": null,
+      "tpot_mean_ci95_high_ms": null,
+      "tpot_mean_ci95_low_ms": null,
+      "tpot_mean_ms": null,
+      "tpot_min_ms": null,
+      "tpot_p25_ms": null,
+      "tpot_p50_ms": null,
+      "tpot_p75_ms": null,
+      "tpot_p90_ms": null,
+      "tpot_p95_ms": null,
+      "tpot_p99_ms": null,
+      "tpot_samples": 0,
+      "tpot_stddev_ms": null,
+      "ttft_max_ms": null,
+      "ttft_mean_ci95_high_ms": null,
+      "ttft_mean_ci95_low_ms": null,
+      "ttft_mean_ms": null,
+      "ttft_min_ms": null,
+      "ttft_p25_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p75_ms": null,
+      "ttft_p90_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_p99_ms": null,
+      "ttft_samples": 0,
+      "ttft_stddev_ms": null
+    },
+    "wall_ms": 418875.5939970142
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

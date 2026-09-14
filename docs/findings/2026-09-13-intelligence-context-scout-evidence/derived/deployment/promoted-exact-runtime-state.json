@@ -1,0 +1,10 @@
+{
+  "exit_code": 0,
+  "oom_killed": false,
+  "paused": false,
+  "restart_count": 0,
+  "restarting": false,
+  "running": true,
+  "schema": "anvil-serving.sanitized-container-runtime-state/v1",
+  "status": "running"
+}

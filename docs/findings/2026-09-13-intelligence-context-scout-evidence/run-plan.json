@@ -1,0 +1,55 @@
+{
+  "matched_strict120": {
+    "comparison_source_sha256": "2c7396ce5f35f6984bfe90d11ca3278ba5bbc59abdc6a03b24ce37d5f5074c02",
+    "concurrency": 4,
+    "context_tokens": 4096,
+    "contract": "Same pinned model/image/hardware/TP2/EP2/DCP2/C4/327680/FP8KV/.970/batch2048/cacheoff/MAX/.6/.95/thinking49152/cap65536/120requests/seed9134722/strict32words/unique/request-canaries; speculation and unavoidable identities differ. Both use nativecapacity harness a592c4e5.",
+    "controlled_output": "strict32words unique request-canaries",
+    "modes": [
+      "MTP3",
+      "no-speculation"
+    ],
+    "requests": 120
+  },
+  "native_context_no_spec": {
+    "candidate": "GLM Flash EXL3 r7 no-spec",
+    "context": {
+      "cases": [
+        "native-order",
+        "native-identifiers",
+        "native-crosslink"
+      ],
+      "output_reserve_tokens": 65536,
+      "positions": [
+        0.1,
+        0.5,
+        0.9
+      ],
+      "requested_tokens": 258000
+    },
+    "runtime": {
+      "configured_context": 327680,
+      "dcp": 2,
+      "ep": 2,
+      "kv_cache": "fp8_ds_mla",
+      "max_concurrency": 4,
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "mtp": 0,
+      "recipe_source_sha256": "030fb4775b70d891f4075f0f42e197eaa60f09b0d98817acc15e4eb3b0550064",
+      "tp": 2
+    },
+    "sampling": {
+      "control_evidence": "<redacted-private-control-evidence>",
+      "control_evidence_sha256": "7d6130b2f83d00673890067b697c0990275e743569a7f3d8a65c0991285d30a5",
+      "output_reserve_tokens": 65536,
+      "reasoning_effort": "max",
+      "temperature": 0.6,
+      "thinking_token_budget": 49152,
+      "top_p": 0.95
+    },
+    "source_job_spec_sha256": "bf8601a36bc0fc73a4227486726b481e283dc0068296680b18654a78a8a45b44",
+    "spec_sha256": "e2ae3be20a98b400bff342f3fd14017b7a56e0af3b4e142c0bd26e88e9530d45"
+  },
+  "quality_full100_status": "running; no no-spec MMLU result is retained or claimed",
+  "schema": "anvil-serving.public-run-plan/v1"
+}

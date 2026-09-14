@@ -1,0 +1,163 @@
+{
+  "created_at": "2026-09-13T23:39:59.227989Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "<redacted-secret-reference>",
+      "base_url": "<redacted-local-endpoint>",
+      "model": "llm.primary"
+    },
+    "finished_at": "2026-09-13T23:39:59.227880Z",
+    "started_at": "2026-09-13T23:19:16.464651Z",
+    "submitted_at": "2026-09-13T23:07:29Z",
+    "worker": {
+      "id": "Primary Node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-09-13T23:39:59.219206Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "dataset": {
+          "name": "SWE-bench_Verified",
+          "split": "test"
+        },
+        "hardware": {
+          "architecture": "x86_64",
+          "container_capable": true,
+          "harness_assets": [],
+          "id": "Primary Node",
+          "owned_output_writable": true,
+          "platform": "linux"
+        },
+        "harnesses": {
+          "mini-swe-agent": {
+            "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+            "source": "https://github.com/SWE-agent/mini-swe-agent"
+          },
+          "swe-bench": {
+            "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+            "source": "https://github.com/SWE-bench/SWE-bench"
+          },
+          "swe-bench-verified": {
+            "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+            "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+          },
+          "worker-base": {
+            "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+          }
+        },
+        "image": {
+          "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+          "kind": "image",
+          "reused": true
+        },
+        "model": {
+          "quantization": "EXL3 4.05bpw H6 NG6 with Q8 KV",
+          "repo": "turboderp/Qwen3.8-Flash-Next-exl3",
+          "revision": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a"
+        },
+        "runtime": {
+          "configured_context": 262144,
+          "engine": "tabbyapi-exllamav3-1.5.0",
+          "exllamav3": "v1.5.0",
+          "harness_commit": "a592c4e54bcb3a3b4d2835986e4694ddf2f08b52",
+          "image": "ghcr.io/theroyallab/tabbyapi@sha256:00909876aea02112b75d775bfa50f6d1adac50a3a11918363e7b403d7340d9bc",
+          "kv_cache": "Q8",
+          "source_recipe": "private-recipe-sha256:0cf6879853149af4ef23c5408329aefd15da1b40aa2334dbce99c9906440791c",
+          "source_recipe_sha256": "0cf6879853149af4ef23c5408329aefd15da1b40aa2334dbce99c9906440791c",
+          "tabbyapi_source_commit": "de76ff88991477639a6a7f88c2d116f18c2ca24f",
+          "tp": 1,
+          "wheel_sha256": "d8f5b483ca882c52d79a73c059b508c666663a68b4c60e420ca489e654e8104a"
+        },
+        "served_model": {
+          "configured_context": null,
+          "id": "llm.primary"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "Primary Node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "intelligence-context-20260913",
+        "profile": "scout",
+        "run_id": "next405-swe-scout-r2",
+        "spec_sha256": "99dfe405f81ba19c6981c634ef89d6c60d19851a59c9068bd2490cfa8656669a",
+        "suite": "swe"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 10248,
+              "path": "evidence/0-assets.json",
+              "sha256": "7dbddd21f3033f83b70d637fe5abcea1cabc5b61052ee5117eec212f5df30b96"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 1937,
+              "path": "evidence/0-preflight.json",
+              "sha256": "12dffca6004f571d1ef77f0d1a00d3b21bce2cec6704fd0e36e75117b732cb67"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 26594,
+              "path": "evidence/2-swe.json",
+              "sha256": "30e1460e50564c51cc5c056838089391e7f658797925ee0089c3e7afc162e57a"
+            }
+          ],
+          "name": "swe",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "attempted": 5,
+        "graded": 5,
+        "resolve_rate": 0.8,
+        "resolved": 4
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "intelligence-context-20260913",
+    "profile": "scout",
+    "run_id": "next405-swe-scout-r2",
+    "spec_sha256": "99dfe405f81ba19c6981c634ef89d6c60d19851a59c9068bd2490cfa8656669a",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

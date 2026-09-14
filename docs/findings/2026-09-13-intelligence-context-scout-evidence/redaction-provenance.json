@@ -1,0 +1,530 @@
+{
+  "mutation": "Publication sanitization only; no serving, routing, model, or benchmark execution action.",
+  "policy": "Endpoint addresses, private source paths, host identifiers, GPU UUIDs, secret-reference names, host-capacity readings, and reasoning excerpts are replaced or omitted. Model/runtime pins, controls, response status, raw scores, failures, and numeric measurements remain.",
+  "redaction_counts": {
+    "context_response": 368,
+    "endpoint": 58,
+    "gpu_identifier": 34,
+    "host_capacity": 19,
+    "host_identifier": 57,
+    "private_path": 143,
+    "private_source_recipe_path": 35,
+    "reasoning_excerpt": 637,
+    "request_identifier": 163,
+    "secret_reference": 14
+  },
+  "schema": "anvil-serving.public-evidence-redaction/v1",
+  "scope": "2026-09-13 intelligence and context scout; incomplete publication bundle",
+  "source_file_count": 84,
+  "source_files": [
+    {
+      "private_source_bytes": 875,
+      "private_source_sha256": "e9dc3f13f7088a94ff4302c6448efbdd38c8252413085ff716031d33c6d340ad",
+      "public_path": "derived/deployment/boot-owner-acceptance.json",
+      "schema": null
+    },
+    {
+      "private_source_bytes": 3837,
+      "private_source_sha256": "6a4bc2dce0a606c9321d18380d80b03748b8575df4ef25c0d87b509a958c92bb",
+      "public_path": "derived/deployment/client-acceptance-initial-summary.json",
+      "schema": "anvil.client_acceptance.v1"
+    },
+    {
+      "private_source_bytes": 3709,
+      "private_source_sha256": "5cfc055a1e85a173c8810c642cce54d06ad3073a306bca4bc9466892b5131dd0",
+      "public_path": "derived/deployment/client-acceptance-retry-summary.json",
+      "schema": "anvil.client_acceptance_retry.v1"
+    },
+    {
+      "private_source_bytes": 2206,
+      "private_source_sha256": "d076e807cbced5061fc069b129e626e25c759ce4a23a01b6faa8cb56d6beac60",
+      "public_path": "derived/deployment/final-deployment-acceptance.json",
+      "schema": "fakoli.intelligence-context.final-deployment/v1"
+    },
+    {
+      "private_source_bytes": 3184,
+      "private_source_sha256": "31d5c1cd6acc8a636738979da827b50950f3e4e5656926bb20b5af8eaf684271",
+      "public_path": "derived/deployment/mini-automatic-sync-receipt.json",
+      "schema": null
+    },
+    {
+      "private_source_bytes": 3275,
+      "private_source_sha256": "2bbfb2c22dd0202c2b60f10fb580fd9426eb7a6eada95b3b38e69491d3a0d6c3",
+      "public_path": "derived/deployment/mini-sync-final-preview.json",
+      "schema": null
+    },
+    {
+      "private_source_bytes": 2450,
+      "private_source_sha256": "2bee58e5a472adc38dfa556e977f47d745f9fe3d0503b1681f25f969be470241",
+      "public_path": "derived/deployment/production-hard-reasoning-override-probe.json",
+      "schema": null
+    },
+    {
+      "private_source_bytes": 222,
+      "private_source_sha256": "817aade8042ca8b16017bb8bd488b2b055f8d14502b14205b8cc49466d0fdbf5",
+      "public_path": "derived/deployment/promoted-exact-runtime-state.json",
+      "schema": "anvil-serving.sanitized-container-runtime-state/v1"
+    },
+    {
+      "private_source_bytes": 1641,
+      "private_source_sha256": "a8995c2af195bdc88553a619bc8122161edaa6a8aadc57601a80b24774835da2",
+      "public_path": "derived/deployment/promoted-recipe-status.json",
+      "schema": "anvil-serving.sanitized-deployment-recipe-status/v1"
+    },
+    {
+      "private_source_bytes": 4086,
+      "private_source_sha256": "6864422deb78131d1685dd7ee49a2da8bbecedc176967feeaadd9f267aa4d0de",
+      "public_path": "derived/deployment/promotion-envelope.json",
+      "schema": null
+    },
+    {
+      "private_source_bytes": 223,
+      "private_source_sha256": "10bcd6c30b11eb75d638ea5313e93600f79772288b2725db0ed87b86ca37b818",
+      "public_path": "derived/glm-r7-nospec-swe-environment-diagnosis.json",
+      "schema": null
+    },
+    {
+      "private_source_bytes": 5738,
+      "private_source_sha256": "11970ef740a4a0e027cd340a0314c0cb6739aa3cf7871b19f7921b3f8b7ef487",
+      "public_path": "native/glm-r7-context258k-thinking49152-r2/artifact.json",
+      "schema": "anvil-serving.benchmark-result/v1"
+    },
+    {
+      "private_source_bytes": 567,
+      "private_source_sha256": "343e36d348cee2c6b973b53c6ebac69135516a28451733622f39852db9e1df62",
+      "public_path": "native/glm-r7-context258k-thinking49152-r2/evidence/0-assets.json",
+      "schema": "anvil-serving.benchmark-harness-assets/v1"
+    },
+    {
+      "private_source_bytes": 50835,
+      "private_source_sha256": "202375ee0b19ee88565c07a5b1b4c96d6931d89e4045bd25e721bfefe78a86f1",
+      "public_path": "native/glm-r7-context258k-thinking49152-r2/evidence/0-context.json",
+      "schema": "anvil-serving.context-suite-run/v1"
+    },
+    {
+      "private_source_bytes": 137,
+      "private_source_sha256": "77b234c7a7650f5e0cd461a02cfbce6ea394c3af3917565b146aca8a3c8e0557",
+      "public_path": "native/glm-r7-context258k-thinking49152-r2/evidence/0-failure.json",
+      "schema": null
+    },
+    {
+      "private_source_bytes": 1991,
+      "private_source_sha256": "9b918662597c516a5e28a7898c4319351090c43b8aef775979107b4cb394e57c",
+      "public_path": "native/glm-r7-context258k-thinking49152-r2/evidence/0-preflight.json",
+      "schema": "anvil-serving.benchmark-preflight/v1"
+    },
+    {
+      "private_source_bytes": 4984,
+      "private_source_sha256": "3be371b29250899f27e237264657e72e163eebb521fb226a18f33c25a09ab708",
+      "public_path": "native/glm-r7-nospec-agentic-thinking49152-r1/artifact.json",
+      "schema": "anvil-serving.benchmark-result/v1"
+    },
+    {
+      "private_source_bytes": 147708,
+      "private_source_sha256": "6be0b3d261dcfb7a41d9ffb26a48a1027734ac08783178006ade3d56912634aa",
+      "public_path": "native/glm-r7-nospec-agentic-thinking49152-r1/evidence/0-agentic.json",
+      "schema": "anvil-serving.agentic-suite-run/v1"
+    },
+    {
+      "private_source_bytes": 569,
+      "private_source_sha256": "82160c4fe36e4df870d02e1c26d86c13418dc8eecee2e551a459f686f8b7f4a4",
+      "public_path": "native/glm-r7-nospec-agentic-thinking49152-r1/evidence/0-assets.json",
+      "schema": "anvil-serving.benchmark-harness-assets/v1"
+    },
+    {
+      "private_source_bytes": 1994,
+      "private_source_sha256": "d9818b639ed766875c3e09ba3263ce7377bffa568dbb7e379d34092f50587184",
+      "public_path": "native/glm-r7-nospec-agentic-thinking49152-r1/evidence/0-preflight.json",
+      "schema": "anvil-serving.benchmark-preflight/v1"
+    },
+    {
+      "private_source_bytes": 25769,
+      "private_source_sha256": "518834afb09cc9c11573a02d32b3116c39bc2c23211271acd752f9bb8293105e",
+      "public_path": "native/glm-r7-nospec-context258k-thinking49152-r1/artifact.json",
+      "schema": "anvil-serving.benchmark-result/v1"
+    },
+    {
+      "private_source_bytes": 574,
+      "private_source_sha256": "39afaf86170a24ff23a0e47a0d804f27492b29a2f0fe5567aee72166e9b9e5aa",
+      "public_path": "native/glm-r7-nospec-context258k-thinking49152-r1/evidence/0-assets.json",
+      "schema": "anvil-serving.benchmark-harness-assets/v1"
+    },
+    {
+      "private_source_bytes": 37553,
+      "private_source_sha256": "6c28c64133356652ed318ba7a3e521cdcc5d89be0d480dae2db5e432879c3a64",
+      "public_path": "native/glm-r7-nospec-context258k-thinking49152-r1/evidence/0-context.json",
+      "schema": "anvil-serving.context-suite-run/v1"
+    },
+    {
+      "private_source_bytes": 1998,
+      "private_source_sha256": "6806b22593a7401db688631b08b080d1caf048d9fc5ddf16e231f18d4f7cd2a8",
+      "public_path": "native/glm-r7-nospec-context258k-thinking49152-r1/evidence/0-preflight.json",
+      "schema": "anvil-serving.benchmark-preflight/v1"
+    },
+    {
+      "private_source_bytes": 26456,
+      "private_source_sha256": "cfcccf617260ba67e49893eee0aa92ac5a7374c47a5bec8a9a13824abca6a799",
+      "public_path": "native/glm-r7-nospec-promoted-context258k-r1/artifact.json",
+      "schema": "anvil-serving.benchmark-result/v1"
+    },
+    {
+      "private_source_bytes": 569,
+      "private_source_sha256": "f54810ae97d1dad8c3b8784971edde8b18f39c6e0ad9fb517ada350972cbc1f9",
+      "public_path": "native/glm-r7-nospec-promoted-context258k-r1/evidence/0-assets.json",
+      "schema": "anvil-serving.benchmark-harness-assets/v1"
+    },
+    {
+      "private_source_bytes": 38958,
+      "private_source_sha256": "55c3cdfacf32a757efc18bdfa64f14f66aa97bd1ce5170ef987f360a451b43df",
+      "public_path": "native/glm-r7-nospec-promoted-context258k-r1/evidence/0-context.json",
+      "schema": "anvil-serving.context-suite-run/v1"
+    },
+    {
+      "private_source_bytes": 2063,
+      "private_source_sha256": "00f0979d58e601d6554f6dc6095ee315f071c0204465a4777c5bc8337fe29a5c",
+      "public_path": "native/glm-r7-nospec-promoted-context258k-r1/evidence/0-preflight.json",
+      "schema": "anvil-serving.benchmark-preflight/v1"
+    },
+    {
+      "private_source_bytes": 4907,
+      "private_source_sha256": "eed7b6d6465727dd8eee52c979448f473efe1c73440598a063223a7bc773da10",
+      "public_path": "native/glm-r7-nospec-swe-thinking49152-r1/artifact.json",
+      "schema": "anvil-serving.benchmark-result/v1"
+    },
+    {
+      "private_source_bytes": 132,
+      "private_source_sha256": "3968657fcd7059f842d5266feaed2a2a1443eac2f2a4f98568dd38ed346b93a2",
+      "public_path": "native/glm-r7-nospec-swe-thinking49152-r1/evidence/0-failure.json",
+      "schema": null
+    },
+    {
+      "private_source_bytes": 5641,
+      "private_source_sha256": "e2d0bfd15da30d16ff4f6b7b6c4ee24a6708e1c1714bcac697019fae7a9dcbba",
+      "public_path": "native/glm-r7-nospec-swe-thinking49152-r2-frozen/artifact.json",
+      "schema": "anvil-serving.benchmark-result/v1"
+    },
+    {
+      "private_source_bytes": 10862,
+      "private_source_sha256": "e5d6855b0c869ecf39a95d2ddabf1ec27dc73ce703cde04a8f3b7009645b31dc",
+      "public_path": "native/glm-r7-nospec-swe-thinking49152-r2-frozen/evidence/0-assets.json",
+      "schema": "anvil-serving.benchmark-harness-assets/v1"
+    },
+    {
+      "private_source_bytes": 1996,
+      "private_source_sha256": "0517ec78dd14d5f00e8663b2125bfa62258d2d9d7e14e6739643ce4e4d300a02",
+      "public_path": "native/glm-r7-nospec-swe-thinking49152-r2-frozen/evidence/0-preflight.json",
+      "schema": "anvil-serving.benchmark-preflight/v1"
+    },
+    {
+      "private_source_bytes": 29505,
+      "private_source_sha256": "70e512e8e66f1d618824c2dfcc01bd9d61f9220a560e1d1693761dec4d5d4cda",
+      "public_path": "native/glm-r7-nospec-swe-thinking49152-r2-frozen/evidence/2-swe.json",
+      "schema": "anvil-serving.swe-run/v1"
+    },
+    {
+      "private_source_bytes": 159457,
+      "private_source_sha256": "72a0e787fb8a2a9f4d36e291042706269a5571ffa9a84281156a88ec27da1129",
+      "public_path": "native/glm-r7-nospec/strict120-nospec-r1.json",
+      "schema": "anvil-serving.benchmark/v1"
+    },
+    {
+      "private_source_bytes": 1914,
+      "private_source_sha256": "2c7396ce5f35f6984bfe90d11ca3278ba5bbc59abdc6a03b24ce37d5f5074c02",
+      "public_path": "native/glm-r7/mtp3-nospec-matched120-comparison.json",
+      "schema": "anvil-serving.campaign-derived-comparison/v1"
+    },
+    {
+      "private_source_bytes": 159421,
+      "private_source_sha256": "f8f3efd5d24cb45c0c36b83da1dae033441c733601d1d1bd94f89044deb0ad66",
+      "public_path": "native/glm-r7/strict120-route2-r1.json",
+      "schema": "anvil-serving.benchmark/v1"
+    },
+    {
+      "private_source_bytes": 4739,
+      "private_source_sha256": "a42d91621beec844d98195210713a798e45e06f7cb34b0737d98b9b048d4ffeb",
+      "public_path": "native/next/next405-agentic-deep30-262k-r1/artifact.json",
+      "schema": "anvil-serving.benchmark-result/v1"
+    },
+    {
+      "private_source_bytes": 89684,
+      "private_source_sha256": "cdbcad21b5e52a6024d1f1f0322d3f87028c28438284635d957959ccc3d539f3",
+      "public_path": "native/next/next405-agentic-deep30-262k-r1/evidence/0-agentic.json",
+      "schema": "anvil-serving.agentic-suite-run/v1"
+    },
+    {
+      "private_source_bytes": 561,
+      "private_source_sha256": "08fb7366c00fbd856820774337f51da017e4b055932bf47c752d973c954c01eb",
+      "public_path": "native/next/next405-agentic-deep30-262k-r1/evidence/0-assets.json",
+      "schema": "anvil-serving.benchmark-harness-assets/v1"
+    },
+    {
+      "private_source_bytes": 1986,
+      "private_source_sha256": "3af7af11ba7e32207860e3cf5ee22f29944871dbc8d247a75d6764fba5dbf635",
+      "public_path": "native/next/next405-agentic-deep30-262k-r1/evidence/0-preflight.json",
+      "schema": "anvil-serving.benchmark-preflight/v1"
+    },
+    {
+      "private_source_bytes": 23672,
+      "private_source_sha256": "8bea24413b27abe2bb25ddc74a27e26bb1daf3c3c64175176037bd7700f96d9d",
+      "public_path": "native/next/next405-context-native192k-262k-r1/artifact.json",
+      "schema": "anvil-serving.benchmark-result/v1"
+    },
+    {
+      "private_source_bytes": 566,
+      "private_source_sha256": "4c1327c4d0959e0bc076128f3a23cd943d8f0095497bff0e343258045b265801",
+      "public_path": "native/next/next405-context-native192k-262k-r1/evidence/0-assets.json",
+      "schema": "anvil-serving.benchmark-harness-assets/v1"
+    },
+    {
+      "private_source_bytes": 33847,
+      "private_source_sha256": "ab3f3cd32e0d80187ddad89123f13566a4ecff9d5b2ed3aa11e79159747e6820",
+      "public_path": "native/next/next405-context-native192k-262k-r1/evidence/0-context.json",
+      "schema": "anvil-serving.context-suite-run/v1"
+    },
+    {
+      "private_source_bytes": 1990,
+      "private_source_sha256": "7d35fba91d27c8e50b9ed79d713fed9a7e7ffd2342c6c57e58cc4eecfb4728a9",
+      "public_path": "native/next/next405-context-native192k-262k-r1/evidence/0-preflight.json",
+      "schema": "anvil-serving.benchmark-preflight/v1"
+    },
+    {
+      "private_source_bytes": 22974,
+      "private_source_sha256": "72d7b732b6f37840cb7297265e854c4060e1a57420b4f1d08b2d8ac3f4417a4f",
+      "public_path": "native/next/next405-multimodal-image-native-r3.json",
+      "schema": "multimodal-benchmark-evidence/v1"
+    },
+    {
+      "private_source_bytes": 323589,
+      "private_source_sha256": "6e80ee52d636adfabfe754a128ea3ab2df97690f197476eaf26fb8a4515c8f59",
+      "public_path": "native/next/next405-strict-turnover120-r1.json",
+      "schema": "anvil-serving.benchmark/v1"
+    },
+    {
+      "private_source_bytes": 5518,
+      "private_source_sha256": "3e9db1471f8dde5327595e0c623ea95cdb521f075946293c91d0cedf35885141",
+      "public_path": "native/next/next405-swe-scout-r2/artifact.json",
+      "schema": "anvil-serving.benchmark-result/v1"
+    },
+    {
+      "private_source_bytes": 10841,
+      "private_source_sha256": "c7886ef69fee7f303188965b20e75310985c64efc4c02d7df17f15b919b8a0b4",
+      "public_path": "native/next/next405-swe-scout-r2/evidence/0-assets.json",
+      "schema": "anvil-serving.benchmark-harness-assets/v1"
+    },
+    {
+      "private_source_bytes": 1975,
+      "private_source_sha256": "cde6b0be615a234d2ead530e1b490996e11c584e864d28d5fc64d751b26baaef",
+      "public_path": "native/next/next405-swe-scout-r2/evidence/0-preflight.json",
+      "schema": "anvil-serving.benchmark-preflight/v1"
+    },
+    {
+      "private_source_bytes": 30324,
+      "private_source_sha256": "b5dcb93ab5b0e287d7cd86741277d336a06b40a48fb3d4b09e81240e6e7a609e",
+      "public_path": "native/next/next405-swe-scout-r2/evidence/2-swe.json",
+      "schema": "anvil-serving.swe-run/v1"
+    },
+    {
+      "private_source_bytes": 4347,
+      "private_source_sha256": "4ea816b4e408f0a60b359b6b547e64db2615945d31418a7b6e7dcb2e33f88fae",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.aggregate-counts.json",
+      "schema": "anvil-serving.mmlu-pro-shard-counts/v1"
+    },
+    {
+      "private_source_bytes": 35103,
+      "private_source_sha256": "dadfbf01610cd960ef6795b4ff7449d1cb0b3d1fcb38867940804761412b5e2a",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-01.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 36272,
+      "private_source_sha256": "a68f98716a03621a64e6181ed8ed2894c8bdf04bf70e0bee4b8801a373fceb0e",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-02.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35458,
+      "private_source_sha256": "8fb33d981e886eb14e664d85a4fb392400c80f76dbc30f79ccb54738d5277fe7",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-03.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35099,
+      "private_source_sha256": "c1d0e24fdb67934d0c0c67868cd3b3d075b01b29fe4787cc1f19fe28fdb2c2c1",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-04.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 34993,
+      "private_source_sha256": "2e646cab47f481ff12032c3f757d56403ec4938f772dbeba00d0ee857aa85ae3",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-05.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35449,
+      "private_source_sha256": "6c0f739d2374afee6f2a8357df0a0f74f0da26a30f62c46a738eae6e91a6cbef",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-06.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35798,
+      "private_source_sha256": "236dedeb1968ac0ab9db13e6ace3c752c2121f47c547081c2c484cb3f3278a1f",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-07.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35466,
+      "private_source_sha256": "0c5ea3055d24d63d4c144a09ed15e847aa320433b6760d421cfa891ccc023a2e",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-08.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35858,
+      "private_source_sha256": "a34426becbf0c5d728888d4e914852314a6889e8719e5a730040b6afdabc3266",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-09.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35073,
+      "private_source_sha256": "4b713853771f157ada7a9c7542088703d97b83fe7b98410068e84a9b3c67d1a5",
+      "public_path": "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-10.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 4343,
+      "private_source_sha256": "a75330e0a330ec33e7a5cf8ebf469b9410c0519943fdd07d7c64c3902d2787eb",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.aggregate-counts.json",
+      "schema": "anvil-serving.mmlu-pro-shard-counts/v1"
+    },
+    {
+      "private_source_bytes": 35129,
+      "private_source_sha256": "d407ea5b084383123fb47da7b6f8038fe7538ce57b7ef9432dd6a2781ec0b4d5",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-01.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35521,
+      "private_source_sha256": "579fcda1d3e12b4428d139397847aef6eb0f9fc1ef9f216ddfed3bf2b2caed95",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-02.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35461,
+      "private_source_sha256": "3f8a5ffd78e3f363db52c1fe55e4167612a560b5c0b5ee991f164dce94463ce4",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-03.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35468,
+      "private_source_sha256": "2b7902e5cfaf2226a439497127f4cfa9ecda3c94b602711077109c8d4e5a8c9e",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-04.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 34994,
+      "private_source_sha256": "1fb9bf7dadf31fdc7434e44b6709cd43cb6134ef15f0e0e22806a33a774d0b78",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-05.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35423,
+      "private_source_sha256": "4dc0df02632bd76a225d9c02f86d201b576b7a95f584596a3cffc5c3cf2d23cf",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-06.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 36192,
+      "private_source_sha256": "656ab47b2f72f937600a51b858567ae6ddadccdb0f59aa31edb0c7bd468d0466",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-07.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35442,
+      "private_source_sha256": "8ceb86a6d85035fbece58d510a5f86dfd284dd7d7c8226c2f900f489e6c65acc",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-08.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35466,
+      "private_source_sha256": "74a8b0bf2d6b0e6207ca955796ce45a072cd89f12085a2e9de97f66b14c28a76",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-09.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 35082,
+      "private_source_sha256": "54f672d5db7d13d643d9dc6c4c19eb3f951a4cccc2f7d5bc4bb2bd838ce5e90f",
+      "public_path": "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-10.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 3803,
+      "private_source_sha256": "d7c1ef87b093d6dbfde97edb64bf906ef4a69492a70da71000a23c1a0b7d9baa",
+      "public_path": "native/quality/next262-r2-mmlu64k.aggregate-counts.json",
+      "schema": "anvil-serving.mmlu-pro-shard-counts/v1"
+    },
+    {
+      "private_source_bytes": 32984,
+      "private_source_sha256": "f35a8aac2d232d09da0c11d613a5d6fd6ef9ee667ef587db47158e1aa6cef46f",
+      "public_path": "native/quality/next262-r2-mmlu64k.shard-01.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 33311,
+      "private_source_sha256": "1509dc89f613596162fd8ab42fc8c65fb7e3a7cb29d94570e461f81ae0abb00b",
+      "public_path": "native/quality/next262-r2-mmlu64k.shard-02.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 33327,
+      "private_source_sha256": "38db827432ccd7e078ba0e820b570518c640e0dfc2c9f5563dac507941eff97a",
+      "public_path": "native/quality/next262-r2-mmlu64k.shard-03.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 32978,
+      "private_source_sha256": "499907b8eaacf553d4d9623e8f875c7f4568899482f2131c5ffe7af42e39b645",
+      "public_path": "native/quality/next262-r2-mmlu64k.shard-04.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 33304,
+      "private_source_sha256": "e579b34814de46b5891dc57aaf463bde99354eeca0dc8e9917c8da71752540ab",
+      "public_path": "native/quality/next262-r2-mmlu64k.shard-05.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 32972,
+      "private_source_sha256": "35f0a82ff9873db28e9ff68dfcc5ecdb213606dfde9026d2abd0523ca39a292d",
+      "public_path": "native/quality/next262-r2-mmlu64k.shard-06.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 34055,
+      "private_source_sha256": "1f0f9b03ee7f7ed9912481b10fc4c26507c9b67bc9c7ec22483e52c630c5d5c5",
+      "public_path": "native/quality/next262-r2-mmlu64k.shard-07.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 33317,
+      "private_source_sha256": "065365c212bea5944d9e99b192a7e9ea5c5b719a6bd6af82bc18ee63b9b6206a",
+      "public_path": "native/quality/next262-r2-mmlu64k.shard-08.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 33333,
+      "private_source_sha256": "b1a9984c8ce213f20df04c99d4a76e24c7beac875fa5ea22732041055dd03fe2",
+      "public_path": "native/quality/next262-r2-mmlu64k.shard-09.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    },
+    {
+      "private_source_bytes": 33326,
+      "private_source_sha256": "a2c5dd99582578a22866a8a591f5f289eb7717eb6374f5986248293e6740beea",
+      "public_path": "native/quality/next262-r2-mmlu64k.shard-10.json",
+      "schema": "anvil-serving.fast-tier-bakeoff/v1"
+    }
+  ],
+  "verification": {
+    "public_artifacts_are_json": true,
+    "raw_scores_and_failures_retained": "true",
+    "source_hashes_are_private-origin-digests": "true"
+  }
+}
