@@ -1,23 +1,36 @@
 # Benchmarks
 
-**2026-09-11 update:** [GLM v0.4.3](../findings/2026-09-11-glm53-v043-native-linux-qualification.md) is the latest qualified native 524K/C4 reference, with Pi 14/14 and 4K output retained. Recovery to native rc14 was verified during the campaign; current assignments are private. Earlier deployment descriptions below are historical.
+Compare local models by useful context, quality, and serving performance.
+Start with the latest decision, choose your hardware, then follow the exact
+configuration and retained evidence. **Evidence reviewed: 2026-09-14 UTC.**
 
-Measured local-model results on Blackwell and Apple Silicon hardware: exact model revision,
-engine, quantization, context, concurrency, and retained artifacts for every
-number. These are local decision records, not a universal leaderboard — a
-passing run never changes a serve or route without a separate human gate.
+## Latest published decision
 
-!!! tip "Start with a measured recipe"
+<div class="bench-recipe" markdown="1">
 
-    Open **[Find a measured recipe](recipe-results.md)** to compare a workload,
-    its strengths and limitations, the exact configuration, and the native
-    artifact behind every displayed metric. Use the
-    **[reproduction guide](configurations.md)** for the full TOML and the field
-    mapping for readers who do not use Anvil Serving.
+**Selected text and tool profile · Dual RTX PRO 6000**
 
-**Last evidence review: 2026-09-09 UTC.**
+### GLM-5.3-Flash · EXL3 4 bpw · speculation off
 
-The latest [GLM-5.3-Flash native NCCL P2P transport A/B](../findings/2026-09-09-glm53-native-nccl-p2p.md) retains P2P enabled for the pinned TP=2/C1 native recipe. Its results are bounded matched latency evidence, with failed 380K strict-output cells excluded from performance claims.
+The [September 13–14 qualification](../findings/2026-09-13-intelligence-context-scout.md)
+selected this configuration after bounded quality, context, and client tests.
+
+| What was tested | Result |
+|---|---|
+| Context / output capacity | 327,680 / 65,536 tokens |
+| Long-context retrieval | 9/9 twice, including after cold reload; 255,647–255,672 input tokens plus output reserve |
+| Quality / agentic / repository tasks | 90/100 fixed MMLU-Pro sample · 30/30 agentic · 4/5 SWE tasks |
+| Controlled requests / decode | 120/120 · 38.91 tok/s median per request at C4 |
+
+**Limits:** text only; no exhaustive intelligence ranking, prolonged soak,
+reboot, or simultaneous full-window proof. These are dated local results,
+not a live status display or an automatic model-selection policy.
+
+[Read the qualification](../findings/2026-09-13-intelligence-context-scout.md) ·
+[Open the model dossier](models/glm53-flash.md) ·
+[Inspect the evidence](../findings/2026-09-13-intelligence-context-scout-evidence/README.md)
+
+</div>
 
 ## Choose by hardware and workload
 
@@ -123,12 +136,13 @@ commands; it does not claim a live model result by itself.
 
 ## Published decisions and recent controls
 
-The decision labels below describe the latest dated public evidence for each
-reference configuration. They do not report or control any operator's live
-route assignments; active deployment state remains private.
+The collapsed history below preserves earlier decisions through September 11.
+Labels such as `current` and `rollback` describe their status at that date;
+the September 13–14 selection above supersedes the primary-model guidance.
+Use the [run catalog](runs.md) to compare dated configurations.
 
 <details class="bench-history">
-<summary>Open the detailed decision history and recent controls</summary>
+<summary>Earlier decisions and controls — historical configurations</summary>
 <div markdown="1">
 
 1. **GLM-5.3-Flash ormandj W4A16/NVFP4 SGLang** — `current`
