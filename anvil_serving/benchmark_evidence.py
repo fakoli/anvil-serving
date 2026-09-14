@@ -758,6 +758,13 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
         for field in required:
             if _value_at(summary, field.split(".")) is None:
                 unknown_fields.setdefault(field, []).append(str(summary.get("path")))
+        if summary.get("kind") == "campaign":
+            # Cross-suite envelopes reference suite-specific evidence without
+            # normalizing its workload and sampling semantics.  Do not treat
+            # opaque spec or evidence hashes as proof that campaigns match.
+            unknown_fields.setdefault(
+                "campaign.semantic_workload_sampling_identity", []
+            ).append(str(summary.get("path")))
     if any(summary.get("kind") == "quality" and not _suite_signature(summary)
            for summary in summaries):
         unknown_fields["suites"] = [

@@ -233,6 +233,63 @@ def test_compare_requires_two_artifacts() -> None:
         benchmark_evidence.compare_artifacts(["one.json"])
 
 
+def test_compare_fails_closed_for_campaign_workload_identity(tmp_path: Path) -> None:
+    identities = {
+        name: {"value": "recorded", "source": "declared"}
+        for name in (
+            "model", "served_model", "runtime", "image", "hardware",
+            "topology", "context", "concurrency", "harnesses", "dataset",
+        )
+    }
+
+    def campaign(run_id: str, spec_sha256: str, evidence_sha256: str) -> dict:
+        return {
+            "schema": "anvil-serving.benchmark-evidence/v1",
+            "evidence_kind": "measured",
+            "completeness": "completed",
+            "created_at": "2026-09-14T00:00:00Z",
+            "run": {
+                "run_id": run_id,
+                "ownership_id": "owner",
+                "suite": "context",
+                "profile": "qualification",
+                "spec_sha256": spec_sha256,
+            },
+            "identities": identities,
+            "stages": [{
+                "sequence": 0,
+                "name": "context",
+                "status": "completed",
+                "evidence": [{
+                    "path": f"{run_id}.json",
+                    "sha256": evidence_sha256,
+                    "bytes": 1,
+                }],
+            }],
+            "summary": {},
+            "failure": None,
+            "promotion": {
+                "authorized": False,
+                "message": (
+                    "Benchmark evidence does not authorize model promotion; "
+                    "promotion is a separate human decision."
+                ),
+            },
+        }
+
+    first = _write(tmp_path / "first.json", campaign("first", "a" * 64, "b" * 64))
+    second = _write(tmp_path / "second.json", campaign("second", "c" * 64, "d" * 64))
+
+    result = benchmark_evidence.compare_artifacts([first, second])
+
+    assert result["comparable"] is False
+    assert result["unknown_fields"] == {
+        "campaign.semantic_workload_sampling_identity": [
+            first.as_posix(), second.as_posix(),
+        ]
+    }
+
+
 def _complete_capacity(model: str, *, concurrency: int, no_thinking: bool) -> dict:
     return {
         "schema": "anvil-serving.benchmark/v1",
