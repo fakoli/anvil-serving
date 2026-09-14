@@ -298,7 +298,7 @@ external hits, and 1,001,721,600 new CPU-to-GPU bytes.
 The card is **power-limited to 300 W (Max-Q)**; treat external reports from higher-TDP cards as
 advisory only.
 
-### Current serving chain
+### Historical serving chain {#current-serving-chain}
 
 | Model / config | Status | Quant · KV | Context · adm. | Thinking | TTFT | Output rate | Recipe |
 | --- | --- | --- | --- | --- | --- | --- | --- |
