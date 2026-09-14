@@ -129,6 +129,56 @@ def test_partial_terminal_artifacts_keep_common_provenance(terminal):
     assert artifact["provenance"]["worker"]["id"] == "benchmark-worker"
 
 
+def test_artifact_results_preserve_bounded_native_reasoning_capture():
+    record = jobs.transition_job(
+        jobs.new_job_record(_spec()), "running", timestamp="2026-08-03T08:01:00Z"
+    )
+    record = jobs.transition_job(
+        record, "completed", timestamp="2026-08-03T08:02:00Z"
+    )
+    raw_reasoning = "r" * 8192
+    artifact = jobs.build_artifact_envelope(
+        record,
+        results={
+            "evidence": {
+                "summary": {
+                    "buckets": [{
+                        "samples": [{
+                            "raw_reasoning": raw_reasoning,
+                            "raw_reasoning_truncated": False,
+                        }]
+                    }]
+                }
+            }
+        },
+        created_at="2026-08-03T08:02:01Z",
+    )
+
+    round_tripped = json.loads(jobs.canonical_json_bytes(artifact))
+    assert (
+        round_tripped["results"]["evidence"]["summary"]["buckets"][0]
+        ["samples"][0]["raw_reasoning"]
+        == raw_reasoning
+    )
+    with pytest.raises(jobs.BenchmarkJobError, match="oversized text"):
+        jobs.build_artifact_envelope(
+            record,
+            results={"evidence": {"raw_reasoning": "r" * 8193}},
+            created_at="2026-08-03T08:02:01Z",
+        )
+    with pytest.raises(jobs.BenchmarkJobError, match="invalid or oversized text"):
+        jobs.build_artifact_envelope(
+            record,
+            results={"evidence": {"raw_reasoning": "safe\x00unsafe"}},
+            created_at="2026-08-03T08:02:01Z",
+        )
+
+
+def test_job_input_text_limit_remains_stricter_than_native_result_capture():
+    with pytest.raises(jobs.BenchmarkJobError, match="oversized text"):
+        jobs.validate_job_spec(_spec(parameters={"note": "x" * 4097}))
+
+
 def test_log_entries_are_single_line_bounded_cursor_addressable(monkeypatch):
     monkeypatch.setattr(jobs, "MAX_BENCHMARK_JOB_LOG_ENTRIES", 2)
     record = jobs.new_job_record(_spec())
