@@ -1,0 +1,382 @@
+{
+  "created_at": "2026-09-13T23:19:16.733120Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "endpoint": {
+    "auth_env": "<redacted-secret-reference>",
+    "base_url": "<redacted-local-endpoint>",
+    "model": "llm.primary"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.12.14"
+      },
+      "resolved_packages_sha256": "f46398ad1f0cebc001c39317fd0cb32f58057b7ca6a130660bfd8d2165b5a886",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "18ed19aca351c570563ecb6def3ee248a13b41cff93840e1388008eea57766e5",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-11099",
+      "prediction_sha256": "582b3e224e25cb3d27eb6ea0e3aeb042daa97f0f51b66241a31c1a9510a12546",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-03282c961e604244bc8302e1",
+        "chatcmpl-071d804bb76049879a662b8e",
+        "chatcmpl-249b73d4582a409ea2efb88c",
+        "chatcmpl-2dbdcf4995674c48aa2c2fde",
+        "chatcmpl-38dbda4e8db544a08a7036b6",
+        "chatcmpl-43903bea40c24eda865955c9",
+        "chatcmpl-5d7934f22f204b1a9e3a172f",
+        "chatcmpl-5dca64437b9c4b069617dbd6",
+        "chatcmpl-61797ef671d2446f86c21b68",
+        "chatcmpl-7525d94f6841468eaa63b1bd",
+        "chatcmpl-96f8cbb2b4c94c0eb2f71e8f",
+        "chatcmpl-a399f53cabe04f18bd2e149f",
+        "chatcmpl-c1d9b2a1c98b4d2eab2d3204",
+        "chatcmpl-c4c5fecaafd94216982731c1",
+        "chatcmpl-d235ecbafd2e4bbb919f8315",
+        "chatcmpl-d59f8b40f9884707a07db85f",
+        "chatcmpl-eb9ceed48c164b19ac5584db"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-private-path>",
+        "sha256": "541cff5050640580822223f938e48869c5d71ccfd2191c2358288762096de3b6"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "18ed19aca351c570563ecb6def3ee248a13b41cff93840e1388008eea57766e5",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pytest-dev__pytest-10051",
+      "prediction_sha256": "e41b95875146dc19f5da56e9da7791f7dc531c546de6fe881242a98af28400f7",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-08f4fb0a730b42429608e9c2",
+        "chatcmpl-0dd8c35509fb431f92a9b808",
+        "chatcmpl-140a05f264224f4d9ed19980",
+        "chatcmpl-265424e6bf214c99b5b030cf",
+        "chatcmpl-51feb5fcfaf647cfaa413240",
+        "chatcmpl-62a9c81947d3492f80716727",
+        "chatcmpl-6bf9159646b04001883f332e",
+        "chatcmpl-758728be929747ecabad5a42",
+        "chatcmpl-9faeb8b94c1e4f49ac4a7c95",
+        "chatcmpl-a4de691361d8448784a365a8",
+        "chatcmpl-ac06fc35dd7943dd95be5e70",
+        "chatcmpl-b6b26f29883540cbb1e0ada2",
+        "chatcmpl-bc75308c75e94ed6b7a3609e",
+        "chatcmpl-d5bbb892d9ee4ffaadf0077c",
+        "chatcmpl-de62583b16ce4219a924c14d",
+        "chatcmpl-df27c8c3e27747ef9797c320",
+        "chatcmpl-e380654c082a47af825f2161",
+        "chatcmpl-ed7999de0e434bf4bdb0f620",
+        "chatcmpl-edd2959c47c248d2ae9f3f60",
+        "chatcmpl-fcece2f112634354a84ed2da"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-private-path>",
+        "sha256": "29982680fcce84a2bacc1417f86b79950ff8ac68d3b6949a14de0fbc52b82c79"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "18ed19aca351c570563ecb6def3ee248a13b41cff93840e1388008eea57766e5",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "scikit-learn__scikit-learn-10297",
+      "prediction_sha256": "e802e699cd2832909446e5a5675a08825a34fc6ed261809d354e6077e767c5bd",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-0b42c76d55874f33aea25f32",
+        "chatcmpl-102589fcac3f444e93099e92",
+        "chatcmpl-1d7960a37244474c84becdf4",
+        "chatcmpl-20147e5d2f1a46b6b8b660fd",
+        "chatcmpl-20b3f7d94c15420cb9c64183",
+        "chatcmpl-32b5a121361e418bada95eee",
+        "chatcmpl-5196533ef4e04ba8964b58ca",
+        "chatcmpl-64bbf0a0b2014fbd9267ab8b",
+        "chatcmpl-6653149b78344c7c8c35ca66",
+        "chatcmpl-732f0dce6c24491b92a33377",
+        "chatcmpl-77e50a73ac9d4913833f0120",
+        "chatcmpl-8acc96dfbdf444b0a841200e",
+        "chatcmpl-8b5159b733de460781acb988",
+        "chatcmpl-8e0b0eba7bad4326982ce54b",
+        "chatcmpl-9177abbb93644f46b2babbed",
+        "chatcmpl-a8c0a3198bd24e16ab454a67",
+        "chatcmpl-ab73baab924b49c79eac3baa",
+        "chatcmpl-aef4f200b523491dafec4014",
+        "chatcmpl-e475e9d272dd4f92bad45629"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-private-path>",
+        "sha256": "c7e810fda952e897fd572a718da7b2d75bec92698c47bc207ed39cb564e5ee5c"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "18ed19aca351c570563ecb6def3ee248a13b41cff93840e1388008eea57766e5",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "psf__requests-1142",
+      "prediction_sha256": "e6b64b0767c5287d4dc106374a65fe93dd9485cc57075c65f155a3ebcdc87f5c",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-03abbda7e90a4bd394107ef7",
+        "chatcmpl-060a6bfa113f4b71a5fa30a6",
+        "chatcmpl-072aa4c96cab4896847f39de",
+        "chatcmpl-0797a95e50794b21aed8c69a",
+        "chatcmpl-0c2658716311457ab2d5553c",
+        "chatcmpl-14048e9be4004fd3a5642b12",
+        "chatcmpl-1b638080eee74f58a95af496",
+        "chatcmpl-1f514a3fd34342f4958a1fc3",
+        "chatcmpl-226629d988374919bb64006c",
+        "chatcmpl-303213f5255b4cd5b16c1ae9",
+        "chatcmpl-31f88f793e5b4386ab43e4b7",
+        "chatcmpl-3228d8a9914d43a48b87c5ed",
+        "chatcmpl-3be05589377047488db8d0b1",
+        "chatcmpl-3f4f730689164e218ae17b20",
+        "chatcmpl-42190ae3d70947b9b798ef34",
+        "chatcmpl-50e6c2a69fe04bbeb9d6bf01",
+        "chatcmpl-57869fcfdb0143fc972eac1a",
+        "chatcmpl-64ac8cd4bc904973a50159be",
+        "chatcmpl-7114a606ffdb4b1b99904c78",
+        "chatcmpl-722731dabe714e34bf583aa6",
+        "chatcmpl-749f0e2541ee4774b3835eb8",
+        "chatcmpl-7b639765ee7848458138b909",
+        "chatcmpl-7cd30b924d4b43e18780e783",
+        "chatcmpl-81202e2410244e649a5ea648",
+        "chatcmpl-8dbb1ac459ca40daafe0b218",
+        "chatcmpl-9672bfae436d40f9a647921a",
+        "chatcmpl-ac3344cc60084bf1b1385e92",
+        "chatcmpl-b0a30851d2fe4c8b898db2ea",
+        "chatcmpl-bbbe9bcb851f453a829dfc84",
+        "chatcmpl-c1061b51d56549d7899cfb1e",
+        "chatcmpl-c4579fd8986842e5894c0b03",
+        "chatcmpl-c49cadc6d82f43adba83b257",
+        "chatcmpl-c7be9b28432c4c739cec36a3",
+        "chatcmpl-c8b89a4fd3c0456fb39b2445",
+        "chatcmpl-d6de2160f9ec4406a542926a",
+        "chatcmpl-dd26f12bfcf8420e84263f11",
+        "chatcmpl-df75f6de90774290a50b0363",
+        "chatcmpl-eac77c117961421797066456",
+        "chatcmpl-eb210e0a9ce5450d952657b0",
+        "chatcmpl-ec2c34850dc5471f9e8a98ca",
+        "chatcmpl-ef461fa8fa1b4888b7727ede",
+        "chatcmpl-fa65d1339d814ff4bc6d0e25",
+        "chatcmpl-ff722e370c3c4426bf9ad71b"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-private-path>",
+        "sha256": "f157fb96f542ea1ba3b53b6968437a810c26a3d7fa889f9e0b4721e161794309"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "18ed19aca351c570563ecb6def3ee248a13b41cff93840e1388008eea57766e5",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-11618",
+      "prediction_sha256": "e1e2514b12d0c42cc5e7ef569023b9bfc102ce673c30bc88575c2220dc7c4d06",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-001261a445d6496e915a4e1d",
+        "chatcmpl-05b3ce61374a40f0b53f1a22",
+        "chatcmpl-1541fc6671264d2dbb62751b",
+        "chatcmpl-15799b7bee8d45b288462348",
+        "chatcmpl-17695589581140959435f2e0",
+        "chatcmpl-250cebbe2dcb4629a4b34587",
+        "chatcmpl-3b88401e0acb47b0a3164153",
+        "chatcmpl-414e93a0922b47e4883fb255",
+        "chatcmpl-453f58be0a9540cb93d58f39",
+        "chatcmpl-47427280123d426a96de9240",
+        "chatcmpl-4fd47f2fa038481d9e0b1b87",
+        "chatcmpl-66b9d959c98142efa40c7454",
+        "chatcmpl-6f6a58a24e774e09b005d1a4",
+        "chatcmpl-71290db3e4194cc891b388fb",
+        "chatcmpl-714334c6a20f49279340fd89",
+        "chatcmpl-7605e7b8d3f8454f902a9b40",
+        "chatcmpl-7d5a43c55804483699e2efa2",
+        "chatcmpl-8218372bec004450ad6a1ec5",
+        "chatcmpl-84f818db0fb84e41932f2ffe",
+        "chatcmpl-8a4699625e31466c98e7dfd1",
+        "chatcmpl-8ec68827299b4a5e92a0914a",
+        "chatcmpl-8f2be33aea7d4dbb9cd7b313",
+        "chatcmpl-9c43b744d15c498692e6822b",
+        "chatcmpl-9ee06525a38e473f882f6b02",
+        "chatcmpl-a03c95a32e95489db37530e0",
+        "chatcmpl-abbd096053514030aaed5a5f",
+        "chatcmpl-ad15123ab3e24748944e17fe",
+        "chatcmpl-af233f93466f4cf4a08aac95",
+        "chatcmpl-b8153dcc31fb491db7d313f8",
+        "chatcmpl-ba623347054a479dabaf6182",
+        "chatcmpl-c3ce685792dd4fdf9a855bf6",
+        "chatcmpl-c6e80f74741e4d3e98aeda43",
+        "chatcmpl-cec7281474374652a161b538",
+        "chatcmpl-d69bf6aeded34d5a840d3ef2",
+        "chatcmpl-d8dc73696c704a31ba18b3d6",
+        "chatcmpl-e526ae94d7b04dcaaf21469d",
+        "chatcmpl-e77b7d342ec94b0b809b4ea6"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-private-path>",
+        "sha256": "d20d82ab8e7a1936e49cd1118690fb6302adf7f68b0d3c76235ff28422b986dc"
+      }
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "intelligence-context-20260913",
+  "plan_sha256": "555b90c31a3a1d5dbcc22d94a9776c2aa5516d47e9d9f2c4f1f85dca9b8f0e39",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": "xhigh",
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "run_id": "next405-swe-scout-r2",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "django__django-11099",
+      "pytest-dev__pytest-10051",
+      "scikit-learn__scikit-learn-10297",
+      "psf__requests-1142",
+      "sympy__sympy-11618"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "d17f26180e5775793599e4f42223ac22ba5807b900618b506c1359975ad89672"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": "<redacted>",
+      "duration_s": 1148.500118,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n",
+      "stdout": "minisweagent: INFO: Results will be saved to                                    \n<redacted-private-path>\ne-context-20260913/next405-swe-scout-r2/work/mini-output                        \nLogging to '<redacted-private-path>'\nminisweagent: INFO: Loading dataset princeton-nlp/SWE-Bench_Verified, split     \ntest...                                                                         \nminisweagent: INFO: Instance filter: 500 -> 5 instances                         \nminisweagent: INFO: Running on 5 instances...                                   \nminisweagent: INFO: Building agent config from specs:                           \n['<redacted-private-path>\ngent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/config/benchmarks\n/swebench.yaml',                                                                \n'<redacted-private-path>\nce-context-20260913/next405-swe-scout-r2/work/anvil-swe-config.yaml']           \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-148b60cc -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.django_1776_django-11099:latest sleep 2h    \nminisweagent.environment: INFO: Started container minisweagent-148b60cc with ID \naa0d9d1f7fc30d94340285496b237184d9e832941721fb692406228621934af0                \nminisweagent: INFO: Saved trajectory to                                         \n'<redacted-private-path>\nce-context-20260913/next405-swe-scout-r2/work/mini-output/django__django-11099/d\njango__django-11099.traj.json'                                                  \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-22db2fd1 -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.psf_1776_requests-1142:latest sleep 2h      \nminisweagent.environment: INFO: Started container minisweagent-22db2fd1 with ID \ne4ffac55296d6d72ad12faa3ee996753341b73bfc5cc451976948415a0218d0d                \nminisweagent: INFO: Saved trajectory to                                         \n'<redacted-private-path>\nce-context-20260913/next405-swe-scout-r2/work/mini-output/psf__requests-1142/psf\n__requests-1142.traj.json'                                                      \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-2626e386 -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-10051:latest sleep 2h\nminisweagent.environment: INFO: Started container minisweagent-2626e386 with ID \n9a523dda819bcb004c6caef668eb30e58e8ceba4c4ad4a71b6522a58d8734166                \nminisweagent: INFO: Saved trajectory to                                         \n'<redacted-private-path>\nce-context-20260913/next405-swe-scout-r2/work/mini-output/pytest-dev__pytest-100\n51/pytest-dev__pytest-10051.traj.json'                                          \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-7d8b8742 -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest \nsleep 2h                                                                        \nminisweagent.environment: INFO: Started container minisweagent-7d8b8742 with ID \n93d9e4bc0c40a4c3501b688b9340bf05973453e1c64d2133f2a523da48767cc6                \nminisweagent: INFO: Saved trajectory to                                         \n'<redacted-private-path>\nce-context-20260913/next405-swe-scout-r2/work/mini-output/scikit-learn__scikit-l\nearn-10297/scikit-learn__scikit-learn-10297.traj.json'                          \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-2e48568b -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest sleep 2h      \nminisweagent.environment: INFO: Started container minisweagent-2e48568b with ID \n7314d027f41e97972624791189ce534c361cdc94f9e1d82c79bfe73220957874                \nminisweagent: INFO: Saved trajectory to                                         \n'<redacted-private-path>\nce-context-20260913/next405-swe-scout-r2/work/mini-output/sympy__sympy-11618/sym\npy__sympy-11618.traj.json'                                                      \n  Overall Progress ($0.00) \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 5/5 100% 0:19:06 eta: 0:00:00\n\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2513\n\u2503 Exit Status \u2503 Count \u2503 Most recent instances                                  \u2503\n\u2521\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2529\n\u2502 Submitted   \u2502     5 \u2502 sympy__sympy-11618,                                    \u2502\n\u2502             \u2502       \u2502 scikit-learn__scikit-learn-10297...                    \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"
+    },
+    {
+      "command": "<redacted>",
+      "duration_s": 93.969584,
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "<frozen runpy>:128: RuntimeWarning: 'swebench.harness.run_evaluation' found in sys.modules after import of package 'swebench.harness', but prior to execution of 'swebench.harness.run_evaluation'; this may result in unpredictable behaviour\n2026-09-13 23:38:26,004 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/main/README.md \"HTTP/1.1 307 Temporary Redirect\"\nWarning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n2026-09-13 23:38:26,004 - huggingface_hub.utils._http - WARNING - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n2026-09-13 23:38:26,014 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/princeton-nlp/SWE-bench_Verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/README.md?%2Fdatasets%2Fprinceton-nlp%2FSWE-bench_Verified%2Fresolve%2Fmain%2FREADME.md=&etag=%22f362a6ce9579a3ee1922e3402463feef139b7d00%22 \"HTTP/1.1 200 OK\"\n2026-09-13 23:38:26,099 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-13 23:38:26,369 - httpx - INFO - HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/princeton-nlp/SWE-bench_Verified/princeton-nlp/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-13 23:38:26,449 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/revision/c104f840cc67f8b6eec6f759ebc8b2693d585d4a \"HTTP/1.1 200 OK\"\n2026-09-13 23:38:26,540 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/.huggingface.yaml \"HTTP/1.1 404 Not Found\"\n2026-09-13 23:38:26,654 - httpx - INFO - HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=princeton-nlp/SWE-bench_Verified \"HTTP/1.1 200 OK\"\n2026-09-13 23:38:26,737 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/tree/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/data?recursive=true&expand=false \"HTTP/1.1 200 OK\"\n2026-09-13 23:38:26,839 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/tree/c104f840cc67f8b6eec6f759ebc8b2693d585d4a?recursive=false&expand=false \"HTTP/1.1 200 OK\"\n2026-09-13 23:38:26,919 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/dataset_infos.json \"HTTP/1.1 404 Not Found\"\n2026-09-13 23:38:27,023 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/main/README.md \"HTTP/1.1 307 Temporary Redirect\"\n2026-09-13 23:38:27,031 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/princeton-nlp/SWE-bench_Verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/README.md?%2Fdatasets%2Fprinceton-nlp%2FSWE-bench_Verified%2Fresolve%2Fmain%2FREADME.md=&etag=%22f362a6ce9579a3ee1922e3402463feef139b7d00%22 \"HTTP/1.1 200 OK\"\n2026-09-13 23:38:27,111 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-13 23:38:27,199 - httpx - INFO - HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/princeton-nlp/SWE-bench_Verified/princeton-nlp/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-13 23:38:27,277 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/.huggingface.yaml \"HTTP/1.1 404 Not Found\"\n2026-09-13 23:38:27,367 - httpx - INFO - HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=princeton-nlp/SWE-bench_Verified \"HTTP/1.1 200 OK\"\n2026-09-13 23:38:27,451 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/dataset_infos.json \"HTTP/1.1 404 Not Found\"\n\rEvaluation:   0%|          | 0/5 [00:00<?, ?it/s, error=0, \u2713=0, \u2716=0]\rEvaluation:   0%|          | 0/5 [00:18<?, ?it/s, \u2713=1, \u2716=0, error=0]\rEvaluation:  20%|\u2588\u2588        | 1/5 [00:18<01:15, 18.83s/it, \u2713=1, \u2716=0, error=0]\rEvaluation:  20%|\u2588\u2588        | 1/5 [00:35<01:15, 18.83s/it, \u2713=1, \u2716=1, error=0]\rEvaluation:  40%|\u2588\u2588\u2588\u2588      | 2/5 [00:35<00:52, 17.53s/it, \u2713=1, \u2716=1, error=0]\rEvaluation:  40%|\u2588\u2588\u2588\u2588      | 2/5 [00:53<00:52, 17.53s/it, \u2713=2, \u2716=1, error=0]\rEvaluation:  60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 3/5 [00:53<00:35, 17.66s/it, \u2713=2, \u2716=1, error=0]\rEvaluation:  60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 3/5 [01:10<00:35, 17.66s/it, \u2713=3, \u2716=1, error=0]\rEvaluation:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 4/5 [01:10<00:17, 17.63s/it, \u2713=3, \u2716=1, error=0]\rEvaluation:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 4/5 [01:27<00:17, 17.63s/it, \u2713=4, \u2716=1, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 5/5 [01:27<00:00, 17.39s/it, \u2713=4, \u2716=1, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 5/5 [01:27<00:00, 17.56s/it, \u2713=4, \u2716=1, error=0]\n",
+      "stdout": "Found 5 existing instance images. Will reuse them.\nRunning 5 instances...\nAll instances run.\nCleaning cached images...\nRemoved 0 images.\nTotal instances: 5\nInstances submitted: 5\nInstances completed: 5\nInstances incomplete: 0\nInstances resolved: 4\nInstances unresolved: 1\nInstances with empty patches: 0\nInstances with errors: 0\nUnstopped containers: 0\nUnremoved images: 5\nReport written to openai__llm.primary.next405-swe-scout-r2.json\n"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.8,
+    "resolved": 4
+  },
+  "task_container_network": "none"
+}

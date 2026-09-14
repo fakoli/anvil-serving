@@ -1,0 +1,134 @@
+{
+  "backup_created": true,
+  "changed": [
+    "openclaw",
+    "pi_models",
+    "pi_settings",
+    "hermes:default",
+    "hermes:anvil-primary",
+    "hermes:anvil-secondary",
+    "hermes:work-profile"
+  ],
+  "clients": [
+    "openclaw",
+    "hermes",
+    "pi"
+  ],
+  "config_sha256": "d34d88c4e23875b582081ee4e9f5f22f21983cdaf866b77cedb0a3967ec006c6",
+  "dry_run": false,
+  "hermes_profiles": [
+    {
+      "changed_keys": [
+        "model.context_length",
+        "model.max_tokens",
+        "auxiliary.compression.context_length",
+        "providers.anvil.context_length",
+        "providers.anvil.models",
+        "custom_providers",
+        "auxiliary.vision"
+      ],
+      "compression": {
+        "enabled": true,
+        "target_ratio": 0.2,
+        "threshold": 0.5
+      },
+      "context_window": 327680,
+      "managed": true,
+      "max_output_tokens": 65536,
+      "model": "llm.primary",
+      "profile": "default",
+      "provider": "anvil",
+      "vision_context_window": null,
+      "vision_model": null
+    },
+    {
+      "changed_keys": [
+        "model.context_length",
+        "model.max_tokens",
+        "auxiliary.compression.context_length",
+        "providers.anvil.context_length",
+        "providers.anvil.models",
+        "custom_providers",
+        "auxiliary.vision"
+      ],
+      "compression": {
+        "enabled": true,
+        "target_ratio": 0.2,
+        "threshold": 0.5
+      },
+      "context_window": 327680,
+      "managed": true,
+      "max_output_tokens": 65536,
+      "model": "llm.primary",
+      "profile": "anvil-primary",
+      "provider": "anvil",
+      "vision_context_window": null,
+      "vision_model": null
+    },
+    {
+      "changed_keys": [
+        "providers.anvil.models",
+        "custom_providers",
+        "auxiliary.vision"
+      ],
+      "compression": {
+        "enabled": true,
+        "target_ratio": 0.2,
+        "threshold": 0.5
+      },
+      "context_window": 262144,
+      "managed": true,
+      "max_output_tokens": 8192,
+      "model": "llm.secondary",
+      "profile": "anvil-secondary",
+      "provider": "anvil",
+      "vision_context_window": null,
+      "vision_model": null
+    },
+    {
+      "changed_keys": [
+        "providers.anvil.models",
+        "custom_providers",
+        "auxiliary.vision"
+      ],
+      "compression": {
+        "enabled": true,
+        "target_ratio": 0.2,
+        "threshold": 0.5
+      },
+      "context_window": 262144,
+      "managed": true,
+      "max_output_tokens": 8192,
+      "model": "llm.secondary",
+      "profile": "work-profile",
+      "provider": "anvil",
+      "vision_context_window": null,
+      "vision_model": null
+    }
+  ],
+  "hermes_restarted": true,
+  "models": [
+    {
+      "context_window": 327680,
+      "id": "llm.auxiliary",
+      "max_output_tokens": 65536
+    },
+    {
+      "context_window": 327680,
+      "id": "llm.primary",
+      "max_output_tokens": 65536
+    },
+    {
+      "context_window": 262144,
+      "id": "llm.secondary",
+      "max_output_tokens": 8192
+    },
+    {
+      "context_window": 327680,
+      "id": "llm.voice",
+      "max_output_tokens": 65536
+    }
+  ],
+  "openclaw_restarted": true,
+  "package_version": "1.2.1"
+}

@@ -1,0 +1,435 @@
+{
+  "created_at": "2026-09-13T23:12:50.528680Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "<redacted-secret-reference>",
+      "base_url": "<redacted-local-endpoint>",
+      "model": "llm.primary"
+    },
+    "finished_at": "2026-09-13T23:12:50.528597Z",
+    "started_at": "2026-09-13T23:06:36.881063Z",
+    "submitted_at": "2026-09-13T23:04:09Z",
+    "worker": {
+      "id": "Primary Node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-09-13T23:12:50.519302Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": 65536,
+          "profile_buckets": [
+            8192,
+            32768,
+            65536,
+            131072,
+            262144,
+            524288,
+            640000
+          ],
+          "selected_buckets": [
+            192000
+          ]
+        },
+        "dataset": {
+          "name": "deterministic-native",
+          "profile_sha256": "6cc9e66696ae5fafed7af738cae898b59b7370574c829a9740300762dfbb92a7"
+        },
+        "hardware": {
+          "architecture": "x86_64",
+          "container_capable": true,
+          "harness_assets": [],
+          "id": "Primary Node",
+          "owned_output_writable": true,
+          "platform": "linux"
+        },
+        "harnesses": {
+          "native": {
+            "schema": "anvil-serving.context/v1"
+          }
+        },
+        "image": {
+          "status": "not-applicable"
+        },
+        "model": {
+          "alias": "llm.primary"
+        },
+        "runtime": {
+          "configured_context": 262144,
+          "engine": "tabbyapi-exllamav3-1.5.0",
+          "exllamav3": "v1.5.0",
+          "harness_commit": "a592c4e54bcb3a3b4d2835986e4694ddf2f08b52",
+          "image": "ghcr.io/theroyallab/tabbyapi@sha256:00909876aea02112b75d775bfa50f6d1adac50a3a11918363e7b403d7340d9bc",
+          "kv_cache": "Q8",
+          "source_recipe": "private-recipe-sha256:0cf6879853149af4ef23c5408329aefd15da1b40aa2334dbce99c9906440791c",
+          "source_recipe_sha256": "0cf6879853149af4ef23c5408329aefd15da1b40aa2334dbce99c9906440791c",
+          "tabbyapi_source_commit": "de76ff88991477639a6a7f88c2d116f18c2ca24f",
+          "tp": 1,
+          "wheel_sha256": "d8f5b483ca882c52d79a73c059b508c666663a68b4c60e420ca489e654e8104a"
+        },
+        "served_model": {
+          "configured_context": null,
+          "id": "llm.primary"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "Primary Node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "intelligence-context-20260913",
+        "profile": "deep",
+        "run_id": "next405-context-native192k-262k-r1",
+        "spec_sha256": "68fa8f3da7fdff0201bac073d6ea9b978f4357b3cc2d2099e5b885a3f8b32528",
+        "suite": "context"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 566,
+              "path": "evidence/0-assets.json",
+              "sha256": "4c1327c4d0959e0bc076128f3a23cd943d8f0095497bff0e343258045b265801"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 1952,
+              "path": "evidence/0-preflight.json",
+              "sha256": "f8bb1551d6b48afe801c66a07a52940f1f79c3d732f0f5a4c0d3952a2e3ebee1"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 33923,
+              "path": "evidence/0-context.json",
+              "sha256": "5928b18a7af7b6c7adaa2d50bb1943ced95be77a380ad623ca91090ba6b30a35"
+            }
+          ],
+          "name": "context",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "advertised_context": 262144,
+        "attempted_buckets": [
+          192000
+        ],
+        "buckets": [
+          {
+            "completed_count": 9,
+            "completion_rate": 1.0,
+            "engine_telemetry": {
+              "available": false,
+              "observations": []
+            },
+            "failures": {},
+            "latency_ms": {
+              "available": true,
+              "mean": 41223.33178978362,
+              "observations": [
+                44864.95170899434,
+                46644.03244800633,
+                32416.709707991686,
+                51056.7710819887,
+                33910.141210013535,
+                34341.88313502818,
+                47296.210237022024,
+                40563.636842009146,
+                39915.6497369986
+              ]
+            },
+            "meets_policy": true,
+            "pass_rate": 1.0,
+            "passed_count": 9,
+            "relative_drop_from_baseline": 0.0,
+            "requested_tokens": 192000,
+            "sample_count": 9,
+            "samples": [
+              {
+                "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+                "case_id": "native-order-192000-0.100-r0",
+                "case_type": "native-order",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 44864.95170899434,
+                "passed": true,
+                "position": 0.1,
+                "prompt_tokens": 191902,
+                "raw_reasoning": "We need answer user's request. Need produce final answer only likely. Need analyze document: contains checkpoints ALPHA stores K557508437185. BETA stores K434177192288. GAMMA stores K503557252183. Need return ALPHA, BETA, GAMMA values in that order separated by ' | '. Need maybe include K? User says checkpoint values. So K557508437185 | K434177192288 | K503557252183. Ensure no extra. Final concise.\n",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 192000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 4.301798901999223,
+                "token_measurement": "<redacted>",
+                "visible_answer": "\n\nK557508437185 | K434177192288 | K503557252183",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+                "case_id": "native-order-192000-0.500-r0",
+                "case_type": "native-order",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 46644.03244800633,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 191902,
+                "raw_reasoning": "We need answer user's request. Need extract checkpoint values from reference document. They ask: \"Return the ALPHA, BETA, and GAMMA checkpoint values in that order, separated by ' | '.\" Need output only? Likely K557508437185 | K434177192288 | K503557252183. Need ensure no extra. Need maybe analysis here: In doc:\nCheckpoint ALPHA stores K557508437185.\nCheckpoint BETA stores K434177192288.\nCheckpoint GAMMA stores K503557252183.\nNeed return values separated by ' | '. So final: K557508437185 | K434177192288 | K503557252183.\n",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 192000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 5.488376252318254,
+                "token_measurement": "<redacted>",
+                "visible_answer": "\n\nK557508437185 | K434177192288 | K503557252183",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+                "case_id": "native-order-192000-0.900-r0",
+                "case_type": "native-order",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 32416.709707991686,
+                "passed": true,
+                "position": 0.9,
+                "prompt_tokens": 191902,
+                "raw_reasoning": "We need answer user's request. User provides a long reference with many neutral paragraphs, then checkpoints:\nCheckpoint ALPHA stores K557508437185.\nCheckpoint BETA stores K434177192288.\nCheckpoint GAMMA stores K503557252183.\nQuestion: Return the ALPHA, BETA, and GAMMA checkpoint values in that order, separated by ' | '.\nNeed answer likely values. Need be careful: \"checkpoint values\" could include K prefix? It says stores K557508437185. Return values. Probably \"K557508437185 | K434177192288 | K503557252183\". Could be without K? It says values, likely the stored strings including K. Let's output exactly separated by ' | '. No extra.\n",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 192000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 7.89716175102399,
+                "token_measurement": "<redacted>",
+                "visible_answer": "\n\nK557508437185 | K434177192288 | K503557252183",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "5912da657e0e0bd514e4d36a4b2e2c0ff194289d275e532bbc2a3d8ad9a57f6d",
+                "case_id": "native-identifiers-192000-0.100-r0",
+                "case_type": "native-identifiers",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 51056.7710819887,
+                "passed": true,
+                "position": 0.1,
+                "prompt_tokens": 191926,
+                "raw_reasoning": "We need answer user's request. User provided reference paragraph mostly filler, includes: \"Operator Iris Valen-5745 owns ticket b447c0ce-b484-38b5-c41f-9dfd2cb85f3f, numeric account 24080090411, endpoint 198.51.100.235, and code symbol resolve_orchid_13530.\" Then question: Return exact identifiers in format NAME=<name> | UUID=<uuid> | NUMBER=<number> | IP=<ip> | SYMBOL=<symbol>.\nNeed extract:\nNAME=Iris Valen-5745? The name in paragraph: Operator Iris Valen-5745 owns ticket... Likely name = Iris Valen-5745. Could include operator? asks exact identifiers. The text: \"Operator Iris Valen-5745 owns ticket b447c0ce-b484-38b5-c41f-9dfd2cb85f3f, numeric account 24080090411, endpoint 198.51.100.235, and code symbol resolve_orchid_13530.\"\nUUID likely ticket? b447c0ce-b484-38b5-c41f-9dfd2cb85f3f. Numeric account = 24080090411. IP endpoint = 198.51.100.235. Symbol = resolve_orchid_13530.\nNeed final exact format. Ensure no extra. Need maybe NAME=Iris Valen-5745 | UUID=b447c0ce-b484-38b5-c41f-9dfd2cb85f3f | NUMBER=24080090411 | IP=198.51.100.235 | SYMBOL=resolve_orchid_13530.\nDouble-check any hidden? The prompt has massive repeated paragraphs. Only one informative sentence. Need not mention. final concise.\n",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 192000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 11.418661768951248,
+                "token_measurement": "<redacted>",
+                "visible_answer": "\n\nNAME=Iris Valen-5745 | UUID=b447c0ce-b484-38b5-c41f-9dfd2cb85f3f | NUMBER=24080090411 | IP=198.51.100.235 | SYMBOL=resolve_orchid_13530",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "5912da657e0e0bd514e4d36a4b2e2c0ff194289d275e532bbc2a3d8ad9a57f6d",
+                "case_id": "native-identifiers-192000-0.500-r0",
+                "case_type": "native-identifiers",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 33910.141210013535,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 191926,
+                "raw_reasoning": "We need answer user's request. Need parse reference paragraph embedded among lots neutral lines. The question: \"Return the exact identifiers in this format: NAME=<name> | UUID=<uuid> | NUMBER=<number> | IP=<ip> | SYMBOL=<symbol>.\"\n\nWe need find relevant sentence: \"Operator Iris Valen-5745 owns ticket b447c0ce-b484-38b5-c41f-9dfd2cb85f3f, numeric account 24080090411, endpoint 198.51.100.235, and code symbol resolve_orchid_13530.\" It appears between paragraph 0004793 and 0004794. Need output exact identifiers.\n\nNAME: Iris Valen-5745\nUUID: b447c0ce-b484-38b5-c41f-9dfd2cb85f3f\nNUMBER: 24080090411\nIP: 198.51.100.235\nSYMBOL: resolve_orchid_13530\n\nNeed final only format. Ensure no extra.\n",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 192000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 10.881700483483558,
+                "token_measurement": "<redacted>",
+                "visible_answer": "\n\nNAME=Iris Valen-5745 | UUID=b447c0ce-b484-38b5-c41f-9dfd2cb85f3f | NUMBER=24080090411 | IP=198.51.100.235 | SYMBOL=resolve_orchid_13530",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "5912da657e0e0bd514e4d36a4b2e2c0ff194289d275e532bbc2a3d8ad9a57f6d",
+                "case_id": "native-identifiers-192000-0.900-r0",
+                "case_type": "native-identifiers",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 34341.88313502818,
+                "passed": true,
+                "position": 0.9,
+                "prompt_tokens": 191926,
+                "raw_reasoning": "We need answer user's request. Need parse reference document huge. They ask: \"Read the reference document and answer the final question. ... Question: Return the exact identifiers in this format: NAME=<name> | UUID=<uuid> | NUMBER=<number> | IP=<ip> | SYMBOL=<symbol>.\"\n\nWe need find the paragraph with identifiers. It's at paragraph 0008627: \"Operator Iris Valen-5745 owns ticket b447c0ce-b484-38b5-c41f-9dfd2cb85f3f, numeric account 24080090411, endpoint 198.51.100.235, and code symbol resolve_orchid_13530.\"\n\nNeed exact identifiers format. NAME likely \"Iris Valen-5745\"? It says Operator Iris Valen-5745 owns ticket... numeric account... endpoint... code symbol. So NAME=Iris Valen-5745, UUID=b447c0ce-b484-38b5-c41f-9dfd2cb85f3f, NUMBER=24080090411, IP=198.51.100.235, SYMBOL=resolve_orchid_13530.\n\nNeed final only format maybe no extra. Ensure exact. final concise.\n",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 192000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 11.938774539180887,
+                "token_measurement": "<redacted>",
+                "visible_answer": "\n\nNAME=Iris Valen-5745 | UUID=b447c0ce-b484-38b5-c41f-9dfd2cb85f3f | NUMBER=24080090411 | IP=198.51.100.235 | SYMBOL=resolve_orchid_13530",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+                "case_id": "native-crosslink-192000-0.100-r0",
+                "case_type": "native-crosslink",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 47296.210237022024,
+                "passed": true,
+                "position": 0.1,
+                "prompt_tokens": 191902,
+                "raw_reasoning": "We need answer user's request. Need read reference document and answer final question. User provided huge reference paragraphs mostly neutral. Need follow relationships and return exactly: ASTER -> <owner> -> <endpoint> -> <code symbol>.\n\nWe need extract relationships:\nReference paragraph 0000958: Project ASTER is owned by Mara Quill-5745.\nReference paragraph 0004505: The deployment endpoint assigned to Mara Quill-5745 is 203.0.113.45.\nReference paragraph 0007956: The service at 203.0.113.45 exports code symbol commit_aster_80803.\n\nThus ASTER -> Mara Quill-5745 -> 203.0.113.45 -> commit_aster_80803.\nNeed exactly maybe line with arrow. Ensure no extra. Final only that.\n",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 192000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 5.328122459222793,
+                "token_measurement": "<redacted>",
+                "visible_answer": "\n\nASTER -> Mara Quill-5745 -> 203.0.113.45 -> commit_aster_80803",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+                "case_id": "native-crosslink-192000-0.500-r0",
+                "case_type": "native-crosslink",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 40563.636842009146,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 191902,
+                "raw_reasoning": "We need answer user's request. Need parse reference doc. Need produce final exactly: ASTER -> <owner> -> <endpoint> -> <code symbol>.\n\nWe need find relationships. Paragraph 0002204: The service at 203.0.113.45 exports code symbol commit_aster_80803.\nParagraph 0004793: Project ASTER is owned by Mara Quill-5745.\nParagraph 0008340: The deployment endpoint assigned to Mara Quill-5745 is 203.0.113.45.\n\nQuestion: Follow relationships and return exactly: ASTER -> <owner> -> <endpoint> -> <code symbol>.\nSo ASTER owner Mara Quill-5745, endpoint 203.0.113.45, code symbol commit_aster_80803.\nNeed output exactly that line? \"ASTER -> Mara Quill-5745 -> 203.0.113.45 -> commit_aster_80803\"\nEnsure no extra. final.\n",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 192000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 7.272523446282497,
+                "token_measurement": "<redacted>",
+                "visible_answer": "\n\nASTER -> Mara Quill-5745 -> 203.0.113.45 -> commit_aster_80803",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+                "case_id": "native-crosslink-192000-0.900-r0",
+                "case_type": "native-crosslink",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 39915.6497369986,
+                "passed": true,
+                "position": 0.9,
+                "prompt_tokens": 191902,
+                "raw_reasoning": "We need answer user's question. Need read reference paragraphs. Need find relationships:\n- \"The deployment endpoint assigned to Mara Quill-5745 is 203.0.113.45.\" appears after paragraph 2587.\n- \"The service at 203.0.113.45 exports code symbol commit_aster_80803.\" appears after paragraph 6039.\n- \"Project ASTER is owned by Mara Quill-5745.\" appears after paragraph 8627.\nQuestion: Follow relationships and return exactly: ASTER -> <owner> -> <endpoint> -> <code symbol>.\nNeed output exactly chain: ASTER -> Mara Quill-5745 -> 203.0.113.45 -> commit_aster_80803\nNeed no extra. Ensure exact? likely yes. Need final only.\n",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 192000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 6.062784937600187,
+                "token_measurement": "<redacted>",
+                "visible_answer": "\n\nASTER -> Mara Quill-5745 -> 203.0.113.45 -> commit_aster_80803",
+                "visible_answer_truncated": false
+              }
+            ],
+            "throughput_tps": {
+              "available": true,
+              "mean": 7.843322726673626,
+              "observations": [
+                4.301798901999223,
+                5.488376252318254,
+                7.89716175102399,
+                11.418661768951248,
+                10.881700483483558,
+                11.938774539180887,
+                5.328122459222793,
+                7.272523446282497,
+                6.062784937600187
+              ]
+            }
+          }
+        ],
+        "effective_context": 192000,
+        "first_material_degradation": null,
+        "notes": [
+          "effective_context uses attempted buckets only",
+          "missing engine telemetry is unavailable and is not inferred from latency"
+        ],
+        "schema": "anvil-serving.context-curve/v1",
+        "threshold_policy": {
+          "baseline_bucket": 192000,
+          "baseline_pass_rate": 1.0,
+          "max_relative_drop": 0.3,
+          "pass_rate_floor": 0.7
+        }
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "intelligence-context-20260913",
+    "profile": "deep",
+    "run_id": "next405-context-native192k-262k-r1",
+    "spec_sha256": "68fa8f3da7fdff0201bac073d6ea9b978f4357b3cc2d2099e5b885a3f8b32528",
+    "suite": "context"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

@@ -1,0 +1,31 @@
+{
+  "command": "<redacted-command>",
+  "context": {
+    "command": "<redacted-command>",
+    "command_host": "<redacted-host>",
+    "command_runtime": "dark-native",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "<redacted-host>",
+    "execution_runtime": "dark-docker",
+    "gpu_role": "dark-compute-a",
+    "gpu_uuid": "<redacted-gpu>",
+    "overlay": null,
+    "resource": "dark-model-operator",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "<redacted-host>",
+    "resource_runtime": "dark-docker",
+    "target": null,
+    "topology": "<redacted-host>-reference",
+    "transport": "local"
+  },
+  "data": "<redacted-data>",
+  "error": null,
+  "ok": true,
+  "warnings": [
+    "preflight checks for promote: 0 error(s), 0 warning(s), 1 info (0 blocking, 1 advisory)",
+    "INFO     image-unverifiable          qwen27-fp8-primary-39125",
+    "         promotion 'glm53-exl3-327k-r7-nospec-primary' rollback (qwen27-fp8-primary-39125) has no compose file in its up command; image presence cannot be verified"
+  ]
+}

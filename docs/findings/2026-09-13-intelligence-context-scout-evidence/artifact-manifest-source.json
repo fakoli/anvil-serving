@@ -1,0 +1,192 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "Draft human index and explicit public boundary.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Public primary identities include the distinct GLM r7 route2 source lane; local evidence remains a non-final scout.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Sanitized MMLU-Pro selection and deterministic native-context workload identity are retained with source digests.",
+      "role": "workload-manifest",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "run-plan.json"
+      ],
+      "reason": "Retained execution spans native qualifications, managed promotion, post-promotion context, and client convergence; final client acceptance receipt is external to this snapshot.",
+      "role": "run-plan",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "configuration-identity.json",
+        "redaction-provenance.json"
+      ],
+      "reason": "Public-safe model/runtime pins, private-origin source digests, and the field-redaction audit are retained.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "native/glm-r7-context258k-thinking49152-r2/artifact.json",
+        "native/glm-r7-context258k-thinking49152-r2/evidence/0-assets.json",
+        "native/glm-r7-context258k-thinking49152-r2/evidence/0-context.json",
+        "native/glm-r7-context258k-thinking49152-r2/evidence/0-failure.json",
+        "native/glm-r7-context258k-thinking49152-r2/evidence/0-preflight.json",
+        "native/glm-r7-nospec-agentic-thinking49152-r1/artifact.json",
+        "native/glm-r7-nospec-agentic-thinking49152-r1/evidence/0-agentic.json",
+        "native/glm-r7-nospec-agentic-thinking49152-r1/evidence/0-assets.json",
+        "native/glm-r7-nospec-agentic-thinking49152-r1/evidence/0-preflight.json",
+        "native/glm-r7-nospec-context258k-thinking49152-r1/artifact.json",
+        "native/glm-r7-nospec-context258k-thinking49152-r1/evidence/0-assets.json",
+        "native/glm-r7-nospec-context258k-thinking49152-r1/evidence/0-context.json",
+        "native/glm-r7-nospec-context258k-thinking49152-r1/evidence/0-preflight.json",
+        "native/glm-r7-nospec-promoted-context258k-r1/artifact.json",
+        "native/glm-r7-nospec-promoted-context258k-r1/evidence/0-assets.json",
+        "native/glm-r7-nospec-promoted-context258k-r1/evidence/0-context.json",
+        "native/glm-r7-nospec-promoted-context258k-r1/evidence/0-preflight.json",
+        "native/glm-r7-nospec-swe-thinking49152-r1/artifact.json",
+        "native/glm-r7-nospec-swe-thinking49152-r1/evidence/0-failure.json",
+        "native/glm-r7-nospec-swe-thinking49152-r2-frozen/artifact.json",
+        "native/glm-r7-nospec-swe-thinking49152-r2-frozen/evidence/0-assets.json",
+        "native/glm-r7-nospec-swe-thinking49152-r2-frozen/evidence/0-preflight.json",
+        "native/glm-r7-nospec-swe-thinking49152-r2-frozen/evidence/2-swe.json",
+        "native/glm-r7-nospec/strict120-nospec-r1.json",
+        "native/glm-r7/mtp3-nospec-matched120-comparison.json",
+        "native/glm-r7/strict120-route2-r1.json",
+        "native/next/next405-agentic-deep30-262k-r1/artifact.json",
+        "native/next/next405-agentic-deep30-262k-r1/evidence/0-agentic.json",
+        "native/next/next405-agentic-deep30-262k-r1/evidence/0-assets.json",
+        "native/next/next405-agentic-deep30-262k-r1/evidence/0-preflight.json",
+        "native/next/next405-context-native192k-262k-r1/artifact.json",
+        "native/next/next405-context-native192k-262k-r1/evidence/0-assets.json",
+        "native/next/next405-context-native192k-262k-r1/evidence/0-context.json",
+        "native/next/next405-context-native192k-262k-r1/evidence/0-preflight.json",
+        "native/next/next405-multimodal-image-native-r3.json",
+        "native/next/next405-strict-turnover120-r1.json",
+        "native/next/next405-swe-scout-r2/artifact.json",
+        "native/next/next405-swe-scout-r2/evidence/0-assets.json",
+        "native/next/next405-swe-scout-r2/evidence/0-preflight.json",
+        "native/next/next405-swe-scout-r2/evidence/2-swe.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.aggregate-counts.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-01.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-02.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-03.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-04.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-05.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-06.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-07.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-08.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-09.json",
+        "native/quality/glm-r7-nospec-thinking49152-mmlu64k.shard-10.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.aggregate-counts.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-01.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-02.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-03.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-04.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-05.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-06.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-07.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-08.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-09.json",
+        "native/quality/glm-r7-route2-thinking49152-mmlu64k.shard-10.json",
+        "native/quality/next262-r2-mmlu64k.aggregate-counts.json",
+        "native/quality/next262-r2-mmlu64k.shard-01.json",
+        "native/quality/next262-r2-mmlu64k.shard-02.json",
+        "native/quality/next262-r2-mmlu64k.shard-03.json",
+        "native/quality/next262-r2-mmlu64k.shard-04.json",
+        "native/quality/next262-r2-mmlu64k.shard-05.json",
+        "native/quality/next262-r2-mmlu64k.shard-06.json",
+        "native/quality/next262-r2-mmlu64k.shard-07.json",
+        "native/quality/next262-r2-mmlu64k.shard-08.json",
+        "native/quality/next262-r2-mmlu64k.shard-09.json",
+        "native/quality/next262-r2-mmlu64k.shard-10.json"
+      ],
+      "reason": "Sanitized native artifacts preserve quality, agentic, SWE, and production post-promotion context completion state; originals remain private.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "derived/glm-r7-nospec-swe-environment-diagnosis.json",
+        "failure-boundaries.md"
+      ],
+      "reason": "Known Next strict120 formatting-contract failure, r7 context boundaries, and the retained pre-request no-spec SWE environment mismatch are distinct from model outcomes.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json",
+        "derived/deployment/promotion-envelope.json",
+        "derived/deployment/boot-owner-acceptance.json",
+        "derived/deployment/promoted-recipe-status.json",
+        "derived/deployment/promoted-exact-runtime-state.json"
+      ],
+      "reason": "Current admitted state, managed cold-reload boundary, runtime state, and explicit unexercised Qwen rollback path are retained.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Bounded incomplete raw-count summary preserves distinct r6/r7 results and no-promotion boundary.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "derived/deployment/client-acceptance-initial-summary.json",
+        "derived/deployment/client-acceptance-retry-summary.json",
+        "derived/deployment/final-deployment-acceptance.json",
+        "derived/deployment/mini-automatic-sync-receipt.json",
+        "derived/deployment/mini-sync-final-preview.json",
+        "derived/deployment/production-hard-reasoning-override-probe.json",
+        "publication-summary.md"
+      ],
+      "reason": "Final deployment acceptance, retained initial client failures, bounded retry passes, route-control, and managed convergence are retained.",
+      "role": "publication-summary",
+      "status": "retained"
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "campaign": {
+    "capability": "TEXT",
+    "completed_at": "2026-09-14T03:43:04Z",
+    "decision_labels": [
+      "current"
+    ],
+    "dirty_state": "final selected-current evidence snapshot",
+    "evidence_labels": [
+      "quality",
+      "external-prior"
+    ],
+    "id": "2026-09-13-intelligence-context-scout",
+    "promotion_authorization_scope": "The user authorized disruptive GPU turnover, full evaluation, and promotion work; no promotion action or decision is recorded by this incomplete skeleton.",
+    "promotion_authorized": true,
+    "repository_revision": "3c1bd508f638447fabc0ba2cfef9bc20b84ef9c1",
+    "started_at": "2026-09-13T19:38:00Z"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.fast-tier-bakeoff/v1"
+  ],
+  "output": "artifact-manifest.json",
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "size_policy": null
+}

@@ -1,0 +1,128 @@
+{
+  "completion_cap_tokens": 65536,
+  "max_simultaneous_shards": 1,
+  "parallelism_note": "quality-only request concurrency; not performance evidence",
+  "purpose": "progress counts only; not an official MMLU-Pro score or promotion decision",
+  "repetitions": 1,
+  "schema": "anvil-serving.mmlu-pro-shard-counts/v1",
+  "shards": [
+    {
+      "artifact": "<redacted-private-path>",
+      "attempts": 10,
+      "attempts_failed": 0,
+      "attempts_passed": 10,
+      "checks": 10,
+      "checks_failed": 0,
+      "checks_passed": 10,
+      "cli_exit_code": 0,
+      "shard": 1
+    },
+    {
+      "artifact": "<redacted-private-path>",
+      "attempts": 10,
+      "attempts_failed": 1,
+      "attempts_passed": 9,
+      "checks": 10,
+      "checks_failed": 1,
+      "checks_passed": 9,
+      "cli_exit_code": 1,
+      "shard": 2
+    },
+    {
+      "artifact": "<redacted-private-path>",
+      "attempts": 10,
+      "attempts_failed": 1,
+      "attempts_passed": 9,
+      "checks": 10,
+      "checks_failed": 1,
+      "checks_passed": 9,
+      "cli_exit_code": 1,
+      "shard": 3
+    },
+    {
+      "artifact": "<redacted-private-path>",
+      "attempts": 10,
+      "attempts_failed": 0,
+      "attempts_passed": 10,
+      "checks": 10,
+      "checks_failed": 0,
+      "checks_passed": 10,
+      "cli_exit_code": 0,
+      "shard": 4
+    },
+    {
+      "artifact": "<redacted-private-path>",
+      "attempts": 10,
+      "attempts_failed": 1,
+      "attempts_passed": 9,
+      "checks": 10,
+      "checks_failed": 1,
+      "checks_passed": 9,
+      "cli_exit_code": 1,
+      "shard": 5
+    },
+    {
+      "artifact": "<redacted-private-path>",
+      "attempts": 10,
+      "attempts_failed": 0,
+      "attempts_passed": 10,
+      "checks": 10,
+      "checks_failed": 0,
+      "checks_passed": 10,
+      "cli_exit_code": 0,
+      "shard": 6
+    },
+    {
+      "artifact": "<redacted-private-path>",
+      "attempts": 10,
+      "attempts_failed": 3,
+      "attempts_passed": 7,
+      "checks": 10,
+      "checks_failed": 3,
+      "checks_passed": 7,
+      "cli_exit_code": 1,
+      "shard": 7
+    },
+    {
+      "artifact": "<redacted-private-path>",
+      "attempts": 10,
+      "attempts_failed": 1,
+      "attempts_passed": 9,
+      "checks": 10,
+      "checks_failed": 1,
+      "checks_passed": 9,
+      "cli_exit_code": 1,
+      "shard": 8
+    },
+    {
+      "artifact": "<redacted-private-path>",
+      "attempts": 10,
+      "attempts_failed": 1,
+      "attempts_passed": 9,
+      "checks": 10,
+      "checks_failed": 1,
+      "checks_passed": 9,
+      "cli_exit_code": 1,
+      "shard": 9
+    },
+    {
+      "artifact": "<redacted-private-path>",
+      "attempts": 10,
+      "attempts_failed": 1,
+      "attempts_passed": 9,
+      "checks": 10,
+      "checks_failed": 1,
+      "checks_passed": 9,
+      "cli_exit_code": 1,
+      "shard": 10
+    }
+  ],
+  "totals": {
+    "attempts": 100,
+    "attempts_failed": 9,
+    "attempts_passed": 91,
+    "checks": 100,
+    "checks_failed": 9,
+    "checks_passed": 91
+  }
+}
