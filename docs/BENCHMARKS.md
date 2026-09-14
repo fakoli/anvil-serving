@@ -8,11 +8,12 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The latest qualified native reference is [GLM v0.4.3](findings/2026-09-11-glm53-v043-native-linux-qualification.md) with unchanged ormandj W4A16/NVFP4 weights, TP2/524,288 shared tokens/C4, FP8 KV, adaptive EAGLE and HiCache off. The output limit remains 4,096. Direct, long-context, C4 and 14/14 Pi gates passed; recovery to native rc14 was verified during the campaign. Current route and startup assignments are private operator state. Video is unsupported and GPU headroom remains narrow under the existing model-only reserve approval.
+The current text-only reference is [GLM Flash EXL3 r7 no-spec](findings/2026-09-13-intelligence-context-scout.md): 4-bpw EXL3 at 327,680 total tokens with a 65,536-token output reserve and C4. It retained 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. Its one matched no-spec C4 population measured a 38.908 tok/s median decode. This bounded record does not name an exhaustive intelligence winner, prove concurrent full-window capacity, include a full-window concurrency soak, or include fresh boot/reboot testing. Earlier v0.4.3/SGLang and EXL3 profiles remain dated evidence.
 
 Other retained comparisons (their dated evidence remains unchanged):
-RadixArk Qwen3.8 Flash Next NVFP4 remains the immediate retained video-capable
-rollback at TP=2/262,144/c1.
+The original Qwen3.8 27B FP8 path is the retained current rollback; it was not
+exercised after the 2026-09-14 promotion. RadixArk Qwen3.8 Flash Next NVFP4 is
+historical 2026-08-26 video-capable rollback evidence at TP=2/262,144/c1.
 On the dual RTX PRO 6000 host, two independent current-SGLang Inferact
 Qwen3.8 27B NVFP4 plus DFlash2 K12/chunk1K TP1 replicas are the bounded
 aggregate-throughput winner. A matched 100-request sustained-output workload
@@ -45,7 +46,11 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-09**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-14**.
+
+## GLM Flash EXL3 r7 no-spec selected text lane (2026-09-14)
+
+The retained [intelligence and context finding](findings/2026-09-13-intelligence-context-scout.md) selected the 4-bpw EXL3 no-spec lane for text. It passed 90/100 one-pass MMLU-Pro, 30/30 native agentic, 4/5 frozen official SWE, 120/120 strict C4 requests, and nine production context cases. The 9/9 cases used 255,647–255,672 actual prompt tokens plus a 65,536-token output reserve. One matched C4 population measured 38.908 tok/s median decode. This is a bounded local decision, not an exhaustive cross-model intelligence result or a full-window concurrency/soak result; fresh boot-start and reboot tests remain unrun.
 
 ## GLM-5.3-Flash ormandj v0.4.2 runtime qualification (2026-09-09)
 
