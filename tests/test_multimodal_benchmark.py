@@ -185,10 +185,17 @@ def test_dry_run_validates_without_endpoint_or_artifact(monkeypatch, tmp_path, c
         lambda *_args: (_ for _ in ()).throw(AssertionError("endpoint called")),
     )
 
-    rc = multimodal.main(_argv(corpus, output) + ["--dry-run"])
+    rc = multimodal.main(_argv(corpus, output) + [
+        "--temperature", "1", "--top-p", "0.95", "--dry-run",
+    ])
 
     assert rc == 0
-    assert json.loads(capsys.readouterr().out)["workload"] == "multimodal"
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["workload"] == "multimodal"
+    assert plan["sampling"] == {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
     assert not output.exists()
 
 

@@ -452,6 +452,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
             },
             "requests": len(work),
             "concurrency": args.concurrency,
+            "sampling": sampling_controls,
             "max_images_per_request": args.max_images_per_request,
             "max_videos_per_request": args.max_videos_per_request,
             "output": real_path(args.output),
