@@ -92,15 +92,15 @@ dated finding before treating a row as a single experiment. Full rules:
 
 ---
 
-## Published decision snapshot as of 2026-09-05
+## Published decision snapshot as of 2026-09-14
 
 This section synthesizes the latest dated public benchmark decisions; it does
 not report active deployment, routing, placement, or availability. In the
-2026-09-02 published decision, the pinned ormandj GLM-5.3-Flash SGLang
-W4A16/NVFP4 adaptive-MTP profile is the TP=2 text/image/OCR reference at
-393K/C1. The former 524K EXL3 K3 plus corrected DFlash2 K5 profile is the
-immediate same-model rollback, and the 240K SGLang profile is a conservative
-verified fallback. RadixArk
+2026-09-14 decision, GLM Flash EXL3 r7 no-spec is the selected text-only
+reference at 327,680 total tokens with a 65,536-token output reserve and C4.
+It retained 90/100 one-pass MMLU-Pro, agentic 30/30, SWE 4/5, strict120 120/120,
+and 9/9 post-promotion context. The former SGLang W4A16/NVFP4 profile and 524K
+EXL3 K3 plus corrected DFlash2 K5 profile remain historical evidence. RadixArk
 Qwen3.8 Flash Next NVFP4 remains the video-capable rollback. The DeepSeek
 Infernal Invocation profiles and the Qwen3.8 27B single-service/two-service
 split remain retained historical recipes. Separately, on one RTX 5090, NInfer
@@ -116,9 +116,11 @@ profiles below.
 
 | Model / config | Status | Recipe / config | Quant · KV | 4K median TTFT / E2E | Decode | Multimodal acceptance | Evidence |
 | --- | --- | --- | --- | --- | ---: | --- | --- |
-| [GLM-5.3-Flash ormandj W4A16/NVFP4, SGLang](models/glm53-flash.md) | `current` text/tools/image/OCR; exclusive TP=2, C1 | [Pinned recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp-recipe.toml) | ModelOpt W4A16/NVFP4 · FP8 KV · adaptive EAGLE | 0.177 / 0.500 s | **112.07 tok/s** | image/OCR 12/12 plus routed and real-client pass; video disabled | [promotion](../findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md) |
-| [GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5](models/glm53-flash.md) | immediate exact rollback; exclusive TP=2 | [K5 + control](configurations.md#glm53-524k) | EXL3 K3 · FP8 DS-MLA target KV · BF16 draft KV · fixed K5 | 0.974 / 1.269 s | **83.08 tok/s** | image/OCR pass; up to 16 images; no video | [524K xgrammar qualification](../findings/2026-08-31-glm53-xgrammar-524k-qualification.md) |
-| [Qwen3.8 Flash Next RadixArk NVFP4](models/qwen38-flash-next.md) | immediate text/image/OCR/video rollback; exclusive TP=2 | [MTP3 + control](configurations.md#qwen38-flash-next) | ModelOpt NVFP4 · BF16 KV · MTP3 | **0.141 / 0.340 s** | **155.9 tok/s** | direct 30/30; live repeats 57/60 strict; four images or one video | [vision promotion](../findings/2026-08-26-qwen38-flash-next-vision-promotion.md) |
+| [GLM Flash EXL3 r7 no-spec](models/glm53-flash.md) | `current` text-only, C4 | [Dated finding](../findings/2026-09-13-intelligence-context-scout.md) | EXL3 4-bpw · FP8 DS-MLA KV · no speculation | not comparable; see C4 finding | **38.908 tok/s** median in one matched C4 population | text-only; Pi/Hermes/OpenClaw tool checks pass | [finding and evidence](../findings/2026-09-13-intelligence-context-scout.md) |
+| [Qwen3.8 27B FP8](models/qwen38-27b.md) | retained current rollback | declared original FP8 path | FP8 weights · KV not specified here | not exercised after promotion | not comparable | text-only rollback | [selected-current finding](../findings/2026-09-13-intelligence-context-scout.md) |
+| [GLM-5.3-Flash ormandj W4A16/NVFP4, SGLang](models/glm53-flash.md) | historical 2026-09-02 text/tools/image/OCR; exclusive TP=2, C1 | [Pinned recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp-recipe.toml) | ModelOpt W4A16/NVFP4 · FP8 KV · adaptive EAGLE | 0.177 / 0.500 s | **112.07 tok/s** | image/OCR 12/12 plus routed and real-client pass; video disabled | [promotion](../findings/2026-09-02-glm53-sglang-sm120-393k-promotion.md) |
+| [GLM-5.3-Flash EXL3 K3 plus corrected DFlash2 K5](models/glm53-flash.md) | historical 2026-08-31 exact rollback; exclusive TP=2 | [K5 + control](configurations.md#glm53-524k) | EXL3 K3 · FP8 DS-MLA target KV · BF16 draft KV · fixed K5 | 0.974 / 1.269 s | **83.08 tok/s** | image/OCR pass; up to 16 images; no video | [524K xgrammar qualification](../findings/2026-08-31-glm53-xgrammar-524k-qualification.md) |
+| [Qwen3.8 Flash Next RadixArk NVFP4](models/qwen38-flash-next.md) | historical 2026-08-26 text/image/OCR/video rollback; exclusive TP=2 | [MTP3 + control](configurations.md#qwen38-flash-next) | ModelOpt NVFP4 · BF16 KV · MTP3 | **0.141 / 0.340 s** | **155.9 tok/s** | direct 30/30; live repeats 57/60 strict; four images or one video | [vision promotion](../findings/2026-08-26-qwen38-flash-next-vision-promotion.md) |
 | [GLM-5.3-Flash TR3/EXL3 4 bpw, vision fixed K5](models/glm53-flash.md) | historical GLM rollback evidence; exclusive TP=2 | [Recipe source](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-cardillo-tpurtell-fixed-mtp5-vision-sm120-tp2-262k-wsl2-v2-no-owner-exchange-recipe.toml) | EXL3 4 bpw · NVFP4 DS-MLA KV · fixed MTP5 | 1.052 / 1.568 s | 72.8 tok/s | image/OCR pass; video disabled | [qualification](../findings/2026-08-29-glm53-cardillo-purtell-qualification.md) |
 | [DeepSeek V4 Flash 0731, Infernal Invocation r18 DSpark K5](models/deepseek-v4-flash.md) | former text Primary; retained TP=2 evidence | [K5 + control](configurations.md#additional-retained-families) | B12X W4A8 · FP8 compressed MLA KV | aggregate TTFT/E2E not published | **142.1 tok/s** | text-only contract; routed and real-client acceptance passed | [promotion](../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md) |
 | [Qwen3.8 27B official FP8, SGLang TP=1 MTP=3](models/qwen38-27b.md) | former Primary/general-vision/OCR/video service | [MTP3 + control](configurations.md#qwen38-27b-official-fp8) | Official FP8 · FP8 E4M3 KV | 0.577 / 0.962 s | **111.4 tok/s** | CPU transport; direct 30/30, live admitted 28/28; two images, one video | [video expansion](../findings/2026-08-16-qwen38-27b-video-router.md) |
@@ -137,8 +139,9 @@ measured. The retained GLM campaigns make the distinction concrete:
 
 | Profile | Scheduler | Shared/reported pool | Measured long concurrency | Measured short concurrency | Interpretation |
 |---|---:|---:|---|---|---|
-| Current ormandj SGLang adaptive EAGLE, 393K | 1 | 393,216 configured shared tokens | C1 at 304,491 prompt tokens | C1 only | selected for faster interactive decode; higher admission is unqualified |
-| Immediate EXL3 K3 + corrected DFlash2 K5 rollback, 524K | 16 | 2,493,817 reported KV tokens / 4.76 windows | C2 at 206,630 prompt tokens/request, 2/2 | no corrected-524K C16 artifact | proven long-context C2 headroom; C16 remains only a scheduler ceiling |
+| Current EXL3 r7 no-spec, 327,680 total / 65,536 output | C4 | [1,638,400 reported KV tokens](../findings/2026-09-13-intelligence-context-scout-evidence/native/glm-r7/mtp3-nospec-matched120-comparison.json); allocation only | 9/9 context at 255,647–255,672 prompt tokens plus reserve; concurrent full-window capacity unmeasured | strict120 120/120 at C4 | selected text-only lane; no full-window concurrency or soak claim |
+| Historical ormandj SGLang adaptive EAGLE, 393K | 1 | 393,216 configured shared tokens | C1 at 304,491 prompt tokens | C1 only | retained historical selected lane; higher admission is unqualified |
+| Historical EXL3 K3 + corrected DFlash2 K5 rollback, 524K | 16 | 2,493,817 reported KV tokens / 4.76 windows | C2 at 206,630 prompt tokens/request, 2/2 | no corrected-524K C16 artifact | proven long-context C2 headroom; C16 remains only a scheduler ceiling |
 | BrandonMusic vision fixed K5, 262K | 16 | 560,866 / 2.14 windows | C1 at 206,296 prompt tokens | C16 at 4K, 16/16, 28.3 `agg` tok/s | successful short batching, not sixteen 262K windows |
 | BrandonMusic text fixed K5, 524K | 16 | 565,898 / 1.08 windows | C1 at 495,045 prompt tokens | C16 at 4K, 16/16, 23.85 `agg` tok/s | effectively one full 524K window despite maxseq16 |
 | BrandonMusic text no spec, 524K | 16 | 1,603,111 / 3.06 windows | C1 at 495,045 prompt tokens | C16 was measured on the 262K companion only | removing speculation preserves more KV headroom; 524K C16 remains unmeasured |

@@ -36,7 +36,6 @@ theme:
   features:
     - navigation.tabs
     - navigation.tabs.sticky
-    - navigation.sections
     - navigation.path
     - navigation.prune
     - navigation.top
@@ -72,22 +71,25 @@ nav:
       - Product map and journeys: PRODUCT-FAMILIES.md
       - Discover the product from the CLI: cli/product.md
   - Benchmarks & evidence:
-      - Overview: benchmarks/index.md
-      - Find a measured recipe: benchmarks/recipe-results.md
-      - Compare models: benchmarks/comparison.md
-      - Reproduce configurations: benchmarks/configurations.md
-      - Model dossiers: benchmarks/models/index.md
+      - Start here: benchmarks/index.md
+      - Latest qualification: findings/2026-09-13-intelligence-context-scout.md
+      - Choose and compare:
+          - Find a measured recipe: benchmarks/recipe-results.md
+          - Compare models: benchmarks/comparison.md
+          - Model dossiers: benchmarks/models/index.md
+          - Reproduce configurations: benchmarks/configurations.md
       - Hardware:
           - RTX PRO 6000: benchmarks/hardware/rtx-pro-6000.md
           - RTX 5090: benchmarks/hardware/rtx-5090.md
           - Apple M4 Max: benchmarks/hardware/apple-m4-max.md
-      - Run catalog: benchmarks/runs.md
-      - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
-      - Methodology and evidence rules: benchmarks/methodology.md
-      - Finding publication format: benchmarks/finding-format.md
-      - External benchmarks: EXTERNAL-BENCHMARKS.md
-      - Findings index: findings/README.md
-      - Archive:
+      - Methods:
+          - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
+          - Methodology and evidence rules: benchmarks/methodology.md
+          - Finding publication format: benchmarks/finding-format.md
+          - External benchmarks: EXTERNAL-BENCHMARKS.md
+      - History and evidence:
+          - Run catalog: benchmarks/runs.md
+          - Findings index: findings/README.md
           - Chronological results: BENCHMARKS.md
           - RTX PRO 6000 recipe index: benchmarks/models.md
           - RTX PRO 6000 mention audit: benchmarks/rtx-pro-6000-audit.md
