@@ -1,0 +1,71 @@
+{
+  "earlier_xhigh_probe": "Both direct and routed accepted xhigh with stop; that is not override proof. Earlier campaign wrapper asserted direct400 incorrectly and retained no response bodies.",
+  "observations": [
+    {
+      "lane": "direct",
+      "request": {
+        "max_tokens": 1024,
+        "messages": [
+          {
+            "content": "<redacted-content>",
+            "role": "user"
+          }
+        ],
+        "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-mtp3-r7-nospec",
+        "reasoning_effort": "proof-of-router-override",
+        "temperature": 0.1,
+        "top_p": 0.1
+      },
+      "request_id": null,
+      "response": {
+        "error": {
+          "code": 400,
+          "message": "1 validation error:\n  {'type': 'literal_error', 'loc': ('body', 'reasoning_effort'), 'msg': \"Input should be 'none', 'minimal', 'low', 'medium', 'high', 'xhigh' or 'max'\", 'input': 'proof-of-router-override', 'ctx': {'expected': \"'none', 'minimal', 'low', 'medium', 'high', 'xhigh' or 'max'\"}}",
+          "param": "body.reasoning_effort",
+          "type": "Bad Request"
+        }
+      },
+      "status": 400
+    },
+    {
+      "lane": "routed",
+      "request": {
+        "max_tokens": 1024,
+        "messages": [
+          {
+            "content": "<redacted-content>",
+            "role": "user"
+          }
+        ],
+        "model": "llm.primary",
+        "reasoning_effort": "proof-of-router-override",
+        "temperature": 0.1,
+        "top_p": 0.1
+      },
+      "request_id": "<redacted-identifier>",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "<redacted-content>",
+              "reasoning_content": "<redacted-reasoning_content>",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1789355735,
+        "id": "<redacted-request-identifier>",
+        "model": "llm.primary",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 54,
+          "prompt_tokens": 24,
+          "total_tokens": 78
+        }
+      },
+      "status": 200
+    }
+  ]
+}

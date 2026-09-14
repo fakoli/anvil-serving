@@ -20,6 +20,7 @@ from .limits import (
     MAX_BENCHMARK_JOB_LOG_BYTES,
     MAX_BENCHMARK_JOB_LOG_ENTRIES,
     MAX_BENCHMARK_JOB_LOG_MESSAGE_CHARS,
+    MAX_BENCHMARK_JOB_RESULT_TEXT_CHARS,
     MAX_BENCHMARK_JOB_SECONDS,
     MAX_BENCHMARK_JOB_SPEC_BYTES,
 )
@@ -178,6 +179,7 @@ def _validate_json_value(
     path: str,
     depth: int = 0,
     counter: list[int] | None = None,
+    max_text_chars: int = MAX_BENCHMARK_JOB_LOG_MESSAGE_CHARS,
 ) -> Any:
     if counter is None:
         counter = [0]
@@ -193,13 +195,17 @@ def _validate_json_value(
             raise BenchmarkJobError("bad_spec", f"{path} must be a finite number")
         return value
     if isinstance(value, str):
-        if "\x00" in value or len(value) > MAX_BENCHMARK_JOB_LOG_MESSAGE_CHARS:
+        if "\x00" in value or len(value) > max_text_chars:
             raise BenchmarkJobError("bad_spec", f"{path} contains invalid or oversized text")
         return value
     if isinstance(value, list):
         return [
             _validate_json_value(
-                item, path=f"{path}[{index}]", depth=depth + 1, counter=counter
+                item,
+                path=f"{path}[{index}]",
+                depth=depth + 1,
+                counter=counter,
+                max_text_chars=max_text_chars,
             )
             for index, item in enumerate(value)
         ]
@@ -213,7 +219,11 @@ def _validate_json_value(
                     "secret_in_spec", f"{path}.{key} cannot carry credential material"
                 )
             result[key] = _validate_json_value(
-                item, path=f"{path}.{key}", depth=depth + 1, counter=counter
+                item,
+                path=f"{path}.{key}",
+                depth=depth + 1,
+                counter=counter,
+                max_text_chars=max_text_chars,
             )
         return result
     raise BenchmarkJobError("bad_spec", f"{path} contains a non-JSON value")
@@ -429,7 +439,11 @@ def build_artifact_envelope(
         "status": status,
         "partial": status != "completed",
         "created_at": _validate_timestamp(created_at or utc_now(), field="created_at"),
-        "results": _validate_json_value(dict(results or {}), path="results"),
+        "results": _validate_json_value(
+            dict(results or {}),
+            path="results",
+            max_text_chars=MAX_BENCHMARK_JOB_RESULT_TEXT_CHARS,
+        ),
         "failure": _validate_json_value(
             dict(failure or record.get("failure") or {}), path="failure"
         ) or None,

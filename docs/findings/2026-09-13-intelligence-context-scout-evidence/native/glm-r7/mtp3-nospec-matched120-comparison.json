@@ -1,0 +1,41 @@
+{
+  "created_at": "2026-09-14T01:44:30.546784+00:00",
+  "limitations": [
+    "One run each, no independent replication.",
+    "Runtime cache capacity is reported allocation, not proof of simultaneous full-window correctness.",
+    "No-spec long-context accuracy and full100 intelligence remain unmeasured.",
+    "This is a derived side-by-side record, not a native normalized-comparison or replica aggregate."
+  ],
+  "matching_contract": "Same pinned model/image/hardware/TP2/EP2/DCP2/C4/327680/FP8KV/.970/batch2048/cacheoff/MAX/.6/.95/thinking49152/cap65536/120requests/seed9134722/strict32words/unique/request-canaries; speculation and unavoidable identities differ. Both use nativecapacity harness a592c4e5.",
+  "rows": [
+    {
+      "aggregate_output_tokens_s": 187.32351923736195,
+      "artifact": "glm-r7-gates/strict120-route2-r1.json",
+      "completed": 120,
+      "failed": 0,
+      "median_decode_tokens_s": 59.66234094832253,
+      "median_e2e_s": 5.935712130041793,
+      "median_first_output_s": 0.846375172957778,
+      "median_visible_ttft_s": 5.414123120019212,
+      "mode": "MTP3",
+      "p95_e2e_s": 12.903283903957345,
+      "runtime_reported_shared_kv_tokens": 386769,
+      "sha256": "f8f3efd5d24cb45c0c36b83da1dae033441c733601d1d1bd94f89044deb0ad66"
+    },
+    {
+      "aggregate_output_tokens_s": 129.68653546004325,
+      "artifact": "glm-r7-gates/strict120-nospec-r1.json",
+      "completed": 120,
+      "failed": 0,
+      "median_decode_tokens_s": 38.9084368946974,
+      "median_e2e_s": 8.100822316017002,
+      "median_first_output_s": 0.7726977980346419,
+      "median_visible_ttft_s": 7.089590738003608,
+      "mode": "no-speculation",
+      "p95_e2e_s": 17.98581554996781,
+      "runtime_reported_shared_kv_tokens": 1638400,
+      "sha256": "72a0e787fb8a2a9f4d36e291042706269a5571ffa9a84281156a88ec27da1129"
+    }
+  ],
+  "schema": "anvil-serving.campaign-derived-comparison/v1"
+}

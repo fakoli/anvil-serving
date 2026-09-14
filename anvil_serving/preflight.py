@@ -40,9 +40,10 @@ except ImportError:  # direct ``python anvil_serving/preflight.py`` compatibilit
 
 def chat(base, model, messages, key=None, max_tokens=256, temperature=0.0,
          tools=None, tool_choice=None, timeout=900, chat_template_kwargs=None,
-         reasoning_effort=None, mm_processor_kwargs=None):
+         reasoning_effort=None, mm_processor_kwargs=None, top_p=None):
     url = base.rstrip("/") + "/chat/completions"
     body = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
+    if top_p is not None: body["top_p"] = top_p
     if tools: body["tools"] = tools
     if tool_choice: body["tool_choice"] = tool_choice
     # chat_template_kwargs (e.g. {"enable_thinking": False}) is honored by SGLang/vLLM

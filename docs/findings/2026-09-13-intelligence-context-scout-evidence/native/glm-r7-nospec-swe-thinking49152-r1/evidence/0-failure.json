@@ -1,0 +1,4 @@
+{
+  "code": "harness_environment_mismatch",
+  "message": "cached SWE Python environment no longer matches its recorded inventory"
+}

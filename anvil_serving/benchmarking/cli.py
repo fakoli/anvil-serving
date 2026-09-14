@@ -25,6 +25,8 @@ from .artifacts import (
 from .evaluation import (
     MAX_QUALITY_COMPLETION_TOKENS as _MAX_QUALITY_COMPLETION_TOKENS,
     request_control_kwargs as _request_control_kwargs,
+    request_sampling_kwargs as _request_sampling_kwargs,
+    resolve_sampling_settings,
     resolve_thinking_settings,
 )
 from .limits import (
@@ -217,6 +219,20 @@ def main(
                     help="send the OpenAI-compatible reasoning_effort field for model families "
                          "that do not use chat_template_kwargs (for example GPT-OSS or Mistral). "
                          "Cannot be combined with --no-thinking or an explicit thinking mode.")
+    ap.add_argument(
+        "--temperature", type=float, default=None,
+        help=help_for(
+            "explicit OpenAI-compatible temperature (0 through 2); omitted preserves "
+            "the historical 0.0 request value", "capacity", "quality"
+        ),
+    )
+    ap.add_argument(
+        "--top-p", type=float, default=None,
+        help=help_for(
+            "explicit OpenAI-compatible top_p (greater than 0 through 1); omitted "
+            "does not send top_p", "capacity", "quality"
+        ),
+    )
     ap.add_argument("--visible-answer-tokens", type=int, default=None,
                     help=help_for("override suite visible-answer allocation (default 256)", "quality"))
     ap.add_argument("--reasoning-headroom-tokens", type=int, default=None,
@@ -387,6 +403,12 @@ def main(
             "--reasoning-effort cannot be combined with --no-thinking or an explicit "
             "--thinking-mode"
         )
+    if a.temperature is not None and (
+            not math.isfinite(a.temperature) or not 0 <= a.temperature <= 2):
+        ap.error("--temperature must be finite and from 0 through 2")
+    if a.top_p is not None and (
+            not math.isfinite(a.top_p) or not 0 < a.top_p <= 1):
+        ap.error("--top-p must be finite and greater than 0 through 1")
     if a.control_status in {"verified", "supported"} and not a.control_evidence:
         ap.error("--control-status verified/supported requires --control-evidence")
     if a.control_status is not None and not (
@@ -436,6 +458,7 @@ def main(
     # Resolve the effective control through the same helper used by live runs so
     # a reviewer can prove which reasoning mode will be sent before any request.
     _, _, planned_thinking = resolve_thinking_settings(a)
+    planned_sampling = resolve_sampling_settings(a)
 
     if a.bakeoff:
         known_suites = {"chat", "context", "tool", "session", "intelligence", "voice"}
@@ -505,6 +528,7 @@ def main(
                     "reasoning_headroom_tokens": reasoning_headroom_tokens,
                 },
                 "thinking": planned_thinking,
+                "sampling": planned_sampling,
                 "output": a.evidence_out,
                 "deferred": ["endpoint identity", "model requests", "artifact write"],
             }, indent=2, sort_keys=True, ensure_ascii=True))
@@ -580,6 +604,7 @@ def main(
                 "timeout_seconds": a.timeout,
             },
             "thinking": planned_thinking,
+            "sampling": planned_sampling,
             "output": a.json_out,
             "deferred": ["endpoint identity", "context-window probe", "requests", "artifact write"],
         }, indent=2, sort_keys=True, ensure_ascii=True))
@@ -595,6 +620,8 @@ def main(
         ap.error(str(exc))
     ctk, reasoning_effort, thinking = resolve_thinking_settings(a)
     control_kwargs = _request_control_kwargs(ctk, reasoning_effort)
+    sampling = resolve_sampling_settings(a)
+    sampling_kwargs = _request_sampling_kwargs(sampling)
 
     n = a.burst if a.burst else a.requests
     conc = a.burst if a.burst else a.concurrency
@@ -679,7 +706,7 @@ def main(
             )
             result = stream_request(
                 a.base_url, a.model, prompt, api_key, a.max_tokens,
-                timeout=a.timeout, **control_kwargs,
+                timeout=a.timeout, **control_kwargs, **sampling_kwargs,
             )
         except Exception as exc:
             return failed(exc, "request_error")
@@ -918,6 +945,7 @@ def main(
             "thinking_mode": thinking["mode"],
             "reasoning_effort": reasoning_effort,
         },
+        "sampling": sampling,
         "timing_methodology": {
             "clock": "client time.perf_counter",
             "artifact_timestamps": (

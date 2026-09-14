@@ -1,0 +1,401 @@
+{
+  "created_at": "2026-09-14T02:37:03.168364Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "endpoint": {
+    "auth_env": "<redacted-secret-reference>",
+    "base_url": "<redacted-local-endpoint>",
+    "model": "llm.primary"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.12.14"
+      },
+      "resolved_packages_sha256": "f46398ad1f0cebc001c39317fd0cb32f58057b7ca6a130660bfd8d2165b5a886",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "313c1bcecc6c4c245db05d179e4cafa6b57b995de8af5f38232a41ce8692d3ef",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-11099",
+      "prediction_sha256": "e754832b486e044c733c1398de02f9bc0d2d872d5308f2956d16390e061ffd3b",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-private-path>",
+        "sha256": "85a616f20c6cf41d64f76ae8202986d586ea848750a66b6ca8bfb01bb17c0f70"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "313c1bcecc6c4c245db05d179e4cafa6b57b995de8af5f38232a41ce8692d3ef",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pytest-dev__pytest-10051",
+      "prediction_sha256": "bf25045c956307eb9a004aae57ef241387f99dde06c943d1973c68806aa066c7",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-private-path>",
+        "sha256": "5a4ab18aff9866db64760b9391c950cc9fefd67c54e938a732a6e9e65ca249b4"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "313c1bcecc6c4c245db05d179e4cafa6b57b995de8af5f38232a41ce8692d3ef",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "scikit-learn__scikit-learn-10297",
+      "prediction_sha256": "619f7f4df05d7fac06f97b2ad1b3dc0b552e70feed3d63d86346ea209ce9c12a",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-private-path>",
+        "sha256": "b3edcd453015e745b5fe5c6c7c1db7a2f1197c0163ce12904563f51efc011715"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "313c1bcecc6c4c245db05d179e4cafa6b57b995de8af5f38232a41ce8692d3ef",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "psf__requests-1142",
+      "prediction_sha256": "b7cf4e44eb7a1d97cc54a9a8230ca975403c0be41733003b1484c0302e3f3526",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-private-path>",
+        "sha256": "5f1456a5a64d3a77f0bb9332a067b82fbc402f0bf3e0a5c8917504c3983a64a6"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "313c1bcecc6c4c245db05d179e4cafa6b57b995de8af5f38232a41ce8692d3ef",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-11618",
+      "prediction_sha256": "e5c97488f74c5c993ab7b731dc730730adc616838d66f8fdd8ed1daa01aa869e",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>",
+        "<redacted-request-identifier>"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-private-path>",
+        "sha256": "ab75f13a9de6a752bc5102f8c7d39e385aef5525b3237d41ed8593840f9e8be0"
+      }
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "intelligence-context-20260913",
+  "plan_sha256": "76644ecf8d02787a90fc1bb9d0b9888bcaaca7804afa09871d6f1fd4b61a7515",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": "max",
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.6,
+        "requested": 0.6,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "run_id": "glm-r7-nospec-swe-thinking49152-r2-frozen",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "django__django-11099",
+      "pytest-dev__pytest-10051",
+      "scikit-learn__scikit-learn-10297",
+      "psf__requests-1142",
+      "sympy__sympy-11618"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "d17f26180e5775793599e4f42223ac22ba5807b900618b506c1359975ad89672"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>"
+      ],
+      "duration_s": 1609.760027,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "<redacted-stderr>",
+      "stdout": "<redacted-stdout>"
+    },
+    {
+      "command": [
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>",
+        "<redacted-command>"
+      ],
+      "duration_s": 93.572469,
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "<redacted-stderr>",
+      "stdout": "<redacted-stdout>"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.8,
+    "resolved": 4
+  },
+  "task_container_network": "none"
+}

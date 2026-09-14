@@ -8,6 +8,7 @@ import math
 from typing import Any, Callable, Mapping
 
 from .agentic import build_agentic_scenario, score_agentic_trace
+from .evaluation import normalize_sampling, request_sampling_kwargs
 from .context import (
     NATIVE_CONTEXT_CASES,
     build_native_context_case,
@@ -15,7 +16,12 @@ from .context import (
     summarize_context_degradation,
 )
 from .jobs import BenchmarkJobError
-from .requests import post_chat, resolve_api_key, response_observation
+from .requests import (
+    VISIBLE_CONTENT_CAPTURE_LIMIT,
+    post_chat,
+    resolve_api_key,
+    response_observation,
+)
 from ..model_controls import REASONING_EFFORT_CHOICES
 
 
@@ -176,6 +182,83 @@ def _context_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) 
     }
 
 
+def _sampling_request_controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize sampler provenance while omitting implicit optional call kwargs."""
+    temperature = parameters.get("temperature")
+    top_p = parameters.get("top_p")
+    try:
+        return normalize_sampling({
+            "temperature": {
+                "requested": temperature,
+                "effective_request": 0.0 if temperature is None else temperature,
+                "sent": True,
+            },
+            "top_p": {
+                "requested": top_p,
+                "effective_request": top_p,
+                "sent": top_p is not None,
+            },
+        })
+    except ValueError as exc:
+        raise BenchmarkJobError("bad_sampling", str(exc)) from exc
+
+
+def _context_request_controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
+    thinking_mode = parameters.get("thinking_mode", "default")
+    if thinking_mode not in {"default", "enabled", "disabled"}:
+        raise BenchmarkJobError(
+            "bad_thinking_mode", "thinking_mode must be default, enabled, or disabled"
+        )
+    reasoning_effort = parameters.get("reasoning_effort")
+    if reasoning_effort is not None and reasoning_effort not in REASONING_EFFORT_CHOICES:
+        raise BenchmarkJobError(
+            "bad_reasoning_effort", "reasoning_effort is not supported by the harness"
+        )
+    clear_thinking = parameters.get("clear_thinking")
+    if clear_thinking is not None and not isinstance(clear_thinking, bool):
+        raise BenchmarkJobError("bad_clear_thinking", "clear_thinking must be boolean")
+    if clear_thinking is not None and thinking_mode != "enabled":
+        raise BenchmarkJobError(
+            "clear_thinking_requires_enabled_thinking",
+            "clear_thinking requires thinking_mode=enabled",
+        )
+    chat_template_kwargs = (
+        {"enable_thinking": True}
+        if thinking_mode == "enabled"
+        else {"enable_thinking": False} if thinking_mode == "disabled" else None
+    )
+    if clear_thinking is not None:
+        chat_template_kwargs = {"enable_thinking": True, "clear_thinking": clear_thinking}
+    return {
+        "thinking_mode": thinking_mode,
+        "reasoning_effort": reasoning_effort,
+        "chat_template_kwargs": chat_template_kwargs,
+        "sampling": _sampling_request_controls(parameters),
+    }
+
+
+def _bounded_context_capture(response: Mapping[str, Any]) -> dict[str, Any]:
+    observation = response_observation(response)
+    message = _message(response)
+    reasoning_field = None
+    reasoning = ""
+    for field in ("reasoning", "reasoning_content"):
+        value = message.get(field)
+        if isinstance(value, str):
+            reasoning_field = field
+            if value:
+                reasoning = value
+                break
+    visible = observation["content"]
+    return {
+        "visible_answer": visible[:VISIBLE_CONTENT_CAPTURE_LIMIT],
+        "visible_answer_truncated": len(visible) > VISIBLE_CONTENT_CAPTURE_LIMIT,
+        "raw_reasoning_field": reasoning_field,
+        "raw_reasoning": reasoning[:VISIBLE_CONTENT_CAPTURE_LIMIT],
+        "raw_reasoning_truncated": len(reasoning) > VISIBLE_CONTENT_CAPTURE_LIMIT,
+    }
+
+
 def run_context_suite(
     profile: Mapping[str, Any],
     spec: Mapping[str, Any],
@@ -187,10 +270,22 @@ def run_context_suite(
     endpoint = spec["endpoint"]
     key = resolve_api_key(endpoint.get("auth_env"))
     timeout = min(float(spec["timeout_s"]), 900.0)
-    counter, calibration = _calibrated_counter(
-        endpoint=endpoint, key=key, caller=caller, timeout=timeout
-    )
     parameters = spec.get("parameters", {})
+    request_controls = _context_request_controls(parameters)
+    request_kwargs = {
+        key: value
+        for key, value in (
+            ("chat_template_kwargs", request_controls["chat_template_kwargs"]),
+            ("reasoning_effort", request_controls["reasoning_effort"]),
+        )
+        if value is not None
+    }
+    request_kwargs.update(request_sampling_kwargs(request_controls["sampling"]))
+    counter, calibration = _calibrated_counter(
+        endpoint=endpoint, key=key, caller=lambda *args, **kwargs: caller(
+            *args, **kwargs, **request_kwargs
+        ), timeout=timeout
+    )
     selection = _context_selection(suite, parameters)
     case_limit = parameters.get("case_limit")
     if case_limit is not None and (
@@ -223,9 +318,11 @@ def run_context_suite(
                             [{"role": "user", "content": case["prompt"]}],
                             max_tokens=selection["output_headroom_tokens"],
                             timeout=timeout,
+                            **request_kwargs,
                         )
                         response = result["response"]
                         observation = response_observation(response)
+                        capture = _bounded_context_capture(response)
                         prompt_tokens = _usage_tokens(response, "prompt_tokens")
                         completion_tokens = _usage_tokens(response, "completion_tokens")
                         throughput = (
@@ -241,7 +338,16 @@ def run_context_suite(
                             latency_ms=result["latency_s"] * 1000,
                             throughput_tps=throughput,
                             finish_reason=observation["finish_reason"],
+                            failure=(
+                                {
+                                    "code": "empty_visible_answer",
+                                    "message": "response has no visible assistant content",
+                                }
+                                if not observation["content"].strip()
+                                else None
+                            ),
                         )
+                        scored.update(capture)
                         if result.get("request_id"):
                             request_ids.append(result["request_id"])
                     except Exception as exc:  # retained per sample; lower evidence survives
@@ -275,6 +381,7 @@ def run_context_suite(
         "calibration": calibration,
         "selection": selection,
         "request_ids": sorted(set(request_ids)),
+        "request_controls": request_controls,
         "observations": observations,
         "curve": curve,
         "passed": all(item["passed"] for item in observations),
@@ -336,6 +443,7 @@ def _run_long_session_case(
     caller: ChatCaller,
     chat_template_kwargs: Mapping[str, Any] | None,
     reasoning_effort: str | None,
+    sampling_kwargs: Mapping[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
     """Execute every scripted user turn so endurance evidence has real token growth."""
     scripted_users = [
@@ -356,11 +464,12 @@ def _run_long_session_case(
                 endpoint["model"],
                 key,
                 messages,
-                max_tokens=max_tokens if index == len(scripted_users) - 1 else min(max_tokens, 64),
+                max_tokens=max_tokens,
                 timeout=timeout,
                 tools=None,
                 chat_template_kwargs=chat_template_kwargs,
                 reasoning_effort=reasoning_effort,
+                **sampling_kwargs,
             )
             payload = response["response"]
             prompt_tokens = _usage_tokens(payload, "prompt_tokens")
@@ -369,21 +478,12 @@ def _run_long_session_case(
             if response.get("request_id"):
                 request_ids.append(response["request_id"])
             message = _message(payload)
-            calls = _normalized_tool_calls(message)
-            if calls:
-                raise BenchmarkJobError(
-                    "parser_error", "long-session response unexpectedly contained tool calls"
-                )
-            content = message.get("content")
-            if not isinstance(content, str) or not content.strip():
-                raise BenchmarkJobError(
-                    "parser_error", "long-session response has no visible assistant content"
-                )
             reasoning = message.get("reasoning_content") or message.get("reasoning")
             reasoning_chars = len(reasoning) if isinstance(reasoning, str) else 0
             reasoning_present = reasoning_present or reasoning_chars > 0
             choices = payload.get("choices")
             first_choice = choices[0] if isinstance(choices, list) and choices else {}
+            raw_calls = message.get("tool_calls")
             turns.append({
                 "latency_ms": response["latency_s"] * 1000,
                 "prompt_tokens": prompt_tokens,
@@ -394,12 +494,23 @@ def _run_long_session_case(
                     else None
                 ),
                 "reasoning_chars": reasoning_chars,
-                "tool_call_count": 0,
+                "tool_call_count": len(raw_calls) if isinstance(raw_calls, list) else 0,
             })
+            calls = _normalized_tool_calls(message)
+            if calls:
+                raise BenchmarkJobError(
+                    "parser_error", "long-session response unexpectedly contained tool calls"
+                )
+            content = message.get("content")
+            if not isinstance(content, str) or not content.strip():
+                raise BenchmarkJobError(
+                    "parser_error", "long-session response has no visible assistant content"
+                )
             if index == len(scripted_users) - 1:
                 final_answer = content
             else:
-                messages.append({"role": "assistant", "content": content})
+                message.setdefault("role", "assistant")
+                messages.append(message)
         except BenchmarkJobError as exc:
             failure = {"code": exc.code, "message": exc.message}
             break
@@ -430,6 +541,7 @@ def _run_agentic_case(
     caller: ChatCaller,
     chat_template_kwargs: Mapping[str, Any] | None = None,
     reasoning_effort: str | None = None,
+    sampling_kwargs: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     if expected.get("require_token_growth"):
         return _run_long_session_case(
@@ -442,8 +554,10 @@ def _run_agentic_case(
             caller=caller,
             chat_template_kwargs=chat_template_kwargs,
             reasoning_effort=reasoning_effort,
+            sampling_kwargs=sampling_kwargs or {},
         )
     messages = copy.deepcopy(scenario["messages"])
+    sampling_kwargs = sampling_kwargs or {}
     observed_calls = []
     growth = []
     request_ids = []
@@ -463,6 +577,7 @@ def _run_agentic_case(
                 tools=scenario.get("tools") or None,
                 chat_template_kwargs=chat_template_kwargs,
                 reasoning_effort=reasoning_effort,
+                **sampling_kwargs,
             )
             payload = response["response"]
             prompt_tokens = _usage_tokens(payload, "prompt_tokens")
@@ -535,6 +650,8 @@ def run_agentic_suite(
     endpoint = spec["endpoint"]
     key = resolve_api_key(endpoint.get("auth_env"))
     parameters = spec.get("parameters", {})
+    sampling = _sampling_request_controls(parameters)
+    sampling_kwargs = request_sampling_kwargs(sampling)
     thinking_mode = parameters.get("thinking_mode", "default")
     if thinking_mode not in {"default", "enabled", "disabled"}:
         raise BenchmarkJobError(
@@ -602,6 +719,7 @@ def run_agentic_suite(
                 caller=caller,
                 chat_template_kwargs=chat_template_kwargs,
                 reasoning_effort=reasoning_effort,
+                sampling_kwargs=sampling_kwargs,
             )
             observation["repetition"] = repetition
             observations.append(observation)
@@ -627,6 +745,7 @@ def run_agentic_suite(
             "thinking_mode": thinking_mode,
             "chat_template_kwargs": chat_template_kwargs,
             "reasoning_effort": reasoning_effort,
+            "sampling": sampling,
         },
         "passed": passed / len(observations) >= suite["scoring"]["pass_rate_floor"],
     }

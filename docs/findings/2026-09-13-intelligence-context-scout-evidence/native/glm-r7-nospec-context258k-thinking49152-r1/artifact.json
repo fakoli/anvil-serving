@@ -1,0 +1,440 @@
+{
+  "created_at": "2026-09-14T01:50:23.139814Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "<redacted-secret-reference>",
+      "base_url": "<redacted-local-endpoint>",
+      "model": "llm.primary"
+    },
+    "finished_at": "2026-09-14T01:50:23.139721Z",
+    "started_at": "2026-09-14T01:40:40.702033Z",
+    "submitted_at": "2026-09-14T01:36:31.933096+00:00",
+    "worker": {
+      "id": "Primary Node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-09-14T01:50:23.129919Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": 65536,
+          "profile_buckets": [
+            8192,
+            32768,
+            65536,
+            131072,
+            262144,
+            524288,
+            640000
+          ],
+          "selected_buckets": [
+            258000
+          ]
+        },
+        "dataset": {
+          "name": "deterministic-native",
+          "profile_sha256": "6cc9e66696ae5fafed7af738cae898b59b7370574c829a9740300762dfbb92a7"
+        },
+        "hardware": {
+          "architecture": "x86_64",
+          "container_capable": true,
+          "harness_assets": [],
+          "id": "Primary Node",
+          "owned_output_writable": true,
+          "platform": "linux"
+        },
+        "harnesses": {
+          "native": {
+            "schema": "anvil-serving.context/v1"
+          }
+        },
+        "image": {
+          "status": "not-applicable"
+        },
+        "model": {
+          "quantization": "EXL3 uniform K4 routed experts; native non-routed weights; FP8 DS-MLA KV",
+          "repo": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+          "revision": "a5fee929cf4888b1824323e33e8a19b60129e025"
+        },
+        "runtime": {
+          "configured_context": 327680,
+          "dcp": 2,
+          "engine": "vllm-glm53-exl3-b12x-v84-fp8-control",
+          "ep": 2,
+          "harness_commit": "f5d8fbc4308d27bdc964abac73d7801e738dcd2a",
+          "image": "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+          "kv_cache": "fp8_ds_mla",
+          "max_concurrency": 4,
+          "mtp": 0,
+          "reasoning_config": {},
+          "source_commit": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+          "source_recipe": "private-recipe-sha256:030fb4775b70d891f4075f0f42e197eaa60f09b0d98817acc15e4eb3b0550064",
+          "source_recipe_sha256": "030fb4775b70d891f4075f0f42e197eaa60f09b0d98817acc15e4eb3b0550064",
+          "tp": 2
+        },
+        "served_model": {
+          "configured_context": null,
+          "id": "llm.primary"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "Primary Node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "intelligence-context-20260913",
+        "profile": "deep",
+        "run_id": "glm-r7-nospec-context258k-thinking49152-r1",
+        "spec_sha256": "e2ae3be20a98b400bff342f3fd14017b7a56e0af3b4e142c0bd26e88e9530d45",
+        "suite": "context"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 574,
+              "path": "evidence/0-assets.json",
+              "sha256": "39afaf86170a24ff23a0e47a0d804f27492b29a2f0fe5567aee72166e9b9e5aa"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 1960,
+              "path": "evidence/0-preflight.json",
+              "sha256": "82370233c3b9c32c0f87964f74ac223274f256bf2ee2ddb9907936970cef37a4"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 20469,
+              "path": "evidence/0-context.json",
+              "sha256": "55c9751141c37981b3da28d04690c118a74a2d8a42a2b4238bb7f82480776305"
+            }
+          ],
+          "name": "context",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "advertised_context": 327680,
+        "attempted_buckets": [
+          258000
+        ],
+        "buckets": [
+          {
+            "completed_count": 9,
+            "completion_rate": 1.0,
+            "engine_telemetry": {
+              "available": false,
+              "observations": []
+            },
+            "failures": {},
+            "latency_ms": {
+              "available": true,
+              "mean": 64456.65956722546,
+              "observations": [
+                62061.81916297646,
+                63308.55146702379,
+                62387.4192420044,
+                65463.16901600221,
+                69306.62510101683,
+                65689.12838899996,
+                63484.74804300349,
+                64119.489082018845,
+                64288.9866019832
+              ]
+            },
+            "meets_policy": true,
+            "pass_rate": 1.0,
+            "passed_count": 9,
+            "relative_drop_from_baseline": 0.0,
+            "requested_tokens": 258000,
+            "sample_count": 9,
+            "samples": [
+              {
+                "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+                "case_id": "native-order-258000-0.100-r0",
+                "case_type": "native-order",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 62061.81916297646,
+                "passed": true,
+                "position": 0.1,
+                "prompt_tokens": 255647,
+                "raw_reasoning": "<redacted-context-response>",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 258000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 2.9003339319995414,
+                "token_measurement": "<redacted>",
+                "visible_answer": "<redacted-context-response>",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+                "case_id": "native-order-258000-0.500-r0",
+                "case_type": "native-order",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 63308.55146702379,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 255647,
+                "raw_reasoning": "<redacted-context-response>",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 258000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 3.9015266386035945,
+                "token_measurement": "<redacted>",
+                "visible_answer": "<redacted-context-response>",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+                "case_id": "native-order-258000-0.900-r0",
+                "case_type": "native-order",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 62387.4192420044,
+                "passed": true,
+                "position": 0.9,
+                "prompt_tokens": 255647,
+                "raw_reasoning": "<redacted-context-response>",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 258000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 2.821081592064032,
+                "token_measurement": "<redacted>",
+                "visible_answer": "<redacted-context-response>",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "5912da657e0e0bd514e4d36a4b2e2c0ff194289d275e532bbc2a3d8ad9a57f6d",
+                "case_id": "native-identifiers-258000-0.100-r0",
+                "case_type": "native-identifiers",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 65463.16901600221,
+                "passed": true,
+                "position": 0.1,
+                "prompt_tokens": 255672,
+                "raw_reasoning": "<redacted-context-response>",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 258000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 6.064478789637497,
+                "token_measurement": "<redacted>",
+                "visible_answer": "<redacted-context-response>",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "5912da657e0e0bd514e4d36a4b2e2c0ff194289d275e532bbc2a3d8ad9a57f6d",
+                "case_id": "native-identifiers-258000-0.500-r0",
+                "case_type": "native-identifiers",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 69306.62510101683,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 255672,
+                "raw_reasoning": "<redacted-context-response>",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 258000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 9.768185927582662,
+                "token_measurement": "<redacted>",
+                "visible_answer": "<redacted-context-response>",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "5912da657e0e0bd514e4d36a4b2e2c0ff194289d275e532bbc2a3d8ad9a57f6d",
+                "case_id": "native-identifiers-258000-0.900-r0",
+                "case_type": "native-identifiers",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 65689.12838899996,
+                "passed": true,
+                "position": 0.9,
+                "prompt_tokens": 255672,
+                "raw_reasoning": "<redacted-context-response>",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 258000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 6.348082403081925,
+                "token_measurement": "<redacted>",
+                "visible_answer": "<redacted-context-response>",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+                "case_id": "native-crosslink-258000-0.100-r0",
+                "case_type": "native-crosslink",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 63484.74804300349,
+                "passed": true,
+                "position": 0.1,
+                "prompt_tokens": 255654,
+                "raw_reasoning": "<redacted-context-response>",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 258000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 3.874946464832211,
+                "token_measurement": "<redacted>",
+                "visible_answer": "<redacted-context-response>",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+                "case_id": "native-crosslink-258000-0.500-r0",
+                "case_type": "native-crosslink",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 64119.489082018845,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 255654,
+                "raw_reasoning": "<redacted-context-response>",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 258000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 4.56959349169497,
+                "token_measurement": "<redacted>",
+                "visible_answer": "<redacted-context-response>",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+                "case_id": "native-crosslink-258000-0.900-r0",
+                "case_type": "native-crosslink",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 64288.9866019832,
+                "passed": true,
+                "position": 0.9,
+                "prompt_tokens": 255654,
+                "raw_reasoning": "<redacted-context-response>",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 258000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 4.650874369059916,
+                "token_measurement": "<redacted>",
+                "visible_answer": "<redacted-context-response>",
+                "visible_answer_truncated": false
+              }
+            ],
+            "throughput_tps": {
+              "available": true,
+              "mean": 4.988789289839595,
+              "observations": [
+                2.9003339319995414,
+                3.9015266386035945,
+                2.821081592064032,
+                6.064478789637497,
+                9.768185927582662,
+                6.348082403081925,
+                3.874946464832211,
+                4.56959349169497,
+                4.650874369059916
+              ]
+            }
+          }
+        ],
+        "effective_context": 258000,
+        "first_material_degradation": null,
+        "notes": [
+          "effective_context uses attempted buckets only",
+          "missing engine telemetry is unavailable and is not inferred from latency"
+        ],
+        "schema": "anvil-serving.context-curve/v1",
+        "threshold_policy": {
+          "baseline_bucket": 258000,
+          "baseline_pass_rate": 1.0,
+          "max_relative_drop": 0.3,
+          "pass_rate_floor": 0.7
+        }
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "intelligence-context-20260913",
+    "profile": "deep",
+    "run_id": "glm-r7-nospec-context258k-thinking49152-r1",
+    "spec_sha256": "e2ae3be20a98b400bff342f3fd14017b7a56e0af3b4e142c0bd26e88e9530d45",
+    "suite": "context"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

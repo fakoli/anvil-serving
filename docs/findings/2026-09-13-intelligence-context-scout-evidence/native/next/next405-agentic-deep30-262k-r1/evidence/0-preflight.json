@@ -1,0 +1,85 @@
+{
+  "checks": [
+    {
+      "code": null,
+      "detail": "co-resident benchmark client explicitly declared",
+      "name": "worker_isolation",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "platform=linux architecture=x86_64",
+      "name": "worker_compatibility",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "free_bytes=2321412952064",
+      "name": "free_disk",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "available",
+      "name": "container_capability",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "writable",
+      "name": "owned_output",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "all locked assets present",
+      "name": "harness_assets",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "requested model is served",
+      "name": "endpoint_identity",
+      "passed": true
+    }
+  ],
+  "created_at": "2026-09-13T23:13:34.729873Z",
+  "observed": {
+    "endpoint": {
+      "authentication": "configured",
+      "base_url": "<redacted-local-endpoint>",
+      "configured_context": null,
+      "requested_model": "llm.primary",
+      "served_models": [
+        "llm.primary"
+      ]
+    },
+    "worker": {
+      "architecture": "x86_64",
+      "container_capable": true,
+      "harness_assets": [],
+      "id": "Primary Node",
+      "owned_output_writable": true,
+      "platform": "linux"
+    }
+  },
+  "passed": true,
+  "requirements": {
+    "architectures": [],
+    "container_required": false,
+    "harness_assets": [],
+    "harness_locks": {},
+    "min_free_disk_bytes": 10737418240,
+    "model_host_id": "Primary Node",
+    "platforms": []
+  },
+  "run_id": "next405-agentic-deep30-262k-r1",
+  "schema": "anvil-serving.benchmark-preflight/v1",
+  "side_effects": {
+    "model_lifecycle": false,
+    "route_mutation": false
+  },
+  "unsupported_telemetry": [
+    "configured_context"
+  ]
+}

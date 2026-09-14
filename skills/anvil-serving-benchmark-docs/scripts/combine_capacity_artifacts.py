@@ -19,7 +19,7 @@ import tempfile
 _MATCHED_FIELDS = (
     "measurement_protocol", "engine", "context_tokens", "max_context_tokens",
     "max_tokens", "response_words", "prompt_cache_mode", "request_canaries",
-    "controlled_output_policy", "context_seed", "serve_flags",
+    "controlled_output_policy", "context_seed", "serve_flags", "sampling",
 )
 
 _CONFIGURATION_FINGERPRINT = re.compile(r"sha256:[0-9a-f]{64}\Z")
@@ -205,6 +205,70 @@ def _validate_controlled_output(
         raise ValueError(f"{path}: strict controlled output did not adhere")
 
 
+def _validate_sampling(payload: dict, *, path: Path) -> None:
+    """Validate producer-declared sampler controls without inferring legacy values."""
+    if "sampling" not in payload:
+        return
+    sampling = payload["sampling"]
+    if not isinstance(sampling, dict):
+        raise ValueError(f"{path}: sampling must be an object when declared")
+    if set(sampling) != {"temperature", "top_p"}:
+        raise ValueError(f"{path}: sampling must contain temperature and top_p")
+    for field, fallback, sent_when_none in (
+        ("temperature", 0.0, True),
+        ("top_p", None, False),
+    ):
+        entry = sampling[field]
+        if not isinstance(entry, dict) or set(entry) != {
+            "requested", "effective_request", "sent",
+        }:
+            raise ValueError(
+                f"{path}: sampling.{field} must contain requested, effective_request, and sent"
+            )
+        requested = entry["requested"]
+        if requested is not None:
+            requested = _finite_nonnegative(
+                requested, label=f"{path}: sampling.{field}.requested"
+            )
+            if field == "temperature" and requested > 2.0:
+                raise ValueError(f"{path}: sampling.temperature.requested must be at most 2")
+            if field == "top_p" and not requested > 0.0:
+                raise ValueError(f"{path}: sampling.top_p.requested must be greater than 0")
+            if field == "top_p" and requested > 1.0:
+                raise ValueError(f"{path}: sampling.top_p.requested must be at most 1")
+        effective = entry["effective_request"]
+        if effective is not None:
+            effective = _finite_nonnegative(
+                effective, label=f"{path}: sampling.{field}.effective_request"
+            )
+            if field == "temperature" and effective > 2.0:
+                raise ValueError(f"{path}: sampling.temperature.effective_request must be at most 2")
+            if field == "top_p" and not effective > 0.0:
+                raise ValueError(f"{path}: sampling.top_p.effective_request must be greater than 0")
+            if field == "top_p" and effective > 1.0:
+                raise ValueError(f"{path}: sampling.top_p.effective_request must be at most 1")
+        expected_effective = requested if requested is not None else fallback
+        if effective != expected_effective:
+            raise ValueError(
+                f"{path}: sampling.{field}.effective_request is inconsistent with requested"
+            )
+        expected_sent = requested is not None or sent_when_none
+        if entry["sent"] is not expected_sent:
+            raise ValueError(f"{path}: sampling.{field}.sent is inconsistent with requested")
+
+
+def _sampling_identity(artifacts: list[dict]) -> dict:
+    if "sampling" not in artifacts[0]:
+        return {
+            "status": "legacy-unknown",
+            "limitation": (
+                "replica artifacts predate explicit sampling provenance; no temperature "
+                "or top_p value is inferred"
+            ),
+        }
+    return {"status": "declared-matching"}
+
+
 def _load(path: Path) -> dict:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -250,6 +314,7 @@ def _load(path: Path) -> dict:
         raise ValueError(f"{path}: source_recipe must be a string or null")
     if not isinstance(payload.get("serve_flags"), dict):
         raise ValueError(f"{path}: serve_flags must be an object")
+    _validate_sampling(payload, path=path)
     rows = payload.get("request_timings")
     if not isinstance(rows, list) or len(rows) != completed:
         raise ValueError(f"{path}: request_timings must cover every completed request")
@@ -691,7 +756,7 @@ def combine(paths: list[Path], *, artifact_base: Path | None = None) -> dict:
             "throughput_tok_s": artifact["metrics"].get("throughput_tok_s"),
         })
     metrics = _combined_metrics(rows, timeline)
-    return {
+    aggregate = {
         "schema": "anvil-serving.capacity-aggregate/v1",
         "measurement_protocol": "capacity-v3-synchronized-independent-replicas",
         "topology": "data-parallel-independent-replicas",
@@ -717,6 +782,7 @@ def combine(paths: list[Path], *, artifact_base: Path | None = None) -> dict:
         "shared_prefix_identity": shared_prefix,
         "request_canaries": first.get("request_canaries"),
         "controlled_output_policy": first.get("controlled_output_policy"),
+        "sampling_identity": _sampling_identity(artifacts),
         "synchronization": timeline["alignment"],
         "metric_population": {
             "successful_requests": len(rows), "excluded_requests": 0,
@@ -728,6 +794,9 @@ def combine(paths: list[Path], *, artifact_base: Path | None = None) -> dict:
         },
         "replicas": replicas, "request_timings": rows, "metrics": metrics,
     }
+    if "sampling" in first:
+        aggregate["sampling"] = first["sampling"]
+    return aggregate
 
 
 def _atomic_write_json(path: Path, payload: dict) -> None:

@@ -1,0 +1,84 @@
+{
+  "artifact_sha256": {
+    "mini/hermes/input.json": "<redacted-identifier>",
+    "mini/hermes/prompt.txt": "<redacted-identifier>",
+    "mini/hermes/result.json": "<redacted-identifier>",
+    "mini/hermes/stderr.log": "<redacted-identifier>",
+    "mini/hermes/stdout.log": "<redacted-identifier>",
+    "mini/hermes/usage.json": "<redacted-identifier>",
+    "mini/openclaw/input.json": "<redacted-identifier>",
+    "mini/openclaw/prompt.txt": "<redacted-identifier>",
+    "mini/openclaw/result.json": "<redacted-identifier>",
+    "mini/openclaw/stderr.log": "<redacted-identifier>",
+    "mini/openclaw/stdout.log": "<redacted-identifier>",
+    "mini/pi/input.json": "<redacted-identifier>",
+    "mini/pi/output.json": "<redacted-identifier>",
+    "mini/pi/prompt.txt": "<redacted-identifier>",
+    "mini/pi/result.json": "<redacted-identifier>",
+    "mini/pi/stderr.log": "<redacted-identifier>",
+    "mini/pi/stdout.log": "<redacted-identifier>"
+  },
+  "clients": {
+    "hermes": {
+      "api_calls": 3,
+      "classification": "The client completed normally and emitted the fixed marker, but did not create the required output file; tool acceptance failed.",
+      "elapsed_seconds": 26.097,
+      "exit_code": 0,
+      "marker_present": true,
+      "model_reported": "llm.primary",
+      "output_valid": false,
+      "provider_reported": "custom",
+      "status": "fail",
+      "version": "0.20.6"
+    },
+    "openclaw": {
+      "classification": "Local client capability validation rejected thinking=max for anvil/llm.primary before a model call.",
+      "elapsed_seconds": 5.323,
+      "error_signature_present": true,
+      "exit_code": 1,
+      "model_call_observed": false,
+      "node": "v26.5.0",
+      "status": "fail_preflight",
+      "version": "2026.9.4"
+    },
+    "pi": {
+      "elapsed_seconds": 9.775,
+      "exit_code": 0,
+      "marker_present": true,
+      "model_confirmed": true,
+      "output_sha256": "<redacted-identifier>",
+      "output_valid": true,
+      "provider_confirmed": true,
+      "status": "pass",
+      "tool_calls_confirmed": [
+        "read",
+        "write"
+      ],
+      "version": "0.85.1"
+    }
+  },
+  "contract": {
+    "expected_sum": 406,
+    "fixed_marker_required": true,
+    "model": "llm.primary",
+    "provider": "anvil",
+    "required_tools": [
+      "read",
+      "write"
+    ],
+    "thinking": "max",
+    "token_type": "string"
+  },
+  "created_at": "2026-09-14T03:35:00.492743+00:00",
+  "overall": "fail",
+  "remote_root": "<redacted-private-path>",
+  "safety": {
+    "client_configs_mutated": false,
+    "credential_handling": "Existing protected OpenClaw environment value passed only to child processes; value was not logged.",
+    "external_delivery": false,
+    "new_dependencies": false
+  },
+  "schema": "anvil.client_acceptance.v1",
+  "setup_note": "The first launcher attempt referenced a stale absent Python path and exited before any client ran. The recorded run used the installed Anvil Serving interpreter.",
+  "target": "<redacted-host>"
+}

@@ -14,6 +14,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 from ..model_controls import REASONING_EFFORT_CHOICES
 from .artifacts import atomic_write_json, path_is_within, real_path
+from .evaluation import normalize_sampling
 from .harnesses import (
     HARNESS_ASSETS_SCHEMA,
     MAX_HARNESS_OUTPUT_BYTES,
@@ -29,6 +30,7 @@ SWE_PLAN_SCHEMA = "anvil-serving.swe-plan/v1"
 SWE_DATASET = "princeton-nlp/SWE-bench_Verified"
 SWE_SUBSET = "verified"
 SWE_SPLIT = "test"
+TASK_CONTAINER_NETWORK = "none"
 SWE_FAILURE_CLASSES = frozenset({
     "broken_harness",
     "image_failure",
@@ -205,7 +207,7 @@ def _endpoint(value: Any) -> dict[str, str]:
 
 def _validate_request_controls(value: Mapping[str, Any] | None) -> dict[str, Any]:
     controls = dict(value or {})
-    if set(controls) - {"thinking_mode", "reasoning_effort"}:
+    if set(controls) - {"thinking_mode", "reasoning_effort", "temperature", "top_p"}:
         raise BenchmarkJobError("bad_request_controls", "SWE request controls are invalid")
     thinking_mode = controls.get("thinking_mode", "default")
     reasoning_effort = controls.get("reasoning_effort")
@@ -222,7 +224,31 @@ def _validate_request_controls(value: Mapping[str, Any] | None) -> dict[str, Any
             "conflicting_reasoning_controls",
             "reasoning_effort and thinking_mode cannot both be explicit",
         )
-    return {"thinking_mode": thinking_mode, "reasoning_effort": reasoning_effort}
+    result = {"thinking_mode": thinking_mode, "reasoning_effort": reasoning_effort}
+    if "temperature" in controls or "top_p" in controls:
+        requested_temperature = controls.get("temperature")
+        requested_top_p = controls.get("top_p")
+        try:
+            result["sampling"] = normalize_sampling({
+                "temperature": {
+                    "requested": requested_temperature,
+                    "effective_request": (
+                        requested_temperature
+                        if requested_temperature is not None else 0.0
+                    ),
+                    "sent": True,
+                },
+                "top_p": {
+                    "requested": requested_top_p,
+                    "effective_request": requested_top_p,
+                    "sent": requested_top_p is not None,
+                },
+            })
+        except ValueError as exc:
+            raise BenchmarkJobError(
+                "bad_request_controls", "SWE sampler controls are invalid"
+            ) from exc
+    return result
 
 
 def _mini_config(
@@ -232,14 +258,18 @@ def _mini_config(
     container_executable: str,
 ) -> str:
     # This is intentionally a small YAML overlay. It contains endpoint identity only;
-    # the credential is mapped into OPENAI_API_KEY in the child process environment.
+    # mini-SWE-agent's model client runs in the host process. Its Docker environment
+    # receives only task commands, so its network is explicitly disabled here.
     base = json.dumps(endpoint["base_url"], ensure_ascii=True)
     model = json.dumps(f"openai/{endpoint['model']}", ensure_ascii=True)
     executable = json.dumps(container_executable, ensure_ascii=True)
     control_lines = ""
     if request_controls["reasoning_effort"] is not None:
         effort = json.dumps(request_controls["reasoning_effort"], ensure_ascii=True)
-        control_lines = f"    reasoning_effort: {effort}\n"
+        control_lines = (
+            "    extra_body:\n"
+            f"      reasoning_effort: {effort}\n"
+        )
     elif request_controls["thinking_mode"] != "default":
         enabled = "true" if request_controls["thinking_mode"] == "enabled" else "false"
         control_lines = (
@@ -247,6 +277,18 @@ def _mini_config(
             "      chat_template_kwargs:\n"
             f"        enable_thinking: {enabled}\n"
         )
+    sampling_lines = ""
+    sampling = request_controls.get("sampling")
+    if sampling is not None:
+        temperature = json.dumps(
+            sampling["temperature"]["effective_request"], ensure_ascii=True
+        )
+        sampling_lines = f"    temperature: {temperature}\n"
+        if sampling["top_p"]["sent"]:
+            top_p = json.dumps(
+                sampling["top_p"]["effective_request"], ensure_ascii=True
+            )
+            sampling_lines += f"    top_p: {top_p}\n"
     return (
         "model:\n"
         f"  model_name: {model}\n"
@@ -257,6 +299,7 @@ def _mini_config(
         f"    api_base: {base}\n"
         "    drop_params: true\n"
         "    parallel_tool_calls: true\n"
+        f"{sampling_lines}"
         f"{control_lines}"
         f"    max_tokens: {suite['max_completion_tokens']}\n"
         "agent:\n"
@@ -266,6 +309,8 @@ def _mini_config(
         "  run_args:\n"
         "    - --platform\n"
         "    - linux/amd64\n"
+        "    - --network\n"
+        f"    - {TASK_CONTAINER_NETWORK}\n"
         "    - --rm\n"
     )
 
@@ -349,6 +394,7 @@ def build_swe_run_plan(
             "sha256": hashlib.sha256(canonical_json_bytes(selected)).hexdigest(),
         },
         "endpoint": target,
+        "task_container_network": TASK_CONTAINER_NETWORK,
         "request_controls": controls,
         "harnesses": {
             "agent": {"name": "mini-swe-agent", "revision": assets["mini-swe-agent"]["revision"]},
@@ -478,6 +524,7 @@ def _base_result(plan: Mapping[str, Any]) -> dict[str, Any]:
         "split": plan["split"],
         "selection": plan["selection"],
         "endpoint": plan["endpoint"],
+        "task_container_network": plan["task_container_network"],
         "request_controls": plan["request_controls"],
         "harnesses": plan["harnesses"],
         "state": "incomplete",

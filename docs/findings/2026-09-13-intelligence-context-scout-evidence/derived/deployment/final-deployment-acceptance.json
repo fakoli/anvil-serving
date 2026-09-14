@@ -1,0 +1,50 @@
+{
+  "boot_owner_enabled": true,
+  "boot_owner_repeat_same_container": true,
+  "clients": {
+    "evidence": "client-acceptance/retry-summary.json",
+    "hermes": "passed absolute-path retry; initial path fixture failure retained",
+    "openclaw": "passed supported client high with router hard MAX",
+    "pi": "passed native read/write"
+  },
+  "completed_at": "2026-09-14T03:43:04.983886+00:00",
+  "context_tokens": 327680,
+  "controller": {
+    "authenticated_status": "controller-authenticated-status.json",
+    "evidence": "controller-mount-acceptance.json",
+    "exact_read_only_mounts": 8,
+    "healthy": true,
+    "repeat_retained_same_container": true
+  },
+  "decision": "current GLM no-spec text primary; strongest fully tested fit in bounded campaign",
+  "fresh_boot_or_reboot_tested": false,
+  "hard_stop_remaining": 30,
+  "limitations": [
+    "one-pass 100-question quality scout; one invalid pinned key retained",
+    "five-case SWE sample",
+    "no comparative intelligence superiority proved",
+    "no prolonged soak or simultaneous full-window proof",
+    "Ornith and higher precision/YaRN candidates untested before reserve boundary"
+  ],
+  "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "output_cap_tokens": 65536,
+  "primary_container_id": "<redacted-identifier>",
+  "primary_container_unchanged_by_controller_refresh": true,
+  "production_context": "9/9 passed after cold managed reload",
+  "promotion_receipt": "promotion-envelope.json",
+  "recipe_digest": "<redacted-identifier>",
+  "rollback": "original pinned Qwen27 FP8 vision owner retained, not exercised after final promotion",
+  "schema": "fakoli.intelligence-context.final-deployment/v1",
+  "source": {
+    "infra_commit": "8600b8c",
+    "infra_pr": "<redacted-endpoint>",
+    "product_pr": "<redacted-endpoint>",
+    "product_tested_commit": "f5d8fbc4308d27bdc964abac73d7801e738dcd2a"
+  },
+  "temporary_work": {
+    "active_model_benchmarks": false,
+    "isolated_router39129_closed": true,
+    "owned_telemetry_stopped": true
+  },
+  "usage_remaining_last_observed": 32
+}

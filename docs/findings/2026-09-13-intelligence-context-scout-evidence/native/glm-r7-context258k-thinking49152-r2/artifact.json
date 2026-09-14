@@ -1,0 +1,180 @@
+{
+  "created_at": "2026-09-14T01:25:07.678778Z",
+  "failure": {
+    "class": "worker_runtime",
+    "code": "bad_spec",
+    "message": "results.evidence.summary.buckets[0].samples[3].raw_reasoning contains invalid or oversized text"
+  },
+  "partial": true,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "<redacted-secret-reference>",
+      "base_url": "<redacted-local-endpoint>",
+      "model": "llm.primary"
+    },
+    "finished_at": "2026-09-14T01:25:07.678667Z",
+    "started_at": "2026-09-14T01:10:58.494250Z",
+    "submitted_at": "2026-09-14T00:31:25.955791+00:00",
+    "worker": {
+      "id": "Primary Node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "failed",
+      "created_at": "2026-09-14T01:25:07.669418Z",
+      "evidence_kind": "measured",
+      "failure": {
+        "class": "worker_runtime",
+        "code": "bad_spec",
+        "message": "results.evidence.summary.buckets[0].samples[3].raw_reasoning contains invalid or oversized text"
+      },
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": 65536,
+          "profile_buckets": [
+            8192,
+            32768,
+            65536,
+            131072,
+            262144,
+            524288,
+            640000
+          ],
+          "selected_buckets": [
+            258000
+          ]
+        },
+        "dataset": {
+          "name": "deterministic-native",
+          "profile_sha256": "6cc9e66696ae5fafed7af738cae898b59b7370574c829a9740300762dfbb92a7"
+        },
+        "hardware": {
+          "architecture": "x86_64",
+          "container_capable": true,
+          "harness_assets": [],
+          "id": "Primary Node",
+          "owned_output_writable": true,
+          "platform": "linux"
+        },
+        "harnesses": {
+          "native": {
+            "schema": "anvil-serving.context/v1"
+          }
+        },
+        "image": {
+          "status": "not-applicable"
+        },
+        "model": {
+          "quantization": "EXL3 uniform K4 routed experts; native non-routed weights; FP8 DS-MLA KV",
+          "repo": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+          "revision": "a5fee929cf4888b1824323e33e8a19b60129e025"
+        },
+        "runtime": {
+          "configured_context": 327680,
+          "dcp": 2,
+          "engine": "vllm-glm53-exl3-b12x-v84-fp8-control",
+          "ep": 2,
+          "harness_commit": "a592c4e54bcb3a3b4d2835986e4694ddf2f08b52",
+          "image": "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+          "kv_cache": "fp8_ds_mla",
+          "max_concurrency": 4,
+          "mtp": 3,
+          "reasoning_config": {},
+          "source_commit": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+          "source_recipe": "private-recipe-sha256:c496ca64b00ae136425d2eeb60f929d1b90035dc96fda448e7234d44162fa90a",
+          "source_recipe_sha256": "c496ca64b00ae136425d2eeb60f929d1b90035dc96fda448e7234d44162fa90a",
+          "tp": 2
+        },
+        "served_model": {
+          "configured_context": null,
+          "id": "llm.primary"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "Primary Node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "intelligence-context-20260913",
+        "profile": "deep",
+        "run_id": "glm-r7-context258k-thinking49152-r2",
+        "spec_sha256": "4214686d71e79e6c41a4e6d47c433aa4821bd0167dbadd4966bd78969a4010a8",
+        "suite": "context"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 567,
+              "path": "evidence/0-assets.json",
+              "sha256": "343e36d348cee2c6b973b53c6ebac69135516a28451733622f39852db9e1df62"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 1953,
+              "path": "evidence/0-preflight.json",
+              "sha256": "32d7dbd85b0d8bdee63de87050f7265c782271fdc424aa3e9236c8a6ffe11ecd"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 20479,
+              "path": "evidence/0-context.json",
+              "sha256": "c2a9f4e7bee7452b085b567650afbe1fdc0da68547dee253109b0be053b00d8b"
+            }
+          ],
+          "name": "context",
+          "sequence": 2,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 137,
+              "path": "evidence/0-failure.json",
+              "sha256": "77b234c7a7650f5e0cd461a02cfbce6ea394c3af3917565b146aca8a3c8e0557"
+            }
+          ],
+          "name": "failure",
+          "sequence": 3,
+          "status": "failed"
+        }
+      ],
+      "summary": {
+        "attempted": true,
+        "completed": false
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "intelligence-context-20260913",
+    "profile": "deep",
+    "run_id": "glm-r7-context258k-thinking49152-r2",
+    "spec_sha256": "4214686d71e79e6c41a4e6d47c433aa4821bd0167dbadd4966bd78969a4010a8",
+    "suite": "context"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "failed"
+}

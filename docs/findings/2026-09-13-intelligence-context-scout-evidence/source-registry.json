@@ -1,0 +1,47 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-13-intelligence-context-scout",
+  "observed_at": "2026-09-13",
+  "sources": [
+    {
+      "id": "glm-flash-exl3",
+      "url": "https://huggingface.co/brandonmusic/GLM-5.3-Flash-tr3-4bpw/tree/a5fee929cf4888b1824323e33e8a19b60129e025",
+      "published_or_observed": "pinned revision",
+      "observed_at": "2026-09-13",
+      "age_class": "current-campaign-source",
+      "evidence_type": "primary-model-artifact",
+      "hardware_runtime_relevance": "Exact GLM quant for r6 and r7 route2 local scouts; r7 uses the versioned 327K FP8-KV TP2/EP2/DCP2/MTP3 recipe and image sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692.",
+      "decision_impact": "Identity only; r6 and r7 route2 each have a one-pass 91/100 raw scout, not a final matched comparison or promotion decision."
+    },
+    {
+      "id": "qwen-flash-next-base",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/tree/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+      "published_or_observed": "pinned revision",
+      "observed_at": "2026-09-13",
+      "age_class": "current-campaign-source",
+      "evidence_type": "primary-model-card",
+      "hardware_runtime_relevance": "Base-model identity for the completed one-pass Next scout",
+      "decision_impact": "Source prior only; exact EXL3 lane has a one-pass 91/100 scout, not a final matched comparison."
+    },
+    {
+      "id": "qwen-flash-next-exl3",
+      "url": "https://huggingface.co/turboderp/Qwen3.8-Flash-Next-exl3/tree/55a732e0c4c3d4614bc42b68493bb930d9b02c0a",
+      "published_or_observed": "pinned revision",
+      "observed_at": "2026-09-13",
+      "age_class": "current-campaign-source",
+      "evidence_type": "quant-artifact",
+      "hardware_runtime_relevance": "Exact completed one-pass Next lane quant",
+      "decision_impact": "Identity only; a one-pass 91/100 scout is not a final matched comparison."
+    },
+    {
+      "id": "qwen27-fp8",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B-FP8/tree/017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+      "published_or_observed": "pinned revision",
+      "observed_at": "2026-09-13",
+      "age_class": "current-campaign-source",
+      "evidence_type": "primary-model-artifact",
+      "hardware_runtime_relevance": "Exact baseline identity for the partial lane",
+      "decision_impact": "Identity only; 26/30 across three retained shards is not a baseline score."
+    }
+  ]
+}

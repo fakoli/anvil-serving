@@ -110,6 +110,14 @@ _ROUTES = {
     "/v1/responses": ResponsesDialect(),
     "/v1/messages": AnthropicDialect(),
 }
+
+
+class _RouterHTTPServer(ThreadingHTTPServer):
+    """Use the kernel-bounded accept backlog adopted by Python 3.15."""
+
+    request_queue_size = socket.SOMAXCONN
+
+
 DECISION_SUMMARY_ENDPOINT = "/v1/decisions"
 #: Per-tier / per-serve live health snapshot (#292). Bearer-authed like every
 #: route except GET /healthz; additive — /health and /v1/decisions are unchanged.
@@ -2388,7 +2396,7 @@ def make_server(host: str, port: int,
     if gateway is not None and auth_token is None:
         raise ValueError("a ProtocolGateway requires a resolved front-door auth token")
     validated_operator_routes = _validated_operator_routes(operator_routes)
-    httpd = ThreadingHTTPServer(
+    httpd = _RouterHTTPServer(
         (host, port),
         _make_handler(
             backend, timeout, model_routes, exhaustion_status, auth_token,

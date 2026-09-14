@@ -1,0 +1,25 @@
+{
+  "boot_boundary": {
+    "fresh_systemd_start_tested": false,
+    "managed_cold_reload": "retained",
+    "reboot_tested": false,
+    "same_container_on_repeat": true
+  },
+  "campaign_id": "2026-09-13-intelligence-context-scout",
+  "client_acceptance": "retained bounded Pi, Hermes, and OpenClaw acceptance; initial failures preserved with retry corrections",
+  "current_owner": {
+    "candidate": "GLM Flash EXL3 r7 no-speculation",
+    "configured_context": 327680,
+    "max_output_tokens": 65536,
+    "text_only": true
+  },
+  "restoration_action": "not-executed",
+  "rollback": {
+    "availability": "declared rollback path",
+    "candidate": "Qwen3.8-27B-FP8",
+    "execution": "not exercised after GLM promotion",
+    "limitation": "promotion receipt reports rollback image verification as advisory-only because the up command has no compose file"
+  },
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "state": "current-model-admitting"
+}

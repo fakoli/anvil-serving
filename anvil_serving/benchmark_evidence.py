@@ -73,6 +73,50 @@ def _bool(*values: object) -> bool | None:
     return None
 
 
+def _sampling_summary(raw: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize explicit request sampling without inferring legacy defaults."""
+    if "sampling" not in raw:
+        return {
+            "recorded": None,
+            "temperature_requested": None,
+            "temperature_effective_request": None,
+            "temperature_sent": None,
+            "top_p_requested": None,
+            "top_p_effective_request": None,
+            "top_p_sent": None,
+        }
+    from .benchmarking.evaluation import normalize_sampling
+
+    try:
+        sampling = normalize_sampling(raw.get("sampling"))
+    except ValueError as exc:
+        declared = _mapping(raw.get("sampling"))
+        temperature = _mapping(declared.get("temperature"))
+        top_p = _mapping(declared.get("top_p"))
+        return {
+            "recorded": True,
+            "temperature_requested": temperature.get("requested"),
+            "temperature_effective_request": temperature.get("effective_request"),
+            "temperature_sent": temperature.get("sent"),
+            "top_p_requested": top_p.get("requested"),
+            "top_p_effective_request": top_p.get("effective_request"),
+            "top_p_sent": top_p.get("sent"),
+            "validation_error": str(exc),
+        }
+    temperature = sampling["temperature"]
+    top_p = sampling["top_p"]
+    return {
+        "recorded": True,
+        "temperature_requested": _number(temperature.get("requested")),
+        "temperature_effective_request": _number(temperature.get("effective_request")),
+        "temperature_sent": _bool(temperature.get("sent")),
+        "top_p_requested": _number(top_p.get("requested")),
+        "top_p_effective_request": _number(top_p.get("effective_request")),
+        "top_p_sent": _bool(top_p.get("sent")),
+        "validation_error": None,
+    }
+
+
 def _immutable_sha256(value: object) -> str | None:
     text = _text(value)
     if text is None or len(text) != 64:
@@ -228,6 +272,10 @@ def _validate_summary(summary: Mapping[str, Any]) -> list[str]:
     control = protocol.get("control_mechanism")
     if control is not None and control not in THINKING_CONTROL_MECHANISMS:
         errors.append(f"protocol.control_mechanism is unsupported: {control!r}")
+
+    sampling = _mapping(protocol.get("sampling"))
+    if sampling.get("recorded") is True and sampling.get("validation_error"):
+        errors.append(f"protocol.sampling invalid: {sampling['validation_error']}")
 
     for suite in _list(_mapping(summary.get("quality")).get("suites")):
         suite_map = _mapping(suite)
@@ -448,6 +496,7 @@ def summarize_artifact(path: str | Path) -> dict[str, Any]:
             "thinking_control_evidence_sha256": _immutable_sha256(
                 thinking.get("control_evidence_sha256")
             ),
+            "sampling": _sampling_summary(raw),
         },
         "quality": {"suites": suites},
         "speculative": {
@@ -619,6 +668,19 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
         "prompt_set_id": ("workload", "prompt_set_id"),
         "measurement_protocol": ("workload", "measurement_protocol"),
         "gpu": ("provenance", "gpu"),
+        "sampling_recorded": ("protocol", "sampling", "recorded"),
+        "sampling_temperature_requested": (
+            "protocol", "sampling", "temperature_requested"
+        ),
+        "sampling_temperature_effective_request": (
+            "protocol", "sampling", "temperature_effective_request"
+        ),
+        "sampling_temperature_sent": ("protocol", "sampling", "temperature_sent"),
+        "sampling_top_p_requested": ("protocol", "sampling", "top_p_requested"),
+        "sampling_top_p_effective_request": (
+            "protocol", "sampling", "top_p_effective_request"
+        ),
+        "sampling_top_p_sent": ("protocol", "sampling", "top_p_sent"),
     }
     differences = {
         name: values
@@ -665,6 +727,9 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
             "model", "capacity.requests", "capacity.concurrency",
             "capacity.context_tokens", "capacity.max_tokens",
             "protocol.thinking_mode", "protocol.no_thinking",
+            "protocol.sampling.recorded",
+            "protocol.sampling.temperature_effective_request",
+            "protocol.sampling.temperature_sent", "protocol.sampling.top_p_sent",
             "workload.shared_prefix_burst", "workload.cache_policy",
             "workload.prompt_set_id", "provenance.engine", "provenance.gpu",
         ),
@@ -675,6 +740,9 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
             "protocol.thinking_mode", "protocol.control_mechanism",
             "protocol.thinking_control_status",
             "protocol.thinking_control_evidence_sha256",
+            "protocol.sampling.recorded",
+            "protocol.sampling.temperature_effective_request",
+            "protocol.sampling.temperature_sent", "protocol.sampling.top_p_sent",
             "provenance.recipe_ref",
             "provenance.engine", "provenance.gpu",
         ),
@@ -690,6 +758,13 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
         for field in required:
             if _value_at(summary, field.split(".")) is None:
                 unknown_fields.setdefault(field, []).append(str(summary.get("path")))
+        if summary.get("kind") == "campaign":
+            # Cross-suite envelopes reference suite-specific evidence without
+            # normalizing its workload and sampling semantics.  Do not treat
+            # opaque spec or evidence hashes as proof that campaigns match.
+            unknown_fields.setdefault(
+                "campaign.semantic_workload_sampling_identity", []
+            ).append(str(summary.get("path")))
     if any(summary.get("kind") == "quality" and not _suite_signature(summary)
            for summary in summaries):
         unknown_fields["suites"] = [

@@ -87,6 +87,135 @@ def test_context_runner_honors_recorded_case_bucket_position_and_headroom_select
     assert result["observations"][0]["position"] == 0.97
 
 
+def test_context_runner_forwards_controls_and_retains_bounded_reasoning_capture():
+    calls = []
+
+    def caller(base, model, key, messages, max_tokens, timeout, **kwargs):
+        calls.append(kwargs)
+        prompt = messages[-1]["content"]
+        calibration = prompt.startswith("token calibration")
+        answer = "ok" if calibration else re.search(
+            r"access marker for ORCHID is (K\d+)\.", prompt
+        ).group(1)
+        if not calibration:
+            answer += " " * 9000
+        return {
+            "latency_s": 0.1,
+            "request_id": "context-control",
+            "response": {
+                "choices": [{"message": {
+                    "content": answer,
+                    "reasoning": "",
+                    "reasoning_content": "r" * 9000,
+                }, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": max(2, math.ceil(len(prompt) / 4)), "completion_tokens": 2},
+            },
+        }
+
+    result = run_context_suite(
+        load_profile("smoke"),
+        spec(
+            "context",
+            case_ids=["native-needle"],
+            token_buckets=[512],
+            positions=[0.5],
+            thinking_mode="enabled",
+            reasoning_effort="max",
+            clear_thinking=False,
+            temperature=1.0,
+            top_p=0.95,
+        ),
+        caller=caller,
+    )
+
+    assert all(call == {
+        "chat_template_kwargs": {"enable_thinking": True, "clear_thinking": False},
+        "reasoning_effort": "max", "temperature": 1.0, "top_p": 0.95,
+    } for call in calls)
+    assert result["request_controls"] == {
+        "thinking_mode": "enabled", "reasoning_effort": "max",
+        "chat_template_kwargs": {"enable_thinking": True, "clear_thinking": False},
+        "sampling": {
+            "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+            "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+        },
+    }
+    observation = result["observations"][0]
+    assert observation["passed"] is True
+    assert len(observation["visible_answer"]) == 8192
+    assert observation["visible_answer_truncated"] is True
+    assert "raw_visible_answer" not in observation
+    assert observation["raw_reasoning_field"] == "reasoning_content"
+    assert observation["raw_reasoning"] == "r" * 8192
+    assert observation["raw_reasoning_truncated"] is True
+    assert observation["finish_reason"] == "stop"
+
+
+def test_context_runner_preserves_legacy_optional_sampler_kwargs():
+    calls = []
+
+    def caller(base, model, key, messages, max_tokens, timeout, **kwargs):
+        calls.append(kwargs)
+        prompt = messages[-1]["content"]
+        answer = "ok" if prompt.startswith("token calibration") else re.search(
+            r"access marker for ORCHID is (K\d+)\.", prompt
+        ).group(1)
+        return {
+            "latency_s": 0.1,
+            "response": {
+                "choices": [{"message": {"content": answer}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": max(2, math.ceil(len(prompt) / 4)), "completion_tokens": 2},
+            },
+        }
+
+    result = run_context_suite(
+        load_profile("smoke"),
+        spec("context", case_ids=["native-needle"], token_buckets=[512], positions=[0.5]),
+        caller=caller,
+    )
+
+    assert calls == [{}, {}]
+    assert result["request_controls"]["sampling"] == {
+        "temperature": {"requested": None, "effective_request": 0.0, "sent": True},
+        "top_p": {"requested": None, "effective_request": None, "sent": False},
+    }
+
+
+@pytest.mark.parametrize(
+    ("suite", "parameters", "caller"),
+    (
+        ("context", {"temperature": -0.1}, context_caller),
+        ("agentic", {"top_p": 0.0}, context_caller),
+    ),
+)
+def test_suite_runners_reject_invalid_optional_sampler_controls(suite, parameters, caller):
+    with pytest.raises(BenchmarkJobError) as exc:
+        run = run_context_suite if suite == "context" else run_agentic_suite
+        run(load_profile("smoke"), spec(suite, **parameters), caller=caller)
+
+    assert exc.value.code == "bad_sampling"
+
+
+def test_context_runner_marks_reasoning_only_reply_as_empty_visible_failure():
+    def caller(base, model, key, messages, max_tokens, timeout, **_kwargs):
+        prompt = messages[-1]["content"]
+        return {
+            "latency_s": 0.1,
+            "response": {
+                "choices": [{"message": {"content": "ok" if prompt.startswith("token calibration") else "", "reasoning": "hidden"}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": max(2, math.ceil(len(prompt) / 4)), "completion_tokens": 2},
+            },
+        }
+
+    result = run_context_suite(
+        load_profile("smoke"),
+        spec("context", case_ids=["native-needle"], token_buckets=[512], positions=[0.5]),
+        caller=caller,
+    )
+
+    assert result["observations"][0]["failure"]["code"] == "empty_visible_answer"
+
+
 def test_context_runner_rejects_selection_beyond_advertised_capacity():
     with pytest.raises(BenchmarkJobError) as exc:
         run_context_suite(
@@ -174,13 +303,20 @@ def test_agentic_runner_forwards_one_explicit_reasoning_control():
             recovery_result="error",
             case_ids=["tool-recovery"],
             reasoning_effort="xhigh",
+            temperature=1.0,
+            top_p=0.95,
         ),
         caller=caller,
     )
 
     assert result["request_controls"]["reasoning_effort"] == "xhigh"
+    assert result["request_controls"]["sampling"] == {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
     assert all(item["reasoning_effort"] == "xhigh" for item in caller.kwargs)
     assert all(item["chat_template_kwargs"] is None for item in caller.kwargs)
+    assert all(item["temperature"] == 1.0 and item["top_p"] == 0.95 for item in caller.kwargs)
 
 
 def test_agentic_runner_rejects_conflicting_reasoning_controls():
@@ -247,6 +383,53 @@ def test_agentic_runner_executes_real_long_session_turns_with_token_growth():
     assert len(caller.prompts) == 5
     assert result["observations"][0]["history_prompt_tokens"] == [100, 200, 300, 400, 500]
     assert len(result["request_ids"]) == 5
+
+
+def test_long_session_preserves_declared_budget_telemetry_and_reasoning_replay():
+    class LongSessionFailureCaller:
+        def __init__(self):
+            self.calls = []
+
+        def __call__(self, base, model, key, messages, max_tokens, timeout, **_kwargs):
+            self.calls.append((copy.deepcopy(messages), max_tokens))
+            first = len(self.calls) == 1
+            message = (
+                {"content": "ACK", "reasoning_content": "first-turn reasoning"}
+                if first
+                else {"content": "", "reasoning_content": "second-turn reasoning"}
+            )
+            return {
+                "latency_s": 0.1,
+                "response": {
+                    "choices": [{"message": message, "finish_reason": "length"}],
+                    "usage": {"prompt_tokens": 28 * len(self.calls), "completion_tokens": 64},
+                },
+            }
+
+    profile = copy.deepcopy(load_profile("deep"))
+    profile["suites"]["agentic"]["repetitions"] = 1
+    caller = LongSessionFailureCaller()
+    result = run_agentic_suite(
+        profile,
+        spec("agentic", case_ids=["long-session"], session_turns=2),
+        caller=caller,
+    )
+
+    observation = result["observations"][0]
+    assert [max_tokens for _messages, max_tokens in caller.calls] == [16384, 16384]
+    replayed_assistant = caller.calls[1][0][-2]
+    assert replayed_assistant == {
+        "role": "assistant", "content": "ACK", "reasoning_content": "first-turn reasoning"
+    }
+    assert observation["failure"]["code"] == "parser_error"
+    assert observation["turns"][-1] == {
+        "latency_ms": 100.0,
+        "prompt_tokens": 56,
+        "completion_tokens": 64,
+        "finish_reason": "length",
+        "reasoning_chars": len("second-turn reasoning"),
+        "tool_call_count": 0,
+    }
 
 
 @pytest.mark.parametrize("case_ids", [[], ["tool-recovery", "tool-recovery"], ["unknown"]])
