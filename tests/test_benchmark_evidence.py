@@ -233,6 +233,63 @@ def test_compare_requires_two_artifacts() -> None:
         benchmark_evidence.compare_artifacts(["one.json"])
 
 
+def test_compare_fails_closed_for_campaign_workload_identity(tmp_path: Path) -> None:
+    identities = {
+        name: {"value": "recorded", "source": "declared"}
+        for name in (
+            "model", "served_model", "runtime", "image", "hardware",
+            "topology", "context", "concurrency", "harnesses", "dataset",
+        )
+    }
+
+    def campaign(run_id: str, spec_sha256: str, evidence_sha256: str) -> dict:
+        return {
+            "schema": "anvil-serving.benchmark-evidence/v1",
+            "evidence_kind": "measured",
+            "completeness": "completed",
+            "created_at": "2026-09-14T00:00:00Z",
+            "run": {
+                "run_id": run_id,
+                "ownership_id": "owner",
+                "suite": "context",
+                "profile": "qualification",
+                "spec_sha256": spec_sha256,
+            },
+            "identities": identities,
+            "stages": [{
+                "sequence": 0,
+                "name": "context",
+                "status": "completed",
+                "evidence": [{
+                    "path": f"{run_id}.json",
+                    "sha256": evidence_sha256,
+                    "bytes": 1,
+                }],
+            }],
+            "summary": {},
+            "failure": None,
+            "promotion": {
+                "authorized": False,
+                "message": (
+                    "Benchmark evidence does not authorize model promotion; "
+                    "promotion is a separate human decision."
+                ),
+            },
+        }
+
+    first = _write(tmp_path / "first.json", campaign("first", "a" * 64, "b" * 64))
+    second = _write(tmp_path / "second.json", campaign("second", "c" * 64, "d" * 64))
+
+    result = benchmark_evidence.compare_artifacts([first, second])
+
+    assert result["comparable"] is False
+    assert result["unknown_fields"] == {
+        "campaign.semantic_workload_sampling_identity": [
+            first.as_posix(), second.as_posix(),
+        ]
+    }
+
+
 def _complete_capacity(model: str, *, concurrency: int, no_thinking: bool) -> dict:
     return {
         "schema": "anvil-serving.benchmark/v1",
@@ -250,6 +307,18 @@ def _complete_capacity(model: str, *, concurrency: int, no_thinking: bool) -> di
             "no_thinking": no_thinking,
             "thinking_mode": "disabled" if no_thinking else "unsupported",
             "shared_prefix_burst": False,
+        },
+        "sampling": {
+            "temperature": {
+                "requested": None,
+                "effective_request": 0.0,
+                "sent": True,
+            },
+            "top_p": {
+                "requested": None,
+                "effective_request": None,
+                "sent": False,
+            },
         },
         "metrics": {"ttft_p50_ms": 10.0},
     }
@@ -287,6 +356,43 @@ def test_compare_detects_thinking_control_difference(tmp_path: Path) -> None:
     assert result["differences"]["no_thinking"] == [False, True]
     assert result["differences"]["thinking_mode"] == ["unsupported", "disabled"]
     assert result["unknown_fields"] == {}
+
+
+def test_compare_rejects_different_or_unrecorded_sampling(tmp_path: Path) -> None:
+    first_raw = _complete_capacity("one", concurrency=5, no_thinking=True)
+    second_raw = _complete_capacity("two", concurrency=5, no_thinking=True)
+    second_raw["sampling"]["temperature"].update(
+        requested=1.0, effective_request=1.0
+    )
+    first = _write(tmp_path / "first.json", first_raw)
+    second = _write(tmp_path / "second.json", second_raw)
+
+    result = benchmark_evidence.compare_artifacts([first, second])
+
+    assert result["comparable"] is False
+    assert result["differences"]["sampling_temperature_effective_request"] == [0.0, 1.0]
+    legacy = _write(
+        tmp_path / "legacy.json",
+        {key: value for key, value in first_raw.items() if key != "sampling"},
+    )
+    legacy_result = benchmark_evidence.compare_artifacts([legacy, first])
+    assert legacy_result["comparable"] is False
+    assert legacy_result["differences"]["sampling_recorded"] == [None, True]
+    assert "protocol.sampling.recorded" in legacy_result["unknown_fields"]
+
+
+def test_invalid_sampler_provenance_is_retained_as_invalid_not_legacy(tmp_path: Path) -> None:
+    raw = _complete_capacity("bad", concurrency=5, no_thinking=True)
+    raw["sampling"]["temperature"].update(
+        requested="1.0", effective_request="1.0"
+    )
+    artifact = _write(tmp_path / "bad.json", raw)
+
+    summary = benchmark_evidence.summarize_artifact(artifact)
+
+    sampling = summary["protocol"]["sampling"]
+    assert sampling["temperature_requested"] == "1.0"
+    assert any(error.startswith("protocol.sampling invalid:") for error in summary["validation_errors"])
 
 
 def test_legacy_quality_status_counts_as_one_attempt(tmp_path: Path) -> None:
@@ -446,7 +552,7 @@ def test_compare_detects_quality_suite_identity_difference(tmp_path: Path) -> No
 
     assert result["comparable"] is False
     assert "suites" in result["differences"]
-    assert result["unknown_fields"] == {}
+    assert "protocol.sampling.recorded" in result["unknown_fields"]
 
 
 def test_quality_compare_requires_immutable_suite_hash(tmp_path: Path) -> None:

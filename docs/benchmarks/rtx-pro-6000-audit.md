@@ -1,11 +1,14 @@
 # RTX PRO 6000 mention audit
 
 This audit classifies every tracked Markdown file containing an RTX PRO 6000
-name at the 2026-09-08 UTC review. Evidence-directory Markdown is classified with
+name at the 2026-09-13 UTC review. Evidence-directory Markdown is classified with
 its own file, not inherited implicitly from the parent finding. This is a
 coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
+
+`docs/findings/2026-09-13-intelligence-context-scout.md`
+(selected GLM text-primary qualification; post-promotion context and client acceptance retained; fresh boot/reboot tests unrun);
 
 `docs/findings/2026-09-11-glm53-v043-native-linux-qualification.md`;
 `docs/findings/2026-09-11-glm53-v043-native-linux-qualification-evidence/README.md`;

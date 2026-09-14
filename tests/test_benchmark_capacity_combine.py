@@ -138,6 +138,85 @@ def test_combine_synchronized_replica_artifacts(tmp_path):
     ).hexdigest()
 
 
+def _sampling(*, temperature=None, top_p=None):
+    return {
+        "temperature": {
+            "requested": temperature,
+            "effective_request": 0.0 if temperature is None else temperature,
+            "sent": True,
+        },
+        "top_p": {
+            "requested": top_p,
+            "effective_request": top_p,
+            "sent": top_p is not None,
+        },
+    }
+
+
+def test_combine_retains_declared_matching_sampling(tmp_path):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    sampling = _sampling(temperature=0.0, top_p=0.95)
+    _artifact(left, sampling=sampling)
+    _artifact(right, sampling=sampling)
+
+    combined = _module().combine([left, right])
+
+    assert combined["sampling"] == sampling
+    assert combined["sampling_identity"]["status"] == "declared-matching"
+
+
+@pytest.mark.parametrize(
+    "right_sampling",
+    (_sampling(temperature=1.0), _sampling(temperature=0.0, top_p=0.95)),
+)
+def test_combine_rejects_different_declared_sampling(tmp_path, right_sampling):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    _artifact(left, sampling=_sampling(temperature=0.0))
+    _artifact(right, sampling=right_sampling)
+
+    with pytest.raises(ValueError, match="sampling differs"):
+        _module().combine([left, right])
+
+
+def test_combine_labels_missing_sampling_as_legacy_unknown_and_rejects_mixing(tmp_path):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    _artifact(left)
+    _artifact(right)
+
+    legacy = _module().combine([left, right])
+    assert "sampling" not in legacy
+    assert legacy["sampling_identity"]["status"] == "legacy-unknown"
+    assert "no temperature or top_p value is inferred" in legacy["sampling_identity"]["limitation"]
+
+    _artifact(right, sampling=_sampling(temperature=0.0))
+    with pytest.raises(ValueError, match="sampling differs"):
+        _module().combine([left, right])
+
+
+@pytest.mark.parametrize(
+    ("sampling", "message"),
+    (
+        ({"temperature": _sampling()["temperature"]}, "temperature and top_p"),
+        ({"temperature": {"requested": 0.0, "effective_request": 1.0, "sent": True},
+          "top_p": _sampling()["top_p"]}, "effective_request is inconsistent"),
+        ({"temperature": _sampling()["temperature"],
+          "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": False}},
+         "sent is inconsistent"),
+    ),
+)
+def test_combine_rejects_invalid_declared_sampling(tmp_path, sampling, message):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    _artifact(left, sampling=sampling)
+    _artifact(right, sampling=sampling)
+
+    with pytest.raises(ValueError, match=message):
+        _module().combine([left, right])
+
+
 def test_combine_rejects_mismatched_workloads(tmp_path):
     left = tmp_path / "left.json"
     right = tmp_path / "right.json"

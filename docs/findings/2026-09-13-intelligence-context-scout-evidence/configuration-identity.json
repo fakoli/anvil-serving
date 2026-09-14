@@ -1,0 +1,21 @@
+{
+  "models": [
+    {
+      "candidate": "GLM Flash EXL3 r7 route2",
+      "model_repo": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "recipe_source_sha256": "c496ca64b00ae136425d2eeb60f929d1b90035dc96fda448e7234d44162fa90a",
+      "runtime_image": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692"
+    },
+    {
+      "candidate": "Qwen Flash-Next EXL3 4.05",
+      "model_repo": "turboderp/Qwen3.8-Flash-Next-exl3",
+      "model_revision": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a",
+      "recipe_source_sha256": "0cf6879853149af4ef23c5408329aefd15da1b40aa2334dbce99c9906440791c",
+      "runtime_image": "sha256:00909876aea02112b75d775bfa50f6d1adac50a3a11918363e7b403d7340d9bc"
+    }
+  ],
+  "redaction_boundary": "Endpoint addresses, private source paths, host identifiers, GPU UUIDs, secret-reference names, host-capacity readings, and reasoning excerpts are replaced or omitted. Model/runtime pins, controls, response status, raw scores, failures, and numeric measurements remain.",
+  "schema": "anvil-serving.public-configuration-identity/v1",
+  "scope": "incomplete 2026-09-13 intelligence and context scout"
+}

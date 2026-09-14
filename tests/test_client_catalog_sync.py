@@ -85,10 +85,13 @@ class _HermesRunner:
         if command[:2] == ["config", "unset"]:
             key = command[2]
             target = self.states[profile]
-            parts = key.split(".")
-            for part in parts[:-1]:
-                target = target[part]
-            target.pop(parts[-1], None)
+            if key in target:
+                target.pop(key)
+            else:
+                parts = key.split(".")
+                for part in parts[:-1]:
+                    target = target[part]
+                target.pop(parts[-1], None)
             self.sets.append((profile, key))
             return self._completed()
         if command == ["config", "check"]:
@@ -227,10 +230,23 @@ def _write_hermes_profiles(root: Path):
     return home, states
 
 
-def _catalog(*, missing_output=False, config_sha=CONFIG_SHA, primary_context=1_048_576):
+def _catalog(
+    *,
+    missing_output=False,
+    config_sha=CONFIG_SHA,
+    primary_context=1_048_576,
+    include_vision=True,
+):
     models = [
         ("primary", ["llm.primary"], primary_context, ["text"], True),
-        ("secondary", ["llm.secondary", "vision.general", "vision.ocr"], 131_072, ["text", "image"], True),
+        (
+            "secondary",
+            ["llm.secondary", "vision.general", "vision.ocr"]
+            if include_vision else ["llm.secondary"],
+            131_072,
+            ["text", "image"] if include_vision else ["text"],
+            True,
+        ),
         ("voice", ["llm.voice"], 32_768, ["text"], False),
         ("aux", ["llm.auxiliary"], 65_536, ["text"], False),
     ]
@@ -1032,6 +1048,99 @@ def test_hermes_profile_sync_repairs_each_anvil_contract_and_skips_external(tmp_
     assert second["changed"] == []
     assert second["backup_created"] is False
     assert second["hermes_restarted"] is False
+
+
+def test_hermes_profile_sync_clears_only_anvil_vision_for_text_only_catalog(tmp_path):
+    _write_inputs(tmp_path)
+    home, states = _write_hermes_profiles(tmp_path)
+    states["anvil-secondary"]["auxiliary.vision"] = {
+        "provider": "cloud-vision",
+        "model": "independent-image-model",
+    }
+    cloud_vision = dict(states["anvil-secondary"]["auxiliary.vision"])
+    runner = _HermesRunner(states)
+
+    applied = sync_clients(
+        base_url="https://router.example.ts.net/v1",
+        clients="hermes",
+        hermes_bin="hermes",
+        hermes_home=str(home),
+        hermes_profiles="all",
+        state_path=str(tmp_path / "state.json"),
+        backup_root=str(tmp_path / "backups"),
+        dry_run=False,
+        confirm=True,
+        environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"},
+        opener=_Opener(*_catalog(primary_context=327_680, include_vision=False)),
+        hermes_run=runner,
+    )
+
+    by_profile = {row["profile"]: row for row in applied["hermes_profiles"]}
+    for profile in ("default", "anvil-primary", "work-profile"):
+        assert "auxiliary.vision" not in states[profile]
+        assert by_profile[profile]["vision_model"] is None
+        assert (profile, "auxiliary.vision") in runner.sets
+    assert states["anvil-secondary"]["auxiliary.vision"] == cloud_vision
+    assert ("anvil-secondary", "auxiliary.vision") not in runner.sets
+    assert states["ox-alpha"]["model"]["provider"] == "openrouter"
+    assert all("vision.general" not in custom["models"]
+               for custom in states["default"]["custom_providers"])
+
+    second = sync_clients(
+        base_url="https://router.example.ts.net/v1",
+        clients="hermes",
+        hermes_bin="hermes",
+        hermes_home=str(home),
+        hermes_profiles="all",
+        state_path=str(tmp_path / "state.json"),
+        backup_root=str(tmp_path / "backups"),
+        dry_run=False,
+        confirm=True,
+        environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"},
+        opener=_Opener(*_catalog(primary_context=327_680, include_vision=False)),
+        hermes_run=runner,
+    )
+    assert second["changed"] == []
+
+
+def test_openclaw_text_only_catalog_removes_only_anvil_image_selection(tmp_path):
+    openclaw_path, _, _ = _write_inputs(tmp_path)
+
+    _run(
+        tmp_path,
+        clients="openclaw",
+        opener=_Opener(*_catalog(include_vision=False)),
+        confirm=True,
+        dry_run=False,
+    )
+
+    rendered = json.loads(openclaw_path.read_text())
+    assert rendered["agents"]["defaults"]["imageModel"] == {
+        "fallbacks": ["other/image"]
+    }
+    anvil_models = rendered["models"]["providers"]["anvil"]["models"]
+    assert all(row["id"] not in {"vision.general", "vision.ocr"}
+               for row in anvil_models)
+    assert rendered["models"]["providers"]["other"] == {"models": [{"id": "other"}]}
+
+
+@pytest.mark.parametrize(("selection", "expected"), [
+    ({"primary": "anvil/vision.general",
+      "fallbacks": ["anvil/vision.ocr", "cloud/image", "other/image"]},
+     {"fallbacks": ["cloud/image", "other/image"]}),
+    ({"primary": "cloud/image", "fallbacks": ["anvil/vision.general", "other/image"]},
+     {"primary": "cloud/image", "fallbacks": ["other/image"]}),
+    ({"primary": "anvil/vision.general", "fallbacks": ["anvil/vision.ocr"]}, None),
+])
+def test_openclaw_text_only_sync_filters_anvil_vision_fallbacks(tmp_path, selection, expected):
+    openclaw_path, _, _ = _write_inputs(tmp_path)
+    config = json.loads(openclaw_path.read_text())
+    config["agents"]["defaults"]["imageModel"] = selection
+    openclaw_path.write_text(json.dumps(config))
+    _run(tmp_path, clients="openclaw", opener=_Opener(*_catalog(include_vision=False)),
+         confirm=True, dry_run=False)
+    rendered = json.loads(openclaw_path.read_text())
+    assert rendered["agents"]["defaults"].get("imageModel") == expected
 
 
 def test_hermes_profile_sync_rejects_unsafe_compaction_before_write(tmp_path):

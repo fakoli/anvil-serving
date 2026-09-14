@@ -1,0 +1,16 @@
+{
+  "frozen": {
+    "added": [],
+    "matches": true,
+    "missing": []
+  },
+  "publish": {
+    "added": [
+      "anvil-serving==1.2.1"
+    ],
+    "matches": false,
+    "missing": [
+      "anvil-serving==1.1.0"
+    ]
+  }
+}

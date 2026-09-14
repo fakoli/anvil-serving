@@ -1,0 +1,167 @@
+{
+  "created_at": "2026-09-14T03:05:26.532538Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "<redacted-secret-reference>",
+      "base_url": "<redacted-local-endpoint>",
+      "model": "llm.primary"
+    },
+    "finished_at": "2026-09-14T03:05:26.532430Z",
+    "started_at": "2026-09-14T02:37:02.901306Z",
+    "submitted_at": "2026-09-14T02:37:02.604660+00:00",
+    "worker": {
+      "id": "<redacted-host>"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-09-14T03:05:26.523601Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "dataset": {
+          "name": "SWE-bench_Verified",
+          "split": "test"
+        },
+        "hardware": {
+          "architecture": "x86_64",
+          "container_capable": true,
+          "free_disk_bytes": "<redacted-host-capacity>",
+          "harness_assets": [],
+          "id": "<redacted-host>",
+          "owned_output_writable": true,
+          "platform": "linux"
+        },
+        "harnesses": {
+          "mini-swe-agent": {
+            "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+            "source": "https://github.com/SWE-agent/mini-swe-agent"
+          },
+          "swe-bench": {
+            "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+            "source": "https://github.com/SWE-bench/SWE-bench"
+          },
+          "swe-bench-verified": {
+            "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+            "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+          },
+          "worker-base": {
+            "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+          }
+        },
+        "image": {
+          "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+          "kind": "image",
+          "reused": true
+        },
+        "model": {
+          "quantization": "EXL3 uniform K4 routed experts; native non-routed weights; FP8 DS-MLA KV",
+          "repo": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+          "revision": "a5fee929cf4888b1824323e33e8a19b60129e025"
+        },
+        "runtime": {
+          "configured_context": 327680,
+          "dcp": 2,
+          "engine": "vllm-glm53-exl3-b12x-v84-fp8-control",
+          "ep": 2,
+          "harness_commit": "a592c4e54bcb3a3b4d2835986e4694ddf2f08b52",
+          "image": "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+          "kv_cache": "fp8_ds_mla",
+          "max_concurrency": 4,
+          "mtp": 0,
+          "reasoning_config": {},
+          "source_commit": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+          "source_recipe": "<redacted-private-path>",
+          "source_recipe_sha256": "030fb4775b70d891f4075f0f42e197eaa60f09b0d98817acc15e4eb3b0550064",
+          "tp": 2
+        },
+        "served_model": {
+          "configured_context": null,
+          "id": "llm.primary"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "<redacted-host>"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "intelligence-context-20260913",
+        "profile": "scout",
+        "run_id": "glm-r7-nospec-swe-thinking49152-r2-frozen",
+        "spec_sha256": "bc64aaf46d98897d33441889e4b71ac2e22601266b96cae647fa6242175ce604",
+        "suite": "swe"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 6345,
+              "path": "evidence/0-assets.json",
+              "sha256": "19b9092217bb66ade7803e147bdbe7b0eb7000151edf54ed0fd6d5f51cd6774d"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2017,
+              "path": "evidence/0-preflight.json",
+              "sha256": "b049f5793a8c8f52dc2cb1b270eb2a01d50f858b03e904a94a345bbd59e9f5e2"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 13229,
+              "path": "evidence/2-swe.json",
+              "sha256": "2bd30a24cc50e6581d5e3ce860f34fd60385978d01a559df0c66a4ca39d75ef7"
+            }
+          ],
+          "name": "swe",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "attempted": 5,
+        "graded": 5,
+        "resolve_rate": 0.8,
+        "resolved": 4
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "intelligence-context-20260913",
+    "profile": "scout",
+    "run_id": "glm-r7-nospec-swe-thinking49152-r2-frozen",
+    "spec_sha256": "bc64aaf46d98897d33441889e4b71ac2e22601266b96cae647fa6242175ce604",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

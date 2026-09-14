@@ -1,0 +1,28 @@
+{
+  "cold_managed_reload": "deployment/promotion.json",
+  "first": [
+    {
+      "container": "intelligence-glm-exl3-327k-r7-nospec",
+      "container_id": "<redacted-identifier>",
+      "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+      "ownership": "retained",
+      "unit": "anvil-glm53.service",
+      "unit_active": true,
+      "unit_enabled": true
+    }
+  ],
+  "fresh_systemd_start_tested": false,
+  "reboot_tested": false,
+  "repeat_retained_same_container": true,
+  "second": [
+    {
+      "container": "intelligence-glm-exl3-327k-r7-nospec",
+      "container_id": "<redacted-identifier>",
+      "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+      "ownership": "retained",
+      "unit": "anvil-glm53.service",
+      "unit_active": true,
+      "unit_enabled": true
+    }
+  ]
+}

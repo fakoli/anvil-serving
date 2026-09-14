@@ -130,6 +130,8 @@ def test_plan_pins_selection_router_and_both_harnesses(tmp_path):
     assert "http://100.64.0.10:8000/v1" in value["config_text"]
     assert "  executable:" in value["config_text"]
     assert "    - --platform\n    - linux/amd64\n" in value["config_text"]
+    assert "    - --network\n    - none\n" in value["config_text"]
+    assert value["task_container_network"] == "none"
     assert value["request_controls"] == {
         "thinking_mode": "default",
         "reasoning_effort": None,
@@ -143,7 +145,33 @@ def test_plan_forwards_and_records_reasoning_effort(tmp_path):
         "thinking_mode": "default",
         "reasoning_effort": "xhigh",
     }
-    assert 'reasoning_effort: "xhigh"' in value["config_text"]
+    assert '    extra_body:\n      reasoning_effort: "xhigh"\n' in value["config_text"]
+    assert '\n    reasoning_effort: "xhigh"\n' not in value["config_text"]
+
+
+def test_plan_records_and_wires_explicit_sampling_to_litellm_model_kwargs(tmp_path):
+    value = plan(
+        tmp_path, request_controls={"temperature": 1.0, "top_p": 0.95}
+    )
+
+    assert value["request_controls"]["sampling"] == {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
+    assert "    temperature: 1.0\n    top_p: 0.95\n" in value["config_text"]
+    assert "extra_body:\n      temperature" not in value["config_text"]
+    assert "extra_body:\n      top_p" not in value["config_text"]
+
+
+@pytest.mark.parametrize("controls", [
+    {"temperature": "1.0"},
+    {"top_p": True},
+])
+def test_plan_rejects_invalid_sampler_request_controls(tmp_path, controls):
+    with pytest.raises(BenchmarkJobError) as exc:
+        plan(tmp_path, request_controls=controls)
+
+    assert exc.value.code == "bad_request_controls"
 
 
 def test_plan_rejects_conflicting_reasoning_controls(tmp_path):

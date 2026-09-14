@@ -1,0 +1,12 @@
+{
+  "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "model_repo": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+  "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "native_kv_offload": false,
+  "recipe_digest": "e920f5bcfddb45b04a65d2239c46c2c89d1bb2ffcc535fff2ac712b32abce110",
+  "registry_digest": "030fb4775b70d891f4075f0f42e197eaa60f09b0d98817acc15e4eb3b0550064",
+  "running": true,
+  "schema": "anvil-serving.sanitized-deployment-recipe-status/v1",
+  "served_identity": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-mtp3-r7-nospec",
+  "state": "running"
+}

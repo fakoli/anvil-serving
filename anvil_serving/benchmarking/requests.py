@@ -163,14 +163,19 @@ def output_contract_observation(
     }
 
 
-def build_body(model, prompt, max_tokens, chat_template_kwargs=None, reasoning_effort=None):
+def build_body(model, prompt, max_tokens, chat_template_kwargs=None, reasoning_effort=None,
+               temperature=None, top_p=None):
     body = {"model": model, "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": max_tokens, "temperature": 0.0, "stream": True,
+            "max_tokens": max_tokens,
+            "temperature": 0.0 if temperature is None else temperature,
+            "stream": True,
             "stream_options": {"include_usage": True}}
     if chat_template_kwargs:
         body["chat_template_kwargs"] = chat_template_kwargs
     if reasoning_effort is not None:
         body["reasoning_effort"] = reasoning_effort
+    if top_p is not None:
+        body["top_p"] = top_p
     return body
 
 
@@ -233,14 +238,15 @@ def validate_function_tool_call(message, expected_name, required_args):
 
 
 def post_chat(base, model, key, messages, max_tokens=128, timeout=120,
-              tools=None, chat_template_kwargs=None, reasoning_effort=None):
+              tools=None, chat_template_kwargs=None, reasoning_effort=None,
+              temperature=None, top_p=None):
     """Non-streaming OpenAI-compatible chat call for smoke/tool probes."""
     url = base.rstrip("/") + "/chat/completions"
     body = {
         "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
-        "temperature": 0.0,
+        "temperature": 0.0 if temperature is None else temperature,
         "stream": False,
     }
     if tools:
@@ -250,6 +256,8 @@ def post_chat(base, model, key, messages, max_tokens=128, timeout=120,
         body["chat_template_kwargs"] = chat_template_kwargs
     if reasoning_effort is not None:
         body["reasoning_effort"] = reasoning_effort
+    if top_p is not None:
+        body["top_p"] = top_p
     headers = {"Content-Type": "application/json"}
     if key:
         headers["Authorization"] = "Bearer " + key
@@ -305,10 +313,12 @@ def detect_max_model_len(base, model=None, key=None, timeout=15):
 
 
 def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
-                chat_template_kwargs=None, reasoning_effort=None):
+                chat_template_kwargs=None, reasoning_effort=None, temperature=None,
+                top_p=None):
     url = base.rstrip("/") + "/chat/completions"
     body = build_body(
-        model, prompt, max_tokens, chat_template_kwargs, reasoning_effort
+        model, prompt, max_tokens, chat_template_kwargs, reasoning_effort,
+        temperature, top_p,
     )
     headers = {"Content-Type": "application/json"}
     if key:

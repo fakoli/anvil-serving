@@ -19,5 +19,9 @@ MAX_BENCHMARK_JOB_SECONDS = 7 * 24 * 60 * 60
 MAX_BENCHMARK_JOB_LOG_ENTRIES = 1000
 MAX_BENCHMARK_JOB_LOG_BYTES = 1024 * 1024
 MAX_BENCHMARK_JOB_LOG_MESSAGE_CHARS = 4096
+# Native suite evidence captures visible and reasoning channels independently at
+# 8 KiB.  Results may retain one complete capture; job input and logs remain
+# capped by MAX_BENCHMARK_JOB_LOG_MESSAGE_CHARS.
+MAX_BENCHMARK_JOB_RESULT_TEXT_CHARS = 8192
 MAX_BENCHMARK_JOB_JSON_DEPTH = 12
 MAX_BENCHMARK_JOB_JSON_ITEMS = 4096

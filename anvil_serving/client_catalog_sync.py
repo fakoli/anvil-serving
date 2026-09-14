@@ -378,6 +378,24 @@ def _render_openclaw_document(catalog: Mapping, openclaw: Mapping) -> dict:
                 image_model["primary"] = "anvil/vision.general"
         elif not isinstance(image_model, str) or image_model.startswith("anvil/"):
             defaults["imageModel"] = {"primary": "anvil/vision.general"}
+    else:
+        image_model = defaults.get("imageModel")
+        if isinstance(image_model, dict):
+            primary = image_model.get("primary")
+            if isinstance(primary, str) and primary.startswith("anvil/"):
+                image_model.pop("primary")
+            fallbacks = image_model.get("fallbacks")
+            if isinstance(fallbacks, list):
+                retained = [item for item in fallbacks
+                            if not (isinstance(item, str) and item.startswith("anvil/"))]
+                if retained:
+                    image_model["fallbacks"] = retained
+                else:
+                    image_model.pop("fallbacks")
+            if not image_model:
+                defaults.pop("imageModel")
+        elif isinstance(image_model, str) and image_model.startswith("anvil/"):
+            defaults.pop("imageModel")
     compaction_models = [
         models[alias]
         for alias in openclaw_aliases
@@ -993,10 +1011,16 @@ def render_hermes_profile_plan(
         )
 
     vision = models.get("vision.general")
-    if not isinstance(vision, Mapping) or "image" not in vision.get("input", []):
-        raise ClientCatalogError("router has no image-capable vision.general alias")
-    vision_current = current.get("auxiliary.vision")
-    vision_current = vision_current if isinstance(vision_current, Mapping) else {}
+    vision_available = (
+        isinstance(vision, Mapping) and "image" in vision.get("input", [])
+    )
+    raw_vision_current = current.get("auxiliary.vision")
+    if raw_vision_current is not None and not isinstance(raw_vision_current, Mapping):
+        raise ClientCatalogError(
+            "Hermes profile %s auxiliary vision configuration must be a table"
+            % profile
+        )
+    vision_current = raw_vision_current or {}
     compression_current = current.get("auxiliary.compression")
     compression_current = (
         compression_current if isinstance(compression_current, Mapping) else {}
@@ -1004,19 +1028,30 @@ def render_hermes_profile_plan(
     updates = {
         "model.context_length": selected["context_window"],
         "model.max_tokens": selected["max_output_tokens"],
-        "auxiliary.vision.provider": "anvil",
-        "auxiliary.vision.model": "vision.general",
         "auxiliary.compression.context_length": selected["context_window"],
     }
     current_values = {
         "model.context_length": model.get("context_length"),
         "model.max_tokens": model.get("max_tokens"),
-        "auxiliary.vision.provider": vision_current.get("provider"),
-        "auxiliary.vision.model": vision_current.get("model"),
         "auxiliary.compression.context_length": compression_current.get(
             "context_length"
         ),
     }
+    unsets = []
+    if vision_available:
+        updates.update({
+            "auxiliary.vision.provider": "anvil",
+            "auxiliary.vision.model": "vision.general",
+        })
+        current_values.update({
+            "auxiliary.vision.provider": vision_current.get("provider"),
+            "auxiliary.vision.model": vision_current.get("model"),
+        })
+    elif vision_current.get("provider") == "anvil":
+        # The router is authoritative for Anvil aliases. Remove only the stale
+        # Anvil-owned auxiliary block; an independently selected cloud vision
+        # provider remains outside this reconciler's ownership.
+        unsets.append("auxiliary.vision")
 
     providers = current.get("providers")
     provider_config = (
@@ -1057,7 +1092,6 @@ def render_hermes_profile_plan(
             "providers.%s.models" % provider: old_provider_models,
         }
     )
-    unsets = []
     extra_body = provider_config.get("extra_body")
     if isinstance(extra_body, Mapping) and "chat_template_kwargs" in extra_body:
         remaining_extra_body = dict(extra_body)
@@ -1125,8 +1159,8 @@ def render_hermes_profile_plan(
             "threshold": threshold,
             "target_ratio": target_ratio,
         },
-        "vision_model": "vision.general",
-        "vision_context_window": vision["context_window"],
+        "vision_model": "vision.general" if vision_available else None,
+        "vision_context_window": vision["context_window"] if vision_available else None,
         "changed_keys": changed_keys,
         "updates": {key: updates[key] for key in changed_update_keys},
         "unsets": unsets,

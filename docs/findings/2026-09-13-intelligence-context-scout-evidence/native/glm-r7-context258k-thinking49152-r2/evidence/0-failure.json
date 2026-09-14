@@ -1,0 +1,4 @@
+{
+  "code": "bad_spec",
+  "message": "results.evidence.summary.buckets[0].samples[3].raw_reasoning contains invalid or oversized text"
+}

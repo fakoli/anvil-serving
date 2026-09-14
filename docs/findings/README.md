@@ -14,7 +14,7 @@ chronological evidence index. Newest first.
 
 ## Policy
 
-Latest runtime decision: [GLM v0.4.3 qualification](2026-09-11-glm53-v043-native-linux-qualification.md) — dated native 524K/C4 qualification and promotion acceptance; 14/14 Pi tasks, output cap remains 4K.
+Latest runtime decision: [GLM Flash EXL3 327K intelligence and context qualification](2026-09-13-intelligence-context-scout.md) — selected text-only primary; post-promotion 258K context 9/9, bounded Pi/Hermes/OpenClaw acceptance, and explicit Qwen rollback boundary.
 
 Latest bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
 
@@ -64,7 +64,9 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-09-13 | [GLM Flash EXL3 327K intelligence and context qualification](2026-09-13-intelligence-context-scout.md) | Selected text-only primary after fixed quality, 258K context, agentic, SWE, promotion, and bounded client acceptance; Qwen rollback declared, fresh boot/reboot tests unrun |
 | 2026-09-12 | [Qwen3.8 efficient variants on RTX 5090](2026-09-12-qwen38-efficient-variants-rtx5090.md) | Four pinned fine-tuned/pruned variants plus no-spec controls; all functional gates pass, strict output and bounded quality failures retained; Signal/Swift9/10 versus incumbent8/10 on ten questions, but no qualified replacement; exact262K incumbent restored |
+| 2026-09-11 | [GLM v0.4.3 qualification](2026-09-11-glm53-v043-native-linux-qualification.md) | Historical native 524K/C4 qualification and promotion acceptance; 14/14 Pi tasks at the then-current 4K output cap |
 | 2026-09-08 | [M4 Max local voice refresh](2026-09-08-m4-max-voice-refresh.md) | Historical same-host MLX candidate evidence published September 12: strict output/tool/JSON failures retained, no LLM promotion, separate Kokoro runtime-update receipt; no current deployment claim |
 | 2026-09-09 | [GLM-5.3-Flash ormandj v0.4.2 runtime qualification](2026-09-09-glm53-ormandj-v042.md) | Pinned candidate runtime has faster bounded 4K/120K matched cells and direct gates, but strict 60-request turnover remains 58/60 then 57/60; user selected `retain-baseline/no-promotion` and the exact baseline was restored |
 | 2026-09-09 | [GLM-5.3-Flash native NCCL P2P transport A/B](2026-09-09-glm53-native-nccl-p2p.md) | P2P enabled on the pinned native TP2/C1 profile after bounded 4K/120K latency evidence and routed restoration; both 380K strict capacity cells and the raw PowerShell diagnostic marker failure remain explicit limitations |
