@@ -80,7 +80,7 @@
           "kv_cache": "Q8",
           "source_recipe": "private-recipe-sha256:0cf6879853149af4ef23c5408329aefd15da1b40aa2334dbce99c9906440791c",
           "source_recipe_sha256": "0cf6879853149af4ef23c5408329aefd15da1b40aa2334dbce99c9906440791c",
-          "tabbyapi_source_commit": "de76ff88991477639a6a7f88c2d116f18c2ca24f",
+          "tabbyapi_source_commit": "<redacted-runtime-source-commit>",
           "tp": 1,
           "wheel_sha256": "d8f5b483ca882c52d79a73c059b508c666663a68b4c60e420ca489e654e8104a"
         },

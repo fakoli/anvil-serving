@@ -80,8 +80,8 @@
         },
         {
           "path": "redaction-provenance.json",
-          "sha256": "f0bf773fb5e3a82fe4753fde8365fcda7626707b4c0657ff84daeda3dfae7378",
-          "bytes": 24916
+          "sha256": "75b07b00da032df8873c947f81dc091462e1ccdd62e4f5f7f9ef56996e3916ea",
+          "bytes": 24942
         }
       ],
       "reason": "Public-safe model/runtime pins, private-origin source digests, and the field-redaction audit are retained."
@@ -222,8 +222,8 @@
         },
         {
           "path": "native/next/next405-agentic-deep30-262k-r1/artifact.json",
-          "sha256": "48888d10f8d033838cc484970e44fd1dbdd9f61b54a5eed06e736724530edc43",
-          "bytes": 4671
+          "sha256": "5ba8c21c8c6f59c16b60a1a89d36552bad465fa13661fccfd20db6efeca03adc",
+          "bytes": 4663
         },
         {
           "path": "native/next/next405-agentic-deep30-262k-r1/evidence/0-agentic.json",
@@ -242,8 +242,8 @@
         },
         {
           "path": "native/next/next405-context-native192k-262k-r1/artifact.json",
-          "sha256": "72db13d3d6045bbc4cac52c9ba0a8c3e08a98b6cc856d1ad71e91182fd8250ca",
-          "bytes": 23649
+          "sha256": "489245386fbea7ee920ccf724d78485b560fe4bdd6aa74789f57f9c076a62efe",
+          "bytes": 23641
         },
         {
           "path": "native/next/next405-context-native192k-262k-r1/evidence/0-assets.json",
@@ -272,8 +272,8 @@
         },
         {
           "path": "native/next/next405-swe-scout-r2/artifact.json",
-          "sha256": "31c8d4367ace66dd85073db7111e7f79782cac1e7eed973ab2306cf0221ca07c",
-          "bytes": 5450
+          "sha256": "be902fc7ca784d5f0fb83117a3c5674b1a109c2c9920edfa6f3bd4716c8ebd67",
+          "bytes": 5442
         },
         {
           "path": "native/next/next405-swe-scout-r2/evidence/0-assets.json",

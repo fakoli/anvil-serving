@@ -1,17 +1,17 @@
 {
   "mutation": "Publication sanitization only; no serving, routing, model, or benchmark execution action.",
-  "policy": "Endpoint addresses, private source paths, host identifiers, GPU UUIDs, secret-reference names, host-capacity readings, and reasoning excerpts are replaced or omitted. Model/runtime pins, controls, response status, raw scores, failures, and numeric measurements remain.",
+  "policy": "Endpoint addresses, filesystem paths, host identifiers, GPU UUIDs, secret-reference names, host-capacity readings, request identifiers, and reasoning/response excerpts are replaced or omitted. Model/runtime pins, controls, response status, raw scores, failures, and numeric measurements remain.",
   "redaction_counts": {
     "context_response": 368,
     "endpoint": 58,
     "gpu_identifier": 34,
     "host_capacity": 19,
     "host_identifier": 57,
-    "private_path": 143,
+    "private_path": 146,
     "private_source_recipe_path": 35,
     "reasoning_excerpt": 637,
     "request_identifier": 163,
-    "secret_reference": 14
+    "secret_reference": 17
   },
   "schema": "anvil-serving.public-evidence-redaction/v1",
   "scope": "2026-09-13 intelligence and context scout; incomplete publication bundle",
