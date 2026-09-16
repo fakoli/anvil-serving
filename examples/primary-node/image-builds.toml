@@ -1,0 +1,12 @@
+# Build separately from serve startup so resource limits apply to every build.
+# Keep image equal to the Compose image; update both when using a private override.
+schema = "anvil-serving.image-builds/v1"
+
+[builds.media-worker]
+context = "."
+dockerfile = "Dockerfile.comfyui"
+image = "anvil-comfyui:0.35.2-cu130-ltx25-20260915"
+cpus = 2
+memory_mib = 8192
+platform = "linux/amd64"
+timeout_seconds = 7200

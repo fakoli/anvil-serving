@@ -1,6 +1,7 @@
 import io
 import json
 import urllib.error
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -42,6 +43,7 @@ def inventory(workflow):
         "/models/text_encoders": [],
         "/models/vae": [],
         "/models/checkpoints": [],
+        "/models/latent_upscale_models": [],
     }
     values.update({f"/object_info/{name}": {name: {}} for name in workflow.required_nodes})
     return values
@@ -77,6 +79,24 @@ def test_missing_node_is_normalized_without_private_metadata():
     assert result.missing_nodes == ("SaveImage",)
     assert result.reasons == ("missing_node",)
     assert "127.0.0.1" not in repr(result.as_public_dict())
+
+
+def test_compatibility_includes_latent_upscale_model_inventory():
+    workflow = replace(
+        WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1"),
+        required_models=("latent-upscale.safetensors",),
+    )
+    values = inventory(workflow)
+    values["/models/diffusion_models"] = []
+    values["/models/latent_upscale_models"] = ["latent-upscale.safetensors"]
+
+    result = ComfyUIClient(
+        "http://127.0.0.1:8188",
+        opener=opener_for(values, []),
+    ).compatibility(workflow, qualification=True)
+
+    assert result.available is True
+    assert result.missing_models == ()
 
 
 def test_oversized_metadata_fails_closed():

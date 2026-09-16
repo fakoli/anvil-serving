@@ -264,20 +264,27 @@ def qualify(
     queue_running = queue_before["running"]
     queue_pending = queue_before["pending"]
     samples = 1
+    captured_outputs: dict[tuple[str, str, str, str], MediaArtifact] = {}
 
     def capture(current, output) -> MediaArtifact | None:
         if output.node not in descriptor.output_nodes:
             return None
         if len(descriptor.output_mime_types) != 1:
             raise MediaError("media_qualification_artifact", "workflow output MIME mapping is ambiguous")
+        output_key = (output.node, output.filename, output.subfolder, output.storage_type)
+        if output_key in captured_outputs:
+            return captured_outputs[output_key]
         payload = backend.fetch_output(output, max_bytes=descriptor.max_artifact_bytes)
-        return artifacts.ingest(
+        media_type = descriptor.output_mime_types[0]
+        artifact = artifacts.ingest(
             current,
             io.BytesIO(payload),
-            media_type=descriptor.output_mime_types[0],
+            media_type=media_type,
             max_bytes=descriptor.max_artifact_bytes,
             retention_seconds=descriptor.retention_seconds,
         )
+        captured_outputs[output_key] = artifact
+        return artifact
 
     reconciler = MediaJobReconciler(
         jobs,
@@ -288,15 +295,48 @@ def qualify(
     )
     deadline = started + descriptor.timeout_seconds
     while job.state not in TERMINAL_STATES:
+        if monotonic() >= deadline:
+            raise MediaError(
+                "media_qualification_timeout",
+                "media workflow qualification exceeded its declared timeout",
+                status=504,
+                details={"jobId": job.id, "state": job.state.value},
+            )
         used, observed_total = _gpu_memory_mib(gpu_index, runner=gpu_runner)
         if observed_total != total_vram:
             raise MediaError("media_qualification_gpu", "GPU total memory changed during qualification")
         peak_used = max(peak_used, used)
-        queue = backend.queue()
-        queue_running = max(queue_running, queue["running"])
-        queue_pending = max(queue_pending, queue["pending"])
-        samples += 1
-        job = reconciler.reconcile(job)
+        try:
+            queue = backend.queue()
+            queue_running = max(queue_running, queue["running"])
+            queue_pending = max(queue_pending, queue["pending"])
+            samples += 1
+            job = reconciler.reconcile(job)
+        except MediaError as exc:
+            # Once ComfyUI has accepted the prompt, model loading can briefly
+            # make its status endpoints unavailable.  Keep the durable job and
+            # retry only that explicitly transient condition until its declared
+            # workflow deadline; other backend failures remain fail-closed.
+            if exc.code != "backend_unavailable":
+                raise
+            job = jobs.get(job.id, principal=principal)
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                raise MediaError(
+                    "media_qualification_timeout",
+                    "media workflow qualification exceeded its declared timeout",
+                    status=504,
+                    details={"jobId": job.id, "state": job.state.value},
+                ) from exc
+            sleep(min(poll_seconds, remaining))
+            continue
+        if monotonic() >= deadline:
+            raise MediaError(
+                "media_qualification_timeout",
+                "media workflow qualification exceeded its declared timeout",
+                status=504,
+                details={"jobId": job.id, "state": job.state.value},
+            )
         if job.state in TERMINAL_STATES:
             break
         if monotonic() >= deadline:

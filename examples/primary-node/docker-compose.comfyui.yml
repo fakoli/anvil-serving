@@ -13,7 +13,7 @@ name: anvil-comfyui
 
 services:
   comfyui:
-    image: ${COMFYUI_IMAGE:-anvil-comfyui:0.33.4-cu130-addons-20260827}
+    image: ${COMFYUI_IMAGE:-anvil-comfyui:0.35.2-cu130-ltx25-20260915}
     build:
       context: .
       dockerfile: Dockerfile.comfyui
@@ -53,7 +53,7 @@ services:
       COMFYUI_PORT: "8188"
       # 32 GiB reference envelope: reserve 4 GiB from ComfyUI and declare the
       # matching 28672 MiB reservation in serves.comfyui.toml.
-      COMFYUI_EXTRA_ARGS: ${COMFYUI_EXTRA_ARGS:---reserve-vram 4}
+      COMFYUI_EXTRA_ARGS: ${COMFYUI_EXTRA_ARGS:---reserve-vram 4 --temp-directory /app/runtime}
     deploy:
       resources:
         reservations:

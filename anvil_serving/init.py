@@ -112,6 +112,7 @@ _SCAFFOLD_TEMPLATES = (
     ("example.toml", "example.toml", "configs/example.toml"),
     ("example-docker.toml", "example-docker.toml", "configs/example-docker.toml"),
     ("host.toml", "host.toml", "configs/host.example.toml"),
+    ("image-builds.toml", "image-builds.toml", "examples/primary-node/image-builds.toml"),
     ("serve-recipes.toml", "serve-recipes.toml", "configs/serve-recipes.toml"),
     ("serves.toml", "serves.toml", "examples/primary-node/serves.toml"),
     ("services.toml", "services.toml", "examples/primary-node/services.toml"),
@@ -907,6 +908,7 @@ def _main_home(a):
     print("Next steps (zero hand-assembly):")
     print("  1. %s   # then fill in secrets" % _copy_env_command(result["out_dir"]))
     print("  2. anvil-serving serves groups          # see the resolvable groups")
+    print("     For media, first: anvil-serving host docker-image build media-worker --confirm")
     print("  3. anvil-serving serves up --group voice   # (or llm-stack / comfy / ...)")
     print("  4. anvil-serving serves status")
     router_path = os.path.join(result["out_dir"], "router.toml")

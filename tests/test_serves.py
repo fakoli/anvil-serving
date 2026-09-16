@@ -807,7 +807,7 @@ def test_shipped_comfyui_manifest_on_demand_tenant():
     # target and mirrors any co-resident reservations.
     assert comfyui["vram_mib"] == 28672
     # The app-version pin travels in the label so `serves status` shows what runs.
-    assert comfyui["model"] == "comfyui-v0.33.4"
+    assert comfyui["model"] == "comfyui-v0.35.2-ltx25"
     # Own compose project, own compose file — never the shared docker-compose.yml.
     assert "docker-compose.comfyui.yml" in " ".join(comfyui["up"])
     assert set(by_name) == {"media-worker"}
