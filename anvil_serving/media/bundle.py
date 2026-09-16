@@ -167,6 +167,13 @@ def _asset_probe(
     }
     if completed.returncode == 44:
         return result
+    if completed.returncode == 125 and "no such image:" in completed.stderr.lower():
+        raise MediaError(
+            "media_bundle_helper_missing",
+            "the pinned verification image is not cached; run media bundle stage --dry-run, then --confirm",
+            status=503,
+            details={"image": image},
+        )
     if completed.returncode != 0:
         raise MediaError(
             "media_bundle_inventory_failed",
@@ -370,13 +377,45 @@ def stage(
         raise MediaError("media_bundle_invalid", "media staging ownership or headroom is invalid")
     lock = _read_lock(lock_path)
     workflow = _workflow(lock, workflow_id, version)
-    before = inventory(
-        workflow_id,
-        version,
-        lock_path=lock_path,
-        models_volume=model_volume,
-        runner=runner,
-    )
+    try:
+        before = inventory(
+            workflow_id, version, lock_path=lock_path,
+            models_volume=model_volume, runner=runner,
+        )
+    except MediaError as exc:
+        if exc.code != "media_bundle_helper_missing":
+            raise
+        image = lock["staging"]["container"]
+        if dry_run:
+            # Until the verifier is cached, existing files are unknown, not
+            # missing. Confirmed staging must inventory before any volume write.
+            return {
+                "schema": "anvil-serving.media-bundle-stage/v1",
+                "workflow": {"id": workflow_id, "version": version, "graphSha256": workflow["graph_sha256"]},
+                "modelsVolume": model_volume,
+                "userVolume": output_volume,
+                "dryRun": True,
+                "helperImage": image,
+                "helperPullRequired": True,
+                "inventoryDeferred": True,
+                "missingBytes": None,
+                "missingTargets": None,
+                "applied": False,
+                "ready": False,
+            }
+        pulled = _run(
+            ["docker", "pull", image], runner=runner,
+            error_code="media_bundle_stage_failed",
+        )
+        if pulled.returncode != 0:
+            raise MediaError(
+                "media_bundle_stage_failed", "could not pull the pinned media verification image",
+                status=503, details={"image": image, "exitCode": pulled.returncode},
+            )
+        before = inventory(
+            workflow_id, version, lock_path=lock_path,
+            models_volume=model_volume, runner=runner,
+        )
     mismatches = [item["target"] for item in before["assets"] if item["state"] == "mismatch"]
     if mismatches:
         raise MediaError(

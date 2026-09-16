@@ -1,0 +1,8 @@
+{
+  "schema": "anvil-serving.media-perceptual-review/v1",
+  "reviewer": {"model": "gpt-5.6-sol", "independent_of_generators": true, "independent_of_evidence_author": true},
+  "image": {"status": "pass", "scope": "one image", "observations": "Recognizable anvil, wooden bench, warm workshop, sparks, dramatic side light, no text; rough pitted metal differs from brushed steel."},
+  "video_v1": {"status": "fail", "reviewed_frames": [0, 16, 32], "observations": "Requested red teapot/table/steam unrecognizable in all sampled frames; saturated color smearing, block artifacts, incoherent structure.", "temporal_review": "not_performed"},
+  "recommendation": "do_not_promote",
+  "promoted": false
+}

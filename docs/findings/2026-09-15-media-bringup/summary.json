@@ -1,0 +1,73 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-15-media-bringup",
+  "complete": true,
+  "identity": {
+    "repository_revision": "2b99e335",
+    "dirty_state": "13 pre-existing dirty files",
+    "hardware": "one RTX 5090, 32607 MiB"
+  },
+  "workload": {
+    "image": "high 1024x1024, four steps, seed 915",
+    "video": {
+      "v1": "512x288/33 frames/20 steps",
+      "v2_small": "512x288/33 frames/20 steps",
+      "v2_standard": "832x480/49 frames/30 steps",
+      "common": "16 fps, seed 915, concurrency one"
+    }
+  },
+  "measurement": {
+    "path": "direct managed media worker",
+    "warm_cold_state": "v1/v2 small followed image-model caching; v2 standard followed Wan caching",
+    "sample_count": "one per configuration",
+    "statistics": []
+  },
+  "gates": [
+    "image completed with PNG integrity verification",
+    "one-image independent review passed with minor metal-material mismatch",
+    "Wan v1 independent review failed frames 0, 16, and 32",
+    "Wan v2 small review partial at frames 0, 16, and 32",
+    "Wan v2 standard review partial at frames 0, 24, and 48",
+    "worker final running state retained separately"
+  ],
+  "headline_results": [
+    "image: 1475793-byte 1024x1024 PNG",
+    "Wan v1: 124646-byte MP4, quality failed",
+    "Wan v2 small: 68494-byte MP4, quality partial",
+    "Wan v2 standard: 153208-byte MP4, quality partial"
+  ],
+  "failures": [
+    "explicit serves status rejected valid media topology/runtime with model-serve zero declared owners"
+  ],
+  "limitations": [
+    "no latency or throughput comparison",
+    "image status refresh latency is not generation latency",
+    "video derived-image identity was not independently verified",
+    "Wan v2 remains experimental and unavailable; temporal quality was not assessed"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "compatibility-only",
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "broader independent spatial and temporal video quality review; any graph change requires a new immutable version; availability requires a human gate"
+  },
+  "evidence": [
+    "image-job.json",
+    "image-replay.json",
+    "artifact-owner-refusal.json",
+    "video-qualification.json",
+    "independent-review-v1.json",
+    "video-v2-qualification.json",
+    "independent-review-v2.json",
+    "video-v2-standard-qualification.json",
+    "independent-review-v2-standard.json",
+    "final-status.json",
+    "restoration.json"
+  ]
+}

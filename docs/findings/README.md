@@ -18,6 +18,8 @@ Latest runtime decision: [GLM Flash EXL3 327K intelligence and context qualifica
 
 Latest bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
 
+Latest media bringup: [managed Anvil Media bringup](2026-09-15-media-bringup.md), 2026-09-15 — fixed image smoke and Wan v1/v2 functional diagnostics; Wan remains unavailable pending quality.
+
 These findings remain public as durable evidence under
 [ADR-0027](../adr/0027-public-findings-are-durable-evidence.md). A later benchmark or ADR can
 supersede a recommendation, but it does not erase the historical observation or move its
@@ -183,7 +185,7 @@ path and public-artifact audit remains tracked by
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-option-live.md](2026-07-openclaw-anvil-voice-option-live.md) | OpenClaw Anvil Voice live validation |
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-option-live.json](2026-07-openclaw-anvil-voice-option-live.json) | Raw T008 live-validation result record (pass, Companion Node) |
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-option.md](2026-07-openclaw-anvil-voice-option.md) | OpenClaw Anvil Voice option discovery |
-| 2026-07-06 | [2026-07-openclaw-anvil-voice-gateway-smoke.json](2026-07-openclaw-anvil-voice-gateway-smoke.json) | Raw T008 gateway smoke run output (temporary Mini gateway) |
+| 2026-07-06 | [2026-07-openclaw-anvil-voice-gateway-smoke.json](2026-07-openclaw-anvil-voice-gateway-smoke.json) | Sanitized T008 gateway smoke result |
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-gateway-status.json](2026-07-openclaw-anvil-voice-gateway-status.json) | OpenClaw gateway/service status snapshot (Companion Node) |
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-mini-validation.json](2026-07-openclaw-anvil-voice-mini-validation.json) | Companion Node host-identity validation snapshot |
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-plugin-inspect.json](2026-07-openclaw-anvil-voice-plugin-inspect.json) | Anvil Voice plugin runtime inspect output |

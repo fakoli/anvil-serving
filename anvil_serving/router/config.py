@@ -467,23 +467,8 @@ _MEDIA_SCOPES = frozenset(
 )
 
 
-def load_server_config(path: str) -> ServerConfig:
-    """Load + validate the optional ``[server]`` table of the TOML config at ``path``.
-
-    No ``[server]`` table, or one with no ``auth_env`` key, yields
-    ``ServerConfig(auth_env=None)`` — auth OFF. Never reads ``os.environ``:
-    only the env-var NAME shape is validated here (same rules as a tier's
-    ``auth_env``), never the secret literal.
-    """
-    path = os.path.expanduser(path)
-    try:
-        with open(path, "rb") as f:
-            data = tomllib.load(f)
-    except OSError as e:
-        raise ConfigError(f"cannot read router config {path!r}: {e}") from e
-    except tomllib.TOMLDecodeError as e:
-        raise ConfigError(f"invalid TOML in router config {path!r}: {e}") from e
-
+def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
+    """Validate the optional ``[server]`` table from one parsed config snapshot."""
     server = data.get("server")
     if server is None:
         return ServerConfig()
@@ -587,6 +572,25 @@ def load_server_config(path: str) -> ServerConfig:
         trace_export_url=trace_export_url,
         **durations,
     )
+
+
+def load_server_config(path: str) -> ServerConfig:
+    """Load + validate the optional ``[server]`` table of the TOML config at ``path``.
+
+    No ``[server]`` table, or one with no ``auth_env`` key, yields
+    ``ServerConfig(auth_env=None)`` — auth OFF. Never reads ``os.environ``:
+    only the env-var NAME shape is validated here (same rules as a tier's
+    ``auth_env``), never the secret literal.
+    """
+    path = os.path.expanduser(path)
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+    except OSError as e:
+        raise ConfigError(f"cannot read router config {path!r}: {e}") from e
+    except tomllib.TOMLDecodeError as e:
+        raise ConfigError(f"invalid TOML in router config {path!r}: {e}") from e
+    return _parse_server_config(data, path)
 
 
 def _normalized_replica_endpoint(value: object, label: str) -> tuple[str, str, int, str]:
@@ -1464,7 +1468,9 @@ def _parse_audio_route(raw: object) -> AudioRoute:
     )
 
 
-def _parse_router_config(data: Mapping[str, Any], path: str) -> RouterConfig:
+def _parse_router_config(
+    data: Mapping[str, Any], path: str, *, media_gateway_enabled: bool = False
+) -> RouterConfig:
     router = data.get("router")
     if not isinstance(router, dict):
         raise ConfigError(f"no [router] block in {path}")
@@ -1483,17 +1489,20 @@ def _parse_router_config(data: Mapping[str, Any], path: str) -> RouterConfig:
         seen_ids.add(tier.id)
         tiers.append(tier)
 
-    if not tiers:
+    if not tiers and not media_gateway_enabled:
         raise ConfigError(f"[router].tiers is empty in {path}")
 
     # ``model_routes`` is the complete chat vocabulary.  Each capability alias selects
     # exactly one local tier; there is no inferred/preset fallback path.
     raw_model_routes = router.get("model_routes")
     if not isinstance(raw_model_routes, dict):
-        raise ConfigError(
-            f"[router].model_routes must be a non-empty table in {path}"
-        )
-    if not raw_model_routes:
+        if media_gateway_enabled and raw_model_routes is None:
+            raw_model_routes = {}
+        else:
+            raise ConfigError(
+                f"[router].model_routes must be a non-empty table in {path}"
+            )
+    if not raw_model_routes and not media_gateway_enabled:
         raise ConfigError(f"[router].model_routes must declare at least one capability alias in {path}")
 
     model_routes: dict[str, str] = {}
@@ -1727,7 +1736,12 @@ def _load_bytes(raw: bytes, path: str) -> RouterConfig:
         data = tomllib.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise ConfigError(f"invalid TOML in router config {path!r}: {exc}") from exc
-    return _parse_router_config(data, path)
+    server_config = _parse_server_config(data, path)
+    return _parse_router_config(
+        data,
+        path,
+        media_gateway_enabled=server_config.media_principal is not None,
+    )
 
 
 def load_bytes(raw: bytes) -> RouterConfig:

@@ -69,6 +69,8 @@ def _gpu_runner(argv, **_kwargs):
 
 
 class _VideoBackend:
+    base_url = "http://127.0.0.1:8188"
+
     def compatibility(self, workflow, *, qualification=False):
         assert qualification is True
         return WorkflowCompatibility(workflow.id, workflow.version, True, True)

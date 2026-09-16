@@ -1,0 +1,229 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-15-media-bringup",
+    "capability": "MEDIA",
+    "repository_revision": "2b99e335",
+    "dirty_state": "13 pre-existing dirty files",
+    "started_at": "2026-09-15T09:04:25.904167+00:00",
+    "completed_at": "2026-09-16T03:08:37.7984675Z",
+    "evidence_labels": [
+      "functional",
+      "compatibility-only",
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "completion_note": "Publication finalization time; exact end of the original live run was not recorded."
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.media-qualification/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "4442a5d26b93197e33b990d29d3a729ec8c5ab44c35095cbc5d0328dd79011f6",
+          "bytes": 2362
+        }
+      ],
+      "reason": "sanitized bundle index"
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "717b08f67796cdd01856131e5783ba30d39dda88ff09bcb4ea5d3d967809325d",
+          "bytes": 1599
+        },
+        {
+          "path": "redaction-provenance.json",
+          "sha256": "adea854e41dabef777c8a0ba11bc73b2adc7ece4fd9a9c0afffac06e6f5cd8e3",
+          "bytes": 918
+        }
+      ],
+      "reason": "official graph references"
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload.json",
+          "sha256": "f958dc1c378725c7f37a305f5df56dccd0018b6071c93cd7ccbb3fe5cad6fe0b",
+          "bytes": 926
+        }
+      ],
+      "reason": "reconstructed retained CLI request inputs"
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "campaign-state.json",
+          "sha256": "5c55857aba54386cb662d41b58ef5fe5fb35c285af3485875e44788a47ac8d4f",
+          "bytes": 1706
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "4baa793dd8735f4664f5efd21867586436567fc816cf43d1172ff6e06df7beec",
+          "bytes": 896
+        },
+        {
+          "path": "dispatch-packet.md",
+          "sha256": "3f982d06c67c546e2e164801b26b5a7e95c1d1dda442e2fb5e722808b1c27cca",
+          "bytes": 950
+        }
+      ],
+      "reason": "campaign controls"
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "video-qualification.json",
+          "sha256": "2422d2240d8a6970dcf7f1d609b28500daaf9d82c194ed4d5037a668dd37441c",
+          "bytes": 3944
+        },
+        {
+          "path": "video-v2-qualification.json",
+          "sha256": "9308652ad295c63576869643ab638b0af3024f569056afaa915ba99de8eff49f",
+          "bytes": 3942
+        },
+        {
+          "path": "video-v2-standard-qualification.json",
+          "sha256": "a0082ce07ce9871310808397b657d2245d5d09c01b5bbb8daac3e480e08dcede",
+          "bytes": 3945
+        },
+        {
+          "path": "final-status.json",
+          "sha256": "c2aa8bbe1e5b350f5996f2f883bf91e728b9a14dd4c2f6d4569b7f5dabba786a",
+          "bytes": 281
+        }
+      ],
+      "reason": "Public runtime/model identity and sanitized health projection; actual topology is private."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "image-job.json",
+          "sha256": "13b2e8aadedae83ae06426ce5d0da3ccedfe9de79758a6f45175930cc1c207cb",
+          "bytes": 1138
+        },
+        {
+          "path": "image-replay.json",
+          "sha256": "247fc9037247f717b9148af14b9d7133dc869ca45913a015e73dfc0ed90e2c31",
+          "bytes": 1705
+        },
+        {
+          "path": "artifact-owner-refusal.json",
+          "sha256": "dfe87109280fcc230d216a7223ea56d3c3e83b103a72ccb65a6a1a2dc23c10be",
+          "bytes": 827
+        },
+        {
+          "path": "video-qualification.json",
+          "sha256": "2422d2240d8a6970dcf7f1d609b28500daaf9d82c194ed4d5037a668dd37441c",
+          "bytes": 3944
+        },
+        {
+          "path": "video-v2-qualification.json",
+          "sha256": "9308652ad295c63576869643ab638b0af3024f569056afaa915ba99de8eff49f",
+          "bytes": 3942
+        },
+        {
+          "path": "video-v2-standard-qualification.json",
+          "sha256": "a0082ce07ce9871310808397b657d2245d5d09c01b5bbb8daac3e480e08dcede",
+          "bytes": 3945
+        },
+        {
+          "path": "independent-review-v1.json",
+          "sha256": "cfe80753469a6df9ab623d15bf218645182283e6c0f3760738c2f50e7e524852",
+          "bytes": 696
+        },
+        {
+          "path": "independent-review-v2.json",
+          "sha256": "b49643632f3a292597515e2eee210408d1b43edf9dfcd0adaeb6dcc5881032d7",
+          "bytes": 605
+        },
+        {
+          "path": "independent-review-v2-standard.json",
+          "sha256": "d75202dbcbcc23294646bfecf524ac2ca83c0ff8ba0f15647af29459c0a253fd",
+          "bytes": 591
+        }
+      ],
+      "reason": "Sanitized native-schema derivatives and independent reviews; private receipts retain original identifiers and operational details."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "c3c6729a0927b1e461ba3e1868364316f007b02e5b46f23ae565a7bfee30b1d4",
+          "bytes": 1577
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "4baa793dd8735f4664f5efd21867586436567fc816cf43d1172ff6e06df7beec",
+          "bytes": 896
+        }
+      ],
+      "reason": "retained defects and gaps"
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "b7739a8745453f1e4d8e698b269ca509d234789d75ab1a28149d5235a75057bb",
+          "bytes": 721
+        },
+        {
+          "path": "final-status.json",
+          "sha256": "c2aa8bbe1e5b350f5996f2f883bf91e728b9a14dd4c2f6d4569b7f5dabba786a",
+          "bytes": 281
+        }
+      ],
+      "reason": "final worker state"
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "4b525dfae098df0f9389375ae8aef147c747ffe5f952133ffffd5f7978c29572",
+          "bytes": 2566
+        }
+      ],
+      "reason": "bounded decision"
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "2e346f91e9db4e077ba029c95505a72ebdb6c8112fbbee25e20ff3a2e48b82b3",
+          "bytes": 3716
+        }
+      ],
+      "reason": "derivative claim ledger"
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

@@ -21,6 +21,13 @@ from .workflows import WorkflowRegistry
 LifecyclePreview = Callable[[str, str, str], Mapping[str, Any]]
 
 
+def _backend_method(backend: ComfyUIClient, name: str) -> Callable[..., Any]:
+    method = getattr(backend, name, None)
+    if not callable(method):
+        raise MediaError("invalid_backend", "media backend does not support the requested operation")
+    return method
+
+
 class MediaOperations:
     """Small bounded application service; adapters only translate protocols."""
 
@@ -453,6 +460,12 @@ class MediaOperations:
             # SUBMITTING is durable before the remote request. Any exception
             # after this point is outcome-ambiguous and must never cause an
             # automatic second submission.
+            self.jobs.check_backend_endpoint(
+                job_id,
+                getattr(backend, "base_url", ""),
+                principal=principal,
+                bind=True,
+            )
             prompt_id = backend.submit(rendered, job_id=job_id)
             self.jobs.set_backend_prompt(job_id, prompt_id, principal=principal)
             return self.jobs.transition(
@@ -493,6 +506,11 @@ class MediaOperations:
                 principal=principal,
                 reason="backend_submission_recovered",
             )
+        self.jobs.check_backend_endpoint(
+            current.id,
+            getattr(backend, "base_url", ""),
+            principal=principal,
+        )
         finder = getattr(backend, "find_prompt", None)
         if not callable(finder):
             raise MediaError(
@@ -537,11 +555,23 @@ class MediaOperations:
     ) -> dict[str, Any]:
         cancellation = MediaCancellationService(
             self.jobs,
-            delete_queued=backend.delete_queued_prompt,
-            interrupt_exclusive=backend.interrupt_exclusive_prompt,
+            # Look up remote methods only after cancellation establishes that
+            # it needs a backend call.  Accepted and terminal jobs remain
+            # local-only operations.
+            delete_queued=lambda prompt: _backend_method(
+                backend, "delete_queued_prompt"
+            )(prompt),
+            interrupt_exclusive=lambda: _backend_method(
+                backend, "interrupt_exclusive_prompt"
+            )(),
             # A generic CLI observer cannot prove prompt-specific exclusive
             # slot ownership from aggregate queue counts, so it fails closed.
             owns_active_slot=lambda _job: False,
+            verify_backend=lambda job: self.jobs.check_backend_endpoint(
+                job.id,
+                getattr(backend, "base_url", ""),
+                principal=principal,
+            ),
         )
         return cancellation.cancel(job_id, principal=principal).as_public_dict()
 

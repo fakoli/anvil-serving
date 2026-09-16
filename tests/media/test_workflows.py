@@ -16,10 +16,12 @@ def test_packaged_registry_is_deterministic_and_explicit():
     assert [item["id"] for item in first] == [
         "image.flux2-klein-4b-fp8-v1",
         "video.wan2.2-ti2v-5b-v1",
+        "video.wan2.2-ti2v-5b-v2",
     ]
     assert {item["id"]: item["available"] for item in first} == {
         "image.flux2-klein-4b-fp8-v1": True,
         "video.wan2.2-ti2v-5b-v1": False,
+        "video.wan2.2-ti2v-5b-v2": False,
     }
     assert all("service_target" not in item for item in first)
 

@@ -1,0 +1,130 @@
+{
+  "artifacts": [
+    {
+      "byteLength": 68494,
+      "expiresAt": "2026-09-16T09:14:47.272799+00:00",
+      "id": "art_18a5ddb3c9b14bba767b22c264bf0230",
+      "jobId": "job_60f60cdd480393490e93524a4354d77e",
+      "mediaType": "video/mp4",
+      "resource": "/artifacts/art_18a5ddb3c9b14bba767b22c264bf0230",
+      "sha256": "09b82dfef333769e33248da1b6e8b128686e2d8f351b5b1581a62ebc30f817c9",
+      "workflow": {
+        "id": "video.wan2.2-ti2v-5b-v2",
+        "version": "v2"
+      }
+    }
+  ],
+  "capacity": {
+    "baselineVramMiB": 12506,
+    "latencySeconds": 12.91915,
+    "maxQueuePending": 0,
+    "maxQueueRunning": 1,
+    "peakVramMiB": 17892,
+    "queueBefore": {
+      "pending": 0,
+      "running": 0
+    },
+    "samples": 8,
+    "successfulTasksPerHour": 278.656095,
+    "totalVramMiB": 32607
+  },
+  "compatibility": {
+    "available": true,
+    "id": "video.wan2.2-ti2v-5b-v2",
+    "missingFeatures": [],
+    "missingModels": [],
+    "missingNodes": [],
+    "ready": true,
+    "reasons": [],
+    "version": "v2"
+  },
+  "decoding": [
+    {
+      "artifactId": "art_18a5ddb3c9b14bba767b22c264bf0230",
+      "codec": "h264",
+      "decodable": true,
+      "durationSeconds": 2.0625,
+      "format": "mp4",
+      "frameRate": 16.0,
+      "frames": 33,
+      "height": 288,
+      "width": 512
+    }
+  ],
+  "job": {
+    "events": [
+      "accepted",
+      "preparing",
+      "submitting",
+      "queued",
+      "running",
+      "completed"
+    ],
+    "finalState": "completed",
+    "id": "job_60f60cdd480393490e93524a4354d77e",
+    "immediateReturnSeconds": 0.303693,
+    "submittedState": "queued"
+  },
+  "limits": {
+    "artifactBytes": 268435456,
+    "concurrency": 1,
+    "queueDepth": 2,
+    "requestBytes": 65536,
+    "retentionSeconds": 86400,
+    "timeoutSeconds": 3600
+  },
+  "models": [
+    {
+      "bytes": 9999658848,
+      "path": "split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors",
+      "repository": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+      "revision": "c4f60d30c55a624e35427060fdd217579a6c1d77",
+      "sha256": "456f901338bd9eadbded3828b819109a9b68e8a525ca5cf8d0049a69fcfeca1e"
+    },
+    {
+      "bytes": 6735906897,
+      "path": "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "repository": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+      "revision": "c4f60d30c55a624e35427060fdd217579a6c1d77",
+      "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68"
+    },
+    {
+      "bytes": 1409400960,
+      "path": "split_files/vae/wan2.2_vae.safetensors",
+      "repository": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+      "revision": "c4f60d30c55a624e35427060fdd217579a6c1d77",
+      "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156"
+    }
+  ],
+  "passed": true,
+  "promoted": false,
+  "quality": {
+    "owner": "independent_perceptual_reviewer",
+    "status": "human_required",
+    "transportSuccessIsNotQualityApproval": true
+  },
+  "rollback": {
+    "managedSeparately": true,
+    "requiredBeforePublication": true
+  },
+  "runtime": {
+    "comfyui_release": "v0.33.4",
+    "comfyui_release_revision": "7a131a3afadc8200120f67f9236311a2c48b7445",
+    "container": "obeliks/comfyui@sha256:4a40acf4790733dfeb38a92dc2b976c812a484264ff08362e7f8c0d5a16df3e9",
+    "container_source_revision": "825e7c47717da15260e14b516654cf36216abb61",
+    "cuda": "13.0",
+    "installer_sha256": "709343424884a495404191ef0984b85a7863bd8f76fa2573b3bd39e40f8ac14b",
+    "linux_amd64_manifest_digest": "sha256:7bca86b31cd7321d47006b0124437bdcd20abaa101704e5a71177ec3a9e6b06e",
+    "python": "3.13.15",
+    "torch": "2.13.0+cu130",
+    "torchaudio": "2.11.0+cu130",
+    "torchvision": "0.28.0+cu130"
+  },
+  "schema": "anvil-serving.media-qualification/v1",
+  "workflow": {
+    "graphSha256": "b93170eeb578ce5a8dc86d2dfbd944e037abf2e8b9a223059f8e9c6aa8291c14",
+    "id": "video.wan2.2-ti2v-5b-v2",
+    "kind": "video",
+    "version": "v2"
+  }
+}

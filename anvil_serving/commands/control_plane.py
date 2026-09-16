@@ -19,6 +19,11 @@ def commands() -> tuple[CommandNode, ...]:
                     role="operator",
                     argv_prefix=(),
                     output_policy="protocol",
+                    options=(
+                        _option("--controller-url", summary="Remote controller URL for split-host MCP proxy mode.", value_name="URL"),
+                        _option("--auth-env", summary="Environment variable containing the controller token.", value_name="ENV"),
+                        _option("--auth-file", summary="Protected UTF-8 file containing the controller token.", value_name="PATH"),
+                    ),
                     remote_operation=_remote(mode="mcp-bridge"),
                 ),
                 _resource_node(

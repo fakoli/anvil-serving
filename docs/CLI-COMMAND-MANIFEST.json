@@ -26436,6 +26436,15 @@
           "requires_confirmation": false,
           "summary": "Authenticated media principal.",
           "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--backend-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Refresh this owned job from its original backend and retain completed artifacts.",
+          "value_name": "URL"
         }
       ],
       "output_policy": "bounded",
@@ -29174,6 +29183,33 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--controller-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Remote controller URL for split-host MCP proxy mode.",
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--auth-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Environment variable containing the controller token.",
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--auth-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Protected UTF-8 file containing the controller token.",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "protocol",

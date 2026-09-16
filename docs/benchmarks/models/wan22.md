@@ -27,6 +27,16 @@
 
 ### Review narrative
 
+#### 2026-09-15 — v1 failure and v2 functional repair
+
+The managed v1 functional artifact decoded, but independent review failed all
+three sampled frames: the requested teapot was unrecognizable amid severe
+spatial corruption. Official Wan2.2 references exposed v1 graph defects. A
+new immutable v2 graph restored recognizable red-teapot/table content in all
+three sampled frames, but review remains partial because steam and handle were
+missing and artifacts persisted. V2 is functional only, `available=false`,
+and `no-promotion`; this is not a latency comparison.
+
 #### 2026-08-27 — Feasibility screen
 
 The workflow passed the paper and configuration feasibility screen for the

@@ -13,7 +13,7 @@ import struct
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Iterator
+from typing import Callable, Iterator
 
 from ..fleet_bootstrap import (
     MAX_BUNDLE_BYTES,
@@ -601,8 +601,16 @@ class _OpenedTrustedFile:
             return self._verify_linux()
         return self._verify_windows()
 
-    def read_verified(self) -> bytes:
+    def read_verified(self, inspector: Callable[[int], None] | None = None) -> bytes:
+        """Read after every held-object check, optionally inspecting that same fd.
+
+        ``inspector`` is deliberately called on the retained descriptor rather
+        than a pathname so callers with narrower file policies cannot be raced
+        between their policy decision and this bounded read.
+        """
         size = self._verify()
+        if inspector is not None:
+            inspector(self._file_descriptor)
         if size > self._max_bytes:
             raise _reader_refusal(BootstrapErrorCode.PRECONDITION_FAILED)
         try:
@@ -627,6 +635,8 @@ class _OpenedTrustedFile:
             raise _reader_refusal(BootstrapErrorCode.PRECONDITION_FAILED) from None
         if self._verify() != size:
             raise _reader_refusal(BootstrapErrorCode.PRECONDITION_FAILED)
+        if inspector is not None:
+            inspector(self._file_descriptor)
         return value
 
     def close(self) -> None:

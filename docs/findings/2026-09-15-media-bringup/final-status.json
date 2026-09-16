@@ -1,0 +1,8 @@
+{
+  "schema": "anvil-serving.public-operational-summary/v1",
+  "source": "private managed status receipt",
+  "sanitized": true,
+  "observed_health_passed": true,
+  "operational_topology": "withheld; retained in private operator repository",
+  "credential_values_included": false
+}
