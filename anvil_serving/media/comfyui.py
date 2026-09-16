@@ -206,7 +206,13 @@ class ComfyUIClient:
             if len(nodes) > MAX_METADATA_ITEMS:
                 raise MediaError("backend_metadata_too_large", "ComfyUI node inventory is unbounded")
         models: set[str] = set()
-        for folder in ("diffusion_models", "text_encoders", "vae", "checkpoints"):
+        for folder in (
+            "diffusion_models",
+            "text_encoders",
+            "vae",
+            "checkpoints",
+            "latent_upscale_models",
+        ):
             inventory = self.request_json("GET", f"/models/{folder}")
             models.update(_bounded_strings(inventory, label="model"))
             if len(models) > MAX_METADATA_ITEMS:
