@@ -204,12 +204,14 @@ def test_restart_docker_force_kills_and_relaunches(monkeypatch):
     monkeypatch.setattr(host.sys, "platform", "win32")
     monkeypatch.setattr(host.os.path, "isfile", lambda p: True)
     calls = []
-    rc = host.cmd_restart_docker(force=True, _run=lambda a, **k: calls.append(a) or proc(0, "killed"),
+    rc = host.cmd_restart_docker(force=True, _run=lambda a, **k: calls.append(a) or proc(0, "linux" if a[0] == "docker" else "killed"),
                                  _input=lambda p: "n")
     assert rc == 0
     flat = [" ".join(c) for c in calls]
     assert any("Stop-Process" in c and "Docker Desktop" in c for c in flat)   # stops the old/failed instance
     assert any("Start-Process" in c for c in flat)                            # relaunches Docker Desktop
+    assert calls[-1] == ["docker", "--context", "desktop-linux", "info", "--format", "{{.OSType}}"]
+    assert any("-WindowStyle Hidden -ErrorAction Stop" in c for c in flat)
 
 
 def test_restart_docker_finds_per_user_install(monkeypatch):
@@ -227,7 +229,7 @@ def test_restart_docker_finds_per_user_install(monkeypatch):
 
     assert host.cmd_restart_docker(
         force=True,
-        _run=lambda argv, **_kwargs: calls.append(argv) or proc(0, "killed"),
+        _run=lambda argv, **_kwargs: calls.append(argv) or proc(0, "linux" if argv[0] == "docker" else "killed"),
     ) == 0
     assert any(expected in " ".join(command) for command in calls)
 
@@ -258,7 +260,7 @@ def test_restart_docker_quotes_per_user_launcher_path(monkeypatch):
 
     assert host.cmd_restart_docker(
         force=True,
-        _run=lambda argv, **_kwargs: calls.append(argv) or proc(0, "killed"),
+        _run=lambda argv, **_kwargs: calls.append(argv) or proc(0, "linux" if argv[0] == "docker" else "killed"),
     ) == 0
     launch = next(" ".join(command) for command in calls if "Start-Process" in " ".join(command))
     assert "-FilePath 'C:\\fixtures\\operator''s data\\Local" in launch
@@ -294,6 +296,92 @@ def test_restart_docker_macos_launch_failure_is_not_success(monkeypatch):
         return proc(1 if argv[0] == "open" else 0)
 
     assert host.cmd_restart_docker(force=True, _run=run) == 1
+
+
+class _ReadinessClock:
+    now = 0.0
+
+    def monotonic(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.now += seconds
+
+
+@pytest.mark.parametrize(("command", "platform"), [
+    (host.cmd_restart_docker, "win32"),
+    (host.cmd_restart_docker, "darwin"),
+    (host.cmd_reset_wsl, "win32"),
+])
+def test_desktop_recovery_waits_for_engine_after_launch(monkeypatch, command, platform):
+    monkeypatch.setattr(host.sys, "platform", platform)
+    monkeypatch.setattr(host, "_docker_desktop_executable", lambda: r"C:\Docker\Docker Desktop.exe")
+    monkeypatch.setenv("DOCKER_HOST", "tcp://192.0.2.10:2376")
+    monkeypatch.setenv("DOCKER_CONTEXT", "remote-fixture")
+    clock = _ReadinessClock()
+    probes = []
+
+    def run(argv, **kwargs):
+        if argv[0] != "docker":
+            return proc(0, "killed")
+        assert argv == ["docker", "--context", "desktop-linux", "info", "--format", "{{.OSType}}"]
+        assert 0 < kwargs["timeout"] <= host.DEFAULT_PROBE_TIMEOUT_SECONDS
+        probes.append(clock.now)
+        return proc(1, err="engine starting") if len(probes) < 3 else proc(0, "linux\n")
+
+    assert command(force=True, _run=run, _sleep=clock.sleep, _monotonic=clock.monotonic) == 0
+    assert probes == [0, 2, 4]
+
+
+@pytest.mark.parametrize(("command", "platform"), [
+    (host.cmd_restart_docker, "win32"),
+    (host.cmd_restart_docker, "darwin"),
+    (host.cmd_reset_wsl, "win32"),
+])
+def test_desktop_recovery_launch_success_cannot_mask_unavailable_engine(
+    monkeypatch, capsys, command, platform,
+):
+    monkeypatch.setattr(host.sys, "platform", platform)
+    monkeypatch.setattr(host, "_docker_desktop_executable", lambda: r"C:\Docker\Docker Desktop.exe")
+    clock = _ReadinessClock()
+    probes = []
+
+    def run(argv, **kwargs):
+        if argv[0] != "docker":
+            return proc(0, "killed")
+        probes.append(kwargs["timeout"])
+        clock.sleep(kwargs["timeout"])
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    assert command(force=True, _run=run, _sleep=clock.sleep, _monotonic=clock.monotonic) == 1
+    assert clock.now == host.DOCKER_DESKTOP_READY_TIMEOUT_SECONDS
+    assert probes and all(0 < timeout <= host.DEFAULT_PROBE_TIMEOUT_SECONDS for timeout in probes)
+    assert probes[-1] < host.DEFAULT_PROBE_TIMEOUT_SECONDS
+    assert "did not become ready" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("output", ["", "windows", "<no value>"])
+def test_desktop_readiness_rejects_invalid_success_payload(output):
+    clock = _ReadinessClock()
+    assert not host._await_docker_desktop(
+        _run=lambda *_args, **_kwargs: proc(0, output),
+        _sleep=clock.sleep, _monotonic=clock.monotonic,
+    )
+    assert clock.now == host.DOCKER_DESKTOP_READY_TIMEOUT_SECONDS
+
+
+def test_desktop_readiness_tolerates_transient_process_error():
+    clock = _ReadinessClock()
+    calls = []
+
+    def run(*_args, **_kwargs):
+        calls.append(clock.now)
+        if len(calls) == 1:
+            raise OSError("Docker CLI unavailable during recovery")
+        return proc(0, "linux")
+
+    assert host._await_docker_desktop(run, clock.sleep, clock.monotonic)
+    assert calls == [0, 2]
 
 
 # ---- _kill_process: locale-independent status parsing ------------------------
@@ -340,7 +428,7 @@ def test_reset_wsl_force_kills_vm_and_frontends_then_restarts(monkeypatch):
     monkeypatch.setattr(host.sys, "platform", "win32")
     monkeypatch.setattr(host.os.path, "isfile", lambda p: True)   # for the inner restart-docker exe check
     calls = []
-    rc = host.cmd_reset_wsl(force=True, _run=lambda a, **k: calls.append(a) or proc(0, "killed"),
+    rc = host.cmd_reset_wsl(force=True, _run=lambda a, **k: calls.append(a) or proc(0, "linux" if a[0] == "docker" else "killed"),
                             _input=lambda p: "n")
     assert rc == 0
     flat = [" ".join(c) for c in calls]
@@ -356,7 +444,7 @@ def test_reset_wsl_access_denied_returns_nonzero_and_prints_fallback(monkeypatch
         j = " ".join(argv)
         if "Stop-Process" in j and "vmmemWSL" in j:
             return proc(0, "denied")             # _kill_process maps ErrorCategory -> 'denied'
-        return proc(0, "killed")
+        return proc(0, "linux" if argv[0] == "docker" else "killed")
     rc = host.cmd_reset_wsl(force=True, _run=denied, _input=lambda p: "n")
     out = capsys.readouterr().out
     assert rc == 1                               # couldn't kill the VM -> must NOT report success

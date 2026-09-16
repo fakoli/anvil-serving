@@ -273,6 +273,12 @@ meaning here: override the 10 GB Windows-reserve refusal. It does not replace
 the public `--confirm` gate.
 
 `host restart-docker` supports Docker Desktop on Windows and macOS.
+After launching Desktop, it waits up to 180 seconds for the Linux engine to
+answer through the explicit `desktop-linux` context. Each probe is bounded;
+remote `DOCKER_HOST` or `DOCKER_CONTEXT` overrides cannot satisfy this check.
+An engine timeout returns failure, including when called by `host reset-wsl`.
+Engine readiness does not establish application recovery; check the router and
+managed serves after the restart.
 `host reset-wsl` is Windows-only recovery for a hung VM and prints an elevated
 fallback if process termination is denied. Both use one attempt and stop for
 diagnosis rather than retry-looping disruptive actions.

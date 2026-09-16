@@ -51,6 +51,7 @@ MIN_WINDOWS_RESERVE_GB = 10
 # The doctor's RECOMMENDED reserve (more generous - room for AV scans / Windows Update / cache spikes).
 RECOMMENDED_WINDOWS_RESERVE_GB = 14
 DEFAULT_PROBE_TIMEOUT_SECONDS = 15
+DOCKER_DESKTOP_READY_TIMEOUT_SECONDS = 180
 DEFAULT_SHARED_MEMORY_DISTRO = "docker-desktop"
 _VLLM_OFFLOAD_MMAP_RE = re.compile(
     r"^/dev/shm/vllm_offload_[A-Za-z0-9][A-Za-z0-9_.-]*\.mmap$"
@@ -1315,7 +1316,31 @@ def _docker_desktop_executable() -> str | None:
     return next((path for path in candidates if os.path.isfile(path)), None)
 
 
-def cmd_restart_docker(force=False, dry_run=False, _run=subprocess.run, _input=input):
+def _await_docker_desktop(_run=subprocess.run, _sleep=time.sleep,
+                          _monotonic=time.monotonic):
+    """Wait for the Desktop Linux engine, independent of remote CLI overrides."""
+    deadline = _monotonic() + DOCKER_DESKTOP_READY_TIMEOUT_SECONDS
+    while True:
+        remaining = deadline - _monotonic()
+        if remaining <= 0:
+            return False
+        try:
+            result = _run(
+                ["docker", "--context", "desktop-linux", "info", "--format", "{{.OSType}}"],
+                capture_output=True, text=True,
+                timeout=min(DEFAULT_PROBE_TIMEOUT_SECONDS, remaining),
+            )
+            if result.returncode == 0 and (result.stdout or "").strip() == "linux":
+                return _monotonic() <= deadline
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        remaining = deadline - _monotonic()
+        if remaining > 0:
+            _sleep(min(2, remaining))
+
+
+def cmd_restart_docker(force=False, dry_run=False, _run=subprocess.run, _input=input,
+                       *, _sleep=time.sleep, _monotonic=time.monotonic):
     """Restart Docker Desktop so the WSL backend re-reads `.wslconfig`. This is the RIGHT lever:
     `wsl --shutdown` does NOT cycle the docker-desktop distro and, hammered in a loop, wedges WSL."""
     if sys.platform not in ("win32", "darwin"):
@@ -1337,7 +1362,10 @@ def cmd_restart_docker(force=False, dry_run=False, _run=subprocess.run, _input=i
                   file=sys.stderr)
             return 1
         _kill_process("Docker Desktop", _run)   # stop the (possibly failed) instance
-        launched = _ps("Start-Process -FilePath %s" % _ps_single_quoted(exe), _run)
+        launched = _ps(
+            "Start-Process -FilePath %s -WindowStyle Hidden -ErrorAction Stop"
+            % _ps_single_quoted(exe), _run,
+        )
         if launched is None or launched.returncode != 0:
             print("could not launch Docker Desktop.", file=sys.stderr)
             return 1
@@ -1358,12 +1386,19 @@ def cmd_restart_docker(force=False, dry_run=False, _run=subprocess.run, _input=i
         if launched.returncode != 0:
             print("could not launch Docker Desktop with the macOS open command.", file=sys.stderr)
             return 1
-    print("Docker Desktop restarting - the engine + unless-stopped containers take ~1-2 min to return.")
-    print("  verify with:  anvil-serving router status   and   anvil-serving serves status")
+    print("Waiting up to %ss for the Docker Desktop Linux engine..."
+          % DOCKER_DESKTOP_READY_TIMEOUT_SECONDS)
+    if not _await_docker_desktop(_run, _sleep, _monotonic):
+        print("Docker Desktop launched, but its Linux engine did not become ready within %ss."
+              % DOCKER_DESKTOP_READY_TIMEOUT_SECONDS, file=sys.stderr)
+        return 1
+    print("Docker Desktop Linux engine is ready.")
+    print("  verify application recovery with:  anvil-serving router status   and   anvil-serving serves status")
     return 0
 
 
-def cmd_reset_wsl(force=False, dry_run=False, _run=subprocess.run, _input=input):
+def cmd_reset_wsl(force=False, dry_run=False, _run=subprocess.run, _input=input,
+                  *, _sleep=time.sleep, _monotonic=time.monotonic):
     """Un-wedge a HUNG WSL2 subsystem (`wsl` commands time out, Docker Desktop can't start, hundreds of
     stuck `wsl.exe` pile up). Codifies the manual Task-Manager 'End task on vmmemWSL' recovery
     (2026-07-04): force-kill the WSL VM's backing process + the hung `wsl.exe` front-ends, then restart
@@ -1392,7 +1427,9 @@ def cmd_reset_wsl(force=False, dry_run=False, _run=subprocess.run, _input=input)
             denied = True
         print("  kill %-10s -> %s" % (name, status))
     print("restarting Docker Desktop to rebuild the WSL backend...")
-    restart_rc = cmd_restart_docker(force=True, _run=_run, _input=_input)
+    restart_rc = cmd_restart_docker(
+        force=True, _run=_run, _input=_input, _sleep=_sleep, _monotonic=_monotonic,
+    )
 
     # Propagate failure so `reset-wsl --force` automation can detect an INCOMPLETE reset.
     rc = 0
