@@ -288,7 +288,7 @@ _REAL_HOST_VALUES = (
 )
 _EXPECTED_HOME_FILES = {
     "router.toml", "example.toml", "example-docker.toml",
-    "host.toml", "serve-recipes.toml",
+    "host.toml", "serve-recipes.toml", "image-builds.toml",
     "anvil-router.deepseek-pi.toml", "anvil-router.live.toml",
     "anvil-router.qwen35-rollback.toml",
     "serves.toml", "services.toml", "serves.voice.toml", "serves.comfyui.toml",
@@ -305,6 +305,23 @@ def test_scaffold_home_writes_the_full_set(tmp_path):
     assert written == _EXPECTED_HOME_FILES
     for name in _EXPECTED_HOME_FILES:
         assert os.path.isfile(tmp_path / name), name
+
+
+def test_scaffold_media_start_uses_the_bounded_build_image_without_rebuilding(tmp_path):
+    import yaml
+    from anvil_serving.image_build import build_plan
+
+    _scaffold_home(out_dir=str(tmp_path))
+    plan = build_plan("media-worker", tmp_path / "image-builds.toml")
+    compose = yaml.safe_load((tmp_path / "docker-compose.comfyui.yml").read_text())
+    image = compose["services"]["comfyui"]["image"]
+    assert image == "${COMFYUI_IMAGE:-" + plan["image"] + "}"
+    manifest = serves.load_manifest(str(tmp_path / "serves.comfyui.toml"))
+    argv = manifest[0]["up"]
+    assert "--no-build" in argv
+    assert "--build" not in argv
+    assert plan["memory_mib"] == 8192
+    assert plan["cpus"] == 2
 
 
 def test_scaffold_home_group_tags_resolve(tmp_path):

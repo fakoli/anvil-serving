@@ -202,7 +202,7 @@ def test_restart_docker_declined_without_force(monkeypatch, capsys):
 
 def test_restart_docker_force_kills_and_relaunches(monkeypatch):
     monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setattr(host.os.path, "exists", lambda p: True)
+    monkeypatch.setattr(host.os.path, "isfile", lambda p: True)
     calls = []
     rc = host.cmd_restart_docker(force=True, _run=lambda a, **k: calls.append(a) or proc(0, "killed"),
                                  _input=lambda p: "n")
@@ -210,6 +210,69 @@ def test_restart_docker_force_kills_and_relaunches(monkeypatch):
     flat = [" ".join(c) for c in calls]
     assert any("Stop-Process" in c and "Docker Desktop" in c for c in flat)   # stops the old/failed instance
     assert any("Start-Process" in c for c in flat)                            # relaunches Docker Desktop
+
+
+def test_restart_docker_finds_per_user_install(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    monkeypatch.setenv("ProgramFiles", r"C:\\Program Files")
+    monkeypatch.setenv("LOCALAPPDATA", r"C:\\Users\\example\\AppData\\Local")
+    expected = host.os.path.join(
+        r"C:\\Users\\example\\AppData\\Local",
+        "Programs",
+        "DockerDesktop",
+        "Docker Desktop.exe",
+    )
+    monkeypatch.setattr(host.os.path, "isfile", lambda path: path == expected)
+    calls = []
+
+    assert host.cmd_restart_docker(
+        force=True,
+        _run=lambda argv, **_kwargs: calls.append(argv) or proc(0, "killed"),
+    ) == 0
+    assert any(expected in " ".join(command) for command in calls)
+
+
+def test_restart_docker_does_not_stop_engine_without_launcher(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    monkeypatch.setattr(host.os.path, "isfile", lambda _path: False)
+    calls = []
+
+    assert host.cmd_restart_docker(
+        force=True,
+        _run=lambda argv, **_kwargs: calls.append(argv) or proc(0, "killed"),
+    ) == 1
+    assert calls == []
+
+
+def test_restart_docker_quotes_per_user_launcher_path(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    expected = host.os.path.join(
+        r"C:\fixtures\operator's data\Local",
+        "Programs",
+        "DockerDesktop",
+        "Docker Desktop.exe",
+    )
+    monkeypatch.setenv("LOCALAPPDATA", r"C:\fixtures\operator's data\Local")
+    monkeypatch.setattr(host.os.path, "isfile", lambda path: path == expected)
+    calls = []
+
+    assert host.cmd_restart_docker(
+        force=True,
+        _run=lambda argv, **_kwargs: calls.append(argv) or proc(0, "killed"),
+    ) == 0
+    launch = next(" ".join(command) for command in calls if "Start-Process" in " ".join(command))
+    assert "-FilePath 'C:\\fixtures\\operator''s data\\Local" in launch
+
+
+def test_restart_docker_reports_launcher_failure(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    monkeypatch.setattr(host.os.path, "isfile", lambda _path: True)
+
+    def failed_launch(argv, **_kwargs):
+        return proc(1 if "Start-Process" in " ".join(argv) else 0, "killed")
+
+    assert host.cmd_restart_docker(force=True, _run=failed_launch) == 1
+    assert "could not launch Docker Desktop" in capsys.readouterr().err
 
 
 def test_restart_docker_macos_timeout_returns_failure(monkeypatch):
@@ -275,7 +338,7 @@ def test_reset_wsl_declined_without_force(monkeypatch, capsys):
 
 def test_reset_wsl_force_kills_vm_and_frontends_then_restarts(monkeypatch):
     monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setattr(host.os.path, "exists", lambda p: True)   # for the inner restart-docker exe check
+    monkeypatch.setattr(host.os.path, "isfile", lambda p: True)   # for the inner restart-docker exe check
     calls = []
     rc = host.cmd_reset_wsl(force=True, _run=lambda a, **k: calls.append(a) or proc(0, "killed"),
                             _input=lambda p: "n")
@@ -288,7 +351,7 @@ def test_reset_wsl_force_kills_vm_and_frontends_then_restarts(monkeypatch):
 
 def test_reset_wsl_access_denied_returns_nonzero_and_prints_fallback(monkeypatch, capsys):
     monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setattr(host.os.path, "exists", lambda p: True)
+    monkeypatch.setattr(host.os.path, "isfile", lambda p: True)
     def denied(argv, **k):
         j = " ".join(argv)
         if "Stop-Process" in j and "vmmemWSL" in j:
@@ -304,7 +367,7 @@ def test_reset_wsl_access_denied_returns_nonzero_and_prints_fallback(monkeypatch
 def test_reset_wsl_propagates_restart_docker_failure(monkeypatch):
     # Docker Desktop.exe missing -> inner restart-docker returns nonzero -> reset-wsl must NOT report success.
     monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setattr(host.os.path, "exists", lambda p: False)   # exe missing -> restart fails
+    monkeypatch.setattr(host.os.path, "isfile", lambda p: False)   # exe missing -> restart fails
     rc = host.cmd_reset_wsl(force=True, _run=lambda a, **k: proc(0, "killed"), _input=lambda p: "n")
     assert rc != 0
 

@@ -953,6 +953,11 @@ def _ps(script, _run=subprocess.run, timeout=15):
         return None
 
 
+def _ps_single_quoted(value):
+    """Encode one value as a PowerShell single-quoted string literal."""
+    return "'%s'" % value.replace("'", "''")
+
+
 def _kill_process(name, _run=subprocess.run):
     """Force-kill every process whose image name is `name` (no `.exe`). Returns one of
     'killed' | 'notfound' | 'denied' | 'error'. Detection is via PowerShell's ErrorCategory (an enum),
@@ -1286,6 +1291,30 @@ def cmd_wsl_config(memory_gb=None, swap_gb=None, revert=False, force=False, dry_
     return 0
 
 
+def _docker_desktop_executable() -> str | None:
+    """Return a supported Docker Desktop launcher without assuming a machine-wide install."""
+
+    candidates = [
+        os.path.join(
+            os.environ.get("ProgramFiles", r"C:\Program Files"),
+            "Docker",
+            "Docker",
+            "Docker Desktop.exe",
+        ),
+    ]
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        candidates.append(
+            os.path.join(
+                local_app_data,
+                "Programs",
+                "DockerDesktop",
+                "Docker Desktop.exe",
+            )
+        )
+    return next((path for path in candidates if os.path.isfile(path)), None)
+
+
 def cmd_restart_docker(force=False, dry_run=False, _run=subprocess.run, _input=input):
     """Restart Docker Desktop so the WSL backend re-reads `.wslconfig`. This is the RIGHT lever:
     `wsl --shutdown` does NOT cycle the docker-desktop distro and, hammered in a loop, wedges WSL."""
@@ -1301,16 +1330,16 @@ def cmd_restart_docker(force=False, dry_run=False, _run=subprocess.run, _input=i
                     "(unless-stopped ones auto-restart).", force, _input):
         print("aborted (no --force / declined).")
         return 1
-    exe = os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"),
-                       "Docker", "Docker", "Docker Desktop.exe")
     if sys.platform == "win32":
-        _kill_process("Docker Desktop", _run)   # stop the (possibly failed) instance
-        if not os.path.exists(exe):
-            print("Docker Desktop.exe not found at %s - start it from the Start menu." % exe,
+        exe = _docker_desktop_executable()
+        if exe is None:
+            print("Docker Desktop.exe was not found in the machine-wide or per-user install locations - start it from the Start menu.",
                   file=sys.stderr)
             return 1
-        if _ps("Start-Process '%s'" % exe, _run) is None:
-            print("could not launch Docker Desktop (PowerShell unavailable).", file=sys.stderr)
+        _kill_process("Docker Desktop", _run)   # stop the (possibly failed) instance
+        launched = _ps("Start-Process -FilePath %s" % _ps_single_quoted(exe), _run)
+        if launched is None or launched.returncode != 0:
+            print("could not launch Docker Desktop.", file=sys.stderr)
             return 1
     else:  # darwin
         try:

@@ -4,6 +4,7 @@
 # target host, co-resident reservations, and storage assignments there. The
 # public manifest intentionally names no operator machine or reachable address.
 # Keep vram_mib synchronized with COMFYUI_EXTRA_ARGS in docker-compose.comfyui.yml.
+# Build first with `anvil-serving host docker-image build media-worker --confirm`.
 
 [[gpu_roles]]
 id = "media-compute"
@@ -16,11 +17,11 @@ stack = "comfyui"
 container = "anvil-comfyui"
 runtime = "docker"
 port = 8188
-model = "comfyui-v0.33.4"
+model = "comfyui-v0.35.2-ltx25"
 engine = "image"
 health = "/system_stats"
 gpu_role = "media-compute"
 vram_mib = 28672
 residency = "on-demand"
 groups = ["media", "comfy"]
-up = "docker compose --project-name anvil-comfyui -f {dir}/docker-compose.comfyui.yml up -d --build comfyui"
+up = "docker compose --project-name anvil-comfyui -f {dir}/docker-compose.comfyui.yml up -d --no-build comfyui"

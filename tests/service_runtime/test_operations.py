@@ -265,7 +265,10 @@ def test_failed_start_rolls_back_only_new_instances(tmp_path):
     assert ["down", "events"] not in adapter.commands
 
 
-def test_failed_start_of_registered_idle_job_preserves_definition_and_reports_partial_rollback(setup):
+def test_failed_start_of_registered_idle_job_preserves_definition_and_reports_partial_rollback(setup, monkeypatch):
+    from itertools import count
+    from types import SimpleNamespace
+    from anvil_serving.service_runtime import operations
     from anvil_serving.service_runtime.operations import execute
     from anvil_serving.service_runtime.contracts import ServiceError
     adapter, options = setup
@@ -273,6 +276,10 @@ def test_failed_start_of_registered_idle_job_preserves_definition_and_reports_pa
     original = b"pinned installed fixture definition"
     definition.write_bytes(original)
     assert adapter.registered and not adapter.running and adapter.enabled
+    # This tests rollback after readiness failure, not runner scheduling within
+    # the fixture's 100 ms deadline. Keep the failure path deterministic on CI.
+    ticks = count(0, .001)
+    monkeypatch.setattr(operations, "time", SimpleNamespace(monotonic=lambda: next(ticks)))
 
     def failed_readiness(row, **kwargs):
         raise ServiceError("readiness_failed", "fixture endpoint failed readiness")

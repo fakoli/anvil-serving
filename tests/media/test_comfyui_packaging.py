@@ -48,10 +48,23 @@ def test_runtime_and_custom_node_inputs_are_exactly_pinned():
     assert runtime["linux_amd64_manifest_digest"] in dockerfile
     assert runtime["comfyui_release_revision"] in dockerfile
     assert runtime["container_source_revision"] in dockerfile
-    assert (
-        'git -c safe.directory=/app -C /app rev-parse HEAD)" = "$COMFYUI_RELEASE_REV"'
-        in dockerfile
-    )
+    assert 'actual_revision="$(git -c safe.directory=/app -C /app rev-parse HEAD)"' in dockerfile
+    assert 'test "$actual_revision" = "$COMFYUI_RELEASE_REV"' in dockerfile
+    assert '! -name docker-entrypoint.sh' in dockerfile
+    for entrypoint_dependency in (
+        'test -x /app/docker-entrypoint.sh',
+        'test -f /app/main.py',
+        'test -x /app/venv/bin/python',
+        'test "${VIRTUAL_ENV}" = /app/venv',
+        'test "${VIRTUAL_ENV_CUSTOM}" = /app/custom_venv',
+        'command -v rsync >/dev/null',
+        'command -v find >/dev/null',
+        'command -v sort >/dev/null',
+        'command -v comm >/dev/null',
+        'command -v sed >/dev/null',
+        '/bin/sh -n /app/docker-entrypoint.sh',
+    ):
+        assert entrypoint_dependency in dockerfile
     assert runtime["installer_sha256"] == hashlib.sha256(installer).hexdigest()
     for component in ("torch", "torchvision", "torchaudio"):
         assert runtime[component] in dockerfile
@@ -61,6 +74,7 @@ def test_runtime_and_custom_node_inputs_are_exactly_pinned():
         assert node["repository"] in dockerfile
         assert node["revision"] in dockerfile
         assert node["requirements_sha256"] in dockerfile
+
 
 
 def test_workflow_bundle_and_required_model_identities_are_pinned():
@@ -111,7 +125,8 @@ def test_managed_serve_is_bounded_healthy_and_lint_clean():
     assert serve["gpu_role"] == "media-compute"
     assert serve["vram_mib"] == 28672
     assert "docker-compose.comfyui.yml" in " ".join(serve["up"])
-    assert "--build" in serve["up"]
+    assert "--no-build" in serve["up"]
+    assert "--build" not in serve["up"]
 
     compose = (EXAMPLE / "docker-compose.comfyui.yml").read_text(encoding="utf-8")
     assert "http://127.0.0.1:8188/system_stats" in compose

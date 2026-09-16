@@ -217,8 +217,22 @@ def commands() -> tuple[CommandNode, ...]:
                 ),
                 _node(
                     "docker-image",
-                    "Inspect or remove one exact immutable Docker image.",
+                    "Build, inspect, or remove a declared local Docker image.",
                     children=(
+                        _resource_node(
+                            "build",
+                            "Build a declared local image with CPU and memory limits.",
+                            "anvil_serving.image_build",
+                            role="host",
+                            argv_prefix=(),
+                            options=CONFIRM_OPTIONS + (
+                                _option("--config", value_name="PATH", summary="Image build declarations; defaults to operator-home image-builds.toml."),
+                            ),
+                            mutation="mutate",
+                            forward_confirm_flag=True,
+                            execution_runtime_roles=("native",),
+                            docs_anchor="docs/cli/image-build.md",
+                        ),
                         _resource_node(
                             "inspect",
                             "Read the platform and selected build labels of one cached image.",

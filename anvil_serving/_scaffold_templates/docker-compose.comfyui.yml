@@ -13,7 +13,7 @@ name: anvil-comfyui
 
 services:
   comfyui:
-    image: ${COMFYUI_IMAGE:-anvil-comfyui:0.33.4-cu130-addons-20260827}
+    image: ${COMFYUI_IMAGE:-anvil-comfyui:0.35.2-cu130-ltx25-20260915}
     build:
       context: .
       dockerfile: Dockerfile.comfyui
