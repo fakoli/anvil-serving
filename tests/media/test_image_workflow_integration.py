@@ -150,7 +150,7 @@ def test_managed_image_qualification_is_durable_decodable_and_not_promoted(tmp_p
         "anvil_serving.media.qualification.bundle_inventory",
         lambda *_args, **_kwargs: {"ready": True, "assets": [{"state": "exact"}]},
     )
-    ticks = iter([0.0, 0.01, 1.5, 2.0])
+    ticks = iter([0.0, 0.01, 1.5, 2.0, 2.5])
     result = qualify(
         "image.test",
         "v1",
@@ -203,7 +203,7 @@ def test_managed_image_qualification_rejects_profile_dimension_drift(
             "assets": [{"state": "exact"}],
         },
     )
-    ticks = iter([0.0, 0.01, 1.5, 2.0])
+    ticks = iter([0.0, 0.01, 1.5, 2.0, 2.5])
     with pytest.raises(MediaError) as error:
         qualify(
             "image.test",

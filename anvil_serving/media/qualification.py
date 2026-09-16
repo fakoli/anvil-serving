@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import io
 import json
 import secrets
@@ -265,29 +264,27 @@ def qualify(
     queue_running = queue_before["running"]
     queue_pending = queue_before["pending"]
     samples = 1
+    captured_outputs: dict[tuple[str, str, str, str], MediaArtifact] = {}
 
     def capture(current, output) -> MediaArtifact | None:
         if output.node not in descriptor.output_nodes:
             return None
         if len(descriptor.output_mime_types) != 1:
             raise MediaError("media_qualification_artifact", "workflow output MIME mapping is ambiguous")
+        output_key = (output.node, output.filename, output.subfolder, output.storage_type)
+        if output_key in captured_outputs:
+            return captured_outputs[output_key]
         payload = backend.fetch_output(output, max_bytes=descriptor.max_artifact_bytes)
-        digest = hashlib.sha256(payload).hexdigest()
         media_type = descriptor.output_mime_types[0]
-        for existing in current.artifacts:
-            if (
-                existing.media_type == media_type
-                and existing.byte_length == len(payload)
-                and existing.sha256 == digest
-            ):
-                return existing
-        return artifacts.ingest(
+        artifact = artifacts.ingest(
             current,
             io.BytesIO(payload),
             media_type=media_type,
             max_bytes=descriptor.max_artifact_bytes,
             retention_seconds=descriptor.retention_seconds,
         )
+        captured_outputs[output_key] = artifact
+        return artifact
 
     reconciler = MediaJobReconciler(
         jobs,
@@ -322,6 +319,7 @@ def qualify(
             # workflow deadline; other backend failures remain fail-closed.
             if exc.code != "backend_unavailable":
                 raise
+            job = jobs.get(job.id, principal=principal)
             remaining = deadline - monotonic()
             if remaining <= 0:
                 raise MediaError(
@@ -330,9 +328,15 @@ def qualify(
                     status=504,
                     details={"jobId": job.id, "state": job.state.value},
                 ) from exc
-            job = jobs.get(job.id, principal=principal)
             sleep(min(poll_seconds, remaining))
             continue
+        if monotonic() >= deadline:
+            raise MediaError(
+                "media_qualification_timeout",
+                "media workflow qualification exceeded its declared timeout",
+                status=504,
+                details={"jobId": job.id, "state": job.state.value},
+            )
         if job.state in TERMINAL_STATES:
             break
         if monotonic() >= deadline:

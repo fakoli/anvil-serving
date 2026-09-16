@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import subprocess
 
+import pytest
+
 from anvil_serving.media.artifacts import ArtifactStore
 from anvil_serving.media.backends import BackendOutput, BackendStatus
 from anvil_serving.media.comfyui import WorkflowCompatibility
@@ -139,6 +141,36 @@ class _TransientCaptureBackend(_VideoBackend):
         return super().fetch_output(output, max_bytes=max_bytes)
 
 
+class _CountingVideoBackend(_VideoBackend):
+    def __init__(self):
+        self.submit_calls = 0
+        self.last_job_id = ""
+
+    def submit(self, workflow, *, job_id):
+        self.submit_calls += 1
+        self.last_job_id = job_id
+        return super().submit(workflow, job_id=job_id)
+
+
+class _TransientMultiOutputBackend(_CountingVideoBackend):
+    def __init__(self):
+        super().__init__()
+        self.fetch_calls = 0
+
+    def history(self, prompt_id):
+        return BackendStatus(
+            prompt_id,
+            "completed",
+            outputs=(BackendOutput("1", "first.mp4"), BackendOutput("1", "second.mp4")),
+        )
+
+    def fetch_output(self, output, *, max_bytes):
+        self.fetch_calls += 1
+        if output.filename == "second.mp4" and self.fetch_calls == 2:
+            raise MediaError("backend_unavailable", "backend is temporarily unavailable", status=503)
+        return super().fetch_output(output, max_bytes=max_bytes)
+
+
 def _ffprobe(argv, **_kwargs):
     payload = {
         "streams": [{
@@ -161,7 +193,7 @@ def test_managed_video_qualification_returns_immediately_and_records_stream_meta
         "anvil_serving.media.qualification.bundle_inventory",
         lambda *_args, **_kwargs: {"ready": True, "assets": [{"state": "exact"}]},
     )
-    ticks = iter([0.0, 0.02, 8.0, 9.0])
+    ticks = iter([0.0, 0.02, 8.0, 8.5, 9.0])
     result = qualify(
         "video.test",
         "v1",
@@ -195,7 +227,7 @@ def test_qualification_retries_transient_backend_unavailability_after_submission
         lambda *_args, **_kwargs: {"ready": True, "assets": [{"state": "exact"}]},
     )
     backend = _TransientStatusBackend()
-    ticks = iter([0.0, 0.02, 0.03, 0.04, 0.05, 1.0])
+    ticks = iter([0.0, 0.02, 0.03, 0.04, 0.05, 0.06, 1.0])
 
     result = qualify(
         "video.test",
@@ -262,7 +294,7 @@ def test_qualification_retries_transient_capture_without_resubmission(tmp_path, 
         lambda *_args, **_kwargs: {"ready": True, "assets": [{"state": "exact"}]},
     )
     backend = _TransientCaptureBackend()
-    ticks = iter([0.0, 0.02, 0.03, 0.04, 0.05, 1.0])
+    ticks = iter([0.0, 0.02, 0.03, 0.04, 0.05, 0.06, 1.0])
 
     result = qualify(
         "video.test",
@@ -284,6 +316,77 @@ def test_qualification_retries_transient_capture_without_resubmission(tmp_path, 
     assert backend.submit_calls == 1
     assert backend.fetch_calls == 2
     assert result["job"]["finalState"] == "completed"
+
+
+def test_qualification_replays_one_output_without_collapsing_identical_multi_outputs(tmp_path, monkeypatch):
+    registry, lock_path = _registry(tmp_path)
+    monkeypatch.setattr(
+        "anvil_serving.media.qualification.bundle_inventory",
+        lambda *_args, **_kwargs: {"ready": True, "assets": [{"state": "exact"}]},
+    )
+    backend = _TransientMultiOutputBackend()
+    ticks = iter([0.0, 0.02, 0.03, 0.04, 0.05, 0.06, 1.0])
+
+    result = qualify(
+        "video.test",
+        "v1",
+        {"prompt": "test prompt"},
+        registry=registry,
+        jobs=MediaJobStore(tmp_path / "jobs.sqlite3"),
+        artifacts=ArtifactStore(tmp_path / "artifacts"),
+        backend=backend,
+        principal="qualifier",
+        lock_path=lock_path,
+        models_volume="media-models",
+        monotonic=lambda: next(ticks),
+        sleep=lambda _seconds: None,
+        gpu_runner=_gpu_runner,
+        ffprobe_runner=_ffprobe,
+    )
+
+    assert backend.submit_calls == 1
+    assert backend.fetch_calls == 3
+    assert len(result["artifacts"]) == 2
+    assert len({artifact["id"] for artifact in result["artifacts"]}) == 2
+
+
+@pytest.mark.parametrize("completion_observed_at", [30.0, 31.0])
+def test_qualification_rejects_completion_observed_at_or_after_deadline(
+    tmp_path, monkeypatch, completion_observed_at
+):
+    registry, lock_path = _registry(tmp_path)
+    monkeypatch.setattr(
+        "anvil_serving.media.qualification.bundle_inventory",
+        lambda *_args, **_kwargs: {"ready": True, "assets": [{"state": "exact"}]},
+    )
+    backend = _CountingVideoBackend()
+    jobs = MediaJobStore(tmp_path / "jobs.sqlite3")
+    ticks = iter([0.0, 0.02, 29.9, completion_observed_at])
+
+    try:
+        qualify(
+            "video.test",
+            "v1",
+            {"prompt": "test prompt"},
+            registry=registry,
+            jobs=jobs,
+            artifacts=ArtifactStore(tmp_path / "artifacts"),
+            backend=backend,
+            principal="qualifier",
+            lock_path=lock_path,
+            models_volume="media-models",
+            monotonic=lambda: next(ticks),
+            sleep=lambda _seconds: None,
+            gpu_runner=_gpu_runner,
+            ffprobe_runner=_ffprobe,
+        )
+    except MediaError as error:
+        assert error.code == "media_qualification_timeout"
+    else:
+        raise AssertionError("completion observed at deadline must not qualify")
+
+    assert backend.submit_calls == 1
+    assert jobs.get(backend.last_job_id, principal="qualifier").state.value == "completed"
 
 
 def test_qualification_propagates_non_transient_post_submission_failure(tmp_path, monkeypatch):
