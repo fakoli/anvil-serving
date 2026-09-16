@@ -66,8 +66,6 @@ RUN git clone https://github.com/Comfy-Org/ComfyUI.git /opt/anvil/comfy-source \
     && git -c safe.directory=/opt/anvil/comfy-source -C /opt/anvil/comfy-source checkout --detach "$COMFYUI_RELEASE_REV" \
     && find /app -mindepth 1 -maxdepth 1 ! -name venv ! -name docker-entrypoint.sh -exec rm -rf '{}' + \
     && cp -a /opt/anvil/comfy-source/. /app/ \
-    && mkdir -p /app/temp \
-    && chown 1000:1000 /app/temp \
     && /app/venv/bin/python -m pip install -c /opt/anvil/comfy-core-constraints.txt -r /app/requirements.txt
 
 COPY install-comfyui-node.sh /opt/anvil/install-comfyui-node.sh
@@ -108,7 +106,9 @@ RUN /app/venv/bin/python -m pip uninstall --yes pynvml \
     && find /app/custom_nodes -mindepth 1 -maxdepth 1 -type d -exec test -d '{}/.git' ';' \
     && test -x /app/docker-entrypoint.sh \
     && test -f /app/main.py \
-    && test "$(stat -c %u:%g /app/temp)" = 1000:1000 \
+    && mkdir -p /app/input /app/output /app/temp /app/user \
+    && chown 1000:1000 /app/input /app/output /app/temp /app/user \
+    && for writable_dir in /app/input /app/output /app/temp /app/user; do test "$(stat -c %u:%g "$writable_dir")" = 1000:1000; done \
     && test -x /app/venv/bin/python \
     && test "${VIRTUAL_ENV}" = /app/venv \
     && test "${VIRTUAL_ENV_CUSTOM}" = /app/custom_venv \
@@ -128,3 +128,12 @@ LABEL org.opencontainers.image.title="Anvil ComfyUI curated add-ons" \
       org.opencontainers.image.comfyui.image.revision="${COMFYUI_IMAGE_REV}"
 
 USER 1000:1000
+
+# Prove the runtime identity can write every ComfyUI mutable directory before
+# a mounted operator volume changes those paths at container start.
+RUN set -eu; for writable_dir in /app/input /app/output /app/temp /app/user; do \
+      test -d "$writable_dir"; \
+      probe="$writable_dir/.anvil-write-probe"; \
+      : > "$probe"; \
+      rm -f "$probe"; \
+    done
