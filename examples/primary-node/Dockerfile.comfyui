@@ -136,4 +136,6 @@ RUN set -eu; for writable_dir in /app/input /app/output /app/temp /app/user; do 
       probe="$writable_dir/.anvil-write-probe"; \
       : > "$probe"; \
       rm -f "$probe"; \
-    done
+    done; \
+    rmdir /app/temp || test -d /app/temp; \
+    mkdir -p /app/temp

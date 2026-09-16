@@ -59,6 +59,8 @@ def test_runtime_and_custom_node_inputs_are_exactly_pinned():
         'for writable_dir in /app/input /app/output /app/temp /app/user',
         'USER 1000:1000',
         'probe="$writable_dir/.anvil-write-probe"',
+        'rmdir /app/temp || test -d /app/temp',
+        'mkdir -p /app/temp',
         'test -x /app/venv/bin/python',
         'test "${VIRTUAL_ENV}" = /app/venv',
         'test "${VIRTUAL_ENV_CUSTOM}" = /app/custom_venv',
