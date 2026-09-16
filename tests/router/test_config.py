@@ -228,6 +228,25 @@ def test_missing_model_routes_is_rejected(tmp_path):
         load(_write(tmp_path, _ONE_TIER.replace("[router.model_routes]\nllm.primary = \"primary\"\n", "")))
 
 
+def test_empty_chat_router_requires_a_valid_media_gateway_declaration(tmp_path):
+    media_only = """
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+media_principal = "hermes"
+media_scopes = ["media:read", "media:submit", "media:cancel"]
+media_public_origin = "http://127.0.0.1:8080"
+
+[router]
+"""
+
+    config = load(_write(tmp_path, media_only))
+    assert config.tiers == ()
+    assert dict(config.model_routes) == {}
+
+    with pytest.raises(ConfigError, match=r"\[router\]\.tiers is empty"):
+        load(_write(tmp_path, "[router]\n"))
+
+
 def test_all_chat_tiers_must_be_addressable(tmp_path):
     two_tier = _ONE_TIER.replace(
         "[router.model_routes]",

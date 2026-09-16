@@ -75,6 +75,7 @@ def test_workflow_bundle_and_required_model_identities_are_pinned():
     expected_availability = {
         "image.flux2-klein-4b-fp8-v1": (True, []),
         "video.wan2.2-ti2v-5b-v1": (False, ["quality_failed"]),
+        "video.wan2.2-ti2v-5b-v2": (False, ["quality_unverified"]),
     }
     for descriptor_path in sorted(SOURCE_BUNDLE.glob("*.json")):
         descriptor = _json(descriptor_path)

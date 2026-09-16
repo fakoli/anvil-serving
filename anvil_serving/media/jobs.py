@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import heapq
 import json
 import os
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .contracts import JobEvent, JobState, MediaArtifact, MediaJob, utc_now
+from .comfyui import _base_url, _legacy_base_url
 from .errors import MediaError
 from ..observability.workloads import (
     MAX_COUNT, SOURCE_LIMIT, ObservationQuality, ResultStatus, SourceAuthority,
@@ -290,6 +292,10 @@ class MediaJobStore:
                     job_id TEXT NOT NULL REFERENCES media_jobs(id) ON DELETE CASCADE,
                     artifact_json TEXT NOT NULL,
                     PRIMARY KEY(job_id, artifact_json)
+                );
+                CREATE TABLE IF NOT EXISTS media_job_backends (
+                    job_id TEXT PRIMARY KEY REFERENCES media_jobs(id) ON DELETE CASCADE,
+                    identity_digest TEXT NOT NULL
                 );
                 """
             )
@@ -590,6 +596,86 @@ class MediaJobStore:
             db.execute("UPDATE media_jobs SET backend_prompt_id=? WHERE id=?", (prompt_id, job_id))
             db.execute("COMMIT")
         return self.get(job_id, principal=principal)
+
+    def check_backend(
+        self,
+        job_id: str,
+        identity_digest: str,
+        *,
+        principal: str,
+        bind: bool = False,
+        legacy_identity_digest: str | None = None,
+    ) -> None:
+        """Pin before submission, or verify an existing private endpoint digest.
+
+        The auxiliary table is additive to schema v2. Older jobs remain unbound;
+        observing one must not retroactively assert its submission provenance.
+        """
+        if not isinstance(identity_digest, str) or not re.fullmatch(r"[0-9a-f]{64}", identity_digest):
+            raise MediaError("invalid_backend", "backend identity digest is invalid")
+        if legacy_identity_digest is not None and (
+            not isinstance(legacy_identity_digest, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", legacy_identity_digest)
+        ):
+            raise MediaError("invalid_backend", "backend legacy identity digest is invalid")
+        with self._lock, self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            current = self.get(job_id, principal=principal)
+            row = db.execute(
+                "SELECT identity_digest FROM media_job_backends WHERE job_id=?", (job_id,),
+            ).fetchone()
+            if row is None:
+                if not bind or current.state != JobState.SUBMITTING or current.backend_prompt_id:
+                    raise MediaError(
+                        "backend_identity_unavailable", "job has no recorded submission backend; read its stored status",
+                        status=409,
+                    )
+                db.execute(
+                    "INSERT INTO media_job_backends(job_id,identity_digest) VALUES (?,?)",
+                    (job_id, identity_digest),
+                )
+            elif (
+                row["identity_digest"] != identity_digest
+                and row["identity_digest"] != legacy_identity_digest
+            ):
+                raise MediaError("backend_identity_conflict", "backend differs from the job's submission endpoint", status=409)
+            db.execute("COMMIT")
+
+    def check_backend_endpoint(
+        self,
+        job_id: str,
+        endpoint: str,
+        *,
+        principal: str,
+        bind: bool = False,
+    ) -> None:
+        """Bind or verify the exact backend before a job-specific remote call.
+
+        The endpoint itself stays out of durable job state and public responses;
+        only its digest is retained.  Every observer and cancellation path uses
+        this method so a restarted gateway cannot direct an existing prompt to
+        a newly configured backend.
+        """
+        if not isinstance(endpoint, str) or not endpoint or len(endpoint) > 2048:
+            raise MediaError("invalid_backend", "media backend endpoint is invalid")
+        canonical = _base_url(endpoint)
+        legacy = getattr(endpoint, "legacy_endpoint", None)
+        if legacy is None:
+            legacy = _legacy_base_url(endpoint)
+        if not isinstance(legacy, str) or not legacy or len(legacy) > 2048:
+            raise MediaError("invalid_backend", "media backend endpoint is invalid")
+        if _base_url(legacy) != canonical:
+            raise MediaError("invalid_backend", "legacy backend spelling identifies a different endpoint")
+        self.check_backend(
+            job_id,
+            hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+            principal=principal,
+            bind=bind,
+            # Compatibility is deliberately read-only: only the exact legacy
+            # spelling supplied by this configured endpoint may match an old
+            # digest.  Equivalent alternate spellings never rebind a job.
+            legacy_identity_digest=hashlib.sha256(legacy.encode("utf-8")).hexdigest(),
+        )
 
     def add_artifact(self, artifact: MediaArtifact) -> MediaJob:
         payload = _artifact_json(artifact)

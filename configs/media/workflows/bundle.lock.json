@@ -132,6 +132,37 @@
           "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156"
         }
       ]
+    },
+    {
+      "id": "video.wan2.2-ti2v-5b-v2",
+      "version": "v2",
+      "graph_sha256": "b93170eeb578ce5a8dc86d2dfbd944e037abf2e8b9a223059f8e9c6aa8291c14",
+      "models": [
+        {
+          "repository": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+          "revision": "c4f60d30c55a624e35427060fdd217579a6c1d77",
+          "path": "split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors",
+          "target": "diffusion_models/wan2.2_ti2v_5B_fp16.safetensors",
+          "size": 9999658848,
+          "sha256": "456f901338bd9eadbded3828b819109a9b68e8a525ca5cf8d0049a69fcfeca1e"
+        },
+        {
+          "repository": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+          "revision": "c4f60d30c55a624e35427060fdd217579a6c1d77",
+          "path": "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "target": "text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "size": 6735906897,
+          "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68"
+        },
+        {
+          "repository": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+          "revision": "c4f60d30c55a624e35427060fdd217579a6c1d77",
+          "path": "split_files/vae/wan2.2_vae.safetensors",
+          "target": "vae/wan2.2_vae.safetensors",
+          "size": 1409400960,
+          "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156"
+        }
+      ]
     }
   ],
   "sources": [

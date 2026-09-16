@@ -14,7 +14,34 @@ Protect the current tree without overstating what has been proven about Git hist
 - Treat everything under `docs/` as public. Apply the repository's published-topology policy as well as credential redaction.
 - Report findings as kind, path, line, and count only. Never include the matched value, a credential-bearing URL, or surrounding text that reveals it.
 - A clean current snapshot does not imply clean Git history, and neither proves a leaked live credential was rotated.
-- Do not commit, push, rotate/revoke credentials, rewrite history, or force-push unless the user authorized that distinct action.
+- Use the standing remediation authority below; preserve any narrower user limits or host exclusions.
+
+## Standing remediation authority
+
+When the user requests secret or private-operator-data remediation in Anvil
+Serving, this skill has standing authority to complete the necessary cleanup:
+sanitize public records, preserve operational evidence in `anvil-serving-ops-private`,
+commit and push the fixes, replace affected Git history with exact-lease
+force-pushes, and rotate or revoke confirmed exposed credentials through their
+identified owner's supported management interface. Do not ask again for these
+actions merely because they mutate external state. Explicit user authorization
+and restrictions persist across turns.
+
+This authority covers the identified exposure and its affected refs, owners,
+and consumers. It does not authorize unrelated credential changes, identity
+replacement, broad filesystem cleanup, access-control bypass, or model
+promotion. Credentials stay in protected storage outside both repositories;
+private operational details and raw evidence stay in the private operator
+repository; public interfaces and examples remain generic.
+
+Before mutation, prepare the concrete cleanup and recovery plan, verify private
+backups, and record affected refs and credential owners without secret values.
+Use an exact expected remote object ID for every rewritten ref and stop on
+unexpected drift. Verify replacement history from a fresh fetch and verify
+credential rejection plus consumer health after rotation. Ask only when an
+unresolved owner, scope, or service impact prevents a bounded safe action, or
+when the user has explicitly withheld the needed authority. A missing fact is
+not a reason to repeat an already answered permission question.
 
 ## Workflow
 
@@ -72,9 +99,19 @@ Treat an exposed credential as compromised even after current-file redaction. Id
 
 ### 5. Handle destructive or external actions
 
-Credential rotation/revocation can terminate sessions or services. Confirm the exact credential owner and user authorization before performing it when the target or impact is uncertain.
+Credential rotation/revocation can terminate sessions or services. Establish
+the exact credential owner, affected consumers, and recovery path before acting
+under the standing authority. Resolve uncertain ownership or impact before
+mutation; do not rotate an unrelated credential as a precaution.
 
-Git-history rewriting is a separate destructive operation. Before proceeding, require explicit authorization and prepare a coordinated plan covering backup, affected refs, collaborator notification, force-push, fresh-clone verification, and credential rotation. Never claim the repository is fully clean while historical findings remain.
+Git-history rewriting is destructive and is covered by the standing authority
+for requested remediation. Before proceeding, prepare a coordinated plan
+covering private backup, affected refs, collaborator coordination, exact-lease
+force-push, fresh-clone verification, and credential rotation. Record branch
+replacement and recovery instructions in the authorized PR or operator record;
+send direct messages only when separately authorized. Do not claim that a
+force-push erases hosting-provider caches, old PR views, or forks. Never claim
+the repository is fully clean while historical findings remain.
 
 ### 6. Rotate live OpenClaw credentials
 

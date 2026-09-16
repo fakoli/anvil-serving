@@ -78,6 +78,11 @@ anvil-serving media bundle stage <WORKFLOW> \
 Staging never replaces an existing mismatched file. A mismatch is a refusal,
 not permission to repair by guessing or downloading another revision.
 
+Inventory uses only a cached, digest-pinned verification image. If that image
+is missing, staging preview reports `helperPullRequired` and defers asset
+inventory. Confirmed staging pulls the exact helper and checks existing files
+before writing to either volume; unknown files are never treated as missing.
+
 ## Validate one named workflow
 
 ```bash
@@ -128,6 +133,22 @@ anvil-serving media job cancel <JOB_ID> \
 ```
 
 Status derives phase and end-to-end latency from ordered durable events.
+For a standalone CLI submission without a gateway reconciliation daemon, add
+`--backend-url` with the same endpoint used for submission. This refreshes only
+that principal-owned job from backend history and retains completed artifacts:
+
+```bash
+anvil-serving media job status <JOB_ID> --principal caller-1 \
+  --backend-url http://127.0.0.1:8188
+```
+
+Repeat while the job is queued or running. Refresh never submits another
+prompt or starts a worker. Without the option, status reads the stored snapshot.
+Submission records a private endpoint digest before sending the prompt; refresh
+rejects a different endpoint before contacting it. Older jobs without that
+binding support stored status only.
+Phase times are observation times; a delayed refresh is not engine latency.
+
 Cancellation is principal-scoped, idempotent, and reconciled with the selected
 backend. It never cancels unrelated backend work by filename or queue position.
 
@@ -162,6 +183,43 @@ generate the artifact. A successful run does not change availability or
 promotion state by itself.
 
 ## Lifecycle and integration boundary
+
+### Connect Codex to the media MCP
+
+Register a dedicated connection to the authenticated gateway after the operator
+has installed its configuration and protected token file:
+
+```bash
+codex mcp add anvil-media -- anvil-serving mcp serve --controller-url http://127.0.0.1:8189/mcp --auth-file /protected/media-token
+```
+
+Use the installed gateway URL and token-file path for your machine. The file
+contains one UTF-8 token line and uses an absolute path. The bridge checks the
+opened file's ownership and permissions before and after reading. On POSIX,
+only the current user or root may own it and group/other permissions must be
+absent. On macOS, extended ACLs on the file or any ancestor are rejected;
+native macOS acceptance remains unverified. On Windows, access must be limited to the current user, SYSTEM, and
+Administrators. Missing permission information fails closed.
+Its contents are never stored in Codex settings or
+process arguments. `--auth-env` remains supported when the client already has
+the credential in its environment. The bundled bridge requires Node.js 20+ and
+the same Anvil version as the gateway. Start a new Codex session after adding
+the connection so its tools can be loaded.
+
+A dedicated media gateway may use an empty `[router]` table with a complete,
+authenticated `[server]` media declaration (`auth_env`, `media_principal`,
+`media_scopes`, and `media_public_origin`). Set its explicit
+`ANVIL_MEDIA_BACKEND_URL` and private state/artifact locations in the managed
+deployment. No chat route or chat-model serve is required. An ordinary empty
+router without that media declaration remains invalid.
+
+Verify the connection by listing the eight `media_*` tools, validating an
+available workflow, submitting a named image workflow, polling its job to
+completion, and inspecting the resulting artifact. The image content digest
+must match the artifact metadata. Wrong-token and cross-principal access must
+be refused. The connection does not grant model installation, worker lifecycle,
+or workflow-promotion authority; a cold worker still needs its managed operator
+startup path.
 
 The resource-owning host operates ComfyUI through managed `serves` and
 controller tools; raw Docker is not the operational path. The caller-facing

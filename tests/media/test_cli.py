@@ -52,6 +52,8 @@ class _Registry:
 
 
 class _Backend:
+    base_url = "http://127.0.0.1:8188"
+
     def __init__(self):
         self.submissions = 0
         self.deleted = []
@@ -127,6 +129,34 @@ def test_operations_run_retry_status_and_cancel_share_domain_records(tmp_path):
     canceled = operations.job_cancel(first["job"]["id"], principal="hermes", backend=backend)
     assert canceled["canceled"] is True
     assert backend.deleted == ["prompt-one"]
+
+
+def test_cancellation_checks_bound_endpoint_only_when_remote_work_is_needed(tmp_path):
+    backend = _Backend()
+    operations = MediaOperations(
+        _Registry(),
+        MediaJobStore(tmp_path / "jobs.sqlite3"),
+        ArtifactStore(tmp_path / "artifacts"),
+    )
+    queued = operations.workflow_run(
+        "image.test", "v1", {"prompt": "mountain"},
+        principal="hermes", idempotency_key="queued", backend=backend,
+    )["job"]
+    backend.base_url = "http://127.0.0.1:8189"
+    with pytest.raises(MediaError) as conflict:
+        operations.job_cancel(queued["id"], principal="hermes", backend=backend)
+    assert conflict.value.code == "backend_identity_conflict"
+    assert backend.deleted == []
+
+    pending, _ = operations.jobs.create(
+        principal="hermes",
+        workflow_id="image.test",
+        workflow_version="v1",
+        input_digest="b" * 64,
+        idempotency_key="pending",
+    )
+    local = operations.job_cancel(pending.id, principal="hermes", backend=object())
+    assert local["canceled"] is True
 
 
 def test_cold_worker_requires_approval_then_exact_retry_submits_once(tmp_path):
@@ -501,6 +531,12 @@ def test_retry_never_resubmits_ambiguous_remote_acceptance(
         JobState.SUBMITTING,
         principal="hermes",
         now=old,
+    )
+    operations.jobs.check_backend_endpoint(
+        job.id,
+        backend.base_url,
+        principal="hermes",
+        bind=True,
     )
 
     recovered = operations.workflow_run(

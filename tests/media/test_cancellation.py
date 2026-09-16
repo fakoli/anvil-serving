@@ -4,6 +4,7 @@ from anvil_serving.media import JobState, MediaCancellationService, MediaJobStor
 
 
 NOW = dt.datetime(2026, 8, 27, tzinfo=dt.timezone.utc)
+ENDPOINT = "http://127.0.0.1:8188"
 
 
 def create(store, *, key="one"):
@@ -24,7 +25,17 @@ def service(store, calls, *, exclusive=False, deleted=True):
         delete_queued=lambda prompt: calls.append(("delete", prompt)) or deleted,
         interrupt_exclusive=lambda: calls.append(("interrupt", None)),
         owns_active_slot=lambda job: exclusive,
+        verify_backend=lambda job: store.check_backend_endpoint(
+            job.id, ENDPOINT, principal=job.principal,
+        ),
     )
+
+
+def submitted(store, job):
+    job = store.transition(job.id, JobState.PREPARING, principal="hermes")
+    job = store.transition(job.id, JobState.SUBMITTING, principal="hermes")
+    store.check_backend_endpoint(job.id, ENDPOINT, principal="hermes", bind=True)
+    return job
 
 
 def test_pending_cancellation_never_contacts_backend(tmp_path):
@@ -39,7 +50,7 @@ def test_pending_cancellation_never_contacts_backend(tmp_path):
 
 def test_queued_cancellation_deletes_only_owned_prompt(tmp_path):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
-    job = create(store)
+    job = submitted(store, create(store))
     job = store.set_backend_prompt(job.id, "prompt_123", principal="hermes")
     job = store.transition(job.id, JobState.QUEUED, principal="hermes")
     calls = []
@@ -50,7 +61,7 @@ def test_queued_cancellation_deletes_only_owned_prompt(tmp_path):
 
 def test_queued_to_running_race_fails_closed_after_delete_request(tmp_path):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
-    job = create(store)
+    job = submitted(store, create(store))
     job = store.set_backend_prompt(job.id, "prompt_123", principal="hermes")
     job = store.transition(job.id, JobState.QUEUED, principal="hermes")
     calls = []
@@ -65,7 +76,7 @@ def test_queued_to_running_race_fails_closed_after_delete_request(tmp_path):
 
 def test_running_cancellation_fails_closed_without_exclusive_slot(tmp_path):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
-    job = create(store)
+    job = submitted(store, create(store))
     job = store.set_backend_prompt(job.id, "prompt_123", principal="hermes")
     job = store.transition(job.id, JobState.QUEUED, principal="hermes")
     job = store.transition(job.id, JobState.RUNNING, principal="hermes")
@@ -78,7 +89,7 @@ def test_running_cancellation_fails_closed_without_exclusive_slot(tmp_path):
 
 def test_running_cancellation_interrupts_only_with_exclusive_proof(tmp_path):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
-    job = create(store)
+    job = submitted(store, create(store))
     job = store.set_backend_prompt(job.id, "prompt_123", principal="hermes")
     job = store.transition(job.id, JobState.QUEUED, principal="hermes")
     job = store.transition(job.id, JobState.RUNNING, principal="hermes")

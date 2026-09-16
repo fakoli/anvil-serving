@@ -1,0 +1,20 @@
+{
+  "schema": "anvil-serving.media-perceptual-review/v1",
+  "reviewer": {
+    "model": "gpt-5.6-sol",
+    "independent_of_generators": true,
+    "independent_of_evidence_author": true
+  },
+  "video_v2": {
+    "status": "partial",
+    "reviewed_frames": [
+      0,
+      16,
+      32
+    ],
+    "observations": "Recognizable red teapot/table, substantial spatial recovery. No visible steam/handle, synthetic highlights, irregular lid/spout geometry; transient dark magenta foreground smear at frame16.",
+    "temporal_review": "not_performed"
+  },
+  "promoted": false,
+  "availability_authorized": false
+}

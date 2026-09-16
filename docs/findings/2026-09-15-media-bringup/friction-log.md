@@ -1,0 +1,7 @@
+# Campaign friction log
+
+| Time | Stage | Category | Earliest actionable evidence | Immediate disposition | Durable fix-forward artifact | Independent verification | Status |
+|---|---|---|---|---|---|---|---|
+| 2026-09-15 | scout | failure | Explicit `serves status` for a valid media topology/runtime refused because `model-serve` had zero declared owners. | Use the known local manifest command that preserves reservation gates; do not alter topology during this campaign. | [Topology-dispatch ticket](https://github.com/fakoli/anvil-serving/blob/main/.tickets/2026-09-15-media-worker-topology-dispatch.md) | Pending a focused regression after a product fix. | open |
+| 2026-09-15 | scout | ambiguous-output | The API job had no UI workflow metadata, so opening its output as a workflow failed with `No workflow data available`. | Import the exact rendered named API graph into the visual editor and save it as `Anvil Image - High`. | Documented operator workflow; no availability change. | Imported image graph ran successfully in the visual editor; both saved workflows reopened with their correct prompts. | open |
+| 2026-09-15 | quality | failure | Independent review of three Wan v1 frames found severe colored spatial corruption and no prompt-adherent teapot. | Retain the failed v1 sample and keep it unavailable. | New pinned v2 graph/descriptor/registry/lock preserves v1 and corrects latent, negative conditioning, and sampling nodes. | Two v2 diagnostics completed; independent reviews were partial. Temporal and broader quality gates remain outstanding. | open |

@@ -33,6 +33,7 @@ from .control_plane.mcp.catalog import (
 from .control_plane.mcp.controller_client import (
     remote_controller_request,
     resolve_controller_token,
+    resolve_controller_token_file,
 )
 from .control_plane.mcp.errors import ToolError
 from .control_plane.mcp.errors import fail as _failure_envelope
@@ -240,17 +241,25 @@ def serve_stdio(
 
 def main(argv: Optional[list[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+
+    def serve_proxy(controller_url: str, auth_env: str, auth_file: str) -> int:
+        if auth_file:
+            return _run_node_bridge(
+                controller_url,
+                auth_env,
+                __version__,
+                auth_file=auth_file,
+            )
+        return _run_node_bridge(controller_url, auth_env, __version__)
+
     return _stdio_main(
         argv,
         list_tools=list_tools,
         safe_controller_url=_safe_controller_url,
         resolve_controller_token=resolve_controller_token,
+        resolve_controller_token_file=resolve_controller_token_file,
         serve=serve_stdio,
-        serve_proxy=lambda controller_url, auth_env: _run_node_bridge(
-            controller_url,
-            auth_env,
-            __version__,
-        ),
+        serve_proxy=serve_proxy,
     )
 
 

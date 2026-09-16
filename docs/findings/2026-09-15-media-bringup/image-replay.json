@@ -1,0 +1,27 @@
+{
+  "command": "media workflow run <WORKFLOW> --principal example-caller --backend-url <BACKEND_URL> --confirm",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "{\"created\": false, \"job\": {\"artifacts\": [{\"byteLength\": 1475793, \"expiresAt\": \"2026-09-16T09:05:04.226379+00:00\", \"id\": \"art_a2de4a0c1032856b63f54405c8b2fad0\", \"jobId\": \"job_0af5555e61c9af07dedec32041734312\", \"mediaType\": \"image/png\", \"resource\": \"/artifacts/art_a2de4a0c1032856b63f54405c8b2fad0\", \"sha256\": \"d910938ebbdbb916dc2de2705b7b1c774a83a71aa38c5abb73527586b6208eb2\", \"workflow\": {\"id\": \"image.flux2-klein-4b-fp8-v1\", \"version\": \"v1\"}}], \"createdAt\": \"2026-09-15T09:04:25.904167+00:00\", \"id\": \"job_0af5555e61c9af07dedec32041734312\", \"latency\": {\"acceptedToQueuedSeconds\": 0.064, \"endToEndSeconds\": 38.335, \"generationSeconds\": 0.052, \"queueSeconds\": 38.219, \"recordedSeconds\": 38.335, \"submissionSeconds\": 0.038}, \"qualityProfile\": \"high\", \"sequence\": 6, \"state\": \"completed\", \"terminalReason\": \"completed\", \"updatedAt\": \"2026-09-15T09:05:04.239161+00:00\", \"workflow\": {\"id\": \"image.flux2-klein-4b-fp8-v1\", \"version\": \"v1\"}}}\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

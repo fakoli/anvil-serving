@@ -1,0 +1,16 @@
+{
+  "schema": "anvil-serving.public-evidence-redactions/v1",
+  "source_custody": "private operator repository",
+  "scope": "2026-09-15-media-bringup",
+  "transformations": [
+    "Replaced raw final managed status with a health-only projection.",
+    "Withheld service/container names, listener ports, resource ownership, co-resident assignments, and operational reservation data.",
+    "Replaced real opaque job/artifact identifiers consistently with synthetic values; public resource references are non-live.",
+    "Replaced captured CLI endpoint and principal arguments with generic placeholders.",
+    "Preserved model/workflow hashes, decoded media metadata, test measurements, and timestamps in sanitized qualification payloads."
+  ],
+  "limitations": [
+    "Public files are sanitized derivatives, not byte-identical native receipts.",
+    "Raw operational receipts and identifier mapping remain private."
+  ]
+}

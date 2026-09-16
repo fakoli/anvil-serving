@@ -18,6 +18,8 @@ Latest runtime decision: [GLM Flash EXL3 327K intelligence and context qualifica
 
 Latest bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
 
+Latest media bringup: [managed Anvil Media bringup](2026-09-15-media-bringup.md), 2026-09-15 — fixed image smoke and Wan v1/v2 functional diagnostics; Wan remains unavailable pending quality.
+
 These findings remain public as durable evidence under
 [ADR-0027](../adr/0027-public-findings-are-durable-evidence.md). A later benchmark or ADR can
 supersede a recommendation, but it does not erase the historical observation or move its

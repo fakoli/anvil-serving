@@ -28,6 +28,14 @@
 
 ### Review narrative
 
+#### 2026-09-15 — managed bringup smoke
+
+One fixed `high` 1024×1024/four-step image job completed on the managed worker.
+The PNG passed stdlib integrity checks and one independent review, with a minor
+rough/pitted rather than brushed-steel mismatch. Its 38.335-second status delay
+is not image-generation latency. This did not alter workflow availability or
+promotion.
+
 #### 2026-08-28 — direct qualification
 
 The exact managed workflow produced a decodable 258,472-byte PNG in 9.859

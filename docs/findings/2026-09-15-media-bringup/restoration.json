@@ -1,0 +1,29 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-15-media-bringup",
+  "status": "complete",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "private operator receipt"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "post-run managed health check passed; topology withheld"
+    ]
+  },
+  "differences": [
+    "test worker intentionally retained after the bounded run; identifiers and placement withheld"
+  ],
+  "post_run_checks": [
+    "image job completed",
+    "video qualification completed",
+    "no workflow promotion applied"
+  ],
+  "verified": true,
+  "not_applicable_reason": null,
+  "sanitized": true
+}

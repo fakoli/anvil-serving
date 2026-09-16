@@ -674,7 +674,15 @@ class RoutingBackend:
         if self._auto_refresher is not None:
             self._auto_refresher.start()
         self._availability = availability if availability is not None else AlwaysAvailable()
-        self._admission = admission if admission is not None else _configured_admission(config)
+        # A valid media-only gateway has no chat tiers to admit. Its chat
+        # surface fails closed during route resolution before admission is
+        # consulted, so do not invent a placeholder tier merely to initialize
+        # tier admission state.
+        self._admission = (
+            admission
+            if admission is not None
+            else _configured_admission(config) if config.tiers else None
+        )
         self._capacity_metrics = fetch_engine_metrics if capacity_metrics is None else capacity_metrics
         self._replica_pressure = ReplicaPressureCache(
             tuple(tier for tier in config.tiers if tier.replicas and tier.replica_strategy == "capacity"),
@@ -1879,14 +1887,19 @@ def build_server(
     injected = backends is not None
     if backends is None:
         backends, _skipped = build_backends(config, env=env, transport=transport)
-    if not backends:
+    media_gateway_enabled = server_config.media_principal is not None
+    if not backends and not media_gateway_enabled:
         raise ConfigError("no serviceable configured capability tiers")
     if availability is None:
         availability = AlwaysAvailable() if injected else HttpHealthAvailability(config, env=env)
     if capacity_metrics is None:
         def capacity_metrics(tier: Tier):
             return fetch_engine_metrics(tier, env=environ)
-    if admission is None and server_config.admission_state_path:
+    if (
+        admission is None
+        and server_config.admission_state_path
+        and config.tiers
+    ):
         admission = _durable_admission(server_config.admission_state_path, config)
     with ExitStack() as cleanup:
         decision_log: Optional[DecisionLog] = None
@@ -2002,6 +2015,7 @@ def build_server(
                         media_backend,
                     ),
                     getattr(media_backend, "find_prompt", None),
+                    backend_endpoint=media_backend.base_url,
                 ),
                 maintenance=operations.artifacts.prune,
             )

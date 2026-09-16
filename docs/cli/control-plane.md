@@ -278,8 +278,15 @@ operations on another, proxy the tool protocol to the private controller:
 anvil-serving mcp serve --controller-url http://100.64.0.10:8765 --auth-env ANVIL_CONTROLLER_TOKEN
 ```
 
-The URL and token environment-variable name must be provided together. Proxy
-mode requires Node.js 20+ and launches the packaged official TypeScript SDK
+The URL requires exactly one credential reference: `--auth-env ENV` or
+`--auth-file PATH`. The file option reads one bounded UTF-8 token line from
+protected storage and passes it only in the bridge's child environment. Keep
+the file readable only by its owner and trusted system administrators. Neither
+option puts a literal token in command arguments or client settings. See the
+[Codex media connection](media.md#connect-codex-to-the-media-mcp) for a dedicated
+caller-facing setup.
+
+Proxy mode requires Node.js 20+ and launches the packaged official TypeScript SDK
 bridge. Its stdio side serves initialize-based clients through `2025-11-25`
 and stateless `2026-07-28` clients from the same tool registrations. Its
 downstream client accepts only `2026-07-28`, bearer-authenticates every

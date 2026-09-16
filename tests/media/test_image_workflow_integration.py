@@ -112,6 +112,7 @@ def _registry(
 
 class _Backend:
     def __init__(self, expected_dimensions=None):
+        self.base_url = "http://127.0.0.1:8188"
         self.expected_dimensions = expected_dimensions
 
     def compatibility(self, workflow, *, qualification=False):
