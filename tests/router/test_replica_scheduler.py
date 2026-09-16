@@ -246,7 +246,10 @@ def _capacity_tier(tier_id="primary-local"):
 def _cache_finished(cache):
     with cache._condition:
         assert cache._condition.wait_for(
-            lambda: all(entry.running_at is None and not entry.queued for entry in cache._entries.values()),
+            lambda: all(
+                entry.running_at is None and not entry.queued and not entry.running
+                for entry in cache._entries.values()
+            ),
             timeout=1,
         )
 
