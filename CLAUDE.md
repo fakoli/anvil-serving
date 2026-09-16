@@ -52,7 +52,7 @@ one workflow; those profiles never choose a route or substitute a model.
 
 Two dashboard surfaces exist and must not be conflated. **Anvil Workbench** is
 this repository's built-in dashboard (`anvil-serving dashboard serve`,
-`anvil_serving/observability/dashboard/`, loopback port 8766, UI titled "Anvil
+`anvil_serving/observability/dashboard/`, loopback port 8768, UI titled "Anvil
 System View"). **Grafana Fleet** is the separate private Grafana/Prometheus
 stack in the operator's observability repository (Grafana loopback port 3001),
 whose dashboards are titled "Fakoli · …". Documentation, tickets, and evidence
