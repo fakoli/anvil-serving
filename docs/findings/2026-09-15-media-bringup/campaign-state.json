@@ -1,0 +1,75 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-15-media-bringup",
+  "updated_at": "2026-09-16T03:08:37.7984675Z",
+  "status": "complete",
+  "current_stage": "publication",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.2.1",
+    "repository_revision": "2b99e335",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "complete",
+      "evidence": [
+        "source-registry.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "scout",
+      "status": "complete",
+      "evidence": [
+        "image-job.json",
+        "video-qualification.json",
+        "video-v2-qualification.json",
+        "video-v2-standard-qualification.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "quality",
+      "status": "complete",
+      "evidence": [
+        "independent-review-v1.json",
+        "independent-review-v2.json",
+        "independent-review-v2-standard.json"
+      ],
+      "failures": [
+        "v1 failed; v2 partial"
+      ]
+    },
+    {
+      "id": "restoration",
+      "status": "complete",
+      "evidence": [
+        "final-status.json",
+        "restoration.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "complete",
+      "evidence": [
+        "artifact-manifest.json"
+      ],
+      "failures": []
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [
+    "image",
+    "Wan v1",
+    "Wan v2 small",
+    "Wan v2 standard"
+  ],
+  "next_actions": [
+    "new immutable video workflow and temporal/broader quality gate before availability"
+  ],
+  "promotion_authorized": false
+}

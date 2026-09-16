@@ -34,11 +34,13 @@ class MediaCancellationService:
         delete_queued: Callable[[str], bool],
         interrupt_exclusive: Callable[[], None],
         owns_active_slot: Callable[[MediaJob], bool],
+        verify_backend: Callable[[MediaJob], None],
     ) -> None:
         self.store = store
         self.delete_queued = delete_queued
         self.interrupt_exclusive = interrupt_exclusive
         self.owns_active_slot = owns_active_slot
+        self.verify_backend = verify_backend
 
     def cancel(self, job_id: str, *, principal: str) -> CancellationResult:
         job = self.store.get(job_id, principal=principal)
@@ -49,6 +51,7 @@ class MediaCancellationService:
         if job.state == JobState.RUNNING:
             if not job.backend_prompt_id or not self.owns_active_slot(job):
                 return CancellationResult(job, False, reason="running_not_exclusively_owned")
+            self.verify_backend(job)
             self.interrupt_exclusive()
             changed = self.store.transition(
                 job.id,
@@ -60,6 +63,7 @@ class MediaCancellationService:
         if job.state == JobState.QUEUED:
             if not job.backend_prompt_id:
                 return CancellationResult(job, False, reason="queued_prompt_unverified")
+            self.verify_backend(job)
             if self.delete_queued(job.backend_prompt_id) is not True:
                 current = self.store.get(job.id, principal=principal)
                 return CancellationResult(current, False, reason="queued_prompt_not_deleted")

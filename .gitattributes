@@ -24,6 +24,8 @@ mcp_bridge/**/*.mjs text eol=lf
 anvil_serving/_hermes_skills/** text eol=lf
 examples/hermes/skills/** text eol=lf
 docs/findings/*-evidence/** -text
+# This media artifact set also binds exact retained bytes in its manifest.
+docs/findings/2026-09-15-media-bringup/** -text
 # Kernel tune artifacts are byte-bound by their manifests. Disable checkout
 # conversion so a fresh core.autocrlf=true Windows clone retains their SHA-256.
 configs/kernel-tunes/** -text

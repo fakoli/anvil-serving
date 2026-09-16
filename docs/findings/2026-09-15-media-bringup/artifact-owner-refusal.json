@@ -1,0 +1,32 @@
+{
+  "command": "media artifact inspect <ARTIFACT_ID> --principal example-other-caller",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": null,
+  "error": {
+    "class": "execution",
+    "code": "execution_failed",
+    "details": {},
+    "message": "{\"code\": \"artifact_not_found\", \"message\": \"artifact was not found\"}"
+  },
+  "ok": false,
+  "warnings": []
+}

@@ -10,12 +10,13 @@ from pathlib import Path
 
 from .artifacts import ArtifactStore
 from .bundle import DEFAULT_LOCK, inventory as bundle_inventory, stage as bundle_stage
-from .comfyui import ComfyUIClient
+from .comfyui import ComfyUIClient, _base_url
 from .errors import MediaError
 from .jobs import MediaJobStore
 from .operations import MediaOperations, parameters_from_json, stable_request_key
 from .qualification import qualify as qualify_media
 from .workflows import WorkflowRegistry
+from .worker import MediaArtifactCapture, MediaJobReconciler
 
 
 DEFAULT_REGISTRY = Path(__file__).resolve().parents[1] / "_media_workflows" / "registry.json"
@@ -83,6 +84,7 @@ def _parser() -> argparse.ArgumentParser:
     status = job_sub.add_parser("status")
     _storage_options(status)
     _job_identity(status)
+    status.add_argument("--backend-url", default="", help="Refresh this owned job from its original backend and retain completed artifacts.")
     cancel = job_sub.add_parser("cancel")
     _storage_options(cancel)
     _job_identity(cancel)
@@ -273,6 +275,24 @@ def run(args: argparse.Namespace) -> dict:
         )
     if args.family == "job":
         if args.action == "status":
+            if args.backend_url:
+                # Resolve principal ownership before contacting the backend.
+                # This is a single-job observation, never a submission or start.
+                job = operations.jobs.get(args.job_id, principal=args.principal)
+                endpoint = _base_url(args.backend_url)
+                operations.jobs.check_backend_endpoint(
+                    job.id, endpoint,
+                    principal=args.principal,
+                )
+                backend = ComfyUIClient(args.backend_url)
+                reconciler = MediaJobReconciler(
+                    operations.jobs,
+                    backend.history,
+                    MediaArtifactCapture(operations.registry, operations.artifacts, backend),
+                    find_prompt=backend.find_prompt,
+                    backend_endpoint=backend.base_url,
+                )
+                reconciler.reconcile(job)
             return operations.job_status(args.job_id, principal=args.principal)
         return operations.job_cancel(
             args.job_id,

@@ -1,0 +1,122 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-15-media-bringup",
+    "capability": "MEDIA",
+    "repository_revision": "2b99e335",
+    "dirty_state": "13 pre-existing dirty files",
+    "started_at": "2026-09-15T09:04:25.904167+00:00",
+    "completed_at": "2026-09-16T03:08:37.7984675Z",
+    "evidence_labels": [
+      "functional",
+      "compatibility-only",
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "completion_note": "Publication finalization time; exact end of the original live run was not recorded."
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.media-qualification/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "sanitized bundle index"
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "redaction-provenance.json"
+      ],
+      "reason": "official graph references"
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload.json"
+      ],
+      "reason": "reconstructed retained CLI request inputs"
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "campaign-state.json",
+        "coverage-and-gaps.md",
+        "dispatch-packet.md"
+      ],
+      "reason": "campaign controls"
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "video-qualification.json",
+        "video-v2-qualification.json",
+        "video-v2-standard-qualification.json",
+        "final-status.json"
+      ],
+      "reason": "Public runtime/model identity and sanitized health projection; actual topology is private."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "image-job.json",
+        "image-replay.json",
+        "artifact-owner-refusal.json",
+        "video-qualification.json",
+        "video-v2-qualification.json",
+        "video-v2-standard-qualification.json",
+        "independent-review-v1.json",
+        "independent-review-v2.json",
+        "independent-review-v2-standard.json"
+      ],
+      "reason": "Sanitized native-schema derivatives and independent reviews; private receipts retain original identifiers and operational details."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "retained defects and gaps"
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "final-status.json"
+      ],
+      "reason": "final worker state"
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "bounded decision"
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "derivative claim ledger"
+    }
+  ]
+}

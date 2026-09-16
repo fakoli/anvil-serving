@@ -378,6 +378,66 @@ media_public_origin = "http://127.0.0.1:8080"
         server.server_close()
 
 
+def test_media_only_gateway_starts_without_a_chat_backend(tmp_path):
+    config_path = tmp_path / "router.toml"
+    config_path.write_text(
+        """
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+media_principal = "hermes"
+media_scopes = ["media:read", "media:submit", "media:cancel"]
+media_public_origin = "http://127.0.0.1:8080"
+
+[router]
+""",
+        encoding="utf-8",
+    )
+    server = build_server(
+        str(config_path),
+        port=0,
+        env={
+            "ANVIL_ROUTER_TOKEN": "secret",
+            "ANVIL_MEDIA_BACKEND_URL": "http://127.0.0.1:8188",
+            "ANVIL_MEDIA_STATE_DB": str(tmp_path / "jobs.sqlite3"),
+            "ANVIL_MEDIA_ARTIFACT_ROOT": str(tmp_path / "artifacts"),
+            "ANVIL_MEDIA_WORKFLOW_REGISTRY": str(
+                Path(__file__).resolve().parents[2]
+                / "configs"
+                / "media"
+                / "workflows"
+                / "registry.json"
+            ),
+        },
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        assert server.anvil_tiers == ()
+        address = server.server_address[:2]
+        status, _, raw = request(address, "POST", "/mcp", body=mcp_request())
+        assert status == 200
+        tools = {tool["name"] for tool in json.loads(raw)["result"]["tools"]}
+        assert len(tools) == 8
+        assert "media_workflow_run" in tools
+        status, _, raw = request(address, "GET", "/v1/models")
+        assert (status, json.loads(raw)) == (200, {"object": "list", "data": []})
+        status, _, raw = request(address, "GET", "/v1/health/tiers")
+        assert (status, json.loads(raw)) == (200, {"tiers": []})
+        status, _, _ = request(
+            address,
+            "POST",
+            "/v1/chat/completions",
+            body={"model": "llm.unknown", "messages": []},
+        )
+        assert status == 404
+        status, _, _ = request(address, "POST", "/mcp", body=mcp_request(), token="wrong")
+        assert status == 401
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 def test_media_lifecycle_preview_uses_bounded_controller_tool_call(monkeypatch):
     import anvil_serving.router.serve as router_serve
 
@@ -471,7 +531,7 @@ def test_build_server_reconciles_submissions_and_stops_worker(tmp_path, monkeypa
 
     class CompletingBackend:
         def __init__(self, _url):
-            pass
+            self.base_url = "http://127.0.0.1:8188"
 
         def compatibility(self, workflow, *, qualification=False):
             return WorkflowCompatibility(workflow.id, workflow.version, True, True)

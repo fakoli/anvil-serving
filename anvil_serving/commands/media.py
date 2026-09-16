@@ -222,7 +222,13 @@ def commands() -> CommandNode:
                         "Inspect one durable media job.",
                         "anvil_serving.media.cli",
                         role="media-gateway",
-                        options=IDENTITY_OPTIONS,
+                        options=IDENTITY_OPTIONS + (
+                            _option(
+                                "--backend-url",
+                                summary="Refresh this owned job from its original backend and retain completed artifacts.",
+                                value_name="URL",
+                            ),
+                        ),
                         argv_prefix=("job", "status"),
                     ),
                     _resource_node(

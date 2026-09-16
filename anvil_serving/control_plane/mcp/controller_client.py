@@ -19,6 +19,7 @@ from ..controller.operation_context import (
 )
 from ..controller.tool_names import mcp_tool_name
 from .errors import ToolError
+from .auth_file import AuthFileError, read_private_auth_file
 from .security import ENV_NAME_RE, redact_secret, safe_controller_url
 from ...transports import _NoRedirectHandler, _urlopen_no_proxy_no_redirect
 
@@ -30,6 +31,7 @@ NoRedirectHandler = _NoRedirectHandler
 # official MCP SDK's bounded stdio frame.
 MAX_REMOTE_CONTROLLER_RESPONSE_BYTES = 10 * 1024 * 1024
 MAX_ERROR_BODY_BYTES = 4096
+MAX_CONTROLLER_AUTH_FILE_BYTES = 4096
 
 
 def urlopen_no_proxy_no_redirect(req, timeout=30):
@@ -82,6 +84,35 @@ def resolve_controller_token(
             "auth env var is unset or empty",
             {"auth_env": auth_env},
         )
+    return token
+
+
+def resolve_controller_token_file(auth_file: str) -> str:
+    """Read one bounded, single-line controller token without exposing it."""
+
+    try:
+        raw = read_private_auth_file(
+            auth_file,
+            max_bytes=MAX_CONTROLLER_AUTH_FILE_BYTES,
+        )
+        text = raw.decode("utf-8")
+    except (AuthFileError, UnicodeDecodeError):
+        raise ToolError(
+            "bad_auth_file",
+            "auth file must be a readable UTF-8 regular file within the size limit",
+        ) from None
+
+    lines = text.splitlines()
+    if len(lines) != 1:
+        raise ToolError(
+            "bad_auth_file",
+            "auth file must contain exactly one token line",
+        )
+    token = lines[0].strip()
+    if not token:
+        raise ToolError("bad_auth_file", "auth file token is empty")
+    if any(ord(character) < 0x20 or ord(character) == 0x7F for character in token):
+        raise ToolError("bad_auth_file", "auth file token contains control characters")
     return token
 
 

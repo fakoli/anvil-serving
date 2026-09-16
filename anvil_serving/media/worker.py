@@ -74,11 +74,22 @@ class MediaJobReconciler:
         history: Callable[[str], BackendStatus],
         capture: Callable[[MediaJob, BackendOutput], MediaArtifact] | None = None,
         find_prompt: Callable[[str], str | None] | None = None,
+        *,
+        backend_endpoint: str,
     ) -> None:
         self.store = store
         self.history = history
         self.capture = capture
         self.find_prompt = find_prompt
+        self.backend_endpoint = backend_endpoint
+
+    def _check_backend(self, job: MediaJob) -> None:
+        """Fail closed before each job-specific backend observation or fetch."""
+        self.store.check_backend_endpoint(
+            job.id,
+            self.backend_endpoint,
+            principal=job.principal,
+        )
 
     def reconcile(self, job: MediaJob) -> MediaJob:
         if job.state in TERMINAL_STATES:
@@ -87,6 +98,7 @@ class MediaJobReconciler:
             age = (utc_now() - job.updated_at).total_seconds()
             if job.state == JobState.SUBMITTING:
                 if self.find_prompt is not None:
+                    self._check_backend(job)
                     try:
                         prompt_id = self.find_prompt(job.id)
                     except MediaError:
@@ -136,6 +148,7 @@ class MediaJobReconciler:
                 return job
         if not job.backend_prompt_id:
             return job
+        self._check_backend(job)
         status = self.history(job.backend_prompt_id)
         if status.state == "queued":
             return self._advance(job, JobState.QUEUED)
@@ -155,6 +168,7 @@ class MediaJobReconciler:
             if self.capture is None and status.outputs:
                 raise MediaError("artifact_capture_unavailable", "completed backend output cannot be retained", status=503)
             for output in status.outputs:
+                self._check_backend(current)
                 artifact = self.capture(current, output) if self.capture is not None else None
                 if artifact is not None:
                     current = self.store.add_artifact(artifact)

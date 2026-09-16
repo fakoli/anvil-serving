@@ -284,6 +284,7 @@ def qualify(
         backend.history,
         capture,
         getattr(backend, "find_prompt", None),
+        backend_endpoint=backend.base_url,
     )
     deadline = started + descriptor.timeout_seconds
     while job.state not in TERMINAL_STATES:

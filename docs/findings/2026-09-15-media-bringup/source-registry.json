@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-15-media-bringup",
+  "sources": [
+    {
+      "id": "comfy-wan22-tutorial-2026-09-15",
+      "url": "https://docs.comfy.org/tutorials/video/wan/wan2_2",
+      "published_or_observed": "observed 2026-09-15",
+      "age_class": "stale",
+      "evidence_type": "official documentation",
+      "hardware_runtime_relevance": "official Wan2.2 graph-node topology reference",
+      "decision_impact": "identified the v1 latent-node and sampling-configuration defects; informs v2 graph design only",
+      "observed_at": "2026-09-15",
+      "published_date": null,
+      "age_note": "Publication date unknown; official reference inspected on the observation date. Local tests establish runtime relevance."
+    },
+    {
+      "id": "comfy-wan22-5b-example-2026-09-15",
+      "url": "https://comfyanonymous.github.io/ComfyUI_examples/wan22/text_to_video_wan22_5B.json",
+      "published_or_observed": "observed 2026-09-15",
+      "age_class": "stale",
+      "evidence_type": "official example",
+      "hardware_runtime_relevance": "official 5B Wan2.2 graph reference",
+      "decision_impact": "supports the v2 immutable graph correction; not local quality or promotion evidence",
+      "observed_at": "2026-09-15",
+      "published_date": null,
+      "age_note": "Publication date unknown; official reference inspected on the observation date. Local tests establish runtime relevance.",
+      "snapshot_sha256": "6a4d79e1891ae1257654fa78d6716936aff9f8c7e578e4e716eb112f4e5a57c4"
+    }
+  ],
+  "observed_at": "2026-09-15"
+}

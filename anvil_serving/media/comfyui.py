@@ -25,14 +25,50 @@ _PROMPT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 _BACKEND_UNAVAILABLE_HTTP_STATUSES = frozenset({502, 503, 504})
 
 
-def _base_url(value: str) -> str:
+class _CanonicalBaseURL(str):
+    """Canonical request URL carrying the one exact pre-canonical spelling."""
+
+    def __new__(cls, canonical: str, legacy: str):
+        value = super().__new__(cls, canonical)
+        value.legacy_endpoint = legacy
+        return value
+
+
+def _parsed_base_url(value: str) -> urllib.parse.SplitResult:
+    if not isinstance(value, str) or not value:
+        raise MediaError("invalid_backend", "ComfyUI base URL must be HTTP(S)")
     parsed = urllib.parse.urlsplit(value)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         raise MediaError("invalid_backend", "ComfyUI base URL must be HTTP(S)")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise MediaError("invalid_backend", "ComfyUI base URL contains forbidden components")
+    try:
+        parsed.port
+    except ValueError as exc:
+        raise MediaError("invalid_backend", "ComfyUI base URL has an invalid port") from exc
+    return parsed
+
+
+def _legacy_base_url(value: str) -> str:
+    """Return the exact former identity spelling after existing validation."""
+    parsed = _parsed_base_url(value)
     path = parsed.path.rstrip("/")
     return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
+
+
+def _base_url(value: str) -> str:
+    """Canonicalize identity-equivalent HTTP(S) origins and the configured path."""
+    parsed = _parsed_base_url(value)
+    scheme = parsed.scheme.lower()
+    host = parsed.hostname.lower()
+    if ":" in host:
+        host = "[" + host + "]"
+    port = parsed.port
+    if port is not None and port != (80 if scheme == "http" else 443):
+        host += ":" + str(port)
+    path = parsed.path.rstrip("/")
+    canonical = urllib.parse.urlunsplit((scheme, host, path, "", ""))
+    return _CanonicalBaseURL(canonical, _legacy_base_url(value))
 
 
 def _bounded_strings(value: Any, *, label: str) -> frozenset[str]:
@@ -86,7 +122,8 @@ class ComfyUIClient:
         timeout: float = 5.0,
         opener: Callable[..., Any] | None = None,
     ) -> None:
-        self.base_url = _base_url(base_url)
+        canonical = _base_url(base_url)
+        self.base_url = _CanonicalBaseURL(canonical, _legacy_base_url(base_url))
         if timeout <= 0 or timeout > 3600:
             raise MediaError("invalid_backend", "ComfyUI timeout is outside policy")
         self.timeout = timeout

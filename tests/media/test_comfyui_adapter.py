@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.media import ComfyUIClient, MediaError, WorkflowRegistry
+from anvil_serving.media.comfyui import _base_url
 
 
 ROOT = Path(__file__).parents[2] / "configs" / "media" / "workflows"
@@ -21,6 +22,14 @@ class Response:
 
     def read(self, size=-1):
         return self.data[:size]
+
+
+def test_base_url_canonicalizes_origin_without_changing_the_configured_path():
+    client = ComfyUIClient("HTTP://MediaHost:80/Comfy/", opener=lambda *_a, **_k: None)
+    assert client.base_url == "http://mediahost/Comfy"
+    assert getattr(client.base_url, "legacy_endpoint") == "http://MediaHost:80/Comfy"
+    assert _base_url("HTTPS://MEDIAHOST:443/Comfy/") == "https://mediahost/Comfy"
+    assert _base_url("http://MediaHost:8080/Comfy/") == "http://mediahost:8080/Comfy"
 
 
 def test_submit_uses_exact_rendered_graph_and_anvil_client_identity():

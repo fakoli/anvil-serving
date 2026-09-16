@@ -88,20 +88,34 @@ def build_main_parser() -> argparse.ArgumentParser:
         metavar="ENV",
         help="environment variable containing the controller token",
     )
+    parser.add_argument(
+        "--auth-file",
+        metavar="PATH",
+        help="protected UTF-8 file containing the controller token",
+    )
     return parser
 
 
-def parse_main_args(argv: list[str]) -> tuple[str, str, bool]:
+def parse_main_args(argv: list[str]) -> tuple[str, str, str, bool]:
     parser = build_main_parser()
     args = parser.parse_args(argv)
     list_tools_requested = bool(args.list_tools or args.action == "list-tools")
-    if list_tools_requested and (args.controller_url or args.auth_env):
+    if list_tools_requested and (args.controller_url or args.auth_env or args.auth_file):
         parser.error("--list-tools cannot be combined with proxy mode")
-    if bool(args.controller_url) != bool(args.auth_env):
+    has_auth_source = bool(args.auth_env) or bool(args.auth_file)
+    if (
+        bool(args.controller_url) != has_auth_source
+        or (has_auth_source and bool(args.auth_env) == bool(args.auth_file))
+    ):
         parser.error(
-            "--controller-url and --auth-env must be provided together"
+            "--controller-url and exactly one of --auth-env or --auth-file must be provided together"
         )
-    return args.controller_url or "", args.auth_env or "", list_tools_requested
+    return (
+        args.controller_url or "",
+        args.auth_env or "",
+        args.auth_file or "",
+        list_tools_requested,
+    )
 
 
 def main(
@@ -110,11 +124,12 @@ def main(
     list_tools: Callable[[], list[dict]],
     safe_controller_url: Callable[[str], str],
     resolve_controller_token: Callable[[str], str],
+    resolve_controller_token_file: Callable[[str], str],
     serve: Callable[..., int],
-    serve_proxy: Callable[[str, str], int] | None = None,
+    serve_proxy: Callable[[str, str, str], int] | None = None,
 ) -> int:
     try:
-        controller_url, auth_env, list_tools_requested = parse_main_args(argv)
+        controller_url, auth_env, auth_file, list_tools_requested = parse_main_args(argv)
     except SystemExit as exc:
         if exc.code == 0:
             raise
@@ -127,13 +142,17 @@ def main(
     if controller_url:
         try:
             controller_url = safe_controller_url(controller_url)
-            token = resolve_controller_token(auth_env)
+            token = (
+                resolve_controller_token(auth_env)
+                if auth_env
+                else resolve_controller_token_file(auth_file)
+            )
         except ToolError as exc:
             print(exc.message, file=sys.stderr)
             return 2
         if serve_proxy is not None:
             try:
-                return serve_proxy(controller_url, auth_env)
+                return serve_proxy(controller_url, auth_env, auth_file)
             except ToolError as exc:
                 print(exc.message, file=sys.stderr)
                 return 2
