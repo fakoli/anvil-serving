@@ -305,14 +305,15 @@ def qualify(
             # workflow deadline; other backend failures remain fail-closed.
             if exc.code != "backend_unavailable":
                 raise
-            if monotonic() >= deadline:
+            remaining = deadline - monotonic()
+            if remaining <= 0:
                 raise MediaError(
                     "media_qualification_timeout",
                     "media workflow qualification exceeded its declared timeout",
                     status=504,
                     details={"jobId": job.id, "state": job.state.value},
                 ) from exc
-            sleep(poll_seconds)
+            sleep(min(poll_seconds, remaining))
             continue
         if job.state in TERMINAL_STATES:
             break

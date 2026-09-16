@@ -94,12 +94,33 @@ class _VideoBackend:
 class _TransientStatusBackend(_VideoBackend):
     def __init__(self):
         self.queue_calls = 0
+        self.submit_calls = 0
 
     def queue(self):
         self.queue_calls += 1
         if self.queue_calls == 2:
             raise MediaError("backend_unavailable", "backend is temporarily unavailable", status=503)
         return super().queue()
+
+    def submit(self, workflow, *, job_id):
+        self.submit_calls += 1
+        return super().submit(workflow, job_id=job_id)
+
+
+class _UnavailableStatusBackend(_TransientStatusBackend):
+    def queue(self):
+        self.queue_calls += 1
+        if self.queue_calls > 1:
+            raise MediaError("backend_unavailable", "backend is temporarily unavailable", status=503)
+        return _VideoBackend.queue(self)
+
+
+class _NonTransientStatusBackend(_TransientStatusBackend):
+    def queue(self):
+        self.queue_calls += 1
+        if self.queue_calls > 1:
+            raise MediaError("backend_http_error", "backend request failed", status=500)
+        return _VideoBackend.queue(self)
 
 
 def _ffprobe(argv, **_kwargs):
@@ -178,4 +199,75 @@ def test_qualification_retries_transient_backend_unavailability_after_submission
     )
 
     assert backend.queue_calls == 3
+    assert backend.submit_calls == 1
     assert result["job"]["finalState"] == "completed"
+
+
+def test_qualification_times_out_after_persistent_post_submission_unavailability(tmp_path, monkeypatch):
+    registry, lock_path = _registry(tmp_path)
+    monkeypatch.setattr(
+        "anvil_serving.media.qualification.bundle_inventory",
+        lambda *_args, **_kwargs: {"ready": True, "assets": [{"state": "exact"}]},
+    )
+    backend = _UnavailableStatusBackend()
+    ticks = iter([0.0, 0.02, 0.03, 30.0])
+    sleeps = []
+
+    try:
+        qualify(
+            "video.test",
+            "v1",
+            {"prompt": "test prompt"},
+            registry=registry,
+            jobs=MediaJobStore(tmp_path / "jobs.sqlite3"),
+            artifacts=ArtifactStore(tmp_path / "artifacts"),
+            backend=backend,
+            principal="qualifier",
+            lock_path=lock_path,
+            models_volume="media-models",
+            monotonic=lambda: next(ticks),
+            sleep=sleeps.append,
+            gpu_runner=_gpu_runner,
+            ffprobe_runner=_ffprobe,
+        )
+    except MediaError as error:
+        assert error.code == "media_qualification_timeout"
+    else:
+        raise AssertionError("persistent unavailability must time out")
+
+    assert backend.submit_calls == 1
+    assert sleeps == [2.0]
+
+
+def test_qualification_propagates_non_transient_post_submission_failure(tmp_path, monkeypatch):
+    registry, lock_path = _registry(tmp_path)
+    monkeypatch.setattr(
+        "anvil_serving.media.qualification.bundle_inventory",
+        lambda *_args, **_kwargs: {"ready": True, "assets": [{"state": "exact"}]},
+    )
+    backend = _NonTransientStatusBackend()
+    ticks = iter([0.0, 0.02])
+
+    try:
+        qualify(
+            "video.test",
+            "v1",
+            {"prompt": "test prompt"},
+            registry=registry,
+            jobs=MediaJobStore(tmp_path / "jobs.sqlite3"),
+            artifacts=ArtifactStore(tmp_path / "artifacts"),
+            backend=backend,
+            principal="qualifier",
+            lock_path=lock_path,
+            models_volume="media-models",
+            monotonic=lambda: next(ticks),
+            sleep=lambda _seconds: None,
+            gpu_runner=_gpu_runner,
+            ffprobe_runner=_ffprobe,
+        )
+    except MediaError as error:
+        assert error.code == "backend_http_error"
+    else:
+        raise AssertionError("non-transient backend failures must propagate")
+
+    assert backend.submit_calls == 1
