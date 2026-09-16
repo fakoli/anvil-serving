@@ -106,9 +106,9 @@ RUN /app/venv/bin/python -m pip uninstall --yes pynvml \
     && find /app/custom_nodes -mindepth 1 -maxdepth 1 -type d -exec test -d '{}/.git' ';' \
     && test -x /app/docker-entrypoint.sh \
     && test -f /app/main.py \
-    && mkdir -p /app/input /app/output /app/temp /app/user \
-    && chown 1000:1000 /app/input /app/output /app/temp /app/user \
-    && for writable_dir in /app/input /app/output /app/temp /app/user; do test "$(stat -c %u:%g "$writable_dir")" = 1000:1000; done \
+    && mkdir -p /app/input /app/output /app/temp /app/user /app/runtime \
+    && chown 1000:1000 /app/input /app/output /app/temp /app/user /app/runtime \
+    && for writable_dir in /app/input /app/output /app/temp /app/user /app/runtime; do test "$(stat -c %u:%g "$writable_dir")" = 1000:1000; done \
     && test -x /app/venv/bin/python \
     && test "${VIRTUAL_ENV}" = /app/venv \
     && test "${VIRTUAL_ENV_CUSTOM}" = /app/custom_venv \
@@ -131,11 +131,16 @@ USER 1000:1000
 
 # Prove the runtime identity can write every ComfyUI mutable directory before
 # a mounted operator volume changes those paths at container start.
-RUN set -eu; for writable_dir in /app/input /app/output /app/temp /app/user; do \
+RUN set -eu; for writable_dir in /app/input /app/output /app/temp /app/user /app/runtime; do \
       test -d "$writable_dir"; \
       probe="$writable_dir/.anvil-write-probe"; \
       : > "$probe"; \
       rm -f "$probe"; \
     done; \
-    rmdir /app/temp || test -d /app/temp; \
-    mkdir -p /app/temp
+    cleanup_temp=/app/runtime/temp; \
+    mkdir -p "$cleanup_temp"; \
+    : > "$cleanup_temp/.anvil-cleanup-probe"; \
+    rm -f "$cleanup_temp/.anvil-cleanup-probe"; \
+    rmdir "$cleanup_temp"; \
+    mkdir -p "$cleanup_temp"; \
+    rmdir "$cleanup_temp"

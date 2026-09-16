@@ -53,7 +53,7 @@ services:
       COMFYUI_PORT: "8188"
       # 32 GiB reference envelope: reserve 4 GiB from ComfyUI and declare the
       # matching 28672 MiB reservation in serves.comfyui.toml.
-      COMFYUI_EXTRA_ARGS: ${COMFYUI_EXTRA_ARGS:---reserve-vram 4}
+      COMFYUI_EXTRA_ARGS: ${COMFYUI_EXTRA_ARGS:---reserve-vram 4 --temp-directory /app/runtime}
     deploy:
       resources:
         reservations:

@@ -56,11 +56,12 @@ def test_runtime_and_custom_node_inputs_are_exactly_pinned():
         'test -f /app/main.py',
         'mkdir -p /app/input /app/output /app/temp /app/user',
         'chown 1000:1000 /app/input /app/output /app/temp /app/user',
-        'for writable_dir in /app/input /app/output /app/temp /app/user',
+        'for writable_dir in /app/input /app/output /app/temp /app/user /app/runtime',
         'USER 1000:1000',
         'probe="$writable_dir/.anvil-write-probe"',
-        'rmdir /app/temp || test -d /app/temp',
-        'mkdir -p /app/temp',
+        'cleanup_temp=/app/runtime/temp',
+        ': > "$cleanup_temp/.anvil-cleanup-probe"',
+        'rmdir "$cleanup_temp"',
         'test -x /app/venv/bin/python',
         'test "${VIRTUAL_ENV}" = /app/venv',
         'test "${VIRTUAL_ENV_CUSTOM}" = /app/custom_venv',
@@ -138,4 +139,5 @@ def test_managed_serve_is_bounded_healthy_and_lint_clean():
     compose = (EXAMPLE / "docker-compose.comfyui.yml").read_text(encoding="utf-8")
     assert "http://127.0.0.1:8188/system_stats" in compose
     assert "restart: \"no\"" in compose
+    assert "--temp-directory /app/runtime" in compose
     assert compose.count("external: true") == 2
