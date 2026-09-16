@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import secrets
@@ -271,10 +272,19 @@ def qualify(
         if len(descriptor.output_mime_types) != 1:
             raise MediaError("media_qualification_artifact", "workflow output MIME mapping is ambiguous")
         payload = backend.fetch_output(output, max_bytes=descriptor.max_artifact_bytes)
+        digest = hashlib.sha256(payload).hexdigest()
+        media_type = descriptor.output_mime_types[0]
+        for existing in current.artifacts:
+            if (
+                existing.media_type == media_type
+                and existing.byte_length == len(payload)
+                and existing.sha256 == digest
+            ):
+                return existing
         return artifacts.ingest(
             current,
             io.BytesIO(payload),
-            media_type=descriptor.output_mime_types[0],
+            media_type=media_type,
             max_bytes=descriptor.max_artifact_bytes,
             retention_seconds=descriptor.retention_seconds,
         )
@@ -288,6 +298,13 @@ def qualify(
     )
     deadline = started + descriptor.timeout_seconds
     while job.state not in TERMINAL_STATES:
+        if monotonic() >= deadline:
+            raise MediaError(
+                "media_qualification_timeout",
+                "media workflow qualification exceeded its declared timeout",
+                status=504,
+                details={"jobId": job.id, "state": job.state.value},
+            )
         used, observed_total = _gpu_memory_mib(gpu_index, runner=gpu_runner)
         if observed_total != total_vram:
             raise MediaError("media_qualification_gpu", "GPU total memory changed during qualification")
@@ -313,6 +330,7 @@ def qualify(
                     status=504,
                     details={"jobId": job.id, "state": job.state.value},
                 ) from exc
+            job = jobs.get(job.id, principal=principal)
             sleep(min(poll_seconds, remaining))
             continue
         if job.state in TERMINAL_STATES:
