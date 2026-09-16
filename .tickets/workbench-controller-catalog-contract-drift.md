@@ -65,20 +65,27 @@ produces a digest that never matches. Use the adapter's own observed digest
 (`controller status` should expose it; see proposal above) rather than
 reimplementing the recipe.
 
-## Operator-side remediation applied (private repo)
+## Operator-side remediation (recorded in the private operator repo)
 
-- Restored the full `--allow-operation` set on the controller command line.
-- Raised the healthcheck response cap; pinned the recomputed catalog digest and
-  raised the workbench transport cap in the observatory config.
-- Realigned stale serve/recipe declarations to the promoted serve; appended the
-  promoted recipe to the production catalog registry.
-- Added the missing `rollback_router_config` to the promoted serve manifest.
-- Extended the evidence view with benchmark artifacts through 2026-09-14 that the
-  workbench evidence window had not yet ingested.
+Remediating this drift class touches live deployment state, so the concrete
+values — controller command line, pinned digests, config caps, promoted serve
+and recipe identities, and the evidence backfill window — belong only in the
+private operator deployment record. The remediation categories, for operators
+facing the same stacked failures:
 
-## Rollback values (pre-activation)
+- Restore the full `--allow-operation` set the dashboard adapter declares.
+- Size the healthcheck and workbench transport response caps to the live
+  catalog; pin the recomputed catalog digest in the observatory config.
+- Realign stale serve/recipe declarations to the promoted serve and extend the
+  production catalog registry.
+- Add the missing `rollback_router_config` to any promoted serve manifest.
+- Backfill the evidence window the dashboard had not yet ingested.
 
-- Previous workbench release: `07fed164` (wheel-sha256 `c5932dd5d2be7bb955b84299af408032a658f18faf5b77936e40087c2fb69e69`).
-- Candidate release: `d2eff1ef` (wheel-sha256 `e147930ce4f45492983ffb9ff423bc713f5c425eb6d62875c9223a79c354557a`, 426/426 RECORD entries hash-verified).
-- The workbench config's `build` field now advertises the candidate wheel; revert
-  it together with the `current` symlink when rolling back.
+## Rollback procedure (pre-activation)
+
+The installed and previous workbench release revisions, their wheel digests,
+and the RECORD verification count are recorded in the private operator
+deployment record alongside the observatory config. Rolling back means
+restoring the previous release symlink and reverting the observatory config's
+`build` field to the prior wheel digest in the same step, then restarting the
+workbench service and confirming the token and catalog digest still verify.

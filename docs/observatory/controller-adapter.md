@@ -24,6 +24,12 @@ token_env = "PRIVATE_CONTROLLER_TOKEN_ENV"
 topology = "TOPOLOGY_ID"
 execution_host = "OWNER_NODE_ID"
 execution_runtime = "RUNTIME_ID"
+# Optional: transport read cap in bytes for controller responses. Default is
+# 65536 (64 KiB); the accepted ceiling is 8388608 (8 MiB). Raise it when the
+# live /tools/list catalog exceeds the default — an undersized cap fails
+# closed with response_too_large and disables every controller-backed view.
+# Size the controller container healthcheck to match (--max-response-bytes).
+max_response_bytes = 262144
 
 [[resources]]
 id = "serve.primary"
