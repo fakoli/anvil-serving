@@ -1,10 +1,10 @@
 {
   "startedAt": "2026-07-06T21:46:58.288Z",
   "completedAt": "2026-07-06T21:47:03.904Z",
-  "command": "node /tmp/anvil-voice-mini/t008-gateway-smoke.js against temporary ws://127.0.0.1:18790 gateway",
-  "gatewayUrl": "ws://127.0.0.1:18790",
+  "command": "node <SMOKE_SCRIPT> against temporary <GATEWAY_URL>",
+  "gatewayUrl": "<GATEWAY_URL>",
   "tts": {
-    "url": "http://127.0.0.1:30011/v1/audio/speech",
+    "url": "<TTS_BASE_URL>/v1/audio/speech",
     "model": "mlx-community/Kokoro-82M-bf16",
     "text": "testing the local voice proof",
     "pcmBytes": 103200,
@@ -17,7 +17,7 @@
       "protocol": 4,
       "server": {
         "version": "2026.6.11",
-        "connId": "746dfae9-4698-4b32-9319-45907c16c372"
+        "connId": "ca45f171149a1906c193d32e83a4ec298f71246e6ca653eef6bbc36a38bbbe95"
       },
       "features": {
         "methods": [
@@ -263,373 +263,14 @@
         ]
       },
       "snapshot": {
-        "presence": [
-          {
-            "host": "Mac",
-            "ip": "100.64.0.10",
-            "version": "2026.6.11",
-            "platform": "macos 27.0",
-            "deviceFamily": "Mac",
-            "modelIdentifier": "Mac16,10",
-            "mode": "gateway",
-            "reason": "self",
-            "instanceId": "49a913d0-0b4e-4d83-81d1-b79c9d461532",
-            "text": "Gateway: Mac (100.64.0.10) · app 2026.6.11 · mode gateway · reason self",
-            "ts": 1783374418420
-          },
-          {
-            "host": "Anvil Voice T008 smoke",
-            "version": "dev",
-            "platform": "darwin",
-            "mode": "test",
-            "deviceId": "78225bd7d28eec1dd5ab6afbbc119b7588f127296891a1a73297bbd39b84b266",
-            "roles": [
-              "operator"
-            ],
-            "scopes": [
-              "operator.read",
-              "operator.write"
-            ],
-            "instanceId": "78225bd7d28eec1dd5ab6afbbc119b7588f127296891a1a73297bbd39b84b266",
-            "reason": "connect",
-            "ts": 1783374418420,
-            "text": "Node: Anvil Voice T008 smoke · mode test"
-          },
-          {
-            "host": "Telegram Native Approvals (default)",
-            "version": "2026.6.11",
-            "platform": "darwin",
-            "mode": "backend",
-            "roles": [
-              "operator"
-            ],
-            "scopes": [
-              "operator.approvals"
-            ],
-            "reason": "connect",
-            "ts": 1783374261638,
-            "text": "Node: Telegram Native Approvals (default) · mode backend"
-          }
-        ],
         "health": {
-          "ok": true,
-          "ts": 1783374397589,
-          "durationMs": 28,
-          "eventLoop": {
-            "degraded": false,
-            "reasons": [],
-            "intervalMs": 16329,
-            "delayP99Ms": 22.4,
-            "delayMaxMs": 22.9,
-            "utilization": 0.009,
-            "cpuCoreRatio": 0.011
-          },
-          "plugins": {
-            "loaded": [
-              "anvil-finish-gate",
-              "bonjour",
-              "brave",
-              "browser",
-              "canvas",
-              "codex",
-              "device-pair",
-              "elevenlabs",
-              "file-transfer",
-              "memory-core",
-              "memory-wiki",
-              "microsoft",
-              "openclaw-anvil-intent-router",
-              "phone-control",
-              "talk-voice",
-              "telegram"
-            ],
-            "errors": []
-          },
-          "modelPricing": {
-            "state": "ok",
-            "sources": []
-          },
-          "channels": {
-            "telegram": {
-              "accountId": "default",
-              "enabled": true,
-              "configured": true,
-              "running": true,
-              "lastStartAt": 1783374260755,
-              "lastStopAt": null,
-              "lastError": "Telegram getUpdates conflict: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running. Another OpenClaw gateway, script, or Telegram poller may be using this bot token; stop the duplicate poller or switch this account to webhook mode.",
-              "connected": false,
-              "restartPending": false,
-              "reconnectAttempts": 0,
-              "lastConnectedAt": 1783374364290,
-              "lastEventAt": 1783374364290,
-              "lastTransportActivityAt": 1783374364290,
-              "lastInboundAt": null,
-              "lastOutboundAt": null,
-              "tokenSource": "config",
-              "tokenStatus": "available",
-              "mode": "polling",
-              "allowUnmentionedGroups": false,
-              "healthState": "disconnected",
-              "lastProbeAt": null,
-              "accounts": {
-                "default": {
-                  "accountId": "default",
-                  "enabled": true,
-                  "configured": true,
-                  "running": true,
-                  "lastStartAt": 1783374260755,
-                  "lastStopAt": null,
-                  "lastError": "Telegram getUpdates conflict: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running. Another OpenClaw gateway, script, or Telegram poller may be using this bot token; stop the duplicate poller or switch this account to webhook mode.",
-                  "connected": false,
-                  "restartPending": false,
-                  "reconnectAttempts": 0,
-                  "lastConnectedAt": 1783374364290,
-                  "lastEventAt": 1783374364290,
-                  "lastTransportActivityAt": 1783374364290,
-                  "lastInboundAt": null,
-                  "lastOutboundAt": null,
-                  "tokenSource": "config",
-                  "tokenStatus": "available",
-                  "mode": "polling",
-                  "allowUnmentionedGroups": false,
-                  "healthState": "disconnected",
-                  "lastProbeAt": null
-                }
-              }
-            }
-          },
-          "channelOrder": [
-            "telegram"
-          ],
-          "channelLabels": {
-            "telegram": "Telegram"
-          },
-          "heartbeatSeconds": 1800,
-          "defaultAgentId": "main",
-          "agents": [
-            {
-              "agentId": "main",
-              "isDefault": true,
-              "heartbeat": {
-                "enabled": true,
-                "every": "30m",
-                "everyMs": 1800000,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/Users/operator/.openclaw/agents/main/sessions/sessions.json",
-                "count": 2,
-                "recent": [
-                  {
-                    "key": "agent:main:main",
-                    "updatedAt": 1783374220134,
-                    "age": 177427
-                  },
-                  {
-                    "key": "agent:main:anvil-live2",
-                    "updatedAt": 1783367054008,
-                    "age": 7343553
-                  }
-                ]
-              }
-            },
-            {
-              "agentId": "fakoli-welder",
-              "name": "fakoli-welder",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/Users/operator/.openclaw/agents/fakoli-welder/sessions/sessions.json",
-                "count": 0,
-                "recent": []
-              }
-            },
-            {
-              "agentId": "fakoli-orchestrator",
-              "name": "fakoli-orchestrator",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/Users/operator/.openclaw/agents/fakoli-orchestrator/sessions/sessions.json",
-                "count": 0,
-                "recent": []
-              }
-            },
-            {
-              "agentId": "fakoli-guido",
-              "name": "fakoli-guido",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/Users/operator/.openclaw/agents/fakoli-guido/sessions/sessions.json",
-                "count": 0,
-                "recent": []
-              }
-            },
-            {
-              "agentId": "fakoli-critic",
-              "name": "fakoli-critic",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/Users/operator/.openclaw/agents/fakoli-critic/sessions/sessions.json",
-                "count": 0,
-                "recent": []
-              }
-            },
-            {
-              "agentId": "fakoli-sentinel",
-              "name": "fakoli-sentinel",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/Users/operator/.openclaw/agents/fakoli-sentinel/sessions/sessions.json",
-                "count": 0,
-                "recent": []
-              }
-            },
-            {
-              "agentId": "fakoli-smith",
-              "name": "fakoli-smith",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/Users/operator/.openclaw/agents/fakoli-smith/sessions/sessions.json",
-                "count": 0,
-                "recent": []
-              }
-            },
-            {
-              "agentId": "fakoli-scout",
-              "name": "fakoli-scout",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/Users/operator/.openclaw/agents/fakoli-scout/sessions/sessions.json",
-                "count": 0,
-                "recent": []
-              }
-            },
-            {
-              "agentId": "fakoli-herald",
-              "name": "fakoli-herald",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/Users/operator/.openclaw/agents/fakoli-herald/sessions/sessions.json",
-                "count": 0,
-                "recent": []
-              }
-            },
-            {
-              "agentId": "fakoli-keeper",
-              "name": "fakoli-keeper",
-              "isDefault": false,
-              "heartbeat": {
-                "enabled": false,
-                "every": "disabled",
-                "everyMs": null,
-                "prompt": "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.",
-                "target": "none",
-                "ackMaxChars": 300
-              },
-              "sessions": {
-                "path": "/Users/operator/.openclaw/agents/fakoli-keeper/sessions/sessions.json",
-                "count": 0,
-                "recent": []
-              }
-            }
-          ],
-          "sessions": {
-            "path": "/Users/operator/.openclaw/agents/main/sessions/sessions.json",
-            "count": 2,
-            "recent": [
-              {
-                "key": "agent:main:main",
-                "updatedAt": 1783374220134,
-                "age": 177427
-              },
-              {
-                "key": "agent:main:anvil-live2",
-                "updatedAt": 1783367054008,
-                "age": 7343553
-              }
-            ]
-          }
+          "ok": true
         },
-        "stateVersion": {
-          "presence": 5,
-          "health": 6
-        },
-        "uptimeMs": 162863,
-        "sessionDefaults": {
-          "defaultAgentId": "main",
-          "mainKey": "main",
-          "mainSessionKey": "agent:main:main",
-          "scope": "per-sender"
-        }
+        "redacted": true,
+        "reason": "Operational presence, agent/session configuration, channel state and identifiers are retained privately."
       },
       "pluginSurfaceUrls": {
-        "canvas": "http://127.0.0.1:18790/__openclaw__/cap/<redacted>"
+        "redacted": true
       },
       "auth": {
         "role": "operator",
@@ -652,7 +293,7 @@
   "session": {
     "provider": "anvil",
     "transport": "gateway-relay",
-    "relaySessionId": "7729d7a1-6fd7-448b-9d90-9f22466dc26d",
+    "relaySessionId": "52e951836b27333e85d359c1324f389bdd0e9cc383d72fe304a7126c911ccb00",
     "audio": {
       "inputEncoding": "pcm16",
       "inputSampleRateHz": 24000,
@@ -661,7 +302,7 @@
     },
     "model": "fast-local",
     "expiresAt": 1783376219,
-    "sessionId": "7729d7a1-6fd7-448b-9d90-9f22466dc26d",
+    "sessionId": "52e951836b27333e85d359c1324f389bdd0e9cc383d72fe304a7126c911ccb00",
     "mode": "realtime",
     "brain": "agent-consult"
   },
@@ -770,5 +411,15 @@
     }
   ],
   "verdict": "pass",
-  "failureModes": []
+  "failureModes": [],
+  "publicationRedactions": {
+    "sourceCustody": "private operator repository",
+    "kind": "sanitized-derivative",
+    "changes": [
+      "Replaced connection and session identifiers with synthetic values.",
+      "Withheld device identities, operational gateway snapshot and capability-bearing surface URLs.",
+      "Replaced captured command, gateway and TTS endpoint details with placeholders."
+    ],
+    "unchanged": "Functional verdict, method results, event/audio counts, versions and timestamps."
+  }
 }

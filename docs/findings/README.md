@@ -185,7 +185,7 @@ path and public-artifact audit remains tracked by
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-option-live.md](2026-07-openclaw-anvil-voice-option-live.md) | OpenClaw Anvil Voice live validation |
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-option-live.json](2026-07-openclaw-anvil-voice-option-live.json) | Raw T008 live-validation result record (pass, Companion Node) |
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-option.md](2026-07-openclaw-anvil-voice-option.md) | OpenClaw Anvil Voice option discovery |
-| 2026-07-06 | [2026-07-openclaw-anvil-voice-gateway-smoke.json](2026-07-openclaw-anvil-voice-gateway-smoke.json) | Raw T008 gateway smoke run output (temporary Mini gateway) |
+| 2026-07-06 | [2026-07-openclaw-anvil-voice-gateway-smoke.json](2026-07-openclaw-anvil-voice-gateway-smoke.json) | Sanitized T008 gateway smoke result |
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-gateway-status.json](2026-07-openclaw-anvil-voice-gateway-status.json) | OpenClaw gateway/service status snapshot (Companion Node) |
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-mini-validation.json](2026-07-openclaw-anvil-voice-mini-validation.json) | Companion Node host-identity validation snapshot |
 | 2026-07-06 | [2026-07-openclaw-anvil-voice-plugin-inspect.json](2026-07-openclaw-anvil-voice-plugin-inspect.json) | Anvil Voice plugin runtime inspect output |
