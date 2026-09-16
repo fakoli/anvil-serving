@@ -15,7 +15,12 @@ import re
 import time
 from typing import Any
 
-from ...transports import ControllerTransport, Operation, TransportError
+from ...transports import (
+    ControllerTransport,
+    DEFAULT_MAX_RESPONSE_BYTES,
+    Operation,
+    TransportError,
+)
 from .contracts import ObservatoryError, digest, identifier, validate_values
 from . import runtime_candidates
 
@@ -109,6 +114,7 @@ class ControllerAdapter:
             allowed_operations=sorted(_TOOLS),
             environment=environment,
             expected_node=expected_node,
+            max_response_bytes=controller.get("max_response_bytes", DEFAULT_MAX_RESPONSE_BYTES),
         )
         self._clock = clock
         self._catalog: frozenset[str] | None = None

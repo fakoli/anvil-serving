@@ -277,6 +277,10 @@ def test_failed_start_of_registered_idle_job_preserves_definition_and_reports_pa
     def failed_readiness(row, **kwargs):
         raise ServiceError("readiness_failed", "fixture endpoint failed readiness")
 
+    # The .1 s fixture deadline is a busy-spin ceiling for postcondition tests;
+    # a slow Windows runner can consume it before the plan loop starts, which
+    # would surface operation_timeout instead of this test's readiness_failed.
+    options["timeout_seconds"] = 5
     with pytest.raises(ServiceError) as raised:
         execute("up", "events", confirm=True, dry_run=False, _engine=failed_readiness, **options)
 
