@@ -292,11 +292,28 @@ def qualify(
         if observed_total != total_vram:
             raise MediaError("media_qualification_gpu", "GPU total memory changed during qualification")
         peak_used = max(peak_used, used)
-        queue = backend.queue()
-        queue_running = max(queue_running, queue["running"])
-        queue_pending = max(queue_pending, queue["pending"])
-        samples += 1
-        job = reconciler.reconcile(job)
+        try:
+            queue = backend.queue()
+            queue_running = max(queue_running, queue["running"])
+            queue_pending = max(queue_pending, queue["pending"])
+            samples += 1
+            job = reconciler.reconcile(job)
+        except MediaError as exc:
+            # Once ComfyUI has accepted the prompt, model loading can briefly
+            # make its status endpoints unavailable.  Keep the durable job and
+            # retry only that explicitly transient condition until its declared
+            # workflow deadline; other backend failures remain fail-closed.
+            if exc.code != "backend_unavailable":
+                raise
+            if monotonic() >= deadline:
+                raise MediaError(
+                    "media_qualification_timeout",
+                    "media workflow qualification exceeded its declared timeout",
+                    status=504,
+                    details={"jobId": job.id, "state": job.state.value},
+                ) from exc
+            sleep(poll_seconds)
+            continue
         if job.state in TERMINAL_STATES:
             break
         if monotonic() >= deadline:

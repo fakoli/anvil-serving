@@ -6,6 +6,7 @@ import subprocess
 from anvil_serving.media.artifacts import ArtifactStore
 from anvil_serving.media.backends import BackendOutput, BackendStatus
 from anvil_serving.media.comfyui import WorkflowCompatibility
+from anvil_serving.media.errors import MediaError
 from anvil_serving.media.jobs import MediaJobStore
 from anvil_serving.media.qualification import qualify
 from anvil_serving.media.workflows import WorkflowRegistry, canonical_digest
@@ -90,6 +91,17 @@ class _VideoBackend:
         return MP4
 
 
+class _TransientStatusBackend(_VideoBackend):
+    def __init__(self):
+        self.queue_calls = 0
+
+    def queue(self):
+        self.queue_calls += 1
+        if self.queue_calls == 2:
+            raise MediaError("backend_unavailable", "backend is temporarily unavailable", status=503)
+        return super().queue()
+
+
 def _ffprobe(argv, **_kwargs):
     payload = {
         "streams": [{
@@ -137,3 +149,33 @@ def test_managed_video_qualification_returns_immediately_and_records_stream_meta
     assert result["decoding"][0]["frameRate"] == 16.0
     assert result["decoding"][0]["durationSeconds"] == 1.0625
     assert result["capacity"]["maxQueueRunning"] == 1
+
+
+def test_qualification_retries_transient_backend_unavailability_after_submission(tmp_path, monkeypatch):
+    registry, lock_path = _registry(tmp_path)
+    monkeypatch.setattr(
+        "anvil_serving.media.qualification.bundle_inventory",
+        lambda *_args, **_kwargs: {"ready": True, "assets": [{"state": "exact"}]},
+    )
+    backend = _TransientStatusBackend()
+    ticks = iter([0.0, 0.02, 0.03, 1.0])
+
+    result = qualify(
+        "video.test",
+        "v1",
+        {"prompt": "test prompt"},
+        registry=registry,
+        jobs=MediaJobStore(tmp_path / "jobs.sqlite3"),
+        artifacts=ArtifactStore(tmp_path / "artifacts"),
+        backend=backend,
+        principal="qualifier",
+        lock_path=lock_path,
+        models_volume="media-models",
+        monotonic=lambda: next(ticks),
+        sleep=lambda _seconds: None,
+        gpu_runner=_gpu_runner,
+        ffprobe_runner=_ffprobe,
+    )
+
+    assert backend.queue_calls == 3
+    assert result["job"]["finalState"] == "completed"
