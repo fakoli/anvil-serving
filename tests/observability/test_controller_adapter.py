@@ -4,7 +4,7 @@ import pytest
 
 from anvil_serving.observability.dashboard.controller_adapter import ControllerAdapter
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
-from anvil_serving.transports import TransportError, TransportResult
+from anvil_serving.transports import TransportError, TransportResult, DEFAULT_MAX_RESPONSE_BYTES
 
 
 class FakeTransport:
@@ -98,6 +98,20 @@ def config():
 def adapter():
     FakeTransport.instances.clear()
     return ControllerAdapter(config(), {}, transport_factory=FakeTransport, clock=lambda: 10.0)
+
+
+def test_controller_config_max_response_bytes_is_passed_to_the_transport():
+    FakeTransport.instances.clear()
+    cfg = config()
+    cfg["controller"]["max_response_bytes"] = 262144
+    ControllerAdapter(cfg, {}, transport_factory=FakeTransport, clock=lambda: 10.0)
+    assert FakeTransport.instances[-1].kwargs["max_response_bytes"] == 262144
+
+
+def test_controller_config_without_max_response_bytes_uses_the_transport_default():
+    FakeTransport.instances.clear()
+    ControllerAdapter(config(), {}, transport_factory=FakeTransport, clock=lambda: 10.0)
+    assert FakeTransport.instances[-1].kwargs["max_response_bytes"] == DEFAULT_MAX_RESPONSE_BYTES
 
 
 def test_catalog_gates_declared_resource_actions_and_hides_bindings():
