@@ -237,6 +237,29 @@ change router policy or promote the candidate. Validate it with
 only after human review. The preview's cleanup command is conditional: use it only for a
 container successfully created by that load, never for a name that existed beforehand.
 
+For an unqualified loader, declare explicit host bounds in `[recipe.serve]`:
+
+```toml
+memory_limit_mib = 61440
+memory_swap_limit_mib = 61440
+host_memory_reserve_mib = 16384
+```
+
+The first value caps container RAM; the second caps RAM plus swap, so equal
+values forbid additional swap. All three fields are required together. Values
+must be positive integer MiB; the reserve must be at least 1024 MiB. Choose
+bounds for the actual host: the example is not a model-fit claim. A bounded
+load requires local Linux Docker with cgroup v2 memory/swap enforcement and
+sufficient available RAM and free swap at admission. The host reserve is an
+admission check, not a reservation against unrelated workloads. Existing recipes
+without these fields retain their previous behavior.
+
+`models recipes status` and `running --json` include `host_memory`: Docker limits,
+effective cgroup RAM/swap limits, current/peak usage, OOM events and exit state.
+Confirm effective limits before trusting a new loader. Counters unavailable after
+container exit are null; Docker OOM/exit state remains available. These limits do
+not cap GPU VRAM or prove that the model fits. Keep restoration separate.
+
 When machine-level cache reclaim is enabled, the preview also declares that `load`
 will wait up to 600 seconds for the recipe's HTTP health after the container starts.
 Only then does it evaluate the cache threshold, fixed 1 GiB growth gate, and settled-I/O

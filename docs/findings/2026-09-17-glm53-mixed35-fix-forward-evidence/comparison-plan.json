@@ -1,0 +1,11 @@
+{
+  "schema": "anvil-serving.fix-forward-comparison-plan/v1",
+  "source": "anvil_serving/cli.py",
+  "repository_commit": "300b43c48fa0489663c5ffa29cbe6faef3183015",
+  "dirty_state": "Containment changes present; preflight and benchmark code unchanged.",
+  "quality_suites": ["chat", "tool", "intelligence"],
+  "quality_repetitions": 3,
+  "capacity": {"requests": 4, "concurrency": 4, "context_tokens": 8192, "completion_cap": 16384, "response_words": 64, "request_canaries": true, "prompt_cache_mode": "unique", "controlled_output_policy": "strict", "repetitions": 2},
+  "reasoning_effort": "max",
+  "purpose": "Bounded matched C4 scout; further context and client gates remain required for promotion."
+}

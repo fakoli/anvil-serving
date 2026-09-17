@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.fix-forward-identity/v1",
+  "candidate": {
+    "repository": "satgeze/GLM-5.3-Flash-EXL3-TR3-3.5bpw",
+    "revision": "62587d6015184a26773a4ed1b751a9c5fa469cd6",
+    "source_url": "https://huggingface.co/satgeze/GLM-5.3-Flash-EXL3-TR3-3.5bpw/tree/62587d6015184a26773a4ed1b751a9c5fa469cd6",
+    "served_name": "glm53-mixed35-v84-stream-r7-c4-v2",
+    "image_digest": "sha256:d1311adc96a37d235858aa397040ba5e550366961f1d4142f048e30476b93c47"
+  },
+  "hardware": {
+    "host": "Primary Node",
+    "os": "native Linux",
+    "gpus": "2x RTX PRO 6000 Blackwell Max-Q",
+    "topology": "TP2/DCP1"
+  },
+  "configuration": {
+    "quantization": "mixed K3/K4 EXL3",
+    "kv": "NVFP4 MLA",
+    "context_tokens": 327680,
+    "concurrency": 4,
+    "speculation": false,
+    "managed_ram_gib": 60,
+    "additional_swap_gib": 0,
+    "host_admission_reserve_gib": 16
+  },
+  "result_boundary": "C1/C4 functional recovery; repeated bounded C4 quality passed; strict capacity inconsistent; retain baseline without promotion.",
+  "initial_scout": {
+    "served_name": "glm53-mixed35-v84-stream-r7-v1",
+    "concurrency": 1
+  },
+  "private_recipe_sha256": "b1c99aa49be549a44302b686ae554052a8492c71c6d303163fe95a0ace7215e1",
+  "public_recipe_redactions": [
+    "Endpoint port 30002 is synthetic; other load-bearing fields retained."
+  ]
+}

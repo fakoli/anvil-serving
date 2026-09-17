@@ -1,0 +1,130 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "campaign": {
+    "id": "2026-09-17-glm53-mixed35-fix-forward",
+    "capability": "text model functional recovery",
+    "repository_revision": "300b43c48fa0489663c5ffa29cbe6faef3183015",
+    "dirty_state": "Containment changes present; preflight and benchmark code unchanged.",
+    "started_at": "2026-09-17",
+    "completed_at": "2026-09-17",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": true,
+    "promotion_authorization_condition": "User authorized promotion if better and required gates pass; no winner demonstrated.",
+    "completion_note": "C1 and C4 trials complete; exact baseline restored with direct and routed checks; no promotion."
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Sanitized evidence index."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "No external priors informed this result."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Native CLI preflight and benchmark workload definitions at the recorded commit."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "comparison-plan.json"
+      ],
+      "reason": "Sanitized matched-C4 plan and promotion boundary."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "identity.json",
+        "candidate-recipe.toml",
+        "loader-patch.json",
+        "loader-r7-stream.patch",
+        "test_stream_loader.py",
+        "Dockerfile",
+        "build-reconstruction.md"
+      ],
+      "reason": "Public-safe candidate identity, C4 recipe, exact narrow patch, CPU fixture, and generic build reconstruction."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "containment.json",
+        "preflight.json",
+        "candidate-intelligence.json",
+        "baseline-quality.json",
+        "baseline-capacity-1.json",
+        "candidate-c4-preflight.json",
+        "candidate-c4-quality.json",
+        "candidate-c4-capacity-1.json",
+        "candidate-c4-capacity-2.json",
+        "candidate-needle.json"
+      ],
+      "reason": "Sanitized C1 and C4 evidence, including C4 preflight, valid standalone candidate cell, needle, and all strict-capacity failures; no partial-run comparison."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "Failed diagnostic and durable fix-forward boundary."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "restoration-c4.json",
+        "baseline-restored-direct.json",
+        "baseline-restored-preflight.json"
+      ],
+      "reason": "Both trials restored the exact baseline; final direct and routed native checks passed."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "No-promotion decision with remaining gates."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Derivative copy and claim ledger."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "id": "mixed-sm120-five-overlay-source",
+      "url": "https://github.com/satindergrewal/GLM-5.3-Flash-EXL3-3.5bpw-Mixed-SM120-TP2",
+      "revision": "8fc95f0da72072a49a697f2164410b851a4e7377",
+      "published_or_observed": "2026-09-17",
+      "observed_at": "2026-09-17",
+      "age_class": "current",
+      "evidence_type": "official_candidate_author_recipe",
+      "hardware_runtime_relevance": "Pinned source for the five overlay files copied into the derived runtime.",
+      "decision_impact": "Configuration provenance only; not a local benchmark result or promotion-quality evidence."
+    },
+    {
+      "id": "mixed35-pinned-model",
+      "url": "https://huggingface.co/satgeze/GLM-5.3-Flash-EXL3-TR3-3.5bpw/tree/62587d6015184a26773a4ed1b751a9c5fa469cd6",
+      "revision": "62587d6015184a26773a4ed1b751a9c5fa469cd6",
+      "published_or_observed": "2026-09-17",
+      "observed_at": "2026-09-17",
+      "age_class": "current",
+      "evidence_type": "pinned_model_artifact",
+      "hardware_runtime_relevance": "Exact candidate checkpoint identity used by the bounded loader recovery.",
+      "decision_impact": "Artifact identity only; not an external benchmark prior or promotion-quality evidence."
+    }
+  ]
+}

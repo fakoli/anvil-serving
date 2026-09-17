@@ -1,0 +1,61 @@
+{
+  "base_url": "http://127.0.0.1:30002/v1",
+  "budget": {
+    "max_completion_tokens": 16384,
+    "reasoning_headroom_tokens": 15360,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "needle"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-mixed35-v84-stream-r7-c4-v2",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 540,
+      "reasoning_excerpt": "The user has provided a long repetitive text and then asked \"What is the launch code? Reply with ONLY the code.\"\n\nLooking through the text, I need to find the launch code. The text is mostly repetitiv",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 59.034,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 143,
+        "prompt_tokens": 216307,
+        "prompt_tokens_details": null,
+        "total_tokens": 216450
+      },
+      "validation_detail": "needle present"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "59.0s ctx~262144 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=540 reasoning_tokens=None",
+      "name": "needle @ ~262144 ctx",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

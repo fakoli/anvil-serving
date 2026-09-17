@@ -85,6 +85,17 @@ produced. The exact 4-bpw baseline was restored and passed direct and routed
 short checks. This is a host-loader and containment failure, not proof of a
 model-quality defect; no promotion occurred.
 
+## September 17 bounded loader fix-forward
+
+The [R7 streaming fix-forward](../../findings/2026-09-17-glm53-mixed35-fix-forward.md)
+loaded all 120 shards under 60 GiB RAM/no additional swap and passed C1/C4
+functional and repeated C4 quality scouts. It retrieved exact `ZEBRA` at
+216,307 actual input tokens. One strict C4 capacity cell passed 4/4 at 98.17
+tok/s for itself, but the next failed at 3/4 (65/64 code words); the baseline
+also had a 2/4 strict failure (63/64). No overall win, full 327K/C4 context,
+or repository/session/client qualification is established. The baseline remains
+selected and the candidate is `no-promotion`.
+
 ## Recorded promotion, rollback, and challenger state
 
 The 2026-09-09 ormandj v0.4.2 runtime candidate passed direct gates and

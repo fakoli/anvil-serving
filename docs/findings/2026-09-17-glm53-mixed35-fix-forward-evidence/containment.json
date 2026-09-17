@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.memory-containment/v1",
+  "probe": {
+    "managed_ram_mib": 64,
+    "additional_swap_mib": 0,
+    "attempted_allocation_mib": 256,
+    "oom_kill": 1,
+    "allocator_exit": -9
+  },
+  "candidate": {
+    "managed_ram_gib": 60,
+    "additional_swap_gib": 0,
+    "host_admission_reserve_gib": 16,
+    "loaded_shards": 120,
+    "cuda_ranks_observed": [0, 1],
+    "api_server_initialized": true
+  },
+  "boundary": "The synthetic probe proves cgroup containment. Candidate loading recovery is not an inference, quality, latency, capacity, or promotion result."
+}

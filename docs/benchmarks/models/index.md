@@ -10,6 +10,7 @@ evidence by measured hardware.
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
 | GLM-5.3-Flash mixed 3.5-bpw EXL3 | Startup failed from host RAM exhaustion; no inference requests | Rejected unbounded configuration; selected 4-bpw baseline restored; retry requires containment | 2026-09-17 | [GLM-5.3-Flash](glm53-flash.md) |
+| GLM-5.3-Flash mixed 3.5-bpw EXL3, R7 loader fix-forward | C1/C4 functional, repeated C4 quality, 216K actual-token needle; one C4 4/4 cell 98.17 tok/s | Strict capacity inconsistent; no overall win or promotion | 2026-09-17 | [GLM-5.3-Flash](glm53-flash.md) |
 | GLM-5.3-Flash EXL3 r7 no-spec | 327,680 configured tokens; C4 strict120 120/120; separate long-context 9/9; MMLU-Pro 90/100, agentic 30/30, SWE 4/5 | `current` text-only lane; no concurrent full-window soak or fresh-boot proof | 2026-09-14 | [GLM-5.3-Flash](glm53-flash.md) |
 | Qwen3.8 Flash Next EXL3 4.05-bpw | MMLU-Pro 91/100, context 9/9, agentic 21/30, SWE 4/5, image/OCR 12/12 | strict120 had zero performance-eligible responses; `no-promotion` | 2026-09-14 | [Qwen3.8 Flash Next](qwen38-flash-next.md) |
 | Qwen3.8 Flash Next NVFP4 TP=2 | 253,703 actual prompt tokens plus 8,192 output; text, image, OCR, and video acceptance | historical rollback evidence | 2026-08-26 | [Qwen3.8 Flash Next](qwen38-flash-next.md) |

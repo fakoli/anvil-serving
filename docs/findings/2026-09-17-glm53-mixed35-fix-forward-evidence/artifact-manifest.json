@@ -1,0 +1,242 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-17-glm53-mixed35-fix-forward",
+    "capability": "text model functional recovery",
+    "repository_revision": "300b43c48fa0489663c5ffa29cbe6faef3183015",
+    "dirty_state": "Containment changes present; preflight and benchmark code unchanged.",
+    "started_at": "2026-09-17",
+    "completed_at": "2026-09-17",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": true,
+    "promotion_authorization_condition": "User authorized promotion if better and required gates pass; no winner demonstrated.",
+    "completion_note": "C1 and C4 trials complete; exact baseline restored with direct and routed checks; no promotion."
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "11936c02b8831c06ec1575ce6a8cc1ecb47239658f05076489aff96450935094",
+          "bytes": 1826
+        }
+      ],
+      "reason": "Sanitized evidence index."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "6b46409d5c5fcd8204bc4b4872724d09240bb01fd0e1a3775045f50410522f83",
+          "bytes": 1312
+        }
+      ],
+      "reason": "No external priors informed this result."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "a22c7438c957d0493e2a7dc066c9b59fb94514ba95203b090985c07f6f4c42ae",
+          "bytes": 1171
+        }
+      ],
+      "reason": "Native CLI preflight and benchmark workload definitions at the recorded commit."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "comparison-plan.json",
+          "sha256": "86a3880e3b74ef72761c9a7103c2f18401efc20716fb9c1e292a2c4c36fad538",
+          "bytes": 705
+        }
+      ],
+      "reason": "Sanitized matched-C4 plan and promotion boundary."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity.json",
+          "sha256": "bb230f1357afa0124fff7b88e87a1e3a1f356594afe68d36fc3d47501af2beaa",
+          "bytes": 1345
+        },
+        {
+          "path": "candidate-recipe.toml",
+          "sha256": "69ab058fa154ecb395b7975381eff35dc2fc74a30064fa679d8f7c5deee10870",
+          "bytes": 3051
+        },
+        {
+          "path": "loader-patch.json",
+          "sha256": "e478ad5ef6b27f7b6781e90c5fa087e62ce6aa2589f7d24ca645a2d702c4f1b5",
+          "bytes": 814
+        },
+        {
+          "path": "loader-r7-stream.patch",
+          "sha256": "21558fb98cab69f0dea469a55cc504fbc39ee706a0e9cd4cdfbe8daeff29449e",
+          "bytes": 1213
+        },
+        {
+          "path": "test_stream_loader.py",
+          "sha256": "9517ef6dce9ccf21a6f9d5d1daa1f84a878c1f57d0d2a2f4666a597bb7a0fc61",
+          "bytes": 2224
+        },
+        {
+          "path": "Dockerfile",
+          "sha256": "c900f851e7031d889ec18c985e88c0a380f6742ba6262b6f212297db865e12a7",
+          "bytes": 1289
+        },
+        {
+          "path": "build-reconstruction.md",
+          "sha256": "8408f93d86d78c619ffe59d81e230a82d20845029a56e04d016baf609591c69a",
+          "bytes": 960
+        }
+      ],
+      "reason": "Public-safe candidate identity, C4 recipe, exact narrow patch, CPU fixture, and generic build reconstruction."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "containment.json",
+          "sha256": "bdd952b8c1ae36e0b1b0cf4c26006c5ff9eb266c18a9394addf2742425408284",
+          "bytes": 584
+        },
+        {
+          "path": "preflight.json",
+          "sha256": "2c3e66ae5fda68393b564c5d11c8f9330554cec33aa4daf703b06c123325769c",
+          "bytes": 5426
+        },
+        {
+          "path": "candidate-intelligence.json",
+          "sha256": "7df2bf09471198056110055463ba6044c89d0d6258f2d4b16c1e020b60fa0def",
+          "bytes": 15422
+        },
+        {
+          "path": "baseline-quality.json",
+          "sha256": "c239076ab77d6be9d3fa9e0befef0e289407f5dd451369804c2e44f8878fe7be",
+          "bytes": 25511
+        },
+        {
+          "path": "baseline-capacity-1.json",
+          "sha256": "41bb6656b6dd1db68df08fa9afe3cd6c63c826c98cb6555e9c4bbe93469fdf79",
+          "bytes": 19287
+        },
+        {
+          "path": "candidate-c4-preflight.json",
+          "sha256": "aaa1c880757cfe01fb364142df16617d98464aa123a67fad2f883651f55cb822",
+          "bytes": 5404
+        },
+        {
+          "path": "candidate-c4-quality.json",
+          "sha256": "f7d4986112ef7734d5b9ad94d0fea079662dd09f915210af8f8ac972dd687140",
+          "bytes": 25509
+        },
+        {
+          "path": "candidate-c4-capacity-1.json",
+          "sha256": "8df400314ccbd7a87f1d59a66d1bde13b47df2559b0529d7e972792a7aad56b8",
+          "bytes": 16514
+        },
+        {
+          "path": "candidate-c4-capacity-2.json",
+          "sha256": "6e18f78ae9c0c6e37729861fad61b79bcc232d8505522f5d31b3b16e5f295b03",
+          "bytes": 17960
+        },
+        {
+          "path": "candidate-needle.json",
+          "sha256": "9037c04211d985d5961b5f87899cd251f6509be9b40151f8136fa7bd5e25f961",
+          "bytes": 1686
+        }
+      ],
+      "reason": "Sanitized C1 and C4 evidence, including C4 preflight, valid standalone candidate cell, needle, and all strict-capacity failures; no partial-run comparison."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "c96affc21e0009781b6fb92c2eb0a4dd8cb81826dafaa542c9ecc3ccef31d0b0",
+          "bytes": 1066
+        }
+      ],
+      "reason": "Failed diagnostic and durable fix-forward boundary."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "055a35e7233716a9457513ed4653d45c3c88fc42ae0e6211dd189f2dc61575a5",
+          "bytes": 357
+        },
+        {
+          "path": "restoration-c4.json",
+          "sha256": "94c2a6351204022d6e7785b3e422616f4e5a8c82c3c6b1ffaa194c5f9b8d5ea9",
+          "bytes": 347
+        },
+        {
+          "path": "baseline-restored-direct.json",
+          "sha256": "d349b92683f40c76d593fc3ac65c5e0c75d1cde87fceba599c7b759ed7222e00",
+          "bytes": 5512
+        },
+        {
+          "path": "baseline-restored-preflight.json",
+          "sha256": "4dafec1225c8ee0e10171193eb38461662b7d6993b6fc8f8aab4c1a0681332b9",
+          "bytes": 5435
+        }
+      ],
+      "reason": "Both trials restored the exact baseline; final direct and routed native checks passed."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "7c66ec5c669cd662bf019d9cf05fcd8d8321aba5d6d82a5746871eebd7ae714c",
+          "bytes": 2090
+        }
+      ],
+      "reason": "No-promotion decision with remaining gates."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "752881d9e936099e614fc56db9eff238532fff9657e40b848fee66f370158363",
+          "bytes": 1838
+        }
+      ],
+      "reason": "Derivative copy and claim ledger."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}
