@@ -1,0 +1,81 @@
+# Public template: endpoint port remapped to 30002; load-bearing settings retained.
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "satgeze/GLM-5.3-Flash-EXL3-TR3-3.5bpw"
+name = "glm53-mixed35-v84-stream-r7-c4-v2"
+status = "experimental"
+source = "Fix-forward v1: opt-in streaming R7 CPU slices to GPU; native RAM/swap containment; parent candidate failed loading before inference."
+note = "C4 configuration successor to C1 stream-r7-v1: only scheduler maximum sequences and identities change. Same weights, image, host containment,327680ctx,2048batch and NVFP4KV. Compare with restored C4 baseline; isolated untilqualified."
+
+  [recipe.download]
+  repo = "satgeze/GLM-5.3-Flash-EXL3-TR3-3.5bpw"
+  revision = "62587d6015184a26773a4ed1b751a9c5fa469cd6"
+  volume = "glm53-mixed35-62587d6"
+
+  [recipe.hardware]
+  gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 192
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "anvil-glm53-mixed35:v84-stream-r7-v1@sha256:d1311adc96a37d235858aa397040ba5e550366961f1d4142f048e30476b93c47"
+  entrypoint = [
+    "vllm",
+    "serve",
+  ]
+  model_path = "/root/.cache/huggingface/hub/models--satgeze--GLM-5.3-Flash-EXL3-TR3-3.5bpw/snapshots/62587d6015184a26773a4ed1b751a9c5fa469cd6"
+  quantization = "mixed EXL3 K3/K4 experts, NVFP4 MLA KV"
+  context_tokens = 327680
+  port = 30002
+  startup_timeout_seconds = 2400
+  served_model_name = "glm53-mixed35-v84-stream-r7-c4-v2"
+  ipc = "host"
+  shm_size = "32gb"
+  ulimits = ["memlock=-1"]
+  named_volumes = ["glm53-mixed35-compile:/root/.cache"]
+  env = [
+    "HF_HUB_OFFLINE=1",
+    "VLLM_ENGINE_READY_TIMEOUT_S=2400",
+    "VLLM_B12X_GLM_NOPE_NVFP4=1",
+    "VLLM_EXL3_PREFILL_BLOCK_M=64",
+    "VLLM_EXL3_R7_FUSED=1",
+    "VLLM_USE_B12X_DCP_A2A=1",
+    "VLLM_B12X_MLA_CKV_GATHER=0",
+    "OMP_NUM_THREADS=2",
+    "NCCL_IB_DISABLE=1",
+    "NCCL_P2P_DISABLE=1",
+    "NCCL_P2P_LEVEL=4",
+    "NCCL_PROTO=LL,LL128,Simple",
+    "VLLM_EXL3_STREAM_R7_TO_DEVICE=1",
+  ]
+  flags = [
+    "--served-model-name glm53-mixed35-v84-stream-r7-c4-v2",
+    "--host 0.0.0.0",
+    "--port 30002",
+    "--language-model-only",
+    "--tensor-parallel-size 2",
+    "--decode-context-parallel-size 1",
+    "--dcp-comm-backend a2a",
+    "--dtype bfloat16",
+    "--load-format safetensors",
+    "--moe-backend b12x",
+    "--attention-backend B12X_MLA_SPARSE",
+    "--kv-cache-dtype nvfp4_ds_mla",
+    "--max-model-len 327680",
+    "--max-num-batched-tokens 2048",
+    "--max-num-seqs 4",
+    "--gpu-memory-utilization 0.970",
+    "--enable-chunked-prefill",
+    "--no-enable-prefix-caching",
+    "--reasoning-parser glm45",
+    "--reasoning-config '{}'",
+    "--tool-call-parser glm45",
+    "--enable-auto-tool-choice",
+    "--disable-custom-all-reduce",
+  ]
+  note = "Whole-configuration scout, not a quant-only A/B: DCP1, no EP, NVFP4 KV, mixed-rate source overlay. No speculation initially. Retain baseline and restore after bounded gates."
+  memory_limit_mib = 61440
+  memory_swap_limit_mib = 61440
+  host_memory_reserve_mib = 16384

@@ -126,6 +126,10 @@ def test_recipe_container_discovery_returns_only_safe_typed_fields() -> None:
             "running": True,
             "health": "healthy",
             "native_kv_offload": False,
+            "host_memory": {"limit_bytes": None, "ram_plus_swap_limit_bytes": None,
+                            "oom_killed": None, "exit_code": None, "current_bytes": None,
+                            "peak_bytes": None, "events": None, "effective_limit_bytes": None,
+                            "effective_swap_limit_bytes": None},
         }
     ]
     encoded = json.dumps(inventory)

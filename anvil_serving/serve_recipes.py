@@ -32,6 +32,8 @@ import subprocess
 import tempfile
 import tomllib
 
+from . import recipe_memory
+
 from .observability.workloads import (
     DEFAULT_STALE_AFTER_SECONDS,
     MAX_FUTURE_SECONDS,
@@ -463,6 +465,10 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
             raise RecipeError(
                 "recipe.activation.%s.compose_service must be a non-empty string" % role
             )
+    try:
+        recipe_memory.limits(serve)
+    except ValueError as exc:
+        raise RecipeError(str(exc)) from exc
     if not require_loadable:
         return
     serve = recipe.get("serve")
@@ -727,6 +733,10 @@ def docker_run_argv(
     serve = recipe["serve"]
     hw = recipe.get("hardware") or {}
     argv = ["docker", "run", "-d"]
+    bounds = recipe_memory.limits(serve)
+    if bounds is not None:
+        memory, total, _reserve = bounds
+        argv += ["--memory", str(memory * recipe_memory.MIB), "--memory-swap", str(total * recipe_memory.MIB)]
     if container:
         argv += ["--name", container]
     gpu_uuid = gpu_device or hw.get("gpu_uuid")
@@ -1064,6 +1074,7 @@ def _recipe_container_record(row: dict) -> dict | None:
         "state": state_name,
         "running": bool(state.get("Running")),
         "health": health,
+        "host_memory": recipe_memory.observation(row),
         "native_kv_offload": (
             None if native_raw is None else native_raw == "true"
         ),
@@ -1745,6 +1756,10 @@ def load_recipe(
         gpu_device=gpu_device,
         registry_digest_value=registry_digest_value,
     )
+    try:
+        recipe_memory.check_host(recipe["serve"], _run=_run)
+    except (ValueError, OSError, subprocess.SubprocessError) as exc:
+        raise RecipeError("host memory containment refused: %s" % exc) from exc
     try:
         completed = _run(argv, check=False)
     except OSError:

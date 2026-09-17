@@ -1,0 +1,11 @@
+{
+  "schema": "anvil-serving.loader-fix-forward/v1",
+  "parent_revision": "8fc95f0da72072a49a697f2164410b851a4e7377",
+  "parent_sha256": "cfb98860254467153f5c7ae7df1beb818b97936cadb67aeaa606521db376e00d",
+  "patched_sha256": "058dcc0aa23ddf45166008f59f55797edbe7b45cd758b5ad832ad86f601c2528",
+  "scope": "Opt-in synchronous per-tensor GPU transfer for non-preallocated R7 TP-sliced tensors; mixed K3/K4 tensor shapes retained.",
+  "rejected_alternative": "Uniform GPU slab; mixed trellis widths differ and rank-sliced metadata is absent.",
+  "fixture": "CPU control-flow fixture passed for TP slicing, mixed widths, source lifetime, transfer arguments, and CPU-target refusal.",
+  "focused_tests_passed": 226,
+  "runtime_boundary": "CUDA behavior was checked only by the bounded startup trace on both TP ranks."
+}

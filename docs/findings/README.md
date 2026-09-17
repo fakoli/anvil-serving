@@ -67,6 +67,7 @@ path and public-artifact audit remains tracked by
 | Date | File | Subject |
 |------|------|---------|
 | 2026-09-17 | [GLM mixed 3.5-bpw startup](2026-09-17-glm53-mixed35-startup.md) | Host RAM exhaustion during loading shut down the desktop session; zero candidate inference requests; exact 4-bpw baseline restored; retry requires containment |
+| 2026-09-17 | [GLM mixed 3.5-bpw bounded fix-forward](2026-09-17-glm53-mixed35-fix-forward.md) | Loader recovery passed C1/C4 functional and repeated quality checks plus a 216K actual-token needle; strict capacity was inconsistent and the baseline remains selected |
 | 2026-09-13 | [GLM Flash EXL3 327K intelligence and context qualification](2026-09-13-intelligence-context-scout.md) | Selected text-only primary after fixed quality, 258K context, agentic, SWE, promotion, and bounded client acceptance; Qwen rollback declared, fresh boot/reboot tests unrun |
 | 2026-09-12 | [Qwen3.8 efficient variants on RTX 5090](2026-09-12-qwen38-efficient-variants-rtx5090.md) | Four pinned fine-tuned/pruned variants plus no-spec controls; all functional gates pass, strict output and bounded quality failures retained; Signal/Swift9/10 versus incumbent8/10 on ten questions, but no qualified replacement; exact262K incumbent restored |
 | 2026-09-11 | [GLM v0.4.3 qualification](2026-09-11-glm53-v043-native-linux-qualification.md) | Historical native 524K/C4 qualification and promotion acceptance; 14/14 Pi tasks at the then-current 4K output cap |

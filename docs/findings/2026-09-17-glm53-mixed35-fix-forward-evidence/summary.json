@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-17-glm53-mixed35-fix-forward",
+  "complete": true,
+  "evidence_labels": [
+    "functional",
+    "quality",
+    "capacity"
+  ],
+  "decision_labels": [
+    "no-promotion"
+  ],
+  "promotion_authorized": true,
+  "promotion_authorization_condition": "User authorized promotion if the candidate demonstrates better performance while passing required quality and operational gates.",
+  "headline_results": [
+    "Bounded loader retry loaded all 120 shards and initialized CUDA on both TP ranks.",
+    "Synthetic 64 MiB cgroup probe contained a 256 MiB allocation with oom_kill=1.",
+    "C1 default-thinking preflight passed smoke, structured JSON, and 3/3 shared-prefix tool requests.",
+    "C1 intelligence scout passed two deterministic checks once each; it is below the three-repetition qualification threshold.",
+    "C4 needle passed at 216307 actual input tokens with exact ZEBRA and stop; it is one C1 request, not C4 capacity.",
+    "C4 preflight and three-repetition bounded intelligence/tool checks passed.",
+    "C4 strict capacity passed 4/4 then 3/4; the partial cell is performance-ineligible.",
+    "The baseline strict cell passed 2/4; no complete throughput comparison is available."
+  ],
+  "failed_diagnostic": "Disabled-thinking 256-token JSON control reached its length limit; default-thinking/max_tokens=16384 is the retained remedy.",
+  "missing_gates": [
+    "Representative repository tasks and repeated-session reliability",
+    "Real-client acceptance",
+    "Consistent repeated strict capacity and demonstrated overall improvement",
+    "Full configured 327680-token window and simultaneous long-context capacity"
+  ],
+  "decision": "retain baseline; no-promotion",
+  "boundary": "No alias, route, or serve promotion occurred; the runnable configuration is not a rejection of the mixed-quant family, and conditional authorization does not itself promote the candidate.",
+  "restoration_status": "Both C1 and C4 trials restored the exact baseline; direct and routed checks passed."
+}

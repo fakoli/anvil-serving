@@ -1,0 +1,18 @@
+--- a/vllm/model_executor/layers/quantization/exl3.py
++++ b/vllm/model_executor/layers/quantization/exl3.py
+@@ -2568,7 +2568,14 @@
+         borrowed = getattr(loaded_weight, "_vllm_instanttensor_borrowed", False)
+         loaded_weight = self._slice_loaded_weight(loaded_weight)
+         if not self.exl3_preallocate:
+-            if borrowed and self.exl3_tp_slice is None:
++            if self.exl3_tp_slice is not None and os.environ.get("VLLM_EXL3_STREAM_R7_TO_DEVICE") == "1":
++                if self.device.type != "cuda":
++                    raise RuntimeError("R7 streaming requires an initialized CUDA parameter device")
++                loaded_weight = loaded_weight.to(device=self.device, non_blocking=False, copy=True)
++                if not getattr(type(self), "_anvil_stream_reported", False):
++                    print(f"ANVIL_R7_STREAM device={loaded_weight.device} shape={tuple(loaded_weight.shape)} synchronous=True", flush=True)
++                    type(self)._anvil_stream_reported = True
++            elif borrowed and self.exl3_tp_slice is None:
+                 loaded_weight = loaded_weight.clone()
+             self.exl3_tensors[key] = loaded_weight.contiguous()
+             return

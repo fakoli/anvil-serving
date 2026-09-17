@@ -1505,6 +1505,7 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
         "state": state.get("Status"),
         "running": bool(state.get("Running")),
         "health": ((state.get("Health") or {}).get("Status")),
+        "host_memory": serve_recipes.recipe_memory.observation(row),
     }
 
 
@@ -2417,19 +2418,23 @@ def _recipe_main(argv):
         before = host_ops.capture_cache_before(cache_policy)
         print("loading recipe %r as container %r" % (recipe["model"], a.container))
         print("$ " + printable)
-        if a.gpu_device:
-            _command, rc = serve_recipes.load_recipe(
-                recipe,
-                a.container,
-                gpu_device=a.gpu_device,
-                registry_digest_value=selected_registry_digest,
-            )
-        else:
-            _command, rc = serve_recipes.load_recipe(
-                recipe,
-                a.container,
-                registry_digest_value=selected_registry_digest,
-            )
+        try:
+            if a.gpu_device:
+                _command, rc = serve_recipes.load_recipe(
+                    recipe,
+                    a.container,
+                    gpu_device=a.gpu_device,
+                    registry_digest_value=selected_registry_digest,
+                )
+            else:
+                _command, rc = serve_recipes.load_recipe(
+                    recipe,
+                    a.container,
+                    registry_digest_value=selected_registry_digest,
+                )
+        except serve_recipes.RecipeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
         if rc:
             print("recipe load failed with docker exit code %s" % rc, file=sys.stderr)
             if serve_recipes.uses_native_kv_offload(recipe):

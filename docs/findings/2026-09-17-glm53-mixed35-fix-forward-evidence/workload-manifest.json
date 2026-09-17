@@ -1,0 +1,45 @@
+{
+  "schema": "anvil-serving.workload-manifest/v1",
+  "repository_commit": "300b43c48fa0489663c5ffa29cbe6faef3183015",
+  "source_files": [
+    "anvil_serving/cli.py",
+    "anvil_serving/preflight.py",
+    "anvil_serving/benchmark.py",
+    "anvil_serving/benchmarking/runner.py",
+    "anvil_serving/benchmarking/requests.py"
+  ],
+  "preflight": {
+    "checks": [
+      "smoke",
+      "structured_json",
+      "shared_prefix_tools"
+    ],
+    "thinking": "default",
+    "reasoning_effort": "max",
+    "max_tokens": 16384,
+    "visible_answer_tokens": 1024,
+    "reasoning_headroom_tokens": 15360
+  },
+  "quality": {
+    "suites": [
+      "chat",
+      "tool",
+      "intelligence"
+    ],
+    "repetitions": 3,
+    "records_full_visible_answer": true,
+    "records_finish_reason": true,
+    "records_reasoning_channel_metadata": true
+  },
+  "capacity": {
+    "concurrency": 4,
+    "context_tokens": 8192,
+    "requests": 4,
+    "response_words": 64,
+    "controlled_output_policy": "strict",
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "max_tokens": 16384
+  },
+  "boundary": "Workload definitions were unchanged by the dirty containment changes."
+}

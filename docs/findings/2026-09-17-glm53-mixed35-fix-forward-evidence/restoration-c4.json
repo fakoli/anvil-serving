@@ -1,0 +1,9 @@
+{
+  "schema": "anvil-serving.restoration/v1",
+  "restored": true,
+  "candidate_unloaded": true,
+  "baseline_direct_preflight_passed": true,
+  "baseline_routed_preflight_passed": true,
+  "router_alias_changed": false,
+  "boundary": "Final C4 trial restored the exact selected baseline and passed direct and routed preflight; no route promotion."
+}
