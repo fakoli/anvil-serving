@@ -1,0 +1,23 @@
+{
+  "schema": "anvil-serving.benchmark-run-plan/v1",
+  "scope": "bounded mixed35 candidate scouting and portal repair",
+  "usage_floor_remaining_percent": 10,
+  "stop_new_experiments_remaining_percent": 15,
+  "priority": [
+    "correct coding and tools",
+    "usable context",
+    "completed-work latency"
+  ],
+  "baseline": "GLM4bpw FP8KV C4 no-spec327680",
+  "candidate": "mixed35 NVFP4KV C1 no-spec327680; MTP only if correctness passes",
+  "gates": [
+    "exact identity",
+    "short coding JSON tools",
+    "250K actual prompt plus16384 output reserve",
+    "same small independent coding fixtures",
+    "matched no-spec/MTP capacity only if prior gates pass"
+  ],
+  "restoration": "Managed unload/recreate of exact baseline; direct and authenticated routed preflight; unchanged configuration hashes.",
+  "authority": "User September 17: Merge the pr and test, following explicit downtime approval request; temporary dual-GPU turnover and exact restoration authorized. No promotion.",
+  "research_coverage": "lead plus one independent scout; reduced panel to preserve usage reserve"
+}

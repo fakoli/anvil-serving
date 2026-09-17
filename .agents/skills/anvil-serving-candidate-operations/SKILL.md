@@ -38,6 +38,21 @@ separate states; never infer one from another.
    changing a deployment role. Prefer per-app iGPU placement and exact managed
    workload lifecycle over global graphics changes.
 
+## Bound host memory before an unqualified load
+
+GPU fit is not host-RAM fit. Record available RAM, swap, desktop/OS reserve,
+and the loader peak estimate before a new checkpoint/runtime startup. If the
+loader peak is unknown, require a managed container RAM and RAM-plus-swap
+ceiling that preserves the reserve. If the managed lifecycle cannot enforce
+that ceiling, stop the candidate trial and record the product gap; do not
+substitute raw Docker or rely on the global OOM killer. Preserve exact known-good
+restoration separately from new candidate experimentation.
+
+A host-wide OOM or desktop-session loss blocks retries until containment and
+loader diagnosis are independently checked. See the
+[September 17 failure](../../../docs/findings/2026-09-17-glm53-mixed35-startup.md)
+and [containment ticket](../../../.tickets/2026-09-17-recipe-host-memory-containment.md).
+
 ## Select one lifecycle path
 
 Use recipe lifecycle for an isolated candidate:

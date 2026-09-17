@@ -1,0 +1,100 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-17-glm53-mixed35-startup",
+  "complete": false,
+  "identity": {
+    "model": {
+      "repository": "satgeze/GLM-5.3-Flash-EXL3-TR3-3.5bpw",
+      "revision": "62587d6015184a26773a4ed1b751a9c5fa469cd6"
+    },
+    "served_model": "glm53-mixed35-v84-nospec-scout",
+    "runtime": {
+      "image_digest": "sha256:0403cbbc83450b2ca7d4fdeabe58bc8daf785872b12ebda1f1fb32a1bfba2fb4",
+      "base_image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "overlay_revision": "8fc95f0da72072a49a697f2164410b851a4e7377",
+      "reported_version": "0.1.dev20111+g7f1e92bec.d20260827",
+      "overlay_files": [
+        "w4a16/host.py",
+        "w4a16/kernel.py",
+        "w4a16/mixed_trellis.py",
+        "fused_moe/_impl.py",
+        "vllm/exl3.py"
+      ]
+    },
+    "hardware": {
+      "host": "Primary Node",
+      "os": "native Linux",
+      "gpus": "2x RTX PRO 6000 Blackwell Max-Q 96 GB",
+      "host_ram": "96 GB installed; approximately 89.7 GiB OS usable",
+      "swap_gib": 8
+    },
+    "configuration": {
+      "tp": 2,
+      "ep": false,
+      "dcp": 1,
+      "quantization": "mixed K3/K4 EXL3",
+      "kv": "nvfp4_ds_mla",
+      "attention": "B12X_MLA_SPARSE",
+      "context_tokens": 327680,
+      "scheduler_concurrency": 1,
+      "speculation": false,
+      "prefill_block_m": 64,
+      "max_num_batched_tokens": 2048,
+      "gpu_memory_utilization": 0.97,
+      "prefix_caching": false,
+      "nccl_p2p_disabled": true,
+      "host_memory_limit": null
+    },
+    "scope": "single startup attempt; no inference requests; co-resident desktop and benchmark client",
+    "launcher": {
+      "repository_revision": "fb30405d81272b13b57f62db7a537bafb2372b2d",
+      "version": "1.1.0",
+      "source": "anvil_serving/cli.py"
+    }
+  },
+  "workload": {
+    "stage": "startup",
+    "candidate_inference_requests": 0
+  },
+  "measurement": {
+    "path": "managed container startup",
+    "warm_cold_state": "first load of derived runtime and checkpoint",
+    "sample_count": 1,
+    "statistics": []
+  },
+  "gates": [
+    {
+      "name": "candidate readiness",
+      "passed": false
+    }
+  ],
+  "headline_results": [
+    "Host RAM exhaustion during checkpoint loading; no candidate inference evidence."
+  ],
+  "failures": [
+    "Global OOM killed desktop ChatGPT process at 14:10:29 UTC and vLLM worker at 14:10:54 UTC.",
+    "GNOME session shut down; OS boot remained unchanged."
+  ],
+  "limitations": [
+    "No candidate JSON, tools, context, quality, capacity, or latency result.",
+    "Whole-configuration scout; not a quant-only comparison.",
+    "Underlying loader allocation cause not isolated; no claim against all mixed-quant configurations."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "rejected",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Managed host-memory containment and loader diagnosis before retry."
+  },
+  "evidence": [
+    "identity.json",
+    "failure-excerpts.log",
+    "startup-excerpts.log",
+    "restoration.json"
+  ]
+}

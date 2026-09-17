@@ -1,0 +1,34 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "url": "https://huggingface.co/satgeze/GLM-5.3-Flash-EXL3-TR3-3.5bpw",
+      "revision": "62587d6015184a26773a4ed1b751a9c5fa469cd6",
+      "observed_at": "2026-09-17",
+      "measurement_dates": [
+        "2026-09-01",
+        "2026-09-03"
+      ],
+      "age_class": "14-16 days",
+      "evidence_type": "external-prior",
+      "decision_impact": "Mixed35 runtime intake; no local performance transfer",
+      "id": "upstream-1",
+      "published_or_observed": [
+        "2026-09-01",
+        "2026-09-03"
+      ],
+      "hardware_runtime_relevance": "2x96GB SM120 quantizer report; different protocols"
+    },
+    {
+      "url": "https://github.com/satindergrewal/GLM-5.3-Flash-EXL3-3.5bpw-Mixed-SM120-TP2",
+      "revision": "8fc95f0da72072a49a697f2164410b851a4e7377",
+      "observed_at": "2026-09-17",
+      "evidence_type": "external-prior",
+      "decision_impact": "Five files over pinned v84; DCP1, prefill block64; no DFlash for no-spec",
+      "id": "upstream-2",
+      "published_or_observed": "2026-09-17",
+      "age_class": "observed same day; publication age unknown",
+      "hardware_runtime_relevance": "Mixed EXL3 B12X and vLLM overlays"
+    }
+  ]
+}

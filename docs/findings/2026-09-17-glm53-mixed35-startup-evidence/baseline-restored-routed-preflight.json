@@ -1,0 +1,151 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 16384,
+    "reasoning_headroom_tokens": 15360,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "llm.primary",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nIf you need it as a reusable function (or can't use the built-in):\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nOr without `sum`, using `functools.reduce`:\n\n```python\nfrom functools import reduce; total = reduce(lambda a, b: a + b, xs, 0)\n```\n\nThe first option is the idiomatic choice \u2014 `sum()` is a built-in, handles empty lists (returning `0`), and works on any iterable of numbers.",
+      "content_chars": 405,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nIf you need it as a reusable function (or can't use the built-in):\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nOr without `sum`, using `functools.reduce`:\n\n```python\nfrom functoo",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 941,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most obvious answer is:\n\n```python\nsum(xs)\n```\n\nThat's the idiomatic Python way. But maybe the",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 5.008,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 356,
+        "prompt_tokens": 28,
+        "total_tokens": 384
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 183,
+      "reasoning_excerpt": "The user wants me to return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose. This is a simple, direct request. I should output exactly that JSON with no additional text.",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.814,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 53,
+        "prompt_tokens": 30,
+        "total_tokens": 83
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 70,
+      "reasoning_excerpt": "The user wants weather in Oakland. I have a get_weather tool. Call it.",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 2,
+      "seconds": 3.861,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 30,
+        "prompt_tokens": 4967,
+        "total_tokens": 4997
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 99,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. I'll call it with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 3.936,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 38,
+        "prompt_tokens": 4967,
+        "total_tokens": 5005
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 142,
+      "reasoning_excerpt": "The user wants to know the weather in Oakland. I have a get_weather tool available. I should call it with the city parameter set to \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 4.004,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 45,
+        "prompt_tokens": 4967,
+        "total_tokens": 5012
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "5.0s got='```python\\nsum(xs)\\n```\\n\\nIf you need it as a reusabl' finish='stop' visible=405 reasoning_chars=941 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=183 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "3/3 clean (sample: 3.9s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=70 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x3",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

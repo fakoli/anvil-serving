@@ -22,7 +22,8 @@ incomplete, and historical models as well as selected configurations.
 
 ## Candidate shortlist
 
-These are **external priors**, not local qualification or promotion results.
+The source claims below are **external priors**, not local qualification or promotion results.
+The first candidate now has a failed local startup attempt, recorded separately.
 The priority below is an investigation order based on hardware relevance and
 the gaps in the retained local evidence.
 
@@ -40,9 +41,12 @@ to a local base image; the active 4-bpw image is not a verified substitute.
 The card also records DCP=1 and prefill-block constraints. Pin and validate
 that runtime before interpreting a load failure as a model failure.
 
-**Next test:** establish a pinned managed recipe, pass short JSON/tools and a
-250K-class retrieval with an output reserve, then compare completed coding
-work and latency against the retained 4-bpw control. Treat NVFP4 KV and MTP
+**Local outcome, September 17:** the [pinned managed startup](../findings/2026-09-17-glm53-mixed35-startup.md)
+exhausted host RAM and swap before readiness and shut down the desktop session.
+No inference request ran; the exact 4-bpw baseline was restored. **Retry gate:**
+first add managed host-memory containment and diagnose loader peak RAM. Only
+a safe startup survivor can advance to JSON/tools, 250K-class retrieval with
+output reserve, and completed coding-work comparisons. Treat NVFP4 KV and MTP
 as additional configuration changes; isolate them before claiming a quant-only
 improvement. Checkpoint savings are not measured GPU savings.
 

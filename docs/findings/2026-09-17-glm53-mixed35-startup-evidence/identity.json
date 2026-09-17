@@ -1,0 +1,62 @@
+{
+  "model": {
+    "repository": "satgeze/GLM-5.3-Flash-EXL3-TR3-3.5bpw",
+    "revision": "62587d6015184a26773a4ed1b751a9c5fa469cd6"
+  },
+  "served_model": "glm53-mixed35-v84-nospec-scout",
+  "runtime": {
+    "image_digest": "sha256:0403cbbc83450b2ca7d4fdeabe58bc8daf785872b12ebda1f1fb32a1bfba2fb4",
+    "base_image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "overlay_revision": "8fc95f0da72072a49a697f2164410b851a4e7377",
+    "reported_version": "0.1.dev20111+g7f1e92bec.d20260827",
+    "overlay_files": [
+      "w4a16/host.py",
+      "w4a16/kernel.py",
+      "w4a16/mixed_trellis.py",
+      "fused_moe/_impl.py",
+      "vllm/exl3.py"
+    ]
+  },
+  "hardware": {
+    "host": "Primary Node",
+    "os": "native Linux",
+    "gpus": "2x RTX PRO 6000 Blackwell Max-Q 96 GB",
+    "host_ram": "96 GB installed; approximately 89.7 GiB OS usable",
+    "swap_gib": 8
+  },
+  "configuration": {
+    "tp": 2,
+    "ep": false,
+    "dcp": 1,
+    "quantization": "mixed K3/K4 EXL3",
+    "kv": "nvfp4_ds_mla",
+    "attention": "B12X_MLA_SPARSE",
+    "context_tokens": 327680,
+    "scheduler_concurrency": 1,
+    "speculation": false,
+    "prefill_block_m": 64,
+    "max_num_batched_tokens": 2048,
+    "gpu_memory_utilization": 0.97,
+    "prefix_caching": false,
+    "nccl_p2p_disabled": true,
+    "host_memory_limit": null
+  },
+  "scope": "single startup attempt; no inference requests; co-resident desktop and benchmark client",
+  "launcher": {
+    "repository_revision": "fb30405d81272b13b57f62db7a537bafb2372b2d",
+    "version": "1.1.0",
+    "source": "anvil_serving/cli.py",
+    "dirty_state": "clean at candidate startup; evidence authored afterwards"
+  },
+  "launch": {
+    "managed_recipe": "candidate-recipe.toml",
+    "captured_recipe_digest": "b42652030185356b3590fab3d6c24ebc9ddce8e12ddb9b82b5fe42a25351e4bb",
+    "captured_registry_digest": "c0330d2dda535ddb327c121aefc37c8c8355e04a1a91064a9100eaa6dab43236",
+    "endpoint": "http://127.0.0.1:30001/v1",
+    "gpu_selection": [
+      "GPU-example-1",
+      "GPU-example-2"
+    ],
+    "redaction": "Endpoint port and GPU identities are synthetic; captured digests fingerprint the original private recipe, not the redacted TOML."
+  }
+}
