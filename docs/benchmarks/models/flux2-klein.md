@@ -23,8 +23,8 @@
     - **Important limitation:** concurrency above one, broad comparative image
       quality, seed repeatability, monotonic quality by tier, and a normal
       cold-start latency distribution were **not tested**.
-    - **Review dates:** retained evidence through 2026-08-28; dossier-format
-      review 2026-08-31.
+    - **Review dates:** retained evidence through 2026-09-15; dossier reviewed
+      2026-09-17.
 
 ### Review narrative
 
@@ -76,7 +76,7 @@ The immutable workflow descriptor records graph digest
 
 One RTX 5090, 32,607 MiB, in a Windows 11 / Docker Desktop / WSL2 media lane.
 Direct qualification, isolated exact-build acceptance, and the production
-cross-host path with Primary Node gateway, Fakoli Mid Mod resource ownership,
+cross-host path with Primary Node gateway, Media Node resource ownership,
 and real Hermes on Companion Node were tested. The production router and bounded
 controllers changed; the unrelated Qwen service remained in place.
 
@@ -166,6 +166,8 @@ monotonic quality by tier. Those properties and concurrency above one were
 **not tested**.
 
 ## Dated run history
+
+- [2026-09-15 managed image/video bringup and v2 repair](../../findings/2026-09-15-media-bringup.md)
 
 - [2026-08-28 Hermes image-quality production enablement](../../findings/2026-08-28-hermes-image-quality-production.md)
 - [2026-08-28 media gateway live validation](../../findings/2026-08-28-media-gateway-live-validation.md)

@@ -1,6 +1,7 @@
 {
   "campaign_id": "2026-09-13-intelligence-context-scout",
   "complete": true,
+  "editorial_note": "2026-09-17: corrected stale derivative publication prose. Retained promotion, bounded client acceptance, restoration, and post-promotion context receipts were already present; original native scores and historical outcomes are unchanged.",
   "decision": {
     "decision_labels": [
       "current"
@@ -10,7 +11,7 @@
       "external-prior"
     ],
     "next_gate": "None for this closed qualification snapshot; preserve rollback and evaluate new candidates separately.",
-    "promotion_authorization_scope": "The user authorized disruptive GPU turnover, full evaluation, and promotion work; this incomplete publication skeleton records no promotion action or decision.",
+    "promotion_authorization_scope": "The user authorized disruptive GPU turnover, full evaluation, and promotion work; retained receipts record the resulting selected-current promotion, bounded client acceptance, and post-promotion context evidence.",
     "promotion_authorized": true,
     "promotion_state": "promoted, admitted, and client-accepted"
   },
@@ -51,9 +52,9 @@
     "repository_revision": "3c1bd508f638447fabc0ba2cfef9bc20b84ef9c1"
   },
   "limitations": [
-    "The selected-current record remains bounded: a broad matched candidate comparison and fresh boot/reboot proof is not retained. GLM r7 MTP3 and no-spec strict120 each completed 120/120 performance-eligible C4 requests; median decode was 59.662 versus 38.908 tok/s in one matched pair, not a general speed claim. No-spec native context passed 9/9 at >321K total reserved tokens, but runtime cache allocation does not prove concurrent full-window correctness. Its full100 scout is 90/100; native deep agentic completed 30/30. The first SWE wrapper failed before model requests because its cached environment inventory mismatched. The frozen retry completed 4/5 resolved, but a five-case scout and missing restoration/post-promotion receipts leave stability closure open. The earlier MTP3 258K context stage passed 7/9 with two unresolved retrieval failures. Next has configuration-specific 9/9 context, 21/30 agentic, 4/5 SWE, and 12/12 image/OCR observations.",
+    "The selected-current record remains bounded: a broad matched candidate comparison and fresh boot/reboot proof are not retained. GLM r7 MTP3 and no-spec strict120 each completed 120/120 performance-eligible C4 requests; median decode was 59.662 versus 38.908 tok/s in one matched pair, not a general speed claim. No-spec native context passed 9/9 after managed cold reload at >321K total reserved tokens, but runtime cache allocation does not prove concurrent full-window correctness. Its full100 scout is 90/100; native deep agentic completed 30/30. The first SWE wrapper failed before model requests because its cached environment inventory mismatched. The frozen retry completed 4/5 resolved; the five-case scout remains bounded. The declared Qwen FP8 rollback was not exercised after final promotion. The earlier MTP3 258K context stage passed 7/9 with two unresolved retrieval failures. Next has configuration-specific 9/9 context, 21/30 agentic, 4/5 SWE, and 12/12 image/OCR observations.",
     "Pinned item 8310 has no valid listed answer; official raw counts are retained without adjustment. A separate sensitivity would subtract one r7 and Next success and remove one r6 operational blank failure.",
-    "69 sanitized native artifacts plus one derived environment diagnosis are retained with source hashes and a field-redaction audit; private originals remain outside the public draft bundle.",
+    "69 sanitized native artifacts plus one derived environment diagnosis are retained with source hashes and a field-redaction audit; private originals remain outside the public bundle.",
     "Next strict120 retained 120 stop responses but zero performance-eligible responses because a direct-stream diagnostic found two leading line feeds before every canary. This is a client/harness formatting-contract failure, not a model attribution."
   ],
   "schema": "anvil-serving.benchmark-decision-summary/v1",

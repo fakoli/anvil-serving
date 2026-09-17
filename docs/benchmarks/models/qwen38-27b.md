@@ -7,8 +7,8 @@
 !!! info "Decision snapshot"
 
     - **Product role:** former human-approved 96 GB single-service profile;
-      retained as reproducible evidence, not the current Primary or immediate
-      text rollback.
+      retained as reproducible evidence. Official FP8 is the declared,
+      unexercised rollback in the September 14 text-selection record.
     - **Selected or best-qualified configuration:** for the new PRO 6000
       throughput workload, two independent SGLang Inferact NVFP4 plus DFlash2
       K12/chunk1K TP1 replicas are the bounded winner; one TP1 is the selected
@@ -39,8 +39,8 @@
       It lacks routed/client, multimodal, broad agentic/SWE, endurance, and
       promotion-grade evidence. The measured hardware/engine lanes are not
       interchangeable.
-    - **Review dates:** Retained evidence cutoff: 2026-09-05 UTC.
-      Dossier-format review: 2026-09-04 local campaign date.
+    - **Review dates:** retained evidence through 2026-09-14; dossier reviewed
+      2026-09-17. Each measurement below keeps its original date.
 
 [Open the exact retained container configurations](../configurations.md#qwen38-27b-official-fp8)
 or jump to the [decision](#decision-and-promotion-state),
@@ -48,6 +48,21 @@ or jump to the [decision](#decision-and-promotion-state),
 [dated evidence](#dated-run-history).
 
 ### Review narrative
+
+#### 2026-09-13–14 — partial quality scout and declared rollback
+
+Official FP8 scored 26/30 across three retained quality shards. The remaining
+seven shards were not completed, so this cannot be ranked against the fixed
+100-item GLM and Flash Next samples. After GLM no-spec was selected, Qwen FP8
+remained the declared text-only rollback. That rollback was not exercised
+after promotion and its image verification was advisory-only. **Outcome:**
+retain the rollback declaration without claiming fresh restoration proof.
+See the [selection finding](../../findings/2026-09-13-intelligence-context-scout.md).
+
+The [September 12 fine-tune dossier](qwen38-efficient-variants.md) covers
+Signal, Swift, Qwopus, and Minitron separately. The
+[Apple Silicon voice dossier](voice-llm-mlx.md) covers the MLX 4-bit attempt;
+its 5/6 preflight and tool failures do not describe the NVIDIA recipes.
 
 The dated notes below preserve the reasoning behind each decision. The later
 measurement sections retain the full metrics, controls, and caveats.
@@ -613,9 +628,9 @@ passed the same surface at 105,649 prompt tokens.
   Primary, general vision, OCR, and video at 393,216 tokens on one card while
   the other card was dormant. Video passed 14/14 direct and 28/28 through the
   live admitted corpus; Hermes and OpenClaw passed without fallback.
-- **Managed rollback evidence:** the SGLang profile and former vLLM FP8/BF16
-  split remain reproducible, but neither is the immediate text rollback.
-  DeepSeek r33 393K now fills that role.
+- **September 14 rollback declaration:** official FP8 is the retained text
+  rollback, but it was not exercised after GLM promotion. Earlier DeepSeek r33
+  and Qwen FP8/BF16 rollback assignments are dated history.
 - **RTX 5090 native-video challenger:** RadixArk NVFP4 remains
   `no-promotion`. Its 131,072-token window is a separate lane from the former
   393K service.
@@ -829,6 +844,10 @@ capability RTX 5090 incumbent.
   GPU ownership, and clean shared memory.
 
 ## Dated run history
+
+- [2026-09-13–14 partial FP8 quality scout and rollback declaration](../../findings/2026-09-13-intelligence-context-scout.md)
+- [2026-09-12 efficient fine-tune comparison](qwen38-efficient-variants.md)
+- [2026-09-08 MLX voice compatibility](voice-llm-mlx.md)
 
 - [2026-09-04 RTX PRO 6000 current-runtime DFlash2 matrix](../../findings/2026-09-04-qwen38-27b-pro6000-possibility-plan.md)
 - [2026-09-03 RTX 5090 quant/speculation bakeoff](../../findings/2026-09-03-qwen38-27b-rtx5090-quant-bakeoff.md)

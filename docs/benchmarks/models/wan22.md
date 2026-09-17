@@ -22,8 +22,8 @@
     - **Important limitation:** Generated MP4 binaries were not retained, and
       temporal smoothness, motion, camera behavior, longer clips, multiple
       prompts/seeds, and concurrency above one were not tested.
-    - **Review dates:** Retained evidence cutoff: 2026-08-28. Dossier-format
-      review: 2026-08-31.
+    - **Review dates:** retained evidence through 2026-09-15; dossier reviewed
+      2026-09-17.
 
 ### Review narrative
 
@@ -70,6 +70,14 @@ Exact file sizes and SHA-256 identities are recorded in the public
 [workflow bundle lock](https://github.com/fakoli/anvil-serving/blob/main/configs/media/workflows/bundle.lock.json) and
 the dated evidence.
 
+### September v2 workflow
+
+The corrected `video.wan2.2-ti2v-5b-v2` graph has SHA-256
+`b93170eeb578ce5a8dc86d2dfbd944e037abf2e8b9a223059f8e9c6aa8291c14`.
+Runtime reports identify ComfyUI v0.33.4, CUDA 13.0, and PyTorch 2.13.0+cu130;
+the derived image identity was not independently verified. Small used 20 steps
+and standard used 30. These settings and outcomes are separate from v1 below.
+
 ### Runtime and workflow
 
 - Base container:
@@ -98,7 +106,7 @@ Other accelerators, multi-GPU execution, and co-resident media generation were
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
-### Qualified workflow shape
+### Historical v1 functional workflow shape
 
 - ComfyUI v0.33.4, CUDA 13.0, and PyTorch 2.13.0+cu130.
 - Pinned VideoHelperSuite custom node.
@@ -114,6 +122,19 @@ The [immutable workflow graph](https://github.com/fakoli/anvil-serving/blob/main
 and bundle lock provide the public reconstruction inputs.
 
 ## Evidence by measurement class
+
+### September 15 v2 repair
+
+- **Status:** `functional`; quality remains unverified, `no-promotion`.
+- **Measured:** v2 produced decodable 512×288/33-frame and 832×480/49-frame
+  H.264 artifacts. Sampled frames regained recognizable content after v1's
+  severe corruption, but both reviews remained partial.
+- **Limits:** missing or cropped handles, steam errors, and synthetic artifacts
+  remain. Temporal quality was not assessed; each run is one sample with
+  different parameters, so their timings are not a performance comparison.
+- **Evidence:** [bringup finding](../../findings/2026-09-15-media-bringup.md)
+  and [workload/graph identity](../../findings/2026-09-15-media-bringup/workload.json).
+
 
 ### Direct functional and capacity evidence
 
@@ -171,6 +192,8 @@ not the qualified recipe.
 - One short c1 run does not qualify general throughput.
 
 ## Dated run history
+
+- [2026-09-15 managed image/video bringup and v2 repair](../../findings/2026-09-15-media-bringup.md)
 
 - [2026-08-28 media gateway live validation](../../findings/2026-08-28-media-gateway-live-validation.md)
 - [2026-08-28 ComfyUI media qualification](../../findings/2026-08-28-comfyui-media-qualification.md)

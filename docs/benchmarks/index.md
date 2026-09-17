@@ -2,7 +2,7 @@
 
 Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-09-14 UTC.**
+configuration and retained evidence. **Evidence reviewed: 2026-09-15 UTC.**
 
 ## Latest published decision
 
@@ -62,8 +62,10 @@ prompt depth rather than configured context.
 **3. Check the tradeoff**
 
 Use [measured recipe results](recipe-results.md) for explicit strengths,
-limitations, and rejection reasons. Use [model dossiers](models/index.md) when
-quality, tools, media, or client acceptance matters more than one speed number.
+limitations, and rejection reasons. Use the [model and quantization selection
+guide](selection.md) for a bounded workload choice, then [the complete model
+inventory](models/index.md) when quality, tools, media, or client acceptance
+matters more than one speed number.
 
 </div>
 
@@ -122,9 +124,19 @@ measured and which was merely protected or co-resident.
 
 ## Browse by model
 
-Each **[model dossier](models/index.md)** is a stable, model-centered summary:
-the latest published status, every measured configuration, working recipes,
-and links to the dated findings behind each conclusion.
+The **[complete hardware-first inventory](models/index.md)** lists every dossier
+and explicit grouped variant, including the September 12 efficient Qwen models
+and the Apple MLX Qwen lanes. Each dossier is a stable, model-centered summary
+with its dated findings and raw evidence.
+
+## Recent evidence
+
+- **2026-09-15 — media:** The [media finding](../findings/2026-09-15-media-bringup.md)
+  records bounded workflow evidence; use its dossier and finding rather than
+  treating it as a text-model selection result.
+- **2026-09-12 — efficient Qwen variants:** Signal, Swift, Qwopus, and Minitron
+  all passed functional checks on the RTX 5090, but none cleared the exact
+  incumbent's output and deployment gates. See the [grouped dossier](models/qwen38-efficient-variants.md).
 
 ## Run context, agentic, and repository evaluations
 
