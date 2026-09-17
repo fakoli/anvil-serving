@@ -162,3 +162,20 @@ def test_timeout_terminates_child_that_inherits_the_output_pipe(tmp_path):
     assert not result.get("output_error")
     time.sleep(1.6)
     assert not marker.exists()
+
+
+def test_log_root_is_private_under_shared_umask_and_rejects_unsafe_existing_root(tmp_path):
+    import os
+    if os.name == "nt":
+        pytest.skip("POSIX directory permissions")
+    logs = tmp_path / "logs"
+    previous = os.umask(0o002)
+    try:
+        image_build._private_run_directory(logs, None)
+    finally:
+        os.umask(previous)
+    assert logs.stat().st_mode & 0o777 == 0o700
+    logs.chmod(0o775)
+    with pytest.raises(image_build.ImageBuildError, match="writable by other users"):
+        image_build._private_run_directory(logs, None)
+    assert logs.stat().st_mode & 0o777 == 0o775

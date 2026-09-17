@@ -6,27 +6,39 @@
 
 !!! info "Decision snapshot"
 
-    - **Product role:** Immediate retained text/image/OCR/video rollback in the
-      latest dated public decision; it is not claimed as a live route.
-    - **Selected or best-qualified configuration:** RadixArk ModelOpt NVFP4 on
-      SGLang QSA-fast, exclusive TP=2, BF16 KV, 262,144 served tokens,
-      concurrency one, NEXTN `3/1/4`, four images or one video, and no PLE CPU
-      offload.
-    - **Measured hardware:** Two RTX PRO 6000 Blackwell Max-Q cards over PCIe
-      without NVLink, assigned exclusively to one TP=2 owner.
-    - **Evidence:** Functional, capacity, bounded quality, matched performance,
-      a 15-case multimodal corpus, router edges, context curve, and real
-      OpenClaw, Hermes, and Pi acceptance.
-    - **Decision:** Retain as the immediate video-capable rollback during the
-      dated GLM evaluation; restoration still requires the managed lifecycle
-      and fresh identity, route, sync, and client checks.
-    - **Important limitation:** The c2 queue diagnostic is not c2
-      qualification; different media limits, KV dtype, runtime patch, offload
-      policy, context, or speculation preset were not qualified.
-    - **Review dates:** Retained evidence cutoff: 2026-08-30. Dossier-format
-      review: 2026-08-31.
+    - **Product role:** measured EXL3 alternative to the September 14 GLM
+      text selection; separate NVFP4 multimodal promotion history.
+    - **Selected or best-qualified configuration:** EXL3 4.05-bpw at 262,144
+      configured tokens in the September scout. The August NVFP4/SGLang
+      TP=2/C1 recipe has separate text, image, OCR, and video acceptance.
+    - **Measured hardware:** two RTX PRO 6000 Blackwell Max-Q cards; native
+      Linux for EXL3, WSL2 for the historical NVFP4 lane.
+    - **Evidence:** EXL3 scored 91/100 on one fixed MMLU-Pro sample, context
+      9/9, agentic 21/30, SWE 4/5, and image/OCR 12/12.
+    - **Decision:** EXL3 remains `no-promotion`; GLM no-spec was selected in
+      that campaign. NVFP4's August rollback role is historical.
+    - **Important limitation:** EXL3 strict120 has zero performance-eligible
+      responses because leading line feeds violated the canary contract.
+      Neither its timings nor a one-point quality gap establish superiority.
+    - **Review dates:** retained evidence through 2026-09-14; dossier reviewed
+      2026-09-17.
+
+[Latest finding](../../findings/2026-09-13-intelligence-context-scout.md) ·
+[raw evidence](../../findings/2026-09-13-intelligence-context-scout-evidence/README.md) ·
+[configuration history](#engine-quantization-kv-context-and-concurrency-recipe).
 
 ### Review narrative
+
+#### 2026-09-13–14 — EXL3 alternative retains quality and formatting gaps
+
+The 4.05-bpw EXL3 profile completed the fixed quality sample, long-context,
+agentic, SWE, and image/OCR probes. GLM no-spec completed 30/30 agentic tasks
+against Next's 21/30; both resolved 4/5 frozen SWE tasks. These are bounded
+samples across different configurations, not a general model ranking.
+All 120 Next capacity responses stopped, but none met the strict canary-prefix
+contract. The direct-stream diagnostic found two leading line feeds, so this
+is a retained client/harness formatting failure, not a proven model defect.
+**Outcome:** no promotion or valid strict120 speed claim for this profile.
 
 #### 2026-08-26 — Portable-QSA correctness baseline
 
@@ -55,10 +67,18 @@ or one video.
 The 2026-08-26 record had authorized this profile for `llm.primary`,
 `vision.general`, `vision.ocr`, and `vision.video`. When the GLM one-week
 evaluation began on 2026-08-30, Qwen3.8 Flash Next became the immediate
-retained text/image/OCR/video rollback. The label describes the latest public
-decision, not verified live state after the evidence cutoff.
+retained text/image/OCR/video rollback. The label describes the August decision, not a current rollback assignment.
 
 ## Immutable identity
+
+### September EXL3 scout
+
+- **Checkpoint:** `turboderp/Qwen3.8-Flash-Next-exl3` at
+  `55a732e0c4c3d4614bc42b68493bb930d9b02c0a`, 4.05-bpw conversion.
+- **Runtime image:**
+  `sha256:00909876aea02112b75d775bfa50f6d1adac50a3a11918363e7b403d7340d9bc`.
+- **Identity evidence:** [configuration pins](../../findings/2026-09-13-intelligence-context-scout-evidence/configuration-identity.json).
+
 
 ### Checkpoint and runtime
 
@@ -90,6 +110,16 @@ were **not tested** for this retained configuration.
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
+### September EXL3 scout
+
+The 262,144-token EXL3 profile is distinct from the August NVFP4 recipe below.
+Its [native context artifact](../../findings/2026-09-13-intelligence-context-scout-evidence/native/next/next405-context-native192k-262k-r1/artifact.json)
+retains the executed controls. The managed recipe is operator-private; use the
+[public reconstruction guide](../configurations.md) and the pinned evidence.
+Do not copy KV, speculation, or multimodal settings from the NVFP4 lane and
+label that a reproduction of the EXL3 scout.
+
+
 ### Qualified QSA-fast MTP3 lane and matched control
 
 The [retained MTP3 recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-flash-next-radixark-nvfp4-sglang-sm120-qsa-fast-tp2-262k-mtp3-recipe.toml)
@@ -111,6 +141,18 @@ recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-flash-n
 is retained as the slower same-day correctness baseline.
 
 ## Evidence by measurement class
+
+### September EXL3 quality and strict capacity
+
+- **Status:** `quality`, `functional`, bounded context `capacity`; strict
+  performance population ineligible.
+- **Measured:** MMLU-Pro 91/100, context 9/9 above 257K total reserved tokens,
+  agentic 21/30, frozen SWE 4/5, image/OCR 12/12.
+- **Limits:** one quality pass, five SWE cases, and zero performance-eligible
+  strict120 requests. The older NVFP4 video/client evidence does not transfer.
+- **Evidence:** [dated finding](../../findings/2026-09-13-intelligence-context-scout.md) and
+  [native artifacts](../../findings/2026-09-13-intelligence-context-scout-evidence/README.md).
+
 
 ### Functional, capacity, and bounded quality
 
@@ -151,10 +193,13 @@ plus their sanitized evidence bundles.
 
 ## Decision and promotion state
 
-### Retained rollback
+### September EXL3 challenger
 
-This is the immediate retained video-capable rollback during the one-week GLM
-evaluation. Its historical promoted contract remains 253,952-plus-8,192,
+The EXL3 scout remains `no-promotion` after the September 14 GLM selection.
+
+### Historical NVFP4 rollback
+
+This was the retained video-capable rollback during the August GLM evaluation. Its historical promoted contract remains 253,952-plus-8,192,
 concurrency-one admission, four images, one video, and thinking disabled. The
 c2 queue diagnostic is not a c2 qualification. Restoring route metadata alone
 does not make the service live; a rollback requires the managed serve
@@ -196,6 +241,7 @@ functional, quality, capacity, and client gates.
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-09-13–14 | [EXL3 quality, context, agentic, SWE, and image scout](../../findings/2026-09-13-intelligence-context-scout.md) | `no-promotion`; strict120 performance ineligible |
 | 2026-08-26 | [Full multimodal corpus, context curve, and vision-route/client promotion](../../findings/2026-08-26-qwen38-flash-next-vision-promotion.md) | then-current text/image/OCR/video Primary; direct 30/30; live 57/60 strict; edges 8/8; 25/25 context requests |
 | 2026-08-26 | [QSA-fast plus matched MTP3 qualification and fix-forward promotion](../../findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md) | then-current text Primary; 154.9 tok/s at 4K and 134.1 at 128K; direct/routed/client gates pass |
 | 2026-08-26 | Portable-QSA 262K TP=2 qualification and initial promotion | superseded same day; retained correctness and failure baseline |

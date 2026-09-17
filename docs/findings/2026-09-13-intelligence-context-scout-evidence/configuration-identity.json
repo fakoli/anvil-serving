@@ -15,7 +15,8 @@
       "runtime_image": "sha256:00909876aea02112b75d775bfa50f6d1adac50a3a11918363e7b403d7340d9bc"
     }
   ],
+  "editorial_note": "2026-09-17: this final selected-current publication scope corrects stale draft wording only; it does not change retained model/runtime pins, raw scores, or historical outcomes.",
   "redaction_boundary": "Endpoint addresses, private source paths, host identifiers, GPU UUIDs, secret-reference names, host-capacity readings, and reasoning excerpts are replaced or omitted. Model/runtime pins, controls, response status, raw scores, failures, and numeric measurements remain.",
   "schema": "anvil-serving.public-configuration-identity/v1",
-  "scope": "incomplete 2026-09-13 intelligence and context scout"
+  "scope": "completed 2026-09-13–14 selected-current intelligence and context qualification"
 }

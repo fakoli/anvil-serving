@@ -89,7 +89,7 @@ def build_plan(name: str, config: Path) -> dict:
 
 
 def _private_run_directory(log_dir: Path, runner) -> Path:
-    log_dir.mkdir(parents=True, exist_ok=True)
+    log_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     if log_dir.is_symlink() or not log_dir.is_dir():
         raise ImageBuildError("build log directory must be a regular directory")
     if os.name != "nt" and log_dir.stat().st_mode & 0o022:

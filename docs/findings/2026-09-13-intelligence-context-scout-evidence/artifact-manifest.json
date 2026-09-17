@@ -6,13 +6,13 @@
     "decision_labels": [
       "current"
     ],
-    "dirty_state": "final selected-current evidence snapshot",
+    "dirty_state": "final selected-current evidence snapshot; 2026-09-17 editorial correction applied to stale derivative prose",
     "evidence_labels": [
       "quality",
       "external-prior"
     ],
     "id": "2026-09-13-intelligence-context-scout",
-    "promotion_authorization_scope": "The user authorized disruptive GPU turnover, full evaluation, and promotion work; no promotion action or decision is recorded by this incomplete skeleton.",
+    "promotion_authorization_scope": "The user authorized disruptive GPU turnover, full evaluation, and promotion work; retained receipts record the selected-current promotion, bounded client acceptance, and post-promotion context evidence.",
     "promotion_authorized": true,
     "repository_revision": "3c1bd508f638447fabc0ba2cfef9bc20b84ef9c1",
     "started_at": "2026-09-13T19:38:00Z"
@@ -27,11 +27,11 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "e7f7ac886f563801fbb80ef8e11f0e021908217584c9fca9bea698bc9f834781",
-          "bytes": 1832
+          "sha256": "dd1a31e5e8f685e561907038e67cabfbaacff98bc07df83c00c8662842a9615d",
+          "bytes": 1998
         }
       ],
-      "reason": "Draft human index and explicit public boundary."
+      "reason": "Final public index and explicit evidence boundary; 2026-09-17 editorial correction preserves native outcomes."
     },
     {
       "role": "source-registry",
@@ -43,7 +43,7 @@
           "bytes": 2483
         }
       ],
-      "reason": "Public primary identities include the distinct GLM r7 route2 source lane; local evidence remains a non-final scout."
+      "reason": "Public primary identities include the distinct GLM r7 route2 source lane; the completed evidence retains bounded qualification scope."
     },
     {
       "role": "workload-manifest",
@@ -67,7 +67,7 @@
           "bytes": 1981
         }
       ],
-      "reason": "Retained execution spans native qualifications, managed promotion, post-promotion context, and client convergence; final client acceptance receipt is external to this snapshot."
+      "reason": "Retained execution spans native qualifications, managed promotion, post-promotion context, and client convergence; final client acceptance is retained in the publication-summary role."
     },
     {
       "role": "configuration-and-identity",
@@ -75,8 +75,8 @@
       "files": [
         {
           "path": "configuration-identity.json",
-          "sha256": "b1f81f88805fe1c6197dd8e379269c3f25b561aa8592a3199773d74ee906a40a",
-          "bytes": 1209
+          "sha256": "60c6ca41ab85a73166461d23fb77b932430d37cecf2fa8e71556cac257842506",
+          "bytes": 1438
         },
         {
           "path": "redaction-provenance.json",
@@ -513,11 +513,11 @@
       "files": [
         {
           "path": "summary.json",
-          "sha256": "a623459b37cdf051ff7c0846ae5481974eb2fd5d47eeb9b3b0d9be4d57af7609",
-          "bytes": 4626
+          "sha256": "3e2493f7997ef9b91326ee83254a88a2db1e030d79795760ad9bf00cf6c984bc",
+          "bytes": 4970
         }
       ],
-      "reason": "Bounded incomplete raw-count summary preserves distinct r6/r7 results and no-promotion boundary."
+      "reason": "Bounded decision summary preserves distinct r6/r7 results, selected-current promotion receipt, and remaining limitations."
     },
     {
       "role": "publication-summary",

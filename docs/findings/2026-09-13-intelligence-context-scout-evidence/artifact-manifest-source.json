@@ -4,7 +4,7 @@
       "files": [
         "README.md"
       ],
-      "reason": "Draft human index and explicit public boundary.",
+      "reason": "Final public index and explicit evidence boundary; 2026-09-17 editorial correction preserves native outcomes.",
       "role": "evidence-index",
       "status": "retained"
     },
@@ -12,7 +12,7 @@
       "files": [
         "source-registry.json"
       ],
-      "reason": "Public primary identities include the distinct GLM r7 route2 source lane; local evidence remains a non-final scout.",
+      "reason": "Public primary identities include the distinct GLM r7 route2 source lane; the completed evidence retains bounded qualification scope.",
       "role": "source-registry",
       "status": "retained"
     },
@@ -28,7 +28,7 @@
       "files": [
         "run-plan.json"
       ],
-      "reason": "Retained execution spans native qualifications, managed promotion, post-promotion context, and client convergence; final client acceptance receipt is external to this snapshot.",
+      "reason": "Retained execution spans native qualifications, managed promotion, post-promotion context, and client convergence; final client acceptance is retained in the publication-summary role.",
       "role": "run-plan",
       "status": "retained"
     },
@@ -146,7 +146,7 @@
       "files": [
         "summary.json"
       ],
-      "reason": "Bounded incomplete raw-count summary preserves distinct r6/r7 results and no-promotion boundary.",
+      "reason": "Bounded decision summary preserves distinct r6/r7 results, selected-current promotion receipt, and remaining limitations.",
       "role": "decision-summary",
       "status": "retained"
     },
@@ -172,13 +172,13 @@
     "decision_labels": [
       "current"
     ],
-    "dirty_state": "final selected-current evidence snapshot",
+    "dirty_state": "final selected-current evidence snapshot; 2026-09-17 editorial correction applied to stale derivative prose",
     "evidence_labels": [
       "quality",
       "external-prior"
     ],
     "id": "2026-09-13-intelligence-context-scout",
-    "promotion_authorization_scope": "The user authorized disruptive GPU turnover, full evaluation, and promotion work; no promotion action or decision is recorded by this incomplete skeleton.",
+    "promotion_authorization_scope": "The user authorized disruptive GPU turnover, full evaluation, and promotion work; retained receipts record the selected-current promotion, bounded client acceptance, and post-promotion context evidence.",
     "promotion_authorized": true,
     "repository_revision": "3c1bd508f638447fabc0ba2cfef9bc20b84ef9c1",
     "started_at": "2026-09-13T19:38:00Z"
