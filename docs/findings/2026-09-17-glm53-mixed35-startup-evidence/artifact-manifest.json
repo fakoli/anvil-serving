@@ -1,0 +1,183 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-17-glm53-mixed35-startup",
+    "capability": "text model startup",
+    "repository_revision": "fb30405d81272b13b57f62db7a537bafb2372b2d",
+    "started_at": "2026-09-17",
+    "completed_at": "2026-09-17T15:51:23.463376+00:00",
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "348f65afbc4cda5a83b4d3239ebb2fc9a697b299e7006b382d672c0f66a8241f",
+          "bytes": 1294
+        }
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "a732a2d7065fe65d7074f8cfec8b25468bb3652d6fa65f7f00f3c84d9b97147a",
+          "bytes": 1256
+        }
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Startup failed before candidate inference; no candidate corpus or performance publication."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "2067a5a64ca29e46a25a6ef4416c36ab9e1ec412ebf4f19e499eda11a57cdb24",
+          "bytes": 1090
+        }
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity.json",
+          "sha256": "0f6786d5b0702abbaea422e321332fa73d0f890c8d903c4791ee7046f92206b9",
+          "bytes": 2223
+        },
+        {
+          "path": "candidate-recipe.toml",
+          "sha256": "f050b2e51f056ee08fb0779372081f8f93e7aa99571e3bde88308334af43401e",
+          "bytes": 2359
+        },
+        {
+          "path": "baseline-before-status.json",
+          "sha256": "c7191d992a94552cba5efb8d5b9fa502fc6a3af780e59921e15882e10faa20bf",
+          "bytes": 729
+        },
+        {
+          "path": "baseline-restored-status.json",
+          "sha256": "c7191d992a94552cba5efb8d5b9fa502fc6a3af780e59921e15882e10faa20bf",
+          "bytes": 729
+        },
+        {
+          "path": "candidate-failed-status.json",
+          "sha256": "06255a9d19aec30f7ec600db3d804114c96887d128122756b91f0ef70ee7a8cb",
+          "bytes": 699
+        },
+        {
+          "path": "configuration-hashes.json",
+          "sha256": "fd3b0e072eeef8d263d5acf7456a3ad3f04ee3ffe09aefa241ba52668609d97c",
+          "bytes": 581
+        },
+        {
+          "path": "boot-continuity.json",
+          "sha256": "b4bce293142e35c63249b9a79608456250a69ee031bd22620ce18463958e4dde",
+          "bytes": 974
+        }
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "baseline-before-preflight.json",
+          "sha256": "bd4af8bd3b383e4372152cc1e47e8f0fc3f3a99c7858173e003b6cac8cc36975",
+          "bytes": 5553
+        },
+        {
+          "path": "failure-excerpts.log",
+          "sha256": "b1edc4358a504aa0536f07f7c2951e9143e386015feb8869f08f8608149f3d7a",
+          "bytes": 1715
+        },
+        {
+          "path": "startup-excerpts.log",
+          "sha256": "af70603d4afa9405809eaa0d9ec26313dadc83abd0a7fc49867997a2f29c0104",
+          "bytes": 973
+        },
+        {
+          "path": "baseline-restored-direct-preflight.json",
+          "sha256": "559179acf35c898cfab27c2ab3d9309c6fa6872f0cb80d6ad1cb3ae942b841f4",
+          "bytes": 5525
+        },
+        {
+          "path": "baseline-restored-routed-preflight.json",
+          "sha256": "549970fd71d9d0772101aaf4800149bb5751fdb96da81704f9ae056d0fd97513",
+          "bytes": 5438
+        }
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "70b834b55201584c8da4201d4d390c5d5b5ce31fbaf50b10fede02cb2cf4118f",
+          "bytes": 1194
+        }
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "7f086a184031875161a1bab1ed0ada477130e9fb9a3bced457b090e1c8f79941",
+          "bytes": 2219
+        }
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "8dd1009bd0a52b974411674a4e3f45513deb6e630e164294fdab0cad96c1d878",
+          "bytes": 3170
+        }
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Startup failed before candidate inference; no candidate corpus or performance publication."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

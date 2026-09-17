@@ -1,0 +1,9 @@
+Sanitized bounded excerpts from managed recipe logs. Progress and terminal errors retained; complete private log preserved.
+
+(EngineCore pid=319) WARNING 09-17 14:11:03 [multiproc_executor.py:492] [shutdown] Executor: workers still running after SIGTERM; sending SIGKILL count=1
+(EngineCore pid=319) ERROR 09-17 14:11:03 [core.py:1383] EngineCore failed to start.
+(EngineCore pid=319) ERROR 09-17 14:11:03 [core.py:1383] Exception: WorkerProc initialization failed due to an exception in a background process. See stack trace for root cause.
+Loading safetensors checkpoint shards:  72% Completed | 87/120 [04:33<00:10,  3.25it/s]
+Loading safetensors checkpoint shards:  72% Completed | 87/120 [04:36<01:44,  3.18s/it]
+(EngineCore pid=319) Exception: WorkerProc initialization failed due to an exception in a background process. See stack trace for root cause.
+(APIServer pid=1) RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}

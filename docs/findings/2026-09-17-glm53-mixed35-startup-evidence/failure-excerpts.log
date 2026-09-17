@@ -1,0 +1,15 @@
+Sanitized kernel and desktop excerpts. Host label replaced; PID and numeric memory fields retained. Kernel task table RSS columns use 4 KiB pages; killed-process fields use KiB.
+
+Sep 17 14:10:29 primary-node kernel: Free swap  = 224kB
+Sep 17 14:10:29 primary-node kernel: Total swap = 8388604kB
+Sep 17 14:10:29 primary-node kernel: [2677400]     0 2677400 184570379  6562187  6505825    14451     41911 167645184       92             0 VLLM::Worker_TP
+Sep 17 14:10:29 primary-node kernel: [2677571]     0 2677571 184553586  6561851  6505381    14560     41910 167583744      202             0 VLLM::Worker_TP
+Sep 17 14:10:29 primary-node kernel: Out of memory: Killed process 2064010 (ChatGPT) total-vm:1518987676kB, anon-rss:2031720kB, file-rss:3204kB, shmem-rss:1324kB, UID:1000 pgtables:10500kB oom_score_adj:300
+Sep 17 14:10:54 primary-node kernel: Free swap  = 0kB
+Sep 17 14:10:54 primary-node kernel: Total swap = 8388604kB
+Sep 17 14:10:54 primary-node kernel: [2677400]     0 2677400 197552208 10102185 10045908    14380     41897 271835136   510782             0 VLLM::Worker_TP
+Sep 17 14:10:54 primary-node kernel: [2677571]     0 2677571 197535159 10094241 10037973    14367     41901 271777792   518823             0 VLLM::Worker_TP
+Sep 17 14:10:54 primary-node kernel: Out of memory: Killed process 2677571 (VLLM::Worker_TP) total-vm:790140636kB, anon-rss:40151892kB, file-rss:57468kB, shmem-rss:167604kB, UID:0 pgtables:265408kB oom_score_adj:0
+Sep 17 14:10:29 primary-node gnome-shell[9060]: Connection to xwayland lost
+Sep 17 14:10:29 primary-node gnome-shell[9060]: Shutting down GNOME Shell
+Sep 17 14:10:31 primary-node systemd[8657]: org.gnome.Shell@ubuntu.service: Failed with result 'oom-kill'.

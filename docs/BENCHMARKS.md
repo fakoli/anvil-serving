@@ -46,7 +46,15 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-14**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-17**.
+
+## GLM mixed 3.5-bpw startup failure (2026-09-17)
+
+The [mixed EXL3 startup attempt](findings/2026-09-17-glm53-mixed35-startup.md)
+exhausted host RAM and swap before readiness. No candidate inference request
+ran. The exact selected 4-bpw baseline was restored and passed direct and
+authenticated routed short checks. Retry requires managed memory containment
+and loader diagnosis; this run establishes no quality or speed comparison.
 
 ## GLM Flash EXL3 r7 no-spec selected text lane (2026-09-14)
 

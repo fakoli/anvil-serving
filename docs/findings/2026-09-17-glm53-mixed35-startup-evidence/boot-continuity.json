@@ -1,0 +1,21 @@
+{
+  "captured_at": "2026-09-17T15:54:40.795167+00:00",
+  "current_boot_id": "boot-1",
+  "proc_stat_btime": 1788944099,
+  "proc_uptime_seconds": 716380.95,
+  "kernel_records": [
+    {
+      "_BOOT_ID": "boot-1",
+      "__REALTIME_TIMESTAMP": "1789654229494960",
+      "__MONOTONIC_TIMESTAMP": "710129653027",
+      "MESSAGE": "Out of memory: Killed process 2064010 (ChatGPT) total-vm:1518987676kB, anon-rss:2031720kB, file-rss:3204kB, shmem-rss:1324kB, UID:1000 pgtables:10500kB oom_score_adj:300"
+    },
+    {
+      "_BOOT_ID": "boot-1",
+      "__REALTIME_TIMESTAMP": "1789654254866807",
+      "__MONOTONIC_TIMESTAMP": "710155024874",
+      "MESSAGE": "Out of memory: Killed process 2677571 (VLLM::Worker_TP) total-vm:790140636kB, anon-rss:40151892kB, file-rss:57468kB, shmem-rss:167604kB, UID:0 pgtables:265408kB oom_score_adj:0"
+    }
+  ],
+  "redaction": "The same private boot UUID is consistently replaced by boot-1 in current proc identity and both journal records."
+}

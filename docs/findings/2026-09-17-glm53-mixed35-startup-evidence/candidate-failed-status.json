@@ -1,0 +1,21 @@
+{
+  "bound_port": 30001,
+  "bound_ports": [
+    30001
+  ],
+  "container": "glm53-mixed35-v84-nospec-scout",
+  "gpu_selection": [
+    "GPU-example-1",
+    "GPU-example-2"
+  ],
+  "health": null,
+  "image_digest": "sha256:0403cbbc83450b2ca7d4fdeabe58bc8daf785872b12ebda1f1fb32a1bfba2fb4",
+  "model": "satgeze/GLM-5.3-Flash-EXL3-TR3-3.5bpw",
+  "native_kv_offload": false,
+  "recipe_digest": "b42652030185356b3590fab3d6c24ebc9ddce8e12ddb9b82b5fe42a25351e4bb",
+  "registry_digest": "c0330d2dda535ddb327c121aefc37c8c8355e04a1a91064a9100eaa6dab43236",
+  "revision": "62587d6015184a26773a4ed1b751a9c5fa469cd6",
+  "running": false,
+  "served_identity": "glm53-mixed35-v84-nospec-scout",
+  "state": "exited"
+}

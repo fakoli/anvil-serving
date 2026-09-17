@@ -1,0 +1,64 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-17-glm53-mixed35-startup",
+  "status": "verified",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "baseline-before-preflight.json",
+      "baseline-before-status.json",
+      "configuration-hashes.json"
+    ],
+    "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+    "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "recipe_digest": "e920f5bcfddb45b04a65d2239c46c2c89d1bb2ffcc535fff2ac712b32abce110"
+  },
+  "ending_state": {
+    "captured": true,
+    "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+    "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "recipe_digest": "e920f5bcfddb45b04a65d2239c46c2c89d1bb2ffcc535fff2ac712b32abce110",
+    "running": true,
+    "router_admission": "admitting",
+    "candidate": "unloaded",
+    "evidence": [
+      "baseline-restored-status.json",
+      "configuration-hashes.json",
+      "baseline-restored-direct-preflight.json",
+      "baseline-restored-routed-preflight.json"
+    ]
+  },
+  "differences": [
+    "Container recreated with a new container ID; same recipe, weights, image, GPU assignment, and bound endpoint.",
+    "Model cache and derived image retained."
+  ],
+  "post_run_checks": [
+    {
+      "name": "starting model, revision, image, recipe, GPU assignment and endpoint match",
+      "passed": true
+    },
+    {
+      "name": "router and baseline recipe SHA256 unchanged",
+      "passed": true
+    },
+    {
+      "name": "direct coding, JSON and tool batch 3/3",
+      "passed": true,
+      "evidence": "baseline-restored-direct-preflight.json"
+    },
+    {
+      "name": "authenticated routed coding, JSON and tool batch 3/3",
+      "passed": true,
+      "evidence": "baseline-restored-routed-preflight.json"
+    }
+  ],
+  "verified": true,
+  "not_applicable_reason": null,
+  "limits": [
+    "No OS reboot occurred or was tested.",
+    "Short acceptance only; no repeat of full prior quality and capacity campaign."
+  ]
+}

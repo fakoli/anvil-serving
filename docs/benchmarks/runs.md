@@ -27,6 +27,12 @@ These records synthesize retained measurements without claiming a new run.
 |---|---|---|---|---|
 | 2026-09-03 | GLM-5.3-Flash scheduler concurrency versus KV capacity | derivative `capacity` comparison of the retained 2026-08-29, 2026-08-31, and 2026-09-02 local artifacts; no live request or configuration change | C16 is a short-request scheduler ceiling, not sixteen full windows; keep current SGLang at qualified C1, recognize the corrected rollback's measured C2 long-context headroom, and benchmark any higher current-profile admission before changing the published contract | [GLM-5.3-Flash](models/glm53-flash.md) · [concurrency interpretation](../findings/2026-09-03-glm53-concurrency-capacity-interpretation.md) |
 
+## Failed startup attempts
+
+| Date | Configuration | Hardware used for startup | Outcome / boundary | Evidence |
+|---|---|---|---|---|
+| 2026-09-17 | GLM mixed 3.5-bpw EXL3, derived v84, TP2/DCP1, NVFP4 KV, configured 327K/C1 | 2x RTX PRO 6000 Max-Q, native Linux, 96 GB installed host RAM | Host RAM/swap exhausted before readiness; no inference metrics; rejected configuration, no promotion; baseline restored | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-17-glm53-mixed35-startup.md) |
+
 ## RTX PRO 6000 runs
 
 | Date | Capability / configuration | Measured hardware | Evidence | Decision | Dossier / finding |

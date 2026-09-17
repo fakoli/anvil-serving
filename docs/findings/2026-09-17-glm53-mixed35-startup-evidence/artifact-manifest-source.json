@@ -1,0 +1,108 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-17-glm53-mixed35-startup",
+    "capability": "text model startup",
+    "repository_revision": "fb30405d81272b13b57f62db7a537bafb2372b2d",
+    "started_at": "2026-09-17",
+    "completed_at": "2026-09-17T15:51:23.463376+00:00",
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Startup failed before candidate inference; no candidate corpus or performance publication."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json"
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "identity.json",
+        "candidate-recipe.toml",
+        "baseline-before-status.json",
+        "baseline-restored-status.json",
+        "candidate-failed-status.json",
+        "configuration-hashes.json",
+        "boot-continuity.json"
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "baseline-before-preflight.json",
+        "failure-excerpts.log",
+        "startup-excerpts.log",
+        "baseline-restored-direct-preflight.json",
+        "baseline-restored-routed-preflight.json"
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Retained startup failure and independently checked baseline restoration."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Startup failed before candidate inference; no candidate corpus or performance publication."
+    }
+  ]
+}

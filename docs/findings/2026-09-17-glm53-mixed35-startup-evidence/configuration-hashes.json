@@ -1,0 +1,12 @@
+{
+  "algorithm": "sha256",
+  "before": {
+    "router.toml": "78a2850399fa4d6c62efc27ed3d884b197e1eb32786dadacb8b57f3d11db439a",
+    "serve-recipes.glm53-exl3-327k-r7-nospec.toml": "030fb4775b70d891f4075f0f42e197eaa60f09b0d98817acc15e4eb3b0550064"
+  },
+  "after": {
+    "router.toml": "78a2850399fa4d6c62efc27ed3d884b197e1eb32786dadacb8b57f3d11db439a",
+    "serve-recipes.glm53-exl3-327k-r7-nospec.toml": "030fb4775b70d891f4075f0f42e197eaa60f09b0d98817acc15e4eb3b0550064"
+  },
+  "redaction": "Config content stays private; hashes verify byte identity, not public reconstruction."
+}

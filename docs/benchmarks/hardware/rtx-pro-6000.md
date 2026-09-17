@@ -75,6 +75,16 @@ transport A/B: 4K n12 and 120K n3 matched cells lowered median TTFT by about
 capacity cells failed the required 32-word count and are excluded from
 performance claims. See the [finding and evidence](../../findings/2026-09-09-glm53-native-nccl-p2p.md).
 
+## September 17 mixed-quant startup failure
+
+A [mixed 3.5-bpw GLM EXL3 startup](../../findings/2026-09-17-glm53-mixed35-startup.md)
+on the dual Max-Q host exhausted host RAM and all 8 GiB swap before readiness.
+The two workers reached approximately 77 GiB combined resident memory; the
+desktop session shut down. No candidate inference or GPU-capacity result was
+produced. The exact 4-bpw baseline was restored and passed direct and routed
+short checks. This is a host-loader and containment failure, not proof of a
+model-quality defect; no promotion occurred.
+
 ## Recorded promotion, rollback, and challenger state
 
 The 2026-09-09 ormandj v0.4.2 runtime candidate passed direct gates and

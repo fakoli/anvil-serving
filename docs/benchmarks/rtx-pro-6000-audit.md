@@ -7,6 +7,9 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-09-17-glm53-mixed35-startup.md`
+(failed managed startup on the dual Max-Q host; no inference or GPU-capacity measurement);
+
 `docs/findings/2026-09-13-intelligence-context-scout.md`
 (selected GLM text-primary qualification; post-promotion context and client acceptance retained; fresh boot/reboot tests unrun);
 
