@@ -1,0 +1,136 @@
+{
+  "schema": "workspace-renewal-design-examples/v1",
+  "notice": "Illustrative proposed shapes except existing_task_start. Not loadable product configuration. All identities are synthetic. Project fragment omits legacy checkout/anvil_binary/runner_root: preserve existing values when merging; never replace the full project object.",
+  "existing_task_start": {
+    "method": "POST",
+    "route": "api/workbench/v1/pi/sessions",
+    "body": {
+      "project_id": "demo-project",
+      "task_id": "demo-plan:T001",
+      "request_id": "example-start-001",
+      "provider_id": "declared-provider",
+      "model_id": "declared-model",
+      "thinking_level": "high"
+    }
+  },
+  "proposed_private_project_fragment": {
+    "id": "demo-project",
+    "label": "Demo project",
+    "resource_id": "demo-project",
+    "primary_root_id": "product",
+    "roots": [
+      {
+        "id": "product",
+        "label": "Product",
+        "owner_id": "workspace-owner",
+        "path": "/srv/projects/product",
+        "task_access": "read-write"
+      },
+      {
+        "id": "reference",
+        "label": "Explicitly writable secondary",
+        "owner_id": "workspace-owner",
+        "path": "/srv/projects/reference",
+        "task_access": "read-write"
+      },
+      {
+        "id": "context",
+        "label": "Read-only context",
+        "owner_id": "workspace-owner",
+        "path": "/srv/projects/context",
+        "task_access": "read-only"
+      }
+    ],
+    "anvil_connection_id": "declared-state-owner"
+  },
+  "proposed_public_project_projection": {
+    "id": "demo-project",
+    "label": "Demo project",
+    "primary_root_id": "product",
+    "roots": [
+      {
+        "id": "product",
+        "label": "Product",
+        "access": "read-write"
+      },
+      {
+        "id": "reference",
+        "label": "Explicitly writable secondary",
+        "access": "read-write"
+      },
+      {
+        "id": "context",
+        "label": "Read-only context",
+        "access": "read-only"
+      }
+    ],
+    "execution_mode": "isolated-task"
+  },
+  "proposed_host_thread_reference": {
+    "source": "pi-web",
+    "owner_id": "workspace-owner",
+    "native_id": "session-17",
+    "project_id": null,
+    "association_state": "unassigned",
+    "execution_mode": "owner-host",
+    "authority_label": "Tools use operator account access",
+    "task_binding_id": null
+  },
+  "proposed_run_projection": {
+    "id": "derive-with-projected-run-id",
+    "owner_id": "worker-a",
+    "source": "benchmark",
+    "native_id": "job-7",
+    "kind": "benchmark",
+    "resource_id": "declared-evaluation-target",
+    "title": "Context check",
+    "project_id": "demo-project",
+    "native_state": "completed",
+    "status": "completed",
+    "verification_status": "not_reported",
+    "acceptance_status": "not_applicable",
+    "promotion_status": "not_promoted",
+    "updated_at": "2026-09-18T12:00:00Z",
+    "observed_at": "2026-09-18T12:00:01Z",
+    "freshness": "fresh",
+    "evidence_refs": [
+      {
+        "owner_id": "worker-a",
+        "artifact_id": "artifact-7"
+      }
+    ]
+  },
+  "proposed_setting_descriptor": {
+    "id": "thinking_level",
+    "scope": "thread",
+    "owner_id": "task-pi-owner",
+    "supported": true,
+    "allowed_values": [
+      "off",
+      "low",
+      "medium",
+      "high"
+    ],
+    "configured": "medium",
+    "applies": "next-turn",
+    "write_action": "pi.command.set_thinking_level",
+    "requires_idle": true
+  },
+  "proposed_integration_decision": {
+    "status": "blocked",
+    "selected_transport": null,
+    "pi_web_version": "record-tested-pin",
+    "pi_version": "record-tested-pin",
+    "host_authority": "owner-only-unconfined",
+    "task_authority": "existing-lease-and-sandbox",
+    "checks": {
+      "embedding": "not_run",
+      "identity": "not_run",
+      "expiry": "not_run",
+      "reconnect": "not_run"
+    },
+    "evidence_refs": [],
+    "blocking_reason": "Example only; replace with measured decision"
+  },
+  "proposed_public_project_projection_notice": "Shows effective permissions only after T03 multi-root authority checks pass; configured write requests alone do not produce these badges."
+}

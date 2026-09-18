@@ -1,0 +1,472 @@
+{
+  "schema": "workspace-renewal-plan/v1",
+  "status": "proposed",
+  "observed_at": "2026-09-18",
+  "implementation_authorized": false,
+  "tasks": [
+    {
+      "id": "T01",
+      "title": "Restore trustworthy plan reads",
+      "status": "planned",
+      "depends_on": [],
+      "packet": "tasks/T01.md",
+      "likely_files": [
+        "anvil_serving/workbench_app/projects.py",
+        "anvil_serving/observability/dashboard/static/views/project_work.js",
+        "tests/workbench/test_projects.py"
+      ],
+      "acceptance_count": 3,
+      "repository": "anvil-serving",
+      "related_owner": "anvil-state (separate repository; diagnose before proposing repair)",
+      "requires_gates": [],
+      "engineering_guide": "IMPLEMENTATION-GUIDE.md#t01",
+      "source_map": "REFERENCES.md",
+      "examples": [
+        {
+          "path": "examples/reference_examples.py",
+          "symbol": "project_read_error"
+        }
+      ],
+      "upstream_reference_ids": [],
+      "slices": [
+        {
+          "id": "T01",
+          "scope": "Restore trustworthy plan reads",
+          "depends_on_slices": [],
+          "receipt": "T01.md",
+          "depends_on_tasks": []
+        }
+      ],
+      "visual_reference": "mockups/GUIDE.md",
+      "ux_reference": "mockups/UX-NOTES.md"
+    },
+    {
+      "id": "T02",
+      "title": "Prove the Pi Web integration seam",
+      "status": "planned",
+      "depends_on": [],
+      "packet": "tasks/T02.md",
+      "likely_files": [
+        "anvil_serving/workbench_app/pi_web.py",
+        "anvil_serving/observability/dashboard/console.py",
+        "docs/design/workbench/PI-REUSE.md",
+        "tests/workbench/test_pi_web.py"
+      ],
+      "acceptance_count": 4,
+      "repository": "anvil-serving",
+      "related_owner": "pinned Pi Web source; private Connect exposure and infrastructure provisioning",
+      "requires_gates": [],
+      "engineering_guide": "IMPLEMENTATION-GUIDE.md#t02",
+      "source_map": "REFERENCES.md",
+      "examples": [
+        {
+          "path": "examples/contracts.json",
+          "key": "proposed_integration_decision"
+        }
+      ],
+      "upstream_reference_ids": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "slices": [
+        {
+          "id": "T02",
+          "scope": "Prove the Pi Web integration seam",
+          "depends_on_slices": [],
+          "receipt": "T02.md",
+          "depends_on_tasks": []
+        }
+      ],
+      "visual_reference": "mockups/GUIDE.md",
+      "ux_reference": "mockups/UX-NOTES.md"
+    },
+    {
+      "id": "T03",
+      "title": "Add multi-directory project bindings",
+      "status": "planned",
+      "depends_on": [
+        "T02"
+      ],
+      "packet": "tasks/T03.md",
+      "likely_files": [
+        "anvil_serving/workbench_app/config.py",
+        "anvil_serving/workbench_app/projects.py",
+        "anvil_serving/workbench_app/service.py",
+        "anvil_serving/workbench_app/pi_runner.py",
+        "anvil_serving/workbench_app/task_artifacts.py",
+        "tests/workbench/test_projects.py",
+        "tests/workbench/test_pi_runner.py"
+      ],
+      "acceptance_count": 5,
+      "repository": "anvil-serving",
+      "requires_gates": [
+        "pi_integration_passed"
+      ],
+      "engineering_guide": "IMPLEMENTATION-GUIDE.md#t03",
+      "source_map": "REFERENCES.md",
+      "examples": [
+        {
+          "path": "examples/reference_examples.py",
+          "symbol": "primary_root"
+        },
+        {
+          "path": "examples/contracts.json",
+          "key": "proposed_private_project_fragment"
+        }
+      ],
+      "upstream_reference_ids": [
+        "R1"
+      ],
+      "slices": [
+        {
+          "id": "T03a",
+          "scope": "config-migration",
+          "depends_on_slices": [],
+          "receipt": "T03a.md",
+          "depends_on_tasks": []
+        },
+        {
+          "id": "T03b",
+          "scope": "bounded-owner-reads",
+          "depends_on_slices": [
+            "T03a"
+          ],
+          "receipt": "T03b.md",
+          "depends_on_tasks": []
+        },
+        {
+          "id": "T03c",
+          "scope": "single-root-isolation",
+          "depends_on_slices": [
+            "T03b"
+          ],
+          "receipt": "T03c.md",
+          "depends_on_tasks": []
+        },
+        {
+          "id": "T03d",
+          "scope": "canonical-multi-root-contract",
+          "depends_on_slices": [
+            "T03c"
+          ],
+          "receipt": "T03d.md",
+          "depends_on_tasks": []
+        },
+        {
+          "id": "T03e",
+          "scope": "anvil-owner-support",
+          "depends_on_slices": [
+            "T03d"
+          ],
+          "receipt": "T03e.md",
+          "depends_on_tasks": []
+        },
+        {
+          "id": "T03f",
+          "scope": "multi-root-runner-evidence",
+          "depends_on_slices": [
+            "T03e"
+          ],
+          "receipt": "T03f.md",
+          "depends_on_tasks": []
+        },
+        {
+          "id": "T03g",
+          "scope": "project-settings",
+          "depends_on_slices": [
+            "T03f"
+          ],
+          "receipt": "T03g.md",
+          "depends_on_tasks": []
+        }
+      ],
+      "related_owner": "anvil-state: T03d proves canonical multi-root claim/evidence contract; T03e implements supported owner extension if needed",
+      "visual_reference": "mockups/GUIDE.md",
+      "ux_reference": "mockups/UX-NOTES.md"
+    },
+    {
+      "id": "T04",
+      "title": "Simplify navigation and decouple page health",
+      "status": "planned",
+      "depends_on": [],
+      "packet": "tasks/T04.md",
+      "likely_files": [
+        "anvil_serving/observability/dashboard/static/observatory.js",
+        "anvil_serving/observability/dashboard/static/workbench.css",
+        "anvil_serving/observability/dashboard/static/index.html",
+        "tests/workbench/test_frontend_contracts.py"
+      ],
+      "acceptance_count": 4,
+      "repository": "anvil-serving",
+      "requires_gates": [],
+      "engineering_guide": "IMPLEMENTATION-GUIDE.md#t04",
+      "source_map": "REFERENCES.md",
+      "examples": [],
+      "upstream_reference_ids": [
+        "R4"
+      ],
+      "slices": [
+        {
+          "id": "T04",
+          "scope": "Simplify navigation and decouple page health",
+          "depends_on_slices": [],
+          "receipt": "T04.md",
+          "depends_on_tasks": []
+        }
+      ],
+      "visual_reference": "mockups/GUIDE.md",
+      "ux_reference": "mockups/UX-NOTES.md"
+    },
+    {
+      "id": "T05",
+      "title": "Make Playground the Pi chat home",
+      "status": "planned",
+      "depends_on": [
+        "T02",
+        "T04"
+      ],
+      "packet": "tasks/T05.md",
+      "likely_files": [
+        "anvil_serving/observability/dashboard/static/views/playground.js",
+        "anvil_serving/observability/dashboard/static/views/pi_chat.js",
+        "anvil_serving/observability/dashboard/static/views/settings.js",
+        "anvil_serving/workbench_app/service.py",
+        "anvil_serving/workbench_app/pi_sessions.py",
+        "tests/workbench/test_pi_chat_behavior.py"
+      ],
+      "acceptance_count": 6,
+      "repository": "anvil-serving",
+      "requires_gates": [
+        "pi_integration_passed"
+      ],
+      "engineering_guide": "IMPLEMENTATION-GUIDE.md#t05",
+      "source_map": "REFERENCES.md",
+      "examples": [
+        {
+          "path": "examples/contracts.json",
+          "key": "proposed_host_thread_reference"
+        },
+        {
+          "path": "examples/contracts.json",
+          "key": "proposed_setting_descriptor"
+        }
+      ],
+      "upstream_reference_ids": [
+        "R1",
+        "R2"
+      ],
+      "slices": [
+        {
+          "id": "T05a",
+          "scope": "host-tab-integration",
+          "depends_on_slices": [],
+          "receipt": "T05a.md",
+          "depends_on_tasks": []
+        },
+        {
+          "id": "T05b",
+          "scope": "host-workspace-controls",
+          "depends_on_slices": [
+            "T05a"
+          ],
+          "receipt": "T05b.md",
+          "depends_on_tasks": [
+            "T03"
+          ]
+        },
+        {
+          "id": "T05c",
+          "scope": "managed-task-controls",
+          "depends_on_slices": [
+            "T05b"
+          ],
+          "receipt": "T05c.md",
+          "depends_on_tasks": [
+            "T03"
+          ]
+        }
+      ],
+      "visual_reference": "mockups/GUIDE.md",
+      "ux_reference": "mockups/UX-NOTES.md"
+    },
+    {
+      "id": "T06",
+      "title": "Make Workbench runs discoverable and current",
+      "status": "planned",
+      "depends_on": [],
+      "packet": "tasks/T06.md",
+      "likely_files": [
+        "anvil_serving/observability/dashboard/console.py",
+        "anvil_serving/observability/dashboard/controller_adapter.py",
+        "anvil_serving/observability/dashboard/intents.py",
+        "anvil_serving/observability/dashboard/static/views/workbench.js",
+        "anvil_serving/benchmarking/jobs.py",
+        "anvil_serving/observability/fleet_workload_sources.py"
+      ],
+      "acceptance_count": 5,
+      "repository": "anvil-serving",
+      "requires_gates": [],
+      "engineering_guide": "IMPLEMENTATION-GUIDE.md#t06",
+      "source_map": "REFERENCES.md",
+      "examples": [
+        {
+          "path": "examples/reference_examples.py",
+          "symbol": "projected_run_id"
+        },
+        {
+          "path": "examples/contracts.json",
+          "key": "proposed_run_projection"
+        }
+      ],
+      "upstream_reference_ids": [],
+      "slices": [
+        {
+          "id": "T06a",
+          "scope": "missing-owner-projection",
+          "depends_on_slices": [],
+          "receipt": "T06a.md",
+          "depends_on_tasks": []
+        },
+        {
+          "id": "T06b",
+          "scope": "visible-run-refresh",
+          "depends_on_slices": [
+            "T06a"
+          ],
+          "receipt": "T06b.md",
+          "depends_on_tasks": []
+        },
+        {
+          "id": "T06c",
+          "scope": "coverage-pagination-compare",
+          "depends_on_slices": [
+            "T06b"
+          ],
+          "receipt": "T06c.md",
+          "depends_on_tasks": []
+        }
+      ],
+      "visual_reference": "mockups/GUIDE.md",
+      "ux_reference": "mockups/UX-NOTES.md"
+    },
+    {
+      "id": "T07",
+      "title": "Connect plans and tasks to Pi execution",
+      "status": "planned",
+      "depends_on": [
+        "T01",
+        "T03",
+        "T05",
+        "T06"
+      ],
+      "packet": "tasks/T07.md",
+      "likely_files": [
+        "anvil_serving/observability/dashboard/static/views/project_work.js",
+        "anvil_serving/observability/dashboard/static/views/pi_chat.js",
+        "anvil_serving/workbench_app/projects.py",
+        "anvil_serving/workbench_app/service.py",
+        "anvil_serving/workbench_app/evidence_jobs.py"
+      ],
+      "acceptance_count": 5,
+      "repository": "anvil-serving",
+      "requires_gates": [],
+      "engineering_guide": "IMPLEMENTATION-GUIDE.md#t07",
+      "source_map": "REFERENCES.md",
+      "examples": [
+        {
+          "path": "examples/contracts.json",
+          "key": "existing_task_start"
+        }
+      ],
+      "upstream_reference_ids": [
+        "R2"
+      ],
+      "slices": [
+        {
+          "id": "T07",
+          "scope": "Connect plans and tasks to Pi execution",
+          "depends_on_slices": [],
+          "receipt": "T07.md",
+          "depends_on_tasks": []
+        }
+      ],
+      "visual_reference": "mockups/GUIDE.md",
+      "ux_reference": "mockups/UX-NOTES.md"
+    },
+    {
+      "id": "T08",
+      "title": "Validate migration and deliver the release",
+      "status": "planned",
+      "depends_on": [
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T07"
+      ],
+      "packet": "tasks/T08.md",
+      "likely_files": [
+        "docs/design/workspace-renewal/VALIDATION.md",
+        "tests/workbench/test_packaging.py",
+        "tests/workbench/test_pi_official_smoke.py"
+      ],
+      "acceptance_count": 4,
+      "repository": "anvil-serving",
+      "related_owner": "private operator repository and ai-infra for authorized deployment",
+      "requires_gates": [],
+      "engineering_guide": "IMPLEMENTATION-GUIDE.md#t08",
+      "source_map": "REFERENCES.md",
+      "examples": [],
+      "upstream_reference_ids": [],
+      "slices": [
+        {
+          "id": "T08",
+          "scope": "Validate migration and deliver the release",
+          "depends_on_slices": [],
+          "receipt": "T08.md",
+          "depends_on_tasks": []
+        }
+      ],
+      "visual_reference": "mockups/GUIDE.md",
+      "ux_reference": "mockups/UX-NOTES.md"
+    }
+  ],
+  "execution_contract": {
+    "transcript_migration": false,
+    "live_deployment_authorized": false,
+    "live_state_repair_authorized": false,
+    "root_registration": "operator-declared",
+    "status_authority": "Anvil CLI/MCP if registered; otherwise independently verified private receipts per VALIDATION.md",
+    "review": "independent reviewer at authority boundaries; see REVIEW.md",
+    "one_slice_per_run": true,
+    "manifest_status": "design baseline only; never use as execution completion",
+    "receipt_root": "selected private operator repository: plans/workspace-renewal/receipts/",
+    "resume_contract": "VALIDATION.md#resume-rules"
+  },
+  "gates": {
+    "pi_integration_passed": {
+      "producer": "T02",
+      "required_result": "verified T02 receipt with matching decision digest AND integration_decision.status == passed",
+      "requires": [
+        "selected transport",
+        "authenticated owner boundary",
+        "explicit host/task authority",
+        "failure-case evidence",
+        "independent review of exact source/pins/evidence and decision digest"
+      ],
+      "decision_file": "T02.integration-decision.json",
+      "reviewed_receipt": "T02.md"
+    }
+  },
+  "reference_path_base": "docs/design/workspace-renewal",
+  "owner_decisions": {
+    "playground_default": "existing-host-pi-conversations",
+    "secondary_write_access": "explicitly-selectable; required multi-root claims and evidence for isolated tasks",
+    "initial_managed_writable_roots": "Git repositories on same execution owner; incompatible roots explicitly blocked",
+    "interaction_target": "Pi directly through familiar Pi Web layout and interactions inside Playground",
+    "display_label": "Pi (formerly Playground); retain #/playground for compatibility"
+  }
+}
