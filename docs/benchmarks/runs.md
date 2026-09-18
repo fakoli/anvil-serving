@@ -1,5 +1,16 @@
 # Benchmark run catalog
 
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
+
+
+## 2026-09-18 vision acceptance
+
+| Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
+|---|---|---|---|---|---|---|
+| 2026-09-18 | Eight-image comparison and OCR | GLM EXL3 r9 vision8, FP8 KV, no speculation, configured 327K/C4 | 2x RTX PRO 6000 Blackwell Max-Q | Four ordinary comparisons, one high-resolution request, six direct preflight checks; matching Pi output has no correlated request provenance | User-authorized eight-image limit; r8 one-image rollback; no concurrency soak | [Dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) |
+| 2026-09-18 | Image/OCR and text/tools | GLM EXL3 r8 vision, FP8 KV, no speculation, configured 327K/C4 | 2x RTX PRO 6000 Blackwell Max-Q | Functional; 10/10 images; 260K retrieval passed on retry after initial refusal | User-authorized vision enablement; prior text profile retained | [Dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-18-glm53-vision.md) |
+
+
 This manually maintained catalog indexes retained, decision-relevant runs.
 `Measured hardware` names only the device that executed the workload.
 `PRO relationship` prevents a co-resident or protected PRO 6000 from being
@@ -38,7 +49,7 @@ These records synthesize retained measurements without claiming a new run.
 | Date | Capability / configuration | Measured hardware | Evidence | Decision | Dossier / finding |
 |---|---|---|---|---|---|
 | 2026-09-17 | GLM mixed 3.5-bpw EXL3 R7 loader repair, TP2/DCP1, NVFP4 KV, configured 327K/C4 | 2x RTX PRO 6000 Max-Q, native Linux | C1/C4 functional and repeated bounded quality pass; 216,307 actual-token needle; C4 capacity 4/4 then 3/4, baseline 2/4; strict failures retained | Runnable experimental candidate; no overall win; baseline restored, `no-promotion` | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-17-glm53-mixed35-fix-forward.md) |
-| 2026-09-14 | GLM-5.3-Flash EXL3 4-bpw r7, no speculation; 327,680 total / 65,536 output, C4 | 2x RTX PRO 6000 Blackwell Max-Q | quality, functional, capacity; MMLU-Pro 90/100 one pass, agentic 30/30, SWE 4/5, strict120 120/120, post-promotion context 9/9 | selected current text-only lane; Pi/Hermes/OpenClaw tool checks pass; no exhaustive intelligence winner or full-window concurrency claim | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-13-intelligence-context-scout.md) |
+| 2026-09-14 | GLM-5.3-Flash EXL3 4-bpw r7, no speculation; 327,680 total / 65,536 output, C4 | 2x RTX PRO 6000 Blackwell Max-Q | quality, functional, capacity; MMLU-Pro 90/100 one pass, agentic 30/30, SWE 4/5, strict120 120/120, post-promotion context 9/9 | selected September 14 text-only lane; Pi/Hermes/OpenClaw tool checks pass; no exhaustive intelligence winner or full-window concurrency claim | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-13-intelligence-context-scout.md) |
 | 2026-09-11 | GLM v0.4.3, fixed ormandj weights, 524K/C4 | 2x RTX PRO 6000 Blackwell Max-Q | functional, capacity, bounded quality; Pi 14/14, retrieval 12/12 | user-authorized promotion; 4K output retained | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-11-glm53-v043-native-linux-qualification.md) |
 | 2026-09-11 | GLM rc14 Pi completion budget 4096 vs 16384; same 393K/C1 backend | 2x RTX PRO 6000 Blackwell Max-Q | bounded functional; 16 valid / 24 tasks, eight coding runs invalid | no-promotion; retain 4096 | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-11-glm53-output-budget.md) |
 

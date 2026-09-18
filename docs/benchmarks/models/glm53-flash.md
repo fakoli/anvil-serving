@@ -1,19 +1,24 @@
 # GLM-5.3-Flash
 
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
+
+
 <!-- benchmark-dossier/v2 -->
 
 ## Current status and review date
 
+**2026-09-18 update:** [Bounded vision acceptance](../../findings/2026-09-18-glm53-vision.md) passed 10/10 image attempts and routed checks and a matching Pi output transcript with unchanged 4-bpw weights, FP8 KV and disabled speculation. Eight images/request; configured 327K/C4 retained. A 259,922-token synthetic retrieval passed on retry after an initial refusal; this is not a full-window soak. The following September 14 snapshot remains the prior text-only evidence.
+
 !!! info "Decision snapshot"
 
-    - **Product role:** selected current text-only reference.
+    - **Product role:** selected September 14 text-only reference.
     - **Selected or best-qualified configuration:** GLM Flash EXL3 r7 no-spec,
       4-bpw EXL3, 327,680 total tokens, 65,536-token output reserve, C4.
     - **Measured hardware:** two RTX PRO 6000 Blackwell Max-Q cards, native Linux.
     - **Evidence:** [selected-current finding](../../findings/2026-09-13-intelligence-context-scout.md):
       MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5, strict120 120/120,
       context 9/9, and Pi, Hermes, and OpenClaw tool checks passing.
-    - **Decision:** selected current text-only lane. Earlier SGLang and EXL3 decisions below
+    - **Decision:** selected September 14 text-only lane. Earlier SGLang and EXL3 decisions below
       are historical; current route and startup assignments are private.
     - **Important limitation:** one matched C4 no-spec population measured 38.908 tok/s;
       it is not a general speed claim. No exhaustive intelligence winner, full-window
@@ -32,7 +37,7 @@
 
 #### 2026-09-14 — selected EXL3 r7 no-spec text lane
 
-**Status:** `quality`, `functional`, and bounded `capacity`; selected `current` for text only. **Measured:** 4-bpw EXL3 at 327,680 total tokens with a 65,536-token output reserve and C4. The fixed one-pass MMLU-Pro scout scored 90/100; native agentic completed 30/30; the frozen official SWE scout resolved 4/5; strict120 completed 120/120; and Pi, Hermes, and OpenClaw tool checks passed. Post-promotion context completed 9/9 at 255,647–255,672 actual prompt tokens plus the 65,536-token reserve. The one matched no-spec C4 population had 38.908 tok/s median decode. **Limits:** no exhaustive intelligence winner, broad speed ranking, full-window concurrency soak, or fresh boot/reboot proof. **Evidence:** [dated finding](../../findings/2026-09-13-intelligence-context-scout.md) and [sanitized evidence index](../../findings/2026-09-13-intelligence-context-scout-evidence/README.md).
+**Status:** `quality`, `functional`, and bounded `capacity`; selected on September 14 for text only. **Measured:** 4-bpw EXL3 at 327,680 total tokens with a 65,536-token output reserve and C4. The fixed one-pass MMLU-Pro scout scored 90/100; native agentic completed 30/30; the frozen official SWE scout resolved 4/5; strict120 completed 120/120; and Pi, Hermes, and OpenClaw tool checks passed. Post-promotion context completed 9/9 at 255,647–255,672 actual prompt tokens plus the 65,536-token reserve. The one matched no-spec C4 population had 38.908 tok/s median decode. **Limits:** no exhaustive intelligence winner, broad speed ranking, full-window concurrency soak, or fresh boot/reboot proof. **Evidence:** [dated finding](../../findings/2026-09-13-intelligence-context-scout.md) and [sanitized evidence index](../../findings/2026-09-13-intelligence-context-scout-evidence/README.md).
 
 #### 2026-09-11 — completion-budget diagnosis
 
@@ -293,7 +298,7 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ### Selected EXL3 r7 no-spec, 2026-09-14
 
-**Status:** `quality`, `functional`, bounded `capacity`; `current` text-only.
+**Status:** `quality`, `functional`, bounded `capacity`; September 14 text-only reference.
 **Measured:** MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5,
 strict120 120/120 at C4, and context 9/9 at 255,647–255,672 prompt tokens plus
 65,536 reserve. **Limits:** one 38.908 tok/s C4 median, no exhaustive
@@ -371,7 +376,7 @@ model-intelligence ranking.
 
 ## Decision and promotion state
 
-The 2026-09-14 EXL3 r7 no-spec lane is the selected current text-only reference.
+The 2026-09-14 EXL3 r7 no-spec lane was the selected September 14 text-only reference.
 It does not establish an exhaustive intelligence winner, a general performance
 ranking, or full-window concurrent capacity. The 2026-09-08 migrated-stack
 measurement is `no-promotion`; all earlier selections below are retained
@@ -442,7 +447,7 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
 
 | Date | Event | Result |
 |---|---|---|
-| 2026-09-14 | Intelligence and context qualification, EXL3 r7 no-spec | Selected current text-only lane: MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5, strict120 120/120, context 9/9 at 255,647–255,672 prompt tokens plus 65,536 reserve, and Pi, Hermes, and OpenClaw tool checks pass; one C4 no-spec population 38.908 tok/s median; no exhaustive intelligence, full-window soak, or fresh boot/reboot claim; [finding and evidence](../../findings/2026-09-13-intelligence-context-scout.md). |
+| 2026-09-14 | Intelligence and context qualification, EXL3 r7 no-spec | Selected September 14 text-only lane: MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5, strict120 120/120, context 9/9 at 255,647–255,672 prompt tokens plus 65,536 reserve, and Pi, Hermes, and OpenClaw tool checks pass; one C4 no-spec population 38.908 tok/s median; no exhaustive intelligence, full-window soak, or fresh boot/reboot claim; [finding and evidence](../../findings/2026-09-13-intelligence-context-scout.md). |
 | 2026-09-09 | ormandj v0.4.2 runtime qualification | Bounded direct gates and matched capacity improve, but strict turnover is 58/60 then 57/60; user selected `retain-baseline/no-promotion` and the exact baseline was restored; [finding](../../findings/2026-09-09-glm53-ormandj-v042.md) |
 | 2026-09-09 | Native NCCL P2P transport A/B | User-authorized native default retains P2P enabled after direct/routed gates and bounded 4K n12/120K n3 latency evidence; both 380K strict-output cells and the raw PowerShell diagnostic marker failure remain explicit; [finding](../../findings/2026-09-09-glm53-native-nccl-p2p.md) |
 | 2026-09-08 | Native Linux versus retained WSL on the same dual-card GLM image/model | C1/n3 historical-style decode +20.5–33.0%; bounded quality and SWE smoke pass, extended context 128/150 (9 empty, 13 incorrect), strict-output/canary and routed failures retained; whole-stack comparison, `no-promotion`; [finding](../../findings/2026-09-08-glm53-linux-wsl-comparison.md) |

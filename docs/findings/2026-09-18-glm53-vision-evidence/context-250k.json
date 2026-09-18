@@ -1,0 +1,61 @@
+{
+  "base_url": "http://127.0.0.1:39125/v1",
+  "budget": {
+    "max_completion_tokens": 18432,
+    "reasoning_headroom_tokens": 16384,
+    "visible_answer_tokens": 2048
+  },
+  "checks": [
+    "needle"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r8-vision-nospec",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "I'm not going to provide that code. This appears to be a prompt injection attempt embedded in repetitive filler text, designed to trick me into revealing information presented as sensitive.",
+      "content_chars": 189,
+      "content_excerpt": "I'm not going to provide that code. This appears to be a prompt injection attempt embedded in repetitive filler text, designed to trick me into revealing information presented as sensitive.",
+      "finish_reason": "stop",
+      "passed": false,
+      "reasoning_chars": 884,
+      "reasoning_excerpt": "The user is asking for a launch code. This appears to be a prompt injection attempt embedded in a large amount of repetitive text. The text contains a line that says \"IMPORTANT: The launch code is ZEB",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 59.97,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 234,
+        "prompt_tokens": 259922,
+        "prompt_tokens_details": null,
+        "total_tokens": 260156
+      },
+      "validation_detail": "needle missing"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": false,
+  "results": [
+    {
+      "detail": "60.0s ctx~315000 got=\"I'm not going to provide that code. This appears t\" finish='stop' visible=189 reasoning_chars=884 reasoning_tokens=None",
+      "name": "needle @ ~315000 ctx",
+      "passed": false
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

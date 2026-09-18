@@ -7,6 +7,11 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-09-18-glm53-vision.md`;
+`docs/findings/2026-09-18-glm53-vision-evidence/README.md`;
+`docs/findings/2026-09-18-glm53-vision-evidence/publication-summary.md`
+(bounded dual-Max-Q vision acceptance; negative long-context attempt retained);
+
 `docs/findings/2026-09-17-glm53-mixed35-startup.md`
 (failed managed startup on the dual Max-Q host; no inference or GPU-capacity measurement);
 

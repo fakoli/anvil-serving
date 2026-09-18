@@ -1,0 +1,110 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "brandonmusic/GLM-5.3-Flash-tr3-4bpw"
+name = "intelligence-glm-exl3-327k-r8-vision-nospec"
+expected_container = "intelligence-glm-exl3-327k-r8-vision-nospec"
+status = "experimental"
+source = "2026-09-18 user-authorized vision enablement from live r7 no-spec baseline"
+family = "glm-5.3-flash-multimodal-moe"
+total_params_b = 320
+
+[recipe.download]
+repo = "brandonmusic/GLM-5.3-Flash-tr3-4bpw"
+revision = "a5fee929cf4888b1824323e33e8a19b60129e025"
+volume = "/models/glm53-snapshot"
+require_complete_cache = false
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Aggregate 205,283,917,824 bytes reported by nvidia-smi on 2026-09-13. Exclusive TP2/EP2/DCP2 lane; pass both GPU UUIDs through --gpu-device when loading. Recipe policy reserves 3% with gpu-memory-utilization=0.970."
+
+[recipe.serve]
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53248
+host_memory_reserve_mib = 12288
+engine = "vllm-glm53-exl3-b12x-v84-fp8-control"
+allow_cuda_visible_devices_index = true
+image = "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692"
+entrypoint = ["bash", "-lc", "test \"$(sha256sum /root/.cache/huggingface/MANIFEST.json | cut -d ' ' -f1)\" = 45d35f1f3aa00203471362b999dde0108307c7913f359b2127b767a52b0e9be1 && exec vllm serve \"$@\"", "glm53-v84-fp8-control"]
+model_path = "/root/.cache/huggingface"
+named_volumes = [
+  "glm53-exl3-v84-fp8-cache:/root/.cache",
+]
+quantization = "uniform K4 EXL3/TR3 routed experts; native-precision non-routed tensors; FP8 DS-MLA KV; speculation disabled; vision enabled"
+context_tokens = 327680
+port = 39125
+startup_timeout_seconds = 3600
+served_model_name = "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r8-vision-nospec"
+ipc = "host"
+shm_size = "32gb"
+ulimits = ["memlock=-1"]
+env = [
+  "HF_HUB_OFFLINE=1",
+  "CUDA_VISIBLE_DEVICES=0,1",
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "VLLM_ENGINE_READY_TIMEOUT_S=3600",
+  "VLLM_B12X_GLM_NOPE_NVFP4=1",
+  "VLLM_EXL3_PREFILL_BLOCK_M=128",
+  "VLLM_EXL3_PREFILL_TRELLIS=1",
+  "B12X_GL53_ROUTE128_WIDE=1",
+  "B12X_GL53_ROUTE128_HYBRID_TAIL=1",
+  "VLLM_USE_B12X_DCP_A2A=1",
+  "VLLM_ENABLE_PCIE_ALLREDUCE=1",
+  "VLLM_PCIE_ALLREDUCE_BACKEND=cpp",
+  "VLLM_B12X_MLA_CKV_GATHER=0",
+  "KV_FP8_ROPE=0",
+  "OMP_NUM_THREADS=2",
+  "NCCL_IB_DISABLE=1",
+  "NCCL_P2P_LEVEL=4",
+  "NCCL_PROTO=LL,LL128,Simple",
+]
+flags = [
+  "--served-model-name glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r8-vision-nospec",
+  "--host 0.0.0.0",
+  "--port 39125",
+  "--chat-template /opt/glm53/chat_template.multimodal.jinja",
+  "--limit-mm-per-prompt '{\"image\":1,\"video\":0}'",
+  "--tensor-parallel-size 2",
+  "--enable-expert-parallel",
+  "--decode-context-parallel-size 2",
+  "--dcp-comm-backend a2a",
+  "--dtype bfloat16",
+  "--load-format safetensors",
+  "--moe-backend b12x",
+  "--attention-backend FLASHINFER_MLA_SPARSE_SM120",
+  "--kv-cache-dtype fp8_ds_mla",
+  "--max-model-len 327680",
+  "--max-num-batched-tokens 2048",
+  "--max-num-seqs 4",
+  "--gpu-memory-utilization 0.970",
+  "--enable-chunked-prefill",
+  "--no-enable-prefix-caching",
+  "--generation-config /root/.cache/huggingface",
+  "--reasoning-parser glm45",
+  "--reasoning-config '{}'",
+  "--tool-call-parser glm47",
+  "--enable-auto-tool-choice",
+  "--disable-custom-all-reduce",
+  ]
+note = "Vision candidate: same pinned weights, runtime, FP8 KV, 327680 context, C4 and no speculation as live r7. Enable bundled multimodal template and one image per request, no video. Bound loader RAM to 52 GiB with no container swap and preserve 12 GiB host reserve. Direct image and text/tool checks required before readmission."
+
+[recipe.fit]
+suited = ["qualification", "coding-agent", "tool-use", "reasoning", "text"]
+rationale = "Controls the published v84 NVFP4 quality concern with the historically stronger FP8 DS-MLA KV path while retaining the v84 language-only TP2/EP2/DCP2 built-in-MTP3 topology."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/brandonmusic/GLM-5.3-Flash-tr3-4bpw/tree/a5fee929cf4888b1824323e33e8a19b60129e025",
+  "https://github.com/brandonmmusic-max/glm-5.3-flash-exl3-4bpw/blob/bd9b2243be806f0ee9ccf5bfeeca1e346610f2b5/runtime/compose.sm120-tp2-language-only.yaml",
+  "https://github.com/brandonmmusic-max/glm-5.3-flash-exl3-4bpw/blob/3e7073f52e7a9073100724f38019e2edb9f87702/runtime/serve-glm53-sm120-tp2.sh",
+  "https://github.com/brandonmmusic-max/glm-5.3-flash-exl3-4bpw/commit/bd5321c1cfd4b8d352ef380e3158c64886039d03",
+]
+local = [
+  "/models/glm53-snapshot/MANIFEST.json",
+  "/models/glm53-snapshot/config.json",
+  "/models/glm53-snapshot/exl3-mcg-storage-abi.json",
+  "/models/glm53-snapshot/materialization-receipt.json",
+]

@@ -1,0 +1,38 @@
+{
+  "schema": "anvil-serving.vision-eight-acceptance/v1",
+  "date": "2026-09-18",
+  "configured_context": 327680,
+  "images_per_request": 8,
+  "ordinary_image_dimensions": [
+    768,
+    512
+  ],
+  "ordinary_requests_passed": 4,
+  "ordinary_requests": 4,
+  "large_image_dimensions": [
+    2520,
+    2520
+  ],
+  "large_requests_passed": 1,
+  "large_actual_prompt_tokens": 63456,
+  "large_seconds": 28.170199,
+  "direct_preflight_passed": true,
+  "memory_events": {
+    "high": 0,
+    "low": 0,
+    "max": 791,
+    "oom": 0,
+    "oom_group_kill": 0,
+    "oom_kill": 0
+  },
+  "client_sync_changed": [],
+  "limits": [
+    "Synthetic cards; not a broad real-world vision benchmark.",
+    "No simultaneous eight-image request capacity soak.",
+    "No fresh boot or reboot test.",
+    "Configured context unchanged; long-context checks belong to preceding one-image recipe.",
+    "Pi transcript is output only; attachment count, router path and served identity lack correlated request provenance."
+  ],
+  "rollback": "Prior one-image vision recipe retained.",
+  "pi_eight_card_output_observed": true
+}

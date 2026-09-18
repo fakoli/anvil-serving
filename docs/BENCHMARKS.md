@@ -1,5 +1,11 @@
 # Benchmark results
 
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
+
+
+**2026-09-18:** [GLM EXL3 vision enablement](findings/2026-09-18-glm53-vision.md) supersedes the text-only modality decision: 10/10 image attempts and routed acceptance and a matching Pi output transcript, with 260K retrieval passing on retry and the initial refusal retained. The r8 one-image vision recipe is the immediate rollback; older comparisons below remain dated history.
+
+
 > **Looking for the maintained decision view?** Start with the
 > [hardware-first benchmark portal](benchmarks/index.md), choose
 > [RTX PRO 6000](benchmarks/hardware/rtx-pro-6000.md) or
@@ -8,10 +14,10 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The current text-only reference is [GLM Flash EXL3 r7 no-spec](findings/2026-09-13-intelligence-context-scout.md): 4-bpw EXL3 at 327,680 total tokens with a 65,536-token output reserve and C4. It retained 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. Its one matched no-spec C4 population measured a 38.908 tok/s median decode. This bounded record does not name an exhaustive intelligence winner, prove concurrent full-window capacity, include a full-window concurrency soak, or include fresh boot/reboot testing. Earlier v0.4.3/SGLang and EXL3 profiles remain dated evidence.
+The September 14 text-only reference was [GLM Flash EXL3 r7 no-spec](findings/2026-09-13-intelligence-context-scout.md): 4-bpw EXL3 at 327,680 total tokens with a 65,536-token output reserve and C4. It retained 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. Its one matched no-spec C4 population measured a 38.908 tok/s median decode. This bounded record does not name an exhaustive intelligence winner, prove concurrent full-window capacity, include a full-window concurrency soak, or include fresh boot/reboot testing. Earlier v0.4.3/SGLang and EXL3 profiles remain dated evidence.
 
 Other retained comparisons (their dated evidence remains unchanged):
-The original Qwen3.8 27B FP8 path is the retained current rollback; it was not
+The original Qwen3.8 27B FP8 path was the September 14 rollback; it was not
 exercised after the 2026-09-14 promotion. RadixArk Qwen3.8 Flash Next NVFP4 is
 historical 2026-08-26 video-capable rollback evidence at TP=2/262,144/c1.
 On the dual RTX PRO 6000 host, two independent current-SGLang Inferact

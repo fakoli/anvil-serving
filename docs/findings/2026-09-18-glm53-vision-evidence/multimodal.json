@@ -1,0 +1,748 @@
+{
+  "aggregates": {
+    "case": {
+      "image-chart": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.7772675,
+        "latency_p95_seconds": 1.803706,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-ocr": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.1356465,
+        "latency_p95_seconds": 1.135986,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-scene": {
+        "attempts": 2,
+        "latency_p50_seconds": 4.753478,
+        "latency_p95_seconds": 4.847145,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-spatial-count": {
+        "attempts": 2,
+        "latency_p50_seconds": 4.1907865,
+        "latency_p95_seconds": 7.140127,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-ui": {
+        "attempts": 2,
+        "latency_p50_seconds": 38.182092,
+        "latency_p95_seconds": 52.175657,
+        "pass_rate": 1.0,
+        "passed": 2
+      }
+    },
+    "modality": {
+      "image": {
+        "attempts": 10,
+        "latency_p50_seconds": 3.2317585,
+        "latency_p95_seconds": 52.175657,
+        "pass_rate": 1.0,
+        "passed": 10
+      }
+    }
+  },
+  "attempts": [
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on the chart, here are the quarterly values in ascending order:\n\n- **Q1: 10**\n- **Q2: 20**\n- **Q3: 30**\n\nThe chart shows a steady increase in units each quarter, with each quarter doubling the previous one's value.",
+      "passed": true,
+      "reasoning": {
+        "chars": 185,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 1.750829,
+      "usage": {
+        "completion_tokens": 119,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 447
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on the chart, here are the quarterly values in ascending order:\n\n- **Q1: 10**\n- **Q2: 20**\n- **Q3: 30**\n\nThe chart shows a steady increase in units each quarter, with each quarter doubling... actually, increasing by 10 units per quarter.",
+      "passed": true,
+      "reasoning": {
+        "chars": 185,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 1.803706,
+      "usage": {
+        "completion_tokens": 124,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 452
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "ANVIL READY\n\nCODE 42917\n\nTEMPERATURE 42 C",
+      "passed": true,
+      "reasoning": {
+        "chars": 191,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 1.135986,
+      "usage": {
+        "completion_tokens": 74,
+        "prompt_tokens": 324,
+        "prompt_tokens_details": null,
+        "total_tokens": 398
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "ANVIL READY\n\nCODE 42917\n\nTEMPERATURE 42 C",
+      "passed": true,
+      "reasoning": {
+        "chars": 191,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 1.135307,
+      "usage": {
+        "completion_tokens": 74,
+        "prompt_tokens": 324,
+        "prompt_tokens_details": null,
+        "total_tokens": 398
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "# Scene Description\n\nThe image is a simple, minimalist graphic illustration set against a dark navy blue background. It appears to be a stylized diagram or basic scene composition.\n\n## Elements in the Scene:\n\n1. **Sky/Background**: A solid dark navy blue fills the entire canvas, representing the sky.\n\n2. **Red Rectangle**: A bright red square/rectangle sits in the left-center portion of the image, positioned just above the green area. It represents a car.\n\n3. **Green Rectangle**: A wide, dark green horizontal band spans the bottom of the image, representing the ground or grass area.\n\n## Prominent Labels (Verbatim):\n\n- **\"SUNNY DAY\"** \u2014 displayed in bold yellow text at the top center of the image\n- **\"RED CAR\"** \u2014 displayed in bold white text on the left side, above the red rectangle\n- **\"GREEN PARK\"** \u2014 displayed in bold white text inside the green rectangle, on the right side\n\n## Summary:\n\nThe image depicts a labeled scene of a **\"SUNNY DAY\"** featuring a **\"RED CAR\"** (shown as a red block) parked on a **\"GREEN PARK\"** (shown as a green strip of land). The labels directly correspond to and identify each visual element in the composition.",
+      "passed": true,
+      "reasoning": {
+        "chars": 350,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 4.847145,
+      "usage": {
+        "completion_tokens": 350,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 678
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "# Scene Description\n\nThis is a simple, minimalist graphic illustration set against a dark navy blue background, depicting a stylized outdoor scene.\n\n## Elements in the Scene:\n\n1. **Sky/Background**: A solid dark navy blue fills the entire image, representing the sky.\n\n2. **Title Text**: At the top center of the image, in bold yellow capital letters, is the label:\n   - **\"SUNNY DAY\"**\n\n3. **Car Label**: Below the title, on the left side, in bold white capital letters:\n   - **\"RED CAR\"**\n\n4. **The Car**: Directly beneath the \"RED CAR\" label sits a solid red rectangle, representing the car in a highly simplified, abstract form.\n\n5. **The Park**: Along the bottom of the image stretches a wide green rectangle representing grass or ground. Inside it, on the right side, in bold white capital letters:\n   - **\"GREEN PARK\"**\n\n## Summary of Prominent Labels (Verbatim):\n- **SUNNY DAY**\n- **RED CAR**\n- **GREEN PARK**\n\nThe image uses flat, solid colors and text labels to identify each element, giving it the appearance of a simple diagram or children's illustration rather than a realistic scene.",
+      "passed": true,
+      "reasoning": {
+        "chars": 350,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 4.659811,
+      "usage": {
+        "completion_tokens": 338,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 666
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        }
+      ],
+      "modality": "image",
+      "output": "**Three**\n\nThere are three blue boxes in the image.",
+      "passed": true,
+      "reasoning": {
+        "chars": 283,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 7.140127,
+      "usage": {
+        "completion_tokens": 79,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 407
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        }
+      ],
+      "modality": "image",
+      "output": "**Three**\n\nThere are three blue boxes in the image.",
+      "passed": true,
+      "reasoning": {
+        "chars": 299,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 1.241446,
+      "usage": {
+        "completion_tokens": 82,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 410
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "image",
+      "output": "**Application Name:** Anvil Serving\n**Status:** Ready\n**GPU Percentage:** 42%",
+      "passed": true,
+      "reasoning": {
+        "chars": 295,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 52.175657,
+      "usage": {
+        "completion_tokens": 98,
+        "prompt_tokens": 324,
+        "prompt_tokens_details": null,
+        "total_tokens": 422
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "image",
+      "output": "**Application Name:** ANVIL SERVING\n**Status:** READY\n**GPU Percentage:** 42%",
+      "passed": true,
+      "reasoning": {
+        "chars": 224,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 24.188527,
+      "usage": {
+        "completion_tokens": 85,
+        "prompt_tokens": 324,
+        "prompt_tokens_details": null,
+        "total_tokens": 409
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    }
+  ],
+  "configuration": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "chat_template_kwargs": null,
+    "concurrency": 1,
+    "max_images_per_request": 1,
+    "max_tokens": 8192,
+    "max_videos_per_request": 1,
+    "reasoning_effort": "max",
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.0,
+        "requested": null,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": null,
+        "requested": null,
+        "sent": false
+      }
+    },
+    "thinking_mode": "default",
+    "timeout_seconds": 180.0
+  },
+  "corpus": {
+    "cases": [
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "id": "image-scene",
+        "media": [
+          {
+            "bytes": 13187,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "scene.png",
+            "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Describe the scene and report every prominent label. Use the labels verbatim.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "image-ocr",
+        "media": [
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Transcribe all visible text exactly. Preserve every number.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "id": "image-chart",
+        "media": [
+          {
+            "bytes": 12635,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "chart.png",
+            "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Read the chart and report each quarter with its value in ascending quarter order.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "image-ui",
+        "media": [
+          {
+            "bytes": 16940,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ui.png",
+            "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Report the application name, status, and GPU percentage.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "id": "image-spatial-count",
+        "media": [
+          {
+            "bytes": 8785,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "spatial.png",
+            "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Count the blue boxes. Reply with the count written as an English word.",
+        "repetitions": 2,
+        "sampling": null
+      }
+    ],
+    "path": "EVIDENCE_ROOT/image-corpus.json",
+    "provenance": {
+      "derived_from": "corpus.json",
+      "observed_date": "2026-08-29",
+      "scope": "Deterministic image-only qualification subset for servers that intentionally disable video",
+      "synthetic": {
+        "generator": "generate.py",
+        "license": "CC0-1.0"
+      }
+    },
+    "schema": "multimodal-corpus/v1",
+    "sha256": "3d0bd483002c6d07d8c461f5cfe7c211b0c05e19242a3cad0e547cc8c3579a03"
+  },
+  "failed_attempts": 0,
+  "finished_at": "2026-09-18T08:11:45Z",
+  "identity": {
+    "base_url": "http://127.0.0.1:39125/v1",
+    "engine_build_ref": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+    "engine_revision": null,
+    "hardware": "2x RTX PRO 6000 Max-Q 96GB TP2",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r8-vision-nospec",
+    "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "runtime_image": "verdictai/glm53-flash-exl3-k4@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "served_models": [
+      "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r8-vision-nospec"
+    ]
+  },
+  "passed": true,
+  "passed_attempts": 10,
+  "requests": 10,
+  "run_id": "multimodal-20260918T081005Z",
+  "schema": "multimodal-benchmark-evidence/v1",
+  "started_at": "2026-09-18T08:10:05Z"
+}

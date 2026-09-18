@@ -1,0 +1,112 @@
+{
+  "backup_created": false,
+  "changed": [],
+  "clients": [
+    "openclaw",
+    "hermes",
+    "pi"
+  ],
+  "config_sha256": "f7c309fabc5cde4a48f3e4994351667f33cc3dc87f536a6521066984761a27d3",
+  "dry_run": false,
+  "hermes_profiles": [
+    {
+      "changed_keys": [],
+      "compression": {
+        "enabled": true,
+        "target_ratio": 0.2,
+        "threshold": 0.5
+      },
+      "context_window": 327680,
+      "managed": true,
+      "max_output_tokens": 65536,
+      "model": "llm.primary",
+      "profile": "default",
+      "provider": "anvil",
+      "vision_context_window": 327680,
+      "vision_model": "vision.general"
+    },
+    {
+      "changed_keys": [],
+      "compression": {
+        "enabled": true,
+        "target_ratio": 0.2,
+        "threshold": 0.5
+      },
+      "context_window": 327680,
+      "managed": true,
+      "max_output_tokens": 65536,
+      "model": "llm.primary",
+      "profile": "anvil-primary",
+      "provider": "anvil",
+      "vision_context_window": 327680,
+      "vision_model": "vision.general"
+    },
+    {
+      "changed_keys": [],
+      "compression": {
+        "enabled": true,
+        "target_ratio": 0.2,
+        "threshold": 0.5
+      },
+      "context_window": 262144,
+      "managed": true,
+      "max_output_tokens": 8192,
+      "model": "llm.secondary",
+      "profile": "anvil-secondary",
+      "provider": "anvil",
+      "vision_context_window": 327680,
+      "vision_model": "vision.general"
+    },
+    {
+      "changed_keys": [],
+      "compression": {
+        "enabled": true,
+        "target_ratio": 0.2,
+        "threshold": 0.5
+      },
+      "context_window": 262144,
+      "managed": true,
+      "max_output_tokens": 8192,
+      "model": "llm.secondary",
+      "profile": "work-profile",
+      "provider": "anvil",
+      "vision_context_window": 327680,
+      "vision_model": "vision.general"
+    }
+  ],
+  "hermes_restarted": false,
+  "models": [
+    {
+      "context_window": 327680,
+      "id": "llm.auxiliary",
+      "max_output_tokens": 65536
+    },
+    {
+      "context_window": 327680,
+      "id": "llm.primary",
+      "max_output_tokens": 65536
+    },
+    {
+      "context_window": 262144,
+      "id": "llm.secondary",
+      "max_output_tokens": 8192
+    },
+    {
+      "context_window": 327680,
+      "id": "llm.voice",
+      "max_output_tokens": 65536
+    },
+    {
+      "context_window": 327680,
+      "id": "vision.general",
+      "max_output_tokens": 65536
+    },
+    {
+      "context_window": 327680,
+      "id": "vision.ocr",
+      "max_output_tokens": 65536
+    }
+  ],
+  "openclaw_restarted": false,
+  "package_version": "1.2.1"
+}

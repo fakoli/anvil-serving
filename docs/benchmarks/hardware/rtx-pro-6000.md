@@ -1,12 +1,18 @@
 # RTX PRO 6000 benchmark view
 
-**2026-09-14 update:** [GLM Flash EXL3 r7 no-spec](../../findings/2026-09-13-intelligence-context-scout.md) is the selected current text-only lane: 327,680 total tokens with a 65,536-token output reserve at C4, 90/100 one-pass MMLU-Pro, agentic 30/30, SWE 4/5, strict120 120/120, and 9/9 post-promotion 258K-class context. The one matched no-spec C4 population measured 38.908 tok/s median decode. This is not an exhaustive intelligence ranking, a general speed claim, or proof of concurrent full-window capacity; fresh boot/reboot coverage is absent. Earlier deployment descriptions below are historical.
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
+
+
+**2026-09-18 update:** [GLM EXL3 vision](../../findings/2026-09-18-glm53-vision.md) passed 10/10 synthetic image attempts plus routed acceptance and a matching Pi output transcript on this GPU pair. Configured 327K/C4 retained; 260K retrieval passed on retry after an initial refusal. No new speed or broad quality ranking. The prior text-only record below is historical.
+
+
+**2026-09-14 update:** [GLM Flash EXL3 r7 no-spec](../../findings/2026-09-13-intelligence-context-scout.md) was the selected September 14 text-only lane: 327,680 total tokens with a 65,536-token output reserve at C4, 90/100 one-pass MMLU-Pro, agentic 30/30, SWE 4/5, strict120 120/120, and 9/9 post-promotion 258K-class context. The one matched no-spec C4 population measured 38.908 tok/s median decode. This is not an exhaustive intelligence ranking, a general speed claim, or proof of concurrent full-window capacity; fresh boot/reboot coverage is absent. Earlier deployment descriptions below are historical.
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-09-09. **Evidence
-interpretation reviewed:** 2026-09-09.
+history. **Last locally measured:** 2026-09-18. **Evidence
+interpretation reviewed:** 2026-09-18.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -28,7 +34,7 @@ the complete direct qualification, managed and routed promotion gates, and
 real Pi/OpenClaw/Hermes acceptance under an explicit model-only reserve
 waiver. The corrected 524K EXL3 K3 plus DFlash2 K5 profile was its immediate
 same-model rollback. The 2026-08-26 RadixArk Qwen3.8 Flash Next NVFP4 profile
-was its immediate video-capable rollback. The retained current rollback is the
+was its immediate video-capable rollback. The retained September 14 rollback is the
 original Qwen3.8 27B FP8 path; it was not exercised after the 2026-09-14 promotion.
 The 2026-09-04 Qwen3.8 27B campaign measured current-SGLang TP1, TP2, and two
 independent TP1 replicas, plus Inferact/RadixArk targets and kelnei/vLLM
@@ -105,10 +111,10 @@ selected `retain-baseline/no-promotion`; the exact baseline was restored. See th
 
 | Order | Model | Decision | Contract |
 |---:|---|---|---|
-| 1 | [GLM-5.3-Flash EXL3 r7 no-spec](../models/glm53-flash.md) | `current`, selected 2026-09-14 text-only lane | EXL3 4-bpw, 327,680 total / 65,536 output tokens at C4; one-pass MMLU-Pro 90/100, agentic 30/30, SWE 4/5, strict120 120/120, and context 9/9 through 255,647–255,672 prompt tokens plus reserve. Pi, Hermes, and OpenClaw tool checks pass; no full-window concurrency soak or fresh boot/reboot proof. |
+| 1 | [GLM-5.3-Flash EXL3 r7 no-spec](../models/glm53-flash.md) | historical, selected 2026-09-14 text-only lane | EXL3 4-bpw, 327,680 total / 65,536 output tokens at C4; one-pass MMLU-Pro 90/100, agentic 30/30, SWE 4/5, strict120 120/120, and context 9/9 through 255,647–255,672 prompt tokens plus reserve. Pi, Hermes, and OpenClaw tool checks pass; no full-window concurrency soak or fresh boot/reboot proof. |
 | 2 | [GLM-5.3-Flash SGLang W4A16](../models/glm53-flash.md) | historical 2026-09-02 human-approved 393K/C1 profile | Exact rc14 SGLang image and W4A16/NVFP4 checkpoint at exclusive TP=2, 393,216 tokens, C1, 4,096 maximum output, FP8 KV, adaptive EAGLE, image/OCR, and explicit thinking control; direct, managed, routed, and real-client gates passed under a recorded model-only reserve waiver |
 | 3 | [GLM-5.3-Flash](../models/glm53-flash.md) | historical same-model rollback | EXL3 K3 target plus DFlash2 K5 at exclusive TP=2, 524,288 tokens, router c16, up to 16 images, and 8,192 maximum output; both matched arms passed 28/28 functional observations, C2 nominal 250K completed 2/2, and exact router plus real Hermes/Pi/OpenClaw acceptance passed; no video; noncommercial draft boundary |
-| 4 | [Qwen3.8 27B FP8](../models/qwen38-27b.md) | retained current rollback | Original FP8 text-only rollback path; declared but unexercised after the 2026-09-14 promotion |
+| 4 | [Qwen3.8 27B FP8](../models/qwen38-27b.md) | retained September 14 rollback | Original FP8 text-only rollback path; declared but unexercised after the 2026-09-14 promotion |
 | 5 | [Qwen3.8 Flash Next](../models/qwen38-flash-next.md) | historical 2026-08-26 video-capable rollback | RadixArk ModelOpt NVFP4 retains text/image/OCR/video evidence at exclusive TP=2, 262,144 tokens, router concurrency one, four-image/one-video admission, and an 8,192-token output reserve; direct vision 30/30, live repeats 57/60 strict, edges 8/8, full-reserve capacity, routed identity, and real-client acceptance passed |
 | 6 | [Qwen3.8 27B](../models/qwen38-27b.md) | historical DP2 throughput winner, TP2 rejected, `no-promotion` | Current SGLang/Inferact NVFP4 plus DFlash2 K12/chunk1K: two TP1 replicas 1,401.8–1,423.4 aggregate tok/s at C16 versus one TP1 764.3 and TP2 587.9; 100/100 canaries, but TP2 strict JSON failed twice; RadixArk is the TTFT tradeoff and kelnei/vLLM MTP2 is an alternate-runtime gain; exact GLM baseline restored |
 | 7 | [DeepSeek V4 Flash 0731](../models/deepseek-v4-flash.md) | former `current`, 2026-08-21 r18 promotion | Retained Infernal Invocation r18 B12X/DSpark K5 TP=2/1,048,576 promotion evidence |
@@ -125,7 +131,7 @@ selected `retain-baseline/no-promotion`; the exact baseline was restored. See th
 
 | Candidate | Repeated quality | Capacity and context evidence | Decision |
 |---|---|---|---|
-| GLM-5.3-Flash EXL3 r7 no-spec, TP=2/C4 | MMLU-Pro 90/100 one pass; agentic 30/30; frozen SWE 4/5; Pi/Hermes/OpenClaw tool checks pass | 327,680 total / 65,536 output; 9/9 through 255,647–255,672 actual prompt tokens plus reserve; concurrent full-window capacity unmeasured | `current` text-only; strict120 120/120; one C4 no-spec median 38.908 tok/s; no full-window soak or fresh boot/reboot proof |
+| GLM-5.3-Flash EXL3 r7 no-spec, TP=2/C4 | MMLU-Pro 90/100 one pass; agentic 30/30; frozen SWE 4/5; Pi/Hermes/OpenClaw tool checks pass | 327,680 total / 65,536 output; 9/9 through 255,647–255,672 actual prompt tokens plus reserve; concurrent full-window capacity unmeasured | September 14 text-only reference; strict120 120/120; one C4 no-spec median 38.908 tok/s; no full-window soak or fresh boot/reboot proof |
 | GLM-5.3-Flash ormandj W4A16/NVFP4, SGLang adaptive EAGLE, TP=2, 393K/C1 | thinking-disabled preflight 10/10, tools 20/20, long needle/tool, and image/OCR; thinking-enabled contract; coding 15/15, media 12/12, endurance 60/60; managed/routed gates and real Pi/OpenClaw/Hermes pass; fixed SWE-bench Verified smoke officially resolved 1/1 through 11 routed requests | 304,491 actual prompt tokens at the 380K target; median decode 112.07/96.17/102.42/99.79 tok/s and effective prefill 16,729/5,749/5,579/5,457 tok/s at 4K/120K/262K/380K; 2,101 MiB/card after qualification and 2,543 after client work; SWE agent/grader 34.216/29.076 s | historical 2026-09-02 text/image/OCR selection; C1 and 4,096 output; explicit model-only zero-reserve waiver; one-instance SWE smoke only; 240K conservative fallback; 499K rejected/unverified |
 | GLM-5.3-Flash EXL3 K3 target plus corrected DFlash2 K5, TP=2, 524K/c16 | intelligence 6/6, session 3/3, tools 20/20 plus repeated tools 3/3; image/OCR; authenticated route and fresh Hermes/Pi/OpenClaw acceptance | 206,296-actual-token retrieval; 2,493,817 KV tokens / 4.76 complete windows; median decode 83.08 tok/s at 4K and pooled 69.99 at 240K; C2 nominal 250K 2/2 | historical rollback; K5/batch2,048; 16 images, no video; DFlash2 noncommercial boundary |
 | Qwen3.8 Flash Next RadixArk NVFP4, SGLang QSA-fast MTP3, TP=2, 262K/c1 | thinking-disabled intelligence 6/6, session 3/3, tools 3/3; direct media 30/30; isolated router 27/30 then 30/30; live router 29/30 then 28/30; edge suite 8/8; exact routed identity and fresh OpenClaw/Hermes/Pi acceptance | 253,703 actual prompt tokens with 8,192 output request; 516,032 maximum server tokens; 6.275 GiB KV per rank; six-size sweep 25/25; median decode 155.9/114.7/112.9 tok/s at 4K/128K/254K targets and 102.0 at full reserve | historical text/image/OCR/video rollback; hash-gated PR #36556 SM120 fast path; c1, four images or one video |

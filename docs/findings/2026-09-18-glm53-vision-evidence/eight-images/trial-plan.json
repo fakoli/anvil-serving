@@ -1,0 +1,22 @@
+{
+  "scope": "User-requested eight-image trial on current GLM model",
+  "baseline": "r8 one-image vision",
+  "candidate": "r9 eight-image vision",
+  "gates": [
+    "managed health and image/text/tool preflight",
+    "eight 768x512 cards, forward and reverse order, two repetitions each",
+    "eight 2520x2520 cards, one stress request",
+    "routed eight-image check",
+    "repeat client catalog sync and healthy final state"
+  ],
+  "unchanged": [
+    "weights",
+    "runtime digest",
+    "FP8 KV",
+    "327680 configured context",
+    "C4 scheduler",
+    "no speculation",
+    "52 GiB RAM / zero container swap"
+  ],
+  "failure_action": "Retain exact failed artifact, restore r8 if eight-image candidate cannot pass."
+}

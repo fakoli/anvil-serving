@@ -1,0 +1,177 @@
+{
+  "schema": "multimodal-corpus/v1",
+  "provenance": {
+    "synthetic": {
+      "license": "CC0-1.0"
+    },
+    "scope": "Eight distinct cards, ordered and reversed, independent exact OCR ordering and sum assertions."
+  },
+  "cases": [
+    {
+      "id": "eight-images-ordered",
+      "modality": "image",
+      "media": [
+        {
+          "path": "card-A.png",
+          "mime": "image/png",
+          "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+        },
+        {
+          "path": "card-B.png",
+          "mime": "image/png",
+          "sha256": "fffe6b1b1f5819e0aacd015cb0bbbc1b43037c744238ea6ac3d8a0ea8ac2bff6"
+        },
+        {
+          "path": "card-C.png",
+          "mime": "image/png",
+          "sha256": "6c8253ac2e97def51f996475ae4ce5436f5e69b4aaf8f96b410a9c0af9aeb799"
+        },
+        {
+          "path": "card-D.png",
+          "mime": "image/png",
+          "sha256": "a7882977d87bd1e59d84029c34da4f41c2f16adfc4b65f16a08ad973c10e9154"
+        },
+        {
+          "path": "card-E.png",
+          "mime": "image/png",
+          "sha256": "8e7ffb4c775589abcbc5e4507aed01a9d966fd635b1dc3cff87801155a73385f"
+        },
+        {
+          "path": "card-F.png",
+          "mime": "image/png",
+          "sha256": "56b90ce7cd4edce9c9c3425135a2db924fcb9a822c4088ef6d4af692632b2de4"
+        },
+        {
+          "path": "card-G.png",
+          "mime": "image/png",
+          "sha256": "87c4b85945a40b630f8d8e7548f6a55153f750904086e13aed1f99e2830de4e9"
+        },
+        {
+          "path": "card-H.png",
+          "mime": "image/png",
+          "sha256": "6387a21bea8cb2f91a29f4139fcc79424b819b1b5c0e00f49a1c5cef6584bdd8"
+        }
+      ],
+      "prompt": "Read all eight images. Transcribe each in the supplied image order, exactly one line formatted CARD <letter>: VALUE <number>. Then add three lines: MAX <letter> <value>, MIN <letter> <value>, SUM <total>. Compute these across all eight images. No other text.",
+      "assertions": [
+        {
+          "type": "ordered_casefold",
+          "values": [
+            "CARD A",
+            "17",
+            "CARD B",
+            "42",
+            "CARD C",
+            "9",
+            "CARD D",
+            "63",
+            "CARD E",
+            "28",
+            "CARD F",
+            "51",
+            "CARD G",
+            "34",
+            "CARD H",
+            "76"
+          ]
+        },
+        {
+          "type": "contains_casefold",
+          "value": "320"
+        },
+        {
+          "type": "contains_casefold",
+          "value": "MAX H 76"
+        },
+        {
+          "type": "contains_casefold",
+          "value": "MIN C 9"
+        }
+      ],
+      "repetitions": 2
+    },
+    {
+      "id": "eight-images-reversed",
+      "modality": "image",
+      "media": [
+        {
+          "path": "card-H.png",
+          "mime": "image/png",
+          "sha256": "6387a21bea8cb2f91a29f4139fcc79424b819b1b5c0e00f49a1c5cef6584bdd8"
+        },
+        {
+          "path": "card-G.png",
+          "mime": "image/png",
+          "sha256": "87c4b85945a40b630f8d8e7548f6a55153f750904086e13aed1f99e2830de4e9"
+        },
+        {
+          "path": "card-F.png",
+          "mime": "image/png",
+          "sha256": "56b90ce7cd4edce9c9c3425135a2db924fcb9a822c4088ef6d4af692632b2de4"
+        },
+        {
+          "path": "card-E.png",
+          "mime": "image/png",
+          "sha256": "8e7ffb4c775589abcbc5e4507aed01a9d966fd635b1dc3cff87801155a73385f"
+        },
+        {
+          "path": "card-D.png",
+          "mime": "image/png",
+          "sha256": "a7882977d87bd1e59d84029c34da4f41c2f16adfc4b65f16a08ad973c10e9154"
+        },
+        {
+          "path": "card-C.png",
+          "mime": "image/png",
+          "sha256": "6c8253ac2e97def51f996475ae4ce5436f5e69b4aaf8f96b410a9c0af9aeb799"
+        },
+        {
+          "path": "card-B.png",
+          "mime": "image/png",
+          "sha256": "fffe6b1b1f5819e0aacd015cb0bbbc1b43037c744238ea6ac3d8a0ea8ac2bff6"
+        },
+        {
+          "path": "card-A.png",
+          "mime": "image/png",
+          "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+        }
+      ],
+      "prompt": "Read all eight images. Transcribe each in the supplied image order, exactly one line formatted CARD <letter>: VALUE <number>. Then add three lines: MAX <letter> <value>, MIN <letter> <value>, SUM <total>. Compute these across all eight images. No other text.",
+      "assertions": [
+        {
+          "type": "ordered_casefold",
+          "values": [
+            "CARD H",
+            "76",
+            "CARD G",
+            "34",
+            "CARD F",
+            "51",
+            "CARD E",
+            "28",
+            "CARD D",
+            "63",
+            "CARD C",
+            "9",
+            "CARD B",
+            "42",
+            "CARD A",
+            "17"
+          ]
+        },
+        {
+          "type": "contains_casefold",
+          "value": "320"
+        },
+        {
+          "type": "contains_casefold",
+          "value": "MAX H 76"
+        },
+        {
+          "type": "contains_casefold",
+          "value": "MIN C 9"
+        }
+      ],
+      "repetitions": 2
+    }
+  ]
+}

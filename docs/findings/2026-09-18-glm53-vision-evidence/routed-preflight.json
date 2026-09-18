@@ -1,0 +1,160 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "streaming-tools",
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "ANVIL READY"
+  ],
+  "model": "llm.primary",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nIf you need it as a function:\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nThe built-in `sum()` is the idiomatic choice \u2014 it's concise, readable, and faster than a manual loop.",
+      "content_chars": 197,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nIf you need it as a function:\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nThe built-in `sum()` is the idiomatic choice \u2014 it's concise, readable, and faster than a manual loop.",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 1145,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most obvious answer is:\n\n```python\nsum(xs)\n```\n\nThat's the idiomatic Python way. There's also ",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 4.65,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 331,
+        "prompt_tokens": 28,
+        "total_tokens": 359
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "event_count": 32,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 122,
+      "reasoning_excerpt": "The user wants to know the weather in Oakland. I should use the get_weather tool with the city parameter set to \"Oakland\".",
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "seconds": 0.653,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 40,
+        "prompt_tokens": 166,
+        "total_tokens": 206
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "# Image Description\n\nThis image shows a **status display screen** with a dark navy blue background containing three lines of text in different colors:\n\n## Key Information\n\n| Label | Value | Text Color |\n|-------|-------|------------|\n| **Status** | ANVIL READY | Bright green |\n| **Code** | 42917 | White |\n| **Temperature** | 42 \u00b0C | Light blue |\n\n## Interpretation\n\n- **\"ANVIL READY\"** (in green) indicates the system/equipment is operational and in a ready state \u2014 the green color typically signifies a positive or \"go\" status.\n- **\"CODE 42917\"** appears to be an identification, reference, or diagnostic code associated with the current state.\n- **\"TEMPERATURE 42 C\"** reports a current temperature reading of 42 degrees Celsius, which is warm but plausible for operating machinery.\n\nThe layout and color coding suggest this is likely a **machine interface, industrial monitoring panel, or automated system display** confirming equipment readiness.",
+      "content_chars": 952,
+      "content_excerpt": "# Image Description\n\nThis image shows a **status display screen** with a dark navy blue background containing three lines of text in different colors:\n\n## Key Information\n\n| Label | Value | Text Color",
+      "expected": [
+        "ANVIL READY"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 665,
+      "reasoning_excerpt": "The user wants me to inspect this image and describe what it shows, reporting the most important labels, values, and status.\n\nThe image shows a dark navy blue background with three lines of text:\n1. \"",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 5.084,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 368,
+        "prompt_tokens": 333,
+        "total_tokens": 701
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "content_chars": 39,
+      "content_excerpt": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "expected": [
+        "42917"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 206,
+      "reasoning_excerpt": "The user wants me to transcribe all visible text in the image exactly. The image shows:\n- \"ANVIL READY\" in green\n- \"CODE 42917\" in white\n- \"TEMPERATURE 42 C\" in blue\n\nI should return only the transcri",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 1.197,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 78,
+        "prompt_tokens": 334,
+        "total_tokens": 412
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "42917"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "4.6s got='```python\\nsum(xs)\\n```\\n\\nIf you need it as a functio' finish='stop' visible=197 reasoning_chars=1145 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "0.7s done=True events=32 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "5.1s all expected text present finish='stop' visible=952 reasoning_chars=665 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "1.2s all expected text present finish='stop' visible=39 reasoning_chars=206 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

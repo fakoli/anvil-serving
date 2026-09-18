@@ -1,0 +1,305 @@
+{
+  "aggregates": {
+    "case": {
+      "eight-images-large": {
+        "attempts": 1,
+        "latency_p50_seconds": 28.170199,
+        "latency_p95_seconds": 28.170199,
+        "pass_rate": 1.0,
+        "passed": 1
+      }
+    },
+    "modality": {
+      "image": {
+        "attempts": 1,
+        "latency_p50_seconds": 28.170199,
+        "latency_p95_seconds": 28.170199,
+        "pass_rate": 1.0,
+        "passed": 1
+      }
+    }
+  },
+  "attempts": [
+    {
+      "case_id": "eight-images-large",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 44161,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "large-A.png",
+          "sha256": "c9504138a9213677cb7e67189e015793edb5f55cbadf4fc476fb933aa309ee29"
+        },
+        {
+          "bytes": 47789,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "large-B.png",
+          "sha256": "9dfc9ddff04e3144d52303da0de15a70f05410982fbfd23801febbbfe71825d0"
+        },
+        {
+          "bytes": 45978,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "large-C.png",
+          "sha256": "8613b720c912aafc053b45d7d1bfd373c13fae64c374e60f3f0a86d477de6ef3"
+        },
+        {
+          "bytes": 48918,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "large-D.png",
+          "sha256": "562821d7f55a0fabc69da79f620ab57fd1c40c880ebc42b618f8c279e5981b36"
+        },
+        {
+          "bytes": 48526,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "large-E.png",
+          "sha256": "3c6b394442dc499ccbd2e73b4c27b7328bb3d7b07b081d4165d130a52f51f7bd"
+        },
+        {
+          "bytes": 44484,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "large-F.png",
+          "sha256": "f351432ea3e07dd34f0b3f7e8cc3f20f1a3c5576a5dfa1c3467fdf71a5eb9ac5"
+        },
+        {
+          "bytes": 48820,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "large-G.png",
+          "sha256": "3da5fd6fa55e33f07ce7228ddf3bc310a76dfa30e26f322dc100a2f7035c7874"
+        },
+        {
+          "bytes": 47165,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "large-H.png",
+          "sha256": "1be181e86a8e0867108112414968fb0c5154646af6d456cc48a25c4c8a01b488"
+        }
+      ],
+      "modality": "image",
+      "output": "CARD A: VALUE 17\nCARD B: VALUE 42\nCARD C: VALUE 9\nCARD D: VALUE 63\nCARD E: VALUE 28\nCARD F: VALUE 51\nCARD G: VALUE 34\nCARD H: VALUE 76\nMAX H 76\nMIN C 9\nSUM 320",
+      "passed": true,
+      "reasoning": {
+        "chars": 342,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 28.170199,
+      "usage": {
+        "completion_tokens": 242,
+        "prompt_tokens": 63456,
+        "prompt_tokens_details": null,
+        "total_tokens": 63698
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "CARD A",
+              "17",
+              "CARD B",
+              "42",
+              "CARD C",
+              "9",
+              "CARD D",
+              "63",
+              "CARD E",
+              "28",
+              "CARD F",
+              "51",
+              "CARD G",
+              "34",
+              "CARD H",
+              "76"
+            ]
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "320"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "MAX H 76"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "MIN C 9"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    }
+  ],
+  "configuration": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "chat_template_kwargs": null,
+    "concurrency": 1,
+    "max_images_per_request": 8,
+    "max_tokens": 8192,
+    "max_videos_per_request": 1,
+    "reasoning_effort": "max",
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.0,
+        "requested": null,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": null,
+        "requested": null,
+        "sent": false
+      }
+    },
+    "thinking_mode": "default",
+    "timeout_seconds": 180.0
+  },
+  "corpus": {
+    "cases": [
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "CARD A",
+              "17",
+              "CARD B",
+              "42",
+              "CARD C",
+              "9",
+              "CARD D",
+              "63",
+              "CARD E",
+              "28",
+              "CARD F",
+              "51",
+              "CARD G",
+              "34",
+              "CARD H",
+              "76"
+            ]
+          },
+          {
+            "type": "contains_casefold",
+            "value": "320"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "MAX H 76"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "MIN C 9"
+          }
+        ],
+        "id": "eight-images-large",
+        "media": [
+          {
+            "bytes": 44161,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "large-A.png",
+            "sha256": "c9504138a9213677cb7e67189e015793edb5f55cbadf4fc476fb933aa309ee29"
+          },
+          {
+            "bytes": 47789,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "large-B.png",
+            "sha256": "9dfc9ddff04e3144d52303da0de15a70f05410982fbfd23801febbbfe71825d0"
+          },
+          {
+            "bytes": 45978,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "large-C.png",
+            "sha256": "8613b720c912aafc053b45d7d1bfd373c13fae64c374e60f3f0a86d477de6ef3"
+          },
+          {
+            "bytes": 48918,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "large-D.png",
+            "sha256": "562821d7f55a0fabc69da79f620ab57fd1c40c880ebc42b618f8c279e5981b36"
+          },
+          {
+            "bytes": 48526,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "large-E.png",
+            "sha256": "3c6b394442dc499ccbd2e73b4c27b7328bb3d7b07b081d4165d130a52f51f7bd"
+          },
+          {
+            "bytes": 44484,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "large-F.png",
+            "sha256": "f351432ea3e07dd34f0b3f7e8cc3f20f1a3c5576a5dfa1c3467fdf71a5eb9ac5"
+          },
+          {
+            "bytes": 48820,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "large-G.png",
+            "sha256": "3da5fd6fa55e33f07ce7228ddf3bc310a76dfa30e26f322dc100a2f7035c7874"
+          },
+          {
+            "bytes": 47165,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "large-H.png",
+            "sha256": "1be181e86a8e0867108112414968fb0c5154646af6d456cc48a25c4c8a01b488"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Read all eight images. Transcribe each in the supplied image order, exactly one line formatted CARD <letter>: VALUE <number>. Then add three lines: MAX <letter> <value>, MIN <letter> <value>, SUM <total>. Compute these across all eight images. No other text.",
+        "repetitions": 1,
+        "sampling": null
+      }
+    ],
+    "path": "EVIDENCE_ROOT/corpus-large.json",
+    "provenance": {
+      "scope": "Eight distinct cards, ordered and reversed, independent exact OCR ordering and sum assertions.",
+      "synthetic": {
+        "license": "CC0-1.0"
+      }
+    },
+    "schema": "multimodal-corpus/v1",
+    "sha256": "8f808eef49c3d233c047904616768ce459a4015c977efe1bd6c47929eb3e8826"
+  },
+  "failed_attempts": 0,
+  "finished_at": "2026-09-18T08:44:37Z",
+  "identity": {
+    "base_url": "http://127.0.0.1:39125/v1",
+    "engine_build_ref": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+    "engine_revision": null,
+    "hardware": "2x RTX PRO 6000 Max-Q 96GB TP2",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r9-vision8-nospec",
+    "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "runtime_image": "verdictai/glm53-flash-exl3-k4@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "served_models": [
+      "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r9-vision8-nospec"
+    ]
+  },
+  "passed": true,
+  "passed_attempts": 1,
+  "requests": 1,
+  "run_id": "multimodal-20260918T084408Z",
+  "schema": "multimodal-benchmark-evidence/v1",
+  "started_at": "2026-09-18T08:44:08Z"
+}
