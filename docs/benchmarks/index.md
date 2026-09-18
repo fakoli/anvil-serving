@@ -1,14 +1,20 @@
 # Benchmarks
 
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request and real Pi acceptance. Limit now eight/request; no concurrent eight-image soak.
+
+
+**2026-09-18 capability update:** [GLM EXL3 vision enabled](../findings/2026-09-18-glm53-vision.md): 10/10 synthetic image attempts, routed OCR and real Pi acceptance; eight images/request. Configured 327K retained, with 260K retrieval passing on retry after an initial refusal. Earlier quality and speed figures below belong to the text-only configuration.
+
+
 Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-09-15 UTC.**
+configuration and retained evidence. **Evidence reviewed: 2026-09-18 UTC.**
 
-## Latest published decision
+## September 14 quality and performance baseline
 
 <div class="bench-recipe" markdown="1">
 
-**Selected text and tool profile · Dual RTX PRO 6000**
+**Previously selected text and tool profile · Dual RTX PRO 6000**
 
 ### GLM-5.3-Flash · EXL3 4 bpw · speculation off
 
@@ -22,7 +28,7 @@ selected this configuration after bounded quality, context, and client tests.
 | Quality / agentic / repository tasks | 90/100 fixed MMLU-Pro sample · 30/30 agentic · 4/5 SWE tasks |
 | Controlled requests / decode | 120/120 · 38.91 tok/s median per request at C4 |
 
-**Limits:** text only; no exhaustive intelligence ranking, prolonged soak,
+**Limits of this baseline:** tested text only; no exhaustive intelligence ranking, prolonged soak,
 reboot, or simultaneous full-window proof. These are dated local results,
 not a live status display or an automatic model-selection policy.
 

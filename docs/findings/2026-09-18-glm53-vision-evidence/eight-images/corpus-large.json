@@ -1,0 +1,94 @@
+{
+  "schema": "multimodal-corpus/v1",
+  "provenance": {
+    "synthetic": {
+      "license": "CC0-1.0"
+    },
+    "scope": "Eight distinct cards, ordered and reversed, independent exact OCR ordering and sum assertions."
+  },
+  "cases": [
+    {
+      "id": "eight-images-large",
+      "modality": "image",
+      "media": [
+        {
+          "path": "large-A.png",
+          "mime": "image/png",
+          "sha256": "c9504138a9213677cb7e67189e015793edb5f55cbadf4fc476fb933aa309ee29"
+        },
+        {
+          "path": "large-B.png",
+          "mime": "image/png",
+          "sha256": "9dfc9ddff04e3144d52303da0de15a70f05410982fbfd23801febbbfe71825d0"
+        },
+        {
+          "path": "large-C.png",
+          "mime": "image/png",
+          "sha256": "8613b720c912aafc053b45d7d1bfd373c13fae64c374e60f3f0a86d477de6ef3"
+        },
+        {
+          "path": "large-D.png",
+          "mime": "image/png",
+          "sha256": "562821d7f55a0fabc69da79f620ab57fd1c40c880ebc42b618f8c279e5981b36"
+        },
+        {
+          "path": "large-E.png",
+          "mime": "image/png",
+          "sha256": "3c6b394442dc499ccbd2e73b4c27b7328bb3d7b07b081d4165d130a52f51f7bd"
+        },
+        {
+          "path": "large-F.png",
+          "mime": "image/png",
+          "sha256": "f351432ea3e07dd34f0b3f7e8cc3f20f1a3c5576a5dfa1c3467fdf71a5eb9ac5"
+        },
+        {
+          "path": "large-G.png",
+          "mime": "image/png",
+          "sha256": "3da5fd6fa55e33f07ce7228ddf3bc310a76dfa30e26f322dc100a2f7035c7874"
+        },
+        {
+          "path": "large-H.png",
+          "mime": "image/png",
+          "sha256": "1be181e86a8e0867108112414968fb0c5154646af6d456cc48a25c4c8a01b488"
+        }
+      ],
+      "prompt": "Read all eight images. Transcribe each in the supplied image order, exactly one line formatted CARD <letter>: VALUE <number>. Then add three lines: MAX <letter> <value>, MIN <letter> <value>, SUM <total>. Compute these across all eight images. No other text.",
+      "assertions": [
+        {
+          "type": "ordered_casefold",
+          "values": [
+            "CARD A",
+            "17",
+            "CARD B",
+            "42",
+            "CARD C",
+            "9",
+            "CARD D",
+            "63",
+            "CARD E",
+            "28",
+            "CARD F",
+            "51",
+            "CARD G",
+            "34",
+            "CARD H",
+            "76"
+          ]
+        },
+        {
+          "type": "contains_casefold",
+          "value": "320"
+        },
+        {
+          "type": "contains_casefold",
+          "value": "MAX H 76"
+        },
+        {
+          "type": "contains_casefold",
+          "value": "MIN C 9"
+        }
+      ],
+      "repetitions": 1
+    }
+  ]
+}

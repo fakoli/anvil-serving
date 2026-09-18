@@ -1,0 +1,289 @@
+{
+  "base_url": "http://127.0.0.1:39125/v1",
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "image"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "42917"
+  ],
+  "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r9-vision8-nospec",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nThat's it \u2014 Python's built-in `sum()` does exactly this. For example:\n\n```python\nxs = [1, 2, 3, 4]\ntotal = sum(xs)  # 10\n```\n\nIf you want it as a reusable one-line function:\n\n```python\ndef total(xs): return sum(xs)\n```\n\nOr, if you're avoiding built-ins for some reason (e.g., an exercise):\n\n```python\nfunctools.reduce(lambda acc, x: acc + x, xs, 0)\n```",
+      "content_chars": 375,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nThat's it \u2014 Python's built-in `sum()` does exactly this. For example:\n\n```python\nxs = [1, 2, 3, 4]\ntotal = sum(xs)  # 10\n```\n\nIf you want it as a reusable one-line function:\n\n``",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 600,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most idiomatic way is:\n\n```python\nsum(xs)\n```\n\nThat's it. But maybe they want it as a lambda o",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 3.986,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 277,
+        "prompt_tokens": 28,
+        "prompt_tokens_details": null,
+        "total_tokens": 305
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 183,
+      "reasoning_excerpt": "The user wants me to return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose. This is a simple, direct request. I should just output the JSON object exactly as specified.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 0.797,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 53,
+        "prompt_tokens": 30,
+        "prompt_tokens_details": null,
+        "total_tokens": 83
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 6.813,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 2,
+      "seconds": 6.849,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 6.897,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 3,
+      "seconds": 6.925,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "event_count": 37,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 123,
+      "reasoning_excerpt": "The user wants to know the weather in Oakland. I have a get_weather tool available. Let me call it with the city \"Oakland\".",
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "seconds": 6.091,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 42,
+        "prompt_tokens": 166,
+        "total_tokens": 208
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 123,
+      "reasoning_excerpt": "The user wants to know the weather in Oakland. I have a get_weather tool available. Let me call it with the city \"Oakland\".",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 0.677,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 42,
+        "prompt_tokens": 166,
+        "prompt_tokens_details": null,
+        "total_tokens": 208
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "OAKLAND 72F",
+      "content_chars": 11,
+      "content_excerpt": "OAKLAND 72F",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 151,
+      "reasoning_excerpt": "The user wants me to reply exactly \"OAKLAND 72F\" using the tool result. The tool result showed Oakland at 72\u00b0F, sunny. They want an exact reply format.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 0.796,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 47,
+        "prompt_tokens": 70,
+        "prompt_tokens_details": null,
+        "total_tokens": 117
+      },
+      "validation_detail": "tool result retained"
+    },
+    {
+      "content": "# Image Description\n\nThis image shows a **status display screen** with a dark navy background and three lines of text in different colors:\n\n## Key Information\n\n| Element | Value | Color |\n|---------|-------|-------|\n| **Status** | ANVIL READY | Green |\n| **Code** | 42917 | White |\n| **Temperature** | 42 \u00b0C | Light blue |\n\n## Interpretation\n\nThis appears to be a **machine or equipment status readout**, likely from an industrial system, forge, or monitoring interface:\n\n- **\"ANVIL READY\"** (in green) \u2014 indicates the equipment/anvil is operational and in a ready state. The green color typically signals a normal/positive status.\n- **\"CODE 42917\"** (in white) \u2014 likely an identification number, batch code, job reference, or system code.\n- **\"TEMPERATURE 42 C\"** (in light blue) \u2014 a current temperature reading of 42\u00b0C (approximately 108\u00b0F), which is warm but not extreme for industrial equipment.\n\nThe clean, high-contrast design suggests this is a digital dashboard or HMI (Human-Machine Interface) display meant to be read at a glance.",
+      "content_chars": 1040,
+      "content_excerpt": "# Image Description\n\nThis image shows a **status display screen** with a dark navy background and three lines of text in different colors:\n\n## Key Information\n\n| Element | Value | Color |\n|---------|-",
+      "expected": [
+        "42917"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 658,
+      "reasoning_excerpt": "The user wants me to inspect this image and describe what it shows, reporting the most important labels, values, and status.\n\nThe image shows:\n- A dark navy/dark blue background\n- Green text at top: \"",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 10.854,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 403,
+        "prompt_tokens": 333,
+        "prompt_tokens_details": null,
+        "total_tokens": 736
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "4.0s got=\"```python\\nsum(xs)\\n```\\n\\nThat's it \u2014 Python's built-\" finish='stop' visible=375 reasoning_chars=600 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=183 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "4/4 clean (sample: 6.8s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=81 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x4",
+      "passed": true
+    },
+    {
+      "detail": "6.1s done=True events=37 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "1.5s tool result retained finish='stop' visible=11 reasoning_chars=151 reasoning_tokens=None",
+      "name": "tool-result continuation",
+      "passed": true
+    },
+    {
+      "detail": "10.9s all expected text present finish='stop' visible=1040 reasoning_chars=658 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

@@ -1,0 +1,14 @@
+**Transcription of the image:**
+
+> ANVIL READY
+>
+> CODE 42917
+>
+> TEMPERATURE 42 C
+
+Details:
+- **ANVIL READY** — large bold green text, centered
+- **CODE 42917** — large bold white text, centered
+- **TEMPERATURE 42 C** — medium bold blue text, centered
+
+All text appears on a dark navy background with no other visible elements.

@@ -1,0 +1,37 @@
+{
+  "schema": "anvil-serving.benchmark-summary/v1",
+  "date": "2026-09-18",
+  "evidence_labels": [
+    "functional"
+  ],
+  "decision_labels": [
+    "current"
+  ],
+  "promotion_authorized": true,
+  "authorization": "User explicitly requested enabling vision on the existing model.",
+  "image_attempts": 10,
+  "image_passed": 10,
+  "direct_checks": 7,
+  "routed_checks": 4,
+  "tool_batch_passed": 20,
+  "configured_context": 327680,
+  "image_limit": 8,
+  "video_limit": 0,
+  "limitations": [
+    "Synthetic image corpus; no broad visual quality ranking.",
+    "No full-window concurrent soak or reboot test.",
+    "Long-context and image cells overlapped; no performance comparison claimed.",
+    "Local Pi catalog sync blocked by existing 16384-token compaction reserve; existing image-capable local model record passed real Pi image smoke.",
+    "Packaged native CLI lacks recipe RAM containment; boot unit explicitly uses containment-capable workspace CLI.",
+    "259922-input-token synthetic launch-code retrieval refused as sensitive; 231045-token retrieval and 110760-token tool check passed. Retry of the same 259922-token fixture passed; no causal isolation of the earlier refusal."
+  ],
+  "long_context_retry": {
+    "passed": true,
+    "actual_prompt_tokens": 259922,
+    "seconds": 58.902,
+    "earlier_attempt": "refusal",
+    "causation": "Unknown; user reported an overlapping request; retry passed."
+  },
+  "initial_image_limit": 1,
+  "eight_image_followup": "eight-images/summary.json"
+}

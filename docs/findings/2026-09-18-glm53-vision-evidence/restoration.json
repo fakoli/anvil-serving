@@ -1,0 +1,24 @@
+{
+  "schema": "anvil-serving.restoration/v1",
+  "starting_state": "r7 text-only no-spec EXL3 primary",
+  "ending_state": "r9 eight-image vision no-spec EXL3 primary",
+  "restoration_required": false,
+  "reason": "User-authorized vision activation retained after passing direct and routed acceptance.",
+  "rollback": "Exact preceding r8 one-image recipe, router and boot unit retained privately.",
+  "post_run": {
+    "running": true,
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 791,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "router_ready": true,
+    "unit_active": true,
+    "unit_enabled": true,
+    "reboot_tested": false,
+    "mini_repeat_changed": []
+  }
+}
