@@ -1,13 +1,13 @@
 # Benchmark run catalog
 
-**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request and real Pi acceptance. Limit now eight/request; no concurrent eight-image soak.
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
 ## 2026-09-18 vision acceptance
 
 | Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
 |---|---|---|---|---|---|---|
-| 2026-09-18 | Eight-image comparison and OCR | GLM EXL3 r9 vision8, FP8 KV, no speculation, configured 327K/C4 | 2x RTX PRO 6000 Blackwell Max-Q | Four ordinary comparisons, one high-resolution request, six preflight checks and real Pi pass | User-authorized eight-image limit; r8 one-image rollback; no concurrency soak | [Dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) |
+| 2026-09-18 | Eight-image comparison and OCR | GLM EXL3 r9 vision8, FP8 KV, no speculation, configured 327K/C4 | 2x RTX PRO 6000 Blackwell Max-Q | Four ordinary comparisons, one high-resolution request, six direct preflight checks; matching Pi output has no correlated request provenance | User-authorized eight-image limit; r8 one-image rollback; no concurrency soak | [Dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) |
 | 2026-09-18 | Image/OCR and text/tools | GLM EXL3 r8 vision, FP8 KV, no speculation, configured 327K/C4 | 2x RTX PRO 6000 Blackwell Max-Q | Functional; 10/10 images; 260K retrieval passed on retry after initial refusal | User-authorized vision enablement; prior text profile retained | [Dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-18-glm53-vision.md) |
 
 

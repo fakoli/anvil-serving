@@ -1,9 +1,9 @@
 # Findings index
 
-**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request and real Pi acceptance. Limit now eight/request; no concurrent eight-image soak.
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
-**2026-09-18:** [GLM EXL3 vision enablement](2026-09-18-glm53-vision.md) — 10/10 image attempts, routed/Pi acceptance; 260K retrieval passed on retry; initial refusal retained.
+**2026-09-18:** [GLM EXL3 vision enablement](2026-09-18-glm53-vision.md) — 10/10 image attempts, routed acceptance and a matching Pi output transcript; 260K retrieval passed on retry; initial refusal retained.
 
 
 Dated evidence snapshots — benchmarks, live validations, and lab notebooks — that ground the

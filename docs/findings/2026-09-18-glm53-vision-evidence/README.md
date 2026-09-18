@@ -13,4 +13,4 @@ Additional negative evidence: [259,922-token retrieval refusal](context-250k.jso
 
 **User-requested retry:** the [same 259,922-token fixture passed](context-250k-retry.json) after the user reported an overlapping prompt. Both attempts are retained; concurrency causation is not established.
 
-**Later eight-image follow-up:** four ordinary-size requests and one eight-image 2520×2520 request passed, plus real Pi acceptance. The large request used 63,456 input tokens and completed in 28.17 seconds. Limit now eight/request; no simultaneous eight-image soak. [Native evidence](eight-images/eight-images.json), [large request](eight-images/eight-images-large.json), [summary](eight-images/summary.json).
+**Later eight-image follow-up:** four ordinary-size requests and one eight-image 2520×2520 request passed, with a matching Pi output transcript (uncorrelated request provenance). The large request used 63,456 input tokens and completed in 28.17 seconds. Limit now eight/request; no simultaneous eight-image soak. [Native evidence](eight-images/eight-images.json), [large request](eight-images/eight-images-large.json), [summary](eight-images/summary.json).

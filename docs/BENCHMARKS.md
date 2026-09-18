@@ -1,9 +1,9 @@
 # Benchmark results
 
-**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request and real Pi acceptance. Limit now eight/request; no concurrent eight-image soak.
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
-**2026-09-18:** [GLM EXL3 vision enablement](findings/2026-09-18-glm53-vision.md) supersedes the text-only modality decision: 10/10 image attempts and routed/Pi acceptance, with 260K retrieval passing on retry and the initial refusal retained. The r8 one-image vision recipe is the immediate rollback; older comparisons below remain dated history.
+**2026-09-18:** [GLM EXL3 vision enablement](findings/2026-09-18-glm53-vision.md) supersedes the text-only modality decision: 10/10 image attempts and routed acceptance and a matching Pi output transcript, with 260K retrieval passing on retry and the initial refusal retained. The r8 one-image vision recipe is the immediate rollback; older comparisons below remain dated history.
 
 
 > **Looking for the maintained decision view?** Start with the

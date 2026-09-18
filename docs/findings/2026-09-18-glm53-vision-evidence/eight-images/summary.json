@@ -16,7 +16,6 @@
   "large_requests_passed": 1,
   "large_actual_prompt_tokens": 63456,
   "large_seconds": 28.170199,
-  "pi_eight_images_passed": true,
   "direct_preflight_passed": true,
   "memory_events": {
     "high": 0,
@@ -31,7 +30,9 @@
     "Synthetic cards; not a broad real-world vision benchmark.",
     "No simultaneous eight-image request capacity soak.",
     "No fresh boot or reboot test.",
-    "Configured context unchanged; long-context checks belong to preceding one-image recipe."
+    "Configured context unchanged; long-context checks belong to preceding one-image recipe.",
+    "Pi transcript is output only; attachment count, router path and served identity lack correlated request provenance."
   ],
-  "rollback": "Prior one-image vision recipe retained."
+  "rollback": "Prior one-image vision recipe retained.",
+  "pi_eight_card_output_observed": true
 }

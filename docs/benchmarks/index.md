@@ -1,9 +1,9 @@
 # Benchmarks
 
-**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request and real Pi acceptance. Limit now eight/request; no concurrent eight-image soak.
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
-**2026-09-18 capability update:** [GLM EXL3 vision enabled](../findings/2026-09-18-glm53-vision.md): 10/10 synthetic image attempts, routed OCR and real Pi acceptance; eight images/request. Configured 327K retained, with 260K retrieval passing on retry after an initial refusal. Earlier quality and speed figures below belong to the text-only configuration.
+**2026-09-18 capability update:** [GLM EXL3 vision enabled](../findings/2026-09-18-glm53-vision.md): 10/10 synthetic image attempts, routed OCR and matching Pi output (uncorrelated request provenance); eight images/request. Configured 327K retained, with 260K retrieval passing on retry after an initial refusal. Earlier quality and speed figures below belong to the text-only configuration.
 
 
 Compare local models by useful context, quality, and serving performance.

@@ -1,9 +1,9 @@
 # RTX PRO 6000 benchmark view
 
-**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request and real Pi acceptance. Limit now eight/request; no concurrent eight-image soak.
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
-**2026-09-18 update:** [GLM EXL3 vision](../../findings/2026-09-18-glm53-vision.md) passed 10/10 synthetic image attempts plus routed/Pi acceptance on this GPU pair. Configured 327K/C4 retained; 260K retrieval passed on retry after an initial refusal. No new speed or broad quality ranking. The prior text-only record below is historical.
+**2026-09-18 update:** [GLM EXL3 vision](../../findings/2026-09-18-glm53-vision.md) passed 10/10 synthetic image attempts plus routed acceptance and a matching Pi output transcript on this GPU pair. Configured 327K/C4 retained; 260K retrieval passed on retry after an initial refusal. No new speed or broad quality ranking. The prior text-only record below is historical.
 
 
 **2026-09-14 update:** [GLM Flash EXL3 r7 no-spec](../../findings/2026-09-13-intelligence-context-scout.md) was the selected September 14 text-only lane: 327,680 total tokens with a 65,536-token output reserve at C4, 90/100 one-pass MMLU-Pro, agentic 30/30, SWE 4/5, strict120 120/120, and 9/9 post-promotion 258K-class context. The one matched no-spec C4 population measured 38.908 tok/s median decode. This is not an exhaustive intelligence ranking, a general speed claim, or proof of concurrent full-window capacity; fresh boot/reboot coverage is absent. Earlier deployment descriptions below are historical.

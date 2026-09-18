@@ -1,13 +1,13 @@
 # GLM-5.3-Flash
 
-**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request and real Pi acceptance. Limit now eight/request; no concurrent eight-image soak.
+**Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
 <!-- benchmark-dossier/v2 -->
 
 ## Current status and review date
 
-**2026-09-18 update:** [Bounded vision acceptance](../../findings/2026-09-18-glm53-vision.md) passed 10/10 image attempts and routed/Pi checks with unchanged 4-bpw weights, FP8 KV and disabled speculation. Eight images/request; configured 327K/C4 retained. A 259,922-token synthetic retrieval passed on retry after an initial refusal; this is not a full-window soak. The following September 14 snapshot remains the prior text-only evidence.
+**2026-09-18 update:** [Bounded vision acceptance](../../findings/2026-09-18-glm53-vision.md) passed 10/10 image attempts and routed checks and a matching Pi output transcript with unchanged 4-bpw weights, FP8 KV and disabled speculation. Eight images/request; configured 327K/C4 retained. A 259,922-token synthetic retrieval passed on retry after an initial refusal; this is not a full-window soak. The following September 14 snapshot remains the prior text-only evidence.
 
 !!! info "Decision snapshot"
 
