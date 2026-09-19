@@ -194,6 +194,13 @@ anvil-serving harness sync clients \
 It authenticates using the environment variable named by `--api-key-env`,
 cross-checks `/v1/router/status` against `/v1/models/capabilities`, and refuses
 to write unless every routed tier declares both context and maximum output.
+For promotion provisioning, pass `--expected-config-sha256` from the approved
+runtime router receipt. This is the effective `/router/status` hash, not the
+raw router file SHA-256. A malformed or mismatched binding fails before client
+writes; the hash is checked again after planning and immediately before apply.
+Retain a post-apply dry-run for every declared host. Server batch size is not a
+client output limit.
+
 The command preserves provider credentials, unrelated client configuration,
 and existing compaction policies; it verifies that compaction reserves fit the
 smallest selected model context. With `--hermes-profiles all`, every discovered
@@ -459,3 +466,5 @@ untouched. Each planned subprocess is attempted once with a 15-second timeout.
 - [OpenClaw integration specification](../OPENCLAW-INTEGRATION-SPEC.md)
 - [Operator playbooks](../OPERATOR-PLAYBOOKS.md)
 - [Device topologies](../DEVICE-TOPOLOGIES.md)
+
+Promotion reconciliation can add `--align-compaction-reserve` to raise declared Pi/OpenClaw reserves to the largest routed output budget. It preserves enabled/mode and recent-token policies, never lowers a reserve, and still rejects a budget that cannot fit the context. Without this flag, incompatible reserves remain an error.

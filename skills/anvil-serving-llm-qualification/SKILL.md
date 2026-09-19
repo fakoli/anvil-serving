@@ -75,7 +75,12 @@ for unresolved material decisions, and budget one synthesis.
     backing identity, `context_limit_tokens`, `max_output_tokens`, reasoning,
     or modality contract, client propagation is a required qualification
     closure gate even when the request did not mention clients.
-16. For client-facing changes on Companion Node, use
+16. Every approved promotion must also pass the all-host provisioning and
+    rebuild-snapshot gate in `skills/anvil-serving-release-readiness/SKILL.md`,
+    even when advertised limits are unchanged. Record source bindings,
+    inventory coverage and repeat convergence; missing coverage is
+    `harness_convergence_pending`, not completed promotion.
+    For client-facing changes on Companion Node, use
     `converge-mini-vision-clients` when installed; otherwise enforce the same
     closure directly. Reconcile Hermes, Pi, and OpenClaw from one authenticated
     router snapshot. Enumerate

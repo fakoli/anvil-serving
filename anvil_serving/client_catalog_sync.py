@@ -303,6 +303,7 @@ def _validate_compaction(
     models: list[Mapping],
     reserve_key: str,
     recent_key: str,
+    align_reserve: bool = False,
 ) -> None:
     if label == "OpenClaw" and compaction.get("mode") != "safeguard":
         raise ClientCatalogError("OpenClaw compaction mode must remain safeguard")
@@ -332,6 +333,11 @@ def _validate_compaction(
             )
     max_output = max(model["max_output_tokens"] for model in models)
     min_context = min(model["context_window"] for model in models)
+    if align_reserve and reserve_declared and reserve < max_output:
+        # Explicit promotion policy raises only headroom; retain enabled/mode/recent.
+        compaction[reserve_key] = reserve = max_output
+        if label == "OpenClaw" and "reserveTokensFloor" in compaction:
+            compaction["reserveTokensFloor"] = max(compaction["reserveTokensFloor"], reserve)
     if reserve_declared and reserve < max_output:
         raise ClientCatalogError(
             "%s compaction reserve must be at least the largest selected max output" % label
@@ -343,7 +349,7 @@ def _validate_compaction(
         )
 
 
-def _render_openclaw_document(catalog: Mapping, openclaw: Mapping) -> dict:
+def _render_openclaw_document(catalog: Mapping, openclaw: Mapping, *, align_compaction_reserve: bool = False) -> dict:
     models = catalog.get("models")
     if not isinstance(models, Mapping):
         raise ClientCatalogError("catalog models are invalid")
@@ -410,6 +416,7 @@ def _render_openclaw_document(catalog: Mapping, openclaw: Mapping) -> dict:
         models=compaction_models,
         reserve_key="reserveTokens",
         recent_key="keepRecentTokens",
+        align_reserve=align_compaction_reserve,
     )
     return rendered_openclaw
 
@@ -421,6 +428,7 @@ def _render_pi_documents(
     *,
     base_url: str,
     api_key_env: str,
+    align_compaction_reserve: bool = False,
 ) -> tuple[dict, dict]:
     models = catalog.get("models")
     if not isinstance(models, Mapping):
@@ -488,6 +496,7 @@ def _render_pi_documents(
         models=[models[alias] for alias in pi_aliases],
         reserve_key="reserveTokens",
         recent_key="keepRecentTokens",
+        align_reserve=align_compaction_reserve,
     )
     return rendered_pi_models, rendered_pi_settings
 
@@ -1718,6 +1727,8 @@ def sync_clients(
     dry_run: bool = True,
     confirm: bool = False,
     timeout_seconds: int = 15,
+    expected_config_sha256: str | None = None,
+    align_compaction_reserve: bool = False,
     environ: Mapping[str, str] | None = None,
     opener=None,
     restart: Callable[[], int] | None = None,
@@ -1728,6 +1739,11 @@ def sync_clients(
     """Reconcile selected Mini clients from one authenticated router snapshot."""
     selected_clients = _normalize_clients(clients)
     environ = os.environ if environ is None else environ
+    if expected_config_sha256 is not None:
+        if (not isinstance(expected_config_sha256, str)
+                or len(expected_config_sha256) != 64
+                or any(c not in "0123456789abcdef" for c in expected_config_sha256)):
+            raise ClientCatalogError("expected_config_sha256 must be a lowercase SHA-256")
     catalog = fetch_client_catalog(
         base_url=base_url,
         api_key_env=api_key_env,
@@ -1735,6 +1751,9 @@ def sync_clients(
         environ=environ,
         opener=opener,
     )
+    if expected_config_sha256 is not None:
+        if catalog["config_sha256"] != expected_config_sha256:
+            raise ClientCatalogError("router configuration differs from the approved promotion")
     paths = {
         "openclaw": Path(os.path.expanduser(openclaw_config)),
         "hermes": Path(os.path.expanduser(hermes_config)),
@@ -1751,7 +1770,7 @@ def sync_clients(
         current_openclaw = _read_json_file(paths["openclaw"])
         openclaw_secret_env_name = _openclaw_secret_env_name(current_openclaw)
         desired["openclaw"] = _json_bytes(
-            _render_openclaw_document(catalog, current_openclaw)
+            _render_openclaw_document(catalog, current_openclaw, align_compaction_reserve=align_compaction_reserve)
         )
         paths["openclaw_env"] = paths["openclaw"].parent / ".env"
         desired["openclaw_env"] = _render_openclaw_state_env(
@@ -1793,6 +1812,7 @@ def sync_clients(
             catalog,
             _read_json_file(paths["pi_models"]),
             _read_json_file(paths["pi_settings"]),
+            align_compaction_reserve=align_compaction_reserve,
             base_url=base_url,
             api_key_env=api_key_env,
         )
@@ -1844,6 +1864,14 @@ def sync_clients(
             for row in hermes_rows
         )
     )
+    if expected_config_sha256 is not None:
+        current = _fetch_json(
+            _safe_base_url(base_url), "/router/status", token=environ[api_key_env],
+            timeout_seconds=timeout_seconds, max_bytes=DEFAULT_MAX_RESPONSE_BYTES,
+            opener=opener,
+        )
+        if current.get("config_sha256") != expected_config_sha256:
+            raise ClientCatalogError("router configuration changed before client reconciliation")
     if dry_run or not confirm:
         return _summary(
             catalog,
