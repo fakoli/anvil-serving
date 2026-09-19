@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import threading
 import time
@@ -14,8 +15,55 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from ..control_plane.mcp.runtime import _process_group_options, _terminate_process_tree
-from ..observability.dashboard.contracts import ObservatoryError, digest, identifier
+from ..observability.dashboard.contracts import ObservatoryError, digest, identifier, strict_json
 from .task_artifacts import TaskArtifacts
+
+
+class BoundedCommandFailure(ObservatoryError):
+    """A bounded command failure whose stdout is private transport data."""
+
+    def __init__(self, stdout):
+        super().__init__("project_source_unavailable", "Anvil could not complete this read.", 409)
+        self.stdout = stdout
+
+
+_READ_ERROR_MESSAGES = {
+    "projection_not_converged": ("project_projection_not_converged", "The project State projection is inconsistent. An operator must inspect State health before this plan can be read.", 409),
+    "state_unavailable": ("project_state_unavailable", "The project State source is unavailable. Retry after it is restored.", 503),
+    "schema_incompatible": ("project_state_incompatible", "The project State schema is incompatible with this reader.", 409),
+    "limit_exceeded": ("project_source_too_large", "The persisted plan exceeds the configured display limit.", 413),
+    "prd_not_found": ("not_found", "The requested project plan is unavailable.", 404),
+    "content_unavailable": ("project_source_unavailable", "The persisted project plan is unavailable.", 409),
+    "source_drift": ("project_source_unavailable", "The persisted project plan binding is inconsistent.", 409),
+    "invalid_utf8": ("invalid_project_source", "The persisted project plan is not valid UTF-8 text.", 503),
+}
+_GENERIC_ERROR_MESSAGES = {
+    "permission_denied": ("project_permission_denied", "You do not have permission to read this project plan.", 403),
+    "unauthorized": ("project_permission_denied", "You do not have permission to read this project plan.", 403),
+    "forbidden": ("project_permission_denied", "You do not have permission to read this project plan.", 403),
+    "missing_capability": ("project_read_unsupported", "This configured Anvil source does not support plan reads.", 503),
+    "capability_unavailable": ("project_read_unsupported", "This configured Anvil source does not support plan reads.", 503),
+    "unknown_command": ("project_read_unsupported", "This configured Anvil source does not support plan reads.", 503),
+}
+
+
+def project_read_error(raw):
+    """Translate only bounded, schema-known failures to public messages."""
+    fallback = ObservatoryError("project_source_unavailable", "Anvil could not complete this read.", 409)
+    if type(raw) is not bytes or len(raw) > 4 * 1024 * 1024:
+        return fallback
+    try:
+        envelope = strict_json(raw)
+    except ObservatoryError:
+        return fallback
+    if type(envelope) is not dict or envelope.get("ok") is not False:
+        return fallback
+    error = envelope.get("error")
+    if type(error) is not dict or type(error.get("code")) is not str:
+        return fallback
+    mapped = (_READ_ERROR_MESSAGES if error.get("schema_id") == "anvil.state.read-error.v1"
+              else _GENERIC_ERROR_MESSAGES).get(error["code"])
+    return ObservatoryError(*mapped) if mapped else fallback
 
 
 def run_bounded(argv, *, cwd, timeout=30, limit=4 * 1024 * 1024):
@@ -52,7 +100,7 @@ def run_bounded(argv, *, cwd, timeout=30, limit=4 * 1024 * 1024):
         except subprocess.TimeoutExpired:
             raise TimeoutError() from None
         if code:
-            raise ObservatoryError("project_source_unavailable", "Anvil could not complete this operation. Check the project's State health and current claims.", 409)
+            raise BoundedCommandFailure(bytes(output))
         return bytes(output)
     finally:
         if process.poll() is None or reader.is_alive():
@@ -80,17 +128,25 @@ class Projects:
         return project
 
     def cli(self, project, *args):
-        raw = self.run([project["anvil_binary"], *args, "--cwd", project["checkout"]], cwd=project["checkout"])
+        try:
+            raw = self.run([project["anvil_binary"], *args, "--cwd", project["checkout"]], cwd=project["checkout"])
+        except BoundedCommandFailure as failure:
+            raise project_read_error(failure.stdout) from None
         # `packet --format json` emits a bounded file-notice before its JSON.
         if args[0] == "packet":
             raw = raw[raw.find(b"{"):]
         try:
-            result = json.loads(raw)
-        except (ValueError, TypeError):
+            result = strict_json(raw)
+        except ObservatoryError:
             raise ObservatoryError("invalid_project_source", "Anvil returned an unsupported response.", 503) from None
+        if type(result) is not dict:
+            raise ObservatoryError("invalid_project_source", "Anvil returned an unsupported response.", 503)
         if result.get("ok") is False:
-            raise ObservatoryError("project_source_unavailable", "Anvil State needs attention before this operation can proceed.", 409)
-        return result.get("data", result)
+            raise project_read_error(raw)
+        data = result.get("data", result)
+        if type(data) is not dict:
+            raise ObservatoryError("invalid_project_source", "Anvil returned an unsupported response.", 503)
+        return data
 
     @staticmethod
     def public_project(project):
@@ -122,7 +178,11 @@ class Projects:
         data = self.cli(project, "prd", "show", identifier(prd_id), "--json", "--limit", "2097152")
         if (data.get("schema_id") != "anvil.state.prd-content.v1"
                 or type(data.get("content")) is not str
-                or len(data["content"].encode("utf-8")) > 2097152):
+                or len(data["content"].encode("utf-8")) > 2097152
+                or type(data.get("source_digest")) is not str
+                or not re.fullmatch(r"[0-9a-f]{64}", data["source_digest"])
+                or type(data.get("prd_revision")) is not int
+                or data["prd_revision"] < 1):
             raise ObservatoryError("invalid_project_source", "Anvil returned an unsupported plan document.", 503)
         return {key: data[key] for key in ("content", "source_digest", "prd_revision") if key in data}
 

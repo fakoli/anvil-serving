@@ -6,7 +6,7 @@ import pytest
 
 from anvil_serving.observability.dashboard.access import Access
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
-from anvil_serving.workbench_app.projects import Projects, run_bounded
+from anvil_serving.workbench_app.projects import BoundedCommandFailure, Projects, run_bounded
 from anvil_serving.workbench_app.store import PrivateStore
 from anvil_serving.workbench_app.pi_sessions import PiTaskBinding
 from anvil_serving.workbench_app.task_artifacts import TaskArtifacts, TaskArtifactSandbox
@@ -231,6 +231,39 @@ def test_process_timeout_and_output_bounds(tmp_path):
     assert time.monotonic() - start < 2
     with pytest.raises(ValueError):
         run_bounded([sys.executable, "-c", "print('x'*10000)"], cwd=tmp_path, limit=100)
+
+
+def test_nonzero_structured_plan_failure_is_typed_and_redacted(tmp_path, projects):
+    import sys
+    raw = b'{"ok":false,"error":{"schema_id":"anvil.state.read-error.v1","code":"projection_not_converged","message":"DO_NOT_EXPOSE_PRIVATE_DETAILS"}}'
+    with pytest.raises(BoundedCommandFailure) as failure:
+        run_bounded([sys.executable, "-c", "import sys; sys.stdout.buffer.write(" + repr(raw) + "); sys.exit(1)"], cwd=tmp_path)
+    assert raw not in failure.value.args
+    assert "DO_NOT_EXPOSE" not in str(failure.value)
+    assert "DO_NOT_EXPOSE" not in repr(failure.value)
+    adapter, _, _ = projects
+    adapter.run = lambda *_args, **_kwargs: (_ for _ in ()).throw(failure.value)
+    with pytest.raises(ObservatoryError) as error:
+        adapter.prd(identity(), "product", "feature")
+    assert error.value.code == "project_projection_not_converged"
+    assert "DO_NOT_EXPOSE" not in error.value.message
+
+
+@pytest.mark.parametrize("raw", [b"not-json", b"[]", b'{"ok":false,"error":[]}', b'{"ok":false,"error":{"schema_id":"anvil.state.read-error.v1","code":"private_error"}}', b"x" * (4 * 1024 * 1024 + 1)])
+def test_unrecognized_plan_failures_stay_generic(projects, raw):
+    adapter, _, _ = projects
+    adapter.run = lambda *_args, **_kwargs: (_ for _ in ()).throw(BoundedCommandFailure(raw))
+    with pytest.raises(ObservatoryError) as error:
+        adapter.prd(identity(), "product", "feature")
+    assert error.value.code == "project_source_unavailable"
+
+
+def test_malformed_success_envelopes_are_rejected(projects):
+    adapter, _, _ = projects
+    adapter.run = lambda *_args, **_kwargs: b"[]"
+    with pytest.raises(ObservatoryError) as error:
+        adapter.prd(identity(), "product", "feature")
+    assert error.value.code == "invalid_project_source"
 
 
 def test_plan_content_uses_supported_scoped_bounded_cli(projects):

@@ -203,6 +203,20 @@ fs.mkdirSync(output, { recursive: true });
     await page
       .getByRole("button", { name: "Review experiment", exact: true })
       .waitFor();
+    await nav("Anvil work");
+    await page.getByRole("button", { name: "Read plan", exact: true }).click();
+    await page.getByText("Persisted revision 1", { exact: false }).waitFor();
+    await page.getByRole("navigation", { name: "Plan outline", exact: true }).getByRole("link", { name: "Acceptance", exact: true }).click();
+    await page.getByText("Persisted revision 1", { exact: false }).waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("plan"), "workspace");
+    assert.equal(new URL(page.url()).searchParams.get("plan-section"), "acceptance");
+    await page.reload();
+    await page.getByText("Persisted revision 1", { exact: false }).waitFor();
+    receipts.journeys.push("persisted plan outline and deep link survive reload");
+    await nav("Workbench");
+    await page
+      .getByRole("tabpanel", { name: "Overview", exact: true })
+      .waitFor();
     await page.setViewportSize({ width: 390, height: 844 });
     await capture("workbench-mobile");
     assert.ok(

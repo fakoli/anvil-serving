@@ -4,6 +4,23 @@ import { piChatView } from "./pi_chat.js";
 import { renderedMarkdown } from "./documentation.js";
 
 const entries = (value) => Array.isArray(value) ? value : [];
+const planLink = (projectId, planId, sectionId) => {
+  const url = new URL(location.href);
+  url.hash = route("work", projectId);
+  if (planId) url.searchParams.set("plan", planId);
+  else url.searchParams.delete("plan");
+  if (sectionId) url.searchParams.set("plan-section", sectionId);
+  else url.searchParams.delete("plan-section");
+  return url;
+};
+const planError = (error) => ({
+  project_projection_not_converged: "The State reader reported an inconsistent projection. An operator must inspect State health before this plan can be read.",
+  project_state_unavailable: "The project State source is unavailable. Retry after it is restored.",
+  project_state_incompatible: "This State reader is incompatible with the project schema.",
+  project_source_too_large: "The persisted plan exceeds the display limit.",
+  project_permission_denied: "You do not have permission to read this project plan.",
+  project_read_unsupported: "This configured Anvil source does not support plan reads.",
+}[error.code] || error.message || "The project plan could not be read.");
 
 export async function projectWorkView(ctx, projectId, taskId, tab = "overview") {
   const root = el("div", { class: "workbench-page stack", "data-story": "US-WORK-01" });
@@ -20,16 +37,21 @@ export async function projectWorkView(ctx, projectId, taskId, tab = "overview") 
     const taskList = el("div", { class: "stack" });
     const planReader = el("div", { class: "stack", role: "region", "aria-label": "Selected project plan" });
     let selectedPlan = null;
-    async function readPlan(prd) {
+    async function readPlan(prd, sectionId) {
       selectedPlan = prd.id;
+      history.replaceState(null, "", planLink(selected.id, prd.id, sectionId));
       planReader.replaceChildren(notice("Loading the persisted project plan…"));
       try {
         const document = await workbenchRequest(`projects/${encodeURIComponent(selected.id)}/prds/${encodeURIComponent(prd.id)}`, { signal: ctx.signal, timeout: 30000 });
         if (ctx.signal.aborted || selectedPlan !== prd.id) return;
-        planReader.replaceChildren(section(prd.title || prd.id, button("Close plan", () => { selectedPlan = null; planReader.replaceChildren(); }, "quiet-button")),
-          el("span", { class: "meta", text: `Persisted revision ${document.prd_revision} · ${document.source_digest?.slice(0, 12) || "Digest unavailable"}` }), renderedMarkdown(document.content));
+        const rendered = renderedMarkdown(document.content);
+        const headings = [...rendered.querySelectorAll("[data-anchor]")];
+        const outline = headings.length ? el("nav", { class: "actions", "aria-label": "Plan outline" }, headings.map(item => el("a", { href: planLink(selected.id, prd.id, item.dataset.anchor).href, text: item.textContent }))) : null;
+        planReader.replaceChildren(section(prd.title || prd.id, button("Close plan", () => { selectedPlan = null; history.replaceState(null, "", planLink(selected.id)); planReader.replaceChildren(); }, "quiet-button")),
+          el("div", { class: "actions" }, el("span", { class: "meta", text: `Persisted revision ${document.prd_revision} · ${document.source_digest.slice(0, 12)}` }), el("a", { href: planLink(selected.id, prd.id).href, text: "Plan link" })), outline, rendered);
         prdFilter.value = prd.id; draw();
-      } catch (error) { if (!ctx.signal.aborted && selectedPlan === prd.id) planReader.replaceChildren(notice(error.message, "danger")); }
+        if (sectionId) headings.find(item => item.dataset.anchor === sectionId)?.scrollIntoView({ block: "start" });
+      } catch (error) { if (!ctx.signal.aborted && selectedPlan === prd.id) planReader.replaceChildren(notice(planError(error), "danger"), button("Retry plan read", () => readPlan(prd, sectionId), "secondary-button")); }
     }
     function draw() {
       const visible = tasks.filter(task => !prdFilter.value || task.id.startsWith(`${prdFilter.value}:`));
@@ -38,6 +60,8 @@ export async function projectWorkView(ctx, projectId, taskId, tab = "overview") 
     root.append(el("section", { class: "panel stack" }, section("Project plans"), entries(data.prds).length ? table(["Plan", "State", ""], entries(data.prds).map(prd => [prd.title || prd.id, badge(prd.status), button("Read plan", () => readPlan(prd), "quiet-button")])) : empty("This project has no PRDs.")), planReader,
       el("section", { class: "panel stack" }, section("Open tasks"), field("Filter by plan", prdFilter), taskList));
     draw();
+    const linkedPlan = entries(data.prds).find(prd => prd.id === new URL(location.href).searchParams.get("plan"));
+    if (linkedPlan) readPlan(linkedPlan, new URL(location.href).searchParams.get("plan-section"));
     if (data.truncated) root.append(notice("Showing the first 200 open tasks. Narrow the project in Anvil to inspect additional work.", "warning"));
     return root;
   }
