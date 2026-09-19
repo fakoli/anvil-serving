@@ -10,10 +10,11 @@
         "published": null
       },
       "observed_at": "2026-09-19T22:52:44.859536+00:00",
-      "age_class": "observed-current; publication age unknown",
+      "age_class": "current",
       "evidence_type": "local-measurement",
       "hardware_runtime_relevance": "Same 48 GiB Apple host; baseline only",
-      "decision_impact": "Disk arithmetic fits; peak model memory remains unknown"
+      "decision_impact": "Disk arithmetic fits; peak model memory remains unknown",
+      "age_basis": "Same-day pinned repository/source or live observation; publication date is separate and may be unknown."
     },
     {
       "id": "mlx-conversion",
@@ -23,10 +24,11 @@
         "published": null
       },
       "observed_at": "2026-09-19T22:52:44.859536+00:00",
-      "age_class": "observed-current; publication age unknown",
+      "age_class": "current",
       "evidence_type": "conversion-metadata",
       "hardware_runtime_relevance": "Selected Apple MLX package",
-      "decision_impact": "12-file package total and conversion identity; not resident memory"
+      "decision_impact": "12-file package total and conversion identity; not resident memory",
+      "age_basis": "Same-day pinned repository/source or live observation; publication date is separate and may be unknown."
     },
     {
       "id": "mlx-streaming",
@@ -36,10 +38,11 @@
         "published": null
       },
       "observed_at": "2026-09-19T22:52:44.859536+00:00",
-      "age_class": "observed-current; publication age unknown",
+      "age_class": "current",
       "evidence_type": "official-runtime-source",
       "hardware_runtime_relevance": "Exact selected MLX runtime",
-      "decision_impact": "No completed tool-call and result-ingress session contract observed"
+      "decision_impact": "No completed tool-call and result-ingress session contract observed",
+      "age_basis": "Same-day pinned repository/source or live observation; publication date is separate and may be unknown."
     },
     {
       "id": "mlx-tokenizer-loader",
@@ -49,10 +52,11 @@
         "published": null
       },
       "observed_at": "2026-09-19T22:52:44.859536+00:00",
-      "age_class": "observed-current; publication age unknown",
+      "age_class": "current",
       "evidence_type": "official-runtime-source",
       "hardware_runtime_relevance": "Exact selected MLX loader",
-      "decision_impact": "Base tokenizer resolution does not consume recorded revision"
+      "decision_impact": "Base tokenizer resolution does not consume recorded revision",
+      "age_basis": "Same-day pinned repository/source or live observation; publication date is separate and may be unknown."
     },
     {
       "id": "official-model",
@@ -62,10 +66,11 @@
         "published": null
       },
       "observed_at": "2026-09-19T22:52:44.859536+00:00",
-      "age_class": "observed-current; publication age unknown",
+      "age_class": "current",
       "evidence_type": "official-model-metadata",
       "hardware_runtime_relevance": "Official CUDA path; not the tested MLX runtime",
-      "decision_impact": "Observed official revision is distinct from conversion parent"
+      "decision_impact": "Observed official revision is distinct from conversion parent",
+      "age_basis": "Same-day pinned repository/source or live observation; publication date is separate and may be unknown."
     }
   ]
 }

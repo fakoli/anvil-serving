@@ -39,8 +39,8 @@
       "files": [
         {
           "path": "source-registry.json",
-          "sha256": "6a214ad44636caeee6bd09b5a5a4183fba814ffdd622b56492e143453dfe1047",
-          "bytes": 3123
+          "sha256": "18feb9ba6d62e3f2065b66e86284571db32647ed2d0cb01bf08e00d6ee683cc8",
+          "bytes": 3583
         },
         {
           "path": "identity-summary.json",
