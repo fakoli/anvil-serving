@@ -216,8 +216,11 @@ only establishes container properties: the input is labelled
 `supplied-content-unverified`, so retain corpus provenance separately before
 interpreting it as human speech. Supplying a WAV still measures the current
 serialized STT → LLM → TTS replay. Its structured `measurement_scope` records
-`serialized-stage-replay`, `first-TTS-response-byte`, `realtime=false`, and
-`acoustic_playback=false`; `ttfa_ms` is not an audible playback measurement.
+`serialized-stage-replay`, `first-nonempty-yielded-TTS-chunk`,
+`realtime=false`, and `acoustic_playback=false`. `ttfa_ms` is `null` when TTS
+yields no audio, and otherwise records the first nonempty chunk yielded after
+any stage-side buffering; it is not a first-response-byte or audible-playback
+measurement.
 Without these two options, the command retains compatibility by using a
 220-Hz synthetic tone. Its input identity says `synthetic-tone-not-speech` and
 `not-qualifying`; it is only a wire-path smoke, never speech-baseline evidence.

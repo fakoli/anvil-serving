@@ -9,8 +9,9 @@ injectable ``transport``/``stream_fn`` seams those stages use, and reports
 four numbers:
 
 * ``ttfa_ms`` -- wall-clock time from the start of turn processing to the
-  FIRST synthesized audio byte coming back from TTS (i.e. through STT text +
-  the first LLM output, all the way to the first TTS chunk).
+  first nonempty TTS chunk yielded by the configured stage. This is an
+  observation after any stage-side buffering, not a first-response-byte or
+  audible-playback measurement. It is ``null`` when TTS yields no audio.
 * ``turn_latency_ms`` -- wall-clock time from turn start through the LAST
   synthesized audio chunk.
 * ``stt_wer`` -- word-error-rate of the STT hypothesis against a reference
@@ -58,7 +59,7 @@ MAX_INPUT_WAV_SECONDS = 30.0
 MAX_INPUT_WAV_BYTES = 1_048_576
 MEASUREMENT_SCOPE = {
     "kind": "serialized-stage-replay",
-    "ttfa_clock_endpoint": "first-TTS-response-byte",
+    "ttfa_clock_endpoint": "first-nonempty-yielded-TTS-chunk",
     "realtime": False,
     "acoustic_playback": False,
 }
@@ -601,7 +602,7 @@ def run_benchmark(
             total_audio_bytes += len(chunk)
     t_end = clock()
 
-    ttfa_ms = ((first_audio_time if first_audio_time is not None else t_end) - t0) * 1000.0
+    ttfa_ms = (first_audio_time - t0) * 1000.0 if first_audio_time is not None else None
     turn_latency_ms = (t_end - t0) * 1000.0
     stt_ms = (t_stt_end - t0) * 1000.0
     llm_ms = (t_llm_end - t_llm_start) * 1000.0
@@ -630,7 +631,7 @@ def run_benchmark(
         input["reference_text_sha256"] = hashlib.sha256(reference.encode("utf-8")).hexdigest()
 
     result: Dict[str, Any] = {
-        "ttfa_ms": round(ttfa_ms, 2),
+        "ttfa_ms": round(ttfa_ms, 2) if ttfa_ms is not None else None,
         "turn_latency_ms": round(turn_latency_ms, 2),
         "total_turn_latency_ms": round(turn_latency_ms, 2),
         "stt_ms": round(stt_ms, 2),

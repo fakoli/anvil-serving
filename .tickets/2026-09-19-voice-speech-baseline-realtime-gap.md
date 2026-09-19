@@ -12,8 +12,9 @@ sample and endpoint-path latency evidence when the input is recorded speech.
 
 The command does not feed audio through a Realtime session, capture emitted
 audio through an output device, or measure acoustic playback. `ttfa_ms` is
-therefore time to the first TTS response byte in the serialized replay, not an
-audible time-to-first-audio claim.
+therefore time to the first nonempty TTS chunk yielded after any stage-side
+buffering in the serialized replay. It is `null` when no audio is yielded, and
+is neither a first-response-byte nor an audible time-to-first-audio claim.
 
 ## Follow-up
 

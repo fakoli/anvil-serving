@@ -278,8 +278,11 @@ def test_run_benchmark_tts_rtf_is_none_when_no_audio_produced():
         stt_config=STTStageConfig(), llm_config=LLMStageConfig(), tts_config=TTSStageConfig(),
         pcm=b"\x00\x00", sample_rate=16000, reference_text="a",
         stt_stream_fn=fake_stt, llm_stream_fn=fake_llm, tts_stream_fn=fake_tts,
-        clock=lambda: 0.0,
+        clock=_clock_sequence([0.0, 0.1, 0.2, 1.0]),
     )
+    assert result["ttfa_ms"] is None
+    assert result["turn_latency_ms"] == 1000.0
+    assert result["total_turn_latency_ms"] == 1000.0
     assert result["tts_rtf"] is None
     assert result["tts_first_audio_observed"] is False
     assert result["tts_output_bytes"] == 0
@@ -311,6 +314,64 @@ def test_run_benchmark_does_not_count_zero_byte_tts_chunk_as_audio():
     assert result["tts_output_bytes"] == 0
     assert result["tts_first_audio_observed"] is False
     assert result["tts_rtf"] is None
+
+
+def test_run_benchmark_ttfa_is_first_yielded_chunk_after_stage_buffering():
+    current_time = [0.0]
+
+    def fake_stt(pcm, sample_rate, config):
+        current_time[0] = 0.1
+        yield ("a", True)
+
+    def fake_llm(text, config):
+        current_time[0] = 0.2
+        yield "b"
+
+    class BufferedTTSResponse:
+        status = 200
+
+        def __init__(self):
+            self.closed = False
+            self.read_sizes = []
+            self.first_response_byte_time_ms = 300.0
+
+        def read(self, size):
+            self.read_sizes.append(size)
+            if len(self.read_sizes) == 1:
+                # `stream_speech` has not yielded while its response read is
+                # buffered, even though an upstream byte was available at 300 ms.
+                current_time[0] = 0.8
+                return b"\x00\x00"
+            current_time[0] = 1.0
+            return b""
+
+        def close(self):
+            self.closed = True
+
+    response = BufferedTTSResponse()
+    transport_calls = []
+
+    def tts_transport(url, *, data, headers, timeout):
+        transport_calls.append((url, data, headers, timeout))
+        return response
+
+    result = run_benchmark(
+        stt_config=STTStageConfig(),
+        llm_config=LLMStageConfig(),
+        tts_config=TTSStageConfig(source_sample_rate=16000, chunk_bytes=2),
+        pcm=b"\x00\x00", sample_rate=16000, reference_text="a",
+        stt_stream_fn=fake_stt, llm_stream_fn=fake_llm, tts_transport=tts_transport,
+        clock=lambda: current_time[0],
+    )
+
+    assert result["ttfa_ms"] == 800.0
+    assert result["ttfa_ms"] != response.first_response_byte_time_ms
+    assert result["turn_latency_ms"] == 1000.0
+    assert response.read_sizes == [2, 2]
+    assert response.closed is True
+    assert len(transport_calls) == 1
+    assert result["measurement_scope"]["ttfa_clock_endpoint"] == "first-nonempty-yielded-TTS-chunk"
+    assert result["evidence"]["measurement_scope"] == result["measurement_scope"]
 
 
 def test_run_benchmark_sends_sentence_chunks_to_tts():
