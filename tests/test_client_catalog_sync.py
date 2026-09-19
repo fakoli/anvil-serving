@@ -1588,3 +1588,20 @@ def test_explicit_reserve_alignment_preserves_policy_and_requires_capacity(tmp_p
     settings["compaction"]["keepRecentTokens"] = 1_048_576
     with pytest.raises(ClientCatalogError, match="fit"):
         _render_pi_documents(catalog, models, settings, align_compaction_reserve=True, **kwargs)
+
+
+def test_openclaw_reserve_alignment_is_monotonic_and_preserves_policy(tmp_path):
+    from anvil_serving.client_catalog_sync import fetch_client_catalog, _render_openclaw_document
+    _write_inputs(tmp_path)
+    catalog = fetch_client_catalog(base_url="https://router.example.ts.net/v1",
+        environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=_Opener(*_catalog()))
+    original = json.loads((tmp_path / "openclaw.json").read_text())
+    policy = original["agents"]["defaults"]["compaction"]
+    policy.update(reserveTokens=1, reserveTokensFloor=1)
+    updated = _render_openclaw_document(catalog, original, align_compaction_reserve=True)
+    aligned = updated["agents"]["defaults"]["compaction"]
+    assert aligned == {**policy, "reserveTokens": 8192, "reserveTokensFloor": 8192}
+    assert policy["reserveTokens"] == 1
+    policy.update(reserveTokens=50_000, reserveTokensFloor=55_000)
+    unchanged = _render_openclaw_document(catalog, original, align_compaction_reserve=True)
+    assert unchanged["agents"]["defaults"]["compaction"] == policy
