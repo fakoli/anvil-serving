@@ -106,6 +106,20 @@ installed CLI only as a verified fallback.
    sync dry-run for each host with the same approved router hash. Record exact
    observed context/output/reasoning/modality values and required service reloads;
    new catalog files alone do not prove an existing session has reloaded them.
+   Include Open WebUI when it is a declared harness. Reconcile its Anvil-backed
+   aliases from the same approved router catalog, including output limits and
+   vision metadata. Model discovery alone is insufficient: grant authenticated
+   users read access to every approved alias, preserve existing write grants,
+   private presets and unrelated provider connections, and verify the catalog
+   through the regular-user HTTP path. Keep account admission and gateway
+   authentication intact. Require repeat reconciliation with no changes and
+   install the approved contract for the scheduled writer. A stale router
+   generation must fail before writes and must never certify convergence.
+   For an explicitly requested WebUI upgrade, pin the official release digest,
+   retain a consistent database backup and prior image/configuration, update
+   only the declared WebUI service, and verify sign-in and chat through the
+   operator's normal gateway. An upgrade or healthy admin session alone does
+   not prove regular-user model access.
    Server batch tokens/concurrency belong to recipe/startup provisioning, not Pi
    client output settings. Preserve selected providers, credentials, compaction,
    sessions and unrelated settings. Do not install an absent harness or restart
