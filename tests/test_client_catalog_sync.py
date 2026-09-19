@@ -503,7 +503,8 @@ def test_config_hash_restart_is_retried_once_and_drift_is_repaired(tmp_path):
         restart_on_change=True,
     )
     assert repaired["changed"] == ["openclaw"]
-    assert restarts == ["restart"]
+    assert repaired["openclaw_restarted"] is True
+    assert restarts == ["restart", "restart"]
 
 
 def test_openclaw_state_env_rotation_is_durable_and_preserves_unrelated_entries(
