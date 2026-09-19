@@ -1,0 +1,13 @@
+--- a/tests/workbench/test_pi_official_smoke.py
++++ b/tests/workbench/test_pi_official_smoke.py
+@@ -50,6 +50,10 @@
+     model = {"id": "fixture-a", "reasoning": True, "contextWindow": 32768, "maxTokens": 1024}
+     (agent / "models.json").write_text(json.dumps({"providers": {"local-fixture": {"baseUrl": f"http://127.0.0.1:{server.server_port}/v1", "api": "openai-completions", "apiKey": "$FIXTURE_API_TOKEN", "models": [model, model | {"id": "fixture-b"}]}}}))
+     env = {"PATH": os.environ["PATH"], "HOME": str(tmp_path), "PI_CODING_AGENT_DIR": str(agent), "FIXTURE_API_TOKEN": "non-secret-fixture"}
++    # Node's Windows CSPRNG initialization requires the system directory.
++    # Preserve only that OS prerequisite, not the caller's credentials/config.
++    if os.name == "nt":
++        env["SystemRoot"] = os.environ["SystemRoot"]
+     clients = []
+ 
+     def start(identity, *, fork=None, selected="fixture-a", thinking="low"):

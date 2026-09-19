@@ -1,0 +1,82 @@
+--- a/docs/cli/models.md
++++ b/docs/cli/models.md
+@@ -37,7 +37,7 @@
+ | See models already on this host | `models sync --dry-run` | Apply with `--confirm`, then inspect `model-library/INDEX.md`. |
+ | Download a Hugging Face model | `models pull REPO --dry-run` | Apply with `--confirm`. |
+ | Find a known working serve configuration | `models recipes list` | Inspect it with `models recipes show MODEL`. |
+-| Discover recipe-loaded containers | `models recipes running` | Select an unambiguous model or exact container for status, logs, or unload. |
++| Discover recipe-loaded containers | `models recipes running` | Select an unambiguous model or exact container for status, logs, stop, start, or unload. |
+ | Replace the deployed Primary recipe | `models recipes list` | Choose a row that activates `primary`, inspect it, then preview `serves switch primary MODEL --dry-run`. |
+ | Add or revise an operator recipe | `models recipes create|update ... --dry-run` | Apply with `--confirm`; retain the numbered backup. |
+ | Start a candidate without changing routing | `models recipes load MODEL --container NAME --dry-run` | Apply, run `eval preflight`, then review a `serves switch`. |
+@@ -60,6 +60,8 @@
+ | `models recipes load` | Start a named local container from one recipe. |
+ | `models recipes status` | Inspect one exact recipe-loaded candidate container. |
+ | `models recipes logs` | Read bounded logs from one exact recipe-loaded candidate container. |
++| `models recipes stop` | Stop and retain one exact recipe-loaded candidate container. |
++| `models recipes start` | Restart one retained candidate and wait for healthy state. |
+ | `models recipes unload` | Remove one exact recipe-loaded candidate container. |
+ | `models cache inventory` | Record a read-only model-cache and Docker storage inventory. |
+ | `models cache remove` | Plan or remove one exact cached repository revision. |
+@@ -249,10 +251,11 @@
+ `load` labels the candidate with its exact recipe model, revision, canonical
+ recipe digest, source-registry digest, and native-offload classification.
+ Legacy containers that predate the digest labels remain discoverable from the
+-required Anvil ownership and model labels. Status, logs, and unload recheck the
+-full immutable Docker container ID before acting; logs and removal use that ID,
+-not the reusable name. A mistyped name, reused name, or same-name replacement
+-therefore fails closed instead of silently targeting another container.
++required Anvil ownership and model labels. Status, logs, stop, start, and unload
++recheck the full immutable Docker container ID before acting; every lifecycle
++mutation uses that ID, not the reusable name. A mistyped name, reused name, or
++same-name replacement therefore fails closed instead of silently targeting
++another container.
+ 
+ ```bash
+ anvil-serving models recipes running
+@@ -261,6 +264,10 @@
+ anvil-serving models recipes status MODEL --container my-candidate --registry ./serve-recipes.local.toml
+ anvil-serving models recipes logs MODEL --container my-candidate --registry ./serve-recipes.local.toml --tail 200
+ anvil-serving models recipes logs MODEL --container my-candidate --tail 500 --contains ERROR --contains "KV cache"
++anvil-serving models recipes stop MODEL --container my-candidate --dry-run
++anvil-serving models recipes stop MODEL --container my-candidate --confirm
++anvil-serving models recipes start MODEL --container my-candidate --operation-timeout 600 --dry-run
++anvil-serving models recipes start MODEL --container my-candidate --operation-timeout 600 --confirm
+ anvil-serving models recipes unload MODEL --container my-candidate --registry ./serve-recipes.local.toml --dry-run
+ anvil-serving models recipes unload MODEL --container my-candidate --registry ./serve-recipes.local.toml --confirm
+ ```
+@@ -273,10 +280,32 @@
+ credentials, or endpoint addresses. Exited retained candidates are included.
+ Missing or malformed identities and non-Anvil containers are excluded.
+ 
+-When one discovered container matches, `status`, `logs`, and `unload` no longer
++When one discovered container matches, `status`, `logs`, `stop`, `start`, and `unload` no longer
+ require its name to be recovered out of band or its recipe to remain in the
+ currently selected registry. Two matching containers fail closed and require
+-an exact `--container`. An unload without a current recipe treats a missing
++an exact `--container`. `stop` retains the exact container configuration and
++prints the paired `start` recovery command. `start` is idempotent for an already
++healthy container and otherwise waits up to `--operation-timeout` seconds for
++the retained container to report running and healthy through a declared Docker
++healthcheck. Missing healthchecks and terminal exit states fail closed; use
++managed `load` for HTTP-only health recipes. The deadline bounds Docker calls
++as well as polling; after a timeout inspect status before retrying because the
++daemon may have completed the operation. Native KV offload requires managed
++unload/load preparation and cannot be restarted through this retained-container
++path. Verify startup preparation is restart-idempotent before using it.
++Retained restart is a conservative isolated-recovery path: preview and apply
++refuse active managed exclusive ownership, any other active device-owning
++Docker container, missing NVIDIA telemetry, or more than 1,024 MiB baseline
++use on any GPU. Co-residency uses manifest-owned `serves` admission instead.
++An already recorded non-model GPU client, such as a Windows camera utility,
++may remain through explicit repeatable `--baseline-compute-pid PID`. Verify its
++identity before declaring it; never exempt a newly discovered model process.
++This allowance does not waive the memory or Docker-owner checks. MCP uses
++`baseline_compute_pids`, bound into its preview fingerprint. Omitted MCP
++registries for status/load/unload follow the same registry defaults as the CLI.
++The typed MCP `recipe_manage` surface exposes the same stop/start guards;
++apply requires confirmation and the preview's exact inventory fingerprint.
++An unload without a current recipe treats a missing
+ native-offload label conservatively and invokes the existing twice-verified,
+ exact-path shared-memory cleanup guard after removal.
+ 

@@ -1,0 +1,103 @@
+--- /dev/null
++++ b/anvil_serving/docker_disk_copy.py
+@@ -0,0 +1,100 @@
++"""Copy one detached Docker Desktop data disk and independently hash the copy."""
++import argparse
++import hashlib
++import json
++import os
++from pathlib import Path
++import shutil
++import subprocess
++import time
++
++from . import docker_disk, guard
++from .docker_disk_adopt import _offline_disk
++
++
++def copy_disk(source, destination, *, confirm=False, dry_run=False,
++              runner=subprocess.run, progress=None):
++    if not docker_disk._is_windows():
++        raise ValueError("Docker Desktop data disk copying is Windows-only")
++    source, source_vhd, identity = _offline_disk(source, runner=runner)
++    target = Path(destination)
++    if not target.is_absolute() or target.parts[-2:] != ("disk", "docker_data.vhdx"):
++        raise ValueError("destination must be an absolute disk/docker_data.vhdx path")
++    if os.path.lexists(target) or target.resolve() != target.absolute():
++        raise ValueError("destination must be absent and must not traverse a link")
++    parent = target.parent
++    existing_parent = parent
++    while not existing_parent.exists():
++        existing_parent = existing_parent.parent
++    required = identity[2] + 1024**3
++    if shutil.disk_usage(existing_parent).free < required:
++        raise ValueError("destination lacks disk-size plus 1 GiB headroom")
++    result = {"schema": "docker-data-disk-copy/v1", "outcome": "preview", "applied": False,
++              "source": str(source), "destination": str(target), "bytes": identity[2],
++              "source_retained": True, "docker_desktop_status": "stopped"}
++    if dry_run or not confirm:
++        return result
++    if _offline_disk(source, runner=runner)[2] != identity:
++        raise ValueError("source changed before copying")
++    parent.mkdir(parents=True, exist_ok=True)
++    partial = target.with_name(target.name + ".anvil-copying")
++    source_hash = hashlib.sha256()
++    copied = 0
++    last_notice = time.monotonic()
++    with source.open("rb") as src, partial.open("xb") as dst:
++        while chunk := src.read(16 * 1024**2):
++            dst.write(chunk)
++            source_hash.update(chunk)
++            copied += len(chunk)
++            if progress and time.monotonic() - last_notice >= 15:
++                progress("copy", copied, identity[2])
++                last_notice = time.monotonic()
++        dst.flush()
++        os.fsync(dst.fileno())
++    if copied != identity[2] or _offline_disk(source, runner=runner)[2] != identity:
++        raise ValueError("source changed while copying; partial copy retained")
++    target_hash = hashlib.sha256()
++    verified = 0
++    with partial.open("rb") as dst:
++        while chunk := dst.read(16 * 1024**2):
++            target_hash.update(chunk)
++            verified += len(chunk)
++            if progress and time.monotonic() - last_notice >= 15:
++                progress("verify", verified, identity[2])
++                last_notice = time.monotonic()
++    if source_hash.digest() != target_hash.digest():
++        raise ValueError("full-file SHA-256 mismatch; partial copy retained")
++    if _offline_disk(source, runner=runner)[2] != identity:
++        raise ValueError("source changed during verification; partial copy retained")
++    os.rename(partial, target)
++    _, target_vhd, _ = _offline_disk(target, runner=runner)
++    if any(target_vhd[k] != source_vhd[k] for k in ("Identifier", "Size")):
++        raise ValueError("copied VHD identity mismatch; destination retained")
++    result.update(applied=True, outcome="copied-and-hash-verified", sha256=source_hash.hexdigest())
++    return result
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--source", required=True)
++    parser.add_argument("--destination", required=True)
++    parser.add_argument("--output")
++    parser.add_argument("--confirm", action="store_true")
++    parser.add_argument("--dry-run", action="store_true")
++    args = parser.parse_args(argv)
++    if args.output and Path(args.output).suffix.lower() != ".json":
++        parser.error("--output must name a JSON report, never a data disk")
++    try:
++        result = copy_disk(args.source, args.destination, dry_run=args.dry_run,
++                           confirm=args.confirm or guard.confirmation_authorized(),
++                           progress=lambda phase, done, total: print(
++                               "%s: %d / %d bytes (%.1f%%)" % (phase, done, total, done * 100 / total),
++                               flush=True))
++    except (OSError, ValueError) as exc:
++        result = {"schema": "docker-data-disk-copy/v1", "outcome": "failed", "applied": False,
++                  "error": str(exc)}
++    payload = json.dumps(result, indent=2)
++    if args.output and not args.dry_run:
++        Path(args.output).write_text(payload + "\n", encoding="utf-8")
++    print(payload)
++    return 1 if result["outcome"] == "failed" else 0

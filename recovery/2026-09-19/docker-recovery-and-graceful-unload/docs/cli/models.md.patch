@@ -1,0 +1,15 @@
+--- a/docs/cli/models.md
++++ b/docs/cli/models.md
+@@ -280,6 +280,12 @@
+ native-offload label conservatively and invokes the existing twice-verified,
+ exact-path shared-memory cleanup guard after removal.
+ 
++Candidate unload requests graceful shutdown before plain, non-forced removal.
++Docker receives `stop --timeout -1`, so it does not escalate to SIGKILL. Anvil
++bounds its CLI wait to 60 seconds; on a timeout or stop error, it leaves the
++container for status/log inspection and does not proceed to removal or cleanup.
++Already stopped containers can be removed directly. Model-cache volumes remain.
++
+ `--contains` is a case-insensitive literal filter and may be repeated; a line
+ is emitted when it contains any selected literal. Filtering happens after the
+ exact recipe/container ownership check and preserves stdout/stderr separation.

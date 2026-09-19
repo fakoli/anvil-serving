@@ -46,3 +46,7 @@ tests/fixtures/eval-data/agents-a1-v1/*.png -text
 tests/fixtures/eval-data/agents-a1-v1/*.mp4 -text
 tests/fixtures/eval-data/agents-a1-v1/cc/*.mp4 -text
 tests/fixtures/eval-data/agents-a1-v1/cc/*.webm -text
+
+# Recovery patches and manifests preserve the audited bytes across checkouts.
+recovery/2026-09-19/** -text
+recovery/2026-09-19/**/*.patch -whitespace

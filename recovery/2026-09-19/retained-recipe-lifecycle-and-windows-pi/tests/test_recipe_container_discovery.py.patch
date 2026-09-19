@@ -1,0 +1,133 @@
+--- a/tests/test_recipe_container_discovery.py
++++ b/tests/test_recipe_container_discovery.py
+@@ -285,6 +285,130 @@
+     assert "candidate" in capsys.readouterr().out
+ 
+ 
++def test_discovered_recipe_stop_retains_revalidated_immutable_container(
++    monkeypatch: pytest.MonkeyPatch,
++    capsys: pytest.CaptureFixture[str],
++) -> None:
++    selected = serve_recipes._recipe_container_record(_row("candidate"))
++    stopped = serve_recipes._recipe_container_record(
++        _row("candidate", state="exited", running=False)
++    )
++    assert selected is not None and stopped is not None
++    inventories = iter((selected, stopped))
++    monkeypatch.setattr(
++        serve_recipes,
++        "discover_recipe_containers",
++        lambda **_kwargs: {
++            "schema": serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA,
++            "containers": [next(inventories)],
++        },
++    )
++    calls = []
++
++    assert models._discovered_recipe_container_stop(
++        selected,
++        timeout_seconds=17,
++        confirm=True,
++        _run=lambda argv, **_kwargs: calls.append(argv) or _completed(argv),
++    ) == 0
++
++    assert calls == [["docker", "stop", "--time", "17", selected["container_id"]]]
++    assert "stopped recipe container" in capsys.readouterr().out
++
++
++def test_discovered_recipe_start_waits_for_same_container_to_be_healthy(
++    monkeypatch: pytest.MonkeyPatch,
++    capsys: pytest.CaptureFixture[str],
++) -> None:
++    selected = serve_recipes._recipe_container_record(
++        _row("candidate", state="exited", running=False)
++    )
++    started = serve_recipes._recipe_container_record(_row("candidate"))
++    assert selected is not None and started is not None
++    inventories = iter((selected, selected, started))
++    monkeypatch.setattr(
++        serve_recipes,
++        "discover_recipe_containers",
++        lambda **_kwargs: {
++            "schema": serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA,
++            "containers": [next(inventories)],
++        },
++    )
++    calls = []
++
++    assert models._discovered_recipe_container_start(
++        selected,
++        timeout_seconds=17,
++        confirm=True,
++        _run=lambda argv, **_kwargs: calls.append(argv) or _completed(argv),
++        _admit=lambda *a, **kw: None,
++    ) == 0
++
++    assert calls == [["docker", "start", selected["container_id"]]]
++    assert "healthy" in capsys.readouterr().out
++
++
++@pytest.mark.parametrize("action", ["stop", "start"])
++def test_recipe_restart_preview_survives_missing_registry(action, tmp_path, monkeypatch):
++    identity = serve_recipes._recipe_container_record(_row("candidate"))
++    monkeypatch.setattr(serve_recipes, "discover_recipe_containers", lambda **kw: {
++        "containers": [identity],
++    })
++    assert models._recipe_main([
++        action, "org/model", "--container", "candidate", "--registry",
++        str(tmp_path / "absent.toml"), "--dry-run",
++    ]) == 0
++
++
++@pytest.mark.parametrize("action", ["stop", "start"])
++def test_recipe_restart_known_registry_uses_full_discovered_identity(action, monkeypatch):
++    recipe = {"model": "org/model", "download": {"revision": "a" * 40},
++              "serve": {"image": "example:test"}}
++    identity = serve_recipes._recipe_container_record(_row("candidate"))
++    monkeypatch.setattr(serve_recipes, "load_registry", lambda *a, **kw: {"recipe": [recipe]})
++    monkeypatch.setattr(models, "_native_recipe_binding", lambda *a: None)
++    monkeypatch.setattr(models, "_recipe_container_identity", lambda *a, **kw: {
++        "container": "candidate", "model": "org/model", "revision": "a" * 40,
++        "container_id": identity["container_id"], "image_id": identity["image_digest"],
++    })
++    monkeypatch.setattr(serve_recipes, "discover_recipe_containers", lambda **kw: {
++        "containers": [identity],
++    })
++    seen = []
++    monkeypatch.setattr(models, "_discovered_recipe_container_" + action,
++                        lambda value, **kw: seen.append(value) or 0)
++    assert models._recipe_main([action, "org/model", "--container", "candidate", "--confirm"]) == 0
++    assert seen == [identity]
++
++
++@pytest.mark.parametrize("state,running,health", [
++    ("running", True, None), ("exited", False, "unhealthy"),
++])
++def test_recipe_start_never_calls_unhealthy_or_exited_state_healthy(
++    state, running, health, monkeypatch, capsys,
++):
++    identity = serve_recipes._recipe_container_record(_row("candidate"))
++    observed = {**identity, "state": state, "running": running, "health": health}
++    monkeypatch.setattr(models, "_recheck_discovered_recipe_container", lambda *a, **kw: observed)
++    rc = models._discovered_recipe_container_start(
++        identity, confirm=True, _run=lambda argv, **kw: _completed(argv),
++        _sleep=lambda _: pytest.fail("terminal or missing health must fail immediately"),
++        _admit=lambda *a, **kw: None,
++    )
++    assert rc == 1
++    assert "state is healthy" not in capsys.readouterr().out
++
++
++def test_recipe_start_refuses_offload_without_repreparation(monkeypatch):
++    identity = serve_recipes._recipe_container_record(_row("candidate", running=False, state="exited"))
++    identity["native_kv_offload"] = True
++    monkeypatch.setattr(models, "_recheck_discovered_recipe_container", lambda *a, **kw: identity)
++    with pytest.raises(serve_recipes.RecipeError, match="offload"):
++        models._discovered_recipe_container_start(
++            identity, confirm=True, _run=lambda *a, **kw: pytest.fail("must not start"),
++        )
++
++
+ def test_discovered_recipe_logs_read_revalidated_immutable_id(
+     monkeypatch: pytest.MonkeyPatch,
+     capsys: pytest.CaptureFixture[str],

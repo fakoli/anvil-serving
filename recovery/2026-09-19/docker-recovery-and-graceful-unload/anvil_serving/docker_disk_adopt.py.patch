@@ -1,0 +1,142 @@
+--- /dev/null
++++ b/anvil_serving/docker_disk_adopt.py
+@@ -0,0 +1,139 @@
++"""Offline adoption of an existing Docker Desktop WSL data-disk copy.
++
++This recovery surface changes one storage setting, retains both VHDX files,
++and leaves Desktop stopped. It does not claim that matching VHD metadata is
++proof of identical contents: cache and workload verification follow restart.
++"""
++from __future__ import annotations
++
++import argparse
++from datetime import datetime, timezone
++import json
++import os
++from pathlib import Path
++import subprocess
++import tempfile
++
++from . import docker_disk, guard
++
++
++class DiskAdoptionError(ValueError):
++    """Adoption prerequisites are unavailable or inconsistent."""
++
++
++def _offline_disk(path, *, runner):
++    disk = docker_disk.validate_docker_data_disk(path)
++    state = docker_disk._powershell_json(
++        "$ErrorActionPreference='Stop'; "
++        "$v=Get-VHD -Path $env:ANVIL_SERVING_DOCKER_VHDX_PATH; "
++        "$p=@(Get-Process -Name 'Docker Desktop','com.docker.backend' "
++        "-ErrorAction SilentlyContinue); "
++        "[pscustomobject]@{Attached=[bool]$v.Attached; "
++        "Format=[string]$v.VhdFormat; Size=[int64]$v.Size; "
++        "Identifier=[string]$v.DiskIdentifier; Processes=$p.Count} "
++        "| ConvertTo-Json -Compress",
++        disk, runner=runner,
++    )
++    if not {"Attached", "Format", "Size", "Identifier", "Processes"} <= state.keys():
++        raise DiskAdoptionError("VHD inspection omitted required metadata")
++    if state["Attached"] or state["Processes"]:
++        raise DiskAdoptionError("stop Docker Desktop cleanly and wait for both disks to detach")
++    if state["Format"] != "VHDX" or not state["Identifier"] or int(state["Size"]) <= 0:
++        raise DiskAdoptionError("invalid VHDX identity")
++    stat = disk.stat()
++    return disk, state, (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
++
++
++def _settings_file(path):
++    candidate = Path(path)
++    if not candidate.is_absolute() or candidate.name != "settings-store.json":
++        raise DiskAdoptionError("select an absolute Docker settings-store.json path")
++    if candidate.is_symlink() or not candidate.is_file():
++        raise DiskAdoptionError("settings must be an existing plain file")
++    if candidate.resolve() != candidate.absolute():
++        raise DiskAdoptionError("settings path must not traverse a link")
++    raw = candidate.read_bytes()
++    if len(raw) > 1024 * 1024:
++        raise DiskAdoptionError("settings file exceeds the bounded size")
++    data = json.loads(raw)
++    if not isinstance(data, dict) or data.get("SettingsVersion") != 45:
++        raise DiskAdoptionError("only the inspected Docker settings schema 45 is supported")
++    return candidate, raw, data
++
++
++def adopt_disk(source, target, settings, *, confirm=False, dry_run=False,
++               runner=subprocess.run):
++    """Select a copied disk after offline checks; preserve source and settings backup."""
++    if not docker_disk._is_windows():
++        raise DiskAdoptionError("Docker Desktop WSL disk adoption is Windows-only")
++    source_path, source_vhd, source_identity = _offline_disk(source, runner=runner)
++    target_path, target_vhd, target_identity = _offline_disk(target, runner=runner)
++    if source_path == target_path or source_identity[:2] == target_identity[:2]:
++        raise DiskAdoptionError("source and target must be distinct files")
++    if any(source_vhd[k] != target_vhd[k] for k in ("Size", "Identifier")):
++        raise DiskAdoptionError("source and target VHD identities do not match")
++    if source_identity[2] != target_identity[2]:
++        raise DiskAdoptionError("copied disk file size differs from source")
++    if source_path.name != "docker_data.vhdx" or target_path.name != "docker_data.vhdx":
++        raise DiskAdoptionError("adoption supports the current disk/docker_data.vhdx layout")
++    config, raw, data = _settings_file(settings)
++    source_root, target_root = source_path.parent.parent, target_path.parent.parent
++    previous = data.get("CustomWslDistroDir")
++    if previous and Path(previous).resolve() != source_root:
++        raise DiskAdoptionError("configured storage differs from the selected source")
++    result = {
++        "schema": "docker-data-disk-adoption/v1", "applied": False,
++        "outcome": "preview", "source": str(source_path), "target": str(target_path),
++        "setting": "CustomWslDistroDir", "target_root": str(target_root),
++        "source_retained": True, "docker_desktop_status": "stopped",
++        "verification_required": "restart Desktop; verify target attached, source detached, cache and workload health",
++    }
++    if dry_run or not confirm:
++        return result
++    if _offline_disk(source_path, runner=runner)[2] != source_identity:
++        raise DiskAdoptionError("source changed during inspection")
++    if _offline_disk(target_path, runner=runner)[2] != target_identity:
++        raise DiskAdoptionError("target changed during inspection")
++    if config.read_bytes() != raw:
++        raise DiskAdoptionError("settings changed during inspection")
++    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
++    backup = config.with_name(config.name + ".anvil-adopt-" + stamp + ".bak")
++    with backup.open("xb") as stream:
++        stream.write(raw)
++        stream.flush()
++        os.fsync(stream.fileno())
++    data["CustomWslDistroDir"] = str(target_root)
++    descriptor, temporary = tempfile.mkstemp(prefix=".anvil-disk-", dir=config.parent)
++    try:
++        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
++            json.dump(data, stream, indent=2)
++            stream.write("\n")
++            stream.flush()
++            os.fsync(stream.fileno())
++        if config.read_bytes() != raw:
++            raise DiskAdoptionError("settings changed before replacement")
++        os.replace(temporary, config)
++    finally:
++        if os.path.exists(temporary):
++            os.unlink(temporary)
++    result.update(applied=True, outcome="configured-pending-restart", settings_backup=str(backup))
++    return result
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--source", required=True)
++    parser.add_argument("--destination", required=True)
++    parser.add_argument("--settings", required=True)
++    parser.add_argument("--confirm", action="store_true")
++    parser.add_argument("--dry-run", action="store_true")
++    args = parser.parse_args(argv)
++    try:
++        result = adopt_disk(args.source, args.destination, args.settings,
++                            confirm=args.confirm or guard.confirmation_authorized(),
++                            dry_run=args.dry_run)
++    except (OSError, ValueError) as exc:
++        result = {"schema": "docker-data-disk-adoption/v1", "applied": False,
++                  "outcome": "refused", "error": str(exc)}
++    print(json.dumps(result, indent=2))
++    return 1 if result["outcome"] == "refused" else 0

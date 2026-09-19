@@ -1,0 +1,21 @@
+--- a/anvil_serving/workbench_app/pi_rpc.py
++++ b/anvil_serving/workbench_app/pi_rpc.py
+@@ -116,6 +116,18 @@
+ 
+ def _default_read_chunk(process: ProcessLike, maximum: int) -> bytes:
+     stream = process.stdout
++    if os.name == "nt":
++        # WinSock select cannot poll subprocess pipes. Peek without consuming
++        # and read only the available bytes, preserving the non-blocking API.
++        import _winapi
++        import msvcrt
++
++        try:
++            descriptor = stream.fileno()
++            available, _remaining = _winapi.PeekNamedPipe(msvcrt.get_osfhandle(descriptor), 0)
++            return os.read(descriptor, min(maximum, available)) if available else b""
++        except (OSError, ValueError, TypeError):
++            return b""
+     try:
+         ready, _, _ = select.select([stream], [], [], 0)
+     except (OSError, ValueError, TypeError):

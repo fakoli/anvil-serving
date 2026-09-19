@@ -1,0 +1,11 @@
+--- a/tests/test_mcp_foundations.py
++++ b/tests/test_mcp_foundations.py
+@@ -22,7 +22,7 @@
+ 
+ 
+ PUBLIC_CATALOG_SHA256 = (
+-    "72f954d3c37d5561ae116167efd9a54fb89e7de46ea1b16c6d042fbaee21bd77"
++    "71f533afbe45707d15d58dda75612e15cdd1c27c2acc7bb163cbca21ca6935bc"
+ )
+ HANDLER_MAP_SHA256 = (
+     "dc25ef88f384ee53b0747a8f1fbd9b31f991bc0151de25d2eeaab469da5d1b5b"

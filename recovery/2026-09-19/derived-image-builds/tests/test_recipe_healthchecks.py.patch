@@ -1,0 +1,166 @@
+--- /dev/null
++++ b/tests/test_recipe_healthchecks.py
+@@ -0,0 +1,163 @@
++import json
++from types import SimpleNamespace
++
++import pytest
++
++from anvil_serving import models
++from anvil_serving import serve_recipes
++
++
++@pytest.fixture(params=["llamacpp", "vllm"])
++def engine_recipe(request):
++    return {
++        "model": "example/%s-model" % request.param,
++        "serve": {
++            "engine": request.param,
++            "image": "example/%s-runtime:1" % request.param,
++            "port": 30002,
++        },
++    }
++
++
++def _inspect(recipe, *, container_health, docker_test):
++    row = {
++        "Config": {
++            "Image": recipe["serve"]["image"],
++            "Labels": {
++                "io.anvil-serving.managed-by": "models-recipes",
++                "io.anvil-serving.recipe.model": recipe["model"],
++            },
++            "Healthcheck": {"Test": docker_test},
++        },
++        "Image": "sha256:runtime",
++        "State": {
++            "Status": "running",
++            "Running": True,
++            "Health": {"Status": container_health},
++        },
++    }
++
++    def run(argv, **_kwargs):
++        assert argv == ["docker", "inspect", "candidate"]
++        return SimpleNamespace(returncode=0, stdout=json.dumps([row]), stderr="")
++
++    return run
++
++
++def test_recipe_without_healthcheck_inherits_image_behavior(engine_recipe):
++    argv = serve_recipes.docker_run_argv(engine_recipe, container="candidate")
++
++    assert "--health-cmd" not in argv
++    assert serve_recipes.resolved_healthcheck(engine_recipe) is None
++
++
++def test_recipe_healthcheck_overrides_image_with_validated_http_probe(engine_recipe):
++    engine_recipe["serve"]["startup_timeout_seconds"] = 2400
++    engine_recipe["serve"]["healthcheck"] = {
++        "mode": "http",
++        "port": 39038,
++        "path": "/health",
++        "interval_seconds": 15,
++        "timeout_seconds": 4,
++        "retries": 5,
++    }
++
++    argv = serve_recipes.docker_run_argv(engine_recipe, container="candidate")
++
++    assert argv[argv.index("--health-cmd") + 1] == (
++        "curl --fail --silent --show-error http://127.0.0.1:39038/health"
++    )
++    assert argv[argv.index("--health-interval") + 1] == "15s"
++    assert argv[argv.index("--health-timeout") + 1] == "4s"
++    assert argv[argv.index("--health-start-period") + 1] == "2400s"
++    assert argv[argv.index("--health-retries") + 1] == "5"
++    assert argv.index("--health-cmd") < argv.index(engine_recipe["serve"]["image"])
++
++
++@pytest.mark.parametrize(
++    ("healthcheck", "error"),
++    [
++        ({"mode": "tcp", "port": 39038, "path": "/health"}, "mode"),
++        ({"mode": "http", "port": 0, "path": "/health"}, "port"),
++        ({"mode": "http", "port": 39038, "path": "health"}, "path"),
++        ({"mode": "http", "port": 39038, "path": "/health;env"}, "path"),
++        (
++            {"mode": "http", "port": 39038, "path": "/health", "command": "env"},
++            "unsupported field",
++        ),
++    ],
++)
++def test_invalid_healthcheck_fails_before_docker(engine_recipe, healthcheck, error):
++    engine_recipe["serve"]["healthcheck"] = healthcheck
++
++    with pytest.raises(serve_recipes.RecipeError, match=error):
++        serve_recipes.docker_run_argv(engine_recipe, container="candidate")
++
++
++@pytest.mark.parametrize(
++    ("container_health", "endpoint_code", "ready"),
++    [("healthy", 200, True), ("unhealthy", None, False)],
++)
++def test_recipe_status_separates_container_health_and_endpoint_readiness(
++    engine_recipe,
++    container_health,
++    endpoint_code,
++    ready,
++):
++    engine_recipe["serve"]["healthcheck"] = {
++        "mode": "http",
++        "port": 39038,
++        "path": "/healthz",
++    }
++    docker_test = [
++        "CMD-SHELL",
++        "curl --fail --silent --show-error http://127.0.0.1:39038/healthz",
++    ]
++
++    status = models._recipe_container_status(
++        engine_recipe,
++        "candidate",
++        _run=_inspect(
++            engine_recipe,
++            container_health=container_health,
++            docker_test=docker_test,
++        ),
++        _health=lambda port, path: (
++            endpoint_code if (port, path) == (30002, "/health") else None
++        ),
++    )
++
++    assert status["container_health"] == container_health
++    assert status["container_healthcheck"] == {
++        "mode": "http",
++        "target": "http://127.0.0.1:39038/healthz",
++        "observed_target": "http://127.0.0.1:39038/healthz",
++    }
++    assert status["endpoint_readiness"] == {
++        "target": "http://127.0.0.1:30002/health",
++        "status_code": endpoint_code,
++        "ready": ready,
++    }
++
++
++def test_recipe_status_reports_inherited_container_healthcheck(engine_recipe):
++    docker_test = ["CMD", "curl", "-f", "http://127.0.0.1:8080/health"]
++
++    status = models._recipe_container_status(
++        engine_recipe,
++        "candidate",
++        _run=_inspect(
++            engine_recipe,
++            container_health="unhealthy",
++            docker_test=docker_test,
++        ),
++        _health=lambda _port, _path: 200,
++    )
++
++    assert status["container_healthcheck"] == {
++        "mode": "inherit",
++        "target": None,
++        "observed_target": "http://127.0.0.1:8080/health",
++    }
++    assert status["container_health"] == "unhealthy"
++    assert status["endpoint_readiness"]["ready"] is True

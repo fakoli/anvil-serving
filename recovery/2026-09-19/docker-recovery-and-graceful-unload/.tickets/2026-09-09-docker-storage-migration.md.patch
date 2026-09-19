@@ -1,0 +1,49 @@
+--- /dev/null
++++ b/.tickets/2026-09-09-docker-storage-migration.md
+@@ -0,0 +1,46 @@
++# Docker Desktop disk migration recovery and volume inventory
++
++Docker Desktop 4.85 on Windows copied the stopped WSL data disk to the new
++NTFS drive but treated Robocopy exit status 1 as failure and retained the old
++storage setting. The WSL UI then refused the existing destination. Source and
++destination were preserved; no force-kill or WSL shutdown was used.
++
++Upstream reports: <https://github.com/docker/desktop-feedback/issues/550> and
++<https://github.com/docker/desktop-feedback/issues/548>, observed 2026-09-09.
++Microsoft defines code 1 as successful copying:
++<https://learn.microsoft.com/windows-server/administration/windows-commands/robocopy>.
++
++Recovery work adds bounded offline copy, adoption, and service-socket recovery
++commands. Adoption uses the exact `CustomWslDistroDir` key observed in Docker's
++own migration log. The first attempt using the GUI field name was ignored and
++was removed. Settings backups, repeated detached/process checks, source
++retention and explicit post-restart verification are required.
++
++The initial Desktop copy failed containerd's bbolt database integrity check:
++`panic: assertion failed: Page expected to be: 2087, but self identifies as 0`.
++Rollback to the retained original recovered all 13 volumes and eight identical
++model repositories. A fresh copy now requires independent full-file SHA-256
++verification before adoption; matching sizes and VHD identifiers alone were
++insufficient. The fresh 436,154,138,624-byte copy passed SHA-256 verification,
++booted successfully on the new drive, and preserved all thirteen volumes and
++eight repository metadata records exactly. After candidate testing and exact
++incumbent restoration passed direct and authenticated routed checks, both
++detached duplicate VHDX files were removed using exact path whitelists and
++fresh attachment/configuration checks. The verified destination stayed attached
++and Qwen stayed healthy. This returned approximately 406 GiB to the old drive.
++Incumbent smoke, JSON, long-context needle, tools, streaming
++tools and tool-result checks all passed after restart. Cold capacity cells also
++completed successfully on the migrated disk.
++
++Desktop also failed on stale AF_UNIX sockets for inference, secrets-engine,
++vfkit, and OTel. Quarantining only exact zero-byte AF_UNIX sockets after all
++Desktop processes exited restored startup. No credentials were read or changed.
++Related upstream report: <https://github.com/docker/desktop-feedback/issues/460>.
++
++Read-only diagnosis also found Docker Engine's storage report uses `Volumes`,
++while model-cache inventory reads only `LocalVolumes`. The product reports
++zero volumes incorrectly. The compatibility parser now accepts both formats.
++Both format regressions pass. The final inventory retains all original thirteen
++volumes and eight repositories, plus the candidate cache additions; no model
++cache or Docker volume was removed. Final restoration also found no orphaned
++native KV-offload shared-memory files.

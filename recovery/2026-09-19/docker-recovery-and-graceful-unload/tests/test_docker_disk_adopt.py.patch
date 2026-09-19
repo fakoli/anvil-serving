@@ -1,0 +1,70 @@
+--- /dev/null
++++ b/tests/test_docker_disk_adopt.py
+@@ -0,0 +1,67 @@
++import json
++from pathlib import Path
++import subprocess
++
++import pytest
++
++from anvil_serving import docker_disk_adopt as adoption
++
++
++@pytest.fixture
++def disks(tmp_path, monkeypatch):
++    monkeypatch.setattr(adoption.docker_disk, "_is_windows", lambda: True)
++    paths = [tmp_path / root / "disk" / "docker_data.vhdx" for root in ("old", "new")]
++    for path in paths:
++        path.parent.mkdir(parents=True)
++        path.write_bytes(b"copied-vhd-fixture")
++    settings = tmp_path / "settings-store.json"
++    settings.write_text(json.dumps({"SettingsVersion": 45, "AutoStart": True}))
++    return *paths, settings
++
++
++def probe_runner(*, attached=False, processes=0, mismatch=False):
++    def run(argv, **kwargs):
++        target = "new" in Path(kwargs["env"]["ANVIL_SERVING_DOCKER_VHDX_PATH"]).parts
++        return subprocess.CompletedProcess(argv, 0, json.dumps({
++            "Attached": attached, "Processes": processes, "Format": "VHDX", "Size": 1024,
++            "Identifier": "different" if mismatch and target else "same-id",
++        }), "")
++    return run
++
++
++@pytest.mark.parametrize("kwargs", [{"attached": True}, {"processes": 1}, {"mismatch": True}])
++def test_adoption_refuses_active_or_unrelated_disks(disks, kwargs):
++    with pytest.raises(adoption.DiskAdoptionError):
++        adoption.adopt_disk(*disks, confirm=True, runner=probe_runner(**kwargs))
++    assert "CustomWslDistroDir" not in json.loads(disks[2].read_text())
++
++
++def test_preview_does_not_write_and_apply_preserves_originals(disks):
++    before = [p.read_bytes() for p in disks]
++    preview = adoption.adopt_disk(*disks, runner=probe_runner())
++    assert preview["outcome"] == "preview"
++    assert [p.read_bytes() for p in disks] == before
++    result = adoption.adopt_disk(*disks, confirm=True, runner=probe_runner())
++    assert result["outcome"] == "configured-pending-restart"
++    assert Path(result["settings_backup"]).read_bytes() == before[2]
++    assert [p.read_bytes() for p in disks[:2]] == before[:2]
++    settings = json.loads(disks[2].read_text())
++    assert settings["AutoStart"] is True
++    assert settings["CustomWslDistroDir"] == str(disks[1].parent.parent)
++
++
++def test_changed_target_blocks_adoption(disks, monkeypatch):
++    original = adoption._offline_disk
++    calls = 0
++
++    def changing(path, **kwargs):
++        nonlocal calls
++        calls += 1
++        if calls == 4:
++            disks[1].write_bytes(b"changed copy")
++        return original(path, **kwargs)
++
++    monkeypatch.setattr(adoption, "_offline_disk", changing)
++    with pytest.raises(adoption.DiskAdoptionError, match="target changed"):
++        adoption.adopt_disk(*disks, confirm=True, runner=probe_runner())
++    assert "CustomWslDistroDir" not in json.loads(disks[2].read_text())

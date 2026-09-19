@@ -1,0 +1,128 @@
+--- a/anvil_serving/serve_recipes.py
++++ b/anvil_serving/serve_recipes.py
+@@ -15,7 +15,8 @@
+ 
+ This module is imported by BOTH the GENERATE path (`benchmark --recipe-out`, which
+ records a recipe as a side effect of benchmarking a serve) and the READ path
+-(`models recipes list|show`, which replays a recorded recipe). No new CLI verb.
++(`models recipes list|show`, which replays a recorded recipe). CLI orchestration
++remains in ``models.py``.
+ """
+ from __future__ import annotations
+ 
+@@ -40,10 +41,81 @@
+ _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+ _ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+ _BARE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
++_HEALTHCHECK_PATH_RE = re.compile(r"^/[A-Za-z0-9._~/-]*$")
++_HEALTHCHECK_DEFAULTS = {
++    "interval_seconds": 30,
++    "timeout_seconds": 5,
++    "retries": 3,
++}
+ 
+ 
+ class RecipeError(ValueError):
+     """A recipe or recipe registry is invalid for a requested operation."""
++
++
++def _resolved_healthcheck(serve: dict) -> dict | None:
++    """Validate and normalize one bounded engine-neutral HTTP healthcheck."""
++    healthcheck = serve.get("healthcheck")
++    if healthcheck is None:
++        return None
++    if not isinstance(healthcheck, dict):
++        raise RecipeError("recipe.serve.healthcheck must be a table")
++    unknown = sorted(set(healthcheck) - {
++        "mode", "port", "path", "interval_seconds", "timeout_seconds",
++        "start_period_seconds", "retries",
++    })
++    if unknown:
++        raise RecipeError(
++            "recipe.serve.healthcheck has unsupported field(s): %s"
++            % ", ".join(unknown)
++        )
++    if healthcheck.get("mode") != "http":
++        raise RecipeError("recipe.serve.healthcheck.mode must be 'http'")
++    port = healthcheck.get("port")
++    if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
++        raise RecipeError(
++            "recipe.serve.healthcheck.port must be an integer from 1 to 65535"
++        )
++    path = healthcheck.get("path")
++    path_parts = path.split("/")[1:] if isinstance(path, str) else []
++    if (
++        not isinstance(path, str)
++        or not _HEALTHCHECK_PATH_RE.fullmatch(path)
++        or (path != "/" and any(part in {"", ".", ".."} for part in path_parts))
++    ):
++        raise RecipeError(
++            "recipe.serve.healthcheck.path must be a normalized absolute HTTP path"
++        )
++    resolved = {
++        "mode": "http",
++        "port": port,
++        "path": path,
++        **_HEALTHCHECK_DEFAULTS,
++        "start_period_seconds": serve.get("startup_timeout_seconds", 600),
++    }
++    for key in (
++        "interval_seconds", "timeout_seconds", "start_period_seconds", "retries"
++    ):
++        value = healthcheck.get(key, resolved[key])
++        upper = 100 if key == "retries" else 86400
++        if (
++            isinstance(value, bool)
++            or not isinstance(value, int)
++            or not 1 <= value <= upper
++        ):
++            raise RecipeError(
++                "recipe.serve.healthcheck.%s must be an integer from 1 to %s"
++                % (key, upper)
++            )
++        resolved[key] = value
++    resolved["target"] = "http://127.0.0.1:%s%s" % (port, path)
++    return resolved
++
++
++def resolved_healthcheck(recipe: dict) -> dict | None:
++    """Return the validated container-healthcheck contract for one recipe."""
++    validate_recipe(recipe)
++    return _resolved_healthcheck(recipe.get("serve") or {})
+ 
+ 
+ def _parse_named_volume(spec: str) -> tuple[str, str, bool]:
+@@ -323,7 +395,7 @@
+         raise RecipeError("recipe.model must be a non-empty string")
+     for key in (
+         "serve", "hardware", "measured", "fit", "download", "sources",
+-        "bakeoff", "activation",
++        "bakeoff", "activation", "image_build",
+     ):
+         if key in recipe and not isinstance(recipe[key], dict):
+             raise RecipeError("recipe.%s must be a table" % key)
+@@ -332,6 +404,7 @@
+         raise RecipeError(
+             "recipe.serve.args is unsupported; use recipe.serve.flags as an array of strings"
+         )
++    _resolved_healthcheck(serve)
+     activation = recipe.get("activation") or {}
+     for role, config in activation.items():
+         if not isinstance(role, str) or not role.strip():
+@@ -723,6 +796,16 @@
+         argv += ["--shm-size", serve["shm_size"]]
+     for ulimit in serve.get("ulimits", []):
+         argv += ["--ulimit", ulimit]
++    healthcheck = _resolved_healthcheck(serve)
++    if healthcheck:
++        argv += [
++            "--health-cmd",
++            "curl --fail --silent --show-error %s" % healthcheck["target"],
++            "--health-interval", "%ss" % healthcheck["interval_seconds"],
++            "--health-timeout", "%ss" % healthcheck["timeout_seconds"],
++            "--health-start-period", "%ss" % healthcheck["start_period_seconds"],
++            "--health-retries", str(healthcheck["retries"]),
++        ]
+     entrypoint = serve.get("entrypoint")
+     if entrypoint:
+         argv += ["--entrypoint", entrypoint[0]]

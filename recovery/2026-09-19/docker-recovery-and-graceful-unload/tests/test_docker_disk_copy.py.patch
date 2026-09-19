@@ -1,0 +1,63 @@
+--- /dev/null
++++ b/tests/test_docker_disk_copy.py
+@@ -0,0 +1,60 @@
++import hashlib
++from pathlib import Path
++
++import pytest
++
++from anvil_serving import docker_disk_copy as copying
++
++
++@pytest.fixture
++def disk(tmp_path, monkeypatch):
++    monkeypatch.setattr(copying.docker_disk, "_is_windows", lambda: True)
++    source = tmp_path / "source" / "disk" / "docker_data.vhdx"
++    source.parent.mkdir(parents=True)
++    source.write_bytes(bytes(range(256)) * 1024)
++
++    def offline(path, **kwargs):
++        path = Path(path)
++        s = path.stat()
++        return path, {"Identifier": "same-disk", "Size": 1024**3}, (
++            s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns)
++
++    monkeypatch.setattr(copying, "_offline_disk", offline)
++    return source, tmp_path / "destination" / "disk" / "docker_data.vhdx"
++
++
++def test_copy_preserves_original_and_hashes_all_bytes(disk):
++    source, destination = disk
++    original = source.read_bytes()
++    assert copying.copy_disk(*disk)["outcome"] == "preview"
++    assert not destination.exists()
++    result = copying.copy_disk(*disk, confirm=True)
++    assert source.read_bytes() == destination.read_bytes() == original
++    assert result["sha256"] == hashlib.sha256(original).hexdigest()
++
++
++def test_copy_refuses_to_overwrite(disk):
++    source, destination = disk
++    destination.parent.mkdir(parents=True)
++    destination.write_bytes(b"keep")
++    with pytest.raises(ValueError, match="absent"):
++        copying.copy_disk(*disk, confirm=True)
++    assert destination.read_bytes() == b"keep"
++
++
++def test_copy_detects_corrupt_destination(disk, monkeypatch):
++    original_inspect = copying._offline_disk
++    calls = 0
++
++    def inspect(path, **kwargs):
++        nonlocal calls
++        calls += 1
++        if calls == 3:
++            disk[1].with_name("docker_data.vhdx.anvil-copying").write_bytes(b"corrupt")
++        return original_inspect(path, **kwargs)
++
++    monkeypatch.setattr(copying, "_offline_disk", inspect)
++    with pytest.raises(ValueError, match="SHA-256 mismatch"):
++        copying.copy_disk(*disk, confirm=True)
++    assert not disk[1].exists()
++    assert disk[0].exists()

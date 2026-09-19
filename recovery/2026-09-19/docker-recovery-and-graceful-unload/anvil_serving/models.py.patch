@@ -1,0 +1,87 @@
+--- a/anvil_serving/models.py
++++ b/anvil_serving/models.py
+@@ -623,7 +623,8 @@
+             "usage_count": int(row.get("UsageCount") or 0),
+         })
+     volumes = []
+-    for row in docker_report.get("LocalVolumes") or []:
++    # Current Docker CLI uses Volumes; older releases used LocalVolumes.
++    for row in docker_report.get("Volumes", docker_report.get("LocalVolumes")) or []:
+         volumes.append({
+             "name": row.get("Name") or row.get("VolumeName"),
+             "links": int(row.get("Links") or 0),
+@@ -1707,6 +1708,26 @@
+         stream.write(escaped)
+ 
+ 
++def _stop_and_remove_recipe_container(identity, *, _run=subprocess.run):
++    """Request graceful exit, then remove by immutable ID without forcing it."""
++    kwargs = dict(capture_output=True, text=True, encoding="utf-8", errors="replace")
++    try:
++        if identity["state"] not in {"created", "exited", "dead"}:
++            stopped = _run(
++                ["docker", "stop", "--timeout", "-1", identity["container_id"]],
++                timeout=60, **kwargs,
++            )
++            if stopped.returncode:
++                return stopped
++        # Plain rm also refuses if another actor restarted the container.
++        return _run(["docker", "rm", identity["container_id"]], timeout=30, **kwargs)
++    except subprocess.TimeoutExpired:
++        raise serve_recipes.RecipeError(
++            "graceful recipe unload timed out; inspect status and logs before retrying; "
++            "no forced stop or removal was requested"
++        ) from None
++
++
+ def _recipe_container_unload(
+     recipe,
+     container,
+@@ -1723,7 +1744,7 @@
+         print("model: %s" % identity["model"])
+         print("revision: %s" % (identity["revision"] or "unrecorded"))
+         print("state: %s" % identity["state"])
+-        print("ordered actions: verify recipe ownership labels; remove exact container")
++        print("ordered actions: verify recipe ownership labels; gracefully stop; remove exact container")
+         if serve_recipes.uses_native_kv_offload(recipe):
+             print(
+                 "postcondition: inspect and reclaim only twice-verified orphan "
+@@ -1743,13 +1764,7 @@
+         raise serve_recipes.RecipeError(
+             "recipe container identity changed after selection; rediscover and retry"
+         )
+-    completed = _run(
+-        ["docker", "rm", "-f", current["container_id"]],
+-        capture_output=True,
+-        text=True,
+-        encoding="utf-8",
+-        errors="replace",
+-    )
++    completed = _stop_and_remove_recipe_container(current, _run=_run)
+     if completed.returncode:
+         print(
+             "recipe unload failed: %s"
+@@ -1789,7 +1804,7 @@
+         print("model: %s" % identity["model"])
+         print("revision: %s" % (identity.get("revision") or "unrecorded"))
+         print("state: %s" % identity["state"])
+-        print("ordered actions: rediscover exact recipe identity; remove exact container")
++        print("ordered actions: rediscover exact recipe identity; gracefully stop; remove exact container")
+         if cleanup_required:
+             print(
+                 "postcondition: inspect and reclaim only twice-verified orphan "
+@@ -1805,13 +1820,7 @@
+     ):
+         return 3
+     current = _recheck_discovered_recipe_container(identity, _run=_run)
+-    completed = _run(
+-        ["docker", "rm", "-f", current["container_id"]],
+-        capture_output=True,
+-        text=True,
+-        encoding="utf-8",
+-        errors="replace",
+-    )
++    completed = _stop_and_remove_recipe_container(current, _run=_run)
+     if completed.returncode:
+         print("recipe unload failed", file=sys.stderr)
+         return completed.returncode

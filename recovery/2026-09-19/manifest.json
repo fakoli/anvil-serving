@@ -1,0 +1,280 @@
+{
+  "schema": "anvil-source-recovery/v1",
+  "status": "archived-unintegrated",
+  "target_base": "b944cef4f1c4e7ac7e6e89fbd885b4c66c5395f1",
+  "patches": [
+    {
+      "source_path": "anvil_serving/commands/host.py",
+      "source_sha256": "eab732035192515b3f829494e58bec13218fa0980343e4d4f1c1cab2d2e7cdfa",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/anvil_serving/commands/host.py.patch",
+      "patch_sha256": "9d130be4db136ece3b89653baa630f19e3514c02dee883102cbd9f411c02e8a0"
+    },
+    {
+      "source_path": "anvil_serving/models.py",
+      "source_sha256": "7d00ad80cec119520046c31b4134eb713113fd9e617b098febcab9b1d4e5540f",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/anvil_serving/models.py.patch",
+      "patch_sha256": "7f514ac6596c9488452ca2bb5202271e5ec2484a04a20dfa835010db3fb1fb9d"
+    },
+    {
+      "source_path": "docs/cli/host.md",
+      "source_sha256": "61a1f8987a8e322bcd75a870672470cb7b09af5c0e490ba9a508488f18fe1d9f",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/docs/cli/host.md.patch",
+      "patch_sha256": "f4bdece97845795f8e24758fcf634bd5bb1581168c31a69fd3f159e11db8d264"
+    },
+    {
+      "source_path": "docs/cli/models.md",
+      "source_sha256": "155f2dd017a91537a4a043b39099f51b8cd643ef3bbb687a5c8e6c1b25486a11",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/docs/cli/models.md.patch",
+      "patch_sha256": "8e4b95ce6b4a659409d193bd4c7374991c01359e87a3e8d984870221f097451b"
+    },
+    {
+      "source_path": "tests/test_models.py",
+      "source_sha256": "f1861efdcb662316b900dadbc0dfcbe10e2f415ec223c5f12969c0a2123a65d6",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/tests/test_models.py.patch",
+      "patch_sha256": "5c38289551b47c4f2c3e119c82b8e81b140ff986ddf00ff00fa74d2ad337b3ed"
+    },
+    {
+      "source_path": "tests/test_recipe_container_discovery.py",
+      "source_sha256": "95045add6b4a1fb7b6f9685686315dbcdf78b7f469036dd7315a276ec4e2b6b4",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/tests/test_recipe_container_discovery.py.patch",
+      "patch_sha256": "bc6955f537499c77f37ea663681fb3d1a51b8469ba28bca2e59993d91740fc5b"
+    },
+    {
+      "source_path": ".tickets/2026-09-09-docker-storage-migration.md",
+      "source_sha256": "06644a06f98638d845475bf845bad8bc5b2b49cb2dad04e4516c95f30de103cc",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/.tickets/2026-09-09-docker-storage-migration.md.patch",
+      "patch_sha256": "951e1043dfb9b05733de54aacf74c49469ec6b39aecda023d0417d8c3be417ec"
+    },
+    {
+      "source_path": ".tickets/2026-09-09-graceful-recipe-unload.md",
+      "source_sha256": "72e24e359aeb11d3c4b3b1a2c21a14a251b762283460a1a300c56bb37e9f4d92",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/.tickets/2026-09-09-graceful-recipe-unload.md.patch",
+      "patch_sha256": "e13bf5cb8d98c7b15a72351b5d0e4386a4be66987cf45419d690656629a60899"
+    },
+    {
+      "source_path": ".tickets/2026-09-09-model-pull-image-progress.md",
+      "source_sha256": "6f7513f21cb35b74822bdf83da1bc06ba09013d67853bb95eed151f970c46c9c",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/.tickets/2026-09-09-model-pull-image-progress.md.patch",
+      "patch_sha256": "972b158b6cf8de5c312dd33f46aa9fd13a557ac58c185fc6ffa0d0db45f90347"
+    },
+    {
+      "source_path": "anvil_serving/docker_disk_adopt.py",
+      "source_sha256": "ef513101b3753168729f0b85f9214881825597055011dee0b3654b6ea05f2fe0",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/anvil_serving/docker_disk_adopt.py.patch",
+      "patch_sha256": "f9919cc1a4d129717ee4cf5b8923ac9524aad4ecfa7f3dca5be5bf09081426e6"
+    },
+    {
+      "source_path": "anvil_serving/docker_disk_copy.py",
+      "source_sha256": "627f160d32e8f430152f4addd4fe7b3280578c366ac40bfc9cf09d3f74bc9226",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/anvil_serving/docker_disk_copy.py.patch",
+      "patch_sha256": "d65b701aa22b38514f2fcf6690beb674bef6f299b8f8227d891ae430d1209e63"
+    },
+    {
+      "source_path": "anvil_serving/docker_runtime.py",
+      "source_sha256": "6aa8b66a37553d3a467c746a02f0f14dd48899bf2cb5bfd97aa5e24c669c642f",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/anvil_serving/docker_runtime.py.patch",
+      "patch_sha256": "99aac9ddfe85d7e92f6e7b4e4c57fdee74052bfbf695793af2677920043ff376"
+    },
+    {
+      "source_path": "tests/test_cache_inventory_volume_compat.py",
+      "source_sha256": "0cbb9cdb18cf7cdff9323a33d0a8ad6c71691c39ace8400c2682774b1f8148ed",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/tests/test_cache_inventory_volume_compat.py.patch",
+      "patch_sha256": "e73d219effa552a28eb621362846b8876cd4fd361635d5110673da53d8710890"
+    },
+    {
+      "source_path": "tests/test_docker_disk_adopt.py",
+      "source_sha256": "beecc62811b1d1e28dc8e2c2adb0fd6dd44b23362d9d5aa4dea7785d5b167d75",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/tests/test_docker_disk_adopt.py.patch",
+      "patch_sha256": "ee7de7a1eaf4385c974521ae90f1208a9e34c5ec5cc34c747654d248d1d524ab"
+    },
+    {
+      "source_path": "tests/test_docker_disk_copy.py",
+      "source_sha256": "0966fbd68e48151db9b8910e3519ab62f9270d8da9c29804ac6efbee9e41e11d",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/tests/test_docker_disk_copy.py.patch",
+      "patch_sha256": "37867da07102cb66e69493ed1dbc6326df071eb3377f482cb9510346bd6973f5"
+    },
+    {
+      "source_path": "tests/test_docker_runtime.py",
+      "source_sha256": "3d368a10d0509c7e7cb35ccae47692dd270e1662be671d10e9168edfc6007a8a",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/tests/test_docker_runtime.py.patch",
+      "patch_sha256": "e13f929c87250b2e4ec71da943de0d80702c7f5029fe6c37b60f885ac88492c5"
+    },
+    {
+      "source_path": "tests/test_recipe_graceful_unload.py",
+      "source_sha256": "2e8977318f1c8390ff71ee49aeb91c3bb888860ac077f23fcf747b0f7603add2",
+      "source_head": "8abcc5dc75a1b2389210b553120abb76e5864d3a",
+      "destination": "recovery/2026-09-19/docker-recovery-and-graceful-unload/tests/test_recipe_graceful_unload.py.patch",
+      "patch_sha256": "d852dcbc4d5b50687ab8af779fb84e24b2ebd7aa00926cb2ac053ea899111bb8"
+    },
+    {
+      "source_path": ".tickets/2026-08-21-recipe-container-health-port.md",
+      "source_sha256": null,
+      "source_head": "5f4c76308896922678dadc064f7033a775b594d5",
+      "destination": "recovery/2026-09-19/derived-image-builds/.tickets/2026-08-21-recipe-container-health-port.md.patch",
+      "patch_sha256": "7d19f811f51177bf07860ebc64a638e50a3de61a2ab1406477a049066a0ec556"
+    },
+    {
+      "source_path": "anvil_serving/commands/models.py",
+      "source_sha256": "2f2b0645e5863cefb9f4c90daab681a9c75a6ddc2fd0077ed3ef9914bc4d950b",
+      "source_head": "5f4c76308896922678dadc064f7033a775b594d5",
+      "destination": "recovery/2026-09-19/derived-image-builds/anvil_serving/commands/models.py.patch",
+      "patch_sha256": "928f40e39e66ad400475f18b690220cd4bff60fefc57094b0d30a2ab4b0f75c9"
+    },
+    {
+      "source_path": "anvil_serving/models.py",
+      "source_sha256": "f23848fbb32abc2bc6d40c7c216a241e2e2ba3e765f13cdf884e2a4365e2ccb8",
+      "source_head": "5f4c76308896922678dadc064f7033a775b594d5",
+      "destination": "recovery/2026-09-19/derived-image-builds/anvil_serving/models.py.patch",
+      "patch_sha256": "124e9adbf36779834e73fc37140547e62bb21249f89dc733ccdc432fb0b386b2"
+    },
+    {
+      "source_path": "anvil_serving/serve_recipes.py",
+      "source_sha256": "2b7583308b8e0edac4223aa31647e05e6eae98f713956e1362c07216c62a6e50",
+      "source_head": "5f4c76308896922678dadc064f7033a775b594d5",
+      "destination": "recovery/2026-09-19/derived-image-builds/anvil_serving/serve_recipes.py.patch",
+      "patch_sha256": "820a5698d74efa5d48b87e3a61a957994322c15aee9335ffda2cd1012958753f"
+    },
+    {
+      "source_path": "docs/cli/models.md",
+      "source_sha256": "5d993462766598ca0a4faff15f8d2c26650b2974fc5c44c24b4454dd0e8759a4",
+      "source_head": "5f4c76308896922678dadc064f7033a775b594d5",
+      "destination": "recovery/2026-09-19/derived-image-builds/docs/cli/models.md.patch",
+      "patch_sha256": "84d1b4f33ddd79bf7d526ae24938ce33d92f8115e1e7e6eb41507fa6d9d1fd32"
+    },
+    {
+      "source_path": ".tickets/2026-08-23-recipe-derived-image-build.md",
+      "source_sha256": "bffc4543c93ec6fbbad6f2f1f1c7c86a24d0ca963097dc30f3031cd29d676237",
+      "source_head": "5f4c76308896922678dadc064f7033a775b594d5",
+      "destination": "recovery/2026-09-19/derived-image-builds/.tickets/2026-08-23-recipe-derived-image-build.md.patch",
+      "patch_sha256": "29c22a9fe04239484136b81a2ef8d9438da04293e3c213c10aa7bd5984c33dca"
+    },
+    {
+      "source_path": ".tickets/closed/2026-08-21-recipe-container-health-port.md",
+      "source_sha256": "a84780b9a051bacc879b4dfb7ca28ba9f57fe0e9730617218f7c18bcc9b9dc22",
+      "source_head": "5f4c76308896922678dadc064f7033a775b594d5",
+      "destination": "recovery/2026-09-19/derived-image-builds/.tickets/closed/2026-08-21-recipe-container-health-port.md.patch",
+      "patch_sha256": "345107b7b53412de28ccfd233a7d2dc43a3423d83a2ed3ff68a7ea217dae73ea"
+    },
+    {
+      "source_path": "anvil_serving/recipe_images.py",
+      "source_sha256": "4d79f1ac83d9e01cecfd83ca08c21ed130156809a2f5cc673d7a0f1cd2baaaf9",
+      "source_head": "5f4c76308896922678dadc064f7033a775b594d5",
+      "destination": "recovery/2026-09-19/derived-image-builds/anvil_serving/recipe_images.py.patch",
+      "patch_sha256": "5ac5d9cfac513bd4e83f8ba5708b0e92c02f69ce5a182266b5fdcdfce605d4b8"
+    },
+    {
+      "source_path": "tests/test_recipe_healthchecks.py",
+      "source_sha256": "bf808def16a5633df4828f9d06663cdee6c4623c133dc1e9512e36534257dddf",
+      "source_head": "5f4c76308896922678dadc064f7033a775b594d5",
+      "destination": "recovery/2026-09-19/derived-image-builds/tests/test_recipe_healthchecks.py.patch",
+      "patch_sha256": "dbc9284e918309c04c01b8ad05c293bc1077026627963a380d277aca5e9a22c3"
+    },
+    {
+      "source_path": "tests/test_recipe_images.py",
+      "source_sha256": "1137f2763e48294205e7c0d213c3fffd63b10d011562c0bb4153db8231c4d989",
+      "source_head": "5f4c76308896922678dadc064f7033a775b594d5",
+      "destination": "recovery/2026-09-19/derived-image-builds/tests/test_recipe_images.py.patch",
+      "patch_sha256": "fe9955eb09bc7b4d5e6c87c08bd20df395142b76c18920b687dd93553e27dfbf"
+    },
+    {
+      "source_path": "anvil_serving/commands/models.py",
+      "source_sha256": "21b2e97ea6a6c3bd997998586659380e007f441ee71b5023c0a678c943bc4621",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/anvil_serving/commands/models.py.patch",
+      "patch_sha256": "8949a53d27fd6d7a1e4e1cecc3c9f2a4279e5b2ed03759ece7ecdc477c0e45f7"
+    },
+    {
+      "source_path": "anvil_serving/control_plane/mcp/tools/models.py",
+      "source_sha256": "31be43826ca4077812dc6f950b1ee93fba8f39469f6ea6661f2c7b2bca4c1b25",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/anvil_serving/control_plane/mcp/tools/models.py.patch",
+      "patch_sha256": "1977b0fd6033fcffcf875dbcd14740437062404ef1c5a2612799163a318bc2e5"
+    },
+    {
+      "source_path": "anvil_serving/models.py",
+      "source_sha256": "76d386554f18889578d2e1bb8bbba697e77979eead8990b3f18412561274efbb",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/anvil_serving/models.py.patch",
+      "patch_sha256": "cb823b89647b140487e0f9ccd3835b33b4074e82f58645ca309b7db811cc0a41"
+    },
+    {
+      "source_path": "anvil_serving/workbench_app/pi_rpc.py",
+      "source_sha256": "ea0c7f86e70e3b94ce880b28292a246c54e1eebf7d6f01a0a3c107d4b18ce5e1",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/anvil_serving/workbench_app/pi_rpc.py.patch",
+      "patch_sha256": "c06185f0863d3303798b99409b05dd2ca8cf3f8b6b7f6d5e0569765a3122cdc8"
+    },
+    {
+      "source_path": "docs/cli/models.md",
+      "source_sha256": "f945e20e3ec32035aeabbea404b1559a7c5d5dbe9b4008c25d28d859c38eac48",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/docs/cli/models.md.patch",
+      "patch_sha256": "5f30f9dc31fec45b5cf03414cce882dfedfc7d797d3b6b95de9bc51574d89776"
+    },
+    {
+      "source_path": "tests/router/test_request_runtime.py",
+      "source_sha256": "f08564dbec1b811a6d4457b23e2736878f7307291a8728cd408fd807b568c8e3",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/tests/router/test_request_runtime.py.patch",
+      "patch_sha256": "a394c8e38f253bfac43586d4207ac03d1a1a76aa3ba32b1059b1b568f9286356"
+    },
+    {
+      "source_path": "tests/test_mcp_foundations.py",
+      "source_sha256": "baa850a5dbcdaae2b5e260626daa961e0b60490e81ffcf0253952cfe40024d47",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/tests/test_mcp_foundations.py.patch",
+      "patch_sha256": "806d9bf32c78924d1f918720ace23d8649b7f3f16f170c89122df3df53556c8e"
+    },
+    {
+      "source_path": "tests/test_models.py",
+      "source_sha256": "033cddd47397c5656767e732168ea4afb9797687af3fab17d83b075a35e95a2e",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/tests/test_models.py.patch",
+      "patch_sha256": "aa243375a922e645aabd832b8f75b06ff879529bcc545a4cb4b4be8c2cac87e5"
+    },
+    {
+      "source_path": "tests/test_recipe_container_discovery.py",
+      "source_sha256": "07b3d16492217b015752ddb16084c708d11d87a08b4e29ba0d8e7eea61a3af48",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/tests/test_recipe_container_discovery.py.patch",
+      "patch_sha256": "8b423cade9a0023530d62ebb5776a9c1895bbd3c6c07d685840b72e621cbede0"
+    },
+    {
+      "source_path": "tests/test_retained_recipe_lifecycle.py",
+      "source_sha256": "4057f7abced0e4271b72b1f8c12b26b7920168400729a79b29d9004fc7d82ddb",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/tests/test_retained_recipe_lifecycle.py.patch",
+      "patch_sha256": "faeca7b73055459330eb0fb49c57e6df70b0570a0cf978da69d324fd4e64060a"
+    },
+    {
+      "source_path": "tests/workbench/test_pi_official_smoke.py",
+      "source_sha256": "53667d7b88095e32a36b3aef279c49472d442767784e034232044d3e07549348",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/tests/workbench/test_pi_official_smoke.py.patch",
+      "patch_sha256": "16179f5f0b936ee305f75b7350df05f138369936fe25917983899285dc09e681"
+    },
+    {
+      "source_path": "tests/workbench/test_pi_rpc.py",
+      "source_sha256": "fd7490be8bd92bbcefd390b3983a37dab2e50a4a48a3c16492d8eb74b6850cf5",
+      "source_head": "612058a8da632ef63a164ba24374e91076bbe84e",
+      "destination": "recovery/2026-09-19/retained-recipe-lifecycle-and-windows-pi/tests/workbench/test_pi_rpc.py.patch",
+      "patch_sha256": "80a9d7a32758ca31d7603b1b0e00374cd914510043f142019eafc0a4d0d02187"
+    }
+  ]
+}

@@ -1,0 +1,180 @@
+--- /dev/null
++++ b/tests/test_retained_recipe_lifecycle.py
+@@ -0,0 +1,177 @@
++"""Independent retained-recovery guard and typed transport regressions."""
++import subprocess
++
++import pytest
++
++from anvil_serving import models, serve_recipes, serves
++from anvil_serving.control_plane.mcp.errors import ToolError
++from anvil_serving.control_plane.mcp.tools import models as tools
++
++
++def identity():
++    return {"container": "candidate", "container_id": "a" * 64,
++            "model": "org/model", "revision": "b" * 40,
++            "recipe_digest": "c" * 64, "registry_digest": "d" * 64,
++            "image_digest": "sha256:" + "e" * 64,
++            "native_kv_offload": False, "running": False, "state": "exited", "health": "unhealthy"}
++
++
++@pytest.mark.parametrize("offload", [None, True])
++@pytest.mark.parametrize("preview", [True, False])
++def test_unsafe_offload_never_reaches_discovery_or_mutation(offload, preview):
++    selected = {**identity(), "native_kv_offload": offload}
++    with pytest.raises(serve_recipes.RecipeError, match="offload"):
++        models._discovered_recipe_container_start(selected, dry_run=preview, confirm=True,
++            _run=lambda *a, **kw: pytest.fail("no subprocess allowed"))
++
++
++def test_exclusive_owner_blocks_recovery_before_container_probe(monkeypatch):
++    monkeypatch.setattr(serves, "deny_ad_hoc_compose_during_exclusive", lambda *a, **kw: ["blocked"])
++    with pytest.raises(serve_recipes.RecipeError, match="exclusive"):
++        models._retained_recipe_start_admission(identity(),
++            _run=lambda *a, **kw: pytest.fail("no container command allowed"))
++
++
++@pytest.mark.parametrize("active", [True, False])
++def test_device_owning_peer_is_never_evicted(monkeypatch, active):
++    import json
++    monkeypatch.setattr(serves, "deny_ad_hoc_compose_during_exclusive", lambda *a, **kw: None)
++    calls = []
++    def run(argv, **kw):
++        calls.append(argv)
++        if argv[:2] == ["docker", "ps"]:
++            output = "f" * 64 if active else ""
++        elif argv[:2] == ["docker", "inspect"]:
++            output = json.dumps({"Id": "f" * 64, "HostConfig": {"DeviceRequests": True},
++                                  "State": {"Status": "running", "Running": True}})
++        else:
++            assert argv[0] == "nvidia-smi"
++            output = "" if "--query-compute-apps=pid" in argv else "0, GPU-00000000-0000-0000-0000-000000000001, 1, 16\n"
++        return subprocess.CompletedProcess(argv, 0, output, "")
++    if active:
++        with pytest.raises(serve_recipes.RecipeError, match="another device-owning"):
++            models._retained_recipe_start_admission(identity(), _run=run)
++    else:
++        models._retained_recipe_start_admission(identity(), _run=run)
++    assert all(argv[1] not in {"stop", "rm", "start"} for argv in calls)
++
++
++@pytest.mark.parametrize("memory", ["2048", "N/A", ""])
++def test_unknown_or_busy_gpu_blocks_recovery(monkeypatch, memory):
++    monkeypatch.setattr(serves, "deny_ad_hoc_compose_during_exclusive", lambda *a, **kw: None)
++    def run(argv, **kw):
++        output = "" if argv[0] == "docker" or "--query-compute-apps=pid" in argv else memory
++        return subprocess.CompletedProcess(argv, 0, output, "")
++    with pytest.raises(serve_recipes.RecipeError, match="GPU"):
++        models._retained_recipe_start_admission(identity(), _run=run)
++
++
++@pytest.mark.parametrize("action", ["stop", "start"])
++def test_mcp_retained_preview_confirmation_and_staleness(monkeypatch, action):
++    selected = identity()
++    monkeypatch.setattr(serve_recipes, "discover_recipe_containers", lambda **kw: {"containers": [selected]})
++    calls = []
++    monkeypatch.setattr(models, "_discovered_recipe_container_" + action,
++                        lambda value, **kw: calls.append((value, kw)) or 0)
++    args = {"action": action, "model": "org/model", "container": "candidate"}
++    preview = tools.tool_recipe_manage(args)["data"]
++    assert not preview["applied"]
++    with pytest.raises(ToolError, match="confirmation"):
++        tools.tool_recipe_manage({**args, "dry_run": False})
++    with pytest.raises(ToolError, match="preview"):
++        tools.tool_recipe_manage({**args, "dry_run": False, "confirm": True})
++    result = tools.tool_recipe_manage({**args, "dry_run": False, "confirm": True,
++                                      "expected_inventory_sha256": preview["inventory_sha256"]})
++    assert result["data"]["applied"]
++    assert calls[-1][0] == selected
++
++
++def test_bounded_runner_never_leaks_timeout_command_output():
++    def timeout(argv, **kw):
++        assert 0 < kw["timeout"] <= 4
++        raise subprocess.TimeoutExpired(argv, 4, output="private diagnostic")
++    run = models._bounded_recipe_runner(timeout, 5, lambda: 1)
++    with pytest.raises(serve_recipes.RecipeError, match="outcome uncertain") as exc:
++        run(["docker", "start", "a" * 64])
++    assert "private diagnostic" not in str(exc.value)
++
++
++@pytest.mark.parametrize("mode", ["duplicate", "unsolicited", "inconsistent", "legacy"])
++def test_retained_admission_rejects_bad_inspection_and_legacy_gpu(monkeypatch, mode):
++    import json
++    monkeypatch.setattr(serves, "deny_ad_hoc_compose_during_exclusive", lambda *a, **kw: None)
++    first = "a" * 64
++    peer = "f" * 64
++    def run(argv, **kw):
++        if argv[1] == "ps":
++            output = first + "\n" + peer
++        else:
++            assert argv[1] == "inspect"
++            row = {"Id": first, "HostConfig": {}, "State": {"Status": "running", "Running": True}}
++            second = {**row, "Id": peer}
++            if mode == "duplicate":
++                second["Id"] = first
++            if mode == "unsolicited":
++                second["Id"] = "0" * 64
++            if mode == "inconsistent":
++                second["State"] = {"Status": "running", "Running": False}
++            if mode == "legacy":
++                second["HostConfig"] = {"Runtime": "nvidia"}
++            output = json.dumps(row) + "\n" + json.dumps(second)
++        return subprocess.CompletedProcess(argv, 0, output, "")
++    with pytest.raises(serve_recipes.RecipeError):
++        models._retained_recipe_start_admission(identity(), _run=run)
++
++
++@pytest.mark.parametrize("processes,telemetry", [
++    ("42\n", ""),
++    ("", "0, GPU-00000000-0000-0000-0000-000000000001, 2, 16"),
++    ("", "0, GPU-00000000-0000-0000-0000-000000000001, 1, N/A"),
++])
++def test_native_compute_and_partial_telemetry_fail_closed(monkeypatch, processes, telemetry):
++    monkeypatch.setattr(serves, "deny_ad_hoc_compose_during_exclusive", lambda *a, **kw: None)
++    def run(argv, **kw):
++        output = "" if argv[0] == "docker" else processes if "--query-compute-apps=pid" in argv else telemetry
++        return subprocess.CompletedProcess(argv, 0, output, "")
++    with pytest.raises(serve_recipes.RecipeError):
++        models._retained_recipe_start_admission(identity(), _run=run)
++
++
++def test_mcp_status_without_registry_resolves_cli_default(monkeypatch, tmp_path):
++    selected = identity()
++    registry = str(tmp_path / "recipes.toml")
++    monkeypatch.setattr(models, "_default_registry", lambda: registry)
++    import contextlib
++    monkeypatch.setattr(serve_recipes, "registry_lock", lambda _: contextlib.nullcontext())
++    seen = []
++    monkeypatch.setattr(tools, "_recipe_manage_snapshot", lambda path, *a: (
++        seen.append(path) or {"model": "org/model"}, {"model": "org/model"}, selected))
++    assert tools.tool_recipe_manage({"action": "status", "model": "org/model", "container": "candidate"})["ok"]
++    assert seen == [registry]
++
++
++@pytest.mark.parametrize("extra", [False, True, "absent"])
++def test_only_declared_baseline_compute_client_is_retained(monkeypatch, extra):
++    monkeypatch.setattr(serves, "deny_ad_hoc_compose_during_exclusive", lambda *a, **kw: None)
++    def run(argv, **kw):
++        output = ""
++        if "--query-compute-apps=pid" in argv:
++            output = "" if extra == "absent" else "42\n43" if extra else "42"
++        elif argv[0] == "nvidia-smi":
++            output = "0, GPU-00000000-0000-0000-0000-000000000001, 1, 16"
++        return subprocess.CompletedProcess(argv, 0, output, "")
++    if extra:
++        with pytest.raises(serve_recipes.RecipeError, match="compute"):
++            models._retained_recipe_start_admission(identity(), _run=run, baseline_compute_pids=[42])
++    else:
++        models._retained_recipe_start_admission(identity(), _run=run, baseline_compute_pids=[42])
++
++
++def test_mcp_baseline_allowance_change_invalidates_preview(monkeypatch):
++    monkeypatch.setattr(serve_recipes, "discover_recipe_containers", lambda **kw: {"containers": [identity()]})
++    monkeypatch.setattr(models, "_discovered_recipe_container_start", lambda *a, **kw: 0)
++    args = {"action": "start", "model": "org/model", "container": "candidate", "baseline_compute_pids": [42]}
++    preview = tools.tool_recipe_manage(args)["data"]
++    with pytest.raises(ToolError, match="preview"):
++        tools.tool_recipe_manage({**args, "baseline_compute_pids": [43], "dry_run": False, "confirm": True,
++                                  "expected_inventory_sha256": preview["inventory_sha256"]})

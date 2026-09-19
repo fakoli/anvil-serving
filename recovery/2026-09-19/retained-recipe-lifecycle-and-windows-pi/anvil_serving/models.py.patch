@@ -1,0 +1,375 @@
+--- a/anvil_serving/models.py
++++ b/anvil_serving/models.py
+@@ -1440,7 +1440,7 @@
+     parser.add_argument("--target", help="declared target for a native service-bound recipe")
+     parser.add_argument("--transport", choices=("auto", "local"), default="local")
+     parser.add_argument("--operation-timeout", type=int, default=30,
+-                        help="native service operation deadline in seconds")
++                        help="recipe lifecycle operation deadline in seconds")
+ 
+ 
+ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
+@@ -1697,6 +1697,230 @@
+     return completed.returncode
+ 
+ 
++def _recipe_operation_timeout(value):
++    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 3600:
++        raise serve_recipes.RecipeError("operation timeout must be from 1 through 3600 seconds")
++    return value
++
++
++def _bounded_recipe_runner(run, deadline, clock):
++    def bounded(argv, **kwargs):
++        remaining = deadline - clock()
++        if remaining <= 0:
++            raise serve_recipes.RecipeError("recipe lifecycle operation deadline exceeded; inspect status before retry")
++        kwargs["timeout"] = remaining
++        try:
++            return run(argv, **kwargs)
++        except subprocess.TimeoutExpired:
++            raise serve_recipes.RecipeError("recipe lifecycle command timed out; outcome uncertain, inspect status before retry") from None
++        except OSError as exc:
++            raise serve_recipes.RecipeError("cannot execute recipe lifecycle command: %s" % exc) from None
++    return bounded
++
++
++def _discovered_recipe_container_stop(
++    identity,
++    *,
++    timeout_seconds=30,
++    dry_run=False,
++    confirm=False,
++    _run=subprocess.run,
++    _clock=time.monotonic,
++):
++    """Stop and retain one exact label-owned recipe container."""
++    timeout_seconds = _recipe_operation_timeout(timeout_seconds)
++    if dry_run:
++        print("RECIPE STOP PLAN")
++        print("container: %s" % identity["container"])
++        print("model: %s" % identity["model"])
++        print("revision: %s" % (identity.get("revision") or "unrecorded"))
++        print("state: %s" % identity["state"])
++        print("ordered actions: rediscover exact recipe identity; stop and retain exact container")
++        print("recovery: anvil-serving models recipes start --container %s --confirm" % identity["container"])
++        print("deferred until apply: confirmation and identity recheck")
++        return 0
++    if not _confirm_recipe_mutation(
++        "stop container %s" % identity["container"],
++        identity["model"],
++        confirm=confirm,
++        dry_run=False,
++    ):
++        return 3
++    _run = _bounded_recipe_runner(_run, _clock() + timeout_seconds, _clock)
++    current = _recheck_discovered_recipe_container(identity, _run=_run)
++    if not current["running"]:
++        print("recipe container %r is already stopped" % current["container"])
++        return 0
++    completed = _run(
++        ["docker", "stop", "--time", str(timeout_seconds), current["container_id"]],
++        capture_output=True,
++        text=True,
++        encoding="utf-8",
++        errors="replace",
++    )
++    if completed.returncode:
++        print("recipe stop failed", file=sys.stderr)
++        return completed.returncode
++    stopped = _recheck_discovered_recipe_container(identity, _run=_run)
++    if stopped["running"]:
++        print("recipe stop did not reach a stopped postcondition", file=sys.stderr)
++        return 1
++    print("stopped recipe container %r; retained for exact restart" % stopped["container"])
++    return 0
++
++
++def _retained_recipe_start_admission(identity, *, _run=subprocess.run, baseline_compute_pids=()):
++    """Conservative isolated recovery; never evict a peer or assume spare capacity."""
++    from . import serves
++
++    denial = serves.deny_ad_hoc_compose_during_exclusive(
++        serves.resolve_manifest_path(), _run=_run,
++    )
++    if denial:
++        raise serve_recipes.RecipeError("retained recipe start denied by managed exclusive ownership; use serves recovery")
++    completed = _run(["docker", "ps", "-q", "--no-trunc"], capture_output=True, text=True)
++    ids = (completed.stdout or "").split()
++    if (completed.returncode or len(ids) > 128 or len(set(ids)) != len(ids)
++            or len(completed.stdout or "") > 128 * 66
++            or any(not re.fullmatch(r"[a-f0-9]{64}", value) for value in ids)):
++        raise serve_recipes.RecipeError("cannot prove Docker GPU ownership before retained start")
++    inspect_format = ('{"Id":{{json .Id}},"State":{"Status":{{json .State.Status}},'
++                      '"Running":{{json .State.Running}}},"HostConfig":{'
++                      '"DeviceRequests":{{if .HostConfig.DeviceRequests}}true{{else}}false{{end}},'
++                      '"Devices":{{if .HostConfig.Devices}}true{{else}}false{{end}},'
++                      '"Runtime":{{if eq .HostConfig.Runtime "nvidia"}}"nvidia"{{else}}"other"{{end}}}}')
++    for offset in range(0, len(ids), 16):
++        chunk = ids[offset:offset + 16]
++        inspected = _run(["docker", "inspect", "--format", inspect_format, *chunk], capture_output=True, text=True)
++        try:
++            if inspected.returncode or len(inspected.stdout or "") > 131072:
++                raise ValueError()
++            rows = [json.loads(line) for line in (inspected.stdout or "").splitlines()]
++            returned = [row["Id"] for row in rows]
++            if len(returned) != len(chunk) or set(returned) != set(chunk):
++                raise ValueError()
++            for row in rows:
++                state = row["State"]
++                if state["Status"] not in {"running", "paused", "restarting"} or type(state["Running"]) is not bool:
++                    raise ValueError()
++                if state["Status"] in {"running", "paused"} and not state["Running"]:
++                    raise ValueError()
++                if row["Id"] == identity["container_id"]:
++                    continue
++                config = row["HostConfig"]
++                gpu = bool(config.get("DeviceRequests") or config.get("Devices") or config.get("Runtime") == "nvidia")
++                if gpu:
++                    raise serve_recipes.RecipeError("retained recipe start denied: another device-owning container is active; use managed lifecycle to reconcile ownership")
++        except serve_recipes.RecipeError:
++            raise
++        except (ValueError, KeyError, TypeError):
++            raise serve_recipes.RecipeError("cannot prove Docker GPU ownership before retained start") from None
++    processes = _run(["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader,nounits"],
++                     capture_output=True, text=True)
++    try:
++        observed_pids = {int(value.strip()) for value in (processes.stdout or "").splitlines()}
++    except ValueError:
++        raise serve_recipes.RecipeError("unresolved NVIDIA compute processes") from None
++    if processes.returncode or observed_pids != set(baseline_compute_pids):
++        raise serve_recipes.RecipeError("retained recipe start denied: active or unresolved NVIDIA compute processes")
++    memory = _run(["nvidia-smi", "--query-gpu=index,uuid,count,memory.used", "--format=csv,noheader,nounits"],
++                  capture_output=True, text=True)
++    try:
++        rows = [[part.strip() for part in line.split(",")] for line in (memory.stdout or "").splitlines()]
++        if memory.returncode or not rows or len(rows) > 32 or any(len(row) != 4 for row in rows):
++            raise ValueError()
++        used = [int(row[3]) for row in rows]
++        if (any(int(row[2]) != len(rows) for row in rows)
++                or {int(row[0]) for row in rows} != set(range(len(rows)))
++                or len({row[1] for row in rows}) != len(rows)
++                or any(not re.fullmatch(r"GPU-[a-fA-F0-9-]{36}", row[1]) for row in rows)
++                or any(value < 0 for value in used)):
++            raise ValueError()
++    except ValueError:
++        raise serve_recipes.RecipeError("cannot prove idle GPU capacity before retained start") from None
++    if any(value > 1024 for value in used):
++        raise serve_recipes.RecipeError("retained recipe start requires isolated GPUs with at most 1024 MiB baseline use each; use serves admission for co-residency")
++
++
++def _discovered_recipe_container_start(
++    identity,
++    *,
++    timeout_seconds=30,
++    dry_run=False,
++    confirm=False,
++    _run=subprocess.run,
++    _sleep=time.sleep,
++    _clock=time.monotonic,
++    _admit=None,
++    baseline_compute_pids=(),
++):
++    """Start one retained label-owned recipe container and wait for health."""
++    timeout_seconds = _recipe_operation_timeout(timeout_seconds)
++    if (len(baseline_compute_pids) > 16
++            or any(type(pid) is not int or not 1 <= pid <= 2147483647 for pid in baseline_compute_pids)):
++        raise serve_recipes.RecipeError("baseline compute PIDs must be at most 16 positive process IDs")
++    if identity.get("native_kv_offload") is not False:
++        raise serve_recipes.RecipeError("retained native KV offload or unknown offload containers require managed unload/load preparation, not start")
++    if _admit is None:
++        def _admit(selected, *, _run):
++            return _retained_recipe_start_admission(selected, _run=_run, baseline_compute_pids=baseline_compute_pids)
++    if dry_run:
++        if not identity["running"]:
++            _admit(identity, _run=_bounded_recipe_runner(_run, _clock() + timeout_seconds, _clock))
++        print("RECIPE START PLAN")
++        print("container: %s" % identity["container"])
++        print("model: %s" % identity["model"])
++        print("revision: %s" % (identity.get("revision") or "unrecorded"))
++        print("state: %s" % identity["state"])
++        print("declared baseline compute client PIDs: %s" % sorted(set(baseline_compute_pids)))
++        print("ordered actions: rediscover exact recipe identity; start exact retained container; wait for healthy state")
++        print("recovery: inspect bounded logs, then retry this idempotent start")
++        print("deferred until apply: confirmation, identity recheck, and Docker start")
++        return 0
++    if not _confirm_recipe_mutation(
++        "start container %s" % identity["container"],
++        identity["model"],
++        confirm=confirm,
++        dry_run=False,
++    ):
++        return 3
++    deadline = _clock() + timeout_seconds
++    _run = _bounded_recipe_runner(_run, deadline, _clock)
++    current = _recheck_discovered_recipe_container(identity, _run=_run)
++    if current.get("native_kv_offload") is not False:
++        raise serve_recipes.RecipeError("retained native KV offload containers require managed unload/load preparation, not start")
++    if not current["running"]:
++        _admit(current, _run=_run)
++        current = _recheck_discovered_recipe_container(identity, _run=_run)
++        completed = _run(
++            ["docker", "start", current["container_id"]],
++            capture_output=True,
++            text=True,
++            encoding="utf-8",
++            errors="replace",
++        )
++        if completed.returncode:
++            print("recipe start failed", file=sys.stderr)
++            return completed.returncode
++    while True:
++        observed = _recheck_discovered_recipe_container(identity, _run=_run)
++        if observed["state"] == "running" and observed["running"] and observed.get("health") == "healthy":
++            print("started recipe container %r; state is healthy" % observed["container"])
++            return 0
++        if observed["state"] in {"exited", "dead", "removing"} or observed.get("health") is None:
++            print("recipe start has no healthy postcondition (state=%s; health=%s); inspect recipe logs and use managed load if no healthcheck is declared"
++                  % (observed["state"], observed.get("health") or "not-declared"), file=sys.stderr)
++            return 1
++        if _clock() >= deadline:
++            print(
++                "recipe container did not become healthy (state=%s; health=%s; timeout=%ss)"
++                % (observed["state"], observed.get("health") or "not-declared", timeout_seconds),
++                file=sys.stderr,
++            )
++            return 1
++        _sleep(min(LIFECYCLE_READINESS_POLL_SECONDS, max(0, deadline - _clock())))
++
++
+ def _write_console_text(stream, value):
+     """Write child output without crashing on a narrow Windows console codec."""
+     try:
+@@ -2056,6 +2280,8 @@
+     for action, summary in (
+         ("status", "inspect one exact recipe-loaded candidate container"),
+         ("logs", "read bounded logs from one exact recipe-loaded candidate container"),
++        ("stop", "stop and retain one exact recipe-loaded candidate container"),
++        ("start", "start one retained recipe-loaded candidate container"),
+         ("unload", "remove one exact recipe-loaded candidate container"),
+     ):
+         parser = sub.add_parser(
+@@ -2074,6 +2300,9 @@
+         parser.add_argument("--registry", default=None,
+                             help="registry TOML (default precedence: config home, configs/, packaged)")
+         _native_service_options(parser)
++        if action == "start":
++            parser.add_argument("--baseline-compute-pid", type=int, action="append", default=[],
++                                help="retain one previously verified baseline non-model GPU client PID; repeat up to 16; the 1024 MiB memory guard still applies")
+         if action == "logs":
+             parser.add_argument("--tail", type=int, default=200,
+                                 help="bounded trailing lines, 1 through 5000")
+@@ -2084,9 +2313,9 @@
+                 action="append",
+                 help="emit lines containing this literal, case-insensitive; repeat for OR matching",
+             )
+-        if action == "unload":
++        if action in {"stop", "start", "unload"}:
+             parser.add_argument("--dry-run", action="store_true",
+-                                help="verify identity and preview removal")
++                                help="verify identity and preview the lifecycle mutation")
+             parser.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
+     return ap
+ 
+@@ -2120,11 +2349,11 @@
+             else None
+         )
+     except serve_recipes.RecipeError as exc:
+-        if a.recipe_action not in {"status", "logs", "unload"}:
++        if a.recipe_action not in {"status", "logs", "stop", "start", "unload"}:
+             print(str(exc), file=sys.stderr)
+             return 1
+         # Runtime identity labels are the lifecycle source of truth after a
+-        # load. Keep status/logs/unload operable when the originating registry
++        # load. Keep label-owned lifecycle operable when the originating registry
+         # moved, disappeared, or became unreadable.
+         registry = {"recipe": []}
+         registry_digest = None
+@@ -2139,7 +2368,15 @@
+             return 1
+         _print_recipe_show(recipe)
+         return 0
+-    if a.recipe_action in {"status", "logs", "unload"}:
++    if a.recipe_action in {"status", "logs", "stop", "start", "unload"}:
++        lifecycle_run = subprocess.run
++        if a.recipe_action in {"stop", "start"}:
++            try:
++                seconds = _recipe_operation_timeout(a.operation_timeout)
++            except serve_recipes.RecipeError as exc:
++                print(str(exc), file=sys.stderr)
++                return 1
++            lifecycle_run = _bounded_recipe_runner(subprocess.run, time.monotonic() + seconds, time.monotonic)
+         recipe = serve_recipes.find_recipe(registry, a.model) if a.model else None
+         if recipe is not None:
+             try:
+@@ -2157,7 +2394,7 @@
+                 return _native_recipe_lifecycle(
+                     recipe,
+                     registry_path,
+-                    {"status": "status", "logs": "logs", "unload": "down"}[a.recipe_action],
++                    {"status": "status", "logs": "logs", "stop": "down", "start": "up", "unload": "down"}[a.recipe_action],
+                     dry_run=True if a.recipe_action in {"status", "logs"} else a.dry_run,
+                     confirm=getattr(a, "confirm", False),
+                     tail=a.tail if a.recipe_action == "logs" else 100,
+@@ -2183,6 +2420,29 @@
+                         since=a.since,
+                         contains=a.contains,
+                     )
++                if a.recipe_action in {"stop", "start"}:
++                    inspected = _recipe_container_identity(recipe, a.container, _run=lifecycle_run)
++                    identity = serve_recipes.select_recipe_container(
++                        serve_recipes.discover_recipe_containers(_run=lifecycle_run),
++                        model=a.model, container=a.container,
++                    )
++                    if (identity.get("container_id") != inspected.get("container_id")
++                            or identity.get("image_digest") != inspected.get("image_id")
++                            or identity.get("revision") != inspected.get("revision")):
++                        raise serve_recipes.RecipeError("recipe container identity changed after inspection; rediscover and retry")
++                    operation = (
++                        _discovered_recipe_container_stop
++                        if a.recipe_action == "stop"
++                        else _discovered_recipe_container_start
++                    )
++                    return operation(
++                        identity,
++                        timeout_seconds=a.operation_timeout,
++                        dry_run=a.dry_run,
++                        confirm=a.confirm,
++                        _run=lifecycle_run,
++                        **({"baseline_compute_pids": a.baseline_compute_pid} if a.recipe_action == "start" else {}),
++                    )
+                 return _recipe_container_unload(
+                     recipe,
+                     a.container,
+@@ -2193,7 +2453,9 @@
+                 print(str(exc), file=sys.stderr)
+                 return 1
+         try:
+-            inventory = serve_recipes.discover_recipe_containers()
++            inventory = (serve_recipes.discover_recipe_containers(_run=lifecycle_run)
++                         if a.recipe_action in {"stop", "start"}
++                         else serve_recipes.discover_recipe_containers())
+             identity = serve_recipes.select_recipe_container(
+                 inventory,
+                 model=a.model,
+@@ -2208,6 +2470,20 @@
+                     tail=a.tail,
+                     since=a.since,
+                     contains=a.contains,
++                )
++            if a.recipe_action in {"stop", "start"}:
++                operation = (
++                    _discovered_recipe_container_stop
++                    if a.recipe_action == "stop"
++                    else _discovered_recipe_container_start
++                )
++                return operation(
++                    identity,
++                    timeout_seconds=a.operation_timeout,
++                    dry_run=a.dry_run,
++                    confirm=a.confirm,
++                    _run=lifecycle_run,
++                    **({"baseline_compute_pids": a.baseline_compute_pid} if a.recipe_action == "start" else {}),
+                 )
+             return _discovered_recipe_container_unload(
+                 identity,

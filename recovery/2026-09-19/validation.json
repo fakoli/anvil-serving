@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-inactive-recovery-validation/v1",
+  "patch_count": 39,
+  "patches_apply_to_original_bases": true,
+  "retained_private_file_count": 250,
+  "byte_hashes_verified": true,
+  "runtime_integration_tests": "not run: patches are inactive recovery material",
+  "live_operations": "none",
+  "failures": []
+}

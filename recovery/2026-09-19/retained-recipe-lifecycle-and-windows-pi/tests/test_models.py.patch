@@ -1,0 +1,14 @@
+--- a/tests/test_models.py
++++ b/tests/test_models.py
+@@ -1310,7 +1310,10 @@
+     assert "docker run -d" in out
+ 
+ 
+-@pytest.mark.parametrize("action", ["list", "show", "create", "update", "delete", "load"])
++@pytest.mark.parametrize(
++    "action",
++    ["list", "show", "create", "update", "delete", "load", "stop", "start"],
++)
+ def test_recipe_leaf_help_is_actionable(action, capsys):
+     with pytest.raises(SystemExit) as exc:
+         models.main(["recipe", action, "--help"])

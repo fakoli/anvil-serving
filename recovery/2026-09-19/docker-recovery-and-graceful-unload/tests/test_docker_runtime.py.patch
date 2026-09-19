@@ -1,0 +1,61 @@
+--- /dev/null
++++ b/tests/test_docker_runtime.py
+@@ -0,0 +1,58 @@
++from pathlib import Path
++from types import SimpleNamespace
++
++import pytest
++
++from anvil_serving import docker_runtime
++
++
++@pytest.fixture
++def socket_fixture(tmp_path, monkeypatch):
++    socket = tmp_path / "Docker" / "run" / "dockerInference"
++    socket.parent.mkdir(parents=True)
++    socket.write_bytes(b"")
++    monkeypatch.setattr(docker_runtime.docker_disk, "_is_windows", lambda: True)
++    monkeypatch.setattr(docker_runtime.docker_disk, "_powershell_json",
++                        lambda *a, **k: {"Processes": 0})
++    real = Path.lstat
++
++    def stat(path):
++        original = real(path)
++        if path == socket:
++            return SimpleNamespace(st_size=0, st_reparse_tag=0x80000023,
++                                   st_dev=original.st_dev, st_ino=original.st_ino,
++                                   st_mtime_ns=original.st_mtime_ns)
++        return original
++
++    monkeypatch.setattr(Path, "lstat", stat)
++    return socket
++
++
++def test_socket_preview_and_apply_preserve_quarantine(socket_fixture):
++    preview = docker_runtime.repair_socket(socket_fixture)
++    assert preview["outcome"] == "preview"
++    assert socket_fixture.exists()
++    result = docker_runtime.repair_socket(socket_fixture, confirm=True)
++    assert result["outcome"] == "quarantined"
++    assert not socket_fixture.exists()
++    assert Path(result["quarantine"]).exists()
++
++
++def test_socket_repair_refuses_running_desktop(socket_fixture, monkeypatch):
++    monkeypatch.setattr(docker_runtime.docker_disk, "_powershell_json",
++                        lambda *a, **k: {"Processes": 1})
++    with pytest.raises(ValueError, match="processes must exit"):
++        docker_runtime.repair_socket(socket_fixture, confirm=True)
++    assert socket_fixture.exists()
++
++
++def test_socket_repair_refuses_regular_file(tmp_path, monkeypatch):
++    monkeypatch.setattr(docker_runtime.docker_disk, "_is_windows", lambda: True)
++    monkeypatch.setattr(docker_runtime.docker_disk, "_powershell_json",
++                        lambda *a, **k: {"Processes": 0})
++    socket = tmp_path / "docker-secrets-engine" / "engine.sock"
++    socket.parent.mkdir()
++    socket.write_text("not a socket")
++    with pytest.raises(ValueError, match="AF_UNIX"):
++        docker_runtime.repair_socket(socket, confirm=True)
++    assert socket.read_text() == "not a socket"

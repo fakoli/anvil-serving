@@ -1,0 +1,62 @@
+--- a/anvil_serving/commands/host.py
++++ b/anvil_serving/commands/host.py
+@@ -224,6 +224,38 @@
+                     "Inspect and compact the Docker Desktop data disk.",
+                     children=(
+                         _resource_node(
++                            "copy",
++                            "Copy one detached data VHDX and verify its full-file hash.",
++                            "anvil_serving.docker_disk_copy",
++                            role="host",
++                            argv_prefix=(),
++                            options=CONFIRM_OPTIONS + (
++                                _option("--source", summary="Original data VHDX.", value_name="PATH"),
++                                _option("--destination", summary="New data VHDX path; must be absent.", value_name="PATH"),
++                                _option("--output", summary="Write copy verification JSON.", value_name="PATH"),
++                            ),
++                            mutation="mutate",
++                            execution_runtime_roles=("native",),
++                            execution_host_os=("windows",),
++                            docs_anchor="docs/cli/host.md#docker-data-disk-adoption",
++                        ),
++                        _resource_node(
++                            "adopt",
++                            "Adopt an existing WSL disk copy with Docker Desktop stopped.",
++                            "anvil_serving.docker_disk_adopt",
++                            role="host",
++                            argv_prefix=(),
++                            options=CONFIRM_OPTIONS + (
++                                _option("--source", summary="Original data VHDX.", value_name="PATH"),
++                                _option("--destination", summary="Existing copied data VHDX.", value_name="PATH"),
++                                _option("--settings", summary="Docker settings-store.json.", value_name="PATH"),
++                            ),
++                            mutation="mutate",
++                            execution_runtime_roles=("native",),
++                            execution_host_os=("windows",),
++                            docs_anchor="docs/cli/host.md#docker-data-disk-adoption",
++                        ),
++                        _resource_node(
+                             "compact",
+                             "Stop Docker Desktop and compact one exact data VHDX.",
+                             "anvil_serving.host",
+@@ -237,6 +269,20 @@
+                         ),
+                     ),
+                     docs_anchor="docs/cli/host.md#docker-data-vhdx-compaction",
++                ),
++                _resource_node(
++                    "docker-socket-repair",
++                    "Quarantine one stale service socket with Docker Desktop stopped.",
++                    "anvil_serving.docker_runtime",
++                    role="host",
++                    argv_prefix=(),
++                    options=CONFIRM_OPTIONS + (
++                        _option("--socket", summary="Exact known Docker Desktop service socket.", value_name="PATH"),
++                    ),
++                    mutation="mutate",
++                    execution_runtime_roles=("native",),
++                    execution_host_os=("windows",),
++                    docs_anchor="docs/cli/host.md#docker-service-socket-recovery",
+                 ),
+                 _resource_node(
+                     "wsl-config",

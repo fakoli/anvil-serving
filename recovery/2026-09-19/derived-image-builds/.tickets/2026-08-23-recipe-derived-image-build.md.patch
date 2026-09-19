@@ -1,0 +1,34 @@
+--- /dev/null
++++ b/.tickets/2026-08-23-recipe-derived-image-build.md
+@@ -0,0 +1,31 @@
++# Recipe candidates cannot prepare pinned derived images through Anvil
++
++**Status:** Fixed locally; pending release
++
++## Problem
++
++`models recipes load` can reproduce a candidate only after its runtime image
++already exists. A model recipe that depends on a revision-pinned Dockerfile or
++small upstream patch therefore required an out-of-band `docker build`, leaving
++the build context, prior tag, provenance, confirmation, and rollback outside the
++Anvil operation contract.
++
++## Resolution
++
++Add `models recipes build-image MODEL --registry REGISTRY` with the normal
++`--dry-run` and `--confirm` gate. A recipe-owned `[recipe.image_build]` table
++selects a relative context and Dockerfile below the operator registry. The
++command hashes the complete context, Dockerfile, and normalized recipe; previews
++the exact build and previous image identity; rejects drift after confirmation;
++and verifies provenance labels on the resulting image. It never loads a model,
++changes a route, or deletes the prior image.
++
++## Acceptance
++
++- Absolute, escaping, linked, missing, and empty build contexts fail closed.
++- Unknown build fields, invalid booleans/platforms, and non-tag image targets fail.
++- Preview is non-mutating and includes exact digests plus rollback guidance.
++- Apply requires confirmation, rejects input drift, and verifies the built image.
++- The command is declared in the shared CLI/controller command catalog and docs.
++- Hermetic tests cover planning, source validation, successful verification, and
++  provenance mismatch.

@@ -1,0 +1,35 @@
+--- a/anvil_serving/commands/models.py
++++ b/anvil_serving/commands/models.py
+@@ -143,6 +143,32 @@
+                         docs_anchor="docs/cli/models.md#operate-a-loaded-recipe",
+                     ),
+                     _resource_node(
++                        "stop",
++                        "Stop and retain one exact recipe-loaded candidate container.",
++                        "anvil_serving.models",
++                        role="model-serve",
++                        options=CONFIRM_OPTIONS,
++                        mutation="mutate",
++                        argv_prefix=("recipe", "stop"),
++                        forward_resolution_options=True,
++                        docs_anchor="docs/cli/models.md#operate-a-loaded-recipe",
++                    ),
++                    _resource_node(
++                        "start",
++                        "Start one retained recipe-loaded candidate container.",
++                        "anvil_serving.models",
++                        role="model-serve",
++                        options=CONFIRM_OPTIONS + (
++                            _option("--baseline-compute-pid", value_name="PID",
++                                    summary="Retain one verified baseline non-model GPU client PID; repeat up to 16."),
++                        ),
++                        mutation="mutate",
++                        gpu=True,
++                        argv_prefix=("recipe", "start"),
++                        forward_resolution_options=True,
++                        docs_anchor="docs/cli/models.md#operate-a-loaded-recipe",
++                    ),
++                    _resource_node(
+                         "unload",
+                         "Remove one exact recipe-loaded candidate container.",
+                         "anvil_serving.models",

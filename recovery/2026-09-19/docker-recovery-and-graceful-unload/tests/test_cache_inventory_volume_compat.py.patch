@@ -1,0 +1,22 @@
+--- /dev/null
++++ b/tests/test_cache_inventory_volume_compat.py
+@@ -0,0 +1,19 @@
++import json
++import subprocess
++
++import pytest
++
++from anvil_serving import models
++
++
++@pytest.mark.parametrize("field", ["Volumes", "LocalVolumes"])
++def test_inventory_retains_docker_volume_names_sizes_and_links(field):
++    def run(argv, **kwargs):
++        payload = {} if argv[1] == "run" else {
++            field: [{"Name": "model-cache", "Links": "2", "Size": "10GB"}]
++        }
++        return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
++
++    assert models.cache_inventory(_run=run)["docker"]["volumes"] == [
++        {"name": "model-cache", "links": 2, "size_bytes": 10_000_000_000}
++    ]

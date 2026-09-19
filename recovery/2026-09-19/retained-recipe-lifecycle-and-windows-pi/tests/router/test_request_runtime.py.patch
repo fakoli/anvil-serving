@@ -1,0 +1,33 @@
+--- a/tests/router/test_request_runtime.py
++++ b/tests/router/test_request_runtime.py
+@@ -244,9 +244,29 @@
+         if not part:
+             break
+         chunks.append(part)
+-        if needle in b"".join(chunks):
++        wire = b"".join(chunks)
++        # A hexadecimal request ID may end in 0 immediately before the header
++        # terminator. A final-chunk marker is meaningful only in the body.
++        search = wire.partition(b"\r\n\r\n")[2] if needle == b"0\r\n\r\n" else wire
++        if needle in search:
+             break
+     return b"".join(chunks)
++
++
++def test_chunk_terminator_reader_does_not_match_request_id_header():
++    header = b"HTTP/1.1 504 Gateway Timeout\r\nX-Request-Id: req_0\r\n\r\n"
++    body = b'{"error":{"code":"startup_timeout"}}'
++
++    class SegmentedSocket:
++        parts = iter((header, body, b""))
++
++        def settimeout(self, _timeout):
++            pass
++
++        def recv(self, _maximum):
++            return next(self.parts)
++
++    assert _read_until(SegmentedSocket(), b"0\r\n\r\n") == header + body
+ 
+ 
+ @pytest.mark.parametrize("engine", ("vllm", "sglang", "llamacpp"))

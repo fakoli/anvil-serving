@@ -1,0 +1,101 @@
+--- a/docs/cli/models.md
++++ b/docs/cli/models.md
+@@ -39,6 +39,7 @@
+ | Find a known working serve configuration | `models recipes list` | Inspect it with `models recipes show MODEL`. |
+ | Replace the deployed Primary recipe | `models recipes list` | Choose a row that activates `primary`, inspect it, then preview `serves switch primary MODEL --dry-run`. |
+ | Add or revise an operator recipe | `models recipes create|update ... --dry-run` | Apply with `--confirm`; retain the numbered backup. |
++| Build a recipe-declared derived image | `models recipes build-image MODEL --registry REGISTRY --dry-run` | Review exact input digests and prior tag, then apply with `--confirm`. |
+ | Start a candidate without changing routing | `models recipes load MODEL --container NAME --dry-run` | Apply, run `eval preflight`, then review a `serves switch`. |
+ | Remove one exact cached revision | `models cache remove OWNER/REPO --revision COMMIT --dry-run` | Apply with `--confirm` after reviewing the snapshot and reclaimable blobs. |
+ | Reclaim cache space broadly | `models cache prune --dry-run` | Add `--execute --confirm` only after reviewing the protected mixture. |
+@@ -55,6 +56,7 @@
+ | `models recipes create` | Add one recipe to an operator registry. |
+ | `models recipes update` | Replace one selected recipe. |
+ | `models recipes delete` | Delete one selected recipe. |
++| `models recipes build-image` | Build and verify a recipe-declared derived image. |
+ | `models recipes load` | Start a named local container from one recipe. |
+ | `models recipes status` | Inspect one exact recipe-loaded candidate container. |
+ | `models recipes logs` | Read bounded logs from one exact recipe-loaded candidate container. |
+@@ -205,6 +207,28 @@
+ targets and attempts to shadow `/root/.cache/huggingface` fail closed. The model
+ cache remains owned by `recipe.download.volume`.
+ 
++When an image's built-in Docker healthcheck targets a different internal port,
++declare a bounded HTTP override in the recipe:
++
++```toml
++[recipe.serve.healthcheck]
++mode = "http"
++port = 30123
++path = "/health"
++interval_seconds = 15
++timeout_seconds = 5
++start_period_seconds = 600
++retries = 5
++```
++
++`port` is the in-container probe port and is independent of the loopback-published
++`recipe.serve.port`. The path must be a normalized absolute HTTP path. Load renders
++the validated target as Docker health options without host-shell interpolation;
++unknown fields, modes other than `http`, invalid ports or paths, and out-of-range
++timings fail before Docker starts. If the table is absent, the image's healthcheck
++behavior is inherited unchanged. The runtime image must provide `curl` for an
++explicit HTTP healthcheck.
++
+ ```bash
+ anvil-serving models recipes create --recipe-file ./candidate-recipe.toml --registry ./serve-recipes.local.toml --dry-run
+ anvil-serving models recipes create --recipe-file ./candidate-recipe.toml --registry ./serve-recipes.local.toml --confirm
+@@ -221,6 +245,40 @@
+ recipe TOML, ordered write actions, deferred gate, and manual recovery path. Create, update,
+ and delete use atomic writes and numbered backups. A mutation never overwrites the
+ packaged registry implicitly.
++
++### Build a derived image
++
++When a model requires a pinned local derivative, declare its build context in the
++operator recipe rather than running an ad hoc Docker command:
++
++```toml
++[recipe.image_build]
++context = "derived-images/model-runtime"
++dockerfile = "Dockerfile"
++pull = true
++platform = "linux/amd64"
++
++[recipe.serve]
++image = "anvil-serving/model-runtime:upstream-revision"
++```
++
++Both paths are normalized relative paths. The context must remain below the
++directory containing the operator registry; symbolic links and empty contexts
++fail closed. The target image must be a tag, not a mutable implicit `latest` or
++a digest-only reference. Pin every external base and downloaded source inside
++the Dockerfile.
++
++```bash
++anvil-serving models recipes build-image MODEL --registry ./serve-recipes.local.toml --dry-run
++anvil-serving models recipes build-image MODEL --registry ./serve-recipes.local.toml --confirm
++```
++
++Preview records the context-tree, Dockerfile, and recipe SHA-256 digests, the
++previous target image ID, exact `docker build` argv, and a tag-restore command.
++Apply recomputes those inputs after confirmation, builds without loading a
++model, then inspects the target and requires Anvil's model, recipe, and context
++provenance labels. The prior image is not deleted, and the operation never
++changes a serve, route, or promotion state.
+ 
+ ### Load a recipe
+ 
+@@ -246,7 +304,11 @@
+ 
+ `load` labels the candidate with its exact recipe model and revision. Status,
+ logs, and unload verify those ownership labels before acting, so a mistyped
+-container name cannot silently target an unrelated workload.
++container name cannot silently target an unrelated workload. Status reports
++`container_health` and the resolved `container_healthcheck` separately from
++`endpoint_readiness`, which probes the host-published loopback endpoint. A live
++endpoint paired with an unhealthy container is therefore visible as a probe
++configuration failure rather than being collapsed into one health state.
+ 
+ ```bash
+ anvil-serving models recipes status MODEL --container my-candidate --registry ./serve-recipes.local.toml

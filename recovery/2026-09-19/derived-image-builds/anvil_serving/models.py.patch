@@ -1,0 +1,205 @@
+--- a/anvil_serving/models.py
++++ b/anvil_serving/models.py
+@@ -36,6 +36,7 @@
+ from . import guard
+ from . import host as host_ops
+ from . import paths
++from . import recipe_images
+ from . import serve_recipes
+ HERE = os.path.dirname(__file__)
+ 
+@@ -1346,6 +1347,33 @@
+     )
+ 
+ 
++def _observed_healthcheck_target(healthcheck):
++    """Return one redacted local HTTP target without exposing a probe command."""
++    test = healthcheck.get("Test") if isinstance(healthcheck, dict) else None
++    if not isinstance(test, list):
++        return None
++    for item in test:
++        if not isinstance(item, str):
++            continue
++        for candidate in re.findall(r"https?://[^\s'\"\\]+", item):
++            candidate = candidate.rstrip(")]},;")
++            try:
++                parsed = urllib.parse.urlsplit(candidate)
++                port = parsed.port
++            except ValueError:
++                continue
++            if parsed.hostname not in {"127.0.0.1", "localhost", "0.0.0.0", "::1"}:
++                continue
++            if parsed.scheme not in {"http", "https"} or port is None:
++                continue
++            return "%s://127.0.0.1:%s%s" % (
++                parsed.scheme,
++                port,
++                parsed.path or "/",
++            )
++    return None
++
++
+ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
+     """Return a fail-closed identity for one container created by recipe load."""
+     if not _RECIPE_CONTAINER_RE.fullmatch(container):
+@@ -1372,7 +1400,8 @@
+     try:
+         rows = json.loads(completed.stdout)
+         row = rows[0]
+-        labels = (row.get("Config") or {}).get("Labels") or {}
++        container_config = row.get("Config") or {}
++        labels = container_config.get("Labels") or {}
+         state = row.get("State") or {}
+     except (IndexError, TypeError, ValueError, AttributeError):
+         raise serve_recipes.RecipeError(
+@@ -1392,17 +1421,50 @@
+             "container %r is not owned by the selected recipe (%s mismatch)"
+             % (container, ", ".join(mismatches))
+         )
++    container_health = ((state.get("Health") or {}).get("Status"))
++    declared_healthcheck = serve_recipes.resolved_healthcheck(recipe)
++    observed_healthcheck = container_config.get("Healthcheck") or {}
+     return {
+         "schema": "recipe-container-status/v1",
+         "container": container,
+         "model": recipe["model"],
+         "revision": observed_revision,
+-        "image": (row.get("Config") or {}).get("Image"),
++        "image": container_config.get("Image"),
+         "image_id": row.get("Image"),
+         "state": state.get("Status"),
+         "running": bool(state.get("Running")),
+-        "health": ((state.get("Health") or {}).get("Status")),
++        "health": container_health,
++        "container_health": container_health,
++        "container_healthcheck": {
++            "mode": declared_healthcheck["mode"] if declared_healthcheck else "inherit",
++            "target": declared_healthcheck["target"] if declared_healthcheck else None,
++            "observed_target": _observed_healthcheck_target(observed_healthcheck),
++        },
+     }
++
++
++def _recipe_container_status(
++    recipe,
++    container,
++    *,
++    _run=subprocess.run,
++    _health=None,
++):
++    """Return container health and host-published endpoint readiness separately."""
++    if _health is None:
++        from . import serves
++        _health = serves._health
++    identity = _recipe_container_identity(recipe, container, _run=_run)
++    serve = recipe.get("serve") or {}
++    port = serve.get("port")
++    path = serve.get("health", "/health")
++    status_code = _health(port, path) if port else None
++    identity["endpoint_readiness"] = {
++        "target": "http://127.0.0.1:%s%s" % (port, path) if port else None,
++        "status_code": status_code,
++        "ready": status_code == 200,
++    }
++    return identity
+ 
+ 
+ def _await_recipe_container_healthy(
+@@ -1669,6 +1731,25 @@
+     p_delete.add_argument("--dry-run", action="store_true",
+                           help="preview without writing")
+     p_delete.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
++    p_build = sub.add_parser(
++        "build-image",
++        help="build and verify a recipe-declared derived image",
++        description=_help_description(
++            "Build one derived Docker image from a context rooted beside the operator registry.",
++            "anvil-serving models recipes build-image MODEL --registry REGISTRY --dry-run",
++            "anvil-serving models recipes build-image MODEL --registry REGISTRY --confirm",
++        ),
++        epilog="The build changes no serve or route. Its target tag, context, Dockerfile, "
++               "source digests, previous image id, and rollback command are previewed first.",
++        formatter_class=argparse.RawDescriptionHelpFormatter,
++    )
++    p_build.add_argument("model", metavar="MODEL",
++                         help="model id or unambiguous basename")
++    p_build.add_argument("--registry", required=True, metavar="TOML",
++                         help="operator-owned registry containing recipe.image_build")
++    p_build.add_argument("--dry-run", action="store_true",
++                         help="validate and preview without building")
++    p_build.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
+     p_load = sub.add_parser(
+         "load",
+         help="start a named local container from one recipe",
+@@ -1762,6 +1843,62 @@
+             return 1
+         _print_recipe_show(recipe)
+         return 0
++    if a.recipe_action == "build-image":
++        recipe = serve_recipes.find_recipe(registry, a.model)
++        if recipe is None:
++            print("no serve recipe for %r in %s" % (a.model, registry_path), file=sys.stderr)
++            return 1
++        try:
++            plan = recipe_images.build_plan(recipe, registry_path)
++        except recipe_images.RecipeImageError as exc:
++            print(str(exc), file=sys.stderr)
++            return 1
++        previous = plan.get("previous_image") or {}
++        print("RECIPE IMAGE BUILD PLAN")
++        print("registry: %s" % plan["registry"])
++        print("model: %s" % plan["model"])
++        print("target image: %s" % plan["image"])
++        print("context: %s" % plan["context"])
++        print("context digest: sha256:%s" % plan["context_digest"])
++        print("context files: %s (%s bytes)" % (
++            plan["context_file_count"], plan["context_bytes"]
++        ))
++        print("dockerfile: %s" % plan["dockerfile"])
++        print("dockerfile digest: sha256:%s" % plan["dockerfile_digest"])
++        print("recipe digest: sha256:%s" % plan["recipe_digest"])
++        print("current target image id: %s" % (previous.get("image_id") or "absent"))
++        print("docker command:")
++        print(shlex.join(plan["argv"]))
++        print("ordered actions: confirm; rebuild plan; reject source drift; build; inspect; verify provenance labels")
++        print("not performed: model load, serve mutation, route mutation, or old-image deletion")
++        if previous.get("image_id"):
++            print("manual rollback after a successful replacement: docker image tag %s %s" % (
++                shlex.quote(previous["image_id"]), shlex.quote(plan["image"])
++            ))
++        else:
++            print("manual rollback: no prior target tag existed")
++        if a.dry_run:
++            print("deferred until apply: confirmation and Docker build")
++            return 0
++        if not _confirm_recipe_mutation(
++            "build image", recipe["model"], confirm=a.confirm, dry_run=False
++        ):
++            return 3
++        try:
++            refreshed = recipe_images.build_plan(recipe, registry_path)
++            for key in ("context_digest", "dockerfile_digest", "recipe_digest"):
++                if refreshed[key] != plan[key]:
++                    raise recipe_images.RecipeImageError(
++                        "recipe image build inputs changed after preview; retry the command"
++                    )
++            identity = recipe_images.run_build(refreshed)
++        except recipe_images.RecipeImageError as exc:
++            print("recipe image build failed: %s" % exc, file=sys.stderr)
++            return 1
++        print("built and verified image %s (%s)" % (
++            plan["image"], identity.get("image_id") or "unknown id"
++        ))
++        return 0
+     if a.recipe_action in {"status", "logs", "unload"}:
+         recipe = serve_recipes.find_recipe(registry, a.model)
+         if recipe is None:
+@@ -1769,7 +1906,7 @@
+             return 1
+         try:
+             if a.recipe_action == "status":
+-                identity = _recipe_container_identity(recipe, a.container)
++                identity = _recipe_container_status(recipe, a.container)
+                 print(json.dumps(identity, indent=2, sort_keys=True))
+                 return 0
+             if a.recipe_action == "logs":

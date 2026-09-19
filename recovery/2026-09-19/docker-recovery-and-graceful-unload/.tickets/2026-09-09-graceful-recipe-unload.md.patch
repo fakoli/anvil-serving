@@ -1,0 +1,16 @@
+--- /dev/null
++++ b/.tickets/2026-09-09-graceful-recipe-unload.md
+@@ -0,0 +1,13 @@
++# Graceful candidate unload
++
++The concurrency trial's explicit clean-shutdown constraint exposed that both
++recipe unload paths used `docker rm -f` on running candidates. They now request
++`docker stop --timeout -1` by verified immutable container ID, wait at most
++60 seconds in the Anvil client, and perform plain removal only after success.
++A stop failure or client deadline prevents removal and shared-memory cleanup;
++Docker receives no automatic SIGKILL deadline. A concurrent restart is rejected
++by non-forced removal. The cache remains intact.
++
++Docker documents the negative timeout behavior at
++<https://docs.docker.com/reference/cli/docker/container/stop/>, observed 2026-09-09.
++The focused model, discovery, and graceful-unload suite passed 159 tests.

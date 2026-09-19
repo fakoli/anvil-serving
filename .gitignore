@@ -58,3 +58,6 @@ htmlcov/
 unsloth_compiled_cache/
 graphify-out/
 .scratch/
+
+# Disposable working snapshots created for local secret-scanner runs.
+/.codex-scan-*/

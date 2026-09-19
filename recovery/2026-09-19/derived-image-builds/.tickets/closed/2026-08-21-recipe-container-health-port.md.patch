@@ -1,0 +1,59 @@
+--- /dev/null
++++ b/.tickets/closed/2026-08-21-recipe-container-health-port.md
+@@ -0,0 +1,56 @@
++# Managed recipes cannot override an image healthcheck port
++
++## Observed
++
++On 2026-08-21, a managed llama.cpp candidate served its configured endpoint
++successfully and passed direct `/health`, model identity, long-context, tool,
++and multimodal gates. Docker still classified the container as unhealthy
++because the upstream image healthcheck probed its default internal port while
++the managed recipe selected a different serve port.
++
++The recipe status and log surfaces exposed the contradictory states, but the
++recipe schema had no explicit, validated way to align or replace the inherited
++container healthcheck.
++
++## Impact
++
++A correct serve can appear unhealthy to container-aware orchestration. That is
++unsafe promotion evidence: ignoring health would hide real failures, while
++honoring the inherited probe rejects a proven-live endpoint. Operators must
++not use an ad hoc raw Docker override to close this gap.
++
++## Resolution
++
++Add a serving-engine-agnostic recipe healthcheck contract. It must either map
++the recipe's declared internal port and path into the container healthcheck or
++allow a bounded explicit override. Render the resolved check through the
++managed lifecycle command and retain it in status/evidence without assuming a
++llama.cpp, SGLang, or vLLM port.
++
++## Acceptance
++
++- A recipe can declare the in-container health port/path independently of the
++  published host port.
++- Load renders the declaration without shell interpolation or secret values.
++- Status distinguishes endpoint readiness from container health and reports
++  the resolved probe target.
++- Invalid ports, paths, or unsupported healthcheck modes fail before mutation.
++- Existing recipes retain their current behavior when the declaration is absent.
++- Tests cover inherited, overridden, healthy, unhealthy, and mismatched-port
++  cases across at least two engine-neutral fixtures.
++
++## Resolved
++
++Resolved on 2026-08-24. Recipes may declare a validated
++`recipe.serve.healthcheck` HTTP table with an independent internal port and
++path. Managed load renders the fixed probe and bounded timing options before
++the image reference; absent declarations continue to inherit image behavior.
++Status now reports container health and its resolved/observed probe separately
++from host-published endpoint readiness.
++
++Hermetic coverage exercises llama.cpp and vLLM-neutral fixtures for inherited
++and overridden probes, rejects unsupported modes, unsafe paths, ports, and
++fields before Docker, and covers healthy, unhealthy, and mismatched-port status.
++The originating Q4_0/MTP3 profile was recreated through the managed lifecycle:
++Docker health and endpoint readiness both passed, followed by the complete
++coding, JSON, approximately 128K needle, and tools 20/20 preflight.

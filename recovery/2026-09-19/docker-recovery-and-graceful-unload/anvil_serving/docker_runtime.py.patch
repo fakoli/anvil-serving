@@ -1,0 +1,72 @@
+--- /dev/null
++++ b/anvil_serving/docker_runtime.py
+@@ -0,0 +1,69 @@
++"""Bounded offline recovery of Docker Desktop's stale Windows service sockets."""
++import argparse
++from datetime import datetime, timezone
++import json
++import os
++from pathlib import Path
++import subprocess
++
++from . import docker_disk, guard
++
++
++def repair_socket(path, *, confirm=False, dry_run=False, runner=subprocess.run):
++    """Quarantine one zero-byte AF_UNIX socket only while Desktop is stopped."""
++    if not docker_disk._is_windows():
++        raise ValueError("Docker inference socket recovery is Windows-only")
++    candidate = Path(path)
++    parts = tuple(p.lower() for p in candidate.parts)
++    known = (parts[-3:-1] == ("docker", "run") and parts[-1] in {
++        "dockerinference", "dockerethernetvfkit", "useranalyticsotlphttp.sock",
++    }) or parts[-2:] == (
++        "docker-secrets-engine", "engine.sock"
++    )
++    if not candidate.is_absolute() or not known:
++        raise ValueError("select an exact known Docker Desktop service socket")
++    if candidate.parent.resolve() != candidate.parent.absolute():
++        raise ValueError("socket parent must not traverse a link")
++
++    def inspect():
++        processes = docker_disk._powershell_json(
++            "$ErrorActionPreference='Stop'; "
++            "$p=@(Get-Process -Name 'Docker Desktop','com.docker.*' -ErrorAction SilentlyContinue); "
++            "@{Processes=$p.Count} | ConvertTo-Json -Compress",
++            candidate, runner=runner,
++        )
++        if processes.get("Processes") != 0:
++            raise ValueError("Docker Desktop processes must exit before socket recovery")
++        stat = candidate.lstat()
++        if stat.st_size != 0 or getattr(stat, "st_reparse_tag", None) != 0x80000023:
++            raise ValueError("target is not a zero-byte Windows AF_UNIX socket")
++        return stat.st_dev, stat.st_ino, stat.st_mtime_ns
++
++    identity = inspect()
++    result = {"schema": "docker-socket-recovery/v1", "outcome": "preview",
++              "applied": False, "socket": str(candidate), "docker_desktop_status": "stopped"}
++    if dry_run or not confirm:
++        return result
++    if inspect() != identity:
++        raise ValueError("socket identity changed during inspection")
++    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
++    destination = candidate.with_name(candidate.name + ".anvil-stale-" + stamp)
++    os.rename(candidate, destination)
++    result.update(applied=True, outcome="quarantined", quarantine=str(destination))
++    return result
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--socket", required=True)
++    parser.add_argument("--confirm", action="store_true")
++    parser.add_argument("--dry-run", action="store_true")
++    args = parser.parse_args(argv)
++    try:
++        result = repair_socket(args.socket, dry_run=args.dry_run,
++                                        confirm=args.confirm or guard.confirmation_authorized())
++    except (OSError, ValueError) as exc:
++        result = {"schema": "docker-socket-recovery/v1", "outcome": "refused",
++                  "applied": False, "error": str(exc)}
++    print(json.dumps(result, indent=2))
++    return 1 if result["outcome"] == "refused" else 0

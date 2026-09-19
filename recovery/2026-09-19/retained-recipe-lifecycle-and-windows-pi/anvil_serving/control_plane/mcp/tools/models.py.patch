@@ -1,0 +1,91 @@
+--- a/anvil_serving/control_plane/mcp/tools/models.py
++++ b/anvil_serving/control_plane/mcp/tools/models.py
+@@ -310,14 +310,60 @@
+         raise ToolError("stale_preview", "Recipe registry, selected recipe, or running inventory changed; review again.")
+ 
+ 
++def _tool_retained_recipe_manage(args: dict) -> dict:
++    """Registry-independent stop/start with exact preview identity and CLI gates."""
++    import subprocess
++    import time
++    from .... import models, serve_recipes
++
++    action = _str_arg(args, "action", required=True)
++    model = _str_arg(args, "model", required=True)
++    container = _str_arg(args, "container", required=True)
++    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
++    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
++    seconds = _bounded_int_arg(args, "timeout_seconds", 30, min_value=1, max_value=3600)
++    baseline_pids = args.get("baseline_compute_pids", [])
++    if (not isinstance(baseline_pids, list) or len(baseline_pids) > 16
++            or any(type(pid) is not int or not 1 <= pid <= 2147483647 for pid in baseline_pids)
++            or (action != "start" and baseline_pids)):
++        raise ToolError("bad_argument", "baseline_compute_pids is a start-only list of at most 16 positive PIDs")
++    run = models._bounded_recipe_runner(subprocess.run, time.monotonic() + seconds, time.monotonic)
++    try:
++        inventory = serve_recipes.discover_recipe_containers(_run=run)
++        identity = serve_recipes.select_recipe_container(inventory, model=model, container=container)
++        fingerprint = hashlib.sha256(json.dumps({"inventory": inventory, "baseline_compute_pids": sorted(set(baseline_pids))}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
++        if not dry_run:
++            if not confirm:
++                raise ToolError("confirmation_required", "Retained lifecycle requires confirmation of a reviewed preview.")
++            if _str_arg(args, "expected_inventory_sha256", "") != fingerprint:
++                raise ToolError("stale_preview", "Recipe identity or inventory changed; review the current preview.")
++        operation = (models._discovered_recipe_container_stop if action == "stop"
++                     else models._discovered_recipe_container_start)
++        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
++            rc = operation(identity, timeout_seconds=seconds, dry_run=dry_run, confirm=confirm, _run=run,
++                           **({"baseline_compute_pids": baseline_pids} if action == "start" else {}))
++        if rc:
++            raise ToolError("recipe_lifecycle_failed", "Retained lifecycle did not reach its verified postcondition.", {"action": action, "returncode": rc})
++        return _ok({"applied": not dry_run, "dry_run": dry_run,
++                    "inventory_sha256": fingerprint, "model": model, "container": container,
++                    "plan": [{"kind": "recipe_" + action, "target": container,
++                              "baseline_compute_pids": sorted(set(baseline_pids)),
++                              "admission": "isolated-recovery" if action == "start" else "not-applicable"}],
++                    "postcondition": {"status": "not-run" if dry_run else "passed", "action": action}})
++    except serve_recipes.RecipeError as exc:
++        raise ToolError("recipe_unavailable", str(exc)) from exc
++
++
+ def tool_recipe_manage(args: dict) -> dict:
+     """Preview or run one declared recipe load/unload through the canonical CLI."""
+     from .... import models, serve_recipes
+ 
+     action = _str_arg(args, "action", required=True)
++    if action in {"stop", "start"}:
++        return _tool_retained_recipe_manage(args)
+     if action not in {"status", "load", "unload"}:
+-        raise ToolError("bad_action", "action must be one of: status, load, unload")
+-    registry_path = os.path.abspath(os.path.expanduser(_str_arg(args, "registry", required=True)))
++        raise ToolError("bad_action", "action must be one of: status, load, stop, start, unload")
++    registry_path = os.path.abspath(os.path.expanduser(_str_arg(args, "registry", "") or models._default_registry()))
+     model = _str_arg(args, "model", required=True)
+     container = _str_arg(args, "container", required=True)
+     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+@@ -504,10 +550,10 @@
+             "handler": tool_recipe_settings,
+         },
+         "recipe_manage": {
+-            "description": "Read, preview, or run one confirmed declared recipe container load or unload.",
++            "description": "Read, preview, or run a confirmed recipe load/unload or exact retained stop/start. Retained restart requires isolated GPU recovery admission.",
+             "inputSchema": _schema(
+                 {
+-                    "action": {"type": "string", "enum": ["status", "load", "unload"]},
++                    "action": {"type": "string", "enum": ["status", "load", "stop", "start", "unload"]},
+                     "registry": {"type": "string"}, "model": {"type": "string"},
+                     "container": {"type": "string", "minLength": 1, "maxLength": 128},
+                     "manifest": {"type": "string"}, "serve": {"type": "string"}, "topology": {"type": "string"},
+@@ -516,8 +562,11 @@
+                     "expected_recipe_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                     "expected_inventory_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                     "expected_admission_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
++                    "timeout_seconds": _bounded_integer_schema(1, 3600, 30),
++                    "baseline_compute_pids": {"type": "array", "maxItems": 16,
++                                              "items": {"type": "integer", "minimum": 1, "maximum": 2147483647}},
+                     "dry_run": {"type": "boolean"}, "confirm": {"type": "boolean"},
+-                }, required=["action", "registry", "model", "container"],
++                }, required=["action", "model", "container"],
+             ),
+             "handler": tool_recipe_manage,
+         },

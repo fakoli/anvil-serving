@@ -1,0 +1,19 @@
+--- a/anvil_serving/commands/models.py
++++ b/anvil_serving/commands/models.py
+@@ -87,6 +87,16 @@
+                         docs_anchor="docs/cli/models.md#create-update-or-delete-a-recipe",
+                     ),
+                     _resource_node(
++                        "build-image",
++                        "Build and verify a recipe-declared derived image.",
++                        "anvil_serving.models",
++                        role="model-serve",
++                        options=CONFIRM_OPTIONS,
++                        mutation="mutate",
++                        argv_prefix=("recipe", "build-image"),
++                        docs_anchor="docs/cli/models.md#build-a-derived-image",
++                    ),
++                    _resource_node(
+                         "load",
+                         "Load one recipe into a named local container.",
+                         "anvil_serving.models",

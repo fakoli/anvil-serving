@@ -1,0 +1,144 @@
+--- /dev/null
++++ b/tests/test_recipe_images.py
+@@ -0,0 +1,141 @@
++import json
++from pathlib import Path
++from types import SimpleNamespace
++
++import pytest
++
++from anvil_serving import recipe_images
++
++
++def _recipe():
++    return {
++        "model": "org/model-derived",
++        "download": {"revision": "a" * 40},
++        "image_build": {
++            "context": "derived-images/model-runtime",
++            "dockerfile": "Dockerfile",
++            "pull": True,
++            "platform": "linux/amd64",
++        },
++        "serve": {"image": "anvil-serving/model-runtime:rev-a1"},
++    }
++
++
++def _context(tmp_path: Path) -> Path:
++    root = tmp_path / "derived-images" / "model-runtime"
++    root.mkdir(parents=True)
++    (root / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
++    (root / "payload.txt").write_text("pinned payload\n", encoding="utf-8")
++    return root
++
++
++def _missing_image(argv, **_kwargs):
++    assert argv[:3] == ["docker", "image", "inspect"]
++    return SimpleNamespace(returncode=1, stdout="", stderr="No such image")
++
++
++def test_build_plan_is_relative_hashed_and_provenance_labeled(tmp_path):
++    context = _context(tmp_path)
++    registry = tmp_path / "serve-recipes.local.toml"
++    registry.write_text("schema = 'anvil-serving.serve-recipes/v1'\n", encoding="utf-8")
++
++    plan = recipe_images.build_plan(_recipe(), str(registry), _run=_missing_image)
++
++    assert plan["context"] == str(context.resolve())
++    assert plan["dockerfile"] == str((context / "Dockerfile").resolve())
++    assert plan["context_file_count"] == 2
++    assert len(plan["context_digest"]) == 64
++    assert len(plan["dockerfile_digest"]) == 64
++    assert plan["previous_image"] is None
++    assert plan["argv"][:4] == ["docker", "build", "--pull", "--platform"]
++    assert "linux/amd64" in plan["argv"]
++    assert "%s=%s" % (
++        recipe_images.MODEL_LABEL,
++        "org/model-derived",
++    ) in plan["argv"]
++    assert plan["argv"][-1] == str(context.resolve())
++
++
++@pytest.mark.parametrize(
++    ("field", "value", "message"),
++    [
++        ("context", "../escape", "relative POSIX path"),
++        ("context", ".", "relative POSIX path"),
++        ("dockerfile", "../Dockerfile", "relative POSIX path"),
++    ],
++)
++def test_build_plan_rejects_escaping_paths(tmp_path, field, value, message):
++    _context(tmp_path)
++    registry = tmp_path / "serve-recipes.local.toml"
++    recipe = _recipe()
++    recipe["image_build"][field] = value
++    with pytest.raises(recipe_images.RecipeImageError, match=message):
++        recipe_images.build_plan(recipe, str(registry), _run=_missing_image)
++
++
++def test_build_plan_rejects_latest_and_unknown_fields(tmp_path):
++    _context(tmp_path)
++    registry = tmp_path / "serve-recipes.local.toml"
++    recipe = _recipe()
++    recipe["serve"]["image"] = "anvil-serving/model-runtime:latest"
++    with pytest.raises(recipe_images.RecipeImageError, match="non-latest"):
++        recipe_images.build_plan(recipe, str(registry), _run=_missing_image)
++
++    recipe = _recipe()
++    recipe["image_build"]["build_args"] = ["SECRET=value"]
++    with pytest.raises(recipe_images.RecipeImageError, match="unsupported"):
++        recipe_images.build_plan(recipe, str(registry), _run=_missing_image)
++
++
++def test_run_build_verifies_exact_labels():
++    plan = {
++        "argv": ["docker", "build", "context"],
++        "image": "anvil-serving/model-runtime:rev-a1",
++        "model": "org/model-derived",
++        "recipe_digest": "1" * 64,
++        "context_digest": "2" * 64,
++    }
++    labels = {
++        recipe_images.MANAGED_LABEL: "models-recipes-image",
++        recipe_images.MODEL_LABEL: plan["model"],
++        recipe_images.RECIPE_DIGEST_LABEL: plan["recipe_digest"],
++        recipe_images.CONTEXT_DIGEST_LABEL: plan["context_digest"],
++    }
++
++    def run(argv, **_kwargs):
++        if argv[:2] == ["docker", "build"]:
++            return SimpleNamespace(returncode=0)
++        return SimpleNamespace(
++            returncode=0,
++            stdout=json.dumps([
++                {"Id": "sha256:built", "RepoDigests": [], "Config": {"Labels": labels}}
++            ]),
++            stderr="",
++        )
++
++    identity = recipe_images.run_build(plan, _run=run)
++    assert identity["image_id"] == "sha256:built"
++
++
++def test_run_build_rejects_provenance_mismatch():
++    plan = {
++        "argv": ["docker", "build", "context"],
++        "image": "anvil-serving/model-runtime:rev-a1",
++        "model": "org/model-derived",
++        "recipe_digest": "1" * 64,
++        "context_digest": "2" * 64,
++    }
++
++    def run(argv, **_kwargs):
++        if argv[:2] == ["docker", "build"]:
++            return SimpleNamespace(returncode=0)
++        return SimpleNamespace(
++            returncode=0,
++            stdout=json.dumps([
++                {"Id": "sha256:built", "RepoDigests": [], "Config": {"Labels": {}}}
++            ]),
++            stderr="",
++        )
++
++    with pytest.raises(recipe_images.RecipeImageError, match="provenance"):
++        recipe_images.run_build(plan, _run=run)

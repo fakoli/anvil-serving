@@ -1,0 +1,18 @@
+--- /dev/null
++++ b/.tickets/2026-09-09-model-pull-image-progress.md
+@@ -0,0 +1,15 @@
++# Expose initial image preparation during model pulls
++
++`models pull` performs its volume-space preflight through the selected inspector
++image. When that image is absent, Docker downloads and extracts it inside a
++captured JSON-report subprocess, hiding progress until completion. The pinned
++vLLM 0.28.0 image took roughly fifteen minutes on 2026-09-09; Docker remained
++responsive and the image and exact model snapshot eventually verified.
++
++Add explicit stage reporting and bounded progress for image resolution before
++the JSON cache probe, preserving confirmation, pinning, one downloader, and
++snapshot verification. A quiet subprocess is not evidence of a stalled daemon;
++do not start a competing cache writer or force-restart Docker to obtain status.
++
++Evidence: the dated Qwen3.8 concurrency trial's friction log and private native
++pull transcript. This does not invalidate its later measured capacity cells.

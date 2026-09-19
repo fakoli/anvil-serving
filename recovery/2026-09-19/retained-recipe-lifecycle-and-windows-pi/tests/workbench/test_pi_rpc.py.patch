@@ -1,0 +1,40 @@
+--- a/tests/workbench/test_pi_rpc.py
++++ b/tests/workbench/test_pi_rpc.py
+@@ -1,11 +1,37 @@
+ from __future__ import annotations
+ 
+ import json
++import os
+ from pathlib import Path
++import subprocess
++import sys
++import time
+ 
+ import pytest
+ 
+ from anvil_serving.workbench_app.pi_rpc import JsonlDecoder, PiProcessExited, PiProtocolError, PiRpcClient
++
++
++def test_real_child_pipe_can_be_polled_without_blocking(tmp_path):
++    from anvil_serving.workbench_app.pi_rpc import _default_read_chunk
++
++    process = subprocess.Popen(
++        [sys.executable, "-u", "-c", "import sys; sys.stdout.buffer.write(b'ready\\n'); sys.stdout.flush(); sys.stdin.buffer.read(1)"],
++        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
++        env=dict(os.environ), cwd=tmp_path, bufsize=0,
++    )
++    try:
++        deadline = time.monotonic() + 3
++        observed = b""
++        while time.monotonic() < deadline and not observed:
++            observed = _default_read_chunk(process, 1024)
++            time.sleep(0.01)
++        assert observed == b"ready\n"
++        started = time.monotonic()
++        assert _default_read_chunk(process, 1024) == b""
++        assert time.monotonic() - started < 1
++    finally:
++        process.communicate(b"x", timeout=3)
+ 
+ 
+ class _Input:

@@ -1,0 +1,53 @@
+--- a/docs/cli/host.md
++++ b/docs/cli/host.md
+@@ -351,6 +351,50 @@
+ image's shared layers may remain while another image or build cache references
+ them; this command never removes either of those owners.
+ 
++### Docker service socket recovery
++
++If Docker's authoritative startup log reports it cannot remove its
++`Docker/run/dockerInference`, `Docker/run/dockerEthernetVfkit`,
++`Docker/run/userAnalyticsOtlpHttp.sock`, or
++`docker-secrets-engine/engine.sock` socket,
++quit Docker Desktop cleanly first.
++`host docker-socket-repair --socket ABSOLUTE_PATH --dry-run` verifies
++all Desktop backend processes have exited and the exact target is a zero-byte
++Windows AF_UNIX socket. Apply with `--confirm` repeats those checks and renames
++the socket in place to a timestamped quarantine name. It preserves the socket
++for diagnosis and leaves Desktop stopped. Restart Desktop normally afterward.
++
++### Docker data disk adoption
++
++For a fresh offline copy, use `host docker-disk copy --source ABSOLUTE_VHDX
++--destination NEW_ABSOLUTE_VHDX --dry-run`. Apply with `--confirm` preserves
++the source, refuses an existing destination, checks available disk space,
++streams the copy while hashing the source, then independently reads and hashes
++every destination byte. A SHA-256 mismatch or changing source prevents final
++installation. Partial copies remain available for diagnosis. `--output PATH.json`
++retains the verification record. Docker stays stopped throughout.
++
++When Docker Desktop leaves a completed WSL disk copy after a failed move,
++`host docker-disk adopt` can select the existing copy offline. Stop all managed
++workloads, then stop Docker Desktop cleanly before previewing this command:
++
++```powershell
++anvil-serving host docker-disk adopt --source C:\Docker\wsl\disk\docker_data.vhdx --destination D:\Docker\DockerDesktopWSL\disk\docker_data.vhdx --settings C:\DockerSettings\settings-store.json --dry-run
++```
++
++The command supports the inspected Docker settings schema 45. It verifies
++matching VHD identifiers, virtual capacity and file sizes, repeats the disk
++identity and detached-state checks, and refuses while Docker Desktop processes
++remain. Apply with `--confirm` creates an exact settings backup and changes only
++the WSL storage root. Both disk files remain, and Docker stays stopped.
++
++Matching metadata does not prove byte identity or application consistency.
++After restart, verify the destination is attached, the source is detached,
++and cache inventory and managed workloads are healthy before retiring the
++source. The result reports `configured-pending-restart` until that independent
++verification is performed. To roll back, stop Desktop cleanly and restore the
++reported settings backup before restarting with the retained original disk.
++
+ ### Docker data VHDX compaction
+ 
+ Deleting Docker objects releases space inside Docker Desktop's dynamic data

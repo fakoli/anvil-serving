@@ -1,0 +1,30 @@
+--- a/tests/test_models.py
++++ b/tests/test_models.py
+@@ -1621,7 +1621,8 @@
+         _run=fake,
+     ) == 0
+     assert calls.count(["docker", "inspect", "recipe-heavy"]) == 2
+-    assert calls[-1] == ["docker", "rm", "-f", "e" * 64]
++    assert calls[-2:] == [["docker", "stop", "--timeout", "-1", "e" * 64],
++                         ["docker", "rm", "e" * 64]]
+     assert "unloaded recipe container" in capsys.readouterr().out
+ 
+ 
+@@ -1647,7 +1648,7 @@
+             _run=fake,
+         )
+ 
+-    assert all(call[:3] != ["docker", "rm", "-f"] for call in calls)
++    assert all(call[1] not in {"stop", "rm"} for call in calls)
+ 
+ 
+ def test_recipe_container_unload_reclaims_native_offload_after_remove(
+@@ -1679,7 +1680,7 @@
+     assert models._recipe_container_unload(
+         recipe, "recipe-heavy", confirm=True, _run=fake,
+     ) == 0
+-    assert reclaimed and ["docker", "rm", "-f", "e" * 64] in reclaimed[0]
++    assert reclaimed and ["docker", "rm", "e" * 64] in reclaimed[0]
+ 
+ 
+ def test_recipe_container_operations_refuse_unlabeled_container():
