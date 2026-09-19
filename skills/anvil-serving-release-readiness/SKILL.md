@@ -106,6 +106,17 @@ installed CLI only as a verified fallback.
    sync dry-run for each host with the same approved router hash. Record exact
    observed context/output/reasoning/modality values and required service reloads;
    new catalog files alone do not prove an existing session has reloaded them.
+   Open WebUI is provisioned by the operator's infrastructure, not by
+   `anvil-serving clients sync` (which covers OpenClaw, Hermes and Pi only).
+   The managed infrastructure procedure is `sh scripts/run webui --check`,
+   `sh scripts/run webui`, then a repeat `sh scripts/run webui`; its
+   `harness-fleet` play includes WebUI. The helper reads the approved promotion
+   contract, uses native WebUI model/configuration APIs, verifies `/api/models`
+   as each active account, and checks a fresh receipt from its installed
+   scheduled unit. Keep deployment-specific paths and acceptance evidence in
+   the operator repository. For an operator without that provisioner, require
+   an equivalent declared procedure and leave WebUI convergence pending until
+   it exists; never imply the product's three-client sync covers WebUI.
    Include Open WebUI when it is a declared harness. Reconcile its Anvil-backed
    aliases from the same approved router catalog, including output limits and
    vision metadata. Model discovery alone is insufficient: grant authenticated
