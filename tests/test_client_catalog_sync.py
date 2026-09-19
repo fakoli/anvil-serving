@@ -1517,3 +1517,91 @@ def test_public_https_hostname_is_refused_before_credential_dispatch(tmp_path):
             opener=opener,
         )
     assert opener.requests == []
+
+
+@pytest.mark.parametrize("observed,second", [("b" * 64, None), (CONFIG_SHA, "b" * 64)])
+def test_promotion_binding_refuses_drift_before_client_files(tmp_path, observed, second):
+    _write_inputs(tmp_path)
+    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    status, capabilities = _catalog(config_sha=observed)
+    opener = _Opener(status, capabilities)
+    if second is not None:
+        opener.payloads.append({"config_sha256": second})
+    with pytest.raises(ClientCatalogError, match="router configuration"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="pi",
+            expected_config_sha256=CONFIG_SHA, confirm=True, dry_run=False,
+            pi_models=str(tmp_path / "models.json"),
+            pi_settings=str(tmp_path / "settings.json"),
+            environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=opener,
+        )
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+
+def test_promotion_binding_matches_and_preserves_idempotency(tmp_path):
+    _write_inputs(tmp_path)
+    for apply in (True, False):
+        status, capabilities = _catalog()
+        opener = _Opener(status, capabilities)
+        opener.payloads.append(status)
+        result = sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="pi",
+            expected_config_sha256=CONFIG_SHA, confirm=apply, dry_run=not apply,
+            pi_models=str(tmp_path / "models.json"),
+            pi_settings=str(tmp_path / "settings.json"),
+            state_path=str(tmp_path / "state.json"), backup_root=str(tmp_path / "backups"),
+            environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=opener,
+        )
+        assert result["config_sha256"] == CONFIG_SHA
+        if not apply:
+            assert result["changed"] == []
+
+
+def test_invalid_promotion_hash_never_fetches():
+    opener = _Opener({}, {})
+    with pytest.raises(ClientCatalogError, match="lowercase SHA-256"):
+        sync_clients(base_url="https://router.example.ts.net/v1",
+                     expected_config_sha256="not-a-hash", opener=opener, environ={})
+    assert opener.requests == []
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_explicit_reserve_alignment_preserves_policy_and_requires_capacity(tmp_path, enabled):
+    from anvil_serving.client_catalog_sync import fetch_client_catalog, _render_pi_documents
+    _write_inputs(tmp_path)
+    catalog = fetch_client_catalog(base_url="https://router.example.ts.net/v1",
+        environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=_Opener(*_catalog()))
+    models = json.loads((tmp_path / "models.json").read_text())
+    settings = json.loads((tmp_path / "settings.json").read_text())
+    settings["compaction"].update(enabled=enabled, reserveTokens=1)
+    kwargs = dict(base_url="https://router.example.ts.net/v1", api_key_env="ANVIL_ROUTER_TOKEN")
+    with pytest.raises(ClientCatalogError):
+        _render_pi_documents(catalog, models, settings, **kwargs)
+    if not enabled:
+        with pytest.raises(ClientCatalogError):
+            _render_pi_documents(catalog, models, settings, align_compaction_reserve=True, **kwargs)
+        return
+    _, aligned = _render_pi_documents(catalog, models, settings, align_compaction_reserve=True, **kwargs)
+    assert settings["compaction"]["reserveTokens"] == 1
+    assert aligned["compaction"]["reserveTokens"] == 8192
+    assert aligned["compaction"]["keepRecentTokens"] == settings["compaction"]["keepRecentTokens"]
+    settings["compaction"]["keepRecentTokens"] = 1_048_576
+    with pytest.raises(ClientCatalogError, match="fit"):
+        _render_pi_documents(catalog, models, settings, align_compaction_reserve=True, **kwargs)
+
+
+def test_openclaw_reserve_alignment_is_monotonic_and_preserves_policy(tmp_path):
+    from anvil_serving.client_catalog_sync import fetch_client_catalog, _render_openclaw_document
+    _write_inputs(tmp_path)
+    catalog = fetch_client_catalog(base_url="https://router.example.ts.net/v1",
+        environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=_Opener(*_catalog()))
+    original = json.loads((tmp_path / "openclaw.json").read_text())
+    policy = original["agents"]["defaults"]["compaction"]
+    policy.update(reserveTokens=1, reserveTokensFloor=1)
+    updated = _render_openclaw_document(catalog, original, align_compaction_reserve=True)
+    aligned = updated["agents"]["defaults"]["compaction"]
+    assert aligned == {**policy, "reserveTokens": 8192, "reserveTokensFloor": 8192}
+    assert policy["reserveTokens"] == 1
+    policy.update(reserveTokens=50_000, reserveTokensFloor=55_000)
+    unchanged = _render_openclaw_document(catalog, original, align_compaction_reserve=True)
+    assert unchanged["agents"]["defaults"]["compaction"] == policy

@@ -53,6 +53,7 @@ def commands() -> CommandNode:
                                 "base_url",
                                 "api_key_env",
                                 "clients",
+                                "expected_config_sha256", "align_compaction_reserve",
                                 "openclaw_config",
                                 "hermes_config",
                                 "hermes_bin",

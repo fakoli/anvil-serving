@@ -22,7 +22,7 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "72f954d3c37d5561ae116167efd9a54fb89e7de46ea1b16c6d042fbaee21bd77"
+    "3e7a93c24c6340e82013e5801f3a8fc52e81102d1c8cb8c91b44e145544b6cf2"
 )
 HANDLER_MAP_SHA256 = (
     "dc25ef88f384ee53b0747a8f1fbd9b31f991bc0151de25d2eeaab469da5d1b5b"
@@ -173,6 +173,10 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
                 "container_exec",
         }
     ]
+    client_schema = next(tool for tool in public_tools if tool["name"] == "client_catalog_sync")["inputSchema"]
+    client_schema["properties"].pop("expected_config_sha256")
+    client_schema["properties"].pop("align_compaction_reserve")
+    client_schema["maxProperties"] -= 2
     assert _canonical_sha256(public_tools) == (
         "d2145a64f57a847b97e0b72f36f59cf853fc11e76d5c9b89b98860b2c4654954"
     )

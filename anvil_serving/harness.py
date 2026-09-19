@@ -628,6 +628,7 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
                      restart_openclaw_on_change=False,
                      restart_hermes_on_change=False,
                      dry_run=True, confirm=False, timeout_seconds=15,
+                     expected_config_sha256=None, align_compaction_reserve=False,
                      _opener=None, _restart=None,
                      _refresh_openclaw_service=None, _restart_hermes=None,
                      _hermes_run=subprocess.run, _environ=None):
@@ -653,6 +654,8 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
             dry_run=dry_run,
             confirm=confirm,
             timeout_seconds=timeout_seconds,
+            expected_config_sha256=expected_config_sha256,
+            align_compaction_reserve=align_compaction_reserve,
             opener=_opener,
             restart=_restart,
             refresh_openclaw_service=_refresh_openclaw_service,
@@ -750,6 +753,8 @@ def _build_parser():
     clients.add_argument("--restart-hermes-on-change", action="store_true")
     clients.add_argument("--dry-run", action="store_true")
     clients.add_argument("--timeout-seconds", type=int, default=15)
+    clients.add_argument("--align-compaction-reserve", action="store_true", help="Raise declared Pi/OpenClaw compaction reserves to fit router output limits")
+    clients.add_argument("--expected-config-sha256", help="Require the approved router config before client writes")
     hermes_media = sync_targets.add_parser("hermes-media")
     hermes_media.add_argument("--hermes-bin", default="~/.local/bin/hermes")
     hermes_media.add_argument("--hermes-home", default="~/.hermes")
@@ -806,6 +811,8 @@ def main(argv=None):
                 base_url=args.base_url,
                 api_key_env=args.api_key_env,
                 clients=args.clients,
+                expected_config_sha256=args.expected_config_sha256,
+                align_compaction_reserve=args.align_compaction_reserve,
                 openclaw_config=args.openclaw_config,
                 hermes_config=args.hermes_config,
                 hermes_bin=args.hermes_bin,
