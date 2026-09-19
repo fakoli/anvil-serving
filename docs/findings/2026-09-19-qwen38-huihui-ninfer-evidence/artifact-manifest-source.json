@@ -1,0 +1,132 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-19-qwen38-huihui-ninfer",
+    "capability": "text-and-multimodal",
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "dirty_state": "campaign recipe and documentation additions",
+    "observed_date": "2026-09-19",
+    "completion_scope": "hard-gate rejection and verified restoration, not full finalist qualification",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion",
+      "rejected-exact-profile"
+    ]
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "multimodal-benchmark-evidence/v1",
+    "unversioned-native-json"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "campaign-state.json",
+        "coverage-and-gaps.md",
+        "dispatch-packet.md"
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "research-notes.md",
+        "upstream-build-manifest.json"
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json",
+        "feasibility-input.json",
+        "feasibility-result.json"
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration.json",
+        "recipe-initial-text.toml",
+        "recipe-vision-qualification.toml",
+        "runtime-log-excerpts.txt",
+        "vision-managed-launch.txt",
+        "infrastructure-disposition.md"
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "multimodal-nospec-8k-vision.json",
+        "multimodal-nospec-8k.json",
+        "preflight-incumbent.json",
+        "preflight-nospec-protocol.json",
+        "preflight-nospec-server-control.json",
+        "preflight-nospec-smoke.json",
+        "quality-incumbent-control.json",
+        "quality-nospec-8k.json",
+        "quality-nospec-reasoning-low.json"
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "independent-recipe-review.md",
+        "independent-gate-review.md",
+        "verification.json"
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

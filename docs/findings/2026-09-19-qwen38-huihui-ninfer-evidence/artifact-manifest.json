@@ -1,0 +1,265 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-19-qwen38-huihui-ninfer",
+    "capability": "text-and-multimodal",
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "dirty_state": "campaign recipe and documentation additions",
+    "observed_date": "2026-09-19",
+    "completion_scope": "hard-gate rejection and verified restoration, not full finalist qualification",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion",
+      "rejected-exact-profile"
+    ]
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "multimodal-benchmark-evidence/v1",
+    "unversioned-native-json"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "88e2e1d369fbe75928f573d97871ec77af0a8558a00486b9d9f54a5cff7071b2",
+          "bytes": 2921
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "2fa43f873c6fda4798d89995c785132018ded15a813843b82043ba99631b59af",
+          "bytes": 2121
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "7d5a4814f681369c6162610d177464d6054dc3f3e9e687c8c454dac1fe302c7d",
+          "bytes": 1384
+        },
+        {
+          "path": "dispatch-packet.md",
+          "sha256": "848b72fa24c42e761247d98ce18cf84f3b228860c1d5b0fa953055731864c168",
+          "bytes": 876
+        }
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "00c9adcb24dc4e3b722794eafe83bba8afad1156ff58ecea2a101a5cf1a2dcbe",
+          "bytes": 855
+        },
+        {
+          "path": "research-notes.md",
+          "sha256": "1dc42db05df5eb31c5252cf166c4c1e6565015bb3af9d3c924863fad54234555",
+          "bytes": 1404
+        },
+        {
+          "path": "upstream-build-manifest.json",
+          "sha256": "9c3bd0cd8bb2b92a28efbee1ed7367a0ad4d6a900d824227ebbabb82bc22097e",
+          "bytes": 706
+        }
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "71b5c1747c394b5ada4ca3475839c59095f85b6bfd09faf9ce6cf289fff8e1b5",
+          "bytes": 2426
+        }
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "7611c4f0a47c8d774e074e5ebb7f3be5c3c785ecd999415f6cee890f01d8a2f6",
+          "bytes": 1331
+        },
+        {
+          "path": "feasibility-input.json",
+          "sha256": "550639cdde1f1c025dffc50939036d4e6ec0a9aa3fa5520ca71acf30ee96f86f",
+          "bytes": 3497
+        },
+        {
+          "path": "feasibility-result.json",
+          "sha256": "620302db9303c7c06051f00de31073c0b1eabaf8a6b7e9170d60886e5f234520",
+          "bytes": 6984
+        }
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration.json",
+          "sha256": "419875277fcbe18734e79dee275676951b429a585d1b80693855a8f35a2226b1",
+          "bytes": 4484
+        },
+        {
+          "path": "recipe-initial-text.toml",
+          "sha256": "7eb930dca91f34216f5d22fd227e66db11ba54a4e225e79c207de51d7cf0995d",
+          "bytes": 7989
+        },
+        {
+          "path": "recipe-vision-qualification.toml",
+          "sha256": "301f83f33e625010191562c56313161f6daaf2f634f72aa4562b0b5b9c6bf767",
+          "bytes": 8489
+        },
+        {
+          "path": "runtime-log-excerpts.txt",
+          "sha256": "89b837d5b0389c0eff2f2f8debd3b6584990cefb695bc86b3520d69e22b024c8",
+          "bytes": 1830
+        },
+        {
+          "path": "vision-managed-launch.txt",
+          "sha256": "97976fe97fbfa67c9a80461e0d9132520fd274c0550f83cc57e1a8bde62e2e9a",
+          "bytes": 2868
+        },
+        {
+          "path": "infrastructure-disposition.md",
+          "sha256": "8377c71652efcc0bc195bf380c00deac30d2018f74c6b75744cd8a216c282bf3",
+          "bytes": 2444
+        }
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "multimodal-nospec-8k-vision.json",
+          "sha256": "3dcf874b54182d372a71265f119669dea6520399045b8ea628cc283837a038d4",
+          "bytes": 24371
+        },
+        {
+          "path": "multimodal-nospec-8k.json",
+          "sha256": "c761cc787cfa2adb5aea4603fc6e86b5d835d3453e6e5283bef6f8d8d3b53eab",
+          "bytes": 19704
+        },
+        {
+          "path": "preflight-incumbent.json",
+          "sha256": "dcddb15364b6005c9227b3ec5d690c141a53b7fc57fb7c14541655667bba80d9",
+          "bytes": 2366
+        },
+        {
+          "path": "preflight-nospec-protocol.json",
+          "sha256": "bde283a0c2cd65719eadf93881ebf7c35d7c25ddab72684e5dc9a2f68a7ec93e",
+          "bytes": 5013
+        },
+        {
+          "path": "preflight-nospec-server-control.json",
+          "sha256": "c58b65a113991802375de104d2cab7595ebc848e1d8da79aa831ebdb5b5ba9bb",
+          "bytes": 2181
+        },
+        {
+          "path": "preflight-nospec-smoke.json",
+          "sha256": "3520cac8c382fc162be380cd79745ae1360d7933389db99ddef2443edce4388a",
+          "bytes": 1378
+        },
+        {
+          "path": "quality-incumbent-control.json",
+          "sha256": "b0dff33854505a18306059b4b616e6fc30f15257f1536ad7f921aa798ccdb7b8",
+          "bytes": 21667
+        },
+        {
+          "path": "quality-nospec-8k.json",
+          "sha256": "d3f1e30aa40176f8a2e732248a6c4a7ce7fd878f159835ee6684f0b0bd1982d7",
+          "bytes": 23512
+        },
+        {
+          "path": "quality-nospec-reasoning-low.json",
+          "sha256": "bf61087941487bcf671d76f01c85a318ab043c26f035ea203bfb00b432bbd75d",
+          "bytes": 23211
+        }
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "f65d859167d51a92052a1342be445c778dc6846cc4fbe0c3359ba5869b034de6",
+          "bytes": 1834
+        },
+        {
+          "path": "independent-recipe-review.md",
+          "sha256": "7944676fc3eae5135f7ddb1a9aef6ae81eb9dae095df5b671228d2d932496f46",
+          "bytes": 902
+        },
+        {
+          "path": "independent-gate-review.md",
+          "sha256": "d03f01f1c3d062c41b066b56b969d5ae264509f9c9bea3be0a97d00bad6c6df2",
+          "bytes": 1297
+        },
+        {
+          "path": "verification.json",
+          "sha256": "ee2a1b355d7e8f116aef25a9964af69da7db88cb3933348cd3f69a2cc864a375",
+          "bytes": 1240
+        }
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "e0b39358d9f837b3d96c0c5e5bfc8d150c9116b88424a4f2109dec5e475deddf",
+          "bytes": 2676
+        }
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "a1ac4fbf6578102ed9e6c696e2eafbc9c012de3439a956a148666ee4e3989016",
+          "bytes": 3157
+        }
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "eb81b563eb56f356b1a7507abf56aff90fd33a031b7106c3b60baad9be99959e",
+          "bytes": 2449
+        }
+      ],
+      "reason": "Retained bounded campaign evidence; limits and stopped phases explicit."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

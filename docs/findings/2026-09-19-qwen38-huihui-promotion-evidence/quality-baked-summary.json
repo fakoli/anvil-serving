@@ -1,0 +1,40 @@
+{
+  "schema": "anvil-serving.promotion-gate-summary/v1",
+  "source_artifact": "quality-baked.json",
+  "run_id": "fast-bakeoff-20260919T214523Z",
+  "candidate": {
+    "model": "qwen38-huihui-ninfer-schemafix-mtp3-32k",
+    "engine": "ninfer",
+    "gpu": "RTX5090",
+    "config_id": "baked-mtp3-32k"
+  },
+  "status": "passed",
+  "quality": {
+    "tool": {
+      "passed": "3/3",
+      "argument": "zip string 98101",
+      "finish_reason": "tool_calls"
+    },
+    "intelligence": {
+      "unified_diff_timeout_edit": "3/3",
+      "parallel_timeout_triage": "3/3"
+    },
+    "session_recall": "3/3"
+  },
+  "context": {
+    "cap_tokens": 31488,
+    "target_tokens": 31000,
+    "actual_prompt_tokens": 29503,
+    "actual_total_tokens": 29543,
+    "status": "passed"
+  },
+  "limitations": [
+    "One context timing sample only; it is not a capacity benchmark.",
+    "Thinking control is unsupported.",
+    "This gate does not prove a live route, client acceptance, or dashboard publication."
+  ],
+  "separate_completed_gates": {
+    "vision": "12/12",
+    "capacity": "18/18"
+  }
+}

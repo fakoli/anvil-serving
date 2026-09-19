@@ -1,0 +1,48 @@
+{
+  "base_url": "http://127.0.0.1:8081/v1",
+  "budget": {
+    "max_completion_tokens": 512,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [],
+  "model": "qwen38-huihui-ninfer-nvfp4-nospec-8k",
+  "multimodal_input": null,
+  "observations": [],
+  "ocr_expect": [],
+  "passed": false,
+  "results": [
+    {
+      "detail": "error: HTTP 400: {\"error\":{\"code\":\"chat_template_option_not_supported\",\"message\":\"chat_template_kwargs.enable_thinking is not supported\",\"param\":\"chat_template_kwargs\",\"type\":\"invalid_request_error\"}}",
+      "name": "smoke (short coding)",
+      "passed": false
+    },
+    {
+      "detail": "error: HTTP 400: {\"error\":{\"code\":\"chat_template_option_not_supported\",\"message\":\"chat_template_kwargs.enable_thinking is not supported\",\"param\":\"chat_template_kwargs\",\"type\":\"invalid_request_error\"}}",
+      "name": "structured JSON",
+      "passed": false
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

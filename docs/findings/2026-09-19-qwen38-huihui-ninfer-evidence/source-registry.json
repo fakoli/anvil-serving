@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-19-qwen38-huihui-ninfer",
+  "observed_at": "2026-09-19T18:00:00Z",
+  "sources": [
+    {
+      "id": "candidate",
+      "url": "https://huggingface.co/lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4/tree/181446902fc777c479749e98cf2abf2250263a8d",
+      "published_or_observed": "2026-08-19",
+      "observed_at": "2026-09-19",
+      "age_class": "current",
+      "evidence_type": "official",
+      "hardware_runtime_relevance": "RTX 5090, exact artifact and producer runtime revision",
+      "decision_impact": "Pinned hash and runtime; 8K scout before context expansion. Producer long-context claim is startup smoke.",
+      "age_days": 31,
+      "interpretation": "Artifact producer source; upstream claims remain external priors, not local measurements."
+    }
+  ]
+}

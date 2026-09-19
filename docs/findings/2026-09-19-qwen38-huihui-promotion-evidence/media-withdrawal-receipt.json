@@ -1,0 +1,45 @@
+{
+  "schema": "anvil-serving.media-profile-receipt/v1",
+  "observed_date": "2026-09-19",
+  "gpu_owner": "promoted Qwen profile",
+  "workflows": [
+    {
+      "id": "image.flux2-klein-4b-fp8-v1",
+      "available": false,
+      "unavailable_reasons": [
+        "GPU assigned to the promoted Qwen profile; switch the managed profile to media before generation."
+      ]
+    },
+    {
+      "id": "video.wan2.2-ti2v-5b-v1",
+      "available": false,
+      "unavailable_reasons": [
+        "GPU assigned to the promoted Qwen profile; switch the managed profile to media before generation."
+      ]
+    },
+    {
+      "id": "video.wan2.2-ti2v-5b-v2",
+      "available": false,
+      "unavailable_reasons": [
+        "GPU assigned to the promoted Qwen profile; switch the managed profile to media before generation."
+      ]
+    }
+  ],
+  "a2a_skills": [],
+  "submission": {
+    "ok": false,
+    "error": {
+      "code": "media_admission_rejected",
+      "message": "media request was not admitted",
+      "details": {
+        "allowed": false,
+        "state": "unavailable",
+        "reason": "workflow_unqualified"
+      }
+    }
+  },
+  "source_sha256": "9bb476e631a2532f88f2b5af91ef13f4446f68c333e07712cdbae79091a8ed00",
+  "redactions": [
+    "Private endpoint and operator paths omitted."
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.decode_tok_s_mean",
+      "series": [
+        {
+          "label": "Runtime arm",
+          "points": [
+            {
+              "artifact": "capacity-nospec-32.json",
+              "artifact_sha256": "6d78129ff56b22a2079cafce0087b047c9e605a5f30cc2faa22a20548e3381ae",
+              "value": 71.38765771219772,
+              "x": "No speculation"
+            },
+            {
+              "artifact": "capacity-mtp3-32.json",
+              "artifact_sha256": "f595470be6889a77d8915b8c087fa02397d690afd009a4a53c9de6f9e90c899f",
+              "value": 176.1983312887445,
+              "x": "MTP3"
+            }
+          ]
+        }
+      ],
+      "title": "Mean decode",
+      "x_label": "matched 8K/C1 strict 32-word",
+      "y_label": "tok/s"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "Runtime arm",
+          "points": [
+            {
+              "artifact": "capacity-nospec-32.json",
+              "artifact_sha256": "6d78129ff56b22a2079cafce0087b047c9e605a5f30cc2faa22a20548e3381ae",
+              "value": 264.19609994627535,
+              "x": "No speculation"
+            },
+            {
+              "artifact": "capacity-mtp3-32.json",
+              "artifact_sha256": "f595470be6889a77d8915b8c087fa02397d690afd009a4a53c9de6f9e90c899f",
+              "value": 268.71289999689907,
+              "x": "MTP3"
+            }
+          ]
+        }
+      ],
+      "title": "Median TTFT",
+      "x_label": "matched 8K/C1 strict 32-word",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "Runtime arm",
+          "points": [
+            {
+              "artifact": "capacity-nospec-32.json",
+              "artifact_sha256": "6d78129ff56b22a2079cafce0087b047c9e605a5f30cc2faa22a20548e3381ae",
+              "value": 894.6875000256114,
+              "x": "No speculation"
+            },
+            {
+              "artifact": "capacity-mtp3-32.json",
+              "artifact_sha256": "f595470be6889a77d8915b8c087fa02397d690afd009a4a53c9de6f9e90c899f",
+              "value": 524.419300025329,
+              "x": "MTP3"
+            }
+          ]
+        }
+      ],
+      "title": "Median E2E",
+      "x_label": "matched 8K/C1 strict 32-word",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.decode_tok_s_mean",
+      "series": [
+        {
+          "label": "GGUF incumbent (separate runtime/quant)",
+          "points": [
+            {
+              "artifact": "capacity-incumbent-32.json",
+              "artifact_sha256": "ab32dfa71e92bdb53097f7ee830e110b256fac3dcdc22308d1986b10b2ec3e50",
+              "value": 107.65218702787973,
+              "x": "8K/C1"
+            }
+          ]
+        },
+        {
+          "label": "Huihui MTP3",
+          "points": [
+            {
+              "artifact": "capacity-mtp3-32.json",
+              "artifact_sha256": "f595470be6889a77d8915b8c087fa02397d690afd009a4a53c9de6f9e90c899f",
+              "value": 176.1983312887445,
+              "x": "8K/C1"
+            }
+          ]
+        }
+      ],
+      "title": "Cross-profile mean decode",
+      "x_label": "8K/C1 strict 32-word; not a speculation control",
+      "y_label": "tok/s"
+    },
+    {
+      "metric": "metrics.e2e_mean_ms",
+      "series": [
+        {
+          "label": "GGUF incumbent (separate runtime/quant)",
+          "points": [
+            {
+              "artifact": "capacity-incumbent-32.json",
+              "artifact_sha256": "ab32dfa71e92bdb53097f7ee830e110b256fac3dcdc22308d1986b10b2ec3e50",
+              "value": 2571.788158330795,
+              "x": "8K/C1"
+            }
+          ]
+        },
+        {
+          "label": "Huihui MTP3",
+          "points": [
+            {
+              "artifact": "capacity-mtp3-32.json",
+              "artifact_sha256": "f595470be6889a77d8915b8c087fa02397d690afd009a4a53c9de6f9e90c899f",
+              "value": 523.9915000080751,
+              "x": "8K/C1"
+            }
+          ]
+        }
+      ],
+      "title": "Cross-profile mean E2E",
+      "x_label": "8K/C1 strict 32-word; not a speculation control",
+      "y_label": "ms"
+    }
+  ],
+  "metric_semantics": {
+    "boundary": "No p99 claim. 32K is not plotted; GGUF is not speculation-control evidence.",
+    "population": "12 strict controlled-output requests per arm"
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "NInfer no-spec/MTP3 pair is isolated. GGUF is a separately labeled cross-profile comparison with different checkpoint, runtime, and quantization.",
+  "title": "Huihui NInfer compatible-runtime 8K/C1 strict 32-word comparison"
+}

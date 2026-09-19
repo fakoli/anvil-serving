@@ -1,0 +1,20 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign": "2026-09-19-qwen38-huihui-runtime-followup",
+  "stage": "closed-bounded-investigation",
+  "completed": [
+    "official-source research",
+    "original runtime diagnosis",
+    "compatible runtime recovery",
+    "NoSpec and MTP8K quality/vision",
+    "matched8K short-output capacity",
+    "32K context expansion",
+    "GGUF8K workload-matched control",
+    "verified media restoration",
+    "focused/full tests with one known Pi failure",
+    "independent final review and artifact finalization"
+  ],
+  "pending": [],
+  "qualification": "incomplete; footprint criterion not met",
+  "promoted": false
+}

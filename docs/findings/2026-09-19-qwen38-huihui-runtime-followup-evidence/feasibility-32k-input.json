@@ -1,0 +1,153 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "huihui-schemafix-32k-mtp3",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 30464,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "scout requirement",
+        "observed_at": "2026-09-19",
+        "notes": ""
+      },
+      "output_reserve": {
+        "value": 2048,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "scout requirement",
+        "observed_at": "2026-09-19",
+        "notes": ""
+      },
+      "protocol": {
+        "value": 256,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "scout requirement",
+        "observed_at": "2026-09-19",
+        "notes": ""
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "requests",
+      "status": "assumed",
+      "source": "scout requirement",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    "physical_vram_bytes": {
+      "value": 34190917632,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "local nvidia-smi",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    "vram_reserves": {
+      "desktop": {
+        "kind": "physical",
+        "variable": {
+          "value": 1175453696,
+          "unit": "bytes",
+          "status": "measured",
+          "source": "total minus free VRAM before stop",
+          "observed_at": "2026-09-19",
+          "notes": ""
+        }
+      },
+      "headroom": {
+        "kind": "policy",
+        "variable": {
+          "value": 3221225472,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "campaign default reserve",
+          "observed_at": "2026-09-19",
+          "notes": ""
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "hard gate",
+        "observed_at": "2026-09-19",
+        "notes": ""
+      }
+    }
+  },
+  "candidates": [
+    {
+      "id": "schemafix-32k-mtp3",
+      "runtime_context_limit_tokens": {
+        "value": 32768,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "scout recipe",
+        "observed_at": "2026-09-19",
+        "notes": ""
+      },
+      "resident_components": {
+        "target": {
+          "min": 19327352832,
+          "max": 22548578304,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "producer GPU weights 18.98 GiB text / 19.25 GiB vision; conservative interval",
+          "observed_at": "2026-09-19"
+        },
+        "runtime": {
+          "min": 1073741824,
+          "max": 5368709120,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "prior same-GPU NInfer total at much larger context; planning bound requires local confirmation",
+          "observed_at": "2026-09-19"
+        },
+        "draft_weights": {
+          "min": 451267584,
+          "max": 1073741824,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "Pinned producer artifact-inspect.log MTP tensor bytes plus conservative allocation bound",
+          "observed_at": "2026-09-19",
+          "notes": "Encoded MTP tensor bytes are lower bound; runtime allocation includes alignment/optional head effects."
+        }
+      },
+      "per_token_components": {
+        "kv": {
+          "min": 8192,
+          "max": 16384,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "prior NInfer hybrid attention planning interval",
+          "observed_at": "2026-09-19"
+        },
+        "draft_kv": {
+          "min": 0,
+          "max": 4096,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "Single additional attention layer bounded planning allocation; verify startup",
+          "observed_at": "2026-09-19"
+        }
+      },
+      "per_sequence_components": {},
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "C1",
+        "observed_at": "2026-09-19",
+        "notes": ""
+      },
+      "metrics": {},
+      "hard_failures": [],
+      "runtime_revision": "70434721b1ae29d0616f3de9b376c8a4d91590b5",
+      "notes": "Reuses conservative scout memory envelope; original runtime21584MiB observed used is advisory to changed runtime. Correctness remains unqualified."
+    }
+  ]
+}

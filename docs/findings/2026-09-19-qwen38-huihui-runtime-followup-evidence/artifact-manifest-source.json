@@ -1,0 +1,165 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-19-qwen38-huihui-runtime-followup",
+    "capability": "text-and-multimodal",
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "dirty_state": "bounded tool diagnostics, tests, managed recipes and evidence",
+    "observed_date": "2026-09-19",
+    "completion_scope": "runtime recovery, bounded comparisons and verified restoration; production qualification incomplete",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "bounded-performance"
+    ],
+    "decision_labels": [
+      "no-promotion",
+      "working-candidate",
+      "footprint-criterion-not-met"
+    ]
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.benchmark/v1",
+    "multimodal-benchmark-evidence/v1",
+    "unversioned-native-preflight-json"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "campaign-state.json",
+        "coverage-and-gaps.md",
+        "dispatch-packet.md"
+      ],
+      "reason": "Index and bounded request coverage for the closed investigation."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "research-notes.md"
+      ],
+      "reason": "Date-aware primary sources and local observations."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json",
+        "tool-string-boundaries.json",
+        "tool-string-boundaries-instructions.json"
+      ],
+      "reason": "Exact synthetic inputs and public newline normalization provenance."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json",
+        "feasibility-8k-input.json",
+        "feasibility-8k-result.json",
+        "feasibility-32k-input.json",
+        "feasibility-32k-result.json"
+      ],
+      "reason": "Staged runtime/settings controls and feasibility bounds."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration.json",
+        "recipe-schemafix-cold-build.toml",
+        "recipe-schemafix-8k-sha-verified.toml",
+        "recipe-schemafix-final.toml",
+        "recipe-incumbent-control-8k.toml",
+        "runtime-log-excerpts.txt",
+        "infrastructure-disposition.md"
+      ],
+      "reason": "Pinned model/runtime identities, managed recipe snapshots and observed footprint."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "boundaries-incumbent-8k-instructions.json",
+        "boundaries-original-off.json",
+        "boundaries-schemafix-instructions.json",
+        "boundaries-schemafix-low.json",
+        "boundaries-schemafix-mtp3-instructions.json",
+        "boundaries-schemafix-off.json",
+        "capacity-incumbent-128-warmup.json",
+        "capacity-incumbent-32-warmup.json",
+        "capacity-incumbent-32.json",
+        "capacity-mtp3-128-warmup.json",
+        "capacity-mtp3-32-warmup.json",
+        "capacity-mtp3-32.json",
+        "capacity-mtp3-32k-24k-input.json",
+        "capacity-nospec-32-warmup.json",
+        "capacity-nospec-32.json",
+        "capacity-nospec-low-warmup.json",
+        "capacity-nospec-warmup.json",
+        "preflight-incumbent-8k-loading.json",
+        "preflight-incumbent-8k.json",
+        "preflight-original.json",
+        "preflight-schemafix-c1.json",
+        "preflight-schemafix-mtp3-32k.json",
+        "preflight-schemafix-mtp3.json",
+        "preflight-schemafix-protocol.json",
+        "preflight-schemafix-unsupported-control.json",
+        "preflight-schemafix.json",
+        "quality-incumbent-8k.json",
+        "quality-original-tools.json",
+        "quality-schemafix-low.json",
+        "quality-schemafix-mtp3-32k-off.json",
+        "quality-schemafix-mtp3-off.json",
+        "quality-schemafix-off.json",
+        "vision-schemafix-mtp3.json",
+        "vision-schemafix-nospec.json",
+        "graph-manifest.json",
+        "benchmark-graph-data.json",
+        "benchmark-matrix.svg"
+      ],
+      "reason": "Native successes and failures plus deterministic derived charts."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "independent-review.md",
+        "verification.json"
+      ],
+      "reason": "Failure causes, independent review, verification and unresolved limitations."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Exact starting media state restored with managed status and unchanged manifests."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Machine-readable tradeoff decision; no promotion and incomplete production qualification."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Local derivative publishing copy with claim ledger; no external post sent."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB"
+}
