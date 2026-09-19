@@ -478,3 +478,7 @@ Unknown or duplicate aliases, exclusion of `llm.primary`, and exclusion of
 a configured model selection fail before writing. Preview and apply with the
 same policy, then require an empty repeat preview. Keep the policy in the
 deployment configuration used by scheduled reconciliation; receipts record it.
+Exact excluded references are also removed from OpenClaw override allowlists,
+including per-agent policies. This controls the managed catalog, not manual
+override authorization: existing wildcard and unrestricted policies remain
+unchanged. A removal that would empty a restricted allowlist fails closed.

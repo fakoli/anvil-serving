@@ -71,6 +71,13 @@ def test_openclaw_omission_removes_allowlist_entry_without_changing_selection():
         sync._render_openclaw_document(catalog(), source, exclude_aliases="llm.secondary")
 
 
+def test_openclaw_per_agent_allowlist_omits_exact_refs_preserving_wildcards():
+    source = openclaw()
+    source["agents"]["entries"] = {"assistant": {"modelPolicy": {"allow": ["other/*", "anvil/llm.primary", "anvil/llm.secondary"]}}}
+    doc = sync._render_openclaw_document(catalog(), source, exclude_aliases="llm.secondary")
+    assert doc["agents"]["entries"]["assistant"]["modelPolicy"]["allow"] == ["other/*", "anvil/llm.primary"]
+
+
 @pytest.mark.parametrize("location", ["default", "fallback", "agent", "talk"])
 def test_openclaw_selected_references_cannot_be_removed(location):
     doc = openclaw()

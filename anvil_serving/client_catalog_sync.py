@@ -381,14 +381,19 @@ def _render_openclaw_document(catalog: Mapping, openclaw: Mapping, *, align_comp
     ]
     rendered_openclaw = json.loads(json.dumps(openclaw))
     agents = rendered_openclaw.get("agents", {})
-    policy = agents.get("defaults", {}).get("modelPolicy", {})
-    if isinstance(policy, dict) and "allow" in policy:
-        allowed = policy["allow"]
-        if not isinstance(allowed, list) or any(not isinstance(item, str) for item in allowed):
-            raise ClientCatalogError("OpenClaw modelPolicy.allow must be a list of model names")
-        policy["allow"] = [item for item in allowed if item not in {"anvil/" + alias for alias in excluded}]
-        if allowed and not policy["allow"]:
-            raise ClientCatalogError("Exclusion would empty the OpenClaw allowlist and make overrides unrestricted")
+    entries = agents.get("entries", {})
+    scopes = [agents.get("defaults", {})]
+    if isinstance(entries, Mapping):
+        scopes.extend(value for value in entries.values() if isinstance(value, Mapping))
+    for scope in scopes:
+        policy = scope.get("modelPolicy", {})
+        if isinstance(policy, dict) and "allow" in policy:
+            allowed = policy["allow"]
+            if not isinstance(allowed, list) or any(not isinstance(item, str) for item in allowed):
+                raise ClientCatalogError("OpenClaw modelPolicy.allow must be a list of model names")
+            policy["allow"] = [item for item in allowed if item not in {"anvil/" + alias for alias in excluded}]
+            if allowed and not policy["allow"]:
+                raise ClientCatalogError("Exclusion would empty the OpenClaw allowlist and make overrides unrestricted")
     selected = {key: value for key, value in agents.get("defaults", {}).items() if key != "models"}
     if _contains_excluded_reference([selected, agents.get("list", []), agents.get("entries", {}), openclaw.get("talk", {})], excluded):
         raise ClientCatalogError("OpenClaw configured model selection references an excluded alias")
