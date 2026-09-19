@@ -9,6 +9,8 @@
 
 **2026-09-18 update:** [Bounded vision acceptance](../../findings/2026-09-18-glm53-vision.md) passed 10/10 image attempts and routed checks and a matching Pi output transcript with unchanged 4-bpw weights, FP8 KV and disabled speculation. Eight images/request; configured 327K/C4 retained. A 259,922-token synthetic retrieval passed on retry after an initial refusal; this is not a full-window soak. The following September 14 snapshot remains the prior text-only evidence.
 
+**2026-09-19 APC campaign:** matched shared-prefix mean visible TTFT improved 67.84% and request throughput rose 3.17×; unique-prefix throughput fell 2.39%, within the 5% gate. Final diagnostic quality passed 12/12 per arm, with image and long-context gates passed. Exact r9 restoration and direct/routed acceptance are verified. Independent review recommends a bounded human-approved APC promotion; no selected configuration changed. See the [dated finding](../../findings/2026-09-19-glm53-apc.md).
+
 !!! info "Decision snapshot"
 
     - **Product role:** selected September 14 text-only reference.

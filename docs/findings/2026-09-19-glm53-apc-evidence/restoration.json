@@ -1,0 +1,46 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-19-glm53-apc",
+  "status": "complete",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "recipe-bindings.json",
+      "baseline-preflight.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "baseline-final-preflight.json",
+      "router-final-preflight.json",
+      "configuration-identity.json"
+    ],
+    "baseline": "r9 vision8 no-spec, APC disabled",
+    "primary_route": "admitting, exact baseline model identity",
+    "candidate": "managed container absent and listener closed"
+  },
+  "differences": [
+    "Container identity changed after managed recreation; exact baseline recipe, image, model and router configuration restored.",
+    "Final effective swap limit is zero; original unlimited-swap observation did not reproduce.",
+    "An initial inactive systemd boolean was inaccurate; the wrapper remained active(exited) with activation predating this campaign."
+  ],
+  "post_run_checks": [
+    {
+      "name": "direct six-check preflight",
+      "passed": true
+    },
+    {
+      "name": "authenticated routed six-check preflight",
+      "passed": true
+    },
+    {
+      "name": "exact baseline identity, unchanged router configuration and candidate absence",
+      "passed": true
+    }
+  ],
+  "verified": true,
+  "not_applicable_reason": null,
+  "client_propagation": "Not applicable: selected backing identity and metadata restored; no client catalogs changed."
+}

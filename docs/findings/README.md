@@ -5,6 +5,8 @@
 
 **2026-09-18:** [GLM EXL3 vision enablement](2026-09-18-glm53-vision.md) — 10/10 image attempts, routed acceptance and a matching Pi output transcript; 260K retrieval passed on retry; initial refusal retained.
 
+**2026-09-19:** [GLM-5.3-Flash r10 APC campaign](2026-09-19-glm53-apc.md) — matched shared-prefix TTFT improved 67.84%; fresh-prefix request throughput fell 2.39%. Functional gates and restoration passed. Bounded promotion recommended; human approval pending.
+
 
 Dated evidence snapshots — benchmarks, live validations, and lab notebooks — that ground the
 decisions recorded in `docs/adr/` and the PRD task history. Each file is a **point-in-time

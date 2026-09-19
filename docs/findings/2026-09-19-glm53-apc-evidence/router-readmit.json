@@ -1,0 +1,11 @@
+{
+  "action": "readmit",
+  "applied": true,
+  "expected_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r9-vision8-nospec",
+  "metadata_source": "configured",
+  "observed_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r9-vision8-nospec",
+  "ready": true,
+  "schema": "anvil-serving.public-router-readmission/v1",
+  "state": "admitting",
+  "tier": "primary-local"
+}

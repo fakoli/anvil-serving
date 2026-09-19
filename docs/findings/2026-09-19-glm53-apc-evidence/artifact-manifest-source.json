@@ -1,0 +1,158 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 10 MiB",
+  "campaign": {
+    "id": "2026-09-19-glm53-apc",
+    "capability": "llm",
+    "repository_revision": "1cc7a45ec959daaece7c1033720e6160aec3ec6a",
+    "dirty_state": "Public documentation-only publication work; unrelated local files preserved.",
+    "started_at": "2026-09-19T11:14:19Z",
+    "completed_at": "2026-09-19T12:15:02.227888+00:00",
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality"
+    ],
+    "decision_labels": [
+      "challenger",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-graph-data/v1",
+    "anvil-serving.benchmark-graph-manifest/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.control-evidence/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.public-cgroup-observation/v1",
+    "anvil-serving.public-configuration-identity/v1",
+    "anvil-serving.public-router-readmission/v1",
+    "anvil-serving.public-runtime-status/v1",
+    "anvil-serving.source-registry/v1",
+    "glm53-apc-matched-comparison/v1",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "coverage-and-gaps.md",
+        "graph-manifest.json"
+      ],
+      "reason": "Capacity protocol, required qualification gates, and graph source paths."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration-identity.json",
+        "recipe-bindings.json",
+        "candidate-final-status.json",
+        "candidate-quality-final-status.json",
+        "baseline-restored-status.json",
+        "baseline-restored-cgroup.json",
+        "router-readmit.json",
+        "reasoning-control.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "baseline-preflight.json",
+        "baseline-restored-preflight.json",
+        "router-restored-preflight.json",
+        "baseline-quality.json",
+        "baseline-quality-final.json",
+        "baseline-eight-images.json",
+        "candidate-preflight.json",
+        "candidate-image-preflight.json",
+        "candidate-eight-images.json",
+        "candidate-long-context.json",
+        "candidate-quality.json",
+        "candidate-quality-final.json",
+        "candidate-shared32k-cache-delta.json",
+        "raw-run-evidence/baseline-unique32k-c4-w16.json",
+        "raw-run-evidence/baseline-unique32k-c4-finalist.json",
+        "raw-run-evidence/candidate-unique32k-c4-w16.json",
+        "raw-run-evidence/candidate-unique32k-c4-finalist.json",
+        "raw-run-evidence/baseline-shared8k-c4-w16.json",
+        "raw-run-evidence/candidate-shared8k-c4-w16.json",
+        "raw-run-evidence/candidate-shared32k-c4-finalist.json",
+        "raw-run-evidence/baseline-shared32k-c4-finalist.json",
+        "graphs/apc-matrix.svg",
+        "graphs/apc-graph-data.json",
+        "raw-run-evidence/baseline-shared8k-c4-failed64.json",
+        "baseline-final-preflight.json",
+        "router-final-preflight.json",
+        "matched-comparison.json"
+      ],
+      "reason": "Sanitized native JSON schemas retained without flattening; graph outputs retain source artifact hashes."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Complete retained evidence; production promotion remains human-gated."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "independent-review.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Complete retained evidence; production promotion remains human-gated."
+    }
+  ]
+}

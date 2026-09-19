@@ -1,0 +1,55 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "GLM-5.3-Flash APC matched 32K/C4 finalists",
+  "subtitle": "Baseline r9 and APC r10; unique and shared cache populations are separate.",
+  "output": "graphs/apc-matrix.svg",
+  "data_output": "graphs/apc-graph-data.json",
+  "metric_semantics": {
+    "ttft": "Client-observed time to first visible content delta.",
+    "first_output": "Client-observed time to first non-empty reasoning or content delta.",
+    "e2e": "Client-observed end-to-end request duration.",
+    "throughput": "Aggregate completion-token throughput; reasoning lengths vary, so it is contextual rather than the lead APC measure."
+  },
+  "charts": [
+    {
+      "title": "Visible TTFT",
+      "metric": "metrics.ttft_mean_ms",
+      "x_label": "Cache population",
+      "y_label": "Milliseconds",
+      "series": [
+        {"label": "r9 baseline", "points": [{"x": "unique", "artifact": "raw-run-evidence/baseline-unique32k-c4-finalist.json"}, {"x": "shared", "artifact": "raw-run-evidence/baseline-shared32k-c4-finalist.json"}]},
+        {"label": "r10 APC", "points": [{"x": "unique", "artifact": "raw-run-evidence/candidate-unique32k-c4-finalist.json"}, {"x": "shared", "artifact": "raw-run-evidence/candidate-shared32k-c4-finalist.json"}]}
+      ]
+    },
+    {
+      "title": "First output",
+      "metric": "metrics.time_to_first_output_mean_ms",
+      "x_label": "Cache population",
+      "y_label": "Milliseconds",
+      "series": [
+        {"label": "r9 baseline", "points": [{"x": "unique", "artifact": "raw-run-evidence/baseline-unique32k-c4-finalist.json"}, {"x": "shared", "artifact": "raw-run-evidence/baseline-shared32k-c4-finalist.json"}]},
+        {"label": "r10 APC", "points": [{"x": "unique", "artifact": "raw-run-evidence/candidate-unique32k-c4-finalist.json"}, {"x": "shared", "artifact": "raw-run-evidence/candidate-shared32k-c4-finalist.json"}]}
+      ]
+    },
+    {
+      "title": "End to end",
+      "metric": "metrics.e2e_mean_ms",
+      "x_label": "Cache population",
+      "y_label": "Milliseconds",
+      "series": [
+        {"label": "r9 baseline", "points": [{"x": "unique", "artifact": "raw-run-evidence/baseline-unique32k-c4-finalist.json"}, {"x": "shared", "artifact": "raw-run-evidence/baseline-shared32k-c4-finalist.json"}]},
+        {"label": "r10 APC", "points": [{"x": "unique", "artifact": "raw-run-evidence/candidate-unique32k-c4-finalist.json"}, {"x": "shared", "artifact": "raw-run-evidence/candidate-shared32k-c4-finalist.json"}]}
+      ]
+    },
+    {
+      "title": "Aggregate completion throughput",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Cache population",
+      "y_label": "Completion tokens per second",
+      "series": [
+        {"label": "r9 baseline", "points": [{"x": "unique", "artifact": "raw-run-evidence/baseline-unique32k-c4-finalist.json"}, {"x": "shared", "artifact": "raw-run-evidence/baseline-shared32k-c4-finalist.json"}]},
+        {"label": "r10 APC", "points": [{"x": "unique", "artifact": "raw-run-evidence/candidate-unique32k-c4-finalist.json"}, {"x": "shared", "artifact": "raw-run-evidence/candidate-shared32k-c4-finalist.json"}]}
+      ]
+    }
+  ]
+}

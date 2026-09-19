@@ -1,0 +1,8 @@
+{
+  "after": "candidate-shared32k-after.metrics",
+  "before": "candidate-shared32k-before.metrics",
+  "hit_fraction": 0.7558199896178572,
+  "isolation": "primary route quiesced; only one sequential campaign cell issued requests",
+  "prefix_cache_hits_total": 605696.0,
+  "prefix_cache_queries_total": 801376.0
+}

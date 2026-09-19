@@ -12,6 +12,12 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-09-18-glm53-vision-evidence/publication-summary.md`
 (bounded dual-Max-Q vision acceptance; negative long-context attempt retained);
 
+`docs/findings/2026-09-19-glm53-apc.md`;
+`docs/findings/2026-09-19-glm53-apc-evidence/README.md`;
+`docs/findings/2026-09-19-glm53-apc-evidence/publication-summary.md`;
+`docs/findings/2026-09-19-glm53-apc-evidence/run-plan.md`
+(matched r9/r10 APC functional and capacity evidence on the dual Max-Q configuration; restoration verified, human promotion pending);
+
 `docs/findings/2026-09-17-glm53-mixed35-startup.md`
 (failed managed startup on the dual Max-Q host; no inference or GPU-capacity measurement);
 
