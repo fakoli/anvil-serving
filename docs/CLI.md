@@ -337,6 +337,7 @@ required operands, choices, and defaults.
 | `host gpu-sharing probe` | Run the guarded Docker CUDA prerequisite probe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host nccl` | Check two-rank NCCL correctness and transport in a pinned local image. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--image`<br>`--gpu-uuid`<br>`--p2p`<br>`--cumem`<br>`--max-mib`<br>`--iterations`<br>`--timeout`<br>`--output` |
 | `host doctor` | Diagnose host configuration. | `read` / `bounded` | - |
+| `host native-memory-containment` | Prepare or explicitly execute a bounded self-only fatal-memory canary. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--prepare`<br>`--execute`<br>`--allow-privileged-probe`<br>`--expected-binary-sha256`<br>`--output` |
 | `host native-memory-probe` | Probe bounded Metal allocation accounting without loading a model. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--output` |
 | `host memory` | Show host RAM and WSL VM memory usage. | `read` / `bounded` | - |
 | `host shared-memory` | Inspect and reclaim vLLM native KV-offload shared memory. | `read` / `bounded` | - |

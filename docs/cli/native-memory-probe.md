@@ -13,7 +13,7 @@ anvil-serving host native-memory-probe --output /private/evidence/metal-memory.j
 Preview executes no processes. Execution touches exactly 32 MiB in one shared
 Metal buffer, completes a GPU blit into it, captures the child's physical footprint and device allocation
 before and after, records the footprint peak, and measures host swap before and after. These endpoint samples do not prove swap stayed zero between samples. Compilation has a
-60-second timeout; the child has a 10-second timeout. On timeout, the process group is terminated and the direct child is reaped.
+60-second timeout; the child has a 10-second timeout. On timeout, the process group receives TERM, then KILL after a two-second grace if needed; the direct child is reaped.
 The temporary source and binary are removed when the operation exits. Retain output privately because
 platform evidence belongs to the operator.
 
