@@ -126,13 +126,15 @@ installed CLI only as a verified fallback.
    settings.
    Use dry-run, confirmed apply, and an idempotent second dry-run where the
    managed surface supports them. The final dry-run must report no changes.
-   Verify both the tracked and installed scheduled reconciliation job cover
-   `openclaw,hermes,pi`, include `--hermes-profiles all` and the required
-   change-triggered restarts, and have a successful latest run. Then run the
+   Verify the tracked and installed promotion reconciliation covers every
+   declared harness, includes `--hermes-profiles all` and required
+   change-triggered restarts, and has a successful receipt for this promotion.
+   Periodic jobs may cover a narrower set; they must share transaction locking
+   and the approved source contract so they cannot race or undo promotion. Run the
    real Hermes, Pi, and OpenClaw request shapes, including tools and tool-result
    continuation when affected. A long-context needle or protocol preflight
    does not replace these client-shaped smokes. Any catalog/profile drift or
-   missing scheduled coverage blocks deployment closure.
+   missing declared fleet coverage blocks deployment closure.
 4. Reasoning/output: use the deployed default reasoning effort and enough
    visible-answer headroom to observe a real answer. For an output cap, prove
    both the applied value and the explicit warning; an exhausted tiny probe is
