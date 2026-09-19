@@ -59,6 +59,18 @@ def test_openclaw_explicit_omission_keeps_primary_limits():
     assert doc["agents"]["defaults"]["compaction"] == openclaw()["agents"]["defaults"]["compaction"]
 
 
+def test_openclaw_omission_removes_allowlist_entry_without_changing_selection():
+    source = openclaw()
+    source["agents"]["defaults"]["modelPolicy"] = {"allow": ["other/model", "anvil/llm.primary", "anvil/llm.secondary"]}
+    doc = sync._render_openclaw_document(catalog(), source, exclude_aliases="llm.secondary")
+    assert doc["agents"]["defaults"]["modelPolicy"]["allow"] == ["other/model", "anvil/llm.primary"]
+    assert doc["agents"]["defaults"]["model"] == source["agents"]["defaults"]["model"]
+    assert source["agents"]["defaults"]["modelPolicy"]["allow"][-1] == "anvil/llm.secondary"
+    source["agents"]["defaults"]["modelPolicy"]["allow"] = ["anvil/llm.secondary"]
+    with pytest.raises(sync.ClientCatalogError, match="unrestricted"):
+        sync._render_openclaw_document(catalog(), source, exclude_aliases="llm.secondary")
+
+
 @pytest.mark.parametrize("location", ["default", "fallback", "agent", "talk"])
 def test_openclaw_selected_references_cannot_be_removed(location):
     doc = openclaw()
