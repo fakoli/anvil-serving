@@ -68,10 +68,10 @@ int main(void) {
             @"metal_after": @(metal_after), @"footprint_before": @(before),
             @"footprint_after": @(after), @"footprint_limit_result": @(permission),
             @"footprint_peak": @(peak()),
-            @"gpu_completed": @(command.status == MTLCommandBufferStatusCompleted),
+            @"gpu_completed": command.status == MTLCommandBufferStatusCompleted ? @YES : @NO,
             @"footprint_limit_old_value": @(old_limit),
-            @"footprint_limit_permission_denied": @(permission == KERN_NO_ACCESS && old_limit == -777),
-            @"accounting_observed": @(before > 0 && after >= before + size && metal_after >= metal_before + size)
+            @"footprint_limit_permission_denied": permission == KERN_NO_ACCESS && old_limit == -777 ? @YES : @NO,
+            @"accounting_observed": before > 0 && after >= before + size && metal_after >= metal_before + size ? @YES : @NO
         };
         NSData *data = [NSJSONSerialization dataWithJSONObject:result options:0 error:nil];
         if (!data) return 23;
