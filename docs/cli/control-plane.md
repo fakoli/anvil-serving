@@ -466,3 +466,5 @@ untouched. Each planned subprocess is attempted once with a 15-second timeout.
 - [OpenClaw integration specification](../OPENCLAW-INTEGRATION-SPEC.md)
 - [Operator playbooks](../OPERATOR-PLAYBOOKS.md)
 - [Device topologies](../DEVICE-TOPOLOGIES.md)
+
+Promotion reconciliation can add `--align-compaction-reserve` to raise declared Pi/OpenClaw reserves to the largest routed output budget. It preserves enabled/mode and recent-token policies, never lowers a reserve, and still rejects a budget that cannot fit the context. Without this flag, incompatible reserves remain an error.

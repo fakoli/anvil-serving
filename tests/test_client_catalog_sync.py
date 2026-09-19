@@ -1563,3 +1563,28 @@ def test_invalid_promotion_hash_never_fetches():
         sync_clients(base_url="https://router.example.ts.net/v1",
                      expected_config_sha256="not-a-hash", opener=opener, environ={})
     assert opener.requests == []
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_explicit_reserve_alignment_preserves_policy_and_requires_capacity(tmp_path, enabled):
+    from anvil_serving.client_catalog_sync import fetch_client_catalog, _render_pi_documents
+    _write_inputs(tmp_path)
+    catalog = fetch_client_catalog(base_url="https://router.example.ts.net/v1",
+        environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=_Opener(*_catalog()))
+    models = json.loads((tmp_path / "models.json").read_text())
+    settings = json.loads((tmp_path / "settings.json").read_text())
+    settings["compaction"].update(enabled=enabled, reserveTokens=1)
+    kwargs = dict(base_url="https://router.example.ts.net/v1", api_key_env="ANVIL_ROUTER_TOKEN")
+    with pytest.raises(ClientCatalogError):
+        _render_pi_documents(catalog, models, settings, **kwargs)
+    if not enabled:
+        with pytest.raises(ClientCatalogError):
+            _render_pi_documents(catalog, models, settings, align_compaction_reserve=True, **kwargs)
+        return
+    _, aligned = _render_pi_documents(catalog, models, settings, align_compaction_reserve=True, **kwargs)
+    assert settings["compaction"]["reserveTokens"] == 1
+    assert aligned["compaction"]["reserveTokens"] == 8192
+    assert aligned["compaction"]["keepRecentTokens"] == settings["compaction"]["keepRecentTokens"]
+    settings["compaction"]["keepRecentTokens"] = 1_048_576
+    with pytest.raises(ClientCatalogError, match="fit"):
+        _render_pi_documents(catalog, models, settings, align_compaction_reserve=True, **kwargs)
