@@ -373,8 +373,10 @@ Hugging Face cache volume and inspection image. The volume is mounted read-only,
 and `--output` uses an atomic replacement after requiring an existing parent
 directory.
 
-Pass `--cache-dir` either the Hugging Face home that contains `hub/`, or the
-direct hub directory (for example `~/.cache/huggingface/hub`). This is
+Pass `--cache-dir` either the Hugging Face home that contains `hub/`, or a
+direct hub-cache directory such as `~/.cache/huggingface/hub` or a custom
+`HF_HUB_CACHE` path containing `models--*` entries. A directory that contains
+both `hub/` and direct `models--*` entries is refused as ambiguous. This is
 filesystem-only and reports each standard repository's exact refs and snapshot
 revisions, snapshot logical bytes, inode-deduplicated logical and allocated blob
 bytes, local-link integrity, upstream artifact completeness as `unverified`, and

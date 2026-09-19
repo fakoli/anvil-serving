@@ -11,6 +11,15 @@ REVISION_A = "a" * 40
 REVISION_B = "b" * 40
 
 
+def _has_nofollow() -> bool:
+    return hasattr(os, "O_NOFOLLOW")
+
+
+def _allocated(path) -> int | None:
+    blocks = getattr(os.lstat(path), "st_blocks", None)
+    return int(blocks) * 512 if isinstance(blocks, int) and blocks >= 0 else None
+
+
 def _cache(tmp_path):
     cache = tmp_path / "cache"
     repo = cache / "hub" / "models--example--model"
@@ -38,15 +47,20 @@ def test_inventory_reports_local_link_integrity_and_physical_blob_bytes(tmp_path
     assert report["schema_version"] == "model-cache-native-inventory/v1"
     row = report["repositories"][0]
     assert row["repo_id"] == "example/model"
-    assert row["refs"] == {"main": REVISION_A}
+    if _has_nofollow():
+        assert row["refs"] == {"main": REVISION_A}
+    else:
+        assert row["refs"] == {}
+        assert "refs/main" in row["unsafe_paths"]
     assert row["unique_logical_blob_bytes"] == len(b"firstshared!")
-    expected_allocated = sum(
-        os.lstat(_repo / "blobs" / name).st_blocks * 512
-        for name in ("first", "shared")
-    )
-    assert row["unique_allocated_blob_bytes"] == expected_allocated
-    assert row["allocation_status"] == "known"
-    assert row["unsafe_paths"] == []
+    allocated = [_allocated(_repo / "blobs" / name) for name in ("first", "shared")]
+    if all(size is not None for size in allocated):
+        assert row["unique_allocated_blob_bytes"] == sum(allocated)
+        assert row["allocation_status"] == "known"
+    else:
+        assert row["unique_allocated_blob_bytes"] is None
+        assert row["allocation_status"] == "unknown"
+    assert row["unsafe_paths"] == ([] if _has_nofollow() else ["refs/main"])
     snapshots = {item["revision"]: item for item in row["snapshots"]}
     assert snapshots[REVISION_A]["logical_bytes"] == len(b"firstshared!")
     assert snapshots[REVISION_A]["local_link_integrity"] == "valid"
@@ -59,13 +73,17 @@ def test_exact_removal_plan_separates_exclusive_and_shared_blobs(tmp_path):
     from anvil_serving import model_cache_native as native
 
     cache, _repo = _cache(tmp_path)
+    if not _has_nofollow():
+        with pytest.raises(native.NativeCacheError, match="unsafe"):
+            native.removal_plan(cache, "example/model", REVISION_A)
+        return
     plan = native.removal_plan(cache, "example/model", REVISION_A)
 
     assert plan["snapshot_exists"] is True
     assert plan["snapshot_logical_bytes"] == len(b"firstshared!")
     assert plan["exclusive_blob_names"] == ["first"]
     assert plan["shared_blob_names"] == ["shared"]
-    assert plan["reclaimable_bytes"] == os.lstat(_repo / "blobs" / "first").st_blocks * 512
+    assert plan["reclaimable_bytes"] == _allocated(_repo / "blobs" / "first")
     assert plan["artifact_completeness"] == "unverified"
     assert plan["refs_to_remove"] == ["main"]
     assert plan["apply"] == "unsupported_native_cache_ownership"
@@ -149,6 +167,26 @@ def test_direct_hub_and_pinned_cache_without_refs_are_standard(tmp_path):
     assert report["repositories"][0]["refs"] == {}
 
 
+def test_custom_direct_hub_cache_root_and_ambiguous_home_are_refused(tmp_path):
+    from anvil_serving import model_cache_native as native
+
+    cache, repo = _cache(tmp_path)
+    custom = tmp_path / "custom-hf-cache"
+    custom.mkdir()
+    os.replace(cache / "hub" / "models--example--model", custom / "models--example--model")
+    report = native.inventory(custom)
+    assert report["repositories"][0]["repo_id"] == "example/model"
+    if _has_nofollow():
+        assert native.removal_plan(custom, "example/model", REVISION_A)["snapshot_exists"] is True
+    else:
+        with pytest.raises(native.NativeCacheError, match="unsafe"):
+            native.removal_plan(custom, "example/model", REVISION_A)
+
+    (custom / "hub").mkdir()
+    with pytest.raises(native.NativeCacheError, match="ambiguous"):
+        native.inventory(custom)
+
+
 def test_partial_snapshot_does_not_claim_upstream_completeness(tmp_path):
     from anvil_serving import model_cache_native as native
 
@@ -169,11 +207,11 @@ def test_hardlinked_blob_names_are_inode_deduplicated(tmp_path):
     cache, repo = _cache(tmp_path)
     os.link(repo / "blobs" / "first", repo / "blobs" / "first-alias")
     row = native.inventory(cache)["repositories"][0]
-    expected = sum(
-        os.lstat(repo / "blobs" / name).st_blocks * 512
-        for name in ("first", "shared")
-    )
-    assert row["unique_allocated_blob_bytes"] == expected
+    allocated = [_allocated(repo / "blobs" / name) for name in ("first", "shared")]
+    if all(size is not None for size in allocated):
+        assert row["unique_allocated_blob_bytes"] == sum(allocated)
+    else:
+        assert row["unique_allocated_blob_bytes"] is None
     assert "blobs/first" in row["unsafe_paths"]
     assert "blobs/first-alias" in row["unsafe_paths"]
     with pytest.raises(native.NativeCacheError, match="unsafe"):
@@ -238,6 +276,29 @@ def test_inventory_marks_top_level_metadata_error_unknown(tmp_path, monkeypatch)
     report = native.inventory(cache)
     assert report["layout"] == "unknown"
     assert "hub/models--example--model" in report["unsafe_paths"]
+
+
+def test_missing_nofollow_capability_fails_closed_and_preserves_allocation_unknown(
+    tmp_path, monkeypatch
+):
+    from anvil_serving import model_cache_native as native
+
+    cache, repo = _cache(tmp_path)
+    monkeypatch.delattr(native.os, "O_NOFOLLOW", raising=False)
+    report = native.inventory(cache)
+    row = report["repositories"][0]
+    assert row["refs"] == {}
+    assert "refs/main" in row["unsafe_paths"]
+    with pytest.raises(native.NativeCacheError, match="unsafe"):
+        native.removal_plan(cache, "example/model", REVISION_A)
+
+    class NoBlocks:
+        st_size = 7
+        st_dev = 1
+        st_ino = 2
+        st_nlink = 1
+
+    assert native._blob_size(NoBlocks())["allocated_bytes"] is None
 
 
 def test_cli_native_inventory_and_removal_plan_do_not_use_docker(tmp_path, monkeypatch, capsys):

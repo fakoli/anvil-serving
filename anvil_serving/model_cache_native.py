@@ -358,25 +358,34 @@ def _repository(root: Path, repo: Path, repo_id: str | None, budget: _ScanBudget
     return record
 
 
-def _root(cache_dir: str | os.PathLike[str]) -> tuple[Path, Path | None]:
+def _root(
+    cache_dir: str | os.PathLike[str], budget: _ScanBudget
+) -> tuple[Path, Path | None, list[Path] | None]:
     root = _absolute(cache_dir)
     _no_symlink_ancestors(root, "native cache directory")
     _directory(root, "native cache directory")
-    # Accept both HF_HOME (which contains ``hub``) and the direct hub cache
-    # directory commonly passed by operators as ~/.cache/huggingface/hub.
-    if root.name == "hub":
-        return root, root
+    root_children = _children(root, budget)
+    has_direct_models = any(item.name.startswith("models--") for item in root_children)
     hub = root / "hub"
-    if not os.path.lexists(hub):
-        return root, None
-    _directory(hub, "native cache hub directory")
-    return root, hub
+    if os.path.lexists(hub):
+        _directory(hub, "native cache hub directory")
+        if has_direct_models:
+            raise NativeCacheError(
+                "native cache directory is ambiguous: it has both hub/ and direct models-- entries"
+            )
+        return root, hub, None
+    # HF_HUB_CACHE may be a custom directory such as /data/hf-cache rather
+    # than a child named hub. A direct empty directory named hub remains a
+    # usable cache root, while any other empty root is retained as unknown.
+    if has_direct_models or root.name == "hub":
+        return root, root, root_children
+    return root, None, None
 
 
 def inventory(cache_dir: str | os.PathLike[str]) -> dict[str, Any]:
     """Return a bounded, read-only inventory of a native HF hub cache."""
-    root, hub = _root(cache_dir)
     budget = _ScanBudget()
+    root, hub, direct_children = _root(cache_dir, budget)
     usage = shutil.disk_usage(root)
     if hub is None:
         repositories: list[dict[str, Any]] = []
@@ -386,7 +395,7 @@ def inventory(cache_dir: str | os.PathLike[str]) -> dict[str, Any]:
         repositories = []
         unrecognized_entries = []
         top_unsafe: list[str] = []
-        for item in _children(hub, budget):
+        for item in (direct_children if direct_children is not None else _children(hub, budget)):
             try:
                 info = item.lstat()
             except OSError:
@@ -448,8 +457,8 @@ def removal_plan(cache_dir: str | os.PathLike[str], repo_id: str, revision: str)
         raise NativeCacheError("repository must be an exact OWNER/REPO id")
     if not isinstance(revision, str) or not _REVISION_RE.fullmatch(revision):
         raise NativeCacheError("revision must be exactly 40 lowercase hexadecimal characters")
-    root, hub = _root(cache_dir)
     budget = _ScanBudget()
+    root, hub, _direct_children = _root(cache_dir, budget)
     if hub is None:
         raise NativeCacheError("native cache has no standard hub layout")
     owner, repo_name = repo_id.split("/", 1)
