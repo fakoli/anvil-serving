@@ -1543,7 +1543,7 @@ def test_promotion_binding_matches_and_preserves_idempotency(tmp_path):
     for apply in (True, False):
         status, capabilities = _catalog()
         opener = _Opener(status, capabilities)
-        opener.payloads.append(status)
+        opener.payloads.extend([status] * (2 if apply else 1))
         result = sync_clients(
             base_url="https://router.example.ts.net/v1", clients="pi",
             expected_config_sha256=CONFIG_SHA, confirm=apply, dry_run=not apply,
@@ -1605,3 +1605,42 @@ def test_openclaw_reserve_alignment_is_monotonic_and_preserves_policy(tmp_path):
     policy.update(reserveTokens=50_000, reserveTokensFloor=55_000)
     unchanged = _render_openclaw_document(catalog, original, align_compaction_reserve=True)
     assert unchanged["agents"]["defaults"]["compaction"] == policy
+
+
+@pytest.mark.parametrize("existing_state", [False, True])
+@pytest.mark.parametrize("final_hash", ["b" * 64, None])
+def test_promotion_drift_after_reload_never_certifies_success(tmp_path, existing_state, final_hash):
+    _write_inputs(tmp_path)
+    state_path = tmp_path / "state.json"
+    prior = {"config_sha256": "c" * 64, "file_sha256": {}}
+    if existing_state:
+        state_path.write_text(json.dumps(prior))
+    status, capabilities = _catalog()
+    opener = _Opener(status, capabilities)
+    opener.payloads.append(status)
+    reloads = []
+
+    def restarted():
+        reloads.append(True)
+        # The router changes only after the client write/service-refresh sequence.
+        opener.payloads.append({"config_sha256": final_hash})
+        return 0
+
+    before = (tmp_path / "models.json").read_bytes()
+    with pytest.raises(ClientCatalogError, match="during client reconciliation"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="openclaw,pi",
+            expected_config_sha256=CONFIG_SHA, confirm=True, dry_run=False,
+            openclaw_config=str(tmp_path / "openclaw.json"),
+            pi_models=str(tmp_path / "models.json"), pi_settings=str(tmp_path / "settings.json"),
+            state_path=str(state_path), backup_root=str(tmp_path / "backups"),
+            restart_openclaw_on_change=True, restart=restarted,
+            refresh_openclaw_service=lambda: 0,
+            environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=opener,
+        )
+    assert reloads == [True]
+    assert (tmp_path / "models.json").read_bytes() != before
+    if existing_state:
+        assert json.loads(state_path.read_text()) == prior
+    else:
+        assert not state_path.exists()
