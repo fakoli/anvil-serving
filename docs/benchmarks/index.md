@@ -43,7 +43,7 @@ frozen unique-prefix gate fails.
 
 <div class="bench-recipe" markdown="1">
 
-**Historical r9 text and tool baseline · Dual RTX PRO 6000**
+**Historical r7 text and tool qualification · Dual RTX PRO 6000**
 
 ### GLM-5.3-Flash · EXL3 4 bpw · speculation off
 
