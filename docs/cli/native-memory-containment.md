@@ -30,6 +30,11 @@ reads a password. Missing sudo authorization fails without an alternate path.
 The helper accepts only `shared`, `private` or `mmap`; no process ID, memory limit,
 executable, service or model argument is accepted.
 
+Execution reserves a new private evidence file before dispatch. Use an existing
+parent directory and a new filename; previous artifacts are never overwritten.
+Interrupted JSON records stop subsequent cells but do not discard valid limit
+or cleanup records. A final swap-check failure preserves the primary error.
+
 Before any Metal allocation, each helper sets a **256 MiB fatal physical-footprint
 limit on itself**, queries both active/inactive values and fatal attributes, then
 permanently drops to the invoking user's UID/GID and removes supplementary groups.

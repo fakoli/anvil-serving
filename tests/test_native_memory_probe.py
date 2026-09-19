@@ -136,3 +136,42 @@ def test_timeout_kills_compiler_descendant_before_it_can_write(tmp_path):
         probe._bounded_run([sys.executable, '-c', parent], capture_output=True, text=True, timeout=0.5)
     time.sleep(1.6)
     assert not marker.exists()
+
+
+@pytest.mark.parametrize('target', ['missing-parent', 'existing', 'directory'])
+def test_unusable_output_prevents_probe(monkeypatch, tmp_path, target):
+    output = tmp_path / 'result.json'
+    if target == 'missing-parent':
+        output = tmp_path / 'missing' / 'result.json'
+    elif target == 'existing':
+        output.write_text('preserve')
+    else:
+        output.mkdir()
+    monkeypatch.setattr(probe, 'run_probe', lambda **k: pytest.fail('probe executed'))
+    with pytest.raises(SystemExit):
+        probe.main(['--confirm', '--output', str(output)])
+    if target == 'existing':
+        assert output.read_text() == 'preserve'
+
+
+def test_evidence_is_reserved_before_probe(monkeypatch, tmp_path, capsys):
+    output = tmp_path / 'result.json'
+    def fake_probe(**kwargs):
+        assert json.loads(output.read_text())['outcome'] == 'started'
+        return {'outcome': 'accounting_observed'}
+    monkeypatch.setattr(probe, 'run_probe', fake_probe)
+    assert probe.main(['--confirm', '--output', str(output)]) == 0
+    assert json.loads(output.read_text())['outcome'] == 'accounting_observed'
+
+
+def test_timeout_and_post_swap_failure_are_both_retained(monkeypatch):
+    monkeypatch.setattr(probe.platform, 'system', lambda: 'Darwin')
+    base = Runner(failure='timeout')
+    def runner(argv, **kwargs):
+        if argv[0] == 'sysctl' and base.swaps:
+            raise OSError('unavailable')
+        return base(argv, **kwargs)
+    result = probe.run_probe(confirm=True, runner=runner)
+    assert result['error'] == 'probe_process_timeout'
+    assert result['post_swap_error'] == 'post_swap_measurement_unavailable'
+    assert result['outcome'] == 'failed'

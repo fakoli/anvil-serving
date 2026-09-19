@@ -17,6 +17,12 @@ before and after, records the footprint peak, and measures host swap before and 
 The temporary source and binary are removed when the operation exits. Retain output privately because
 platform evidence belongs to the operator.
 
+Confirmed execution reserves a new private output file and flushes a start
+record before compiling or running. The parent directory must already exist;
+existing files and symbolic links are refused to preserve earlier evidence.
+A final swap-check failure is recorded separately without hiding the original
+probe error.
+
 The child also requests a 2048 MiB physical-footprint limit on **itself** using
 `task_set_phys_footprint_limit`. No elevation is requested. Root execution is
 refused before any subprocess and again by the child. Permission denial is expected; unexpected success requires

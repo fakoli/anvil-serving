@@ -20,7 +20,7 @@ import stat
 import subprocess
 
 from .benchmarking.artifacts import atomic_write_json
-from .native_memory_probe import _bounded_run, _swap
+from .native_memory_probe import _bounded_run, _post_swap_failure, _reserved_evidence, _swap
 
 # Interoperability ABI: Apple XNU f6217f891ac0bb64f3d375211650a4c1ff8ca1ea,
 # bsd/sys/kern_memorystatus.h (commands 6/8, four-field limit record, fatal bit 1).
@@ -139,7 +139,7 @@ status=$?
 set -e
 cleanup
 trap - 0
-printf '{"event":"root_stage_cleanup","ok":true}\n'
+printf '\n{"event":"root_stage_cleanup","ok":true}\n'
 exit "$status"
 '''
 
@@ -161,6 +161,24 @@ def _base():
         'target_model_trial_authorized': False,
         'warning': 'Private macOS SPI; a SIGKILL alone does not establish its cause.',
     }
+
+
+def _events(raw):
+    """Retain valid bounded records around interrupted output, without raw text."""
+    if isinstance(raw, bytes):
+        raw = raw.decode('utf-8', errors='replace')
+    events, malformed = [], []
+    for number, line in enumerate(raw[:65536].splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+            if not isinstance(event, dict):
+                raise ValueError('non-object')
+            events.append(event)
+        except ValueError:
+            malformed.append(number)
+    return events, malformed
 
 
 def prepare(directory, *, confirm=False, dry_run=False, runner=_bounded_run):
@@ -261,9 +279,7 @@ def execute(directory, *, confirm=False, dry_run=False, allow_privileged=False,
             cell['returncode'] = completed.returncode
             if len(completed.stdout) > 65536:
                 raise ValueError('oversized_helper_evidence')
-            cell['events'] = [json.loads(line) for line in completed.stdout.splitlines()]
-            if not all(isinstance(event, dict) for event in cell['events']):
-                raise ValueError('invalid_helper_evidence')
+            cell['events'], cell['malformed_record_lines'] = _events(completed.stdout)
             after = _swap(runner)
             cell['swap_after_bytes'] = after
             if after != before:
@@ -273,6 +289,10 @@ def execute(directory, *, confirm=False, dry_run=False, allow_privileged=False,
             if limits:
                 result['privileged_execution_performed'] = True
             cleanups = [e for e in cell['events'] if e.get('event') == 'root_stage_cleanup' and e.get('ok') is True]
+            cell['root_stage_cleanup_confirmed'] = len(cleanups) == 1
+            if cell['malformed_record_lines']:
+                result['error'] = 'malformed_helper_evidence'
+                break
             valid_limit = len(limits) == 1 and (
                 limits[0].get('limit_mib') == 256 and limits[0].get('uid') == os.getuid()
                 and limits[0].get('gid') == os.getgid() and limits[0].get('groups') == 0
@@ -296,18 +316,10 @@ def execute(directory, *, confirm=False, dry_run=False, allow_privileged=False,
         # Retain only bounded known JSON events, including the root staging
         # identity needed to resolve a cleanup failure. No stderr is exposed.
         raw = exc.stdout or ''
-        if isinstance(raw, bytes):
-            raw = raw.decode('utf-8', errors='replace')
-        partial = []
-        for line in raw[:65536].splitlines():
-            try:
-                event = json.loads(line)
-                if isinstance(event, dict):
-                    partial.append(event)
-            except ValueError:
-                pass
+        partial, malformed = _events(raw)
         if result['cells']:
             result['cells'][-1]['partial_events'] = partial
+            result['cells'][-1]['malformed_record_lines'] = malformed
     except (OSError, ValueError):
         result['error'] = 'canary_execution_failed'
     finally:
@@ -315,9 +327,9 @@ def execute(directory, *, confirm=False, dry_run=False, allow_privileged=False,
             try:
                 result['swap_after_bytes'] = _swap(runner)
                 if result['swap_after_bytes'] != before:
-                    result.update(outcome='failed', error='swap_changed')
+                    _post_swap_failure(result, 'swap_changed')
             except (OSError, ValueError, subprocess.TimeoutExpired):
-                result.update(outcome='failed', error='post_swap_measurement_unavailable')
+                _post_swap_failure(result, 'post_swap_measurement_unavailable')
     return result
 
 
@@ -334,14 +346,21 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.execute and args.confirm and not args.dry_run and not args.output:
         parser.error('--output is required for execution')
-    if args.prepare:
-        result = prepare(args.prepare, confirm=args.confirm, dry_run=args.dry_run)
-    else:
-        result = execute(args.execute, confirm=args.confirm, dry_run=args.dry_run,
-                         allow_privileged=args.allow_privileged_probe,
-                         expected_binary_sha256=args.expected_binary_sha256)
+    def dispatch():
+        if args.prepare:
+            return prepare(args.prepare, confirm=args.confirm, dry_run=args.dry_run)
+        return execute(args.execute, confirm=args.confirm, dry_run=args.dry_run,
+                       allow_privileged=args.allow_privileged_probe,
+                       expected_binary_sha256=args.expected_binary_sha256)
     if args.output and args.confirm and not args.dry_run:
-        atomic_write_json(args.output, result)
+        try:
+            with _reserved_evidence(args.output) as retain:
+                result = dispatch()
+                retain(result)
+        except OSError:
+            parser.error('evidence output unavailable; use a new writable file in an existing directory')
+    else:
+        result = dispatch()
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result['outcome'] in {'preview', 'prepared'} else 1
 

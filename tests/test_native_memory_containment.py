@@ -181,3 +181,53 @@ def test_execute_preview_validates_identity_without_running(monkeypatch, tmp_pat
         runner=lambda *a, **k: pytest.fail('process started'))
     assert result['outcome'] == 'preview'
     assert result['binary_sha256'] == APPROVED_HASH
+
+
+@pytest.mark.parametrize('action', ['--prepare', '--execute'])
+def test_unwritable_evidence_prevents_any_action(monkeypatch, tmp_path, action):
+    monkeypatch.setattr(containment, 'prepare', lambda *a, **k: pytest.fail('compiled'))
+    monkeypatch.setattr(containment, 'execute', lambda *a, **k: pytest.fail('executed'))
+    with pytest.raises(SystemExit):
+        containment.main([action, 'helper', '--confirm', '--output', str(tmp_path / 'missing' / 'result.json')])
+
+
+def test_canary_timeout_retains_stage_and_primary_error_when_swap_query_fails(monkeypatch, tmp_path):
+    monkeypatch.setattr(containment.platform, 'system', lambda: 'Darwin')
+    path = tmp_path / 'helper'
+    containment.prepare(path, confirm=True, runner=compile_runner)
+    swaps = 0
+    stage = {'event': 'root_stage', 'path': '/private/tmp/anvil-memory-canary.EXAMPLE'}
+    def runner(argv, **kwargs):
+        nonlocal swaps
+        if argv[0] == 'sysctl':
+            swaps += 1
+            if swaps > 1:
+                raise OSError('unavailable')
+            return subprocess.CompletedProcess(argv, 0, 'used = 0.00M', '')
+        raise subprocess.TimeoutExpired(argv, 15, output=(json.dumps(stage) + '\n').encode())
+    result = containment.execute(path, confirm=True, allow_privileged=True,
+        expected_binary_sha256=APPROVED_HASH, runner=runner)
+    assert result['error'] == 'canary_timeout_cleanup_unverified'
+    assert result['post_swap_error'] == 'post_swap_measurement_unavailable'
+    assert result['cells'][0]['partial_events'] == [stage]
+    assert len(result['cells']) == 1
+
+
+def test_interrupted_sample_retains_cleanup_and_stops_further_cells(monkeypatch, tmp_path):
+    monkeypatch.setattr(containment.platform, 'system', lambda: 'Darwin')
+    path = tmp_path / 'helper'
+    containment.prepare(path, confirm=True, runner=compile_runner)
+    cleanup = {'event': 'root_stage_cleanup', 'ok': True}
+    def runner(argv, **kwargs):
+        if argv[0] == 'sysctl':
+            return subprocess.CompletedProcess(argv, 0, 'used = 0.00M', '')
+        raw = '{"event":"limit","pid":123}\n{"event":"sample","footprint":\n' + json.dumps(cleanup) + '\n'
+        return subprocess.CompletedProcess(argv, 137, raw, '')
+    result = containment.execute(path, confirm=True, allow_privileged=True,
+        expected_binary_sha256=APPROVED_HASH, runner=runner)
+    assert result['cells'][0]['events'][-1] == cleanup
+    assert result['cells'][0]['malformed_record_lines'] == [2]
+    assert result['cells'][0]['root_stage_cleanup_confirmed'] is True
+    assert result['error'] == 'malformed_helper_evidence'
+    assert len(result['cells']) == 1
+    assert result['hard_memory_containment_proven'] is False
