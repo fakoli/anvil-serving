@@ -468,3 +468,13 @@ untouched. Each planned subprocess is attempted once with a 15-second timeout.
 - [Device topologies](../DEVICE-TOPOLOGIES.md)
 
 Promotion reconciliation can add `--align-compaction-reserve` to raise declared Pi/OpenClaw reserves to the largest routed output budget. It preserves enabled/mode and recent-token policies, never lowers a reserve, and still rejects a budget that cannot fit the context. Without this flag, incompatible reserves remain an error.
+
+When a smaller-context alias cannot share a client's global compaction reserve,
+declare an explicit omission with `--pi-exclude-aliases llm.secondary` or
+`--openclaw-exclude-aliases llm.secondary`. These comma-separated policies
+remove only the named client's catalog entries and enabled-model entries.
+They leave router aliases, model limits, credentials, and compaction unchanged.
+Unknown or duplicate aliases, exclusion of `llm.primary`, and exclusion of
+a configured model selection fail before writing. Preview and apply with the
+same policy, then require an empty repeat preview. Keep the policy in the
+deployment configuration used by scheduled reconciliation; receipts record it.

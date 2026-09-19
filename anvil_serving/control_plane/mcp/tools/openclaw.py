@@ -253,6 +253,8 @@ def tool_client_catalog_sync(args: dict) -> dict:
             api_key_env=api_key_env,
             clients=_str_arg(args, "clients", "openclaw,pi"),
             expected_config_sha256=_str_arg(args, "expected_config_sha256", "") or None,
+            pi_exclude_aliases=_str_arg(args, "pi_exclude_aliases", ""),
+            openclaw_exclude_aliases=_str_arg(args, "openclaw_exclude_aliases", ""),
             align_compaction_reserve=_arg_bool(args.get("align_compaction_reserve"), False, name="align_compaction_reserve"),
             openclaw_config=_str_arg(
                 args, "openclaw_config", "~/.openclaw/openclaw.json"
@@ -620,6 +622,8 @@ FAMILY = ToolFamily(
                     "hermes_bin": {"type": "string"},
                     "hermes_home": {"type": "string"},
                     "align_compaction_reserve": {"type": "boolean"},
+                    "pi_exclude_aliases": {"type": "string"},
+                    "openclaw_exclude_aliases": {"type": "string"},
                     "expected_config_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
                     "hermes_profiles": {"type": "string"},
                     "pi_models": {"type": "string"},
