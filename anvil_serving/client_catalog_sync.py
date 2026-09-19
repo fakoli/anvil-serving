@@ -349,14 +349,54 @@ def _validate_compaction(
         )
 
 
-def _render_openclaw_document(catalog: Mapping, openclaw: Mapping, *, align_compaction_reserve: bool = False) -> dict:
+def _excluded_aliases(value: str, models: Mapping) -> frozenset[str]:
+    """Validate an explicit client exposure restriction without changing routes."""
+    if not isinstance(value, str) or len(value) > 4096:
+        raise ClientCatalogError("excluded aliases must be a bounded comma-separated string")
+    aliases = [item.strip() for item in value.split(",") if item.strip()]
+    if len(aliases) != len(set(aliases)) or any(alias not in models for alias in aliases):
+        raise ClientCatalogError("excluded aliases must name distinct current router aliases")
+    if "llm.primary" in aliases:
+        raise ClientCatalogError("llm.primary cannot be excluded from the managed client")
+    return frozenset(aliases)
+
+
+def _contains_excluded_reference(value, excluded):
+    if isinstance(value, str):
+        return value in {"anvil/" + alias for alias in excluded}
+    if isinstance(value, Mapping):
+        return any(_contains_excluded_reference(item, excluded) for item in value.values())
+    if isinstance(value, list):
+        return any(_contains_excluded_reference(item, excluded) for item in value)
+    return False
+
+
+def _render_openclaw_document(catalog: Mapping, openclaw: Mapping, *, align_compaction_reserve: bool = False, exclude_aliases: str = "") -> dict:
     models = catalog.get("models")
     if not isinstance(models, Mapping):
         raise ClientCatalogError("catalog models are invalid")
+    excluded = _excluded_aliases(exclude_aliases, models)
     openclaw_aliases = [
-        alias for alias in models if alias not in OPENCLAW_EXCLUDED_ALIASES
+        alias for alias in models if alias not in OPENCLAW_EXCLUDED_ALIASES | excluded
     ]
     rendered_openclaw = json.loads(json.dumps(openclaw))
+    agents = rendered_openclaw.get("agents", {})
+    entries = agents.get("entries", {})
+    scopes = [agents.get("defaults", {})]
+    if isinstance(entries, Mapping):
+        scopes.extend(value for value in entries.values() if isinstance(value, Mapping))
+    for scope in scopes:
+        policy = scope.get("modelPolicy", {})
+        if isinstance(policy, dict) and "allow" in policy:
+            allowed = policy["allow"]
+            if not isinstance(allowed, list) or any(not isinstance(item, str) for item in allowed):
+                raise ClientCatalogError("OpenClaw modelPolicy.allow must be a list of model names")
+            policy["allow"] = [item for item in allowed if item not in {"anvil/" + alias for alias in excluded}]
+            if allowed and not policy["allow"]:
+                raise ClientCatalogError("Exclusion would empty the OpenClaw allowlist and make overrides unrestricted")
+    selected = {key: value for key, value in agents.get("defaults", {}).items() if key != "models"}
+    if _contains_excluded_reference([selected, agents.get("list", []), agents.get("entries", {}), openclaw.get("talk", {})], excluded):
+        raise ClientCatalogError("OpenClaw configured model selection references an excluded alias")
     provider = (
         rendered_openclaw.setdefault("models", {})
         .setdefault("providers", {})
@@ -429,12 +469,14 @@ def _render_pi_documents(
     base_url: str,
     api_key_env: str,
     align_compaction_reserve: bool = False,
+    exclude_aliases: str = "",
 ) -> tuple[dict, dict]:
     models = catalog.get("models")
     if not isinstance(models, Mapping):
         raise ClientCatalogError("catalog models are invalid")
-    pi_aliases = [alias for alias in PI_ALIASES if alias in models]
-    if "llm.primary" not in pi_aliases or "llm.secondary" not in pi_aliases:
+    excluded = _excluded_aliases(exclude_aliases, models)
+    pi_aliases = [alias for alias in PI_ALIASES if alias in models and alias not in excluded]
+    if "llm.primary" not in pi_aliases or ("llm.secondary" not in pi_aliases and "llm.secondary" not in excluded):
         raise ClientCatalogError("Pi requires llm.primary and llm.secondary in the router catalog")
 
     rendered_pi_models = json.loads(json.dumps(pi_models))
@@ -1331,12 +1373,14 @@ def _summary(
     hermes_rows: list[Mapping] | None,
     hermes_restarted: bool,
     dry_run: bool,
+    exclusions: Mapping | None = None,
 ) -> dict:
     models = catalog["models"]
     return {
         "config_sha256": catalog["config_sha256"],
         "package_version": catalog.get("package_version"),
         "clients": list(clients),
+        "client_excluded_aliases": dict(exclusions or {}),
         "models": [
             {
                 "id": alias,
@@ -1729,6 +1773,8 @@ def sync_clients(
     timeout_seconds: int = 15,
     expected_config_sha256: str | None = None,
     align_compaction_reserve: bool = False,
+    pi_exclude_aliases: str = "",
+    openclaw_exclude_aliases: str = "",
     environ: Mapping[str, str] | None = None,
     opener=None,
     restart: Callable[[], int] | None = None,
@@ -1754,6 +1800,11 @@ def sync_clients(
     if expected_config_sha256 is not None:
         if catalog["config_sha256"] != expected_config_sha256:
             raise ClientCatalogError("router configuration differs from the approved promotion")
+    exclusions = {
+        "pi": sorted(_excluded_aliases(pi_exclude_aliases, catalog["models"])),
+        "openclaw": sorted(_excluded_aliases(openclaw_exclude_aliases, catalog["models"])),
+    }
+    exclusions = {client: aliases for client, aliases in exclusions.items() if client in selected_clients}
     paths = {
         "openclaw": Path(os.path.expanduser(openclaw_config)),
         "hermes": Path(os.path.expanduser(hermes_config)),
@@ -1770,7 +1821,7 @@ def sync_clients(
         current_openclaw = _read_json_file(paths["openclaw"])
         openclaw_secret_env_name = _openclaw_secret_env_name(current_openclaw)
         desired["openclaw"] = _json_bytes(
-            _render_openclaw_document(catalog, current_openclaw, align_compaction_reserve=align_compaction_reserve)
+            _render_openclaw_document(catalog, current_openclaw, align_compaction_reserve=align_compaction_reserve, exclude_aliases=openclaw_exclude_aliases)
         )
         paths["openclaw_env"] = paths["openclaw"].parent / ".env"
         desired["openclaw_env"] = _render_openclaw_state_env(
@@ -1813,6 +1864,7 @@ def sync_clients(
             _read_json_file(paths["pi_models"]),
             _read_json_file(paths["pi_settings"]),
             align_compaction_reserve=align_compaction_reserve,
+            exclude_aliases=pi_exclude_aliases,
             base_url=base_url,
             api_key_env=api_key_env,
         )
@@ -1836,6 +1888,9 @@ def sync_clients(
     )
     prior_state_exists = paths["state"].exists()
     prior_state = _read_json_file(paths["state"], required=False)
+    prior_exclusions = prior_state.get("client_excluded_aliases", {})
+    if not isinstance(prior_exclusions, Mapping):
+        raise ClientCatalogError("prior client alias policy state must be an object")
     openclaw_service_refresh_pending = (
         "openclaw" in selected_clients
         and openclaw_service_tracking
@@ -1847,12 +1902,18 @@ def sync_clients(
         and prior_state.get("openclaw_service_restarted_sha256")
         != catalog["config_sha256"]
     )
+    openclaw_policy_changed = (
+        "openclaw" in selected_clients
+        and prior_exclusions.get("openclaw", []) != exclusions["openclaw"]
+    )
     openclaw_restart_pending = (
         "openclaw" in selected_clients
         and restart_openclaw_on_change
         and (
             prior_state.get("openclaw_restarted_sha256") != catalog["config_sha256"]
             or "openclaw_env" in changed
+            or "openclaw" in changed
+            or openclaw_policy_changed
             or openclaw_service_refresh_pending
             or openclaw_service_marker_pending
         )
@@ -1882,6 +1943,7 @@ def sync_clients(
             hermes_rows=hermes_rows,
             hermes_restarted=False,
             dry_run=True,
+            exclusions=exclusions,
         )
 
     backup = None
@@ -1963,12 +2025,19 @@ def sync_clients(
     )
     state = {
         "config_sha256": catalog["config_sha256"],
+        "client_excluded_aliases": {**prior_exclusions, **exclusions},
         "file_sha256": file_hashes,
         "openclaw_restarted_sha256": prior_state.get("openclaw_restarted_sha256"),
         "openclaw_service_restarted_sha256": prior_state.get(
             "openclaw_service_restarted_sha256"
         ),
     }
+
+    if "openclaw" in changed or openclaw_policy_changed:
+        # Writing a catalog does not prove that the running gateway loaded it.
+        # Retain a pending restart across a later call that requests no writes.
+        state["openclaw_restarted_sha256"] = None
+        state["openclaw_service_restarted_sha256"] = None
 
     def restore_prior_state() -> None:
         if prior_state_exists:
@@ -2069,6 +2138,7 @@ def sync_clients(
         hermes_rows=hermes_rows,
         hermes_restarted=hermes_restarted,
         dry_run=False,
+        exclusions=exclusions,
     )
 
 
