@@ -2,11 +2,21 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from ..observability.dashboard.contracts import fields, identifier
+
+
+_MAX_PROJECT_ROOTS = 16
+_LEGACY_PRIMARY_ROOT_ID = "primary"
+# These compatibility identities name the existing local owner/runtime. A later
+# owner service resolves them; this parser does not grant filesystem access.
+_LOCAL_OWNER_ID = "local-owner"
+_LOCAL_RUNTIME_ID = "local-runtime"
+_LEGACY_ROOT_TASK_ACCESS = "read-write"
 
 
 def absolute_path(value):
@@ -19,6 +29,79 @@ def integer(value, low, high):
     if type(value) is not int or not low <= value <= high:
         raise ValueError("Workbench bound is out of range")
     return value
+
+
+def _root_path(value):
+    absolute_path(value)
+    if (
+        not value
+        or any(ord(char) < 32 or ord(char) == 127 for char in value)
+        or ".." in Path(value).parts
+    ):
+        raise ValueError("Project roots must be safe absolute private paths")
+    path = os.path.normpath(value)
+    if path == Path(path).anchor:
+        raise ValueError("Project roots must not be filesystem roots")
+    return path
+
+
+def _label(value):
+    if type(value) is not str or not 1 <= len(value) <= 192 or any(ord(char) < 32 for char in value):
+        raise ValueError("Workbench labels must be bounded text")
+    return value
+
+
+def _paths_overlap(first, second):
+    try:
+        common = os.path.commonpath((os.path.normcase(first), os.path.normcase(second)))
+    except ValueError:
+        return False
+    return common in {os.path.normcase(first), os.path.normcase(second)}
+
+
+def _normalize_project_roots(project):
+    checkout = _root_path(project["checkout"])
+    if "roots" not in project:
+        if "primary_root_id" in project:
+            raise ValueError("Primary root requires declared project roots")
+        project["roots"] = [{
+            "id": _LEGACY_PRIMARY_ROOT_ID,
+            "label": _label(project["label"]),
+            "owner_id": _LOCAL_OWNER_ID,
+            "runtime_id": _LOCAL_RUNTIME_ID,
+            "task_access": _LEGACY_ROOT_TASK_ACCESS,
+            "path": checkout,
+        }]
+        project["primary_root_id"] = _LEGACY_PRIMARY_ROOT_ID
+
+    roots = project["roots"]
+    if type(roots) is not list or not 1 <= len(roots) <= _MAX_PROJECT_ROOTS:
+        raise ValueError("Declare between 1 and 16 project roots")
+    primary_root_id = identifier(project.get("primary_root_id"))
+    seen_ids = set()
+    matching_checkout = []
+    normalized_paths = []
+    for root in roots:
+        fields(root, required=("id", "label", "owner_id", "runtime_id", "task_access", "path"))
+        root_id = identifier(root["id"])
+        if root_id in seen_ids:
+            raise ValueError("Duplicate project root identity")
+        seen_ids.add(root_id)
+        _label(root["label"])
+        identifier(root["owner_id"])
+        identifier(root["runtime_id"])
+        if root["task_access"] not in {"read-only", "read-write"}:
+            raise ValueError("Project roots must declare task access")
+        root["path"] = _root_path(root["path"])
+        if any(_paths_overlap(root["path"], prior) for prior in normalized_paths):
+            raise ValueError("Project roots must not overlap")
+        normalized_paths.append(root["path"])
+        if root["path"] == checkout:
+            matching_checkout.append(root)
+    if primary_root_id not in seen_ids:
+        raise ValueError("Primary root must name a declared root")
+    if len(matching_checkout) != 1:
+        raise ValueError("Project roots must include the declared checkout exactly once")
 
 
 def validate_config(value):
@@ -62,12 +145,15 @@ def validate_config(value):
                 if type(row.get("system", "")) is not str or len(row.get("system", "")) > 16384:
                     raise ValueError("System instructions exceed their bound")
             else:
-                fields(row, required=("id", "label", "resource_id", "checkout", "anvil_binary"), optional=("runner_root",))
+                fields(row, required=("id", "label", "resource_id", "checkout", "anvil_binary"),
+                       optional=("runner_root", "roots", "primary_root_id"))
                 identifier(row["resource_id"])
+                _label(row["label"])
                 absolute_path(row["checkout"])
                 absolute_path(row["anvil_binary"])
                 if "runner_root" in row:
                     absolute_path(row["runner_root"])
+                _normalize_project_roots(row)
     if value.get("pi"):
         pi = value["pi"]
         fields(pi, required=("id", "state_root", "engine_binary", "image", "uid", "gid", "models", "thinking_levels"),
