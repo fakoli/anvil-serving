@@ -48,6 +48,13 @@ class Provider(BaseHTTPRequestHandler):
                 "choices": [{"index": 0, "delta": delta, "finish_reason": finish}],
             }
             self.wfile.write(("data: " + json.dumps(chunk) + "\n\n").encode())
+            self.wfile.flush()
+            if finish is None:
+                deadline = time.monotonic() + 40
+                while not (root / "release-stream").exists():
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("Browser did not release synthetic stream")
+                    time.sleep(0.05)
         self.wfile.write(b"data: [DONE]\n\n")
         self.wfile.flush()
 
@@ -87,14 +94,35 @@ subprocess.run(["git", "init", "-q", str(work)], check=True)
 installed = Path(os.environ["PI_WEB_PACKAGE"]).resolve()
 if json.loads((installed / "package.json").read_text()).get("version") != "0.9.0":
     raise SystemExit("This fixture requires the reviewed Pi Web 0.9.0 pin")
-identity = hashlib.sha256()
-for source in sorted(installed.rglob("*")):
-    relative = source.relative_to(installed)
-    if source.is_file() and "cache" not in relative.parts and "node_modules" not in relative.parts:
-        identity.update(relative.as_posix().encode() + b"\0" + source.read_bytes())
+
+
+def runtime_digest():
+    identity = hashlib.sha256()
+    dependencies = installed.parents[1]
+    for source in sorted(dependencies.rglob("*")):
+        relative = source.relative_to(dependencies).as_posix()
+        if source.is_symlink():
+            if not source.resolve().is_relative_to(dependencies):
+                raise RuntimeError("Runtime dependency link escapes the pinned installation")
+            identity.update(relative.encode() + b"\0link\0" + os.readlink(source).encode())
+        elif source.is_file():
+            identity.update(relative.encode() + b"\0file\0")
+            with source.open("rb") as stream:
+                while block := stream.read(1024 * 1024):
+                    identity.update(block)
+    return identity.hexdigest()
+
+
+identity = runtime_digest()
 (root / "package-identity.json").write_text(
     json.dumps(
-        {"package": "@agegr/pi-web", "version": "0.9.0", "sha256": identity.hexdigest()}, indent=2
+        {
+            "package": "@agegr/pi-web",
+            "version": "0.9.0",
+            "runtime_tree_sha256": identity,
+            "node_version": subprocess.check_output(["node", "--version"], text=True).strip(),
+        },
+        indent=2,
     )
 )
 app = root / "pi-web"
@@ -171,6 +199,8 @@ try:
             os.killpg(browser_test.pid, signal.SIGKILL)
             browser_test.wait()
     (root / "provider-requests.json").write_text(json.dumps(requests, indent=2))
+    if runtime_digest() != identity:
+        raise RuntimeError("Pinned runtime dependencies changed during the proof")
     if returncode == 0 and len(requests) != 1:
         raise RuntimeError("Expected exactly one synthetic model turn, without replay")
     raise SystemExit(returncode)

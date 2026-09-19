@@ -338,7 +338,13 @@ func TestBrowserFixture(t *testing.T) {
 	if probe.StatusCode != http.StatusOK {
 		t.Fatalf("synthetic OIDC discovery status: %d", probe.StatusCode)
 	}
-	manager, err := session.New(context.Background(), state, []config.Rule{gateway.Resources[0].Rule}, session.Config{Issuer: issuerURL, ClientID: "connect-browser", ClientSecret: "fixture-secret", CallbackPath: httpedge.BrowserCallbackPath, TransactionLifetime: session.DefaultTransactionLifetime, SessionLifetime: time.Hour, MaxTransactions: 8, MaxPerBrowser: 2, HTTPClient: &http.Client{Transport: oidcTransport}})
+	managerRules := []config.Rule{gateway.Resources[0].Rule}
+	if os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") != "" {
+		otherDashboard := gateway.Resources[0].Rule
+		otherDashboard.ID, otherDashboard.Host = "operator-dashboard", "console.example.test"
+		managerRules = append(managerRules, otherDashboard)
+	}
+	manager, err := session.New(context.Background(), state, managerRules, session.Config{Issuer: issuerURL, ClientID: "connect-browser", ClientSecret: "fixture-secret", CallbackPath: httpedge.BrowserCallbackPath, TransactionLifetime: session.DefaultTransactionLifetime, SessionLifetime: time.Hour, MaxTransactions: 8, MaxPerBrowser: 2, HTTPClient: &http.Client{Transport: oidcTransport}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,11 +353,20 @@ func TestBrowserFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	operator, err := manager.SetHuman(issuerURL, "operator-subject", []string{"dash"}, false)
+	operatorGrants := []string{"dash"}
+	if os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") != "" {
+		// A host Pi resource is dedicated to its OS owner. Dashboard operators
+		// must not inherit access to that owner's sessions or tool authority.
+		operatorGrants = []string{"operator-dashboard"}
+	}
+	operator, err := manager.SetHuman(issuerURL, "operator-subject", operatorGrants, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	gateway.BrowserAdministration = &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{operator.ID}}
+	if os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") != "" {
+		gateway.BrowserAdministration.Operators = []string{member.ID}
+	}
 	adminAuthority, err := administration.New(state, manager, gateway)
 	if err != nil {
 		t.Fatal(err)

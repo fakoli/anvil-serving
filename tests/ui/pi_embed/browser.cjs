@@ -37,7 +37,7 @@ const root = process.env.PI_FIXTURE_OUTPUT;
             clearTimeout(timer);
             resolve(v);
           } else if (v.ack) pending.shift()?.(v.ack);
-        } catch {}
+        } catch { stderr = (stderr + line + "\n").slice(-16384); }
       });
       child.on("error", reject);
       child.on("exit", (code) => {
@@ -108,6 +108,7 @@ const root = process.env.PI_FIXTURE_OUTPUT;
     await page.waitForTimeout(1500);
     const before = await call("/api/sessions?force=1");
     assert.equal(before.status, 200);
+    assert.equal(JSON.parse((await call("/api/agent/" + id)).body).state.isStreaming, true);
     results.push({
       check:
         "real pinned Pi creates retained synthetic session through Connect",
@@ -141,8 +142,25 @@ const root = process.env.PI_FIXTURE_OUTPUT;
       .getByText("Embed fixture " + id, { exact: false })
       .first()
       .waitFor({ timeout: 15000 });
+    await frame.getByText("Embed fixture " + id, { exact: false }).first().click();
+    const second = await context.newPage();
+    await second.goto("https://console.example.test/");
+    const secondFrame = second.frameLocator("iframe");
+    await secondFrame.getByText("Embed fixture " + id, { exact: false }).first().click();
+    await secondFrame.getByText("Synthetic Pi integration response.", { exact: false }).first().waitFor();
+    const secondChild = second.frames().find((item) => item.url().startsWith(ready.url));
+    const running = await secondChild.evaluate(async (id) => ({
+      state: await fetch("/api/agent/" + id).then((r) => r.json()),
+      sessions: await fetch("/api/agent/running").then((r) => r.json()),
+    }), id);
+    assert.equal(running.state.state.isStreaming, true);
+    assert.deepEqual(running.sessions.runningSessionIds, [id]);
+    fs.writeFileSync(path.join(root, "release-stream"), "release");
+    await secondChild.waitForFunction(async (id) =>
+      !(await fetch("/api/agent/" + id).then((r) => r.json())).state.isStreaming, id);
+    await second.close();
     results.push({
-      check: "frame navigation retains native session",
+      check: "active stream survives frame reload and second-tab attachment with one native writer",
       passed: true,
     });
     await page.goto(ready.url);
@@ -179,6 +197,16 @@ const root = process.env.PI_FIXTURE_OUTPUT;
     const question = await page.evaluate(() =>
       window.fixtureEvents.find((x) => x.type === "extension_ui_request"),
     );
+    await page.reload();
+    await page.evaluate((id) => {
+      window.fixtureEvents = [];
+      window.fixtureSource = new EventSource("/api/agent/" + id + "/events");
+      window.fixtureSource.onmessage = (e) => {
+        try { window.fixtureEvents.push(JSON.parse(e.data)); } catch {}
+      };
+    }, id);
+    await page.waitForFunction((id) => window.fixtureEvents.some(
+      (x) => x.type === "extension_ui_request" && x.id === id), question.id);
     const wrong = await call("/api/agent/" + id, {
       type: "extension_ui_response",
       id: "wrong-request",
@@ -207,7 +235,7 @@ const root = process.env.PI_FIXTURE_OUTPUT;
     );
     await page.evaluate(() => window.fixtureSource.close());
     results.push({
-      check: "extension confirmation round trip through real SSE and Connect",
+      check: "pending extension confirmation keeps request identity across reconnect",
       passed: true,
     });
     const cookie = (await context.cookies(ready.url))
@@ -239,6 +267,14 @@ const root = process.env.PI_FIXTURE_OUTPUT;
       passed: true,
       status: revoked.status,
     });
+    await command("subject operator");
+    const operator = await browser.newContext();
+    const operatorPage = await operator.newPage();
+    await operatorPage.goto(ready.url);
+    const operatorDenied = await operatorPage.evaluate(() => fetch("/api/sessions").then((r) => r.status));
+    assert.notEqual(operatorDenied, 200);
+    results.push({ check: "registered non-owner operator cannot access owner-only Pi resource", passed: true, status: operatorDenied });
+    await operator.close();
     await command("subject denied");
     const foreign = await browser.newContext();
     const foreignPage = await foreign.newPage();
