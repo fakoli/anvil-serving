@@ -7,6 +7,7 @@ footprint-limit permission. Neither success nor permission proves containment.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -16,8 +17,6 @@ import re
 import signal
 import subprocess
 import tempfile
-
-from .benchmarking.artifacts import atomic_write_json
 
 ALLOCATION_BYTES = 32 * 1024 * 1024
 SOURCE = r'''
@@ -83,18 +82,26 @@ int main(void) {
 '''
 
 
-def _bounded_run(argv, *, capture_output, text, timeout):
+def _bounded_run(argv, *, capture_output, text, timeout, input=None):
     """Reap the direct child and terminate its whole session on timeout."""
-    with subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    with subprocess.Popen(argv, stdin=subprocess.PIPE if input is not None else None,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           text=text, start_new_session=True) as process:
         try:
-            stdout, stderr = process.communicate(timeout=timeout)
+            stdout, stderr = process.communicate(input=input, timeout=timeout)
         except subprocess.TimeoutExpired:
             try:
-                os.killpg(process.pid, signal.SIGKILL)
+                os.killpg(process.pid, signal.SIGTERM)
             except ProcessLookupError:
                 pass
-            process.communicate()
+            try:
+                process.communicate(timeout=2)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.communicate()
             raise
         return subprocess.CompletedProcess(argv, process.returncode, stdout, stderr)
 
@@ -106,6 +113,33 @@ def _run(argv, runner, timeout=10):
         # arbitrary injected diagnostics are not a portable public artifact.
         raise ValueError('probe_process_exit_%s' % result.returncode)
     return result.stdout
+
+
+@contextmanager
+def _reserved_evidence(path):
+    """Reserve a new private artifact and persist a start record before work.
+
+    Keep the opened file through completion; never reopen a substituted path.
+    Existing evidence (including symlinks) is refused, not overwritten.
+    """
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, 'w', encoding='utf-8') as stream:
+        def retain(result):
+            payload = json.dumps(result, indent=2, sort_keys=True) + '\n'
+            stream.seek(0)
+            stream.write(payload)
+            stream.truncate()
+            stream.flush()
+            os.fsync(stream.fileno())
+        retain({'outcome': 'started', 'complete': False})
+        yield retain
+
+
+def _post_swap_failure(result, error):
+    """Retain the earliest actionable failure as well as failed final checks."""
+    result['outcome'] = 'failed'
+    result['post_swap_error'] = error
+    result.setdefault('error', error)
 
 
 def _swap(runner):
@@ -186,9 +220,9 @@ def run_probe(*, confirm=False, dry_run=False, runner=_bounded_run):
                 result['swap_after_bytes'] = after
                 result['swap_change_bytes'] = after - before
                 if after != before:
-                    result.update(outcome='failed', error='swap_changed')
+                    _post_swap_failure(result, 'swap_changed')
             except (ValueError, OSError, subprocess.TimeoutExpired):
-                result.update(outcome='failed', error='post_swap_measurement_unavailable')
+                _post_swap_failure(result, 'post_swap_measurement_unavailable')
     return result
 
 
@@ -200,9 +234,15 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.confirm and not args.dry_run and not args.output:
         parser.error('--output is required for confirmed execution')
-    result = run_probe(confirm=args.confirm, dry_run=args.dry_run)
     if args.output and args.confirm and not args.dry_run:
-        atomic_write_json(args.output, result)
+        try:
+            with _reserved_evidence(args.output) as retain:
+                result = run_probe(confirm=args.confirm, dry_run=args.dry_run)
+                retain(result)
+        except OSError:
+            parser.error('evidence output unavailable; use a new writable file in an existing directory')
+    else:
+        result = run_probe(confirm=args.confirm, dry_run=args.dry_run)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result['outcome'] in {'preview', 'accounting_observed'} else 1
 
