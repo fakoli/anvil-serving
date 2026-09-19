@@ -74,6 +74,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-09-19 | [VoiceChat Apple feasibility stop](2026-09-19-voicechat-feasibility.md) | Whole tool-capable replacement blocked before candidate acquisition; disk arithmetic passes but memory is unresolved; protected audio diagnostics are not candidate latency or quality |
 | 2026-09-19 | [GLM-5.3-Flash r10 APC promotion follow-up](2026-09-19-glm53-apc-promotion.md) | Explicit human approval and fresh bounded acceptance after the retained r9/r10 APC campaign; shared-prefix TTFT −67.84%, unique-prefix request throughput −2.39% within the frozen gate, and exact r9 rollback retained |
 | 2026-09-19 | [Swift / stock Qwen3.8 Apple artifact feasibility stop](2026-09-19-swift-qwen38-apple-feasibility.md) | Read-only Apple M4 Max storage-policy stop for uncached Swift/stock Qwen3.8 GGUF pairs; memory containment unresolved; no download, launch, benchmark, cleanup, or promotion |
 | 2026-09-17 | [GLM mixed 3.5-bpw startup](2026-09-17-glm53-mixed35-startup.md) | Host RAM exhaustion during loading shut down the desktop session; zero candidate inference requests; exact 4-bpw baseline restored; retry requires containment |

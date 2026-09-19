@@ -1,0 +1,167 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-19-voicechat-feasibility",
+    "capability": "voice feasibility",
+    "repository_revision": "5cc041149aca2908463f5917476fcb8a7280a039",
+    "dirty_state": "isolated codex worktree; benchmark-input code and feasibility documentation changes",
+    "started_at": "2026-09-19T22:52:44Z",
+    "completed_at": "2026-09-19T23:14:17.764632+00:00",
+    "evidence_labels": [
+      "external-prior",
+      "feasibility"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.recipe-feasibility-input/v1",
+    "anvil-serving.recipe-feasibility-result/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "f0d5fbc22101cf37f60f7e3c22c57ad04db90d51e00fb686ef2154a5a224cbc9",
+          "bytes": 628
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "18feb9ba6d62e3f2065b66e86284571db32647ed2d0cb01bf08e00d6ee683cc8",
+          "bytes": 3583
+        },
+        {
+          "path": "identity-summary.json",
+          "sha256": "b3fa43a89aaeb97412dc87f5d2125f804cc0a771d76057c8109601b929f12613",
+          "bytes": 347
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "missing",
+      "files": [],
+      "reason": "No candidate workload executed; private audio artifacts are not public evidence."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.md",
+          "sha256": "268b3ea5342fd64b93b9fa9054d7b83a26321549e9f561bbcd676ea23e4cff05",
+          "bytes": 1384
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity-summary.json",
+          "sha256": "b3fa43a89aaeb97412dc87f5d2125f804cc0a771d76057c8109601b929f12613",
+          "bytes": 347
+        },
+        {
+          "path": "resource-observations.json",
+          "sha256": "3dffd74cc8623986309f831adc0809b8c97da9957736a5940f3dbe859b5bd39a",
+          "bytes": 1385
+        },
+        {
+          "path": "feasibility-input-v1.json",
+          "sha256": "016b926c6ca91edec0a91487f18d4ee123eb2529c5fc132ddd3e6a3747e3068c",
+          "bytes": 6861
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "feasibility-result-v1.json",
+          "sha256": "bf27b6a1410b072100b7d2c7f78b30b63c135b2f98fd078d72960ba694f20a6b",
+          "bytes": 9439
+        }
+      ],
+      "reason": "Deterministic feasibility output only; zero inference requests"
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "a1661b702f1c9a6b7213a6a675f4ece0afd93a43a619556054758efe7dcd9fff",
+          "bytes": 169
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "8c1a27b6ed5a5d58cab2d097b4d06b95761ac898e889cee11de1e3955704cae0",
+          "bytes": 148
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "2b8676d1dea1b65749dfa411b4e6394896b4ddabe2f19820b39510bba048f83d",
+          "bytes": 1737
+        },
+        {
+          "path": "feasibility-input-v1.json",
+          "sha256": "016b926c6ca91edec0a91487f18d4ee123eb2529c5fc132ddd3e6a3747e3068c",
+          "bytes": 6861
+        },
+        {
+          "path": "feasibility-result-v1.json",
+          "sha256": "bf27b6a1410b072100b7d2c7f78b30b63c135b2f98fd078d72960ba694f20a6b",
+          "bytes": 9439
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "97f0c9263527cd43ba6bcd208473c8501206cb709ac08f4752de2e9fbb4c6493",
+          "bytes": 1186
+        }
+      ],
+      "reason": ""
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}
