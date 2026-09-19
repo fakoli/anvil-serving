@@ -232,6 +232,57 @@ new finding is reachable from the findings index, run catalog, dossier, and
 hardware page; verify that the run-catalog row links both its dossier and
 finding. Do not leave a finding-only update for a later pass.
 
+### Promotion publication closure
+
+A human-approved promotion is not complete when only the model route and
+private runbook changed. After live acceptance, publish the resulting decision
+as one transaction across the documentation and the operator's declared
+benchmark dashboards:
+
+First inspect an existing publication receipt. If its source hashes and
+post/dashboard/evidence IDs match this exact promotion and every declared
+surface passes current live readback, accept publication closure without
+creating duplicate posts/cards, reimporting data or redeploying. Repair only
+the missing or stale surfaces.
+
+1. Publish a dated, public-safe benchmark narrative and apply the full matrix
+   above, including current/rollback decisions. Link a promotion follow-up from
+   an earlier restored-baseline finding; preserve its historical result.
+   Explain the comparison, benefit, negative results, sample count, workload,
+   reasoning policy and limits. Reuse exact retained evidence; do not rerun a
+   benchmark merely to publish it.
+2. Discover the operator's dashboard infrastructure repository and supported
+   import/provisioning workflow. Update the benchmark source registry and
+   numerical result views in every declared surface, including Grafana and
+   Workbench when deployed. An active-model label, readiness metric or private
+   report alone is not benchmark publication. Keep operator identity and
+   credentials outside the public product repository.
+3. Derive displayed metrics from the same eligible source artifacts. Preserve
+   existing history; separate shared/unique and warm/cold populations, and keep
+   historical benchmark gauges distinct from live telemetry. Do not rank failed
+   or performance-ineligible runs. Preserve sample counts, source hashes and
+   bounded quality claims alongside the results.
+4. Within the existing authorization, deploy the documentation and dashboard
+   changes through their owners. Verify the served post URL, actual Grafana
+   data/panels and Workbench evidence cards, including sample counts and at
+   least one displayed source-matched value. Verify an idempotent repeat
+   import/provisioning check. File edits, CI and HTTP health alone do not prove
+   users can see the benchmark. Use authenticated UI/API readback and a browser
+   check when available; never expose credentials in receipts.
+5. Retain a publication receipt with the post URL, artifact identities,
+   infrastructure revision, Grafana dashboard UID, Workbench evidence IDs,
+   live verification and any remaining gap. Link it from the private promotion
+   record. When a declared surface or publication authority is unavailable,
+   report `promoted_publication_pending`, the exact gap and the deployed state;
+   do not report full promotion closure. Do not ask again for authority already
+   granted in the session. Record absent dashboard products as not applicable.
+
+For an isolated trial, a rejected candidate, or documentation-only maintenance,
+retain the relevant publication matrix without inventing a promotion or
+requiring a live dashboard deployment outside scope. This gate does not grant
+model lifecycle authority, permission to post to external networks, or permission
+to restart inference for a publication update.
+
 ## 5. Keep dossiers consistent and readable
 
 Create or migrate model dossiers with `templates/dossier.md`. Keep the eight

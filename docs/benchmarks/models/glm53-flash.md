@@ -9,23 +9,27 @@
 
 **2026-09-18 update:** [Bounded vision acceptance](../../findings/2026-09-18-glm53-vision.md) passed 10/10 image attempts and routed checks and a matching Pi output transcript with unchanged 4-bpw weights, FP8 KV and disabled speculation. Eight images/request; configured 327K/C4 retained. A 259,922-token synthetic retrieval passed on retry after an initial refusal; this is not a full-window soak. The following September 14 snapshot remains the prior text-only evidence.
 
-**2026-09-19 APC campaign:** matched shared-prefix mean visible TTFT improved 67.84% and request throughput rose 3.17×; unique-prefix throughput fell 2.39%, within the 5% gate. Final diagnostic quality passed 12/12 per arm, with image and long-context gates passed. Exact r9 restoration and direct/routed acceptance are verified. Independent review recommends a bounded human-approved APC promotion; no selected configuration changed. See the [dated finding](../../findings/2026-09-19-glm53-apc.md).
+**2026-09-19 APC campaign:** matched shared-prefix mean visible TTFT improved 67.84% and request throughput rose 3.17×; unique-prefix throughput fell 2.39%, within the 5% gate. Final diagnostic quality passed 12/12 per arm, with image and long-context gates passed. Exact r9 restoration and direct/routed acceptance are verified. At the historical campaign close, independent review recommended a bounded human-approved APC promotion and no selected configuration changed. See the [dated finding](../../findings/2026-09-19-glm53-apc.md).
+
+**2026-09-19 APC promotion follow-up:** explicit human approval and fresh managed acceptance promoted the bounded r10 APC configuration. This changes the current documented decision, while the [campaign finding](../../findings/2026-09-19-glm53-apc.md) remains its historical restored-r9 close and r9 remains the exact rollback. See the [follow-up](../../findings/2026-09-19-glm53-apc-promotion.md).
 
 !!! info "Decision snapshot"
 
-    - **Product role:** selected September 14 text-only reference.
-    - **Selected or best-qualified configuration:** GLM Flash EXL3 r7 no-spec,
-      4-bpw EXL3, 327,680 total tokens, 65,536-token output reserve, C4.
+    - **Product role:** current bounded text, tools, image, and OCR reference.
+    - **Selected or best-qualified configuration:** GLM Flash EXL3 r10 APC,
+      4-bpw EXL3, FP8 MLA KV, 327,680 configured tokens, C4, with no speculation.
     - **Measured hardware:** two RTX PRO 6000 Blackwell Max-Q cards, native Linux.
-    - **Evidence:** [selected-current finding](../../findings/2026-09-13-intelligence-context-scout.md):
-      MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5, strict120 120/120,
-      context 9/9, and Pi, Hermes, and OpenClaw tool checks passing.
-    - **Decision:** selected September 14 text-only lane. Earlier SGLang and EXL3 decisions below
-      are historical; current route and startup assignments are private.
-    - **Important limitation:** one matched C4 no-spec population measured 38.908 tok/s;
-      it is not a general speed claim. No exhaustive intelligence winner, full-window
-      concurrency soak, or fresh boot/reboot proof is retained.
-    - **Review dates:** locally measured 2026-09-13–14 UTC; dossier reviewed 2026-09-17 UTC. Later mixed-quant startup failed before inference.
+    - **Evidence:** [APC promotion follow-up](../../findings/2026-09-19-glm53-apc-promotion.md)
+      and [historical campaign](../../findings/2026-09-19-glm53-apc.md): shared-prefix
+      visible TTFT −67.84%, unique-prefix request throughput −2.39% within the 5% gate,
+      diagnostic quality 12/12 per arm, plus bounded image and long-context checks.
+    - **Decision:** explicitly human-approved bounded r10 APC promotion with fresh acceptance.
+      Exact r9 is the documented rollback; active route and startup assignments are private.
+    - **Important limitation:** performance uses synthetic 32-request finalist cells at about
+      25K actual prompt tokens, not a general speed or intelligence claim. No full-window
+      concurrent capacity, video, broad SWE, soak, or fresh reboot proof is retained.
+    - **Review dates:** locally measured and reviewed 2026-09-19 UTC; the earlier 4-bpw
+      qualification and mixed-quant startup failure remain retained history.
 
 ### Review narrative
 

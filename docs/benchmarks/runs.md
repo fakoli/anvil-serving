@@ -3,11 +3,16 @@
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
+## 2026-09-19 APC promotion
+
+| Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
+|---|---|---|---|---|---|---|
+| 2026-09-19 | GLM-5.3-Flash r10 APC | Same checkpoint/v84 image; EXL3 4-bpw, FP8 MLA KV, 327,680 configured tokens, C4, TP2/EP2/DCP2, no speculation | 2x RTX PRO 6000 Blackwell Max-Q | Four matched 32-request finalist cells passed; shared mean visible TTFT −67.84%, request throughput 3.17×; unique request throughput −2.39%; cache reuse 75.58%; final diagnostics 12/12 per arm; vision/context gates passed | Explicit human approval and fresh bounded acceptance; exact r9 remains the rollback | [Dossier](models/glm53-flash.md) · [Promotion follow-up](../findings/2026-09-19-glm53-apc-promotion.md) · [Historical campaign](../findings/2026-09-19-glm53-apc.md) |
+
 ## 2026-09-18 vision acceptance
 
 | Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
 |---|---|---|---|---|---|---|
-| 2026-09-19 | GLM-5.3-Flash r10 APC candidate | Same checkpoint/v84 image; EXL3 4-bpw, FP8 MLA KV, 327,680 configured tokens, C4, TP2/EP2/DCP2, no speculation | 2x RTX PRO 6000 Blackwell Max-Q | Four matched 32-request finalist cells passed; shared mean TTFT −67.84%, request throughput 3.17×; unique request throughput −2.39%; cache reuse 75.58%; final diagnostics 12/12 per arm; vision/context gates passed | Bounded promotion recommended, human approval pending; exact r9 baseline restored and routed acceptance verified | [Dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-19-glm53-apc.md) |
 | 2026-09-18 | Eight-image comparison and OCR | GLM EXL3 r9 vision8, FP8 KV, no speculation, configured 327K/C4 | 2x RTX PRO 6000 Blackwell Max-Q | Four ordinary comparisons, one high-resolution request, six direct preflight checks; matching Pi output has no correlated request provenance | User-authorized eight-image limit; r8 one-image rollback; no concurrency soak | [Dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) |
 | 2026-09-18 | Image/OCR and text/tools | GLM EXL3 r8 vision, FP8 KV, no speculation, configured 327K/C4 | 2x RTX PRO 6000 Blackwell Max-Q | Functional; 10/10 images; 260K retrieval passed on retry after initial refusal | User-authorized vision enablement; prior text profile retained | [Dossier](models/glm53-flash.md) · [Finding](../findings/2026-09-18-glm53-vision.md) |
 

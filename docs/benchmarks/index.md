@@ -3,18 +3,47 @@
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
-**2026-09-18 capability update:** [GLM EXL3 vision enabled](../findings/2026-09-18-glm53-vision.md): 10/10 synthetic image attempts, routed OCR and matching Pi output (uncorrelated request provenance); eight images/request. Configured 327K retained, with 260K retrieval passing on retry after an initial refusal. Earlier quality and speed figures below belong to the text-only configuration.
+**2026-09-19 current decision:** the [GLM-5.3-Flash r10 APC promotion follow-up](../findings/2026-09-19-glm53-apc-promotion.md) records explicit human approval and fresh bounded acceptance. The historical [r9/r10 campaign](../findings/2026-09-19-glm53-apc.md) remains the evidence and failure record; exact r9 remains the documented rollback.
 
 
 Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-09-18 UTC.**
+configuration and retained evidence. **Evidence reviewed: 2026-09-19 UTC.**
+
+## Current bounded APC reference — September 19
+
+<div class="bench-recipe" markdown="1">
+
+**Human-approved GLM-5.3-Flash r10 APC · Dual RTX PRO 6000**
+
+The bounded r10 APC configuration retains the 4-bpw GLM checkpoint, v84 runtime,
+FP8 MLA KV, no speculation, 327,680 configured tokens, C4, and the eight-image
+contract. On frozen 32-request finalists with about 25K actual prompt tokens,
+it improved the shared-prefix path while staying within the unique-prefix gate.
+
+| Matched outcome | r9 | r10 APC |
+|---|---:|---:|
+| Shared-prefix visible TTFT | 23.70 s | 7.62 s (−67.84%) |
+| Shared-prefix requests/s | 0.146 | 0.462 (3.17×) |
+| Unique-prefix requests/s | 0.144 | 0.141 (−2.39%) |
+
+The 75.58% isolated cache-reuse fraction supports the intended repeated-prefix
+mechanism. This does not prove four simultaneous maximum-context requests,
+video readiness, a soak result, or broad intelligence/SWE parity. Roll back to
+the exact r9 recipe if correctness, containment, routed readiness, or the
+frozen unique-prefix gate fails.
+
+[Read the promotion follow-up](../findings/2026-09-19-glm53-apc-promotion.md) ·
+[Inspect the historical campaign](../findings/2026-09-19-glm53-apc.md) ·
+[Open the matched chart](../findings/2026-09-19-glm53-apc-evidence/graphs/apc-matrix.svg)
+
+</div>
 
 ## September 14 quality and performance baseline
 
 <div class="bench-recipe" markdown="1">
 
-**Previously selected text and tool profile · Dual RTX PRO 6000**
+**Historical r7 text and tool qualification · Dual RTX PRO 6000**
 
 ### GLM-5.3-Flash · EXL3 4 bpw · speculation off
 

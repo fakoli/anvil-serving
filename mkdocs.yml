@@ -72,7 +72,7 @@ nav:
       - Discover the product from the CLI: cli/product.md
   - Benchmarks & evidence:
       - Start here: benchmarks/index.md
-      - Latest qualification: findings/2026-09-13-intelligence-context-scout.md
+      - Latest qualification: findings/2026-09-19-glm53-apc-promotion.md
       - Choose and compare:
           - Find a measured recipe: benchmarks/recipe-results.md
           - Compare models: benchmarks/comparison.md

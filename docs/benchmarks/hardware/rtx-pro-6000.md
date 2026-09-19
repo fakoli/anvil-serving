@@ -5,14 +5,16 @@
 
 **2026-09-18 update:** [GLM EXL3 vision](../../findings/2026-09-18-glm53-vision.md) passed 10/10 synthetic image attempts plus routed acceptance and a matching Pi output transcript on this GPU pair. Configured 327K/C4 retained; 260K retrieval passed on retry after an initial refusal. No new speed or broad quality ranking. The prior text-only record below is historical.
 
+**2026-09-19 current decision:** [GLM-5.3-Flash r10 APC](../../findings/2026-09-19-glm53-apc-promotion.md) received explicit human approval and fresh bounded acceptance on this pair. The 32-request shared-prefix finalist reduced mean visible TTFT 23.70 s → 7.62 s (−67.84%) and raised requests/s 0.146 → 0.462; unique-prefix requests/s changed 0.144 → 0.141 (−2.39%), inside the frozen 5% gate. The [historical campaign](../../findings/2026-09-19-glm53-apc.md) retains the 75.58% cache-reuse measurement, failures, and restored-r9 close. Exact r9 is the rollback. This is not a full-window concurrency, video, soak, or broad intelligence result.
+
 
 **2026-09-14 update:** [GLM Flash EXL3 r7 no-spec](../../findings/2026-09-13-intelligence-context-scout.md) was the selected September 14 text-only lane: 327,680 total tokens with a 65,536-token output reserve at C4, 90/100 one-pass MMLU-Pro, agentic 30/30, SWE 4/5, strict120 120/120, and 9/9 post-promotion 258K-class context. The one matched no-spec C4 population measured 38.908 tok/s median decode. This is not an exhaustive intelligence ranking, a general speed claim, or proof of concurrent full-window capacity; fresh boot/reboot coverage is absent. Earlier deployment descriptions below are historical.
 
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-09-18. **Evidence
-interpretation reviewed:** 2026-09-18.
+history. **Last locally measured:** 2026-09-19. **Evidence
+interpretation reviewed:** 2026-09-19.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
