@@ -28146,6 +28146,7 @@
           "base_url",
           "api_key_env",
           "clients",
+          "expected_config_sha256",
           "openclaw_config",
           "hermes_config",
           "hermes_bin",
