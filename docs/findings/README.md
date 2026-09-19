@@ -5,7 +5,7 @@
 
 **2026-09-18:** [GLM EXL3 vision enablement](2026-09-18-glm53-vision.md) — 10/10 image attempts, routed acceptance and a matching Pi output transcript; 260K retrieval passed on retry; initial refusal retained.
 
-**2026-09-19:** [GLM-5.3-Flash r10 APC campaign](2026-09-19-glm53-apc.md) — matched shared-prefix TTFT improved 67.84%; fresh-prefix request throughput fell 2.39%. Functional gates and restoration passed. Bounded promotion recommended; human approval pending.
+**2026-09-19:** [GLM-5.3-Flash r10 APC promotion follow-up](2026-09-19-glm53-apc-promotion.md) — explicit human approval and fresh acceptance followed the retained [campaign](2026-09-19-glm53-apc.md). Shared-prefix visible TTFT improved 67.84%; fresh-prefix request throughput fell 2.39%, within the frozen 5% gate. Exact r9 remains the documented rollback.
 
 
 Dated evidence snapshots — benchmarks, live validations, and lab notebooks — that ground the
@@ -22,7 +22,7 @@ chronological evidence index. Newest first.
 
 ## Policy
 
-Latest runtime decision: [GLM Flash EXL3 327K intelligence and context qualification](2026-09-13-intelligence-context-scout.md) — selected text-only primary; post-promotion 258K context 9/9, bounded Pi/Hermes/OpenClaw acceptance, and explicit Qwen rollback boundary.
+Latest runtime decision: [GLM-5.3-Flash r10 APC promotion follow-up](2026-09-19-glm53-apc-promotion.md) — human-approved bounded APC configuration with fresh acceptance. The historical r9 campaign close and its exact rollback remain linked evidence.
 
 Latest bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
 
@@ -74,6 +74,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-09-19 | [GLM-5.3-Flash r10 APC promotion follow-up](2026-09-19-glm53-apc-promotion.md) | Explicit human approval and fresh bounded acceptance after the retained r9/r10 APC campaign; shared-prefix TTFT −67.84%, unique-prefix request throughput −2.39% within the frozen gate, and exact r9 rollback retained |
 | 2026-09-19 | [Swift / stock Qwen3.8 Apple artifact feasibility stop](2026-09-19-swift-qwen38-apple-feasibility.md) | Read-only Apple M4 Max storage-policy stop for uncached Swift/stock Qwen3.8 GGUF pairs; memory containment unresolved; no download, launch, benchmark, cleanup, or promotion |
 | 2026-09-17 | [GLM mixed 3.5-bpw startup](2026-09-17-glm53-mixed35-startup.md) | Host RAM exhaustion during loading shut down the desktop session; zero candidate inference requests; exact 4-bpw baseline restored; retry requires containment |
 | 2026-09-17 | [GLM mixed 3.5-bpw bounded fix-forward](2026-09-17-glm53-mixed35-fix-forward.md) | Loader recovery passed C1/C4 functional and repeated quality checks plus a 216K actual-token needle; strict capacity was inconsistent and the baseline remains selected |

@@ -130,13 +130,30 @@ config in live paths. Record exact candidate bindings and return
 `client_convergence=pending`; a healthy model or router is not deployment
 closure.
 
+## Close an authorized promotion's publication
+
+When the user separately approves promotion, complete the
+[publication closure gate](../../../skills/anvil-serving-benchmark-docs/SKILL.md#promotion-publication-closure)
+after live model/client acceptance. Publish the Anvil Serving benchmark
+narrative and update the declared Grafana and Workbench benchmark views through
+the operator's dashboard infrastructure repository. Verify actual result data
+and retain the live publication receipt; updating model labels or a private
+runbook is insufficient. Preserve the exact rollback and serving state while
+publishing. Report `promoted_publication_pending` if a required surface remains
+unpublished; do not represent the entire promotion workflow as complete.
+
 ## Restore and report
 
-Stop the candidate through its owning recipe/serve lifecycle, restore the exact
-starting serve and router state, and prove the GPU returns to the recorded
-baseline. Do not remove model caches or Docker volumes as cleanup.
+For isolated or unpromoted trials, stop the candidate through its owning
+recipe/serve lifecycle, restore the exact starting serve and router state, and
+prove the GPU returns to the recorded baseline. For an explicitly approved
+promotion, preserve the accepted promoted serve and retained rollback instead;
+do not restore the starting serve. Complete client and publication closure
+without undoing the approved cutover. Do not remove model caches or Docker
+volumes as cleanup.
 
-Treat restoration as a fresh managed deployment, not as an assumed container
+When restoration is required for an unpromoted trial or separately authorized
+rollback, treat it as a fresh managed deployment, not as an assumed container
 restart. Use a preserved `--keep-container` baseline only when its startup
 preparation is proven restart-idempotent; an image that verifies and patches a
 file in place may fail its checksum on restart. Otherwise unload the preserved
@@ -152,4 +169,7 @@ Return the start-state fingerprint, credential presence boundary, GPU lane
 classification, recipe/profile identity, preview and confirmation gates,
 health and log cause, preflight/benchmark artifacts, restoration checks,
 whether client-facing metadata changed, client convergence state, product
-gaps, and `promoted=false`. Promotion remains a separate human gate.
+gaps, and `promoted=false` for isolated/unpromoted trials. For an approved
+promotion, report `promoted=true` and the retained rollback, with completion
+status `promoted_publication_pending` until the publication gate passes.
+Promotion remains a separate human gate.

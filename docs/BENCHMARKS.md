@@ -5,6 +5,8 @@
 
 **2026-09-18:** [GLM EXL3 vision enablement](findings/2026-09-18-glm53-vision.md) supersedes the text-only modality decision: 10/10 image attempts and routed acceptance and a matching Pi output transcript, with 260K retrieval passing on retry and the initial refusal retained. The r8 one-image vision recipe is the immediate rollback; older comparisons below remain dated history.
 
+**2026-09-19:** [GLM-5.3-Flash r10 APC promotion follow-up](findings/2026-09-19-glm53-apc-promotion.md) records explicit human approval and fresh bounded acceptance. On frozen 32-request finalists, shared-prefix visible TTFT improved 67.84% and requests/s rose 3.17×; unique-prefix requests/s declined 2.39%, within the frozen 5% gate. The historical [campaign finding](findings/2026-09-19-glm53-apc.md) retains the cache evidence, failed scout, containment caveat, and restored-r9 close. Exact r9 remains the documented rollback; this result is not a broad intelligence, full-window concurrency, video, or soak claim.
+
 
 > **Looking for the maintained decision view?** Start with the
 > [hardware-first benchmark portal](benchmarks/index.md), choose
@@ -14,7 +16,7 @@
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The September 14 text-only reference was [GLM Flash EXL3 r7 no-spec](findings/2026-09-13-intelligence-context-scout.md): 4-bpw EXL3 at 327,680 total tokens with a 65,536-token output reserve and C4. It retained 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. Its one matched no-spec C4 population measured a 38.908 tok/s median decode. This bounded record does not name an exhaustive intelligence winner, prove concurrent full-window capacity, include a full-window concurrency soak, or include fresh boot/reboot testing. Earlier v0.4.3/SGLang and EXL3 profiles remain dated evidence.
+The current bounded reference is [GLM Flash EXL3 r10 APC](findings/2026-09-19-glm53-apc-promotion.md): 4-bpw EXL3 with FP8 MLA KV, no speculation, 327,680 configured tokens, and C4. The matched APC claim is limited to repeated-prefix latency and completed requests under its frozen finalist protocol. The September 14 [r9 text-only reference](findings/2026-09-13-intelligence-context-scout.md) remains the exact rollback and retains 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. Neither record names an exhaustive intelligence winner, proves concurrent full-window capacity, includes a full-window concurrency soak, or includes fresh boot/reboot testing.
 
 Other retained comparisons (their dated evidence remains unchanged):
 The original Qwen3.8 27B FP8 path was the September 14 rollback; it was not

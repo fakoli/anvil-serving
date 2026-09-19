@@ -122,6 +122,13 @@ installed CLI only as a verified fallback.
    revisions, checks, failures, rollback state, and live result in the release
    evidence.
 
+For a model promotion, also close the
+[benchmark publication gate](../anvil-serving-benchmark-docs/SKILL.md#promotion-publication-closure):
+serve the dated narrative and verified benchmark results in every declared
+Grafana/Workbench surface through the operator's dashboard infrastructure.
+Retain the post URL, dashboard/evidence IDs, artifact bindings and live readback.
+A healthy model and updated active-model labels do not satisfy this gate.
+
 ## Closure rules
 
 Report the release as complete only when all authorized publish/deploy stages
@@ -141,4 +148,5 @@ Return a compact readiness matrix with these rows:
 | Route | active/recovery profile alias parity, identities, readiness, context/concurrency |
 | Client | Hermes/Pi/OpenClaw catalog parity and real-shape smokes with reasoning and tools |
 | Safety | exclusive ownership, blocked competitors, clean shared memory |
+| Promotion publication | served benchmark narrative, declared dashboard result views and live publication receipt; otherwise promoted_publication_pending |
 | Closure | no outage, or explicit recovered/degraded state under the declared policy |
