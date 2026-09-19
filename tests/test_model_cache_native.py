@@ -301,18 +301,30 @@ def test_missing_nofollow_capability_fails_closed_and_preserves_allocation_unkno
     assert native._blob_size(NoBlocks())["allocated_bytes"] is None
 
 
-def test_cli_native_inventory_and_removal_plan_do_not_use_docker(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize("force_missing_nofollow", (False, True))
+def test_cli_native_inventory_and_removal_plan_do_not_use_docker(
+    tmp_path, monkeypatch, capsys, force_missing_nofollow
+):
     from anvil_serving import models
 
     cache, _repo = _cache(tmp_path)
+    if force_missing_nofollow:
+        monkeypatch.delattr(os, "O_NOFOLLOW", raising=False)
     monkeypatch.setattr(models, "cache_inventory", lambda **_kwargs: pytest.fail("Docker must not run"))
     assert models.cache_inventory_main(["--cache-dir", str(cache)]) == 0
     assert '"schema_version": "model-cache-native-inventory/v1"' in capsys.readouterr().out
 
-    assert models.cache_remove_main([
+    result = models.cache_remove_main([
         "example/model", "--revision", REVISION_A, "--cache-dir", str(cache), "--dry-run",
-    ]) == 0
-    assert "NATIVE MODEL CACHE REMOVE PLAN" in capsys.readouterr().out
+    ])
+    output = capsys.readouterr()
+    if _has_nofollow():
+        assert result == 0
+        assert "NATIVE MODEL CACHE REMOVE PLAN" in output.out
+    else:
+        assert result == 1
+        assert "unsafe or unsupported topology" in output.err
+        assert "NATIVE MODEL CACHE REMOVE PLAN" not in output.out
 
     assert models.cache_remove_main([
         "example/model", "--revision", REVISION_A, "--cache-dir", str(cache),
