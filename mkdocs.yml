@@ -134,6 +134,7 @@ nav:
           - Evaluation and benchmarks: cli/eval.md
           - Voice: cli/voice.md
           - Host and setup: cli/host.md
+          - Native Metal memory probe: cli/native-memory-probe.md
           - Runtime image identity: cli/image-identity.md
           - Bounded image builds: cli/image-build.md
           - Fleet: cli/fleet.md

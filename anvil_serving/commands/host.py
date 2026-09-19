@@ -173,6 +173,21 @@ def commands() -> tuple[CommandNode, ...]:
                     docs_anchor="docs/cli/host.md#inspect-the-host",
                 ),
                 _resource_node(
+                    "native-memory-probe",
+                    "Probe bounded Metal allocation accounting without loading a model.",
+                    "anvil_serving.native_memory_probe",
+                    role="host",
+                    argv_prefix=(),
+                    options=CONFIRM_OPTIONS + (
+                        _option("--output", value_name="PATH", summary="Private JSON evidence; required for execution."),
+                    ),
+                    mutation="mutate",
+                    forward_confirm_flag=True,
+                    execution_runtime_roles=("native",),
+                    execution_host_os=("macos",),
+                    docs_anchor="docs/cli/native-memory-probe.md",
+                ),
+                _resource_node(
                     "memory",
                     "Show host RAM and WSL VM memory usage.",
                     "anvil_serving.host",
