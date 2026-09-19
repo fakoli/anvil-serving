@@ -1612,7 +1612,9 @@ def test_openclaw_reserve_alignment_is_monotonic_and_preserves_policy(tmp_path):
 def test_promotion_drift_after_reload_never_certifies_success(tmp_path, existing_state, final_hash):
     _write_inputs(tmp_path)
     state_path = tmp_path / "state.json"
-    prior = {"config_sha256": "c" * 64, "file_sha256": {}}
+    prior = {"config_sha256": "c" * 64, "file_sha256": {},
+             "openclaw_restarted_sha256": "d" * 64,
+             "openclaw_service_restarted_sha256": None}
     if existing_state:
         state_path.write_text(json.dumps(prior))
     status, capabilities = _catalog()
