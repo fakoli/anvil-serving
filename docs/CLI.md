@@ -302,6 +302,7 @@ required operands, choices, and defaults.
 | `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness sync clients` | Reconcile OpenClaw, Hermes profiles, and Pi from authenticated router metadata. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness sync hermes-media` | Install the narrow Anvil media MCP and packaged Hermes skill. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `harness sync pi-media` | Withdraw Pi's owned direct Anvil media MCP entry. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness restart` | Restart the harness | `read` / `bounded` | - |
 | `harness restart openclaw` | Restart the harness for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness status` | Show harness status | `read` / `bounded` | - |

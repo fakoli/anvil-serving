@@ -28,6 +28,15 @@ def test_restart_uses_resolved_openclaw_executable():
     assert calls == [["/opt/bin/openclaw", "gateway", "restart"]]
 
 
+def test_pi_media_cli_requires_withdraw(tmp_path, capsys):
+    path = tmp_path / "mcp.json"
+    path.write_text(json.dumps({"mcpServers": {"anvil-media-mcp": {}}}))
+    assert harness.main(["sync", "pi-media", "--mcp-config", str(path)]) == 1
+    assert "requires --withdraw" in capsys.readouterr().err
+    assert harness.main(["sync", "pi-media", "--mcp-config", str(path), "--withdraw"]) == 0
+    assert "anvil-media-mcp" in json.loads(path.read_text())["mcpServers"]
+
+
 def test_service_environment_refresh_uses_managed_openclaw_install():
     calls = []
 
