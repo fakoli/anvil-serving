@@ -1,0 +1,51 @@
+{
+  "baseline": {
+    "apc": false,
+    "cache_capacity_tokens": 1495412,
+    "endpoint": "http://127.0.0.1:30000/v1"
+  },
+  "candidate": {
+    "apc": true,
+    "cache_capacity_tokens": 1394028,
+    "endpoint": "http://127.0.0.1:30001/v1",
+    "mamba_alignment": true
+  },
+  "concurrency": 4,
+  "containment": {
+    "candidate_ram_limit": "52 GiB",
+    "candidate_swap_limit": "1 MiB",
+    "fixture": "passed"
+  },
+  "context_tokens": 327680,
+  "evidence_binding": {
+    "candidate_quality_final_artifact": "candidate-quality-final.json",
+    "candidate_quality_final_sha256": "eb40da2ae8fbfe5030541d03359ae57f27313c932d7f2d83feb4481bbe0806a1",
+    "candidate_unique_finalist_artifact": "raw-run-evidence/candidate-unique32k-c4-finalist.json",
+    "candidate_unique_finalist_sha256": "08d7efc8834c29bb7015d9b0c93528c62dd13cd9362245e2d8f52cb89d93bbc7",
+    "identity_binding": "The runner omitted configuration_fingerprint. These public artifact hashes bind the retained measurements to the independently retained exact candidate model, revision, image, and actual imported source identity; they do not assert a runner-supplied fingerprint.",
+    "identity_record": "recipe-bindings.json"
+  },
+  "hardware": "2x RTX PRO 6000 Blackwell Max-Q",
+  "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "kv_format": "FP8 MLA KV",
+  "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+  "redactions": [
+    "operator host, GPU UUIDs, container ID, private recipe path, and command trace omitted"
+  ],
+  "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "runtime": "vllm-v84",
+  "runtime_source": {
+    "imported_git_head": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+    "note": "The imported source revision and package-reported version are distinct retained identities.",
+    "package_version": "0.1.dev20111+g7f1e92bec.d20260827"
+  },
+  "schema": "anvil-serving.public-configuration-identity/v1",
+  "topology": "Primary Node, TP2/EP2/DCP2",
+  "restoration": {
+    "verified": true,
+    "router_configuration_unchanged": true,
+    "primary_identity": "exact r9 baseline",
+    "candidate_absent": true,
+    "systemd": "active(exited), activation before campaign; original inactive boolean corrected"
+  }
+}

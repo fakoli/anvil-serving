@@ -1,0 +1,111 @@
+{
+  "base_url": "http://127.0.0.1:30001/v1",
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "CARD A"
+  ],
+  "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+  "multimodal_input": {
+    "bytes": 8679,
+    "mime": "image/png",
+    "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+  },
+  "observations": [
+    {
+      "content": "# Image Description\n\nThis image shows a simple, minimal card or label design with a plain white background and black text.\n\n## Content\n\n| Element | Value |\n|---------|-------|\n| **Card Identifier** | CARD A |\n| **Value** | 17 |\n\n## Key Details\n\n- **Label:** \"CARD A\" \u2014 appears at the top of the image, identifying this as card \"A\"\n- **Value:** \"17\" \u2014 displayed below the card name, indicating the card's assigned numerical value\n- **Style:** Plain black sans-serif text on a white background with no additional graphics, borders, or decorative elements\n\n## Summary\n\nThis appears to be a basic data card, possibly from a card game, educational exercise, dataset visualization, or testing material. The card is identified as **Card A** and carries a **value of 17**. The layout is clean and unadorned, suggesting it may be a template or a placeholder card rather than a finished game component.",
+      "content_chars": 892,
+      "content_excerpt": "# Image Description\n\nThis image shows a simple, minimal card or label design with a plain white background and black text.\n\n## Content\n\n| Element | Value |\n|---------|-------|\n| **Card Identifier** | ",
+      "expected": [
+        "CARD A"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 8679,
+        "mime": "image/png",
+        "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+      },
+      "passed": true,
+      "reasoning_chars": 462,
+      "reasoning_excerpt": "The user wants me to inspect this image and describe what it shows, reporting the most important labels, values, and status.\n\nThe image shows a simple white background with black text. The text reads:",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 9.518,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 315,
+        "prompt_tokens": 566,
+        "prompt_tokens_details": null,
+        "total_tokens": 881
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "CARD A\n\nVALUE 17",
+      "content_chars": 16,
+      "content_excerpt": "CARD A\n\nVALUE 17",
+      "expected": [
+        "17"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 8679,
+        "mime": "image/png",
+        "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+      },
+      "passed": true,
+      "reasoning_chars": 101,
+      "reasoning_excerpt": "The image shows text that reads \"CARD A\" and \"VALUE 17\". I need to transcribe exactly what's visible.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 0.645,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 34,
+        "prompt_tokens": 567,
+        "prompt_tokens_details": null,
+        "total_tokens": 601
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "17"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "9.5s all expected text present finish='stop' visible=892 reasoning_chars=462 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "0.6s all expected text present finish='stop' visible=16 reasoning_chars=101 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

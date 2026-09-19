@@ -1,0 +1,17 @@
+{
+  "containment": {
+    "oom_events": 0,
+    "oom_kills": 0,
+    "ram_limit_bytes": 55834574848,
+    "swap_limit_bytes": 1048576
+  },
+  "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+  "redactions": [
+    "container identity and operator topology omitted"
+  ],
+  "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "running": true,
+  "schema": "anvil-serving.public-runtime-status/v1",
+  "status": "running"
+}

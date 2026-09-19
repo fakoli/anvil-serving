@@ -1,0 +1,10 @@
+{
+  "memory_max_bytes": 55834574848,
+  "memory_swap_current_bytes": 0,
+  "memory_swap_max_bytes": 0,
+  "note": "The managed r9 recreation observed finite zero swap. The original pre-turnover r9 record was unlimited; the mismatch did not reproduce and its cause is unproven.",
+  "observed_at": "2026-09-19T11:43:28.779419+00:00",
+  "oom_events": 0,
+  "oom_kills": 0,
+  "schema": "anvil-serving.public-cgroup-observation/v1"
+}

@@ -1,0 +1,181 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.ttft_mean_ms",
+      "series": [
+        {
+          "label": "r9 baseline",
+          "points": [
+            {
+              "artifact": "raw-run-evidence/baseline-unique32k-c4-finalist.json",
+              "artifact_sha256": "208da612af5ae378872c88918774d365936ef86e1404773922446cd6e98355e1",
+              "value": 24103.738861314923,
+              "x": "unique"
+            },
+            {
+              "artifact": "raw-run-evidence/baseline-shared32k-c4-finalist.json",
+              "artifact_sha256": "97e75b0c939e96908c5da6147d2f61e29eb318386feac54af313c2324bf3bc62",
+              "value": 23696.535547289386,
+              "x": "shared"
+            }
+          ]
+        },
+        {
+          "label": "r10 APC",
+          "points": [
+            {
+              "artifact": "raw-run-evidence/candidate-unique32k-c4-finalist.json",
+              "artifact_sha256": "08d7efc8834c29bb7015d9b0c93528c62dd13cd9362245e2d8f52cb89d93bbc7",
+              "value": 25071.633626303083,
+              "x": "unique"
+            },
+            {
+              "artifact": "raw-run-evidence/candidate-shared32k-c4-finalist.json",
+              "artifact_sha256": "3ba72192da39bb12f81d97d431e0c48ca27915c7e1ffb53ae1617ea5b07332b0",
+              "value": 7620.730627466401,
+              "x": "shared"
+            }
+          ]
+        }
+      ],
+      "title": "Visible TTFT",
+      "x_label": "Cache population",
+      "y_label": "Milliseconds"
+    },
+    {
+      "metric": "metrics.time_to_first_output_mean_ms",
+      "series": [
+        {
+          "label": "r9 baseline",
+          "points": [
+            {
+              "artifact": "raw-run-evidence/baseline-unique32k-c4-finalist.json",
+              "artifact_sha256": "208da612af5ae378872c88918774d365936ef86e1404773922446cd6e98355e1",
+              "value": 8159.3451555309,
+              "x": "unique"
+            },
+            {
+              "artifact": "raw-run-evidence/baseline-shared32k-c4-finalist.json",
+              "artifact_sha256": "97e75b0c939e96908c5da6147d2f61e29eb318386feac54af313c2324bf3bc62",
+              "value": 9224.331548288319,
+              "x": "shared"
+            }
+          ]
+        },
+        {
+          "label": "r10 APC",
+          "points": [
+            {
+              "artifact": "raw-run-evidence/candidate-unique32k-c4-finalist.json",
+              "artifact_sha256": "08d7efc8834c29bb7015d9b0c93528c62dd13cd9362245e2d8f52cb89d93bbc7",
+              "value": 8666.730372868187,
+              "x": "unique"
+            },
+            {
+              "artifact": "raw-run-evidence/candidate-shared32k-c4-finalist.json",
+              "artifact_sha256": "3ba72192da39bb12f81d97d431e0c48ca27915c7e1ffb53ae1617ea5b07332b0",
+              "value": 2476.976876710978,
+              "x": "shared"
+            }
+          ]
+        }
+      ],
+      "title": "First output",
+      "x_label": "Cache population",
+      "y_label": "Milliseconds"
+    },
+    {
+      "metric": "metrics.e2e_mean_ms",
+      "series": [
+        {
+          "label": "r9 baseline",
+          "points": [
+            {
+              "artifact": "raw-run-evidence/baseline-unique32k-c4-finalist.json",
+              "artifact_sha256": "208da612af5ae378872c88918774d365936ef86e1404773922446cd6e98355e1",
+              "value": 27634.02169996334,
+              "x": "unique"
+            },
+            {
+              "artifact": "raw-run-evidence/baseline-shared32k-c4-finalist.json",
+              "artifact_sha256": "97e75b0c939e96908c5da6147d2f61e29eb318386feac54af313c2324bf3bc62",
+              "value": 27317.990689152793,
+              "x": "shared"
+            }
+          ]
+        },
+        {
+          "label": "r10 APC",
+          "points": [
+            {
+              "artifact": "raw-run-evidence/candidate-unique32k-c4-finalist.json",
+              "artifact_sha256": "08d7efc8834c29bb7015d9b0c93528c62dd13cd9362245e2d8f52cb89d93bbc7",
+              "value": 28389.694207955472,
+              "x": "unique"
+            },
+            {
+              "artifact": "raw-run-evidence/candidate-shared32k-c4-finalist.json",
+              "artifact_sha256": "3ba72192da39bb12f81d97d431e0c48ca27915c7e1ffb53ae1617ea5b07332b0",
+              "value": 8561.420644346072,
+              "x": "shared"
+            }
+          ]
+        }
+      ],
+      "title": "End to end",
+      "x_label": "Cache population",
+      "y_label": "Milliseconds"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "r9 baseline",
+          "points": [
+            {
+              "artifact": "raw-run-evidence/baseline-unique32k-c4-finalist.json",
+              "artifact_sha256": "208da612af5ae378872c88918774d365936ef86e1404773922446cd6e98355e1",
+              "value": 20.023399778930106,
+              "x": "unique"
+            },
+            {
+              "artifact": "raw-run-evidence/baseline-shared32k-c4-finalist.json",
+              "artifact_sha256": "97e75b0c939e96908c5da6147d2f61e29eb318386feac54af313c2324bf3bc62",
+              "value": 19.008655104684955,
+              "x": "shared"
+            }
+          ]
+        },
+        {
+          "label": "r10 APC",
+          "points": [
+            {
+              "artifact": "raw-run-evidence/candidate-unique32k-c4-finalist.json",
+              "artifact_sha256": "08d7efc8834c29bb7015d9b0c93528c62dd13cd9362245e2d8f52cb89d93bbc7",
+              "value": 20.6038541796123,
+              "x": "unique"
+            },
+            {
+              "artifact": "raw-run-evidence/candidate-shared32k-c4-finalist.json",
+              "artifact_sha256": "3ba72192da39bb12f81d97d431e0c48ca27915c7e1ffb53ae1617ea5b07332b0",
+              "value": 67.7278417775969,
+              "x": "shared"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate completion throughput",
+      "x_label": "Cache population",
+      "y_label": "Completion tokens per second"
+    }
+  ],
+  "metric_semantics": {
+    "e2e": "Client-observed end-to-end request duration.",
+    "first_output": "Client-observed time to first non-empty reasoning or content delta.",
+    "throughput": "Aggregate completion-token throughput; reasoning lengths vary, so it is contextual rather than the lead APC measure.",
+    "ttft": "Client-observed time to first visible content delta."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Baseline r9 and APC r10; unique and shared cache populations are separate.",
+  "title": "GLM-5.3-Flash APC matched 32K/C4 finalists"
+}

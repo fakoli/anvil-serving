@@ -1,0 +1,121 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-19-glm53-apc",
+  "complete": true,
+  "identity": {
+    "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+    "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "baseline": "r9-vision8-nospec",
+    "candidate": "r10-vision8-apc-nospec",
+    "bindings": "recipe-bindings.json"
+  },
+  "workload": {
+    "finalist_requests_per_cell": 32,
+    "concurrency": 4,
+    "nominal_context_tokens": 32768,
+    "actual_prompt_tokens_mean": {
+      "unique": 25287.28125,
+      "shared": 25043.0
+    },
+    "strict_response_words": 16,
+    "canaries": true,
+    "quality_repetitions": 3
+  },
+  "measurement": {
+    "path": "online-direct",
+    "warm_cold_state": "shared APC pool warmed before candidate finalist; unique population separate; restored no-cache control",
+    "sample_count": 128,
+    "statistics": [
+      "mean visible TTFT",
+      "mean first output",
+      "completed requests per second",
+      "mean E2E"
+    ]
+  },
+  "gates": [
+    {
+      "name": "unique_throughput_regression_le_5_percent",
+      "passed": true
+    },
+    {
+      "name": "shared_mean_ttft_improvement_ge_15_percent",
+      "passed": true
+    },
+    {
+      "name": "three-repetition diagnostic quality",
+      "passed": true
+    },
+    {
+      "name": "vision and long-context functional gates",
+      "passed": true
+    },
+    {
+      "name": "restoration",
+      "passed": true
+    }
+  ],
+  "headline_results": [
+    {
+      "population": "unique",
+      "candidate_percent_change": {
+        "ttft_mean_ms": 4.015537882139819,
+        "time_to_first_output_mean_ms": 6.218455129249567,
+        "e2e_mean_ms": 2.7345730425953008,
+        "completion_tokens_mean": 5.41573033707865,
+        "prompt_tokens_mean": 0.0,
+        "wall_clock_ms": 2.4459449735309002,
+        "requests_per_second": -2.3875468903750696
+      }
+    },
+    {
+      "population": "shared",
+      "candidate_percent_change": {
+        "ttft_mean_ms": -67.84031736513431,
+        "time_to_first_output_mean_ms": -73.147356383015,
+        "e2e_mean_ms": -68.6601377759984,
+        "completion_tokens_mean": 12.557022809123652,
+        "prompt_tokens_mean": 0.0,
+        "wall_clock_ms": -68.40948168384548,
+        "requests_per_second": 216.55067827381228
+      }
+    }
+  ],
+  "failures": [
+    "Original 64-word baseline: 2/8 strict word-count failures; excluded from performance claims.",
+    "Original two-repetition quality checks were below the minimum of three; retained as diagnostics and superseded by matched three-repetition runs.",
+    "The negative eight-request unique-prefix scout is retained."
+  ],
+  "limitations": [
+    "Synthetic controlled-format workload, not real repository SWE.",
+    "Reasoning volume differs despite identical visible word counts.",
+    "Largest measured context is 309422 tokens at C1; four full-context requests were not tested.",
+    "No video qualification.",
+    "One 32-request cell per arm and cache mode; p99 is descriptive.",
+    "Candidate unique-prefix native fingerprint is missing; external hash and identity binding are retained.",
+    "The original swap mismatch did not reproduce after recreation; its cause is unproven."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality"
+    ],
+    "decision_labels": [
+      "challenger",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Human approval of exact bounded APC promotion, then managed cutover and required client acceptance."
+  },
+  "evidence": [
+    "matched-comparison.json",
+    "candidate-shared32k-cache-delta.json",
+    "baseline-quality-final.json",
+    "candidate-quality-final.json",
+    "reasoning-control.json",
+    "candidate-eight-images.json",
+    "candidate-long-context.json",
+    "restoration.json",
+    "independent-review.md"
+  ]
+}

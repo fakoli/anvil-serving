@@ -1,0 +1,23 @@
+{
+  "actual_engine_source_commit": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+  "bindings": [
+    {
+      "file_sha256": "170746ef56ecb68dec7d1ee30509a44f768bdce9b3d80de466d532ad5e03e99f",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "normalized_recipe_sha256": "aaed9d0d1186574e41f0de85bc287d313578f906210a54e3386929fe01549908",
+      "recipe_file": "<private-managed-recipe>",
+      "variant": "r9-vision8-nospec"
+    },
+    {
+      "file_sha256": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "normalized_recipe_sha256": "e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd",
+      "recipe_file": "<private-managed-recipe>",
+      "variant": "r10-vision8-apc-nospec"
+    }
+  ],
+  "observed_at": "2026-09-19T11:32:16.340289+00:00",
+  "reported_package_version": "0.1.dev20111+g7f1e92bec.d20260827"
+}

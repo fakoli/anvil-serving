@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.source-registry/v1",
+  "sources": [
+    {
+      "id": "candidate-checkpoint",
+      "url": "https://huggingface.co/brandonmusic/GLM-5.3-Flash-tr3-4bpw/tree/a5fee929cf4888b1824323e33e8a19b60129e025",
+      "published_or_observed": "2026-09-10",
+      "observed_at": "2026-09-19",
+      "age_class": "current",
+      "evidence_type": "official-model-artifact",
+      "hardware_runtime_relevance": "Exact local checkpoint revision; it does not prove local APC behavior.",
+      "decision_impact": "Pins both baseline and APC candidate weights."
+    },
+    {
+      "id": "runtime-publisher",
+      "url": "https://github.com/brandonmmusic-max/glm-5.3-flash-exl3-4bpw/commit/24784d718cb7bbb99feaee2050eaddcfbc913386",
+      "published_or_observed": "2026-08-29",
+      "observed_at": "2026-09-19",
+      "age_class": "recent",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "The inspected publisher state had no newer SM120 APC build; this is not local runtime proof.",
+      "decision_impact": "Explains why the local r10 containment and APC configuration was measured directly."
+    },
+    {
+      "id": "mia-spark-reference",
+      "url": "https://github.com/MiaAI-Lab/GLM-5.3-Flash-EXL3-2x-DGX-Sparks/commit/ca8557665bffa6529758f2c330ba8fb44c1e801a",
+      "published_or_observed": "2026-09-18",
+      "observed_at": "2026-09-19",
+      "age_class": "current",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "ARM/SM121 reference only; it is not evidence for this SM120 native runtime.",
+      "decision_impact": "Excluded from performance and qualification claims."
+    }
+  ]
+}

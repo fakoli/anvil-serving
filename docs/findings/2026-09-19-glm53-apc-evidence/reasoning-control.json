@@ -1,0 +1,15 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "mechanism": "reasoning_effort",
+  "requested": "max",
+  "status": "verified",
+  "template_path": "/opt/glm53/chat_template.multimodal.jinja",
+  "template_sha256": "34d5ee66b12fa6446cdae131c352b8f68cd85369e0e6fda115583805fada3891",
+  "rendered_synthetic_prompt": "[gMASK]<sop><|system|>Reasoning Effort: Max<|user|>Reply OK<|assistant|><think>",
+  "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "engine_source_commit": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+  "scope": "Actual configured template renders native Max effort and opens thinking; does not prove internal reasoning budget compliance.",
+  "control_mechanism": "reasoning_effort",
+  "source": "Actual configured pinned runtime template; independent sandboxed Jinja rendering of synthetic request",
+  "observed_at": "2026-09-19T11:55:41.445560+00:00"
+}
