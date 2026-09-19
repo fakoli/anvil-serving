@@ -1,0 +1,458 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "2026-09-19-swift-qwen38-apple-feasibility-evidence",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 24000,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T11:02:17.939934+00:00"
+      },
+      "output_reserve": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T11:02:17.939934+00:00"
+      },
+      "media_protocol_overhead": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "Exact tokenization/image expansion not measured; capacity request cannot assume zero."
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "requests",
+      "status": "assumed",
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00"
+    },
+    "physical_vram_bytes": {
+      "value": 51539607552,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "baseline/hardware-filtered.json",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00"
+    },
+    "vram_reserves": {
+      "os_desktop_voice": {
+        "kind": "policy",
+        "variable": {
+          "value": 17179869184,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "run-plan.md",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1,
+        "unit": "fraction",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T11:02:17.939934+00:00"
+      },
+      "max_relative_quality_loss": {
+        "value": 0.05,
+        "unit": "fraction",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T11:02:17.939934+00:00"
+      },
+      "min_warm_e2e_gain": {
+        "value": 0.2,
+        "unit": "fraction",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T11:02:17.939934+00:00"
+      },
+      "min_tasks_per_hour_ratio": {
+        "value": 1.2,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T11:02:17.939934+00:00"
+      }
+    }
+  },
+  "capacity_interpretation": "Physical shared RAM is an upper envelope, not dedicated VRAM or an observed Metal budget. Engine working-set ceiling unknown. Reserve includes OS/applications/voice once; observed used RAM is not added again.",
+  "candidates": [
+    {
+      "id": "swift-q6-k",
+      "runtime_context_limit_tokens": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "No selected supported managed runtime pinned; source advertised 262144 does not prove engine context."
+      },
+      "measured_max_stable_context_tokens": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "No candidate requests permitted before safety gate."
+      },
+      "resident_components": {
+        "target_weights": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "projector": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "runtime_fixed": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "graphs_workspace_recurrent_state": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        }
+      },
+      "per_sequence_components": {
+        "sequence_state": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "Not measured."
+        }
+      },
+      "per_token_components": {
+        "target_kv": {
+          "unit": "bytes/token",
+          "status": "unknown",
+          "notes": "Hybrid KV runtime representation not measured; architectural FP16 full-attention payload is 65536 bytes/token, excluding recurrent state and workspace."
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T11:02:17.939934+00:00"
+      },
+      "metrics": {},
+      "hard_failures": [],
+      "artifact_bytes": {
+        "weight": {
+          "value": 22884407456,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "identity-summary.json",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        },
+        "projector": {
+          "value": 927606976,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "identity-summary.json",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        }
+      },
+      "speculation": {
+        "enabled": false,
+        "draft_resident_bytes": {
+          "value": 0,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "Disabled campaign arm, not a claim about packaged MTP tensor allocation.",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        }
+      }
+    },
+    {
+      "id": "stock-q6-k",
+      "runtime_context_limit_tokens": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "No selected supported managed runtime pinned; source advertised 262144 does not prove engine context."
+      },
+      "measured_max_stable_context_tokens": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "No candidate requests permitted before safety gate."
+      },
+      "resident_components": {
+        "target_weights": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "projector": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "runtime_fixed": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "graphs_workspace_recurrent_state": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        }
+      },
+      "per_sequence_components": {
+        "sequence_state": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "Not measured."
+        }
+      },
+      "per_token_components": {
+        "target_kv": {
+          "unit": "bytes/token",
+          "status": "unknown",
+          "notes": "Hybrid KV runtime representation not measured; architectural FP16 full-attention payload is 65536 bytes/token, excluding recurrent state and workspace."
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T11:02:17.939934+00:00"
+      },
+      "metrics": {},
+      "hard_failures": [],
+      "artifact_bytes": {
+        "weight": {
+          "value": 23860565728,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "identity-summary.json",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        },
+        "projector": {
+          "value": 927607008,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "identity-summary.json",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        }
+      },
+      "speculation": {
+        "enabled": false,
+        "draft_resident_bytes": {
+          "value": 0,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "Disabled campaign arm, not a claim about packaged MTP tensor allocation.",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        }
+      }
+    },
+    {
+      "id": "swift-q4-k-m",
+      "runtime_context_limit_tokens": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "No selected supported managed runtime pinned; source advertised 262144 does not prove engine context."
+      },
+      "measured_max_stable_context_tokens": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "No candidate requests permitted before safety gate."
+      },
+      "resident_components": {
+        "target_weights": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "projector": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "runtime_fixed": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "graphs_workspace_recurrent_state": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        }
+      },
+      "per_sequence_components": {
+        "sequence_state": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "Not measured."
+        }
+      },
+      "per_token_components": {
+        "target_kv": {
+          "unit": "bytes/token",
+          "status": "unknown",
+          "notes": "Hybrid KV runtime representation not measured; architectural FP16 full-attention payload is 65536 bytes/token, excluding recurrent state and workspace."
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T11:02:17.939934+00:00"
+      },
+      "metrics": {},
+      "hard_failures": [],
+      "artifact_bytes": {
+        "weight": {
+          "value": 18024380576,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "identity-summary.json",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        },
+        "projector": {
+          "value": 927606976,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "identity-summary.json",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        }
+      },
+      "speculation": {
+        "enabled": false,
+        "draft_resident_bytes": {
+          "value": 0,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "Disabled campaign arm, not a claim about packaged MTP tensor allocation.",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        }
+      }
+    },
+    {
+      "id": "stock-q4-k-m",
+      "runtime_context_limit_tokens": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "No selected supported managed runtime pinned; source advertised 262144 does not prove engine context."
+      },
+      "measured_max_stable_context_tokens": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "No candidate requests permitted before safety gate."
+      },
+      "resident_components": {
+        "target_weights": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "projector": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "runtime_fixed": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        },
+        "graphs_workspace_recurrent_state": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+        }
+      },
+      "per_sequence_components": {
+        "sequence_state": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "Not measured."
+        }
+      },
+      "per_token_components": {
+        "target_kv": {
+          "unit": "bytes/token",
+          "status": "unknown",
+          "notes": "Hybrid KV runtime representation not measured; architectural FP16 full-attention payload is 65536 bytes/token, excluding recurrent state and workspace."
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T11:02:17.939934+00:00"
+      },
+      "metrics": {},
+      "hard_failures": [],
+      "artifact_bytes": {
+        "weight": {
+          "value": 17442399968,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "identity-summary.json",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        },
+        "projector": {
+          "value": 927607008,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "identity-summary.json",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        }
+      },
+      "speculation": {
+        "enabled": false,
+        "draft_resident_bytes": {
+          "value": 0,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "Disabled campaign arm, not a claim about packaged MTP tensor allocation.",
+          "observed_at": "2026-09-19T11:02:17.939934+00:00"
+        }
+      }
+    }
+  ],
+  "disk_policy": {
+    "free_bytes": {
+      "value": 26295853056,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "baseline/native-observations.json",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00"
+    },
+    "free_reserve_bytes": {
+      "value": 10737418240,
+      "unit": "bytes",
+      "status": "assumed",
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00"
+    },
+    "runtime_evidence_allowance_bytes": {
+      "value": 1073741824,
+      "unit": "bytes",
+      "status": "assumed",
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00"
+    },
+    "temporary_download_bytes": {
+      "unit": "bytes",
+      "status": "unknown",
+      "notes": "No managed native downloader exists; resume/rename/copy strategy unknown. Weight-only screen is optimistic."
+    }
+  },
+  "additional_thresholds": {
+    "reasoning_output_token_reduction_min": 0.2,
+    "voice_p95_degradation_max": 0.2,
+    "swap_growth_bytes_max": 0,
+    "critical_gate_pass_rate": 1,
+    "vision_relative_loss_max": 0.05,
+    "efficiency_combination": "token reduction AND (E2E gain OR tasks/hour); calculator individual axes are not this final OR decision"
+  }
+}

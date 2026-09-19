@@ -35,6 +35,7 @@ from datetime import datetime, timezone
 from . import config
 from . import guard
 from . import host as host_ops
+from . import model_cache_native
 from . import paths
 from . import serve_recipes
 from .service_runtime.operations import execute as _service_execute
@@ -1066,7 +1067,7 @@ def pull_main(argv):
 
 
 def cache_remove_main(argv):
-    """Human-gated exact snapshot deletion inside one named HF cache volume."""
+    """Remove a Docker snapshot or preview one native cache snapshot safely."""
     ap = argparse.ArgumentParser(
         prog="anvil-serving models cache remove",
         description=(
@@ -1077,7 +1078,8 @@ def cache_remove_main(argv):
     )
     ap.add_argument("repo_id", help="exact Hugging Face repository id (OWNER/REPO)")
     ap.add_argument("--revision", required=True, help="exact cached commit or ref")
-    ap.add_argument("--volume", default=DEFAULT_PULL_VOLUME)
+    ap.add_argument("--volume", default=None)
+    ap.add_argument("--cache-dir", help="native Hugging Face cache root; dry-run planning only")
     ap.add_argument("--image", default=DEFAULT_PULL_IMAGE)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
@@ -1092,7 +1094,40 @@ def cache_remove_main(argv):
     ):
         print("revision contains an unsafe or unsupported path", file=sys.stderr)
         return 2
-    if any(separator in args.volume for separator in ("/", "\\", ":")):
+    if args.cache_dir and args.volume:
+        print("--volume and --cache-dir are mutually exclusive", file=sys.stderr)
+        return 2
+    if args.cache_dir:
+        if args.image != DEFAULT_PULL_IMAGE:
+            print("--image is only supported with Docker cache removal", file=sys.stderr)
+            return 2
+        if args.confirm:
+            print(
+                "native cache removal apply is unsupported: native cache ownership and "
+                "deletion safety are not implemented; use --dry-run to inspect the plan",
+                file=sys.stderr,
+            )
+            return 2
+        if not args.dry_run:
+            print("native cache removal is preview-only; pass --dry-run", file=sys.stderr)
+            return 2
+        try:
+            plan = model_cache_native.removal_plan(args.cache_dir, args.repo_id, args.revision)
+        except model_cache_native.NativeCacheError as exc:
+            print("native model cache removal plan failed: %s" % exc, file=sys.stderr)
+            return 1
+        print("NATIVE MODEL CACHE REMOVE PLAN")
+        print("repository: %s" % plan["repo_id"])
+        print("revision: %s" % plan["revision"])
+        print("snapshot exists: %s" % plan["snapshot_exists"])
+        print("snapshot logical bytes: %s" % plan.get("snapshot_logical_bytes", "unknown"))
+        print("exclusive blobs: %s" % len(plan["exclusive_blob_names"]))
+        print("shared blobs: %s" % len(plan["shared_blob_names"]))
+        print("estimated reclaimable bytes: %s" % plan["reclaimable_bytes"])
+        print("apply: unsupported for native cache ownership and deletion safety")
+        return 0
+    volume = args.volume or DEFAULT_PULL_VOLUME
+    if any(separator in volume for separator in ("/", "\\", ":")):
         print("--volume must be a named Docker volume", file=sys.stderr)
         return 2
     try:
@@ -1100,7 +1135,7 @@ def cache_remove_main(argv):
             "plan-remove",
             args.repo_id,
             args.revision,
-            volume=args.volume,
+            volume=volume,
             image=args.image,
         )
     except ValueError as exc:
@@ -1110,7 +1145,7 @@ def cache_remove_main(argv):
     print("repository: %s" % args.repo_id)
     print("revision: %s" % args.revision)
     print("resolved snapshot: %s" % (plan.get("snapshot") or "(absent)"))
-    print("volume: %s" % args.volume)
+    print("volume: %s" % volume)
     print("cached bytes: %d" % int(plan.get("repo_bytes") or 0))
     print("estimated reclaimable bytes: %d" % int(plan.get("reclaimable_bytes") or 0))
     if not plan.get("snapshot_exists"):
@@ -1126,7 +1161,7 @@ def cache_remove_main(argv):
             "remove",
             args.repo_id,
             args.revision,
-            volume=args.volume,
+            volume=volume,
             image=args.image,
         )
     except ValueError as exc:
@@ -1148,24 +1183,35 @@ def cache_remove_main(argv):
 
 
 def cache_inventory_main(argv):
-    """Render the read-only named-volume and Docker storage inventory."""
+    """Render a read-only Docker-volume or native-filesystem cache inventory."""
     ap = argparse.ArgumentParser(
         prog="anvil-serving models cache inventory",
         description=(
-            "Read one named Hugging Face cache volume and Docker storage metadata. "
+            "Read one named Docker cache volume or one native Hugging Face cache root. "
             "The command never removes cache bytes."
         ),
     )
-    ap.add_argument("--volume", default=DEFAULT_PULL_VOLUME)
+    ap.add_argument("--volume", default=None)
+    ap.add_argument("--cache-dir", help="native Hugging Face cache root; no Docker is contacted")
     ap.add_argument("--image", default=DEFAULT_PULL_IMAGE)
     ap.add_argument(
         "--output",
         help="atomically write the JSON inventory to this file as well as stdout",
     )
     args = ap.parse_args(argv)
+    if args.cache_dir and args.volume:
+        print("--volume and --cache-dir are mutually exclusive", file=sys.stderr)
+        return 2
+    if args.cache_dir and args.image != DEFAULT_PULL_IMAGE:
+        print("--image is only supported with Docker cache inventory", file=sys.stderr)
+        return 2
     try:
-        report = cache_inventory(volume=args.volume, image=args.image)
-    except ValueError as exc:
+        report = (
+            model_cache_native.inventory(args.cache_dir)
+            if args.cache_dir
+            else cache_inventory(volume=args.volume or DEFAULT_PULL_VOLUME, image=args.image)
+        )
+    except (ValueError, model_cache_native.NativeCacheError) as exc:
         print("model cache inventory failed: %s" % exc, file=sys.stderr)
         return 1
     payload = json.dumps(report, indent=2, sort_keys=True) + "\n"

@@ -64,6 +64,17 @@ Signal, Swift, Qwopus, and Minitron separately. The
 [Apple Silicon voice dossier](voice-llm-mlx.md) covers the MLX 4-bit attempt;
 its 5/6 preflight and tool failures do not describe the NVIDIA recipes.
 
+#### 2026-09-19 — Apple Swift / stock artifact feasibility stop
+
+An Apple M4 Max read-only screen stopped before downloading or loading the
+pinned Swift/stock Q6_K and Q4_K_M GGUF pairs with matching F16 projectors.
+Each uncached pair exceeded the retained disk reserve and allowance before
+temporary files. Peak/Metal/context memory and enforced loader/RAM/swap
+containment were absent, so memory feasibility remains unresolved. This is not
+a model rejection, quality result, latency result, or performance comparison.
+**Outcome:** no trial and `no-promotion`; see the
+[dated finding](../../findings/2026-09-19-swift-qwen38-apple-feasibility.md).
+
 The dated notes below preserve the reasoning behind each decision. The later
 measurement sections retain the full metrics, controls, and caveats.
 

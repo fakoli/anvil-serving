@@ -147,9 +147,9 @@ required operands, choices, and defaults.
 | `models recipes logs` | Read bounded logs from one recipe-loaded candidate container. | `read` / `bounded` | `--tail`<br>`--since`<br>`--contains` |
 | `models recipes unload` | Remove one exact recipe-loaded candidate container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
-| `models cache inventory` | Inspect Docker model-cache storage. | `read` / `bounded` | - |
+| `models cache inventory` | Inspect Docker or native Hugging Face model-cache storage. | `read` / `bounded` | - |
 | `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
-| `models cache remove` | Remove one exact cached repository revision. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models cache remove` | Remove one Docker revision or preview native-cache removal. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | - |
 | `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |

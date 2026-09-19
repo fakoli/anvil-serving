@@ -2947,7 +2947,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": "model-catalog",
-      "summary": "Inspect Docker model-cache storage.",
+      "summary": "Inspect Docker or native Hugging Face model-cache storage.",
       "transports": [
         "local"
       ],
@@ -3262,7 +3262,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": "model-catalog",
-      "summary": "Remove one exact cached repository revision.",
+      "summary": "Remove one Docker revision or preview native-cache removal.",
       "transports": [
         "local"
       ],

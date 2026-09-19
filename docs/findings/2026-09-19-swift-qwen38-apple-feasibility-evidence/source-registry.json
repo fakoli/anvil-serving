@@ -1,0 +1,107 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-19-swift-qwen38-apple-feasibility-evidence",
+  "observed_at": "2026-09-19T11:05:47.926693+00:00",
+  "sources": [
+    {
+      "id": "artifact-0",
+      "url": "https://huggingface.co/ukisai/Swift-Qwen3.8-27b/tree/048328f4059015b63f860a453bf94834af0db683",
+      "published_or_observed": "observed 2026-09-19",
+      "observed_at": "2026-09-19T11:05:47.926693+00:00",
+      "age_class": "fresh-observation; release-age-not-inferred",
+      "evidence_type": "official-artifact-metadata",
+      "hardware_runtime_relevance": "Candidate package identity and storage; not native Mac performance",
+      "decision_impact": "Pin candidate/control; determine artifact disk requirement, preserve quantization/conversion caveats"
+    },
+    {
+      "id": "artifact-1",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B/tree/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "published_or_observed": "observed 2026-09-19",
+      "observed_at": "2026-09-19T11:05:47.926693+00:00",
+      "age_class": "fresh-observation; release-age-not-inferred",
+      "evidence_type": "official-artifact-metadata",
+      "hardware_runtime_relevance": "Candidate package identity and storage; not native Mac performance",
+      "decision_impact": "Pin candidate/control; determine artifact disk requirement, preserve quantization/conversion caveats"
+    },
+    {
+      "id": "artifact-2",
+      "url": "https://huggingface.co/ukisai/Swift-Qwen3.8-27B-GGUF/tree/eb0e3a7dc70643c2ab920f5133750d02c20849ff",
+      "published_or_observed": "observed 2026-09-19",
+      "observed_at": "2026-09-19T11:05:47.926693+00:00",
+      "age_class": "fresh-observation; release-age-not-inferred",
+      "evidence_type": "official-artifact-metadata",
+      "hardware_runtime_relevance": "Candidate package identity and storage; not native Mac performance",
+      "decision_impact": "Pin candidate/control; determine artifact disk requirement, preserve quantization/conversion caveats"
+    },
+    {
+      "id": "artifact-3",
+      "url": "https://huggingface.co/bartowski/Qwen3.8-27B-GGUF/tree/125a02af4987b57c7deb88d7f2ec58a5725c07c0",
+      "published_or_observed": "observed 2026-09-19",
+      "observed_at": "2026-09-19T11:05:47.926693+00:00",
+      "age_class": "fresh-observation; release-age-not-inferred",
+      "evidence_type": "converter-artifact-metadata",
+      "hardware_runtime_relevance": "Candidate package identity and storage; not native Mac performance",
+      "decision_impact": "Pin candidate/control; determine artifact disk requirement, preserve quantization/conversion caveats"
+    },
+    {
+      "id": "artifact-4",
+      "url": "https://huggingface.co/suzu89/Swift-Qwen3.8-27b-oQ6-mtp/tree/a91ed24131409665257918bf7a94f2a7c055ecd9",
+      "published_or_observed": "observed 2026-09-19",
+      "observed_at": "2026-09-19T11:05:47.926693+00:00",
+      "age_class": "fresh-observation; release-age-not-inferred",
+      "evidence_type": "converter-artifact-metadata",
+      "hardware_runtime_relevance": "Candidate package identity and storage; not native Mac performance",
+      "decision_impact": "Pin candidate/control; determine artifact disk requirement, preserve quantization/conversion caveats"
+    },
+    {
+      "id": "artifact-5",
+      "url": "https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-6bit/tree/05f38c1f39e2f39619653616fe8e96a5d676358e",
+      "published_or_observed": "observed 2026-09-19",
+      "observed_at": "2026-09-19T11:05:47.926693+00:00",
+      "age_class": "fresh-observation; release-age-not-inferred",
+      "evidence_type": "converter-artifact-metadata",
+      "hardware_runtime_relevance": "Candidate package identity and storage; not native Mac performance",
+      "decision_impact": "Pin candidate/control; determine artifact disk requirement, preserve quantization/conversion caveats"
+    },
+    {
+      "id": "artifact-6",
+      "url": "https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-4bit/tree/6067b15cf581666a4aecf6af3afaba4bb5efc20c",
+      "published_or_observed": "observed 2026-09-19",
+      "observed_at": "2026-09-19T11:05:47.926693+00:00",
+      "age_class": "fresh-observation; release-age-not-inferred",
+      "evidence_type": "converter-artifact-metadata",
+      "hardware_runtime_relevance": "Candidate package identity and storage; not native Mac performance",
+      "decision_impact": "Pin candidate/control; determine artifact disk requirement, preserve quantization/conversion caveats"
+    },
+    {
+      "id": "runtime",
+      "url": "https://github.com/ggml-org/llama.cpp/releases/tag/b10896",
+      "published_or_observed": "2026-09-10T15:42:27Z",
+      "observed_at": "2026-09-19T11:05:47.926693+00:00",
+      "age_class": "fresh",
+      "evidence_type": "official-release-metadata",
+      "hardware_runtime_relevance": "Shared conversion release nomination; managed Mac binary not built or tested",
+      "decision_impact": "Exact nominated commit fa6769818708afd9807b22183ccda112fd563427"
+    },
+    {
+      "id": "mlx-memory-policy",
+      "url": "https://ml-explore.github.io/mlx/build/html/python/_autosummary/mlx.core.set_memory_limit.html",
+      "published_or_observed": "observed 2026-09-19",
+      "observed_at": "2026-09-19T11:05:47.926693+00:00",
+      "age_class": "current-documentation",
+      "evidence_type": "official-runtime-documentation",
+      "hardware_runtime_relevance": "MLX 0.32.2 allocator guidance",
+      "decision_impact": "Memory limit is a guideline and allocations can consume swap; not proof of hard RAM+swap containment"
+    },
+    {
+      "id": "local-contract",
+      "url": "https://github.com/fakoli/anvil-serving/tree/1cc7a45ec959daaece7c1033720e6160aec3ec6a/anvil_serving/service_runtime",
+      "published_or_observed": "observed 2026-09-19",
+      "observed_at": "2026-09-19T11:05:47.926693+00:00",
+      "age_class": "current-source-inspection",
+      "evidence_type": "local-product-source-and-validator",
+      "hardware_runtime_relevance": "Exact Anvil native macOS lifecycle/admission contract",
+      "decision_impact": "Native llama-cpp rejected; MLX permitted with admission only"
+    }
+  ]
+}

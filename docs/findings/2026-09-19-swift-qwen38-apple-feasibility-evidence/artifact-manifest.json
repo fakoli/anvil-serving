@@ -1,0 +1,185 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-19-swift-qwen38-apple-feasibility-evidence",
+    "capability": "coding/reasoning auxiliary evaluation",
+    "repository_revision": "1cc7a45ec959daaece7c1033720e6160aec3ec6a",
+    "dirty_state": "isolated campaign changes; no live serving mutation",
+    "started_at": "2026-09-19T10:57:19.240072+00:00",
+    "completed_at": "2026-09-19T11:17:07.025953+00:00",
+    "evidence_labels": [
+      "external-prior"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.recipe-feasibility-input/v1",
+    "anvil-serving.recipe-feasibility-result/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "34ee25897a9d3d9599798bf356851fba3eb60272520490fca97faeb6f0513c2a",
+          "bytes": 2007
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "5e0e229bbabfed54ce3771a602d8eedc97422d1979b3177877b4fe6cb21893ea",
+          "bytes": 6187
+        },
+        {
+          "path": "identity-summary.json",
+          "sha256": "32da14e76acf8bfbd35b7c72db60600b1432f5d769bc96b940ff7aa5b8f3a012",
+          "bytes": 4973
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "missing",
+      "files": [],
+      "reason": "Exact executable corpus/media hashes were not frozen: trial blocked before any candidate request."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.md",
+          "sha256": "895a25c0c3fe0c2fbc18e9b0ec73e96dab742371b5ee65717886a59b9094a60a",
+          "bytes": 3311
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "f1e9ba4a351be30e38d558359b707c301a90582a8686cce5e393db272789ec2a",
+          "bytes": 2126
+        },
+        {
+          "path": "workload-manifest.json",
+          "sha256": "ac6013c1a94d588a17817576d89fac0d55c3087c24467f7d4a0cd944beb09686",
+          "bytes": 228
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity-summary.json",
+          "sha256": "32da14e76acf8bfbd35b7c72db60600b1432f5d769bc96b940ff7aa5b8f3a012",
+          "bytes": 4973
+        },
+        {
+          "path": "managed-runtime-contract.json",
+          "sha256": "e072a1b2475048d2a3bd0a6598f7c0156bda4b9ee24583fcca702404088de03a",
+          "bytes": 959
+        },
+        {
+          "path": "baseline/native-observations.json",
+          "sha256": "8c579a057175d270fa30f5e9711b3083317ff51d48cf193e66918aecbd130774",
+          "bytes": 584
+        },
+        {
+          "path": "baseline/hardware-filtered.json",
+          "sha256": "0393b4fa3c25c9edf6a62bacd84e0c21767c41514debc774a5fefe0ef3aa4203",
+          "bytes": 594
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "missing",
+      "files": [],
+      "reason": "No candidate run was safe; host inventory and deterministic feasibility are retained as configuration/decision evidence, not benchmark outputs."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "facc42bb1a7659ad77011542bfb8454e9e991bd04048927c29c0827418e80990",
+          "bytes": 2795
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "287e189bcf7f23bfa053316c8c42ac4f48022e695c8b7053c83b55e5f896a808",
+          "bytes": 1548
+        },
+        {
+          "path": "post-check/preservation.json",
+          "sha256": "e469c5947e667a27babceab800721a3da0a2ca5d00adadc8156254c822afa020",
+          "bytes": 629
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "96ab9f169f6a310501763ac9ef96805ca4d98e12b33eeb490a4f17339704ee89",
+          "bytes": 2897
+        },
+        {
+          "path": "feasibility-input-v1.json",
+          "sha256": "35bc5e4b2edcf7e3c3c2c0405e912e172971699cbe21361c728a55236a14948b",
+          "bytes": 15198
+        },
+        {
+          "path": "feasibility-result-v1.json",
+          "sha256": "9bc750d50f3ba5280ad00d326d0a9ca37b40c32c7adfe6b634d92f1377244fe7",
+          "bytes": 28177
+        },
+        {
+          "path": "disk-feasibility-v1.json",
+          "sha256": "030d13590afedf38bd867ee1af80395e61a3702034441584bc7950149946e88b",
+          "bytes": 1237
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "4d4e4bfb3a8b0d4ea6b0112355734bc224caaed90f8efbfb3fef2146263f359d",
+          "bytes": 846
+        }
+      ],
+      "reason": ""
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

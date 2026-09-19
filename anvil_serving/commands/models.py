@@ -162,7 +162,7 @@ def commands() -> CommandNode:
                 children=(
                     _resource_node(
                         "inventory",
-                        "Inspect Docker model-cache storage.",
+                        "Inspect Docker or native Hugging Face model-cache storage.",
                         "anvil_serving.models",
                         role="model-catalog",
                         docs_anchor="docs/cli/models.md#cache-inventory",
@@ -184,11 +184,15 @@ def commands() -> CommandNode:
                     ),
                     _resource_node(
                         "remove",
-                        "Remove one exact cached repository revision.",
+                        "Remove one Docker revision or preview native-cache removal.",
                         "anvil_serving.models",
                         role="model-catalog",
                         options=CONFIRM_OPTIONS,
                         mutation="mutate",
+                        # The legacy leaf distinguishes a native --confirm
+                        # refusal from a dry-run plan, so restore the token
+                        # consumed by the shared confirmation dispatcher.
+                        forward_confirm_flag=True,
                         docs_anchor="docs/cli/models.md#cache-remove",
                     ),
                 ),

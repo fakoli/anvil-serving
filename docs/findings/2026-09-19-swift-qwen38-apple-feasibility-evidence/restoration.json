@@ -1,0 +1,52 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-19-swift-qwen38-apple-feasibility-evidence",
+  "status": "preservation-verified-no-serving-mutation",
+  "mutation_required": false,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "baseline/native-observations.json",
+      "managed-runtime-contract.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "post-check/preservation.json"
+    ]
+  },
+  "differences": [
+    {
+      "field": "disk_free_bytes",
+      "before": 26295853056,
+      "after": 26177597440,
+      "note": "Normal desktop/development/evidence activity; no cache deletion or model download."
+    }
+  ],
+  "post_run_checks": [
+    {
+      "check": "protected service definitions and process IDs",
+      "status": "unchanged"
+    },
+    {
+      "check": "voice health endpoints",
+      "status": "HTTP 200 for all three"
+    },
+    {
+      "check": "swap used",
+      "status": "zero before and after"
+    },
+    {
+      "check": "router declaration hash",
+      "status": "unchanged; live config mount unverified"
+    }
+  ],
+  "verified": true,
+  "not_applicable_reason": "No restoration action needed: no serving, route, launchd, cache, client or model mutation performed.",
+  "limitations": [
+    "Not a load/stability/voice responsiveness qualification",
+    "Router config declaration comparison is not authenticated routed smoke",
+    "Memory pressure and background application listeners can vary; exact live RAM state is not restorable"
+  ]
+}
