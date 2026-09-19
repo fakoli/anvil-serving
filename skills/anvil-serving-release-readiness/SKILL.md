@@ -90,7 +90,30 @@ installed CLI only as a verified fallback.
    public alias and maps it to the expected rollback model identity. Treat an
    auxiliary alias such as `llm.rollback` as profile-specific, not a universal
    rollback contract. Unknown or unavailable routes must remain fail-closed.
-3. Model/client catalog: reconcile Hermes, Pi, and OpenClaw from the same
+3. Promotion provisioning: run the declared infrastructure capture and fleet
+   reconciliation on **every approved promotion**, even if alias names or token
+   limits did not change. Derive the rebuild snapshot from the selected and
+   rollback activation profiles, including their router, recipes and startup
+   dependencies. Render client bootstrap data from the same authenticated router
+   catalog; never retype limits or copy a remembered result. Keep the raw router
+   file digest separate from the effective runtime config hash and bind both to
+   the promotion receipt. Refuse stale profile, recipe, router or bootstrap
+   bindings before any client writes.
+   Enumerate all declared hosts and harness installations from infrastructure
+   inventory, including local and remote Pi CLI/Web, retained Hermes profiles
+   and OpenClaw where deployed. Preflight every host, apply through the existing
+   provisioning tools, then require repeat apply `changed=0` and an empty product
+   sync dry-run for each host with the same approved router hash. Record exact
+   observed context/output/reasoning/modality values and required service reloads;
+   new catalog files alone do not prove an existing session has reloaded them.
+   Server batch tokens/concurrency belong to recipe/startup provisioning, not Pi
+   client output settings. Preserve selected providers, credentials, compaction,
+   sessions and unrelated settings. Do not install an absent harness or restart
+   inference to reconcile clients. A missing host, stale rebuild snapshot, unsafe
+   compaction policy or pending runtime refresh means
+   `harness_convergence_pending`; retain the accepted serve and exact gap instead
+   of claiming promotion complete or automatically rolling back.
+   Model/client catalog: reconcile Hermes, Pi, and OpenClaw from the same
    authenticated router snapshot. Verify each selected alias advertises the
    exact router `context_limit_tokens` and `max_output_tokens`, preserves its
    provider/auth references and compaction policy, and has no silent fallback.

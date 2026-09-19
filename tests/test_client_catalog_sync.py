@@ -1517,3 +1517,49 @@ def test_public_https_hostname_is_refused_before_credential_dispatch(tmp_path):
             opener=opener,
         )
     assert opener.requests == []
+
+
+@pytest.mark.parametrize("observed,second", [("b" * 64, None), (CONFIG_SHA, "b" * 64)])
+def test_promotion_binding_refuses_drift_before_client_files(tmp_path, observed, second):
+    _write_inputs(tmp_path)
+    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    status, capabilities = _catalog(config_sha=observed)
+    opener = _Opener(status, capabilities)
+    if second is not None:
+        opener.payloads.append({"config_sha256": second})
+    with pytest.raises(ClientCatalogError, match="router configuration"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="pi",
+            expected_config_sha256=CONFIG_SHA, confirm=True, dry_run=False,
+            pi_models=str(tmp_path / "models.json"),
+            pi_settings=str(tmp_path / "settings.json"),
+            environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=opener,
+        )
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+
+def test_promotion_binding_matches_and_preserves_idempotency(tmp_path):
+    _write_inputs(tmp_path)
+    for apply in (True, False):
+        status, capabilities = _catalog()
+        opener = _Opener(status, capabilities)
+        opener.payloads.append(status)
+        result = sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="pi",
+            expected_config_sha256=CONFIG_SHA, confirm=apply, dry_run=not apply,
+            pi_models=str(tmp_path / "models.json"),
+            pi_settings=str(tmp_path / "settings.json"),
+            state_path=str(tmp_path / "state.json"), backup_root=str(tmp_path / "backups"),
+            environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=opener,
+        )
+        assert result["config_sha256"] == CONFIG_SHA
+        if not apply:
+            assert result["changed"] == []
+
+
+def test_invalid_promotion_hash_never_fetches():
+    opener = _Opener({}, {})
+    with pytest.raises(ClientCatalogError, match="lowercase SHA-256"):
+        sync_clients(base_url="https://router.example.ts.net/v1",
+                     expected_config_sha256="not-a-hash", opener=opener, environ={})
+    assert opener.requests == []

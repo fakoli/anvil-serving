@@ -116,6 +116,14 @@ switch, router-profile change, promotion, rollback, or fix-forward recovery
 does whenever it changes a client-facing alias's backing identity,
 `context_limit_tokens`, `max_output_tokens`, reasoning, or modality contract.
 
+Every approved promotion also requires the infrastructure capture and all-host
+provisioning gate in `skills/anvil-serving-release-readiness/SKILL.md`, even when
+limits or aliases are unchanged. Bind rebuilt server dependencies and every
+local/remote harness catalog to the same approved profile and effective router
+hash, then prove repeat convergence. Never mark a healthy route complete while
+provisioning can reinstall a stale model or client contract. Return
+`harness_convergence_pending` with the accepted serve preserved for any gap.
+
 For such changes on Companion Node, use `converge-mini-vision-clients` when
 installed; otherwise enforce the same closure directly before reporting the
 operation restored or complete. Reconcile Hermes, Pi, and OpenClaw from the

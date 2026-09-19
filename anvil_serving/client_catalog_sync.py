@@ -1718,6 +1718,7 @@ def sync_clients(
     dry_run: bool = True,
     confirm: bool = False,
     timeout_seconds: int = 15,
+    expected_config_sha256: str | None = None,
     environ: Mapping[str, str] | None = None,
     opener=None,
     restart: Callable[[], int] | None = None,
@@ -1728,6 +1729,11 @@ def sync_clients(
     """Reconcile selected Mini clients from one authenticated router snapshot."""
     selected_clients = _normalize_clients(clients)
     environ = os.environ if environ is None else environ
+    if expected_config_sha256 is not None:
+        if (not isinstance(expected_config_sha256, str)
+                or len(expected_config_sha256) != 64
+                or any(c not in "0123456789abcdef" for c in expected_config_sha256)):
+            raise ClientCatalogError("expected_config_sha256 must be a lowercase SHA-256")
     catalog = fetch_client_catalog(
         base_url=base_url,
         api_key_env=api_key_env,
@@ -1735,6 +1741,9 @@ def sync_clients(
         environ=environ,
         opener=opener,
     )
+    if expected_config_sha256 is not None:
+        if catalog["config_sha256"] != expected_config_sha256:
+            raise ClientCatalogError("router configuration differs from the approved promotion")
     paths = {
         "openclaw": Path(os.path.expanduser(openclaw_config)),
         "hermes": Path(os.path.expanduser(hermes_config)),
@@ -1844,6 +1853,14 @@ def sync_clients(
             for row in hermes_rows
         )
     )
+    if expected_config_sha256 is not None:
+        current = _fetch_json(
+            _safe_base_url(base_url), "/router/status", token=environ[api_key_env],
+            timeout_seconds=timeout_seconds, max_bytes=DEFAULT_MAX_RESPONSE_BYTES,
+            opener=opener,
+        )
+        if current.get("config_sha256") != expected_config_sha256:
+            raise ClientCatalogError("router configuration changed before client reconciliation")
     if dry_run or not confirm:
         return _summary(
             catalog,

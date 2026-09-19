@@ -252,6 +252,7 @@ def tool_client_catalog_sync(args: dict) -> dict:
             base_url=base_url,
             api_key_env=api_key_env,
             clients=_str_arg(args, "clients", "openclaw,pi"),
+            expected_config_sha256=_str_arg(args, "expected_config_sha256", "") or None,
             openclaw_config=_str_arg(
                 args, "openclaw_config", "~/.openclaw/openclaw.json"
             ),
@@ -617,6 +618,7 @@ FAMILY = ToolFamily(
                     "hermes_config": {"type": "string"},
                     "hermes_bin": {"type": "string"},
                     "hermes_home": {"type": "string"},
+                    "expected_config_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
                     "hermes_profiles": {"type": "string"},
                     "pi_models": {"type": "string"},
                     "pi_settings": {"type": "string"},
