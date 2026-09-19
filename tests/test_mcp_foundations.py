@@ -22,10 +22,10 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "c2ec5c3f6fb4011615ef71147176015a7cd42676dc7edc0e86091f83e5dde6ff"
+    "3c1485705f003f6573a20d8dafb7e981bbad2aad72e0e0502848a063442e590d"
 )
 HANDLER_MAP_SHA256 = (
-    "dc25ef88f384ee53b0747a8f1fbd9b31f991bc0151de25d2eeaab469da5d1b5b"
+    "7c235ff7468492ee6052e8a2886fc13e68ce18efa0ccef208810650efe592ee4"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -93,6 +93,7 @@ TOOL_NAMES = [
     "benchmark_job_preflight",
     "benchmark_job_submit",
     "benchmark_job_status",
+    "benchmark_job_list",
     "benchmark_job_logs",
     "benchmark_job_cancel",
     "benchmark_job_artifact",
@@ -158,8 +159,7 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
         "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
     }
 
-    # Reconstruct upstream PR #471's catalog: only the two diagnostic tools
-    # and member transition are added here. All unrelated fields stay exact.
+    # Reconstruct upstream PR #471's catalog without later declared additions.
     schema["maxProperties"] = 6
     transition["description"] = (
         "Inspect, quiesce, drain, or safely readmit a router tier "
@@ -168,9 +168,9 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     public_tools = [
         tool for tool in public_tools
         if tool["name"] not in {
-                "controller_inspect", "controller_logs", "router_configuration",
-                "serves_probe", "serves_profile", "recipe_settings", "recipe_manage", "runtime_experiment",
-                "container_exec",
+                    "controller_inspect", "controller_logs", "router_configuration",
+                    "serves_probe", "serves_profile", "recipe_settings", "recipe_manage", "runtime_experiment",
+                    "container_exec", "benchmark_job_list",
         }
     ]
     client_schema = next(tool for tool in public_tools if tool["name"] == "client_catalog_sync")["inputSchema"]

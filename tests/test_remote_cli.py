@@ -49,6 +49,7 @@ def test_local_context_job_controls_persist(monkeypatch, tmp_path, capsys):
 def test_remote_job_tools_share_the_portable_spec(monkeypatch, tmp_path):
     monkeypatch.setenv("ANVIL_BENCHMARK_JOB_DB", str(tmp_path / "jobs.sqlite3"))
     monkeypatch.setenv("ANVIL_BENCHMARK_RUN_ROOT", str(tmp_path / "runs"))
+    monkeypatch.setenv("ANVIL_COMMAND_HOST", "controller-a")
     monkeypatch.setattr(
         benchmarks,
         "launch_benchmark_job",
@@ -68,6 +69,21 @@ def test_remote_job_tools_share_the_portable_spec(monkeypatch, tmp_path):
         "benchmark_job_status", {"suite": "agentic", "run_id": "agentic-001"}
     )
     assert status["data"]["spec"] == result["data"]["job"]["spec"]
+    listed = mcp.call_tool("benchmark_job_list", {"limit": 1})
+    assert listed["data"]["items"] == [{
+        "native_id": "agentic-001",
+        "suite": "agentic",
+        "profile": "agentic-smoke-v1",
+        "model": "deepseek",
+        "native_state": "queued",
+        "submitted_at": "2026-08-03T12:00:00Z",
+        "updated_at": "2026-08-03T12:00:00Z",
+        "started_at": None,
+        "finished_at": None,
+        "artifact": None,
+        "correlation_id": None,
+    }]
+    assert listed["data"]["source"]["id"] == "controller-a"
 
 
 def test_remote_capability_is_declared_without_ssh_fallback():
@@ -75,6 +91,7 @@ def test_remote_capability_is_declared_without_ssh_fallback():
     assert {
         "benchmark_job_submit",
         "benchmark_job_status",
+        "benchmark_job_list",
         "benchmark_job_logs",
         "benchmark_job_cancel",
         "benchmark_job_artifact",

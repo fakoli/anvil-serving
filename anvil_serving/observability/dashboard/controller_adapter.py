@@ -34,7 +34,7 @@ _TOOLS = frozenset(
         "serves_status", "serves_manage", "serves_probe", "serves_profile", "serves_logs",
         "router_transition", "router_configuration", "recipe_settings", "recipe_manage",
         "recipe_containers", "benchmark_job_preflight", "benchmark_job_submit",
-        "benchmark_job_status", "runtime_experiment", "host_services_status",
+        "benchmark_job_status", "benchmark_job_list", "runtime_experiment", "host_services_status",
         "host_services_logs", "host_services_manage", "container_exec",
     }
 )
@@ -669,6 +669,19 @@ class ControllerAdapter:
             return typed
         return {"ok": True, "owner_operation_id": intent_key, "native_state": "succeeded",
                 "execution_outcome": "succeeded", "evidence": self._evidence(payload)}
+
+    def list_benchmark_jobs(self, *, limit: int = 100, cursor: str | None = None) -> dict[str, Any]:
+        """Read the benchmark owner's declared bounded list tool."""
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
+            raise ObservatoryError("invalid_run_list", "Select a list limit between 1 and 100.")
+        if cursor is not None and (type(cursor) is not str or len(cursor) > 128):
+            raise ObservatoryError("invalid_run_list", "Select a valid run cursor.")
+        if "benchmark_job_list" not in self._tools():
+            raise _public_error("The benchmark owner does not expose a run list.")
+        return self._call("benchmark_job_list", {
+            "limit": limit,
+            **({"cursor": cursor} if cursor is not None else {}),
+        })
 
     def verify(self, preview: Mapping[str, Any], result: Mapping[str, Any]) -> dict[str, str]:
         binding = self._binding(preview)

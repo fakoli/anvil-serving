@@ -49,6 +49,9 @@ def _benchmark_job_store() -> BenchmarkJobStore:
     path = os.environ.get("ANVIL_BENCHMARK_JOB_DB")
     run_root = os.environ.get("ANVIL_BENCHMARK_RUN_ROOT")
     kwargs = {"run_root": run_root} if run_root else {}
+    source_id = os.environ.get("ANVIL_COMMAND_HOST")
+    if source_id:
+        kwargs["source_id"] = source_id
     return BenchmarkJobStore(path, **kwargs) if path else BenchmarkJobStore(**kwargs)
 
 
@@ -141,6 +144,18 @@ def tool_benchmark_job_preflight(args: dict) -> dict:
 def tool_benchmark_job_status(args: dict) -> dict:
     store = _benchmark_job_store()
     return _ok(_job_for_suite(store, _str_arg(args, "run_id", required=True), _str_arg(args, "suite", required=True)))
+
+
+def tool_benchmark_job_list(args: dict) -> dict:
+    store = _benchmark_job_store()
+    limit = _bounded_int_arg(args, "limit", 100, min_value=1, max_value=100)
+    cursor = _str_arg(args, "cursor") or None
+    if cursor is not None and len(cursor) > 128:
+        raise ToolError("bad_argument", "'cursor' must be at most 128 characters")
+    try:
+        return _ok(store.list_runs(limit=limit, cursor=cursor))
+    except BenchmarkJobError as exc:
+        raise _job_error(exc) from None
 
 
 def tool_benchmark_job_logs(args: dict) -> dict:
@@ -630,6 +645,16 @@ FAMILY = ToolFamily(
                 required=["suite", "run_id"],
             ),
             "handler": tool_benchmark_job_status,
+        },
+        "benchmark_job_list": {
+            "description": "Read one stable, bounded page of durable benchmark jobs.",
+            "inputSchema": _schema(
+                {
+                    "limit": _bounded_integer_schema(1, 100, 100),
+                    "cursor": {"type": "string", "maxLength": 128},
+                },
+            ),
+            "handler": tool_benchmark_job_list,
         },
         "benchmark_job_logs": {
             "description": "Read bounded cursor logs for a durable benchmark job.",

@@ -20,7 +20,7 @@ class FakeTransport:
     def tool_catalog(self):
         names = {"serves_status", "serves_manage", "serves_probe", "serves_profile",
                  "router_transition",
-                 "benchmark_job_preflight", "benchmark_job_submit", "host_services_status",
+                 "benchmark_job_preflight", "benchmark_job_submit", "benchmark_job_list", "host_services_status",
                  "host_services_logs", "host_services_manage", "container_exec"}
         return tuple({"name": name, "inputSchema": {"type": "object"}} for name in names)
 
@@ -49,6 +49,11 @@ class FakeTransport:
             data = {"ok": True, "data": {
                 "spec": {"run_id": "smoke", "suite": "context"}, "spec_sha256": "a" * 64,
                 "state": "completed", "revision": 3, "failure": None,
+            }}
+        elif operation.name == "benchmark_job_list":
+            data = {"ok": True, "data": {
+                "schema": "anvil-serving.benchmark-job-list/v1", "items": [],
+                "next_cursor": None, "source": {"id": "benchmark-owner", "status": "fresh"},
             }}
         elif operation.name == "router_transition" and operation.arguments.get("action") == "status":
             data = {"ok": True, "data": {"tiers": [
@@ -129,6 +134,16 @@ def test_catalog_gates_declared_resource_actions_and_hides_bindings():
         "tier.quiesce", "tier.drain", "tier.readmit",
     }
     assert "/private" not in repr(controls)
+
+
+def test_benchmark_list_uses_only_the_declared_bounded_tool():
+    value = adapter()
+    cursor = "a" * 32 + ".1"
+    assert value.list_benchmark_jobs(limit=2, cursor=cursor)["schema"] == "anvil-serving.benchmark-job-list/v1"
+    operation, kwargs = FakeTransport.instances[-1].calls[-1]
+    assert operation.name == "benchmark_job_list"
+    assert operation.arguments == {"limit": 2, "cursor": cursor}
+    assert kwargs == {}
 
 
 def test_preview_binds_exact_private_resource_and_execute_uses_durable_context():
