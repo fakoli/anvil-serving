@@ -57,13 +57,15 @@ let fleet = null,
   preferencesLoaded = false,
   catalog = null,
   operations = null,
+  hudWarning = "",
+  hudFailures = new Set(),
   fixtureMode = false;
 let host = "",
   serve = "",
   range = preferences.range;
 const titles = {
   workbench: "Workbench",
-  playground: "Playground",
+  playground: "Pi",
   models: "Models & recipes",
   work: "Anvil work",
   observability: "Observability",
@@ -109,13 +111,13 @@ function addNavigation(name) {
   navigation.append(
     el(
       "a",
-      { href: route(name), "data-page": name },
+      { href: route(name), "data-page": name, "aria-label": titles[name], title: titles[name] },
       el("span", {
         class: "nav-symbol",
         "aria-hidden": "true",
         text: symbols[index] || "⌘",
       }),
-      titles[name],
+      el("span", { class: "nav-label", text: titles[name] }),
     ),
   );
 }
@@ -169,6 +171,7 @@ function parseRoute() {
 const sidebar = document.getElementById("navigation"),
   workspace = document.querySelector(".workspace"),
   mobile = matchMedia("(max-width:1119px)");
+const menuToggle = document.getElementById("menu-toggle");
 const navClose = button(
   "Close navigation",
   () => {
@@ -179,11 +182,23 @@ const navClose = button(
 );
 sidebar.insertBefore(navClose, navigation);
 function syncNavigation() {
-  const open = document.body.classList.contains("nav-open") && mobile.matches;
+  const open = document.body.classList.contains("nav-open");
+  const drawerOpen = open && mobile.matches;
   sidebar.inert = mobile.matches && !open;
-  workspace.inert = open;
+  workspace.inert = drawerOpen;
   navClose.hidden = !mobile.matches;
-  if (open) {
+  menuToggle.setAttribute("aria-expanded", String(open));
+  menuToggle.setAttribute(
+    "aria-label",
+    mobile.matches
+      ? open
+        ? "Close navigation"
+        : "Open navigation"
+      : open
+        ? "Collapse navigation"
+        : "Expand navigation",
+  );
+  if (drawerOpen) {
     sidebar.setAttribute("role", "dialog");
     sidebar.setAttribute("aria-modal", "true");
   } else {
@@ -195,16 +210,13 @@ mobile.addEventListener("change", syncNavigation);
 syncNavigation();
 function closeNavigation() {
   document.body.classList.remove("nav-open");
-  document.getElementById("menu-toggle").setAttribute("aria-expanded", "false");
   syncNavigation();
 }
-document.getElementById("menu-toggle").addEventListener("click", () => {
+menuToggle.addEventListener("click", () => {
   const open = document.body.classList.toggle("nav-open");
-  document
-    .getElementById("menu-toggle")
-    .setAttribute("aria-expanded", String(open));
   syncNavigation();
-  if (open) navigation.querySelector("[aria-current=page]")?.focus();
+  if (open && mobile.matches)
+    navigation.querySelector("[aria-current=page]")?.focus();
 });
 document.addEventListener("keydown", (event) => {
   if (
@@ -227,12 +239,13 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key === "Escape" && document.body.classList.contains("nav-open")) {
     closeNavigation();
-    document.getElementById("menu-toggle").focus();
+    menuToggle.focus();
   }
 });
 document.addEventListener("click", (event) => {
   if (
     document.body.classList.contains("nav-open") &&
+    mobile.matches &&
     !event.target.closest(".sidebar") &&
     !event.target.closest("#menu-toggle")
   )
@@ -537,8 +550,75 @@ function updateHud() {
       catalog?.pi?.configured ? "Configured" : "Not configured",
       "Readiness checked per task",
     ),
+    hudWarning
+      ? status("SYSTEM STATUS", "Unavailable", hudWarning)
+      : null,
     el("a", { class: "hud-link", href: route("compute"), text: "Compute ↗" }),
   );
+}
+const fleetPages = new Set([
+  "overview",
+  "workstations",
+  "serves",
+  "observability",
+  "compute",
+  "models",
+  "configuration",
+  "experiments",
+  "operations",
+  "logs",
+  "workloads",
+]);
+const currentRead = (signal, serial) =>
+  !signal.aborted && serial === generation;
+function applyDashboardReads(reads, signal, serial, { fleetRequired = false } = {}) {
+  if (!currentRead(signal, serial)) return;
+  if (reads[0].status === "fulfilled") fleet = reads[0].value;
+  else if (fleetRequired) throw reads[0].reason;
+  catalog = reads[2].status === "fulfilled" ? reads[2].value : catalog;
+  operations = reads[3].status === "fulfilled" ? reads[3].value : operations;
+  settings =
+    reads[1].status === "fulfilled"
+      ? reads[1].value
+      : settings || { integration_error: reads[1].reason.message };
+  hudWarning = reads.some((read) => read.status === "rejected")
+    ? "Some optional system sources did not respond."
+    : "";
+  if (fleetRequired && (!Array.isArray(fleet?.hosts) || !Array.isArray(fleet?.serves)))
+    throw new Error("Invalid fleet response. Current owner state cannot be established.");
+  updateHud();
+}
+function readDashboardData(signal, serial, fleetRequired) {
+  const requests = [
+    request("fleet", { signal }),
+    request("settings", { signal }),
+    workbenchRequest("catalog", { signal }),
+    request("operations", { signal }),
+  ];
+  if (fleetRequired)
+    return Promise.allSettled(requests).then((results) =>
+      applyDashboardReads(results, signal, serial, { fleetRequired: true }),
+    );
+  hudFailures = new Set();
+  requests.forEach((read, index) => {
+    void read.then((value) => {
+      if (!currentRead(signal, serial)) return;
+      if (index === 0) fleet = value;
+      if (index === 1) settings = value;
+      if (index === 2) catalog = value;
+      if (index === 3) operations = value;
+      hudFailures.delete(index);
+      hudWarning = hudFailures.size
+        ? "Some optional system sources did not respond."
+        : "";
+      updateHud();
+    }).catch(() => {
+      if (!currentRead(signal, serial)) return;
+      hudFailures.add(index);
+      hudWarning = "Some optional system sources did not respond.";
+      updateHud();
+    });
+  });
 }
 async function refresh({ quiet = false } = {}) {
   clearTimeout(refreshTimer);
@@ -555,7 +635,7 @@ async function refresh({ quiet = false } = {}) {
   ].join("/");
   const navigationChanged = currentPath !== lastRoute;
   lastRoute = currentPath;
-  closeNavigation();
+  if (mobile.matches) closeNavigation();
   for (const link of navigation.querySelectorAll("a")) {
     if (link.dataset.page === target.page)
       link.setAttribute("aria-current", "page");
@@ -603,25 +683,9 @@ async function refresh({ quiet = false } = {}) {
       return;
     }
     if (target.page !== "access") {
-      const reads = await Promise.allSettled([
-        request("fleet", { signal }),
-        request("settings", { signal }),
-        workbenchRequest("catalog", { signal }),
-        request("operations", { signal }),
-      ]);
-      if (signal.aborted) return;
-      if (reads[0].status === "rejected") throw reads[0].reason;
-      fleet = reads[0].value;
-      catalog = reads[2].status === "fulfilled" ? reads[2].value : null;
-      operations = reads[3].status === "fulfilled" ? reads[3].value : null;
-      settings =
-        reads[1].status === "fulfilled"
-          ? reads[1].value
-          : { integration_error: reads[1].reason.message };
-      if (!Array.isArray(fleet?.hosts) || !Array.isArray(fleet?.serves))
-        throw new Error(
-          "Invalid fleet response. Current owner state cannot be established.",
-        );
+      if (fleetPages.has(target.page)) await readDashboardData(signal, serial, true);
+      else readDashboardData(signal, serial, false);
+      if (!currentRead(signal, serial)) return;
     }
     updateScope(session, target.page);
     updateHud();
@@ -707,7 +771,9 @@ async function refresh({ quiet = false } = {}) {
     document.getElementById("connection-status").textContent =
       target.page === "access"
         ? "Anvil Connect access inventory"
-        : `Source coverage: ${fleet.coverage?.status || "unknown"}`;
+        : fleet
+          ? `Source coverage: ${fleet.coverage?.status || "unknown"}`
+          : "Workspace source available; system status unavailable";
     if (navigationChanged) {
       main.focus({ preventScroll: true });
       window.scrollTo(0, 0);

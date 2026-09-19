@@ -252,6 +252,8 @@ async function createFixture(base = BASE) {
     partialWorkloads: false,
     malformedWorkloads: false,
     metricFailure: false,
+    fleetFailure: false,
+    fleetDelay: 0,
     slowMetrics: 0,
     slowHost: null,
     serveProbeOnly: false,
@@ -282,8 +284,10 @@ async function createFixture(base = BASE) {
   };
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://127.0.0.1");
-    const prefix = base + "api/observatory/v1/";
-    if (!url.pathname.startsWith(prefix)) {
+    const observatoryPrefix = base + "api/observatory/v1/";
+    const workbenchPrefix = base + "api/workbench/v1/";
+    const workbench = url.pathname.startsWith(workbenchPrefix);
+    if (!url.pathname.startsWith(observatoryPrefix) && !workbench) {
       let filename =
         url.pathname === base
           ? "observatory.html"
@@ -291,7 +295,7 @@ async function createFixture(base = BASE) {
       if (
         !url.pathname.startsWith(base) ||
         filename.includes("..") ||
-        !/^([a-z_]+\/)?[a-z_.]+$/.test(filename)
+        !/^([a-zA-Z_]+\/)?[a-zA-Z_.-]+$/.test(filename)
       ) {
         res.writeHead(404).end();
         return;
@@ -314,7 +318,9 @@ async function createFixture(base = BASE) {
       res.end(fs.readFileSync(full));
       return;
     }
-    const route = url.pathname.slice(prefix.length);
+    const route = url.pathname.slice(
+      (workbench ? workbenchPrefix : observatoryPrefix).length,
+    );
     let body = {};
     try {
       if (req.method !== "GET") {
@@ -360,6 +366,48 @@ async function createFixture(base = BASE) {
       );
       return;
     }
+    if (workbench) {
+      if (route === "preferences") {
+        respond(res, {
+          landing: "overview",
+          density: "comfortable",
+          range: "1h",
+          zone: "UTC",
+        });
+        return;
+      }
+      if (route === "catalog") {
+        respond(res, {
+          connectors: [
+            {
+              id: "connector-a",
+              label: "Fixture connector",
+              models: ["fixture-model-a"],
+              configured: true,
+              permitted: true,
+            },
+          ],
+          presets: [{ id: "default", label: "Fixture preset" }],
+          pi: { configured: true },
+          projects: [{ id: "project-a", label: "Fixture project" }],
+        });
+        return;
+      }
+      if (route === "conversations") {
+        respond(res, { items: [] });
+        return;
+      }
+      if (route === "projects/project-a") {
+        respond(res, { tasks: [], prds: [] });
+        return;
+      }
+      respond(
+        res,
+        { code: "not_found", message: "This fixture route is unavailable." },
+        404,
+      );
+      return;
+    }
     if (
       req.method !== "GET" &&
       (!state.operate || req.headers["x-csrf-token"] !== "synthetic-csrf")
@@ -372,6 +420,12 @@ async function createFixture(base = BASE) {
       return;
     }
     if (route === "fleet") {
+      if (state.fleetDelay)
+        await new Promise((resolve) => setTimeout(resolve, state.fleetDelay));
+      if (state.fleetFailure) {
+        respond(res, { code: "unavailable", message: "Fixture fleet unavailable." }, 503);
+        return;
+      }
       const declaredResources = state.runtimeCandidate
         ? [
             ...resources,

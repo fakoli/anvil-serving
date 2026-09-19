@@ -56,7 +56,7 @@ const results = [];
   };
   try {
     await test("Session login and no credential storage", async () => {
-      await page.goto(fixture.url);
+      await page.goto(fixture.url + "#/overview");
       await page.getByLabel("Username", { exact: true }).fill("fixture-user");
       await page
         .getByLabel("Password", { exact: true })
@@ -120,11 +120,11 @@ const results = [];
           );
         });
         await scopedPage
-          .getByLabel("Workstation", { exact: true })
+          .getByRole("combobox", { name: "Compute", exact: true })
           .selectOption("host-fixture-a");
         await previousStarted;
         await scopedPage
-          .getByLabel("Workstation", { exact: true })
+          .getByRole("combobox", { name: "Compute", exact: true })
           .selectOption("host-fixture-b");
         const legend = scopedPage
           .getByRole("article", { name: "generation chart" })
@@ -133,7 +133,7 @@ const results = [];
         await scopedPage.waitForTimeout(1500);
         assert.equal(
           await scopedPage
-            .getByLabel("Workstation", { exact: true })
+            .getByRole("combobox", { name: "Compute", exact: true })
             .inputValue(),
           "host-fixture-b",
         );
@@ -228,17 +228,8 @@ const results = [];
         fixture.state.posts.filter((p) => p.route === "drafts").length,
         0,
       );
-      await page
-        .getByRole("navigation", { name: "Main", exact: true })
-        .getByRole("link", { name: "Workstations", exact: true })
-        .click();
-      await page
-        .getByRole("heading", { name: "Workstations", exact: true })
-        .waitFor();
-      await page
-        .getByRole("navigation", { name: "Main", exact: true })
-        .getByRole("link", { name: "Configuration", exact: true })
-        .click();
+      await navigate("workstations", "Workstations");
+      await navigate("configuration/serve-a", "Configuration");
       await input.waitFor();
       assert.equal(await input.inputValue(), "48");
       await page.getByRole("button", { name: "Validate", exact: true }).click();
@@ -480,17 +471,12 @@ const results = [];
           .isDisabled(),
         true,
       );
-      await navigate("settings", "Settings");
+      await navigate("settings", "Make this workspace yours.");
       await page.getByLabel("Time zone", { exact: true }).selectOption("UTC");
-      const store = await page.evaluate(() =>
-        JSON.parse(localStorage.getItem("anvil-observatory-display")),
+      assert.deepEqual(
+        await page.evaluate(() => Object.keys(localStorage)),
+        [],
       );
-      assert.deepEqual(Object.keys(store).sort(), [
-        "density",
-        "landing",
-        "range",
-        "zone",
-      ]);
       fixture.state.operate = true;
       await page.reload();
     });
@@ -508,7 +494,7 @@ const results = [];
           ["configuration/serve-a", "Configuration"],
           ["experiments/experiment-a", "Experiments"],
           ["operations", "Operations"],
-          ["settings", "Settings"],
+          ["settings", "Make this workspace yours."],
         ]) {
           await navigate(route, title);
           await page.waitForTimeout(120);
@@ -565,6 +551,54 @@ const results = [];
         true,
       );
       await screenshot("configuration-200-percent-equivalent-reflow");
+    });
+    await test("Desktop rail pins without blocking the workspace and Pi keeps its bookmarked route", async () => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await navigate("playground", "Playground");
+      const toggle = page.getByRole("button", { name: "Expand navigation" });
+      await toggle.click();
+      await page.getByRole("button", { name: "Collapse navigation" }).waitFor();
+      assert.equal(
+        await page.locator(".workspace").evaluate((el) => el.inert),
+        false,
+      );
+      assert.equal(
+        await page
+          .getByRole("navigation", { name: "Main", exact: true })
+          .getByRole("link", { name: "Pi", exact: true })
+          .getAttribute("href"),
+        "#/playground",
+      );
+      await page.getByRole("button", { name: "Collapse navigation" }).click();
+      await page.getByRole("button", { name: "Expand navigation" }).waitFor();
+      assert.equal(await page.locator("#primary-navigation .nav-label").first().isVisible(), false);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    });
+    await test("Fleet failure does not replace Pi or Anvil Work, or discard a Pi draft", async () => {
+      await navigate("workbench", "A place for the whole experiment.");
+      fixture.state.fleetDelay = 250;
+      fixture.state.fleetFailure = true;
+      try {
+        const failedFleet = page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname.endsWith("/fleet") &&
+            response.status() === 503,
+        );
+        await navigate("playground", "Playground");
+        await failedFleet;
+        const draft = page.getByLabel("Message", { exact: true });
+        await draft.fill("Keep this draft while fleet telemetry fails.");
+        await page.getByText("Some optional system sources did not respond.", { exact: true }).waitFor();
+        assert.equal(
+          await draft.inputValue(),
+          "Keep this draft while fleet telemetry fails.",
+        );
+        await navigate("work", "Anvil work");
+        await page.getByText("Some optional system sources did not respond.", { exact: true }).waitFor();
+      } finally {
+        fixture.state.fleetDelay = 0;
+        fixture.state.fleetFailure = false;
+      }
     });
     await test("Mobile navigation is inert when closed, traps focus when open, and restores focus", async () => {
       await page.setViewportSize({ width: 390, height: 844 });

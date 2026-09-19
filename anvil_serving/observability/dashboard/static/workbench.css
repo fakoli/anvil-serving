@@ -192,6 +192,43 @@ h3 {
   font-size: 8px;
   letter-spacing: 0.9px;
 }
+@media (min-width: 1120px) {
+  #menu-toggle {
+    display: block;
+  }
+  .nav-open .app-shell {
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+  }
+  body:not(.nav-open) .app-shell {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  body:not(.nav-open) .sidebar {
+    padding-inline: 10px;
+  }
+  body:not(.nav-open) .brand,
+  body:not(.nav-open) .workspace-label,
+  body:not(.nav-open) .nav-label,
+  body:not(.nav-open) .sidebar-foot,
+  body:not(.nav-open) #primary-navigation a {
+    justify-content: center;
+  }
+  body:not(.nav-open) .brand > span,
+  body:not(.nav-open) .workspace-label > span:last-child,
+  body:not(.nav-open) .nav-label,
+  body:not(.nav-open) .sidebar-foot,
+  body:not(.nav-open) #primary-navigation a > :not(.nav-symbol) {
+    display: none;
+  }
+  body:not(.nav-open) .brand {
+    padding-inline: 0;
+  }
+  body:not(.nav-open) .workspace-label {
+    padding-inline: 0;
+  }
+  body:not(.nav-open) #primary-navigation a {
+    padding-inline: 0;
+  }
+}
 .topbar {
   min-height: 69px;
   padding: 12px 28px;
