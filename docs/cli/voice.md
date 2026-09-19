@@ -196,6 +196,32 @@ anvil-serving voice benchmark --candidate-base-url http://127.0.0.1:30001/v1 --c
 URL and model must be supplied together; the optional token flag names an
 environment variable. These overrides never rewrite the manifest.
 
+For a speech baseline, pass a local regular PCM16, mono, 16-kHz RIFF WAV and
+its verbatim transcript together. The file must be no longer than 30 seconds;
+a symbolic link in the input-file path's final component, non-regular files,
+compressed or malformed WAVs, stereo audio, other sample rates, and any
+header/data size mismatch are rejected before the benchmark contacts an
+endpoint:
+
+```bash
+anvil-serving voice benchmark --scope end-to-end \
+  --input-wav artifacts/voice/utterance.wav \
+  --reference-text "the recorded utterance, exactly as spoken" \
+  --evidence-out artifacts/voice/speech-baseline.json
+```
+
+The evidence retains the input kind, source-WAV and PCM byte counts and
+SHA-256 values, audio format, duration, and transcript SHA-256. A valid WAV
+only establishes container properties: the input is labelled
+`supplied-content-unverified`, so retain corpus provenance separately before
+interpreting it as human speech. Supplying a WAV still measures the current
+serialized STT → LLM → TTS replay. Its structured `measurement_scope` records
+`serialized-stage-replay`, `first-TTS-response-byte`, `realtime=false`, and
+`acoustic_playback=false`; `ttfa_ms` is not an audible playback measurement.
+Without these two options, the command retains compatibility by using a
+220-Hz synthetic tone. Its input identity says `synthetic-tone-not-speech` and
+`not-qualifying`; it is only a wire-path smoke, never speech-baseline evidence.
+
 The benchmark records resolved model and endpoint identity with its end-to-end
 STT, router, and TTS metrics. Evidence output is restricted to the workspace or
 configured evidence root. Unreachable dependencies return nonzero and do not

@@ -1667,6 +1667,31 @@ def cmd_run(args):
 
 def cmd_benchmark(args):
     scope = getattr(args, "scope", "end-to-end")
+    input_wav = getattr(args, "input_wav", None)
+    reference_text = getattr(args, "reference_text", None)
+    if scope != "end-to-end" and (input_wav or reference_text is not None):
+        print(
+            "voice benchmark: --input-wav and --reference-text are valid only for "
+            "--scope end-to-end",
+            file=sys.stderr,
+        )
+        return 2
+    if scope == "end-to-end" and bool(input_wav) != (reference_text is not None):
+        print(
+            "voice benchmark: --input-wav and --reference-text must be provided together",
+            file=sys.stderr,
+        )
+        return 2
+    if reference_text is not None and not reference_text.strip():
+        print("voice benchmark: --reference-text must not be empty", file=sys.stderr)
+        return 2
+    benchmark_input = None
+    if input_wav:
+        try:
+            benchmark_input = voice_benchmark.load_benchmark_input_wav(input_wav)
+        except voice_benchmark.BenchmarkInputError as exc:
+            print("voice benchmark: %s" % exc, file=sys.stderr)
+            return 2
     if scope == "stt":
         return _cmd_stt_benchmark(args)
     if scope == "audio" and any(
@@ -1707,10 +1732,22 @@ def cmd_benchmark(args):
                 profile=resolved.profile,
             )
         else:
+            benchmark_kwargs = {
+                "profile": resolved.profile,
+                "candidate": resolved.candidate,
+            }
+            if benchmark_input is not None:
+                benchmark_kwargs.update(
+                    {
+                        "pcm": benchmark_input.pcm,
+                        "sample_rate": benchmark_input.sample_rate,
+                        "reference_text": reference_text,
+                        "input_identity": benchmark_input.identity,
+                    }
+                )
             result = voice_benchmark.run_benchmark_from_manifest(
                 resolved.data,
-                profile=resolved.profile,
-                candidate=resolved.candidate,
+                **benchmark_kwargs,
             )
     except Exception as exc:  # noqa: BLE001 - the configured serves may simply not be up yet
         print(
@@ -2289,6 +2326,14 @@ def build_parser():
     sp.add_argument(
         "--evidence-out",
         help="write structured benchmark evidence JSON under the workspace or configured evidence root",
+    )
+    sp.add_argument(
+        "--input-wav",
+        help="PCM16 mono 16-kHz RIFF WAV, at most 30 seconds; requires --reference-text for --scope end-to-end",
+    )
+    sp.add_argument(
+        "--reference-text",
+        help="verbatim transcript for --input-wav; required with it for --scope end-to-end",
     )
     sp.add_argument("--corpus", help="STT corpus JSONL manifest for --scope stt")
     sp.add_argument(

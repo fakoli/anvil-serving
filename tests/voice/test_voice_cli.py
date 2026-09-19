@@ -5,9 +5,11 @@ is foundation-only -- each subcommand loads + validates the manifest and
 prints what it *would* do; no process is spawned, no network touched, no
 GPU/torch import happens anywhere in this module or its import chain.
 """
+import hashlib
 import json
 import sys
 import socket
+import struct
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -1539,6 +1541,84 @@ def test_cmd_benchmark_prints_success_json(manifest_path, monkeypatch, capsys):
     assert '"ttfa_ms": 12.3' in out
 
 
+def _pcm16_wav(pcm: bytes) -> bytes:
+    fmt = struct.pack("<HHIIHH", 1, 1, 16000, 32000, 2, 16)
+    body = b"fmt " + struct.pack("<I", len(fmt)) + fmt
+    body += b"data" + struct.pack("<I", len(pcm)) + pcm
+    return b"RIFF" + struct.pack("<I", len(body) + 4) + b"WAVE" + body
+
+
+def test_cmd_benchmark_forwards_validated_wav_pcm_and_reference(
+    manifest_path, tmp_path, monkeypatch, capsys
+):
+    pcm = b"\x01\x00" * 32
+    source = tmp_path / "utterance.wav"
+    source.write_bytes(_pcm16_wav(pcm))
+    seen = {}
+
+    def fake_run(data, **kwargs):
+        seen["kwargs"] = kwargs
+        return {"ok": True}
+
+    monkeypatch.setattr(voice_cli.voice_benchmark, "run_benchmark_from_manifest", fake_run)
+
+    rc = voice_cli.main([
+        "benchmark", "--config", manifest_path, "--input-wav", str(source),
+        "--reference-text", "a real utterance",
+    ])
+
+    assert rc == 0
+    assert seen["kwargs"]["pcm"] == pcm
+    assert seen["kwargs"]["sample_rate"] == 16000
+    assert seen["kwargs"]["reference_text"] == "a real utterance"
+    assert seen["kwargs"]["input_identity"]["sample_sha256"] == hashlib.sha256(pcm).hexdigest()
+    assert seen["kwargs"]["input_identity"]["source_wav_sha256"] == hashlib.sha256(
+        source.read_bytes()
+    ).hexdigest()
+    assert '"ok": true' in capsys.readouterr().out
+
+
+def test_cmd_benchmark_rejects_malformed_wav_before_running_benchmark(
+    manifest_path, tmp_path, monkeypatch, capsys
+):
+    source = tmp_path / "broken.wav"
+    source.write_bytes(b"not a wav")
+    called = False
+
+    def fake_run(data, **kwargs):
+        nonlocal called
+        called = True
+        return {"ok": True}
+
+    monkeypatch.setattr(voice_cli.voice_benchmark, "run_benchmark_from_manifest", fake_run)
+
+    rc = voice_cli.main([
+        "benchmark", "--config", manifest_path, "--input-wav", str(source),
+        "--reference-text", "a real utterance",
+    ])
+
+    assert rc == 2
+    assert called is False
+    assert "RIFF/WAVE" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "argv, expected",
+    [
+        (["--input-wav", "sample.wav"], "must be provided together"),
+        (["--reference-text", "words"], "must be provided together"),
+        (["--scope", "audio", "--reference-text", "words"], "valid only"),
+    ],
+)
+def test_cmd_benchmark_rejects_unpaired_or_wrong_scope_wav_options(
+    manifest_path, argv, expected, capsys
+):
+    rc = voice_cli.main(["benchmark", "--config", manifest_path, *argv])
+
+    assert rc == 2
+    assert expected in capsys.readouterr().err
+
+
 def test_cmd_benchmark_audio_scope_skips_llm_and_proxy(manifest_path, monkeypatch, capsys):
     seen = {}
 
@@ -1793,6 +1873,8 @@ def test_cmd_benchmark_help_lists_profile_candidate_overlay_and_evidence_options
     assert "--candidate-api-key-env" in out
     assert "--evidence-out" in out
     assert "--scope" in out
+    assert "--input-wav" in out
+    assert "--reference-text" in out
 
 
 def test_cmd_run_help_lists_profile_candidate_overlay_options(capsys):

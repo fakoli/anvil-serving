@@ -9,14 +9,20 @@ are deterministic.
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import struct
 
 import pytest
 
 from anvil_serving.voice.benchmark import (
     DEFAULT_REFERENCE_TEXT,
     EVIDENCE_SCHEMA_VERSION,
+    MAX_INPUT_WAV_BYTES,
+    MEASUREMENT_SCOPE,
     build_evidence_record,
+    load_benchmark_input_wav,
     run_audio_benchmark,
     run_benchmark,
     run_benchmark_from_manifest,
@@ -29,6 +35,19 @@ from anvil_serving.voice.stages.stt import STTStageConfig
 from anvil_serving.voice.stages.tts import TTSStageConfig
 from tests.voice.conftest import FakeLineResponse as _FakeLineResponse
 from tests.voice.conftest import FakeReadResponse as _FakeReadResponse
+
+
+def _pcm16_wav(pcm: bytes, *, sample_rate: int = 16000, channels: int = 1) -> bytes:
+    """Build a minimal PCM WAV fixture without relying on a codec library."""
+    block_align = channels * 2
+    fmt = struct.pack(
+        "<HHIIHH", 1, channels, sample_rate, sample_rate * block_align, block_align, 16
+    )
+    body = b"fmt " + struct.pack("<I", len(fmt)) + fmt
+    body += b"data" + struct.pack("<I", len(pcm)) + pcm
+    if len(pcm) % 2:
+        body += b"\x00"
+    return b"RIFF" + struct.pack("<I", len(body) + 4) + b"WAVE" + body
 
 
 def test_audio_benchmark_measures_tts_to_stt_without_llm():
@@ -499,6 +518,111 @@ def test_run_benchmark_from_manifest_generates_sample_pcm_when_none_given():
     )
     assert len(seen_pcm["pcm"]) > 0
     assert result["stt_hypothesis"] == "x"
+    assert result["input"]["input_kind"] == "synthetic-tone-not-speech"
+    assert result["input"]["qualification"] == "not-qualifying"
+
+
+def test_load_benchmark_input_wav_and_retain_identity_from_pcm_bytes(tmp_path):
+    pcm = b"\x01\x00" * 160
+    source = tmp_path / "speech.wav"
+    source.write_bytes(_pcm16_wav(pcm))
+
+    benchmark_input = load_benchmark_input_wav(str(source))
+
+    assert benchmark_input.pcm == pcm
+    assert benchmark_input.sample_rate == 16000
+    assert benchmark_input.identity["input_kind"] == "provided-wav"
+    assert benchmark_input.identity["qualification"] == "supplied-content-unverified"
+    assert benchmark_input.identity["sample_sha256"] == hashlib.sha256(pcm).hexdigest()
+    assert benchmark_input.identity["sample_bytes"] == len(pcm)
+    assert benchmark_input.identity["source_wav_sha256"] == hashlib.sha256(
+        source.read_bytes()
+    ).hexdigest()
+    assert benchmark_input.identity["source_wav_bytes"] == len(source.read_bytes())
+    assert benchmark_input.identity["audio_format"] == "wav-pcm-s16le-mono-16000hz"
+    assert benchmark_input.identity["duration_seconds"] == 0.01
+
+    result = run_benchmark_from_manifest(
+        {"voice": {"stt": {}, "llm": {}, "tts": {}}},
+        pcm=benchmark_input.pcm,
+        sample_rate=benchmark_input.sample_rate,
+        reference_text="spoken words",
+        input_identity=benchmark_input.identity,
+        stt_stream_fn=lambda pcm, sample_rate, config: iter([("spoken words", True)]),
+        llm_stream_fn=lambda text, config: iter(["reply"]),
+        tts_stream_fn=lambda text, config: iter(()),
+    )
+
+    assert result["input"]["sample_sha256"] == hashlib.sha256(pcm).hexdigest()
+    assert result["input"]["reference_text_sha256"] == hashlib.sha256(
+        b"spoken words"
+    ).hexdigest()
+    assert result["evidence"]["runs"][0]["input"] == result["input"]
+    assert result["measurement_scope"] == MEASUREMENT_SCOPE
+    assert result["evidence"]["measurement_scope"] == MEASUREMENT_SCOPE
+
+
+def test_load_benchmark_input_wav_rejects_header_size_mismatch(tmp_path):
+    source = tmp_path / "truncated.wav"
+    source.write_bytes(_pcm16_wav(b"\x00\x00")[:-1])
+
+    with pytest.raises(ValueError, match="RIFF size does not match"):
+        load_benchmark_input_wav(str(source))
+
+
+@pytest.mark.parametrize(
+    ("name", "raw", "error"),
+    [
+        ("compressed.wav", _pcm16_wav(b"\x00\x00").replace(b"\x01\x00", b"\x03\x00", 1), "PCM16"),
+        ("stereo.wav", _pcm16_wav(b"\x00\x00", channels=2), "mono"),
+        ("rate.wav", _pcm16_wav(b"\x00\x00", sample_rate=8000), "16000-Hz"),
+    ],
+)
+def test_load_benchmark_input_wav_rejects_unsupported_audio_format(tmp_path, name, raw, error):
+    source = tmp_path / name
+    source.write_bytes(raw)
+
+    with pytest.raises(ValueError, match=error):
+        load_benchmark_input_wav(str(source))
+
+
+def test_load_benchmark_input_wav_rejects_symlink_nonregular_and_oversized_files(tmp_path):
+    target = tmp_path / "target.wav"
+    target.write_bytes(_pcm16_wav(b"\x00\x00"))
+    link = tmp_path / "link.wav"
+    link.symlink_to(target)
+    directory = tmp_path / "directory.wav"
+    directory.mkdir()
+    oversized = tmp_path / "oversized.wav"
+    oversized.write_bytes(b"x" * (MAX_INPUT_WAV_BYTES + 1))
+
+    for path, error in ((link, "symbolic link"), (directory, "regular file"), (oversized, "exceeds")):
+        with pytest.raises(ValueError, match=error):
+            load_benchmark_input_wav(str(path))
+
+
+@pytest.mark.skipif(not hasattr(os, "O_NONBLOCK") or not hasattr(os, "mkfifo"), reason="POSIX only")
+def test_load_benchmark_input_wav_rejects_regular_file_to_fifo_open_race(tmp_path, monkeypatch):
+    regular = tmp_path / "regular.wav"
+    regular.write_bytes(_pcm16_wav(b"\x00\x00"))
+    fifo = tmp_path / "swapped.wav"
+    os.mkfifo(fifo)
+    regular_stat = os.lstat(regular)
+    original_open = os.open
+    seen_flags = []
+
+    monkeypatch.setattr("anvil_serving.voice.benchmark.os.lstat", lambda path: regular_stat)
+
+    def tracked_open(path, flags):
+        seen_flags.append(flags)
+        return original_open(path, flags)
+
+    monkeypatch.setattr("anvil_serving.voice.benchmark.os.open", tracked_open)
+
+    with pytest.raises(ValueError, match="changed while opening"):
+        load_benchmark_input_wav(str(fifo))
+
+    assert seen_flags[0] & os.O_NONBLOCK
 
 
 # --------------------------------------------------------------------------- #
