@@ -117,7 +117,7 @@ function addNavigation(name) {
         "aria-hidden": "true",
         text: symbols[index] || "⌘",
       }),
-      el("span", { class: "nav-label", text: titles[name] }),
+      el("span", { class: "nav-text", text: titles[name] }),
     ),
   );
 }
@@ -550,9 +550,7 @@ function updateHud() {
       catalog?.pi?.configured ? "Configured" : "Not configured",
       "Readiness checked per task",
     ),
-    hudWarning
-      ? status("SYSTEM STATUS", "Unavailable", hudWarning)
-      : null,
+    ...(hudWarning ? [status("SYSTEM STATUS", "Unavailable", hudWarning)] : []),
     el("a", { class: "hud-link", href: route("compute"), text: "Compute ↗" }),
   );
 }

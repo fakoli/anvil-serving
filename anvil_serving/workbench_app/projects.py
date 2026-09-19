@@ -23,7 +23,7 @@ class BoundedCommandFailure(ObservatoryError):
     """A bounded command failure whose stdout is private transport data."""
 
     def __init__(self, stdout):
-        super().__init__("project_source_unavailable", "Anvil could not complete this read.", 409)
+        super().__init__("project_source_unavailable", "Anvil could not complete this operation.", 409)
         self.stdout = stdout
 
 
@@ -64,6 +64,14 @@ def project_read_error(raw):
     mapped = (_READ_ERROR_MESSAGES if error.get("schema_id") == "anvil.state.read-error.v1"
               else _GENERIC_ERROR_MESSAGES).get(error["code"])
     return ObservatoryError(*mapped) if mapped else fallback
+
+
+def _command_error(args, raw):
+    read_only = (args[0] in {"status", "list", "show", "packet"}
+                 or args[:2] in {("prd", "list"), ("prd", "show")})
+    if read_only:
+        return project_read_error(raw)
+    return ObservatoryError("project_source_unavailable", "Anvil could not complete this operation. Check its current task and claim state before retrying.", 409)
 
 
 def run_bounded(argv, *, cwd, timeout=30, limit=4 * 1024 * 1024):
@@ -131,7 +139,7 @@ class Projects:
         try:
             raw = self.run([project["anvil_binary"], *args, "--cwd", project["checkout"]], cwd=project["checkout"])
         except BoundedCommandFailure as failure:
-            raise project_read_error(failure.stdout) from None
+            raise _command_error(args, failure.stdout) from None
         # `packet --format json` emits a bounded file-notice before its JSON.
         if args[0] == "packet":
             raw = raw[raw.find(b"{"):]
@@ -142,7 +150,7 @@ class Projects:
         if type(result) is not dict:
             raise ObservatoryError("invalid_project_source", "Anvil returned an unsupported response.", 503)
         if result.get("ok") is False:
-            raise project_read_error(raw)
+            raise _command_error(args, raw)
         data = result.get("data", result)
         if type(data) is not dict:
             raise ObservatoryError("invalid_project_source", "Anvil returned an unsupported response.", 503)

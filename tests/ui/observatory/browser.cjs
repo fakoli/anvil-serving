@@ -558,6 +558,10 @@ const results = [];
       const toggle = page.getByRole("button", { name: "Expand navigation" });
       await toggle.click();
       await page.getByRole("button", { name: "Collapse navigation" }).waitFor();
+      assert.equal(await page.locator("#scope-bar").getByText("null", { exact: true }).count(), 0);
+      assert.equal(await page.locator("#primary-navigation .nav-text").first().evaluate((el) => getComputedStyle(el).marginTop), "0px");
+      assert.equal(await page.locator(".sidebar").evaluate((el) => el.scrollHeight <= innerHeight), true);
+      await screenshot("desktop-expanded-navigation");
       assert.equal(
         await page.locator(".workspace").evaluate((el) => el.inert),
         false,
@@ -571,7 +575,7 @@ const results = [];
       );
       await page.getByRole("button", { name: "Collapse navigation" }).click();
       await page.getByRole("button", { name: "Expand navigation" }).waitFor();
-      assert.equal(await page.locator("#primary-navigation .nav-label").first().isVisible(), false);
+      assert.equal(await page.locator("#primary-navigation .nav-text").first().isVisible(), false);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     });
     await test("Fleet failure does not replace Pi or Anvil Work, or discard a Pi draft", async () => {

@@ -266,6 +266,25 @@ def test_malformed_success_envelopes_are_rejected(projects):
     assert error.value.code == "invalid_project_source"
 
 
+@pytest.mark.parametrize("verb", ["claim", "release", "renew", "submit"])
+@pytest.mark.parametrize("nonzero", [True, False])
+def test_mutation_failures_do_not_use_plan_read_diagnoses(projects, verb, nonzero):
+    adapter, _, _ = projects
+    raw = b'{"ok":false,"error":{"schema_id":"anvil.state.read-error.v1","code":"prd_not_found","message":"PRIVATE_ERROR"}}'
+
+    def fail(*_args, **_kwargs):
+        if nonzero:
+            raise BoundedCommandFailure(raw)
+        return raw
+
+    adapter.run = fail
+    with pytest.raises(ObservatoryError) as error:
+        adapter.cli(adapter.configured("product"), verb, "feature:T001")
+    assert error.value.code == "project_source_unavailable"
+    assert "current task and claim state" in error.value.message
+    assert "PRIVATE_ERROR" not in error.value.message
+
+
 def test_plan_content_uses_supported_scoped_bounded_cli(projects):
     adapter, _, calls = projects
     original = adapter.run
