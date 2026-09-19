@@ -174,4 +174,5 @@ public reproduction bundle. Reconstruct and review them before any managed load.
 
 ## Dated run history
 
+- 2026-09-19 — [VoiceChat feasibility stop](../../findings/2026-09-19-voicechat-feasibility.md): no candidate acquisition or inference. Disk arithmetic passed for the 8.553 GiB package, but memory is unresolved and the pinned session cannot accept a tool result; `no-promotion`.
 - 2026-09-08 — [M4 Max local voice refresh](../../findings/2026-09-08-m4-max-voice-refresh.md)

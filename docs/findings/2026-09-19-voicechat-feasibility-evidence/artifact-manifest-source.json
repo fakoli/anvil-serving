@@ -1,0 +1,108 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-19-voicechat-feasibility",
+    "capability": "voice feasibility",
+    "repository_revision": "5cc041149aca2908463f5917476fcb8a7280a039",
+    "dirty_state": "isolated codex worktree; benchmark-input code and feasibility documentation changes",
+    "started_at": "2026-09-19T22:52:44Z",
+    "completed_at": "2026-09-19T23:14:17.764632+00:00",
+    "evidence_labels": [
+      "external-prior",
+      "feasibility"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.recipe-feasibility-input/v1",
+    "anvil-serving.recipe-feasibility-result/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "identity-summary.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "missing",
+      "files": [],
+      "reason": "No candidate workload executed; private audio artifacts are not public evidence."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "identity-summary.json",
+        "resource-observations.json",
+        "feasibility-input-v1.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "feasibility-result-v1.json"
+      ],
+      "reason": "Deterministic feasibility output only; zero inference requests"
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "feasibility-input-v1.json",
+        "feasibility-result-v1.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": ""
+    }
+  ]
+}
