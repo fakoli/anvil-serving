@@ -2046,6 +2046,19 @@ def sync_clients(
         restarted = True
         state["openclaw_restarted_sha256"] = catalog["config_sha256"]
         state["openclaw_service_restarted_sha256"] = catalog["config_sha256"]
+    if expected_config_sha256 is not None:
+        try:
+            current = _fetch_json(
+                _safe_base_url(base_url), "/router/status", token=environ[api_key_env],
+                timeout_seconds=timeout_seconds, max_bytes=DEFAULT_MAX_RESPONSE_BYTES,
+                opener=opener,
+            )
+            if current.get("config_sha256") != expected_config_sha256:
+                raise ClientCatalogError("router configuration changed during client reconciliation")
+        except Exception:
+            # Client writes/reloads may have completed, but this run cannot certify them.
+            restore_prior_state()
+            raise
     _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
     return _summary(
         catalog,
