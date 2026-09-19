@@ -1,0 +1,924 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "2026-09-19-swift-qwen38-apple-feasibility-evidence",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": null,
+    "max": null
+  },
+  "physical_available_bytes": {
+    "min": 51539607552,
+    "max": 51539607552
+  },
+  "policy_available_bytes": {
+    "min": 34359738368,
+    "max": 34359738368
+  },
+  "candidates": [
+    {
+      "id": "swift-q6-k",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "unknown",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": null,
+        "max": null
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 51539607552,
+        "max": 51539607552
+      },
+      "policy_available_bytes": {
+        "min": 34359738368,
+        "max": 34359738368
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "requirements.tokens.media_protocol_overhead",
+        "candidates[0].runtime_context_limit_tokens",
+        "candidates[0].measured_max_stable_context_tokens",
+        "candidates[0].resident_components.target_weights",
+        "candidates[0].resident_components.projector",
+        "candidates[0].resident_components.runtime_fixed",
+        "candidates[0].resident_components.graphs_workspace_recurrent_state",
+        "candidates[0].per_sequence_components.sequence_state",
+        "candidates[0].per_token_components.target_kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.os_desktop_voice.variable",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "stock-q6-k",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "unknown",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": null,
+        "max": null
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 51539607552,
+        "max": 51539607552
+      },
+      "policy_available_bytes": {
+        "min": 34359738368,
+        "max": 34359738368
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "requirements.tokens.media_protocol_overhead",
+        "candidates[1].runtime_context_limit_tokens",
+        "candidates[1].measured_max_stable_context_tokens",
+        "candidates[1].resident_components.target_weights",
+        "candidates[1].resident_components.projector",
+        "candidates[1].resident_components.runtime_fixed",
+        "candidates[1].resident_components.graphs_workspace_recurrent_state",
+        "candidates[1].per_sequence_components.sequence_state",
+        "candidates[1].per_token_components.target_kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.os_desktop_voice.variable",
+        "candidates[1].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "swift-q4-k-m",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "unknown",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": null,
+        "max": null
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 51539607552,
+        "max": 51539607552
+      },
+      "policy_available_bytes": {
+        "min": 34359738368,
+        "max": 34359738368
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "requirements.tokens.media_protocol_overhead",
+        "candidates[2].runtime_context_limit_tokens",
+        "candidates[2].measured_max_stable_context_tokens",
+        "candidates[2].resident_components.target_weights",
+        "candidates[2].resident_components.projector",
+        "candidates[2].resident_components.runtime_fixed",
+        "candidates[2].resident_components.graphs_workspace_recurrent_state",
+        "candidates[2].per_sequence_components.sequence_state",
+        "candidates[2].per_token_components.target_kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.os_desktop_voice.variable",
+        "candidates[2].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "stock-q4-k-m",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "unknown",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": null,
+        "max": null
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 51539607552,
+        "max": 51539607552
+      },
+      "policy_available_bytes": {
+        "min": 34359738368,
+        "max": 34359738368
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "requirements.tokens.media_protocol_overhead",
+        "candidates[3].runtime_context_limit_tokens",
+        "candidates[3].measured_max_stable_context_tokens",
+        "candidates[3].resident_components.target_weights",
+        "candidates[3].resident_components.projector",
+        "candidates[3].resident_components.runtime_fixed",
+        "candidates[3].resident_components.graphs_workspace_recurrent_state",
+        "candidates[3].per_sequence_components.sequence_state",
+        "candidates[3].per_token_components.target_kv"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.os_desktop_voice.variable",
+        "candidates[3].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 24000,
+      "max": 24000,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.media_protocol_overhead",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Exact tokenization/image expansion not measured; capacity request cannot assume zero."
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "requests",
+      "min": 1,
+      "max": 1,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 51539607552,
+      "max": 51539607552,
+      "source": "baseline/hardware-filtered.json",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.os_desktop_voice.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 17179869184,
+      "max": 17179869184,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No selected supported managed runtime pinned; source advertised 262144 does not prove engine context."
+    },
+    {
+      "path": "candidates[0].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No candidate requests permitted before safety gate."
+    },
+    {
+      "path": "candidates[0].resident_components.target_weights",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[0].resident_components.projector",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[0].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[0].resident_components.graphs_workspace_recurrent_state",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[0].per_sequence_components.sequence_state",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Not measured."
+    },
+    {
+      "path": "candidates[0].per_token_components.target_kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Hybrid KV runtime representation not measured; architectural FP16 full-attention payload is 65536 bytes/token, excluding recurrent state and workspace."
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "fraction",
+      "min": 1,
+      "max": 1,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.max_relative_quality_loss",
+      "status": "assumed",
+      "unit": "fraction",
+      "min": 0.05,
+      "max": 0.05,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_warm_e2e_gain",
+      "status": "assumed",
+      "unit": "fraction",
+      "min": 0.2,
+      "max": 0.2,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_tasks_per_hour_ratio",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1.2,
+      "max": 1.2,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].runtime_context_limit_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No selected supported managed runtime pinned; source advertised 262144 does not prove engine context."
+    },
+    {
+      "path": "candidates[1].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No candidate requests permitted before safety gate."
+    },
+    {
+      "path": "candidates[1].resident_components.target_weights",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[1].resident_components.projector",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[1].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[1].resident_components.graphs_workspace_recurrent_state",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[1].per_sequence_components.sequence_state",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Not measured."
+    },
+    {
+      "path": "candidates[1].per_token_components.target_kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Hybrid KV runtime representation not measured; architectural FP16 full-attention payload is 65536 bytes/token, excluding recurrent state and workspace."
+    },
+    {
+      "path": "candidates[1].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].runtime_context_limit_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No selected supported managed runtime pinned; source advertised 262144 does not prove engine context."
+    },
+    {
+      "path": "candidates[2].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No candidate requests permitted before safety gate."
+    },
+    {
+      "path": "candidates[2].resident_components.target_weights",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[2].resident_components.projector",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[2].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[2].resident_components.graphs_workspace_recurrent_state",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[2].per_sequence_components.sequence_state",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Not measured."
+    },
+    {
+      "path": "candidates[2].per_token_components.target_kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Hybrid KV runtime representation not measured; architectural FP16 full-attention payload is 65536 bytes/token, excluding recurrent state and workspace."
+    },
+    {
+      "path": "candidates[2].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    },
+    {
+      "path": "candidates[3].runtime_context_limit_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No selected supported managed runtime pinned; source advertised 262144 does not prove engine context."
+    },
+    {
+      "path": "candidates[3].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No candidate requests permitted before safety gate."
+    },
+    {
+      "path": "candidates[3].resident_components.target_weights",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[3].resident_components.projector",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[3].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[3].resident_components.graphs_workspace_recurrent_state",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "No exact managed native peak measurement or enforceable host-RAM ceiling."
+    },
+    {
+      "path": "candidates[3].per_sequence_components.sequence_state",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Not measured."
+    },
+    {
+      "path": "candidates[3].per_token_components.target_kv",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Hybrid KV runtime representation not measured; architectural FP16 full-attention payload is 65536 bytes/token, excluding recurrent state and workspace."
+    },
+    {
+      "path": "candidates[3].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T11:02:17.939934+00:00",
+      "notes": null
+    }
+  ],
+  "unresolved_variables": [
+    "requirements.tokens.media_protocol_overhead",
+    "candidates[0].runtime_context_limit_tokens",
+    "candidates[0].measured_max_stable_context_tokens",
+    "candidates[0].resident_components.target_weights",
+    "candidates[0].resident_components.projector",
+    "candidates[0].resident_components.runtime_fixed",
+    "candidates[0].resident_components.graphs_workspace_recurrent_state",
+    "candidates[0].per_sequence_components.sequence_state",
+    "candidates[0].per_token_components.target_kv",
+    "candidates[1].runtime_context_limit_tokens",
+    "candidates[1].measured_max_stable_context_tokens",
+    "candidates[1].resident_components.target_weights",
+    "candidates[1].resident_components.projector",
+    "candidates[1].resident_components.runtime_fixed",
+    "candidates[1].resident_components.graphs_workspace_recurrent_state",
+    "candidates[1].per_sequence_components.sequence_state",
+    "candidates[1].per_token_components.target_kv",
+    "candidates[2].runtime_context_limit_tokens",
+    "candidates[2].measured_max_stable_context_tokens",
+    "candidates[2].resident_components.target_weights",
+    "candidates[2].resident_components.projector",
+    "candidates[2].resident_components.runtime_fixed",
+    "candidates[2].resident_components.graphs_workspace_recurrent_state",
+    "candidates[2].per_sequence_components.sequence_state",
+    "candidates[2].per_token_components.target_kv",
+    "candidates[3].runtime_context_limit_tokens",
+    "candidates[3].measured_max_stable_context_tokens",
+    "candidates[3].resident_components.target_weights",
+    "candidates[3].resident_components.projector",
+    "candidates[3].resident_components.runtime_fixed",
+    "candidates[3].resident_components.graphs_workspace_recurrent_state",
+    "candidates[3].per_sequence_components.sequence_state",
+    "candidates[3].per_token_components.target_kv"
+  ],
+  "promotion_authority": false
+}

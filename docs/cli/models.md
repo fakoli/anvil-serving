@@ -338,6 +338,23 @@ that snapshot, collects only blobs no remaining snapshot references, and
 verifies the target snapshot is absent. It does not approximate repository
 identity with a substring or wildcard.
 
+Native Hugging Face caches have an inspection-only removal plan. It takes an
+explicit local cache root, accepts only a 40-character lowercase commit revision,
+and never contacts Docker, the network, or credential sources:
+
+```bash
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT \
+  --cache-dir /operator/model-cache/hub --dry-run
+```
+
+The plan separates exclusive from shared blobs and reports an inode-deduplicated
+physical-byte reclaim estimate (`st_blocks * 512`) and refs that point to the
+selected snapshot. APFS copy-on-write or clone accounting can make eventual disk
+release lower. Native deletion is intentionally unsupported: `--confirm` is
+refused until the product has a native ownership and deletion-safety
+implementation. The scanner refuses symlinked selected-path ancestry and does
+not follow metadata links outside the selected repository.
+
 ## Cache inventory
 
 Capture a read-only, machine-readable inventory before and after storage work:
@@ -345,6 +362,7 @@ Capture a read-only, machine-readable inventory before and after storage work:
 ```bash
 anvil-serving models cache inventory
 anvil-serving models cache inventory --output ./cache-inventory.json
+anvil-serving models cache inventory --cache-dir /operator/model-cache/hub
 ```
 
 The `model-cache-inventory/v1` result includes filesystem capacity, used, and
@@ -355,11 +373,24 @@ Hugging Face cache volume and inspection image. The volume is mounted read-only,
 and `--output` uses an atomic replacement after requiring an existing parent
 directory.
 
+Pass `--cache-dir` either the Hugging Face home that contains `hub/`, or a
+direct hub-cache directory such as `~/.cache/huggingface/hub` or a custom
+`HF_HUB_CACHE` path containing `models--*` entries. A directory that contains
+both `hub/` and direct `models--*` entries is refused as ambiguous. This is
+filesystem-only and reports each standard repository's exact refs and snapshot
+revisions, snapshot logical bytes, inode-deduplicated logical and allocated blob
+bytes, local-link integrity, upstream artifact completeness as `unverified`, and
+unsafe metadata paths, alongside disk capacity. It makes no Docker, network, or
+credential access. Repositories downloaded by exact revision may correctly have
+no `refs/` directory. Nonstandard layouts retain unknown fields; symlinked roots
+and unsafe metadata are never followed.
+
 Modification, creation, and Docker last-used timestamps are observations for
 inventory and cleanup planning. They are not proof that a model was actually
 served or benchmarked. Use retained benchmark evidence and protected runtime
-state for qualification and deletion decisions. Agents can request the same
-read-only report through the `model_cache_inventory` MCP tool.
+state for qualification and deletion decisions. The `model_cache_inventory` MCP
+tool currently covers managed Docker-volume inventory; native cache inspection
+is CLI-only until an ownership-aware controller surface exists.
 
 ## Cache prune
 

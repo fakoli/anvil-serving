@@ -8,6 +8,30 @@ it does not describe the RTX fleet or the reference Mini-to-Dark topology.
 
 ## Local voice-lane evidence
 
+## Swift / stock Qwen3.8 artifact feasibility stop
+
+The 2026-09-19 read-only screen considered pinned Swift and stock Qwen3.8-27B
+GGUF Q6_K and Q4_K_M artifacts with their family-matched F16 projectors. With
+24.4899 GiB free, a 10 GiB disk reserve, and a 1 GiB runtime/evidence allowance,
+all four uncached pairs failed the optimistic disk screen before temporary files.
+The memory calculator was unresolved: peak loader, Metal, temporary-memory,
+and context requirements were not retained, and no enforced loader/RAM/swap
+containment exists. No model downloaded or ran; no latency, functional,
+quality, capacity, vision, or soak evidence exists. The protected voice path
+reported health 200, but that is not candidate or Talk latency evidence.
+
+| Screen | Result | Decision |
+| --- | --- | --- |
+| Swift Q6_K + F16 projector | 9,327,321,440 B disk-policy shortfall | stop before download |
+| Stock Q6_K + F16 projector | 10,303,479,744 B disk-policy shortfall | stop before download |
+| Swift Q4_K_M + F16 projector | 4,467,294,560 B disk-policy shortfall | stop before download |
+| Stock Q4_K_M + F16 projector | 3,885,313,984 B disk-policy shortfall | stop before download |
+
+This is a storage-policy and runtime-containment stop, not a claim that either
+model is impossible on Apple hardware or a cleanup authorization. See the
+[dated finding](../../findings/2026-09-19-swift-qwen38-apple-feasibility.md)
+and its [sanitized evidence bundle](../../findings/2026-09-19-swift-qwen38-apple-feasibility-evidence/README.md).
+
 The 2026-09-08 refresh evaluated an existing Qwen3 4B baseline and MLX 4-bit
 Qwen candidates against functional, strict spoken, strict controlled-output,
 and bounded audio/Realtimes gates. No LLM route changed and no LLM candidate was

@@ -72,6 +72,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-09-19 | [Swift / stock Qwen3.8 Apple artifact feasibility stop](2026-09-19-swift-qwen38-apple-feasibility.md) | Read-only Apple M4 Max storage-policy stop for uncached Swift/stock Qwen3.8 GGUF pairs; memory containment unresolved; no download, launch, benchmark, cleanup, or promotion |
 | 2026-09-17 | [GLM mixed 3.5-bpw startup](2026-09-17-glm53-mixed35-startup.md) | Host RAM exhaustion during loading shut down the desktop session; zero candidate inference requests; exact 4-bpw baseline restored; retry requires containment |
 | 2026-09-17 | [GLM mixed 3.5-bpw bounded fix-forward](2026-09-17-glm53-mixed35-fix-forward.md) | Loader recovery passed C1/C4 functional and repeated quality checks plus a 216K actual-token needle; strict capacity was inconsistent and the baseline remains selected |
 | 2026-09-13 | [GLM Flash EXL3 327K intelligence and context qualification](2026-09-13-intelligence-context-scout.md) | Selected text-only primary after fixed quality, 258K context, agentic, SWE, promotion, and bounded client acceptance; Qwen rollback declared, fresh boot/reboot tests unrun |

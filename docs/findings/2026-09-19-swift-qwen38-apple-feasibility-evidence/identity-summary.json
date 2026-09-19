@@ -1,0 +1,117 @@
+{
+  "schema": "swift-campaign-source-registry/v1",
+  "captured_on": "2026-09-19",
+  "source_policy": "public unauthenticated Hugging Face metadata only; no signed redirect or capability URLs retained",
+  "primary_gguf_pairs": [
+    {
+      "tier": "Q6_K",
+      "swift": {
+        "repo": "ukisai/Swift-Qwen3.8-27B-GGUF",
+        "revision": "eb0e3a7dc70643c2ab920f5133750d02c20849ff",
+        "metadata_url": "https://huggingface.co/api/models/ukisai/Swift-Qwen3.8-27B-GGUF",
+        "url": "https://huggingface.co/ukisai/Swift-Qwen3.8-27B-GGUF/resolve/eb0e3a7dc70643c2ab920f5133750d02c20849ff/Swift-Qwen3.8-27B-Q6_K.gguf",
+        "file": "Swift-Qwen3.8-27B-Q6_K.gguf",
+        "bytes": 22884407456,
+        "content_sha256": "7f4de8abd5446c08b0f975a1b38e43d02639f4ae9ecdd2ddfd5c5b0f612bda59"
+      },
+      "stock": {
+        "repo": "bartowski/Qwen3.8-27B-GGUF",
+        "revision": "125a02af4987b57c7deb88d7f2ec58a5725c07c0",
+        "metadata_url": "https://huggingface.co/api/models/bartowski/Qwen3.8-27B-GGUF",
+        "url": "https://huggingface.co/bartowski/Qwen3.8-27B-GGUF/resolve/125a02af4987b57c7deb88d7f2ec58a5725c07c0/Qwen3.8-27B-Q6_K.gguf",
+        "file": "Qwen3.8-27B-Q6_K.gguf",
+        "bytes": 23860565728,
+        "content_sha256": "539041d2cf400b02f53a53cae54339ea65103d276645a34a68eac1c8d69a9db3"
+      }
+    },
+    {
+      "tier": "Q4_K_M",
+      "swift": {
+        "repo": "ukisai/Swift-Qwen3.8-27B-GGUF",
+        "revision": "eb0e3a7dc70643c2ab920f5133750d02c20849ff",
+        "url": "https://huggingface.co/ukisai/Swift-Qwen3.8-27B-GGUF/resolve/eb0e3a7dc70643c2ab920f5133750d02c20849ff/Swift-Qwen3.8-27B-Q4_K_M.gguf",
+        "file": "Swift-Qwen3.8-27B-Q4_K_M.gguf",
+        "bytes": 18024380576,
+        "content_sha256": "ad5811e291431bd0de1cec0c4004a5eac98daee9850882edac69a823209e88ab"
+      },
+      "stock": {
+        "repo": "bartowski/Qwen3.8-27B-GGUF",
+        "revision": "125a02af4987b57c7deb88d7f2ec58a5725c07c0",
+        "url": "https://huggingface.co/bartowski/Qwen3.8-27B-GGUF/resolve/125a02af4987b57c7deb88d7f2ec58a5725c07c0/Qwen3.8-27B-Q4_K_M.gguf",
+        "file": "Qwen3.8-27B-Q4_K_M.gguf",
+        "bytes": 17442399968,
+        "content_sha256": "880a52af8317974f7b4b064a6bc29ff49e188b91aa218e08eea3078b6b1cc673"
+      }
+    }
+  ],
+  "projectors": [
+    {
+      "repo": "ukisai/Swift-Qwen3.8-27B-GGUF",
+      "revision": "eb0e3a7dc70643c2ab920f5133750d02c20849ff",
+      "file": "mmproj-Swift-Qwen3.8-27B-F16.gguf",
+      "bytes": 927606976,
+      "content_sha256": "daa1116c9422fa390cc8688495da0e91781f92841dfc3b31a378ff252571745a"
+    },
+    {
+      "repo": "bartowski/Qwen3.8-27B-GGUF",
+      "revision": "125a02af4987b57c7deb88d7f2ec58a5725c07c0",
+      "file": "mmproj-Qwen3.8-27B-f16.gguf",
+      "bytes": 927607008,
+      "content_sha256": "cb0a71fe9b84af2552fc6260acf8e9773a29d115c683aba01c72a7ac537b212b"
+    },
+    {
+      "repo": "bartowski/Qwen3.8-27B-GGUF",
+      "revision": "125a02af4987b57c7deb88d7f2ec58a5725c07c0",
+      "file": "mmproj-Qwen3.8-27B-bf16.gguf",
+      "bytes": 931145952,
+      "content_sha256": "e43a597863a21bfa48b0fbd4553a771ae4117e25bb172e66f1dbc3fc6d037131"
+    }
+  ],
+  "lineage": {
+    "swift_bf16": {
+      "repo": "ukisai/Swift-Qwen3.8-27b",
+      "revision": "048328f4059015b63f860a453bf94834af0db683",
+      "base_model": "Qwen/Qwen3.8-27B"
+    },
+    "stock_bf16": {
+      "repo": "Qwen/Qwen3.8-27B",
+      "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+    }
+  },
+  "conversion_runtime": {
+    "project": "ggml-org/llama.cpp",
+    "release_tag": "b10896",
+    "commit": "fa6769818708afd9807b22183ccda112fd563427",
+    "release_url": "https://github.com/ggml-org/llama.cpp/releases/tag/b10896",
+    "commit_url": "https://github.com/ggml-org/llama.cpp/commit/fa6769818708afd9807b22183ccda112fd563427",
+    "published_at": "2026-09-10T15:42:27Z",
+    "attribution_caveat": "Both primary GGUF cards name b10896, but their imatrix/per-tensor and MTP layouts are not identical."
+  },
+  "fallbacks": [
+    {
+      "repo": "suzu89/Swift-Qwen3.8-27b-oQ6-mtp",
+      "revision": "a91ed24131409665257918bf7a94f2a7c055ecd9",
+      "format": "MLX safetensors",
+      "aggregate_model_bytes": 23716288457,
+      "aggregate_content_sha256": null,
+      "reason": "no single bundle hash; per-shard hashes retained in raw tree metadata"
+    },
+    {
+      "repo": "lmstudio-community/Qwen3.8-27B-MLX-6bit",
+      "revision": "05f38c1f39e2f39619653616fe8e96a5d676358e",
+      "format": "MLX safetensors",
+      "aggregate_model_bytes": 22777879765,
+      "aggregate_content_sha256": null
+    },
+    {
+      "repo": "lmstudio-community/Qwen3.8-27B-MLX-4bit",
+      "revision": "6067b15cf581666a4aecf6af3afaba4bb5efc20c",
+      "format": "MLX safetensors",
+      "aggregate_model_bytes": 16054541599,
+      "aggregate_content_sha256": null
+    }
+  ],
+  "configuration_status": "nominated-not-loaded",
+  "runtime_binary_hash": null,
+  "effective_template_parser_sampling_verified": false
+}

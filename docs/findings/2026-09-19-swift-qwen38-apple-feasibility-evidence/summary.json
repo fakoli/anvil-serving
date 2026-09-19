@@ -1,0 +1,101 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-19-swift-qwen38-apple-feasibility-evidence",
+  "complete": false,
+  "investigation_status": "unresolved",
+  "stage_reached": "feasibility",
+  "identity": {
+    "hardware": "Apple M4 Max 40-core GPU; 48 GiB shared memory",
+    "artifact_identity": "identity-summary.json",
+    "runtime_status": "nominated only; no supported contained managed trial"
+  },
+  "workload": {
+    "planned_input_tokens": 24000,
+    "planned_output_reasoning_reserve": 8192,
+    "concurrency": 1,
+    "text_tool_tasks_planned": 12,
+    "visual_tasks_planned": 15,
+    "executed_candidate_requests": 0,
+    "corpus_frozen": false
+  },
+  "measurement": {
+    "path": "read-only host inventory and deterministic feasibility",
+    "warm_cold_state": "not applicable; no model run",
+    "sample_count": 0,
+    "statistics": []
+  },
+  "gates": [
+    {
+      "gate": "disk",
+      "status": "policy-infeasible"
+    },
+    {
+      "gate": "unified-memory-fit",
+      "status": "unresolved"
+    },
+    {
+      "gate": "managed-native-llama-cpp",
+      "status": "unsupported"
+    },
+    {
+      "gate": "enforced-native-loader-ram-swap",
+      "status": "missing"
+    },
+    {
+      "gate": "preflight",
+      "status": "not-run"
+    },
+    {
+      "gate": "coding-tools",
+      "status": "not-run"
+    },
+    {
+      "gate": "vision",
+      "status": "not-run"
+    },
+    {
+      "gate": "efficiency",
+      "status": "not-run"
+    },
+    {
+      "gate": "capacity",
+      "status": "not-run"
+    },
+    {
+      "gate": "voice-load-stability",
+      "status": "not-run"
+    }
+  ],
+  "headline_results": [],
+  "failures": [
+    "Selected uncached GGUF packages fail optimistic disk screen with declared reserve",
+    "Unknown loader peak has no enforced native RAM/swap containment",
+    "Managed native GGUF lifecycle/download not implemented"
+  ],
+  "limitations": [
+    "No conclusion about Swift intelligence, speed or vision",
+    "No promotion and no route/client change",
+    "Readiness probes do not establish voice responsiveness under load",
+    "Native cache preview does not establish inactive dependencies or authorize deletion",
+    "Independent review and CI recorded separately after final checks"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "external-prior"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Supported native exact-artifact lifecycle and independently verified memory containment/peak envelope, then storage dry-run and fresh baseline"
+  },
+  "evidence": [
+    "identity-summary.json",
+    "feasibility-input-v1.json",
+    "feasibility-result-v1.json",
+    "disk-feasibility-v1.json",
+    "managed-runtime-contract.json"
+  ],
+  "campaign_status": "closed-with-evidence-gaps",
+  "restoration": "preservation-verified-no-serving-mutation"
+}

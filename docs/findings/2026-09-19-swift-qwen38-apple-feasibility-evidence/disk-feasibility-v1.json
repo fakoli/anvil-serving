@@ -1,0 +1,39 @@
+{
+  "observed_at": "2026-09-19T11:02:17.939934+00:00",
+  "free_bytes": 26295853056,
+  "free_reserve_bytes": 10737418240,
+  "runtime_evidence_allowance_bytes": 1073741824,
+  "temporary_bytes": null,
+  "classification": "policy-infeasible for uncached selected artifacts under optimistic zero-extra-temporary-byte screen",
+  "does_not_prove_physical_impossibility": true,
+  "cells": [
+    {
+      "id": "swift-q6-k",
+      "artifact_bytes": 23812014432,
+      "minimum_required_free_bytes": 35623174496,
+      "shortfall_bytes": 9327321440,
+      "passes_artifact_pair_disk_screen": false
+    },
+    {
+      "id": "stock-q6-k",
+      "artifact_bytes": 24788172736,
+      "minimum_required_free_bytes": 36599332800,
+      "shortfall_bytes": 10303479744,
+      "passes_artifact_pair_disk_screen": false
+    },
+    {
+      "id": "swift-q4-k-m",
+      "artifact_bytes": 18951987552,
+      "minimum_required_free_bytes": 30763147616,
+      "shortfall_bytes": 4467294560,
+      "passes_artifact_pair_disk_screen": false
+    },
+    {
+      "id": "stock-q4-k-m",
+      "artifact_bytes": 18370006976,
+      "minimum_required_free_bytes": 30181167040,
+      "shortfall_bytes": 3885313984,
+      "passes_artifact_pair_disk_screen": false
+    }
+  ]
+}

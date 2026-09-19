@@ -1,0 +1,47 @@
+{
+  "observed_at": "2026-09-19T11:00:51.883103+00:00",
+  "product_revision": "1cc7a45ec959daaece7c1033720e6160aec3ec6a",
+  "capabilities": {
+    "schema": "anvil-services-capabilities/v1",
+    "host_os": "macos",
+    "managers": [
+      "launchd",
+      "docker"
+    ],
+    "native_engines": [
+      "mlx-lm",
+      "mlx-vlm"
+    ],
+    "actions": [
+      "status",
+      "discover",
+      "capabilities",
+      "logs",
+      "adopt",
+      "install",
+      "up",
+      "down",
+      "restart",
+      "enable",
+      "disable"
+    ],
+    "cloud": "not_implemented",
+    "neocloud": "not_implemented",
+    "controller_self_mutation": "requires_recovery_transport"
+  },
+  "checks": [
+    {
+      "engine": "llama-cpp",
+      "accepted": false,
+      "error": "native model serving requires MLX or an adopted legacy binding"
+    },
+    {
+      "engine": "mlx-lm",
+      "accepted": true
+    },
+    {
+      "engine": "mlx-vlm",
+      "accepted": true
+    }
+  ]
+}

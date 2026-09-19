@@ -1,0 +1,20 @@
+{
+  "observed_at": "2026-09-19T11:15:16.666207+00:00",
+  "disk_free_bytes": 26177597440,
+  "swap_used_bytes": 0,
+  "protected_service_pids_and_definition_hashes_unchanged": true,
+  "voice_health_statuses": [
+    200,
+    200,
+    200
+  ],
+  "router_declaration_hash_unchanged": true,
+  "candidate_created": false,
+  "runtime_route_mount_verified": false,
+  "qualification": false,
+  "notes": [
+    "Health probes are not voice inference/latency evidence",
+    "No candidate or service mutation; development dependencies and generated documentation consume disk",
+    "No candidate-load stability or thermal soak performed"
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-19-swift-qwen38-apple-feasibility-evidence",
+    "capability": "coding/reasoning auxiliary evaluation",
+    "repository_revision": "1cc7a45ec959daaece7c1033720e6160aec3ec6a",
+    "dirty_state": "isolated campaign changes; no live serving mutation",
+    "started_at": "2026-09-19T10:57:19.240072+00:00",
+    "completed_at": "2026-09-19T11:17:07.025953+00:00",
+    "evidence_labels": [
+      "external-prior"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.recipe-feasibility-input/v1",
+    "anvil-serving.recipe-feasibility-result/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "identity-summary.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "missing",
+      "files": [],
+      "reason": "Exact executable corpus/media hashes were not frozen: trial blocked before any candidate request."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.md",
+        "coverage-and-gaps.md",
+        "workload-manifest.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "identity-summary.json",
+        "managed-runtime-contract.json",
+        "baseline/native-observations.json",
+        "baseline/hardware-filtered.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "missing",
+      "files": [],
+      "reason": "No candidate run was safe; host inventory and deterministic feasibility are retained as configuration/decision evidence, not benchmark outputs."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "post-check/preservation.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "feasibility-input-v1.json",
+        "feasibility-result-v1.json",
+        "disk-feasibility-v1.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": ""
+    }
+  ]
+}

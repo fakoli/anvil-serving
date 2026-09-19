@@ -127,5 +127,10 @@ an efficiency research lead, not a proven full-contract upgrade.
 
 ## Dated run history
 
+- 2026-09-19 — [Apple artifact feasibility stop](../../findings/2026-09-19-swift-qwen38-apple-feasibility.md): the separately pinned Swift/stock GGUF
+  families were not downloaded or run. All selected uncached Q6_K/Q4_K_M plus
+  F16-projector pairs failed the retained disk-policy arithmetic; memory
+  containment was unresolved. This is not a quality or performance result and
+  does not change the RTX 5090 candidate decision.
 - 2026-09-12 — [Efficient-variant finding](../../findings/2026-09-12-qwen38-efficient-variants-rtx5090.md)
   and [complete evidence](../../findings/2026-09-12-qwen38-efficient-variants-rtx5090-evidence/README.md).

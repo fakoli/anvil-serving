@@ -1,0 +1,25 @@
+{
+  "hardware": [
+    {
+      "chip_type": "Apple M4 Max",
+      "machine_model": "Mac16,5",
+      "machine_name": "MacBook Pro",
+      "number_processors": "proc 16:0:12:4",
+      "physical_memory": "48 GB"
+    }
+  ],
+  "gpu": [
+    {
+      "spdisplays_mtlgpufamilysupport": "spdisplays_metal4",
+      "spdisplays_vendor": "sppci_vendor_Apple",
+      "sppci_bus": "spdisplays_builtin",
+      "sppci_cores": "40",
+      "sppci_model": "Apple M4 Max"
+    }
+  ],
+  "wired_limit": {
+    "returncode": 0,
+    "output": "iogpu.wired_limit_mb: 0"
+  },
+  "recommended_metal_working_set_bytes": null
+}
