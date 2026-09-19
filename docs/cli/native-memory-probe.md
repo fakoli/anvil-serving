@@ -36,5 +36,4 @@ after the probe. Their preservation is a campaign gate, not inferred from this
 child's successful exit. macOS virtual-address limits and Metal recommended
 working-set sizes must not be presented as hard physical-memory containment.
 
-See [candidate operations](../../.agents/skills/anvil-serving-candidate-operations/SKILL.md)
-and the [native containment gap](../../.tickets/2026-09-19-apple-native-artifact-and-memory-containment.md).
+See the [Apple feasibility finding](../findings/2026-09-19-swift-qwen38-apple-feasibility.md) for the current trial boundary.
