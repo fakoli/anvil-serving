@@ -189,6 +189,10 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 	if err != nil || !bytes.Contains(missingWire, []byte(`"found":false`)) || bytes.Contains(missingWire, []byte(`"human"`)) {
 		t.Fatalf("absent human inspect wire shape = %s, %v", missingWire, err)
 	}
+	expectedAbsentWire := `{"operation":"human-inspect","epoch":"","secret":"","key_id":"","principal":"","grants":[],"invitation":"","installation":"","role":"","resources":[],"generation":0,"fingerprint":"","found":false,"status":{"id":"","status":"","fingerprint":"","epoch":"","generation":0,"resources":[]}}`
+	if string(missingWire) != expectedAbsentWire {
+		t.Fatalf("absent human inspect envelope = %s", missingWire)
+	}
 	if _, err := handler.apply(Request{Operation: "human-inspect", Principal: "malformed"}); !errors.Is(err, ErrAdmin) {
 		t.Fatalf("malformed inspect principal accepted: %v", err)
 	}
@@ -208,10 +212,8 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 		t.Fatalf("native-absent deletion fence = %#v, %v", prepared, err)
 	}
 	wirePrepared, err := json.Marshal(prepared)
-	var decodedPrepared Response
-	decodeErr := config.Decode(bytes.NewReader(wirePrepared), &decodedPrepared)
-	if err != nil || decodeErr != nil {
-		t.Fatalf("native-absent deletion response does not meet closed client shape: %s, %v, %v", wirePrepared, err, decodeErr)
+	if err != nil || !bytes.Contains(wirePrepared, []byte(`"completed_at":"0001-01-01T00:00:00Z"`)) {
+		t.Fatalf("pending native-absent deletion wire timestamp = %s, %v", wirePrepared, err)
 	}
 	retry, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-delete-prepare-absent", Principal: fenced.ID, Username: "idp-only", RequestID: requestID})
 	if err != nil || retry.Deletion == nil || retry.Deletion.RequestID != requestID || retry.Deletion.Generation != 2 {

@@ -28,7 +28,7 @@ type Deletion struct {
 	Epoch       string    `json:"epoch"`
 	Digest      string    `json:"digest"`
 	Complete    bool      `json:"complete"`
-	CompletedAt time.Time `json:"completed_at,omitzero"`
+	CompletedAt time.Time `json:"completed_at"`
 }
 
 func deletionDigest(id, principal string, expected uint64) string {
