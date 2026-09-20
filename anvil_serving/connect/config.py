@@ -291,6 +291,8 @@ def _validate_local_tunnels(data: dict[str, Any]) -> None:
         *(r["rule"]["host"] for r in gateway["gateway"]["resources"]),
         *(c["id"] + ".connector.anvil-connect.internal" for c in connectors),
     }
+    if "portal_host" in gateway["gateway"]:
+        hosts.add(gateway["gateway"]["portal_host"])
     if listener["server_name"] in hosts or listener["http_host"] in hosts:
         raise _error("$.gateway.local_tunnel", "must not reuse an existing service identity")
     addresses = {gateway["gateway"]["listen"], gateway["tunnel_listen"], data["authelia"]["listen"],
@@ -655,6 +657,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         embedded_fields.add("device_authorizations")
     if isinstance(gateway_raw["gateway"], dict) and "browser_administration" in gateway_raw["gateway"]:
         embedded_fields.add("browser_administration")
+    if isinstance(gateway_raw["gateway"], dict) and "portal_host" in gateway_raw["gateway"]:
+        embedded_fields.add("portal_host")
     embedded = _mapping(gateway_raw["gateway"], "$.gateway.gateway", embedded_fields)
     if embedded["schema"] != "anvil-connect.gateway/v1":
         raise _error("$.gateway.gateway.schema", "must equal anvil-connect.gateway/v1")
@@ -752,6 +756,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
             raise _error("$.gateway.gateway.browser_administration", "must name a GET/POST browser resource and unique opaque operators")
         browser_administration = {"browser_resource": browser_id, "operators": sorted(operators)}
     gateway_embedded = {"schema": embedded["schema"], "listen": gateway_listen, "max_concurrent": _positive(embedded["max_concurrent"], "$.gateway.gateway.max_concurrent", 512), "resources": sorted(resources, key=lambda r: r["rule"]["id"])}
+    if "portal_host" in embedded:
+        gateway_embedded["portal_host"] = _host(embedded["portal_host"], "$.gateway.gateway.portal_host")
     if "device_authorizations" in embedded:
         gateway_embedded["device_authorizations"] = device_authorizations
     if browser_administration is not None:
@@ -1083,6 +1089,9 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if len(secret_files) != len(set(secret_files)):
         raise _error("$.authelia", "must use distinct protected secret files")
     all_hosts = {gateway["control_host"], gateway["tunnel_host"], *(r["rule"]["host"] for r in gateway["gateway"]["resources"])}
+    if "portal_host" in gateway_embedded:
+        if gateway_embedded["portal_host"] in all_hosts | {authelia["host"]}:
+            raise _error("$.gateway.gateway.portal_host", "must be distinct from resource, authentication, control, and tunnel hosts")
     if authelia["host"] in all_hosts:
         raise _error("$.authelia.host", "must be distinct from public resource, control, and tunnel hosts")
     if ("origin_proxy" in caddy and any(

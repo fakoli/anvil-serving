@@ -176,6 +176,17 @@ An existing unrelated unit with the same name is refused.
 
 ### Service home and application roles
 
+Set optional `gateway.gateway.portal_host` to a dedicated hostname such as
+`home.example.test` to publish the chooser independently of an application.
+The gateway serves its root, home assets, and sign-in endpoints directly; it
+does not create a connector resource or a service grant. Publish that hostname
+through the verified TLS edge like the existing browser hosts. Rendering adds
+its exact OIDC callback and makes it Authelia's landing destination. It must be
+distinct from every application, authentication, control, and tunnel hostname.
+Its cookie is bound to the home host and cannot authorize application access.
+Enabled Connect accounts see only their existing service entitlements there.
+Access editing remains on the configured administration service's own host.
+
 Open `/_anvil-connect/home` beneath a declared browser service's path prefix.
 For a service rooted at `/workbench`, the home is
 `https://workbench.example.test/workbench/_anvil-connect/home`. Login returns to

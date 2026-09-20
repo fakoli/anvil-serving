@@ -108,15 +108,21 @@ def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
     socket = (ingress["directory"] if ingress is not None else gateway["state_directory"]) + "/ingress.sock"
     hosts = [authelia["host"], gateway["control_host"], gateway["tunnel_host"]]
     hosts.extend(resource["rule"]["host"] for resource in gateway["gateway"]["resources"])
+    portal_host = gateway["gateway"].get("portal_host")
+    if portal_host:
+        hosts.append(portal_host)
     routes: list[dict[str, Any]] = []
-    if "landing_resource" in authelia:
-        landing = next(resource["rule"] for resource in gateway["gateway"]["resources"]
-                       if resource["rule"]["id"] == authelia["landing_resource"])
-        landing_path = landing["path_prefix"].removesuffix("/") + "/_anvil-connect/home"
+    if portal_host or "landing_resource" in authelia:
+        if portal_host:
+            landing_url = "https://" + portal_host + "/_anvil-connect/home"
+        else:
+            landing = next(resource["rule"] for resource in gateway["gateway"]["resources"]
+                           if resource["rule"]["id"] == authelia["landing_resource"])
+            landing_url = "https://" + landing["host"] + landing["path_prefix"].removesuffix("/") + "/_anvil-connect/home"
         routes.append({
             "match": [{"host": [authelia["host"]], "method": ["GET", "HEAD"], "path": ["/_anvil-connect/home"]}],
             "handle": [_headers(), {"handler": "static_response", "status_code": 302, "headers": {
-                "Location": ["https://" + landing["host"] + landing_path], "Cache-Control": ["no-store"],
+                "Location": [landing_url], "Cache-Control": ["no-store"],
             }}],
         })
     routes.append({
@@ -125,6 +131,11 @@ def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
     })
     # The tunnel endpoint is deliberately narrower than the ordinary ingress.
     routes.append(_route({"host": [gateway["tunnel_host"]], "method": ["GET"], "path": ["/acv1/events"], **_upgrade_match()}, ["1.1"], socket))
+    if portal_host:
+        routes.append(_route({"host": [portal_host], "path": [
+            "/", "/_anvil-connect/home", "/_anvil-connect/home/*",
+            "/_anvil-connect/login", "/_anvil-connect/callback", "/_anvil-connect/logout",
+        ]}, ["h2c"], socket))
     for resource in gateway["gateway"]["resources"]:
         rule = resource["rule"]
         host, prefix, methods = rule["host"], rule["path_prefix"], rule["methods"]
@@ -172,6 +183,9 @@ def _template_quote(value: str) -> str:
 def _authelia(manifest: dict[str, Any]) -> str:
     gateway, auth = manifest["gateway"], manifest["authelia"]
     callbacks = sorted({f"https://{item['rule']['host']}/_anvil-connect/callback" for item in gateway["gateway"]["resources"] if item["rule"]["access"] == "browser"})
+    portal_host = gateway["gateway"].get("portal_host")
+    if portal_host:
+        callbacks = sorted([*callbacks, f"https://{portal_host}/_anvil-connect/callback"])
     if not callbacks:
         raise ManifestError("$.gateway.gateway.resources: at least one browser resource is required for managed OIDC")
     # Current Authelia template filters document fileContent+nindent. Block
@@ -199,7 +213,7 @@ def _authelia(manifest: dict[str, Any]) -> str:
         # Pinned Authelia automatically remembers passkey logins otherwise,
         # bypassing its normal inactivity and expiration limits.
         *(["      remember_me: -1"] if auth.get("webauthn", {}).get("enable_passkey_login") else []),
-        *([] if "landing_resource" not in auth else [f"      default_redirection_url: {_quote('https://' + auth['host'] + '/_anvil-connect/home')}"]),
+        *([] if not portal_host and "landing_resource" not in auth else [f"      default_redirection_url: {_quote('https://' + auth['host'] + '/_anvil-connect/home')}"]),
         "storage:", "  encryption_key: |-", f"    {{{{- fileContent {_template_quote(auth['storage_encryption_key_file'])} | nindent 4 }}}}", "  local:", f"    path: {_quote(auth['state_directory'] + '/authelia.sqlite3')}",
         "identity_providers:", "  oidc:", "    hmac_secret: |-", f"      {{{{- fileContent {_template_quote(auth['oidc_hmac_secret_file'])} | nindent 6 }}}}", "    jwks:", "      - key_id: 'anvil-connect-rs256'", "        algorithm: RS256", "        use: sig", "        key: |-",
         f"          {{{{- fileContent {_template_quote(auth['oidc_rsa_private_key_file'])} | nindent 10 }}}}",
