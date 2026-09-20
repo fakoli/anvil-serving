@@ -119,6 +119,7 @@ nav:
       - OpenClaw integration: OPENCLAW-INTEGRATION-SPEC.md
       - Agent workbench: WORKBENCH.md
       - Workbench portal: WORKBENCH-PORTAL.md
+      - Optional Jev assistance: JEV-ASSISTANCE.md
       - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
   - Reference:
       - Product contracts:

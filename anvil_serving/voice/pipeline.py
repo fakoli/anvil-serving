@@ -277,7 +277,12 @@ class VoicePipeline:
         self.manager.start_all()
 
     def stop(self, *, join_timeout: Optional[float] = 2.0) -> None:
+        advisor = getattr(self, "jev_advisor", None)
+        if advisor is not None:
+            advisor.configure(False)
         self.manager.stop_all(join_timeout=join_timeout)
+        if advisor is not None:
+            advisor.close()
 
     def shutdown_gracefully(self, *, join_timeout: Optional[float] = 2.0) -> None:
         """Push :data:`PIPELINE_END` and wait (up to ``join_timeout``) for the
@@ -308,7 +313,7 @@ class VoicePipeline:
         """
         self.audio_in.put(PIPELINE_END)
         self._wait_for_last_stage_to_drain(timeout=join_timeout)
-        self.manager.stop_all(join_timeout=join_timeout)
+        self.stop(join_timeout=join_timeout)
 
     def _wait_for_last_stage_to_drain(self, *, timeout: Optional[float]) -> None:
         stage = self.manager.stages[-1] if self.manager.stages else None

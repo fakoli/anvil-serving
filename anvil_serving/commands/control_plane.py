@@ -255,6 +255,25 @@ def commands() -> tuple[CommandNode, ...]:
             "workbench",
             "Build Workbench runners and manage the optional companion hub.",
             children=(
+                _node(
+                    "jev", "Configure and request explicitly attributed optional Jev advice.",
+                    children=(
+                        _node("setup", "Record an installed trusted Anvil bridge without enabling cloud calls.",
+                              options=(_option("--anvil-binary", summary="Absolute installed Anvil executable.", value_name="PATH"), _option("--confirm", summary="Confirm local policy setup.")),
+                              mutation_class="mutate", handler=_handler("anvil_serving.jev_cli", argv_prefix=("setup",))),
+                        _node("status", "Show Jev policy without credentials or network access.",
+                              handler=_handler("anvil_serving.jev_cli", argv_prefix=("status",))),
+                        _node("enable", "Enable one named optional capability with explicit cloud export permission.",
+                              options=(_option("--allow-api", summary="Permit the TypeSafe API."), _option("--allow-export", summary="Permit selected source export."), _option("--confirm", summary="Confirm enabling the selected capability.")),
+                              mutation_class="mutate", handler=_handler("anvil_serving.jev_cli", argv_prefix=("enable",))),
+                        _node("disable", "Stop new calls globally or for one named capability.",
+                              options=(_option("--confirm", summary="Confirm local policy change."),),
+                              mutation_class="mutate", handler=_handler("anvil_serving.jev_cli", argv_prefix=("disable",))),
+                        _node("advise", "Request advice on selected JSON without changing a resource or task.",
+                              options=(_option("--input", summary="Selected bounded JSON input file.", value_name="PATH"), _option("--allow-export", summary="Permit this selected input to reach TypeSafe."), _option("--no-jev", summary="Disable this request before reading its input.")),
+                              handler=_handler("anvil_serving.jev_cli", argv_prefix=("advise",))),
+                    ), docs_anchor="docs/JEV-ASSISTANCE.md",
+                ),
                 _resource_node(
                     "build",
                     "Build the Workbench hub image from the local companion checkout.",

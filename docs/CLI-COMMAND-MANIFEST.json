@@ -43597,6 +43597,867 @@
     },
     {
       "coowned_resource_roles": [],
+      "docs_anchor": "docs/JEV-ASSISTANCE.md",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": null,
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "workbench jev",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Configure and request explicitly attributed optional Jev advice.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/JEV-ASSISTANCE.md",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.jev_cli:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--anvil-binary"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Absolute installed Anvil executable.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm local policy setup.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "workbench jev setup",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Record an installed trusted Anvil bridge without enabling cloud calls.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/JEV-ASSISTANCE.md",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.jev_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "workbench jev status",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Show Jev policy without credentials or network access.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/JEV-ASSISTANCE.md",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.jev_cli:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--allow-api"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Permit the TypeSafe API.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--allow-export"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Permit selected source export.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm enabling the selected capability.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "workbench jev enable",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Enable one named optional capability with explicit cloud export permission.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/JEV-ASSISTANCE.md",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.jev_cli:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm local policy change.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "workbench jev disable",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Stop new calls globally or for one named capability.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/JEV-ASSISTANCE.md",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.jev_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--input"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Selected bounded JSON input file.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--allow-export"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Permit this selected input to reach TypeSafe.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--no-jev"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Disable this request before reading its input.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "workbench jev advise",
+      "product_family": "control-plane-fleet",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Request advice on selected JSON without changing a resource or task.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/WORKBENCH.md#lifecycle",
       "execution_host_os": [],
       "execution_policy": "resource-owner",

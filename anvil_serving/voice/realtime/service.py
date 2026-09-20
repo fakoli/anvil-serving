@@ -324,7 +324,25 @@ class RealtimeService:
 
     # -- individual client-event handlers --------------------------------------
     def _on_session_update(self, event: SessionUpdate) -> None:
-        self.state.session_config.update(event.session)
+        values = dict(event.session)
+        selection = values.pop("anvil_jev", None)
+        disclosure = None
+        if selection is not None:
+            if (type(selection) is not dict or set(selection) != {"enabled", "allow_export"}
+                    or any(type(value) is not bool for value in selection.values())):
+                self._send_error("invalid_request", "anvil_jev requires explicit enabled and allow_export booleans")
+                return
+            from ... import jev
+            from ..jev_intent import IntentAdvisor
+            enabled = selection["enabled"] and selection["allow_export"]
+            advisor = getattr(self.pipeline, "jev_advisor", None)
+            if enabled and advisor is None:
+                advisor = self.pipeline.jev_advisor = IntentAdvisor(self.pipeline.cancel_scope)
+            if advisor is not None:
+                advisor.configure(enabled)
+            disclosure = {"enabled": bool(advisor and advisor.permitted()), "provider": "typesafe", "model": jev.MODEL,
+                          "advisory": True, "disclosure": "Opted-in final text is sent to TypeSafe/Jev in the cloud. Intent never grants permission or executes an action."}
+        self.state.session_config.update(values)
         configure = getattr(getattr(self.pipeline, "llm", None), "configure_realtime_session", None)
         if callable(configure):
             configure(self.state.session_config)
@@ -332,7 +350,7 @@ class RealtimeService:
             {
                 "type": "session.updated",
                 "event_id": self._evt_id(),
-                "session": dict(self.state.session_config),
+                "session": dict(self.state.session_config) | ({"anvil_jev": disclosure} if disclosure is not None else {}),
             }
         )
 
@@ -448,6 +466,9 @@ class RealtimeService:
         response_created = self._begin_response(turn_id, response_config=event.response)
         self.pipeline.llm.in_queue.put(request)
         self.send_event(response_created)
+        advisor = getattr(self.pipeline, "jev_advisor", None)
+        if advisor is not None:
+            advisor.submit(request)
 
     def _on_response_cancel(self, event: ResponseCancel) -> None:
         # Barge-in: bump the shared generation counter so every stage still
@@ -732,11 +753,19 @@ class RealtimeService:
                         out.append(server_event_to_dict(server_event))
                 if isinstance(item, Transcription) and item.is_final:
                     out.append(self._begin_response(item.turn_id))
+                    advisor = getattr(self.pipeline, "jev_advisor", None)
+                    if advisor is not None:
+                        advisor.submit(item)
                     break
                 if kind == "audio" and isinstance(item, EndOfResponse):
                     # Do not consume a later turn's FIFO output until the
                     # sender has written this terminal and reset the response.
                     break
+        advisor = getattr(self.pipeline, "jev_advisor", None)
+        if advisor is not None:
+            advice = advisor.drain()
+            if advice is not None:
+                out.append(advice | {"event_id": self._evt_id()})
         return out
 
 

@@ -398,6 +398,12 @@ required operands, choices, and defaults.
 | `connect edge-apply` | Apply declared DNS records and tunnel ingress rules through Cloudflare. | `mutate` / `bounded` | `--manifest`<br>`--edge-config`<br>`--retire-orphans`<br>`--dry-run`<br>`--confirm` |
 | `connect extend` | Extend one enrolled connector with newly declared resources. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--dry-run`<br>`--confirm` |
 | `workbench` | Build Workbench runners and manage the optional companion hub. | `read` / `bounded` | - |
+| `workbench jev` | Configure and request explicitly attributed optional Jev advice. | `read` / `bounded` | - |
+| `workbench jev setup` | Record an installed trusted Anvil bridge without enabling cloud calls. | `mutate` / `bounded` | `--anvil-binary`<br>`--confirm` |
+| `workbench jev status` | Show Jev policy without credentials or network access. | `read` / `bounded` | - |
+| `workbench jev enable` | Enable one named optional capability with explicit cloud export permission. | `mutate` / `bounded` | `--allow-api`<br>`--allow-export`<br>`--confirm` |
+| `workbench jev disable` | Stop new calls globally or for one named capability. | `mutate` / `bounded` | `--confirm` |
+| `workbench jev advise` | Request advice on selected JSON without changing a resource or task. | `read` / `bounded` | `--input`<br>`--allow-export`<br>`--no-jev` |
 | `workbench build` | Build the Workbench hub image from the local companion checkout. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--source`<br>`--image`<br>`--runner` |
 | `workbench pi-egress` | Approve or remove the isolated Pi provider gateway policy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--provider`<br>`--remove` |
 | `workbench pi-storage` | Provision and verify the bounded Pi runner storage pool. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
