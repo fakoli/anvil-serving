@@ -723,7 +723,7 @@ class Console:
                 return self._operation_runs(session, query)
             if source == "evidence":
                 return self._evidence_runs(session, query)
-            if source in {"workspace-tasks", "workspace-pi"}:
+            if source in {"workspace-tasks", "workspace-pi", "workspace-host-pi"}:
                 return self._workspace_runs(session, source, query)
             raise ObservatoryError("not_found", "This run source is unavailable.", 404)
         if route == "operations":

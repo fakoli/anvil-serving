@@ -13,7 +13,7 @@ from ..observability.dashboard.contracts import ObservatoryError, canonical, dig
 
 _TITLE = re.compile(r"[^\x00-\x1f\x7f]{1,192}\Z")
 _KIND = "host-pi-thread"
-_MAX_NATIVE_ROWS = 256
+_MAX_NATIVE_ROWS = 512
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):

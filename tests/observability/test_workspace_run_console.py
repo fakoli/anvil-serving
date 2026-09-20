@@ -75,3 +75,49 @@ def test_native_run_stale_cache_marks_loaded_history_updates_stale():
     result = Console._stale_runs(SimpleNamespace(_cached_runs=lambda _: cached), "cache", "workspace-host-pi")
     assert result["refresh"]["items"][0] == {"id": "history", "freshness": "stale", "status": "running"}
     assert result["items"][0]["freshness"] == result["sources"][0]["status"] == "stale"
+
+
+def test_native_workspace_source_is_discovered_read_paged_and_reauthorized(tmp_path, monkeypatch):
+    config = {
+        "origin": "https://console.example.test", "base_path": "/", "operate": False,
+        "users": [{"id": "reader", "username": "reader", "role": "viewer",
+                   "resources": ["project-a"], "actions": []}],
+        "authentication": {"mode": "legacy"}, "state_path": str(tmp_path / "intents.sqlite"),
+        "prometheus_url": "http://127.0.0.1:9090", "inventory": {},
+        "workbench": {"state_path": str(tmp_path / "workspace.sqlite"), "projects": [{
+            "id": "project-a", "label": "project-a", "resource_id": "project-a",
+            "checkout": str(tmp_path / "project-a"), "anvil_binary": str(tmp_path / "anvil"),
+        }]},
+    }
+    console = Console(config, metrics=object(), authenticate=lambda *_: False)
+    session = Session("session", "csrf", console.access.users["reader"], time.time() + 60)
+    available = [{"id": "workspace-host-pi", "label": "Native Pi sessions", "kind": "workspace",
+                  "resource_ids": ["host-pi", "project-a"], "authority_key": "owner-grant"}]
+    calls = []
+
+    def sources(_session):
+        return {"items": available}
+
+    def page(_session, source, *, limit, cursor):
+        calls.append((source, limit, cursor))
+        assert source == "workspace-host-pi" and limit == 100
+        row = {"id": "native-" + ("second" if cursor else "first"), "freshness": "fresh"}
+        next_cursor = None if cursor else "page-1"
+        return {"items": [row], "next_cursor": next_cursor,
+                "sources": [{"id": source, "status": "fresh", "deadline_seconds": 2,
+                             "truncated": next_cursor is not None, "partial": False}]}
+
+    try:
+        monkeypatch.setattr(console.workbench, "workspace_run_sources", sources)
+        monkeypatch.setattr(console.workbench, "workspace_run_page", page)
+        assert "workspace-host-pi" in {item["id"] for item in console.read("run-sources", {}, session)["items"]}
+        first = console.read("runs/workspace-host-pi", {}, session)
+        second = console.read("runs/workspace-host-pi", {"cursor": first["next_cursor"]}, session)
+        assert [item["id"] for item in first["items"] + second["items"]] == ["native-first", "native-second"]
+        available.clear()
+        with pytest.raises(ObservatoryError) as denied:
+            console.read("runs/workspace-host-pi", {"cursor": first["next_cursor"]}, session)
+        assert denied.value.status == 403
+        assert calls == [("workspace-host-pi", 100, None), ("workspace-host-pi", 100, "page-1")]
+    finally:
+        console.close()

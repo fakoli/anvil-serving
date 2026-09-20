@@ -163,8 +163,8 @@ index 9c257b1..c8a2d8e 100644
 +import { SessionManager } from "@earendil-works/pi-coding-agent";
 +import { isAbsolute, join, resolve } from "path";
 +import { writePrivateFileAtomicSync } from "./atomic-file";
-+import { getRpcSession, startRpcSession } from "./rpc-manager";
-+import { getAgentDir, listAllSessions, resolveSessionPath } from "./session-reader";
++import { getRpcSession, getRpcSessionInfos, startRpcSession } from "./rpc-manager";
++import { getAgentDir, listAllSessions, mergeSessionLists, resolveSessionPath } from "./session-reader";
 +
 +type Reservation = { project_id: string; session_id: string };
 +type Registry = { version: 1; reservations: Record<string, Reservation> };
@@ -256,11 +256,21 @@ index 9c257b1..c8a2d8e 100644
 +}
 +
 +export async function listWorkbenchSessions(): Promise<{ native_id: string; title: string; running: boolean }[]> {
-+  const sessions = await listAllSessions();
-+  if (sessions.length > 256) throw new Error("native session inventory exceeds the declared bridge limit");
++  const sessions = mergeSessionLists(await listAllSessions(), getRpcSessionInfos());
++  if (sessions.length > 512) throw new Error("native session inventory exceeds the declared bridge limit");
 +  return sessions.map((session) => ({
 +    native_id: session.id,
 +    title: (session.name || "Untitled session").slice(0, 192),
 +    running: Boolean(getRpcSession(session.id)?.isRunning()),
 +  }));
 +}
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -12,6 +12,7 @@
+ } catch { /* package not found, use default */ }
+ 
+ const nextConfig: NextConfig = {
++  experimental: { cpus: 2 },
+   outputFileTracingRoot: configDir,
+   serverExternalPackages: [
+     "node-pty",

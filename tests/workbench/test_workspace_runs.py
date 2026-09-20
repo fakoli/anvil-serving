@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from anvil_serving.observability.dashboard.contracts import ObservatoryError
+from anvil_serving.observability.dashboard.contracts import ObservatoryError, canonical
 from anvil_serving.workbench_app.pi_sessions import PiConversationService, PiSessionError, PiSessionStore, PiTaskBinding
 from anvil_serving.workbench_app.store import PrivateStore
 from anvil_serving.workbench_app.workspace_runs import WorkspaceRuns
@@ -232,9 +232,92 @@ def test_native_pi_pages_are_stable_bounded_and_reauthorize_before_cursor_read()
     assert error.value.status == 403 and len(calls) == 2
 
 
+def test_native_pi_projection_refuses_when_the_full_refresh_cannot_fit(monkeypatch):
+    from anvil_serving.workbench_app import workspace_runs
+
+    rows = [{"native_id": f"native-{index}", "title": "x" * 192, "running": False} for index in range(512)]
+    runs = WorkspaceRuns(None, _Projects(), None,
+                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
+                         host_inventory=lambda _: rows)
+    monkeypatch.setattr(workspace_runs, "_MAX_PAGE_BYTES", 100)
+    with pytest.raises(ObservatoryError, match="exceeds") as error:
+        runs.host_page(_session())
+    assert error.value.status == 503
+    assert runs._host_snapshots == {}
+
+
+def test_native_pi_projection_refuses_when_refresh_fits_but_no_item_does(monkeypatch):
+    from anvil_serving.workbench_app import workspace_runs
+
+    rows = [{"native_id": "native-0", "title": "x" * 192, "running": False}]
+    runs = WorkspaceRuns(None, _Projects(), None,
+                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
+                         host_inventory=lambda _: rows)
+    # This leaves room for the complete one-row refresh and the response
+    # envelope, but not its full native item.  It must not mint token.0.
+    monkeypatch.setattr(workspace_runs, "_MAX_PAGE_BYTES", 600)
+    with pytest.raises(ObservatoryError, match="exceeds") as error:
+        runs.host_page(_session())
+    assert error.value.status == 503
+    assert runs._host_snapshots == {}
+
+
+def test_native_pi_projection_pages_348_compact_native_metadata_rows():
+    rows = [{"native_id": f"session-{index:03d}", "title": f"Session {index}", "running": False} for index in range(348)]
+    runs = WorkspaceRuns(None, _Projects(), None,
+                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
+                         host_inventory=lambda _: rows)
+    page = runs.host_page(_session())
+    assert len(page["items"]) == 100 and page["next_cursor"]
+    assert len(page["refresh"]["items"]) == 348 and len(canonical(page)) <= 128 * 1024
+
+
+def test_native_pi_projection_pages_512_compact_rows_with_full_refresh(monkeypatch):
+    from anvil_serving.workbench_app import workspace_runs
+
+    rows = [{"native_id": f"session-{index:03d}", "title": f"Session {index}", "running": False} for index in range(512)]
+    calls, original = [], workspace_runs.canonical
+
+    def counted(value):
+        calls.append(True)
+        return original(value)
+
+    monkeypatch.setattr(workspace_runs, "canonical", counted)
+    runs = WorkspaceRuns(None, _Projects(), None,
+                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
+                         host_inventory=lambda _: rows)
+    first = runs.host_page(_session())
+    assert len(calls) <= 7
+    monkeypatch.setattr(workspace_runs, "canonical", original)
+    pages, cursor = [first], first["next_cursor"]
+    while True:
+        if cursor is None:
+            break
+        page = runs.host_page(_session(), cursor=cursor)
+        pages.append(page)
+        assert len(canonical(page)) <= 128 * 1024
+        cursor = page["next_cursor"]
+    assert len(canonical(first)) <= 128 * 1024
+    assert len(first["items"]) <= 100 and first["next_cursor"]
+    assert len(first["refresh"]["items"]) == 512
+    assert {item["observed_at"] for item in first["refresh"]["items"]} == {first["sources"][0]["observed_at"]}
+    native_ids = [item["native_id"] for page in pages for item in page["items"]]
+    assert len(native_ids) == len(set(native_ids)) == 512
+
+
+def test_native_pi_projection_returns_a_fresh_empty_inventory():
+    runs = WorkspaceRuns(None, _Projects(), None,
+                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
+                         host_inventory=lambda _: [])
+    page = runs.host_page(_session())
+    assert page["items"] == [] and page["next_cursor"] is None
+    assert page["refresh"]["items"] == []
+    assert page["sources"][0]["status"] == "fresh"
+
+
 @pytest.mark.parametrize("bad_rows", [
     [{"native_id": "a", "title": "Title", "running": False}] * 2,
-    [{"native_id": f"id-{i}", "title": "Title", "running": False} for i in range(257)],
+    [{"native_id": f"id-{i}", "title": "Title", "running": False} for i in range(513)],
     [{"native_id": "a", "title": "Title", "running": False, "project_id": "revoked"}],
     [{"native_id": "a", "title": "Title", "running": "false"}],
 ], ids=["duplicate", "overflow", "revoked", "invalid-state"])

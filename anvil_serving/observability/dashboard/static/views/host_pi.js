@@ -14,7 +14,10 @@ export async function hostPiView(ctx, catalog) {
   const host = catalog.host_pi;
   const frame = el("iframe", { class: "host-pi-frame", title: "Pi conversations", src: host.origin + "/", referrerpolicy: "no-referrer", allow: "clipboard-write" });
   const authority = el("span", { class: "meta", text: host.authority });
-  const root = el("div", { class: "host-pi-workspace" }, authority, frame);
+  const tools = el("div", { class: "host-pi-tools" }, authority,
+    el("a", { href: host.origin + "/", target: "_blank", rel: "noopener noreferrer", text: "Open Pi Web", title: "Sign in to Pi in a new tab, then reload Pi here." }),
+    button("Reload Pi", () => { frame.src = host.origin + "/"; }, "quiet-button"));
+  const root = el("div", { class: "host-pi-workspace" }, tools, frame);
   if (!host.bridge) return root;
   if (location.origin !== host.parent_origin) {
     root.prepend(notice("Project navigation is unavailable on this origin. Use the configured Workbench origin.", "warning")); return root;
@@ -135,7 +138,7 @@ export async function hostPiView(ctx, catalog) {
   const files = projectFilesView(ctx, project);
   const filePanel = el("details", { class: "host-pi-files" }, el("summary", { text: "Project files" }), files);
   filePanel.addEventListener("toggle", () => { files.open = filePanel.open; });
-  root.replaceChildren(el("div", { class: "host-pi-tools" }, navigation, authority, filePanel), frame);
+  tools.prepend(navigation); tools.append(filePanel);
   try { await refresh(); status.textContent = pendingError || (pending ? "Reconcile the original request before starting another thread." : ""); }
   catch (error) { if (!ctx.signal.aborted) status.textContent = error.message; }
   controls(); return root;

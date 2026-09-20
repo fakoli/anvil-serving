@@ -196,7 +196,7 @@ descriptor operations; canonical session storage continues to work.
 The optional native bridge adds a separate **Native Pi sessions** source for
 the exact Connect owner with explicit host and project grants. It projects
 metadata from the native owner once, without copying transcripts. Its complete
-inventory is bounded to 256 sessions and 128 KiB; larger or malformed inventories
+inventory is bounded to 512 sessions and 128 KiB; larger or malformed inventories
 report unavailable rather than silently dropping sessions. Pages retain one
 60-second snapshot, and active rows already loaded from history refresh too.
 Native and managed Pi rows open their exact conversation; task rows open their

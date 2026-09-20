@@ -861,4 +861,8 @@ def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path) 
         target = source / name
         assert target.is_file(), name
         assert target.read_text(encoding="utf-8")
+    bridge = (source / "lib/workbench-bridge.ts").read_text(encoding="utf-8")
+    assert "sessions.length > 512" in bridge
+    assert "mergeSessionLists(await listAllSessions(), getRpcSessionInfos())" in bridge
+    assert "experimental: { cpus: 2 }" in (source / "next.config.ts").read_text(encoding="utf-8")
     assert not (source / "lib/workbench-bridge.test.mjs").exists()

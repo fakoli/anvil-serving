@@ -24,6 +24,7 @@ _HOST_SOURCE = "workspace-host-pi"
 _OWNER_ID = "workbench-private"
 _CURSOR_TTL = 60.0
 _MAX_PAGE_BYTES = 128 * 1024
+_MAX_HOST_NATIVE_ROWS = 512
 _TEXT = re.compile(r"[^\x00-\x1f\x7f]{1,128}\Z")
 
 
@@ -97,7 +98,7 @@ class WorkspaceRuns:
                     raise ObservatoryError("invalid_workspace_run_cursor", "Select a current Workbench run page.", 400)
         if cursor is None:
             native = self._host_inventory(session)
-            if type(native) is not list or len(native) > 256:
+            if type(native) is not list or len(native) > _MAX_HOST_NATIVE_ROWS:
                 raise ObservatoryError("workspace_source_unavailable", "The native Pi inventory exceeds its bound.", 503)
             observed = _stamp(now)
             items = []
@@ -117,21 +118,47 @@ class WorkspaceRuns:
                         "updated_at": None, "observed_at": observed, "freshness": "fresh", "evidence_refs": [], "correlation_id": None})
                 except (KeyError, TypeError, ValueError, ObservatoryError):
                     raise ObservatoryError("workspace_source_unavailable", "The native Pi inventory is unavailable.", 503) from None
-            if len({row["id"] for row in items}) != len(items) or len(canonical(items)) > _MAX_PAGE_BYTES:
+            if len({row["id"] for row in items}) != len(items):
                 raise ObservatoryError("workspace_source_unavailable", "The native Pi inventory exceeds its bound.", 503)
             items.sort(key=lambda row: (row["status"] != "running", row["native_id"]))
             refresh = [{key: row[key] for key in ("id", "native_state", "status", "observed_at", "freshness")} for row in items]
             token, offset = secrets.token_hex(16), 0
             snapshot = {"items": items, "authority": authority["authority_key"], "expires": now + _CURSOR_TTL, "observed": observed}
+        available = min(limit, len(snapshot["items"]) - offset)
+
+        def response(count):
+            next_offset = offset + count
+            next_cursor = f"{token}.{next_offset}" if next_offset < len(snapshot["items"]) else None
+            return {"items": snapshot["items"][offset:next_offset], "next_cursor": next_cursor,
+                    "refresh": {"items": refresh},
+                    "sources": [{"id": _HOST_SOURCE, "owner_id": _OWNER_ID, "status": "fresh",
+                                 "observed_at": snapshot["observed"], "deadline_seconds": 2,
+                                 "partial": False, "truncated": next_cursor is not None}]}
+
+        # The retained full refresh is authoritative even when this is only one
+        # page. Binary-search the largest item count that leaves its complete
+        # response within the wire bound.  ``available <= 100``, so the 102
+        # possible outcomes (-1 through 100) take at most seven encodes.
+        lower, upper, result = -1, available + 1, None
+        while upper - lower > 1:
+            count = (lower + upper) // 2
+            candidate = response(count)
+            if len(canonical(candidate)) <= _MAX_PAGE_BYTES:
+                lower, result = count, candidate
+            else:
+                upper = count
+        # A nonempty snapshot must advance.  Returning its otherwise fitting
+        # zero-item page would mint ``token.0``; that cursor is deliberately
+        # invalid and would strand the retained inventory.  An empty fresh
+        # inventory is the one valid zero-item result.
+        if result is None or (available and lower == 0):
+            raise ObservatoryError("workspace_source_unavailable", "The native Pi inventory exceeds its bound.", 503)
+        if cursor is None:
             with self._host_lock:
                 if len(self._host_snapshots) >= 16:
                     self._host_snapshots.pop(next(iter(self._host_snapshots)))
                 self._host_snapshots[token] = snapshot
-        page = snapshot["items"][offset:offset + limit]
-        next_cursor = f"{token}.{offset + limit}" if offset + limit < len(snapshot["items"]) else None
-        return {"items": page, "next_cursor": next_cursor, "refresh": {"items": refresh},
-                "sources": [{"id": _HOST_SOURCE, "owner_id": _OWNER_ID, "status": "fresh", "observed_at": snapshot["observed"],
-                             "deadline_seconds": 2, "partial": False, "truncated": next_cursor is not None}]}
+        return result
 
     def _authorized_projects(self, session) -> tuple[dict[str, str], ...]:
         projects = []
