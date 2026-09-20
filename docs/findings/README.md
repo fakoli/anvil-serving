@@ -228,3 +228,7 @@ path and public-artifact audit remains tracked by
 | 2026-06-28 | [2026-06-28-planning-capability-eval.md](2026-06-28-planning-capability-eval.md) | Historical Anvil PRD-to-tasks evaluation with complete bounded prompts, outputs, judge records, and reproducible offline aggregates |
 | 2026-06-28 | [2026-06-28-anvil-integration-audit.md](2026-06-28-anvil-integration-audit.md) | Pinned Anvil integration audit: one planning endpoint, no fleet or two-endpoint router |
 | (running) | [blackwell-sm120-lab-notebook.md](blackwell-sm120-lab-notebook.md) | Blackwell sm_120 lab notebook: which models serve (and how) on primary-node |
+
+## 2026-09-19: Huihui 64K C1 promotion
+
+The promoted Huihui NInfer MTP3 profile now uses 65,536 context tokens at C1. Direct preflight passed 7/7, routed preflight 6/6, vision 12/12, and native Hermes 9/9 with the exact local alias. Descriptive, canary-free C1 short-input capacity passed 12/12 at 182.1 mean decode tokens/s; the long-input cell passed 6/6 at 167.1, with 60,769-60,776 actual prompt tokens. Post-workload GPU use was 24,224 MiB. The three fleet hosts and Open WebUI converged with zero repeat changes. The 32K results remain historical evidence and a rollback profile. Endurance, interactive browser acceptance, and a matched 64K no-spec control remain unmeasured. See [the 64K finding](2026-09-19-qwen38-huihui-64k.md).

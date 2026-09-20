@@ -1,0 +1,47 @@
+{
+  "schema": "anvil-serving.promotion-identity-receipt/v1",
+  "status": "completed_qualification_promoted",
+  "image_digest": "sha256:44377d56374ed4b832c2ca6e9265da492cf2ad79a297008bae92f442d27edfb6",
+  "binary_sha256": "82ec9634bf221bee534bcf26c940a7c63f29fff36cd858de9bc57e75c3e6b25f",
+  "source_revision": "70434721b1ae29d0616f3de9b376c8a4d91590b5",
+  "artifact_revision": "181446902fc777c479749e98cf2abf2250263a8d",
+  "artifact_sha256": "f21f308d3b23ccd627071cd015e413db08deee4356643900518e2b251750fdc2",
+  "recipe": "lyf/Qwen3.8-27B-Huihui-NInfer-NVFP4-MTP3-64K-Baked",
+  "recipe_snapshot": "recipe-64k-sanitized.toml",
+  "exact_tested_recipe_snapshot": {
+    "sanitized_snapshot": "recipe-64k-sanitized.toml",
+    "sanitized_snapshot_sha256": "fa0283c7b634a6f49d653950970bd6b22e724196b778a695addfdc0df42ce070",
+    "redactions": [
+      "Hardware UUID line omitted; text serialized with LF."
+    ],
+    "private_launch_metadata": "Candidate/pending wording is immutable historical launch metadata; the promotion decision is recorded separately.",
+    "private_registry_sha256": "f434909360b30b6df562d29c4f490dbb2f96b6819d2df2a6ac52213c0eec7ea6",
+    "active_serve_manifest_sha256": "d41ad302e10fb53ec7690ab4923588694719476f31aebe05d98a7f55e7bf6b87"
+  },
+  "bound_run_sha256": {
+    "preflight-c1.json": "6cea10f49a3966399066980b01781091a9e83dc38268cc515cc0a776f01ec2f3",
+    "quality.json": "cffce1f478faef91423ca1832a91d2896b7cd87f9a36bdac6a45d195817c81f6",
+    "vision.json": "fafd1dd4522c9a1a831e29fe94d7ff671f20a03effce91b18c4bb5a028be43d4",
+    "capacity-short.json": "b71e8c7f88235c838c84d813b5e6fbd8b317d781e0edbab3a5aee5e1061ed363",
+    "capacity-long.json": "0c2ddb7ad2c610aff5307f0a973e6da47db69b5be671bb5157a5586cdf6066cb",
+    "hermes-native.json": "c64ae53d61865cb6164dd810a98a042f06498796d97d530a3513d9d1d7e3be9d",
+    "router-preflight.json": "4749bacff513dcd9e77256e6f97d812de4a143d38f64a3fd1a6c89b3938ea7c2",
+    "memory-post-workload.json": "950630c4934dd9f72e10740f65595c2e374e108d4da9fa560c8923f34b803d69"
+  },
+  "served_model": "qwen38-huihui-ninfer-schemafix-mtp3-64k",
+  "context_tokens": 65536,
+  "max_output_tokens": 2048,
+  "max_concurrency": 1,
+  "launcher": {
+    "version": "1.2.1",
+    "source_commit": "46b84641b3096b6feb4d0f1f844c6106c1a01ac5",
+    "wheel_sha256": "aa3d4dd46d827cca79b1832e58d9e70db094182cbf62ff098b8e813aec1c3bd6",
+    "source_identity": "anvil_serving/cli.py",
+    "note": "Installed checksum-pinned client runtime; model runtime image unchanged."
+  },
+  "raw_artifact_redactions": {
+    "vision.json": [
+      "Absolute corpus path replaced with repository-relative path."
+    ]
+  }
+}

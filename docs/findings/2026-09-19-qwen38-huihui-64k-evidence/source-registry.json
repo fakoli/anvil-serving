@@ -1,0 +1,47 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-19-qwen38-huihui-64k",
+  "observed_at": "2026-09-19",
+  "sources": [
+    {
+      "id": "model-card",
+      "url": "https://huggingface.co/lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4",
+      "published_or_observed": "2026-08-19",
+      "observed_at": "2026-09-19",
+      "age_class": "current",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "pins artifact and a99407 runtime",
+      "decision_impact": "original compatible boundary only"
+    },
+    {
+      "id": "schema-typing",
+      "url": "https://github.com/Neroued/ninfer/commit/0e4cdf84f04d74abf6e28b6021b2bd83239d5a1b",
+      "published_or_observed": "2026-08-27",
+      "observed_at": "2026-09-19",
+      "age_class": "current",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "schema-directed tool argument typing",
+      "decision_impact": "compatible repair lead"
+    },
+    {
+      "id": "contract-fix",
+      "url": "https://github.com/Neroued/ninfer/commit/70434721b1ae29d0616f3de9b376c8a4d91590b5",
+      "published_or_observed": "2026-08-28",
+      "observed_at": "2026-09-19",
+      "age_class": "current",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "numeric-shaped string contract fix; v2 retained per independent review",
+      "decision_impact": "selected compatible repair lead"
+    },
+    {
+      "id": "current-head",
+      "url": "https://github.com/Neroued/ninfer/commit/9e163eee4b8acec21ab0ac765107b6a3f287b217",
+      "published_or_observed": "2026-09-18",
+      "observed_at": "2026-09-19",
+      "age_class": "current",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "v3-only current source",
+      "decision_impact": "excluded because original artifact is v2"
+    }
+  ]
+}

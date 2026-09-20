@@ -6,20 +6,21 @@
 
 !!! info "Decision snapshot"
 
-    - **Product role:** former human-approved 96 GB single-service profile;
+    - **Current RTX 5090 role:** human-approved Huihui NInfer MTP3 64K/C1 secondary, with direct/routed protocol, bounded quality, vision and native Hermes acceptance. Exact 32K remains rollback.
+    - **Historical product role:** former human-approved 96 GB single-service profile;
       retained as reproducible evidence. Official FP8 is the declared,
       unexercised rollback in the September 14 text-selection record.
     - **Selected or best-qualified configuration:** for the new PRO 6000
       throughput workload, two independent SGLang Inferact NVFP4 plus DFlash2
       K12/chunk1K TP1 replicas are the bounded winner; one TP1 is the selected
       single-card sustained-output arm, and RadixArk K8 is the lower-TTFT
-      tradeoff. Historical production and RTX 5090 roles remain unchanged.
+      tradeoff. Those PRO results remain separate from the promoted RTX 5090 Huihui lane.
     - **Measured hardware:** one- and two-card RTX PRO 6000 lanes and a
       separate single-RTX-5090 lane; results are not interchangeable across
       those topologies.
     - **Evidence:** functional, capacity, bounded quality, performance,
-      multimodal, routed-client, and rejection evidence through 2026-09-05
-      UTC. The new matched sustained-output lane measured 1,401.8–1,423.4 aggregate
+      multimodal, routed-client, and rejection evidence through 2026-09-19
+      UTC, including Huihui 64K preflight 7/7, routed 6/6, vision 12/12 and Hermes 9/9. The new matched sustained-output lane measured 1,401.8–1,423.4 aggregate
       tok/s for two TP1 replicas, 764.3 for one TP1, and 587.9 for TP2, with
       mean/p50/p95/p99 TTFT, prefill, decode, TPOT/ITL, and E2E retained.
       Gittensor measured 50.9 ms warm median TTFT, 79.5 tok/s decode, and
@@ -29,7 +30,7 @@
     - **Decision:** retain DP2 as the bounded dual-PRO aggregate-throughput
       winner, one optimized TP1 as the single-card sustained-output selection,
       RadixArk K8 as its TTFT tradeoff, and kelnei/vLLM MTP2 as an alternate-
-      runtime gain over no-spec. Reject TP2; all remain `no-promotion`.
+      runtime gain over no-spec. Reject TP2; those PRO lanes remain `no-promotion`. Huihui 64K/C1 on RTX 5090 is separately `current` after human approval.
     - **Important limitation:** TP2 failed strict JSON twice; unique-prefix
       82K/C8 remained unsuitable for interactive use; DP2 lacks a qualified
       balancing/failover/client path; and broad quality plus complete power and
@@ -39,8 +40,8 @@
       It lacks routed/client, multimodal, broad agentic/SWE, endurance, and
       promotion-grade evidence. The measured hardware/engine lanes are not
       interchangeable.
-    - **Review dates:** retained evidence through 2026-09-14; dossier reviewed
-      2026-09-17. Each measurement below keeps its original date.
+    - **Review dates:** retained evidence through 2026-09-19; dossier reviewed
+      2026-09-19. Each measurement below keeps its original date.
 
 [Open the exact retained container configurations](../configurations.md#qwen38-27b-official-fp8)
 or jump to the [decision](#decision-and-promotion-state),
@@ -656,6 +657,7 @@ passed the same surface at 105,649 prompt tokens.
 
 ### Retained
 
+- **Current RTX 5090 secondary:** [Huihui NInfer MTP3 64K/C1](../../findings/2026-09-19-qwen38-huihui-64k.md) is human-approved and promoted. Direct/routed protocol, repeated bounded quality, vision 12/12 and native Hermes 9/9 passed. Post-workload GPU use is 24,224 MiB; no footprint win, endurance or comparative 64K speed claim. Exact 32K is retained as rollback. Older NInfer and GGUF entries below remain separate historical profiles.
 - **RTX PRO 6000 aggregate-throughput winner:** two independent current-
   SGLang Inferact NVFP4 plus DFlash2 K12/chunk1K TP1 replicas are retained at
   1,401.8–1,423.4 aggregate tok/s for the matched sustained-output C16 workload. One
@@ -910,3 +912,7 @@ capability RTX 5090 incumbent.
 - [2026-08-14 TP/MTP/context matrix](../../findings/2026-08-14-qwen38-27b-tp-mtp-context-matrix.md)
 - [2026-08-14 official FP8 1M-context continuation](../../findings/2026-08-14-qwen38-27b-1m-context.md)
 - [2026-08-14 official BF16/FP8 qualification](../../findings/2026-08-14-qwen38-27b-official-qualification.md)
+
+### 2026-09-19: Huihui 64K C1 promotion
+
+The promoted Huihui NInfer MTP3 profile now uses 65,536 context tokens at C1. Direct preflight passed 7/7, routed preflight 6/6, vision 12/12, and native Hermes 9/9 with the exact local alias. Descriptive, canary-free C1 short-input capacity passed 12/12 at 182.1 mean decode tokens/s; the long-input cell passed 6/6 at 167.1, with 60,769-60,776 actual prompt tokens. Post-workload GPU use was 24,224 MiB. The three fleet hosts and Open WebUI converged with zero repeat changes. The 32K results remain historical evidence and a rollback profile. Endurance, interactive browser acceptance, and a matched 64K no-spec control remain unmeasured. See [the 64K finding](../../findings/2026-09-19-qwen38-huihui-64k.md).
