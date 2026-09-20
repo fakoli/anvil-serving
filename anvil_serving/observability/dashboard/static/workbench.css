@@ -502,6 +502,34 @@ main {
 .run-toolbar select {
   min-width: 170px;
 }
+.run-backfill-row,
+.comparison-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.comparison-list {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.comparison-choice {
+  justify-content: start;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.comparison-choice input {
+  min-height: auto;
+  width: 16px;
+  height: 16px;
+}
+.comparison-choice span {
+  min-width: 0;
+}
 .empty-run {
   text-align: left;
   padding: 35px;

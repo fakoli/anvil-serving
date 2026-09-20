@@ -216,6 +216,45 @@ fs.mkdirSync(output, { recursive: true });
     await page
       .getByRole("tabpanel", { name: "Overview", exact: true })
       .waitFor();
+    await page.getByRole("tab", { name: "Compare", exact: true }).click();
+    const choices = page.getByLabel("Retained evidence selections", { exact: true }).locator(".comparison-choice");
+    await choices.filter({ hasText: "fixture" }).first().waitFor({ timeout: 10000 });
+    const compatible = choices.filter({ hasText: "fixture" });
+    await compatible.nth(0).getByRole("checkbox").check();
+    await compatible.nth(1).getByRole("checkbox").check();
+    await control("evidence-compare-delay");
+    await page.getByRole("button", { name: "Compare 2 selected", exact: true }).click();
+    assert.equal(await compatible.nth(0).getByRole("checkbox").isDisabled(), true);
+    await page.getByText("compatible", { exact: true }).waitFor({ timeout: 5000 });
+    await compatible.nth(1).getByRole("checkbox").uncheck();
+    await choices.filter({ hasText: "incompatible" }).getByRole("checkbox").check();
+    await page.getByRole("button", { name: "Compare 2 selected", exact: true }).click();
+    await page.getByText("incompatible", { exact: true }).waitFor({ timeout: 5000 });
+    await control("evidence-change-compatible");
+    await page.getByRole("button", { name: "Compare 2 selected", exact: true }).click();
+    await page.getByText(/retained evidence changed/i).waitFor({ timeout: 5000 });
+    assert.equal(await page.getByText("Comparable", { exact: true }).count(), 0);
+    await control("evidence-reset-compatible");
+    const refreshedEvidence = page.waitForResponse(
+      (response) => response.url().includes("/api/observatory/v1/runs/evidence") && response.status() === 200,
+      { timeout: 5000 },
+    );
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await refreshedEvidence;
+    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    await page.getByRole("combobox", { name: "Run source", exact: true }).selectOption("evidence");
+    await page.locator("tr").filter({ hasText: "fixture retained evidence" }).first().getByRole("link", { name: "Open run →", exact: true }).click();
+    await page.getByRole("tab", { name: "Evidence", exact: true }).click();
+    await page.getByRole("button", { name: "Open retained evidence detail", exact: true }).click();
+    await page.getByRole("dialog", { name: "Retained evidence", exact: true }).getByText("Artifact", { exact: true }).waitFor({ timeout: 5000 });
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    receipts.evidence_compare = { compatible: true, incompatible: true, changed_reference: true, detail: true };
+    await page.getByRole("tab", { name: "Overview", exact: true }).click();
     await page.getByText("context-001", { exact: true }).waitFor();
     await page.getByText("fixture-active-benchmark", { exact: true }).first().waitFor();
     await page.getByText("Deterministic response check", { exact: true }).first().waitFor();
@@ -227,6 +266,15 @@ fs.mkdirSync(output, { recursive: true });
       { timeout: 4000 },
     );
     assert.equal(await page.evaluate(() => document.activeElement.getAttribute("aria-label")), "Run source");
+    const discoveredAt = Date.now();
+    await control("benchmark-new-run");
+    await page.getByText("fixture-discovered-benchmark", { exact: true }).waitFor({ timeout: 10000 });
+    const activeAt = Date.now();
+    await control("benchmark-active-complete");
+    await page.getByText("fixture-active-benchmark", { exact: true }).locator("xpath=ancestor::tr").getByText("completed", { exact: true }).waitFor({ timeout: 5000 });
+    receipts.run_discovery = { new_run_ms: activeAt - discoveredAt, active_update_ms: Date.now() - activeAt };
+    assert.ok(receipts.run_discovery.new_run_ms <= 10000);
+    assert.ok(receipts.run_discovery.active_update_ms <= 5000);
     const contextRunLink = page
       .getByText("context-001", { exact: true })
       .locator("xpath=ancestor::tr")
@@ -368,6 +416,26 @@ fs.mkdirSync(output, { recursive: true });
     receipts.journeys.push(
       "1440 and 390 viewport reflow, keyboard tabs, inert mobile drawer and Escape return",
     );
+    await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+    await nav("Workbench");
+    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    await control("benchmark-pagination");
+    await page.getByText("fixture-page-000", { exact: true }).waitFor({ timeout: 10000 });
+    await page.getByRole("button", { name: "Load more", exact: true }).click();
+    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    await control("benchmark-pagination-new-head");
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.getByText("fixture-page-new", { exact: true }).waitFor({ timeout: 5000 });
+    const pageIds = await page.locator("tr small.mono").allTextContents();
+    const retainedPageIds = pageIds.filter((item) => item.startsWith("fixture-page-"));
+    assert.equal(retainedPageIds.length, 102);
+    assert.equal(new Set(retainedPageIds).size, 102);
+    receipts.pagination = { rows: retainedPageIds.length, stable_equal_timestamps: true };
     assert.deepEqual(errors, []);
     receipts.status = await status();
     fs.writeFileSync(
