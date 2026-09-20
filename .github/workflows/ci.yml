@@ -65,7 +65,7 @@ jobs:
         run: python -m pytest tests/connect/ -q
 
       - name: Run tests
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -x -q
 
   connect-linux:
     name: Connect native contracts (Linux)
