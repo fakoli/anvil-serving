@@ -376,7 +376,7 @@ func TestBrowserFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gateway.BrowserAdministration = &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{operator.ID}}
+	gateway.BrowserAdministration = &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{operator.ID}, UserDeletion: true}
 	if os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") != "" {
 		gateway.BrowserAdministration.Operators = []string{member.ID}
 	}

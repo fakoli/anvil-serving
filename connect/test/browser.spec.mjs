@@ -101,6 +101,7 @@ test('real Chromium login preserves native controls and host-only cookies', asyn
   const context = await fixture.browser.newContext();
   const page = await context.newPage();
   await page.goto(fixture.url, { waitUntil: 'domcontentloaded' });
+  await page.locator('#services .tile').click();
   await expect(page.locator('#dashboard')).toHaveText('native dashboard');
   const cookies = await context.cookies(fixture.url);
   for (const name of ['__Host-anvil-connect', 'native_session']) {
@@ -126,7 +127,8 @@ test('service home renders current grants and signs out in Chromium', async () =
   expect(Math.abs(desktopTile.width - desktopTile.height)).toBeLessThan(1);
   expect(desktopTile.width).toBeLessThanOrEqual(180);
   await expect(page.locator('#administration')).toBeHidden();
-  await expect(page.locator('#account-link')).toHaveAttribute('href','https://idp.example.test/');
+  await expect(page.locator('#account-link')).toHaveAttribute('href','https://idp.example.test/settings/security');
+  await expect(page.locator('#passkeys-link')).toHaveAttribute('href','https://idp.example.test/settings/two-factor-authentication');
   await expect(page.locator('#install-link')).toHaveAttribute('href','https://github.com/fakoli/anvil-serving/releases/tag/connect-v0.2.0');
   await expect(page.locator('#install-link')).toBeVisible();
   await page.locator('#terminal').click();
@@ -249,4 +251,31 @@ test('negative controls expose dropped Connect and native checks', async () => {
   await fixture.command('mode native-bypass');
   expect(await nativePage.evaluate(() => fetch('/fixture-native-guard', { method: 'POST' }).then(response => ({status: response.status, native: response.headers.get('X-Native-Guard')})))).toEqual({status: 204, native: 'reached'});
   await denied.close(); await bypassed.close(); await native.close();
+});
+
+test('operator deletion confirms the named account and immediately revokes its session', async () => {
+  const member = await fixture.browser.newContext();
+  const memberPage = await member.newPage();
+  await memberPage.goto(fixture.url + '/_anvil-connect/home');
+  await expect(memberPage.locator('#services .tile')).toHaveCount(1);
+  await fixture.command('subject operator');
+  const operator = await fixture.browser.newContext();
+  try {
+    const page = await operator.newPage();
+    await page.goto(fixture.url + '/_anvil-connect/home');
+    const target = page.locator('.user').filter({hasText: fixture.member_id});
+    await expect(target.locator('.user-title')).toHaveText('member.one');
+    await expect(page.locator('.user').filter({hasText: 'Connect operator'}).getByRole('button', {name: 'Delete user'})).toBeDisabled();
+    page.once('dialog', async dialog => {
+      expect(dialog.message()).toContain('Permanently delete member.one?');
+      await dialog.accept();
+    });
+    await target.getByRole('button', {name: 'Delete user'}).click();
+    await expect(target).toContainText('Deletion in progress');
+    await expect(target.getByRole('button', {name: 'Save access'})).toBeDisabled();
+    expect(await memberPage.evaluate(() => fetch('/_anvil-connect/home/data').then(response => response.status))).toBe(401);
+  } finally {
+    await member.close();
+    await operator.close();
+  }
 });
