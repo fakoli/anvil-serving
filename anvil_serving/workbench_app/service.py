@@ -213,7 +213,7 @@ class WorkbenchService:
         host = self.config.get("host_pi")
         if (host and session.connect_binding is not None
                 and session.connect_binding.subject == host["owner_subject"]
-                and session.principal.can_read(host["resource_id"])):
+                and host["resource_id"] in session.principal.resources):
             result["host_pi"] = {"available": True, "id": host["id"], "origin": host["origin"], "version": host["version"],
                                  "authority": "Owner host session — tools use operator account access"}
         else:

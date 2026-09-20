@@ -1,6 +1,7 @@
 """The host UI is an exact Connect-owner entry, separate from task authority."""
 
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -43,3 +44,15 @@ def test_host_catalog_requires_connect_subject_and_resource(site):  # noqa: F811
     host["resource_id"] = "ungranted-host"
     denied = call("GET", "catalog")[1]["data"]["host_pi"]
     assert denied["available"] is False and "origin" not in denied
+
+
+def test_host_catalog_requires_an_explicit_grant_even_for_wildcard_owner(site):  # noqa: F811
+    console, _, mode = site
+    if mode != "connect":
+        pytest.skip("Connect owner grant boundary")
+    console.workbench.config["host_pi"] = host_config()
+    session = next(iter(console.access._sessions.values()))
+    for grants, available in (({"*"}, False), ({"unrelated"}, False), ({"*", "serve-a"}, True)):
+        changed = replace(session, principal=replace(session.principal, resources=frozenset(grants)))
+        host = console.workbench.catalog(changed)["host_pi"]
+        assert host["available"] is available and ("origin" in host) is available
