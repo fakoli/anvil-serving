@@ -10,6 +10,7 @@ import hashlib
 import multiprocessing
 import os
 from pathlib import Path
+import re
 import secrets
 import stat
 import tempfile
@@ -38,6 +39,8 @@ _PARENT_BUDGET_SECONDS = 1.8
 _WORKER_BUDGET_SECONDS = 1.6
 _CURSOR_PREFIX = "e1"
 _SECRET_SUFFIXES = (".key", ".pem", ".p12", ".pfx", ".kdbx")
+_ARTIFACT_ID = re.compile(r"artifact-[a-f0-9]{64}\Z")
+_SHA256 = re.compile(r"[a-f0-9]{64}\Z")
 
 
 def _public_unavailable() -> ObservatoryError:
@@ -368,6 +371,69 @@ def _page(
     }
 
 
+def _resolve_refs(
+    root: str, records: list[dict[str, Any]], refs: list[dict[str, str]], deadline: float,
+) -> tuple[list[tuple[dict[str, Any], dict[str, Any], str]], str | None]:
+    by_id = {record["id"]: record for record in records}
+    resolved = []
+    bytes_read = 0
+    for ref in refs:
+        record = by_id.get(ref["artifact_id"])
+        if record is None or bytes_read + record["f"][2] > MAX_PAGE_READ_BYTES:
+            return [], "unavailable"
+        summary, status, sha256, read_bytes = _read_artifact(root, record, deadline)
+        bytes_read += read_bytes
+        if summary is None or sha256 is None:
+            return [], status
+        if sha256 != ref["sha256"]:
+            return [], "changed"
+        resolved.append((record, summary, sha256))
+    return resolved, None
+
+
+def _ref(value: object) -> dict[str, str] | None:
+    if (not isinstance(value, Mapping)
+            or set(value) not in ({"artifact_id", "sha256"}, {"owner_id", "artifact_id", "sha256"})):
+        return None
+    artifact_id, sha256 = value.get("artifact_id"), value.get("sha256")
+    if (type(artifact_id) is not str or _ARTIFACT_ID.fullmatch(artifact_id) is None
+            or type(sha256) is not str or _SHA256.fullmatch(sha256) is None):
+        return None
+    return {"artifact_id": artifact_id, "sha256": sha256}
+
+
+def _eligible_compare(summaries: list[Mapping[str, Any]]) -> bool:
+    for summary in summaries:
+        if summary.get("locally_measured") is False or summary.get("kind") == "external_prior":
+            return False
+        if summary.get("completeness") in {"failed", "incomplete"}:
+            return False
+        if summary.get("kind") == "capacity":
+            capacity = summary.get("capacity")
+            if not isinstance(capacity, Mapping):
+                return False
+            requests, completed = capacity.get("requests"), capacity.get("completed")
+            if (type(requests) is not int or type(completed) is not int
+                    or completed < requests):
+                return False
+    return True
+
+
+def _compare_payload(resolved, owner_id: str, resource_id: str) -> dict[str, Any]:
+    summaries = [summary for _record, summary, _sha256 in resolved]
+    compared = benchmark_evidence.compare_summaries(summaries)
+    return {
+        "artifacts": [
+            _row(record, summary, sha256, owner_id, resource_id)
+            for record, summary, sha256 in resolved
+        ],
+        "comparable": compared["comparable"],
+        "differences": sorted(compared["differences"]),
+        "unknown_fields": sorted(compared["unknown_fields"]),
+        "invalid_artifacts": sorted(compared["invalid_artifacts"]),
+    }
+
+
 def _write_worker_result(path: str, value: Mapping[str, Any]) -> None:
     raw = canonical(value)
     limit = MAX_INITIAL_RESULT_BYTES if "manifest" in value and "page" in value else (
@@ -396,11 +462,31 @@ def _evidence_worker(path: str, job: Mapping[str, Any]) -> None:
                 job["root"], manifest["records"], 0, job["limit"], job["owner_id"],
                 job["resource_id"], deadline,
             )}
-        else:
+        elif job["kind"] == "page":
             result = {"ok": True, "page": _page(
                 job["root"], job["records"], job["start"], job["limit"], job["owner_id"],
                 job["resource_id"], deadline,
             )}
+        else:
+            manifest = _manifest(job["root"], deadline)
+            refs = [_ref(value) for value in job["refs"]]
+            if any(value is None for value in refs):
+                result = {"ok": True, "error": "invalid"}
+            else:
+                resolved, error = _resolve_refs(job["root"], manifest["records"], refs, deadline)
+                if error is not None:
+                    result = {"ok": True, "error": error}
+                elif job["kind"] == "detail":
+                    record, summary, sha256 = resolved[0]
+                    result = {"ok": True, "detail": _row(
+                        record, summary, sha256, job["owner_id"], job["resource_id"],
+                    )}
+                elif not _eligible_compare([summary for _record, summary, _sha256 in resolved]):
+                    result = {"ok": True, "error": "ineligible"}
+                else:
+                    result = {"ok": True, "compare": _compare_payload(
+                        resolved, job["owner_id"], job["resource_id"],
+                    )}
     except Exception:
         result = {"ok": False}
     try:
@@ -474,6 +560,64 @@ class EvidenceRuns:
             self._snapshots.clear()
         if process is not None and not _stop_worker(process):
             self._poisoned = True
+
+    def detail(self, *, artifact_id: str, sha256: str, authority_key: str) -> dict[str, Any]:
+        ref = _ref({"artifact_id": artifact_id, "sha256": sha256})
+        if ref is None:
+            raise ObservatoryError("invalid_artifact", "Select a retained evidence reference.", 409)
+        response = self._owner_read("detail", [ref], authority_key)
+        detail = response.get("detail")
+        if not isinstance(detail, Mapping):
+            raise _public_unavailable()
+        result = dict(detail)
+        result["observed_at"] = self._observed_at()
+        return result
+
+    def compare(self, *, refs: list[dict[str, str]], authority_key: str) -> dict[str, Any]:
+        if not isinstance(refs, list) or not 2 <= len(refs) <= 20:
+            raise ObservatoryError("invalid_comparison", "Select between two and twenty evidence references.", 409)
+        if any(not isinstance(ref, Mapping) for ref in refs):
+            raise ObservatoryError("invalid_comparison", "Select distinct retained evidence references.", 409)
+        if any("owner_id" in ref and (type(ref["owner_id"]) is not str or ref["owner_id"] != self.owner_id)
+               for ref in refs):
+            raise ObservatoryError("invalid_comparison", "Select references from this retained source.", 409)
+        normalized = [_ref(ref) for ref in refs]
+        if any(ref is None for ref in normalized) or len({ref["artifact_id"] for ref in normalized}) != len(refs):
+            raise ObservatoryError("invalid_comparison", "Select distinct retained evidence references.", 409)
+        response = self._owner_read("compare", normalized, authority_key)
+        compared = response.get("compare")
+        if not isinstance(compared, Mapping):
+            raise _public_unavailable()
+        result = dict(compared)
+        observed_at = self._observed_at()
+        result["observed_at"] = observed_at
+        for row in result.get("artifacts", []):
+            if isinstance(row, dict):
+                row["observed_at"] = observed_at
+        return result
+
+    @staticmethod
+    def _observed_at() -> str:
+        return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+    def _owner_read(self, kind: str, refs: list[dict[str, str]], authority_key: str) -> Mapping[str, Any]:
+        if type(authority_key) is not str or not authority_key or len(authority_key) > 128:
+            raise ObservatoryError("invalid_run_list", "Select a valid run authority.")
+        with self._lock:
+            if self._closed or self._poisoned or self._active is not None:
+                raise _public_unavailable()
+        response = self._worker({
+            "kind": kind, "root": self.root, "refs": refs,
+            "owner_id": self.owner_id, "resource_id": self.resource_id,
+        }, MAX_RESULT_BYTES)
+        error = response.get("error")
+        if error == "changed":
+            raise ObservatoryError("evidence_changed", "The retained evidence changed; refresh its reference.", 409)
+        if error in {"invalid", "ineligible"}:
+            raise ObservatoryError("evidence_ineligible", "The selected evidence cannot be compared.", 409)
+        if error is not None:
+            raise ObservatoryError("evidence_unavailable", "The selected retained evidence is unavailable.", 409)
+        return response
 
     def page(
         self, *, limit: int = 100, cursor: str | None = None, authority_key: str,

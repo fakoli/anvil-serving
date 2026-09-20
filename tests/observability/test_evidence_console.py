@@ -83,6 +83,49 @@ def test_catalog_invalid_cursor_is_not_replaced_by_stale_success(catalog_console
         console.read("runs/evidence", {"cursor": "invalid"}, sessions["first"])
 
 
+def test_catalog_detail_and_compare_authorize_before_refs(catalog_console, monkeypatch):
+    console, sessions = catalog_console
+    calls = []
+
+    def detail(**kwargs):
+        calls.append(("detail", kwargs))
+        return {"id": "run", "source": "evidence"}
+
+    def compare(**kwargs):
+        calls.append(("compare", kwargs))
+        return {"comparable": True, "artifacts": [], "differences": [],
+                "unknown_fields": [], "invalid_artifacts": []}
+
+    monkeypatch.setattr(console.evidence_runs, "detail", detail)
+    monkeypatch.setattr(console.evidence_runs, "compare", compare)
+    detail_query = {"artifact_id": "artifact-" + "a" * 64, "sha256": "b" * 64}
+    compare_query = {
+        "refs": json.dumps([
+            {"owner_id": "catalog-owner", "artifact_id": "artifact-" + "a" * 64, "sha256": "b" * 64},
+            {"owner_id": "catalog-owner", "artifact_id": "artifact-" + "c" * 64, "sha256": "d" * 64},
+        ]),
+    }
+    with pytest.raises(ObservatoryError) as denied_detail:
+        console.read("runs/evidence/detail", detail_query, sessions["denied"])
+    assert denied_detail.value.status == 403 and calls == []
+    with pytest.raises(ObservatoryError) as denied:
+        console.read("runs/evidence/compare", {"refs": "not-json"}, sessions["denied"])
+    assert denied.value.status == 403 and calls == []
+    detail_result = console.read("runs/evidence/detail", detail_query, sessions["first"])
+    compare_result = console.read("runs/evidence/compare", compare_query, sessions["first"])
+    assert detail_result["source"] == "evidence" and compare_result["comparable"] is True
+    assert [kind for kind, _kwargs in calls] == ["detail", "compare"]
+    revoked = replace(sessions["first"], principal=replace(
+        sessions["first"].principal, resources=frozenset()
+    ))
+    for route, query in (("runs/evidence/detail", detail_query),
+                         ("runs/evidence/compare", compare_query)):
+        with pytest.raises(ObservatoryError) as denied_after_revoke:
+            console.read(route, query, revoked)
+        assert denied_after_revoke.value.status == 403
+    assert [kind for kind, _kwargs in calls] == ["detail", "compare"]
+
+
 @pytest.mark.parametrize("root", ["relative", "/", "/catalog/../private", "/catalog\nprivate"])
 def test_catalog_requires_a_bounded_declared_root(root):
     with pytest.raises(ValueError):

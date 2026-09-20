@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -32,6 +33,29 @@ def _artifact(*, run_id="same-run", model="fixture", failed=False):
 def _write(path: Path, **kwargs):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(_artifact(**kwargs)), encoding="utf-8")
+
+
+def _capacity(*, concurrency=1, missing=False):
+    value = _artifact(model="capacity")
+    value.update({
+        "requests": 4, "completed": 4, "concurrency": concurrency,
+        "context_tokens": 1024, "max_context_tokens": 4096, "max_tokens": 128,
+        "engine": "fixture-engine", "gpu": "fixture-gpu", "cache_policy": "warm",
+        "prompt_set_id": "fixture-prompts", "sampling": {
+            "temperature": {"requested": 0.0, "effective_request": 0.0, "sent": True},
+            "top_p": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        },
+        "serve_flags": {"thinking_mode": "default", "no_thinking": False,
+                         "shared_prefix_burst": False},
+    })
+    if missing:
+        value.pop("max_tokens")
+    return value
+
+
+def _refs(source, root):
+    page = source.page(limit=100, authority_key="reader")
+    return [row["evidence_refs"][0] for row in page["items"]]
 
 
 def _source(root: Path, *, clock=time.monotonic, worker_target=None):
@@ -154,6 +178,135 @@ def test_external_prior_is_never_projected_as_locally_measured(tmp_path):
     row = source.page(authority_key="reader")["items"][0]
     assert row["evidence_kind"] == "external_prior"
     assert row["locally_measured"] is False
+    source.close()
+
+    (root / "measured.json").write_text(json.dumps(_capacity()), encoding="utf-8")
+    source = _source(root)
+    with pytest.raises(ObservatoryError) as rejected:
+        source.compare(refs=_refs(source, root), authority_key="reader")
+    assert rejected.value.code == "evidence_ineligible"
+    source.close()
+
+
+def test_detail_and_compare_are_digest_bound_and_compact(tmp_path):
+    root = tmp_path / "findings"
+    first, second = root / "first.json", root / "second.json"
+    first.parent.mkdir()
+    first.write_text(json.dumps(_capacity()), encoding="utf-8")
+    second_payload = _capacity()
+    second_payload["run_id"] = "distinct-retained-run"
+    second.write_text(json.dumps(second_payload), encoding="utf-8")
+    source = _source(root)
+    refs = _refs(source, root)
+    first_ref = next(
+        ref for ref in refs
+        if ref["artifact_id"] == "artifact-" + hashlib.sha256(b"first.json").hexdigest()
+    )
+    detail = source.detail(
+        artifact_id=refs[0]["artifact_id"], sha256=refs[0]["sha256"], authority_key="reader",
+    )
+    compared = source.compare(refs=refs, authority_key="reader")
+    assert detail["summary"]["capacity"]["concurrency"] == 1
+    assert detail["observed_at"]
+    assert "path" not in repr(detail) and "provenance" not in repr(detail)
+    assert compared["comparable"] is True
+    assert compared["differences"] == []
+    assert compared["unknown_fields"] == []
+    assert compared["invalid_artifacts"] == []
+    assert compared["observed_at"]
+    assert all(row["observed_at"] == compared["observed_at"] for row in compared["artifacts"])
+    with pytest.raises(ObservatoryError) as changed:
+        source.detail(artifact_id=refs[0]["artifact_id"], sha256=refs[1]["sha256"], authority_key="reader")
+    assert changed.value.code == "evidence_changed"
+    mutated = _capacity()
+    mutated["run_id"] = "changed-after-listing"
+    first.write_text(json.dumps(mutated), encoding="utf-8")
+    with pytest.raises(ObservatoryError) as changed_content:
+        source.detail(artifact_id=first_ref["artifact_id"], sha256=first_ref["sha256"], authority_key="reader")
+    assert changed_content.value.code == "evidence_changed"
+    source.close()
+
+
+def test_compare_reports_incompatible_dimensions_and_rejects_ineligible_evidence(tmp_path):
+    root = tmp_path / "findings"
+    root.mkdir()
+    (root / "first.json").write_text(json.dumps(_capacity(concurrency=1)), encoding="utf-8")
+    (root / "second.json").write_text(json.dumps(_capacity(concurrency=2)), encoding="utf-8")
+    source = _source(root)
+    compared = source.compare(refs=_refs(source, root), authority_key="reader")
+    assert compared["comparable"] is False and "concurrency" in compared["differences"]
+    source.close()
+
+    incomplete = _artifact()
+    incomplete.update({"schema": "anvil-serving.benchmark-evidence/v1", "evidence_kind": "measured",
+                       "completeness": "failed", "run": {}, "identities": {}, "summary": {}})
+    (root / "incomplete.json").write_text(json.dumps(incomplete), encoding="utf-8")
+    source = _source(root)
+    page = source.page(limit=10, authority_key="reader")
+    failed = next(row["evidence_refs"][0] for row in page["items"] if row["native_state"] == "failed")
+    measured = next(row["evidence_refs"][0] for row in page["items"] if row["native_state"] != "failed")
+    with pytest.raises(ObservatoryError) as rejected:
+        source.compare(refs=[failed, measured], authority_key="reader")
+    assert rejected.value.code == "evidence_ineligible"
+    source.close()
+
+    legacy_root = tmp_path / "legacy-incomplete"
+    legacy_root.mkdir()
+    (legacy_root / "complete.json").write_text(json.dumps(_capacity()), encoding="utf-8")
+    failed_capacity = _capacity()
+    failed_capacity["completed"] = 3
+    (legacy_root / "failed-capacity.json").write_text(json.dumps(failed_capacity), encoding="utf-8")
+    missing_completed = _capacity()
+    missing_completed.pop("completed")
+    (legacy_root / "missing-completed.json").write_text(
+        json.dumps(missing_completed), encoding="utf-8"
+    )
+    source = _source(legacy_root)
+    rows = source.page(limit=10, authority_key="reader")["items"]
+    assert len(rows) == 3  # Incomplete retained artifacts remain inspectable.
+    complete = next(
+        row["evidence_refs"][0] for row in rows
+        if row["summary"]["capacity"].get("completed") == 4
+    )
+    invalids = [
+        row["evidence_refs"][0] for row in rows
+        if row["evidence_refs"][0] != complete
+    ]
+    for invalid in invalids:
+        with pytest.raises(ObservatoryError) as rejected:
+            source.compare(refs=[complete, invalid], authority_key="reader")
+        assert rejected.value.code == "evidence_ineligible"
+    source.close()
+
+    missing_root = tmp_path / "missing"
+    missing_root.mkdir()
+    (missing_root / "complete.json").write_text(json.dumps(_capacity()), encoding="utf-8")
+    (missing_root / "missing.json").write_text(json.dumps(_capacity(missing=True)), encoding="utf-8")
+    source = _source(missing_root)
+    compared = source.compare(refs=_refs(source, missing_root), authority_key="reader")
+    assert "capacity.max_tokens" in compared["unknown_fields"]
+    source.close()
+
+
+def test_compare_rejects_malformed_reference_tokens_without_owner_failure(tmp_path):
+    root = tmp_path / "findings"
+    root.mkdir()
+    (root / "first.json").write_text(json.dumps(_capacity()), encoding="utf-8")
+    second = _capacity()
+    second["run_id"] = "second"
+    (root / "second.json").write_text(json.dumps(second), encoding="utf-8")
+    source = _source(root)
+    valid = _refs(source, root)[0]
+    for malformed in (
+        {"owner_id": [], **valid},
+        {"owner_id": "evidence-owner", "artifact_id": "artifact-" + "a" * 63 + "_",
+         "sha256": valid["sha256"]},
+        {"owner_id": "evidence-owner", "artifact_id": valid["artifact_id"],
+         "sha256": valid["sha256"].upper()},
+    ):
+        with pytest.raises(ObservatoryError) as rejected:
+            source.compare(refs=[valid, malformed], authority_key="reader")
+        assert rejected.value.code == "invalid_comparison"
     source.close()
 
 

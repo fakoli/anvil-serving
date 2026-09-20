@@ -525,6 +525,35 @@ class Console:
         self._cache_runs(key, result)
         return result
 
+    def _evidence_authority(self, session):
+        binding = self.run_bindings.get("evidence")
+        if binding is None or self.evidence_runs is None:
+            raise ObservatoryError("not_found", "This run source is unavailable.", 404)
+        self.access.permit(session, binding["resource_id"])
+        return digest({"principal": session.principal.identity, "resource": binding["resource_id"],
+                       "policy": self.policy_digest})
+
+    def _evidence_detail(self, session, query):
+        authority = self._evidence_authority(session)
+        fields(query, required=("artifact_id", "sha256"))
+        return self.evidence_runs.detail(
+            artifact_id=query["artifact_id"], sha256=query["sha256"], authority_key=authority,
+        )
+
+    def _evidence_compare(self, session, query):
+        authority = self._evidence_authority(session)
+        fields(query, required=("refs",))
+        raw = query["refs"]
+        if type(raw) is not str or len(raw) > 8192:
+            raise ObservatoryError("invalid_comparison", "Select bounded evidence references.", 409)
+        try:
+            refs = strict_json(raw.encode("utf-8"))
+        except (ObservatoryError, UnicodeError):
+            raise ObservatoryError("invalid_comparison", "Select bounded evidence references.", 409) from None
+        if not isinstance(refs, list):
+            raise ObservatoryError("invalid_comparison", "Select bounded evidence references.", 409)
+        return self.evidence_runs.compare(refs=refs, authority_key=authority)
+
     @staticmethod
     def _operation_run(item):
         native_id = item["id"]
@@ -629,6 +658,10 @@ class Console:
         if route == "run-sources":
             fields(query)
             return self.run_sources(session)
+        if route == "runs/evidence/detail":
+            return self._evidence_detail(session, query)
+        if route == "runs/evidence/compare":
+            return self._evidence_compare(session, query)
         if route.startswith("runs/"):
             fields(query, optional=("limit", "cursor"))
             source = identifier(route.split("/", 1)[1])
