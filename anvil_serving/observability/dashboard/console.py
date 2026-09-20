@@ -26,8 +26,8 @@ from .run_projection import BENCHMARK_SOURCE, list_benchmark_runs, projected_run
 PREVIEW_FIELDS = frozenset({"id", "host_id", "resource_id", "action_id", "label", "baseline_digest", "candidate_digest", "policy_digest", "expires_at_epoch_seconds", "effect", "diff", "affected_aliases", "workload_impact", "gpu_ids", "stop_semantics", "recovery", "planned_steps", "actor", "service_identity", "acknowledgement_required", "diagnostic"})
 _SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings", "logs", "access", "bench", "playground", "models", "work", "observability", "compute", "docs"})
 _RUN_CACHE_ENTRIES = 8
-_RUN_CACHE_BYTES = 384 * 1024
-_RUN_PAGE_BYTES = 48 * 1024
+_RUN_PAGE_BYTES = 128 * 1024
+_RUN_CACHE_BYTES = _RUN_CACHE_ENTRIES * _RUN_PAGE_BYTES
 
 
 def _run_bindings(config):

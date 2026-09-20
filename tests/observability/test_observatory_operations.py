@@ -43,6 +43,7 @@ class FakeOwner:
         self.completed = {}
         self.gate = threading.Event()
         self.gate.set()
+        self.benchmark_rows = None
 
     def snapshot(self):
         return {"hosts": [{"id": "host-fixture-a", "controller": {"status": "complete"}}], "serves": []}
@@ -84,11 +85,12 @@ class FakeOwner:
     def list_benchmark_jobs(self, *, limit=100, cursor=None):
         if self.fail_verification:
             raise TimeoutError("fixture benchmark owner unavailable")
-        return {"schema": "anvil-serving.benchmark-job-list/v1", "items": [{
+        rows = self.benchmark_rows or [{
             "native_id": "benchmark-fixture-1", "native_state": "completed", "suite": "context",
             "profile": "fixture-profile", "model": "fixture-model", "submitted_at": "2026-09-19T00:00:00Z",
             "updated_at": "2026-09-19T00:01:00Z", "artifact": {"sha256": "a" * 64},
-        }], "next_cursor": None, "source": {
+        }]
+        return {"schema": "anvil-serving.benchmark-job-list/v1", "items": rows[:limit], "next_cursor": None, "source": {
             "id": "benchmark-owner", "status": "fresh", "observed_at": "2026-09-19T00:01:00Z",
             "deadline_seconds": 1.0,
         }}
@@ -250,6 +252,28 @@ def test_benchmark_cache_is_authorized_before_stale_fallback(site):
     assert stale["items"][0]["freshness"] == "stale"
     with pytest.raises(ObservatoryError, match="does not grant"):
         console.read("runs/benchmark", {"limit": "1"}, denied)
+
+
+def test_benchmark_cache_retains_a_projected_hundred_row_page(site):
+    console, owner, _call = site
+    owner.benchmark_rows = [{
+        "native_id": f"benchmark-fixture-{number:03d}", "native_state": "completed",
+        "suite": "context", "profile": "profile-" + "p" * 240,
+        "model": "model-" + "m" * 240,
+        "submitted_at": "2026-09-19T00:00:00Z", "updated_at": "2026-09-19T00:01:00Z",
+        "artifact": {"sha256": "a" * 64},
+    } for number in range(100)]
+    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
+
+    fresh = console.read("runs/benchmark", {"limit": "100"}, session)
+    assert len(canonical(fresh)) > 48 * 1024
+    assert len(canonical(fresh)) <= 128 * 1024
+
+    owner.fail_verification = True
+    stale = console.read("runs/benchmark", {"limit": "100"}, session)
+    assert len(stale["items"]) == 100
+    assert stale["sources"][0]["status"] == "stale"
+    assert {row["freshness"] for row in stale["items"]} == {"stale"}
 
 
 def test_console_operation_runs_page_past_the_legacy_hundred_row_cap(site):
