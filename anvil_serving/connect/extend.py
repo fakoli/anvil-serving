@@ -22,6 +22,8 @@ import json
 import os
 import secrets
 import stat
+import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -54,7 +56,7 @@ _CONNECTOR_RESOURCE_LIMIT = 64
 _RECOVERY_SCHEMA = "anvil-connect.extend-recovery/v1"
 _RECOVERY_PHASES = {
     "revoke-pending", "revoked", "invite-pending", "invited", "re-enroll-pending", "init-pending",
-    "redeemed", "approve-pending", "approved",
+    "redeemed", "approve-pending", "approved", "refresh-revoke-pending",
 }
 
 
@@ -368,6 +370,12 @@ def _read_recovery(data: dict[str, Any], connector_id: str, declared: list[str])
             or type(value.get("generation")) is not int or not 1 <= value["generation"] <= (2**64 - 1)):
         raise ExtendError("extension recovery state does not match this declaration")
     _closed_installation_status(value.get("prior"), connector_id)
+    if value["phase"] == "refresh-revoke-pending" and (
+        value["bundle"] is None or value["fingerprint"] != ""
+        or value["prior"]["status"] != "active"
+        or value["generation"] <= value["prior"]["generation"]
+    ):
+        raise ExtendError("extension invitation refresh binding is invalid")
     if (not isinstance(value.get("fingerprint"), str)
             or (value["fingerprint"] and (len(value["fingerprint"]) != 43
                 or any(char not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for char in value["fingerprint"])) )
@@ -618,6 +626,30 @@ def _identity_fingerprint(manifest_path: str | Path, target: Target, runner: Any
     return str(_connector_identity(manifest_path, target, runner)["fingerprint"])
 
 
+def _prior_connector_identity(
+    data: dict[str, Any], connector_id: str, prior: dict[str, Any], runner: Any,
+) -> dict[str, Any]:
+    """Prove no replacement was staged before retiring an aging invitation."""
+    connector = next(item for item in data["connectors"] if item["id"] == connector_id)
+    declaration = {**connector, "resources": [
+        resource for resource in connector["resources"]
+        if resource["envelope"]["rule"]["id"] in prior["resources"]
+    ]}
+    with tempfile.TemporaryDirectory(prefix="anvil-connect-prior-") as temporary:
+        root = Path(temporary)
+        manage._materialize({"connector.json": json.dumps(declaration)}, root)
+        root.chmod(0o755)
+        result = manage._run(
+            runner, (data["binary"], "identity", "--config", str(root / "connector.json")),
+            _SYSTEMD_TIMEOUT, _role_identity(data, "connector", connector_id),
+        )
+    manage._fail(result, "prior connector identity is unavailable; invitation refresh refused")
+    observed = manage._closed_identity(result.stdout)
+    if observed != {**prior, "status": "enrolled"}:
+        raise ExtendError("prior connector identity changed; invitation refresh refused")
+    return observed
+
+
 def _installation_status(
     data: dict[str, Any], manifest_path: str | Path, connector_id: str, runner: Any,
 ) -> dict[str, Any]:
@@ -650,6 +682,19 @@ def _resolve_recovery_phase(
             and status["fingerprint"] == expected_fingerprint
         )
 
+    if phase == "refresh-revoke-pending":
+        _prior_connector_identity(data, connector_id, prior, runner)
+        if exact("invited", declared, generation, ""):
+            _revoke(data, manifest_path, connector_id, runner)
+            status = _installation_status(data, manifest_path, connector_id, runner)
+        if not exact("revoked", declared, generation + 1, ""):
+            raise ExtendError("installation status cannot prove the retained invitation refresh")
+        _write_recovery(data, connector_id, declared, "revoked", prior=prior,
+                        generation=status["generation"], fingerprint="")
+        bundle = _retained_bundle(data, connector_id, recovery["bundle"])
+        if bundle is not None:
+            bundle.unlink()
+        return _read_recovery(data, connector_id, declared) or recovery
     if phase == "revoked":
         if not exact("revoked", prior["resources"] if fingerprint else declared, generation, fingerprint):
             raise ExtendError("installation status cannot prove the retained revoke outcome")
@@ -735,6 +780,24 @@ def _resume_enrollment(
     phase, bundle_name = recovery["phase"], recovery["bundle"]
     prior, generation = recovery["prior"], recovery["generation"]
     fingerprint = recovery["fingerprint"]
+    if phase in {"invited", "re-enroll-pending"}:
+        bundle = _retained_bundle(data, connector_id, bundle_name)
+        # Only the manager-owned phase record supplies age; connector-owned
+        # invitation files can be touched by their consuming service.
+        info = _recovery_path(data, connector_id).stat(follow_symlinks=False)
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
+                or stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1):
+            raise ExtendError("extension recovery age is unavailable")
+        age = time.time() - info.st_mtime
+        # Invitations live for 600 seconds. Leave a minute for staging and
+        # redemption; backward clock movement also requires a bounded refresh.
+        if bundle is not None and (age < 0 or age >= 540):
+            _prior_connector_identity(data, connector_id, prior, runner)
+            _write_recovery(data, connector_id, declared, "refresh-revoke-pending",
+                            bundle_name, prior, generation)
+            return _resume_enrollment(
+                data, manifest_path, target, connector_unit, prior_connector, declared, runner, system_root,
+            )
     if phase == "revoked":
         _write_recovery(data, connector_id, declared, "invite-pending", prior=prior, generation=generation, fingerprint=recovery["fingerprint"])
         try:
