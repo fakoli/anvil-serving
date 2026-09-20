@@ -1,4 +1,8 @@
 import copy
+import http.server
+import multiprocessing
+import threading
+import time
 
 import pytest
 
@@ -144,6 +148,112 @@ def test_benchmark_list_uses_only_the_declared_bounded_tool():
     assert operation.name == "benchmark_job_list"
     assert operation.arguments == {"limit": 2, "cursor": cursor}
     assert kwargs == {}
+
+
+def test_real_benchmark_owner_header_stall_is_killed_at_the_total_deadline():
+    request_started = threading.Event()
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/health":
+                raw = b'{"status":"ok","service":"anvil-serving-controller","request_id":"fixture.1","node":"host-a"}'
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+                return
+            request_started.set()
+            self.connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n")
+            time.sleep(5)
+
+        def log_message(self, *_args):
+            pass
+
+    class Server(http.server.ThreadingHTTPServer):
+        daemon_threads = True
+
+    server = Server(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    value = ControllerAdapter({"controller": {
+        "url": f"http://127.0.0.1:{server.server_address[1]}", "token_env": "FIXTURE_TOKEN",
+        "expected_node": "host-a", "topology": "fixture", "execution_host": "host-a",
+        "execution_runtime": "native",
+    }, "resources": []}, {"FIXTURE_TOKEN": "fixture-token"})
+    started = time.monotonic()
+    try:
+        with pytest.raises(ObservatoryError, match="unavailable"):
+            value.list_benchmark_jobs(limit=1, deadline_seconds=0.2)
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=1)
+    assert request_started.is_set()
+    assert time.monotonic() - started < 1.5
+
+
+def test_benchmark_owner_rejects_a_dns_name_before_a_worker_can_resolve_it():
+    value = ControllerAdapter({"controller": {
+        "url": "https://resolver-stall.example.test", "token_env": "FIXTURE_TOKEN",
+        "topology": "fixture", "execution_host": "host-a", "execution_runtime": "native",
+    }, "resources": []}, {"FIXTURE_TOKEN": "fixture-token"})
+    started = time.monotonic()
+    with pytest.raises(ObservatoryError, match="unavailable"):
+        value.list_benchmark_jobs(limit=1, deadline_seconds=0.2)
+    assert time.monotonic() - started < 0.8
+
+
+def test_real_benchmark_owner_worker_returns_the_declared_list():
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/health":
+                raw = b'{"status":"ok","service":"anvil-serving-controller","request_id":"fixture.1","node":"host-a"}'
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+                return
+            raw = b'{"tools":[{"name":"benchmark_job_list","inputSchema":{"type":"object"}}]}'
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            raw = (b'{"ok":true,"data":{"schema":"anvil-serving.benchmark-job-list/v1",'
+                   b'"items":[{"native_id":"job-native-1"}],"next_cursor":null,'
+                   b'"source":{"id":"owner-a","status":"fresh"}}}')
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def log_message(self, *_args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    value = ControllerAdapter({"controller": {
+        "url": f"http://127.0.0.1:{server.server_address[1]}", "token_env": "FIXTURE_TOKEN",
+        "expected_node": "host-a", "topology": "fixture", "execution_host": "host-a",
+        "execution_runtime": "native",
+    }, "resources": []}, {"FIXTURE_TOKEN": "fixture-token"})
+    try:
+        result = value.list_benchmark_jobs(limit=1, deadline_seconds=1.0)
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=1)
+    assert result["source"]["id"] == "owner-a"
+    assert result["items"] == [{"native_id": "job-native-1"}]
+    assert not [child for child in multiprocessing.active_children()
+                if child.name == "observatory-benchmark-list"]
 
 
 def test_preview_binds_exact_private_resource_and_execute_uses_durable_context():

@@ -11,6 +11,7 @@ from collections.abc import Mapping
 import copy
 import json
 import math
+import multiprocessing
 import re
 import time
 from typing import Any
@@ -21,7 +22,7 @@ from ...transports import (
     Operation,
     TransportError,
 )
-from .contracts import ObservatoryError, digest, identifier, validate_values
+from .contracts import ObservatoryError, canonical, digest, identifier, strict_json, validate_values
 from . import runtime_candidates
 
 
@@ -38,6 +39,7 @@ _TOOLS = frozenset(
         "host_services_logs", "host_services_manage", "container_exec",
     }
 )
+_BENCHMARK_WORKER_IPC_BYTES = 64 * 1024
 
 
 def _mapping(value: object, message: str) -> dict[str, Any]:
@@ -54,6 +56,56 @@ def _safe(value: object, field: str) -> str:
 
 def _public_error(message: str = "The resource owner is unavailable.") -> ObservatoryError:
     return ObservatoryError("owner_unavailable", message, 503)
+
+
+def _benchmark_list_worker(sender, bundle: Mapping[str, Any], arguments: Mapping[str, Any]) -> None:
+    """One disposable worker owns every blocking controller phase for a run read."""
+    try:
+        transport = ControllerTransport(
+            bundle["endpoint"], auth_env=bundle["auth_env"],
+            allowed_operations=bundle["allowed_operations"], environment=bundle["environment"],
+            timeout_seconds=bundle["timeout_seconds"], max_response_bytes=bundle["max_response_bytes"],
+            expected_node=bundle["expected_node"],
+        )
+        declarations = transport.tool_catalog()
+        relevant = sorted(
+            (item for item in declarations if item.get("name") in _TOOLS),
+            key=lambda item: item["name"],
+        )
+        if (bundle["expected_catalog_digest"] is not None
+                and digest(relevant) != bundle["expected_catalog_digest"]):
+            raise ValueError("controller catalog digest mismatch")
+        if "benchmark_job_list" not in {item["name"] for item in relevant}:
+            raise ValueError("benchmark list unavailable")
+        result = dict(transport.execute(
+            Operation("benchmark_job_list", arguments, tool_name="benchmark_job_list")
+        ).data)
+        message: object = {"ok": True, "data": result}
+    except Exception:
+        message = {"ok": False}
+    try:
+        raw = canonical(message)
+        if len(raw) > _BENCHMARK_WORKER_IPC_BYTES:
+            raw = canonical({"ok": False})
+        sender.send_bytes(raw)
+    except (BrokenPipeError, OSError, ValueError, ObservatoryError):
+        pass
+    finally:
+        sender.close()
+
+
+def _stop_benchmark_worker(process) -> bool:
+    if process.is_alive():
+        process.terminate()
+        process.join(timeout=0.1)
+    if process.is_alive():
+        process.kill()
+        process.join(timeout=0.1)
+    if process.is_alive():
+        return False
+    process.join(timeout=0)
+    process.close()
+    return True
 
 
 class ControllerAdapter:
@@ -120,6 +172,7 @@ class ControllerAdapter:
         self._catalog: frozenset[str] | None = None
         self._catalog_error = False
         self._catalog_checked_at = float("-inf")
+        self._benchmark_worker_poisoned = False
 
     @staticmethod
     def _validate_resource(item: dict[str, Any]) -> None:
@@ -670,18 +723,84 @@ class ControllerAdapter:
         return {"ok": True, "owner_operation_id": intent_key, "native_state": "succeeded",
                 "execution_outcome": "succeeded", "evidence": self._evidence(payload)}
 
-    def list_benchmark_jobs(self, *, limit: int = 100, cursor: str | None = None) -> dict[str, Any]:
-        """Read the benchmark owner's declared bounded list tool."""
+    def list_benchmark_jobs(
+        self, *, limit: int = 100, cursor: str | None = None, deadline_seconds: float = 2.0,
+    ) -> dict[str, Any]:
+        """Read a benchmark list in one process that is killed at the source deadline."""
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
             raise ObservatoryError("invalid_run_list", "Select a list limit between 1 and 100.")
         if cursor is not None and (type(cursor) is not str or len(cursor) > 128):
             raise ObservatoryError("invalid_run_list", "Select a valid run cursor.")
+        if (type(deadline_seconds) not in {int, float} or isinstance(deadline_seconds, bool)
+                or not 0 < deadline_seconds <= 2):
+            raise ObservatoryError("invalid_run_list", "Select a bounded owner deadline.")
+        isolated = self._isolated_benchmark_list(
+            {"limit": limit, **({"cursor": cursor} if cursor is not None else {})},
+            float(deadline_seconds),
+        )
+        if isolated is not None:
+            return isolated
         if "benchmark_job_list" not in self._tools():
             raise _public_error("The benchmark owner does not expose a run list.")
         return self._call("benchmark_job_list", {
             "limit": limit,
             **({"cursor": cursor} if cursor is not None else {}),
         })
+
+    def _isolated_benchmark_list(
+        self, arguments: Mapping[str, Any], deadline_seconds: float,
+    ) -> dict[str, Any] | None:
+        """Use a killable subprocess only for the real read-only controller transport.
+
+        Test adapters remain in-process. Production ``ControllerTransport`` calls
+        otherwise block in DNS, TLS, or HTTP-header parsing where urllib exposes no
+        cancellation handle to release the console's one-source slot.
+        """
+        if type(self._transport) is not ControllerTransport:
+            return None
+        if self._benchmark_worker_poisoned:
+            raise _public_error("The benchmark source worker is unavailable.")
+        environment = None
+        if self._transport._environment_injected:
+            token = self._transport.environment.get(self._transport.auth_env)
+            environment = {self._transport.auth_env: token} if type(token) is str else {}
+        bundle = {
+            "endpoint": self._transport.endpoint,
+            "auth_env": self._transport.auth_env,
+            "allowed_operations": tuple(self._transport.allowed_operations),
+            "environment": environment,
+            "timeout_seconds": deadline_seconds,
+            "max_response_bytes": self._transport.max_response_bytes,
+            "expected_node": self._transport.expected_node,
+            "expected_catalog_digest": self._expected_catalog_digest,
+        }
+        context = multiprocessing.get_context("spawn")
+        receiver, sender = context.Pipe(duplex=False)
+        process = context.Process(
+            target=_benchmark_list_worker,
+            args=(sender, bundle, dict(arguments)),
+            name="observatory-benchmark-list",
+        )
+        deadline = time.monotonic() + deadline_seconds
+        try:
+            process.start()
+            sender.close()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not receiver.poll(remaining):
+                raise TimeoutError
+            raw = receiver.recv_bytes(_BENCHMARK_WORKER_IPC_BYTES)
+            response = strict_json(raw)
+            if not isinstance(response, Mapping) or response.get("ok") is not True:
+                raise ValueError("benchmark worker failed")
+            return self._payload(response.get("data", {}))
+        except (EOFError, OSError, TimeoutError, ValueError, ObservatoryError):
+            raise _public_error() from None
+        finally:
+            receiver.close()
+            sender.close()
+            if process.pid is not None and not _stop_benchmark_worker(process):
+                self._benchmark_worker_poisoned = True
+                raise _public_error("The benchmark source worker did not exit.")
 
     def verify(self, preview: Mapping[str, Any], result: Mapping[str, Any]) -> dict[str, str]:
         binding = self._binding(preview)

@@ -5,16 +5,47 @@ from __future__ import annotations
 import json
 import os
 import hashlib
+import base64
+import math
 import sqlite3
 import threading
 import time
 import uuid
 from pathlib import Path
 
-from .contracts import ObservatoryError, canonical, digest, timestamp
+from .contracts import ObservatoryError, canonical, digest, identifier, timestamp
 
 TERMINAL = frozenset({"succeeded", "failed", "recovered"})
 PUBLIC_OPERATION = frozenset({"id", "resource_id", "host_id", "action_id", "label", "actor", "service_identity", "submitted_at", "updated_at", "status", "native_state", "owner_operation_id", "execution_outcome", "verification", "recovery", "events", "evidence_id", "candidate_digest", "baseline_digest"})
+_RUN_RECORD_BYTES = 64 * 1024
+_RUN_PAGE_BYTES = 48 * 1024
+_RUN_SCAN_ROWS = 128
+_RUN_QUERY_ROWS = 16
+_RUN_READ_SECONDS = 1.0
+
+
+def _encode_run_cursor(frontier: tuple[float, str] | None) -> str | None:
+    if frontier is None:
+        return None
+    payload = json.dumps({"created": frontier[0], "id": frontier[1]}, separators=(",", ":")).encode()
+    return base64.urlsafe_b64encode(payload).rstrip(b"=").decode("ascii")
+
+
+def _decode_run_cursor(value: str | None) -> tuple[float, str] | None:
+    if value is None:
+        return None
+    if type(value) is not str or not 1 <= len(value) <= 128:
+        raise ObservatoryError("invalid_run_list", "Select a valid run cursor.")
+    try:
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+        decoded = json.loads(raw)
+        created = decoded["created"]
+        native_id = identifier(decoded["id"])
+        if type(created) not in {int, float} or isinstance(created, bool) or not math.isfinite(created):
+            raise ValueError
+    except (ValueError, TypeError, KeyError, UnicodeDecodeError, json.JSONDecodeError, ObservatoryError):
+        raise ObservatoryError("invalid_run_list", "Select a valid run cursor.") from None
+    return float(created), native_id
 
 
 class IntentStore:
@@ -204,6 +235,120 @@ class IntentStore:
     def list_private(self) -> list[dict]:
         with self._lock:
             return [json.loads(row[0]) for row in self.db.execute("SELECT body FROM intents ORDER BY created DESC LIMIT 10016")]
+
+    def list_run_page(
+        self, resources: frozenset[str], *, limit: int = 100, cursor: str | None = None,
+    ) -> dict:
+        """Return one bounded, authorization-scoped operation page.
+
+        The caller supplies already-authorized resources; SQLite filters them before
+        returning a row or using it as a pagination frontier.  Oversized/corrupt
+        journal rows are skipped visibly rather than materialized into the browser
+        response.
+        """
+        if (not isinstance(resources, frozenset) or any(type(value) is not str for value in resources)
+                or not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100):
+            raise ValueError("invalid operation run page")
+        if not resources:
+            return {"items": [], "next_cursor": None, "partial": False, "truncated": False}
+        after = _decode_run_cursor(cursor)
+        allowed = None if "*" in resources else tuple(sorted(resources))
+        items: list[dict] = []
+        page_bytes = 0
+        partial = False
+        scanned = 0
+        frontier = after
+        exhausted = False
+        deadline = time.monotonic() + _RUN_READ_SECONDS
+        remaining = deadline - time.monotonic()
+        if remaining <= 0 or not self._lock.acquire(timeout=remaining):
+            raise ObservatoryError("operation_source_unavailable", "The operation source is busy.", 503)
+        previous_busy_timeout = None
+        try:
+            previous_busy_timeout = self.db.execute("PRAGMA busy_timeout").fetchone()[0]
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise sqlite3.OperationalError
+            self.db.execute("PRAGMA busy_timeout=" + str(max(1, int(remaining * 1000))))
+            self.db.set_progress_handler(lambda: int(time.monotonic() >= deadline), 1000)
+            while scanned < _RUN_SCAN_ROWS and len(items) < limit:
+                predicates: list[str] = []
+                values: list[object] = []
+                if allowed is not None:
+                    predicates.append("resource IN (" + ",".join("?" for _ in allowed) + ")")
+                    values.extend(allowed)
+                if frontier is not None:
+                    predicates.append("(created < ? OR (created = ? AND id < ?))")
+                    values.extend((frontier[0], frontier[0], frontier[1]))
+                where = " WHERE " + " AND ".join(predicates) if predicates else ""
+                rows = self.db.execute(
+                    "SELECT id,resource,created,CASE WHEN length(CAST(body AS BLOB)) <= ? THEN body ELSE NULL END AS body"
+                    + " FROM intents" + where + " ORDER BY created DESC,id DESC LIMIT ?",
+                    (_RUN_RECORD_BYTES, *values, min(_RUN_QUERY_ROWS, _RUN_SCAN_ROWS - scanned)),
+                ).fetchall()
+                if not rows:
+                    exhausted = True
+                    break
+                consumed = 0
+                page_full = False
+                for row in rows:
+                    consumed += 1
+                    scanned += 1
+                    candidate = (float(row["created"]), row["id"])
+                    raw = row["body"]
+                    if type(raw) is not str:
+                        partial = True
+                        frontier = candidate
+                        continue
+                    try:
+                        private = json.loads(raw)
+                        if (private.get("id") != row["id"] or private.get("resource_id") != row["resource"]
+                                or any(type(private.get(key)) is not str for key in (
+                                    "id", "resource_id", "label", "status", "submitted_at", "updated_at",
+                                ))):
+                            raise ValueError
+                        identifier(private["id"])
+                        identifier(private["resource_id"])
+                        item = {key: private.get(key) for key in (
+                            "id", "resource_id", "host_id", "action_id", "label", "status",
+                            "native_state", "submitted_at", "updated_at", "evidence_id",
+                        )}
+                        encoded = canonical(item)
+                    except Exception:
+                        partial = True
+                        frontier = candidate
+                        continue
+                    if page_bytes + len(encoded) > _RUN_PAGE_BYTES:
+                        page_full = True
+                        break
+                    items.append(item)
+                    page_bytes += len(encoded)
+                    frontier = candidate
+                    if len(items) == limit:
+                        break
+                if page_full:
+                    break
+                if consumed < len(rows):
+                    break
+                if len(rows) < _RUN_QUERY_ROWS:
+                    exhausted = True
+                    break
+        except sqlite3.OperationalError:
+            if time.monotonic() >= deadline:
+                raise ObservatoryError("operation_source_unavailable", "The operation source exceeded its read deadline.", 503) from None
+            raise
+        finally:
+            self.db.set_progress_handler(None, 0)
+            if previous_busy_timeout is not None:
+                self.db.execute("PRAGMA busy_timeout=" + str(previous_busy_timeout))
+            self._lock.release()
+        next_cursor = None if exhausted else _encode_run_cursor(frontier)
+        return {
+            "items": items,
+            "next_cursor": next_cursor,
+            "partial": partial,
+            "truncated": next_cursor is not None,
+        }
 
     def save_evidence(self, resource: str, body: dict) -> str:
         key = str(uuid.uuid4())
