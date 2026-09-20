@@ -6,7 +6,7 @@
 
 !!! info "Decision snapshot"
 
-    - **Reference role:** qualified Huihui NInfer MTP3 160K/C1 text/tools/image profile on the measured RTX 5090; earlier 64K results remain a separate comparison. Actual assignments are private.
+    - **Product role:** qualified Huihui NInfer MTP3 160K/C1 text/tools/image profile on the measured RTX 5090; earlier 64K results remain a separate comparison. Actual assignments are private.
     - **Historical product role:** former human-approved 96 GB single-service profile;
       retained as reproducible evidence. Official FP8 is the declared,
       unexercised rollback in the September 14 text-selection record.
