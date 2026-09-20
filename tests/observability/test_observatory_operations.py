@@ -2,6 +2,7 @@
 
 import http.client
 import json
+import socket
 import sqlite3
 import threading
 import time
@@ -142,6 +143,7 @@ def site(tmp_path):
         connection.close()
         return (status, data, response_headers) if include_headers else (status, data)
 
+    call.server = server
     call("POST", "session", {"username": "operator", "password": "fixture-password"})
     yield console, owner, call
     owner.gate.set()
@@ -573,6 +575,64 @@ def test_csrf_origin_body_and_query_hardening(site):
     assert call("GET", "controls?resource=one&resource=two")[0] == 400
     assert call("GET", "metrics?chart=generation&url=http://127.0.0.1/private")[0] == 400
     assert call("POST", "previews", {"resource_id": "serve-fixture-a", "action_id": "shell.execute"})[0] == 403
+    assert owner.mutations == 0
+
+
+def _rejected_mutation(port, headers, body=b""):
+    request = (
+        b"POST /observatory/api/observatory/v1/previews HTTP/1.0\r\n"
+        + b"".join(name.encode("ascii") + b": " + value.encode("ascii") + b"\r\n" for name, value in headers)
+        + b"Connection: close\r\n\r\n"
+        + body
+    )
+    with socket.create_connection(("127.0.0.1", port), timeout=1) as connection:
+        connection.settimeout(1)
+        started = time.monotonic()
+        connection.sendall(request)
+        raw = b""
+        while True:
+            chunk = connection.recv(4096)
+            if not chunk:
+                break
+            raw += chunk
+    return time.monotonic() - started, raw
+
+
+@pytest.mark.parametrize(("header", "code"), [
+    (("Host", "forged.example.test"), b"host_denied"),
+    (("Origin", "https://evil.example.test"), b"origin_denied"),
+    (("X-CSRF-Token", "forged"), b"csrf_denied"),
+])
+def test_early_mutation_rejection_drains_small_safe_body(site, header, code):
+    console, owner, call = site
+    body = b"{}"
+    headers = [
+        ("Host", "console.example.test"), ("Origin", "https://console.example.test"),
+        ("Content-Type", "application/json"), ("Content-Length", str(len(body))), header,
+    ]
+    if header[0] == "X-CSRF-Token":
+        session = next(iter(console.access._sessions.values()))
+        headers.append(("Cookie", console.access.cookie(session).split(";", 1)[0]))
+    elapsed, raw = _rejected_mutation(call.server.server_address[1], headers, body)
+    assert elapsed < 1
+    assert raw.startswith(b"HTTP/1.0 403 ")
+    assert code in raw
+    assert owner.mutations == 0
+
+
+@pytest.mark.parametrize("headers, body", [
+    ([("Content-Length", "2"), ("Content-Length", "2")], b""),
+    ([("Content-Length", "65537")], b""),
+    ([("Content-Length", "2")], b"{"),
+])
+def test_early_mutation_rejection_never_drains_unsafe_or_slow_body(site, headers, body):
+    _, owner, call = site
+    elapsed, raw = _rejected_mutation(call.server.server_address[1], [
+        ("Host", "forged.example.test"), ("Origin", "https://console.example.test"),
+        ("Content-Type", "application/json"), *headers,
+    ], body)
+    assert elapsed < 1
+    assert raw.startswith(b"HTTP/1.0 403 ") and b"host_denied" in raw
     assert owner.mutations == 0
 
 
