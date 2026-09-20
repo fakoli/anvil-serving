@@ -143,9 +143,11 @@ def test_host_pi_optional_private_bridge_fields_are_all_or_nothing(tmp_path):
     config["host_pi"] = host_pi
     assert validate_config(config)["host_pi"] == host_pi  # legacy embedded host Pi
 
+    token_path = (tmp_path / "host-pi.token").as_posix()
+    token_ref = f"file:{token_path if token_path.startswith('/') else '/' + token_path}"
     configured = _config(tmp_path)
     configured["host_pi"] = host_pi | {
-        "token_ref": "file:/private/host-pi.token", "parent_origin": "https://workbench.example.test",
+        "token_ref": token_ref, "parent_origin": "https://workbench.example.test",
         "bridge_base_url": "http://127.0.0.1:30123",
     }
     assert validate_config(configured)["host_pi"]["bridge_base_url"] == "http://127.0.0.1:30123"
