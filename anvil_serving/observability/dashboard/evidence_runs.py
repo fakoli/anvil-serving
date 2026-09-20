@@ -41,6 +41,7 @@ _CURSOR_PREFIX = "e1"
 _SECRET_SUFFIXES = (".key", ".pem", ".p12", ".pfx", ".kdbx")
 _ARTIFACT_ID = re.compile(r"artifact-[a-f0-9]{64}\Z")
 _SHA256 = re.compile(r"[a-f0-9]{64}\Z")
+_DESCRIPTOR_FLAGS = ("O_DIRECTORY", "O_CLOEXEC", "O_NOFOLLOW", "O_NONBLOCK")
 
 
 def _public_unavailable() -> ObservatoryError:
@@ -77,7 +78,7 @@ def _stamp(nanoseconds: int) -> str:
 
 @contextmanager
 def _root_fd(root: str):
-    if not all(hasattr(os, flag) for flag in ("O_DIRECTORY", "O_NOFOLLOW", "O_NONBLOCK")):
+    if not all(hasattr(os, flag) for flag in _DESCRIPTOR_FLAGS):
         raise OSError("safe descriptor reads are unavailable")
     path = Path(root)
     descriptor = os.open(path.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC | os.O_NOFOLLOW)
@@ -338,6 +339,11 @@ def _page(
 ) -> dict[str, Any]:
     items: list[dict[str, Any]] = []
     flags = {"changed": 0, "unavailable": 0, "oversize": 0, "unrecognized": 0}
+    # Skipped records can grow metadata after the final admitted row. Reserve
+    # its bounded maximum, including the worker envelope, before admitting rows.
+    metadata = {"next_index": MAX_FILES,
+                "flags": {name: MAX_PAGE_PROBES + 1 for name in flags},
+                "exhausted": False, "bytes_read": MAX_PAGE_READ_BYTES}
     bytes_read = 0
     exhausted = False
     index = start
@@ -358,7 +364,7 @@ def _page(
             flags[status] = flags.get(status, 0) + 1
             continue
         row = _row(record, summary, sha256, owner_id, resource_id)
-        candidate = {"items": [*items, row], "next_index": index, "flags": flags}
+        candidate = {"ok": True, "page": {**metadata, "items": [*items, row]}}
         if len(canonical(candidate)) > MAX_RESULT_BYTES:
             index -= 1
             break
@@ -740,6 +746,8 @@ class EvidenceRuns:
             self._snapshots.pop(key, None)
 
     def _worker(self, job: Mapping[str, Any], maximum: int) -> Mapping[str, Any]:
+        if not all(hasattr(os, flag) for flag in _DESCRIPTOR_FLAGS):
+            raise _public_unavailable()
         deadline = self._clock() + _PARENT_BUDGET_SECONDS
         with tempfile.TemporaryDirectory(prefix="anvil-evidence-runs-") as directory:
             descriptor, path = tempfile.mkstemp(prefix="result-", dir=directory)

@@ -9,6 +9,17 @@ from anvil_serving.observability.dashboard.console import Console, _run_bindings
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
 
 
+def test_catalog_without_safe_descriptors_is_unavailable_before_spawning(tmp_path, monkeypatch):
+    from anvil_serving.observability.dashboard import evidence_runs
+
+    monkeypatch.delattr(evidence_runs.os, "O_NOFOLLOW", raising=False)
+    source = evidence_runs.EvidenceRuns({"root": str(tmp_path), "owner_id": "catalog", "resource_id": "runs"})
+    with pytest.raises(ObservatoryError) as error:
+        source.page(authority_key="reader")
+    assert error.value.code == "owner_unavailable" and source._active is None
+    source.close()
+
+
 @pytest.fixture
 def catalog_console(tmp_path):
     config = {

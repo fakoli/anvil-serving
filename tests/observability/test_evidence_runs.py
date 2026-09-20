@@ -17,6 +17,8 @@ from anvil_serving.observability.dashboard.contracts import ObservatoryError, ca
 from anvil_serving.observability.dashboard.evidence_runs import EvidenceRuns
 from anvil_serving.benchmarking.artifacts import build_external_prior_record
 
+pytestmark = pytest.mark.skipif(os.name != "posix", reason="retained catalog requires safe POSIX descriptor reads")
+
 
 def _artifact(*, run_id="same-run", model="fixture", failed=False):
     return {
@@ -100,6 +102,32 @@ def test_retained_artifacts_paginate_stably_after_new_file_and_identical_run_ids
     assert all(item["observed_at"] == first["sources"][0]["observed_at"] for item in first["items"])
     assert len(canonical(first)) <= 128 * 1024
     source.close()
+
+
+def test_page_reserves_full_worker_envelope_before_skipping_records(tmp_path, monkeypatch):
+    from anvil_serving.observability.dashboard import evidence_runs as owner
+
+    # Keep one row just below the former inner-page limit, then grow ignored
+    # metadata after it. The actual serialized worker result is the contract.
+    monkeypatch.setattr(owner, "MAX_RESULT_BYTES", 1024)
+    records = [{"id": str(index), "f": [0, 0, 1, 0]} for index in range(101)]
+    row = {"id": "row", "padding": "x" * 868}
+    monkeypatch.setattr(owner, "_row", lambda *_args: row)
+    monkeypatch.setattr(owner, "_read_artifact", lambda _root, record, _deadline:
+                        ({}, "available", "a" * 64, 1) if record["id"] == "0"
+                        else (None, "unrecognized", None, 1))
+    page = owner._page(str(tmp_path), records, 0, 100, "owner", "resource", time.monotonic() + 1)
+    assert len(canonical({"ok": True, "page": page})) <= owner.MAX_RESULT_BYTES
+    assert page["next_index"] == 0  # The rejected row stays available to a larger bounded page.
+
+    # Admit a slightly smaller row and consume all following ignored records.
+    row["padding"] = "x" * 800
+    page = owner._page(str(tmp_path), records, 0, 100, "owner", "resource", time.monotonic() + 1)
+    assert len(page["items"]) == 1 and page["flags"]["unrecognized"] == 100
+    result = tmp_path / "result.json"
+    result.touch()
+    owner._write_worker_result(str(result), {"ok": True, "page": page})
+    assert owner._read_worker_result(str(result), owner.MAX_RESULT_BYTES)["page"] == page
 
 
 def test_cursor_is_bound_to_authority_and_explicitly_expires(tmp_path):
