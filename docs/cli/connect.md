@@ -62,19 +62,24 @@ sudo anvil-connect-ctl users suspend developer --confirm
 sudo anvil-connect-ctl users delete developer --confirm
 ```
 
-Omit `--confirm` to preview. Both first back up authentication state, then disable
-the Connect identity and revoke its browser sessions and human-approved terminal
-credentials. They briefly restart Authelia if active and preserve the last Connect
-operator. Suspension preserves the password, factors and service grants; use
-`users access` with the intended grants to resume. Deletion additionally removes
-the password-file account and its passkeys/TOTP. A failed factor deletion leaves
-the account disabled so deletion can be retried.
+Omit `--confirm` to preview. Suspension disables the Connect identity and revokes
+its browser sessions and human-approved terminal credentials, while preserving
+the password, factors and service grants. Use `users access` with the intended
+grants to resume it.
 
-The pinned Authelia CLI does not delete opaque identifiers. They remain with
-disabled Connect authority history, and a retained OpenID identifier reserves that
-username against recreation. Use suspension when access may be needed again.
+Permanent deletion removes the password-file account, authentication factors,
+Authelia OpenID identifiers and related OAuth records, and the Connect principal,
+sessions and human-approved terminal credentials. The username can then be used
+for a new account with a fresh identity and explicitly assigned grants. Configured
+Connect operators cannot be deleted; change the operator configuration first.
+Deletion backs up authentication state before removing it, briefly restarts
+Authelia if active, and retains a protected progress record if interrupted. Retry
+the same deletion to finish; an incomplete deletion stays disabled.
+
 Backups, application data and separately issued API keys are retained; these keys
-have no automatic username association and require separate revocation.
+have no automatic username association and require separate revocation. An old
+backup can contain a deleted account: review revocations before recovery. Use
+suspension when access may be needed again.
 
 With filesystem delivery, the result names an exclusive, root-only handoff file beneath
 `/etc/anvil-connect/handoffs`; credentials never appear in command output.
@@ -174,6 +179,22 @@ release before enabling it. It uses the same backup operation, including its
 sequential Authelia and gateway snapshots. The timer catches up after downtime.
 It does not send email notifications.
 An existing unrelated unit with the same name is refused.
+
+To enable permanent deletion from the browser, install the verified manager and
+its fixed worker first:
+
+```sh
+sudo anvil-connect-ctl users deletion-schedule --confirm
+```
+
+Then enable `gateway.gateway.browser_administration.user_deletion` in the managed
+deployment. The Connect home access editor and Workbench access console show
+**Delete user**, with the username and full account ID. Self-deletion and deletion
+of configured operators are refused. Confirmation immediately disables the
+account; the root worker processes one pending deletion every ten seconds.
+Refresh accounts to see completion. The worker runs only the fixed
+`users process-deletions --confirm` operation and shares the deployment lock with
+configuration changes. No browser request supplies a command or filesystem path.
 
 ### Service home and application roles
 

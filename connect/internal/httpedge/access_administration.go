@@ -469,7 +469,8 @@ func (a *AccessAdministration) ServeHTTP(w http.ResponseWriter, r *http.Request,
 			CSRF             string  `json:"csrf"`
 			CurrentPrincipal string  `json:"current_principal"`
 			CurrentSession   string  `json:"current_session"`
-		}{Schema: accessSchema, Kind: query.Get("kind"), Items: items, NextCursor: cursor, CSRF: csrf, CurrentPrincipal: admitted.Principal, CurrentSession: admitted.SessionID})
+			UserDeletion     bool    `json:"user_deletion"`
+		}{Schema: accessSchema, Kind: query.Get("kind"), Items: items, NextCursor: cursor, CSRF: csrf, CurrentPrincipal: admitted.Principal, CurrentSession: admitted.SessionID, UserDeletion: a.userDeletion})
 	case http.MethodPost:
 		mutation, status := decodeAccessMutation(w, r, admitted, a)
 		if status != http.StatusOK {

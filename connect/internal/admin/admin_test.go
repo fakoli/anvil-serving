@@ -176,6 +176,20 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 	if err != nil || created.Generation != 1 {
 		t.Fatalf("rejected request provisioned a grant: %#v, %v", created, err)
 	}
+	for _, request := range []Request{
+		{Operation: "human-inspect", Principal: created.ID},
+		{Operation: "human-deletions"},
+		{Operation: "human-delete-prepare", Principal: created.ID, ExpectedGeneration: created.Generation, RequestID: "b2f1e253-cd05-4e26-9b27-284a20e4aa7f"},
+		{Operation: "human-delete-finalize", Principal: created.ID, ExpectedGeneration: created.Generation + 1, RequestID: "b2f1e253-cd05-4e26-9b27-284a20e4aa7f"},
+	} {
+		request.Issuer = issuer.URL
+		if _, err := handler.apply(request); !errors.Is(err, ErrAdmin) {
+			t.Fatalf("%s accepted ignored issuer: %v", request.Operation, err)
+		}
+	}
+	if unchanged, err := sessions.InspectHuman(created.ID); err != nil || unchanged.Disabled || unchanged.Generation != created.Generation {
+		t.Fatalf("rejected deletion changed authority: %#v, %v", unchanged, err)
+	}
 	name := "target.user"
 	set, err := handler.apply(Request{Operation: "human-set", Issuer: issuer.URL, Subject: "target", Username: name, Resources: []string{"dashboard"}})
 	if err != nil || set.Username != name || set.Principal != human.ID {

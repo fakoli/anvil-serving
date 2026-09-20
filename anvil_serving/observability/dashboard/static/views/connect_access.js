@@ -16,9 +16,9 @@ const resourceList = (value) =>
 const text = (value, fallback = "Unavailable") =>
   typeof value === "string" && value ? value : fallback;
 
-function resourcesEditor(item, ctx) {
+function resourcesEditor(item, access, ctx) {
   item = item && typeof item === "object" && !Array.isArray(item) ? item : {};
-  const valid = human(item.id) && decimal(item.generation) && typeof item.disabled === "boolean" && resourceList(item.resources);
+  const valid = human(item.id) && decimal(item.generation) && typeof item.disabled === "boolean" && resourceList(item.resources) && !item.deleting;
   const resources = valid ? item.resources : [];
   const input = el("textarea", {
     rows: "3",
@@ -58,14 +58,27 @@ function resourcesEditor(item, ctx) {
       ctx.announce(error.message);
     }
   };
+  let deleting = false;
+  const deletionAllowed = access.user_deletion === true && human(item.id) && decimal(item.generation) && !item.deleting && !item.administrator && item.id !== access.current_principal;
+  const remove = async () => {
+    if (deleting || !deletionAllowed) return;
+    if (!window.confirm(`Permanently delete ${text(item.username, item.id)}? This removes the account, identity and Connect sessions so the username can be reused. Application data and retained backups remain.`)) return;
+    deleting = true;
+    try {
+      await mutateConnectAccess({action:"human-delete",request_id:crypto.randomUUID(),expected_generation:item.generation,principal:item.id}, ctx.signal);
+      ctx.announce("Deletion requested. Sign-in is disabled while the account is removed.");
+      cursor = null; ctx.refresh();
+    } catch (error) { ctx.announce(error.message); } finally { deleting = false; }
+  };
   return el(
     "section",
     { class: "panel stack" },
-    el("h3", { text: text(item.id) }),
+    el("h3", { text: text(item.username, "Username unavailable") }),
+    el("code", { text: text(item.id) }),
     kv([
       ["Generation", text(item.generation)],
       ["Administrator", item.administrator === true ? "Yes" : "No"],
-      ["Access", item.disabled === true ? "Disabled" : "Enabled"],
+      ["Access", item.deleting ? "Deletion in progress" : item.disabled === true ? "Disabled" : "Enabled"],
     ]),
     field("Resources", input),
     el(
@@ -75,6 +88,9 @@ function resourcesEditor(item, ctx) {
       item.disabled === true
         ? button("Enable access", () => submit(false), "primary", !valid)
         : button("Disable access", () => submit(true), "danger", !valid),
+      access.user_deletion === true
+        ? button("Delete user", remove, "danger", !deletionAllowed)
+        : null,
     ),
   );
 }
@@ -168,7 +184,7 @@ export async function connectAccessView(ctx) {
     );
   }
   const cards = selectedKind === "users"
-    ? access.items.map((item) => resourcesEditor(item, ctx))
+    ? access.items.map((item) => resourcesEditor(item, access, ctx))
     : access.items.map((item) => sessionCard(item, access, ctx));
   return el(
     "div",

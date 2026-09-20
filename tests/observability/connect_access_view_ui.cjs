@@ -19,7 +19,7 @@ source = source.replace(
 );
 source = source.replace(
   'import { mutateConnectAccess, readConnectAccess } from "./connect_access_api.js";',
-  "const mutateConnectAccess = async () => { globalThis.mutations += 1; }; const readConnectAccess = async () => globalThis.inventory;",
+  "const mutateConnectAccess = async body => { globalThis.mutations += 1; globalThis.lastMutation = body; await Promise.resolve(); }; const readConnectAccess = async () => globalThis.inventory;",
 );
 source = source.replaceAll("export ", "");
 const context = vm.createContext({
@@ -71,6 +71,24 @@ const ctx = { signal: undefined, zone: "UTC", announce() {}, refresh() {} };
   assert.equal(buttons.find((item) => item.label === "Disconnect")?.disabled, true, "malformed session must be mutation-disabled");
   await buttons.find((item) => item.label === "Disconnect").onClick();
   assert.equal(context.mutations, 0, "malformed session must not invoke mutation");
+
+  buttons.find(item => item.attrs?.text === "Users").attrs.onClick();
+  const target = "human:" + "a".repeat(64);
+  context.inventory = {kind:"users",items:[{id:target,username:"developer",generation:"3",disabled:false,resources:["workbench"]}],next_cursor:null,current_principal:"human:"+"b".repeat(64),user_deletion:true};
+  for (const change of [{administrator:true},{deleting:true},{id:context.inventory.current_principal}]) {
+    const original = context.inventory.items[0]; context.inventory.items[0] = {...original,...change};
+    tree = await context.connectAccessView(ctx);
+    const remove = collect(tree).find(item => item.label === "Delete user");
+    assert.equal(Boolean(remove.disabled),true);
+    await remove.onClick(); assert.equal(context.mutations,0);
+    context.inventory.items[0] = original;
+  }
+  tree = await context.connectAccessView(ctx);
+  const remove = collect(tree).find(item=>item.label==="Delete user");
+  assert.equal(Boolean(remove.disabled),false);
+  await Promise.all([remove.onClick(),remove.onClick()]);
+  assert.equal(context.mutations,1,"one request despite a repeated click");
+  assert.deepEqual(JSON.parse(JSON.stringify(context.lastMutation)),{action:"human-delete",request_id:"request",expected_generation:"3",principal:target});
 })().catch((error) => {
   console.error(error.stack || error.message);
   process.exitCode = 1;

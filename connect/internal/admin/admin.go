@@ -251,7 +251,7 @@ func (h *Handler) apply(input Request) (Response, error) {
 	}
 	var err error
 	if strings.HasPrefix(input.Operation, "human-delete-") || input.Operation == "human-deletions" || input.Operation == "human-inspect" {
-		if h.sessions == nil || input.Subject != "" || input.Username != "" || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
+		if h.sessions == nil || input.Issuer != "" || input.Subject != "" || input.Username != "" || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
 			return Response{}, ErrAdmin
 		}
 		switch input.Operation {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"time"
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
@@ -20,19 +21,50 @@ const deletionPrefix = "human-delete:"
 // root account worker. Only the native authority can finalize it, after IdP
 // removal. Completed receipts retain no username or principal.
 type Deletion struct {
-	RequestID  string `json:"request_id"`
-	Principal  string `json:"principal,omitempty"`
-	Username   string `json:"username,omitempty"`
-	Generation uint64 `json:"generation,omitempty"`
-	Epoch      string `json:"epoch"`
-	Digest     string `json:"digest"`
-	Complete   bool   `json:"complete"`
+	RequestID   string    `json:"request_id"`
+	Principal   string    `json:"principal,omitempty"`
+	Username    string    `json:"username,omitempty"`
+	Generation  uint64    `json:"generation,omitempty"`
+	Epoch       string    `json:"epoch"`
+	Digest      string    `json:"digest"`
+	Complete    bool      `json:"complete"`
+	CompletedAt time.Time `json:"completed_at"`
 }
 
 func deletionDigest(id, principal string, expected uint64) string {
 	raw, _ := json.Marshal([]any{id, principal, expected})
 	hash := sha256.Sum256(raw)
 	return hex.EncodeToString(hash[:])
+}
+
+// validateDeletion checks both retained shape and current authority before an
+// intent may reach the external account worker or be accepted as a replay.
+func (m *Manager) validateDeletion(tx *store.Tx, intent Deletion) error {
+	decoded, err := hex.DecodeString(intent.Digest)
+	if !deletionID.MatchString(intent.RequestID) || err != nil || len(decoded) != 32 || hex.EncodeToString(decoded) != intent.Digest || len(intent.Epoch) != 64 {
+		return ErrUnavailable
+	}
+	if intent.Complete {
+		if intent.Principal != "" || intent.Username != "" || intent.Generation != 0 || intent.CompletedAt.IsZero() || tx.Now().Before(intent.CompletedAt) {
+			return ErrUnavailable
+		}
+		return nil
+	}
+	if intent.Epoch != tx.Epoch() || !intent.CompletedAt.IsZero() || !config.ValidHumanID(intent.Principal) || intent.Generation < 2 || (intent.Username != "" && !ValidUsername(intent.Username)) || intent.Digest != deletionDigest(intent.RequestID, intent.Principal, intent.Generation-1) {
+		return ErrUnavailable
+	}
+	if m.administration != nil {
+		for _, id := range m.administration.Operators {
+			if id == intent.Principal {
+				return ErrDenied
+			}
+		}
+	}
+	var human Human
+	if tx.Get("principals", intent.Principal, &human) != nil || human.ID != intent.Principal || !human.Disabled || human.DeletionRequest != intent.RequestID || human.Generation != intent.Generation || human.Username != intent.Username {
+		return ErrUnavailable
+	}
+	return nil
 }
 
 // PrepareDeletionTx fences all existing credentials before the external IdP
@@ -55,6 +87,9 @@ func (m *Manager) PrepareDeletionTx(tx *store.Tx, principal string, expected uin
 		if prior.Epoch != tx.Epoch() || prior.RequestID != requestID || prior.Digest != digest {
 			return Deletion{}, ErrConflict
 		}
+		if err := m.validateDeletion(tx, prior); err != nil {
+			return Deletion{}, err
+		}
 		return prior, nil
 	}
 	if !errors.Is(err, store.ErrMissing) {
@@ -67,23 +102,33 @@ func (m *Manager) PrepareDeletionTx(tx *store.Tx, principal string, expected uin
 	if human.Generation != expected || human.DeletionRequest != "" {
 		return Deletion{}, ErrConflict
 	}
-	// ponytail: at most 1024 retained deletion receipts; prune explicitly during
-	// coordinated authority maintenance if this personal deployment outgrows it.
+	// Keep at most 1024 recent receipts and 32 pending operations. Completed
+	// identities are gone; only a 24-hour digest receipt supports lost responses.
 	rows, err := tx.List("transactions", deletionPrefix, 1024)
-	if err != nil || len(rows) >= 1024 {
+	if err != nil {
 		return Deletion{}, ErrUnavailable
 	}
-	pending := 0
+	pending, retainedCount := 0, 0
 	for _, row := range rows {
 		var retained Deletion
 		if json.Unmarshal(row.Value, &retained) != nil {
 			return Deletion{}, ErrUnavailable
 		}
+		if row.ID != deletionPrefix+retained.RequestID || m.validateDeletion(tx, retained) != nil {
+			return Deletion{}, ErrUnavailable
+		}
+		if retained.Complete && (retained.Epoch != tx.Epoch() || !tx.Now().Before(retained.CompletedAt.Add(24*time.Hour))) {
+			if tx.Delete("transactions", row.ID) != nil {
+				return Deletion{}, ErrUnavailable
+			}
+			continue
+		}
+		retainedCount++
 		if !retained.Complete {
 			pending++
 		}
 	}
-	if pending >= 32 {
+	if pending >= 32 || retainedCount >= 1024 {
 		return Deletion{}, ErrUnavailable
 	}
 	if err := m.UpdateHumanTx(tx, principal, expected, human.Resources, true); err != nil {
@@ -119,20 +164,22 @@ func (m *Manager) Deletions() ([]Deletion, error) {
 		}
 		for _, row := range rows {
 			var intent Deletion
-			if json.Unmarshal(row.Value, &intent) != nil || row.ID != deletionPrefix+intent.RequestID || !deletionID.MatchString(intent.RequestID) || intent.Epoch != tx.Epoch() || len(intent.Digest) != 64 {
+			if json.Unmarshal(row.Value, &intent) != nil || row.ID != deletionPrefix+intent.RequestID {
 				return ErrUnavailable
 			}
+			if err := m.validateDeletion(tx, intent); err != nil {
+				return err
+			}
 			if !intent.Complete {
-				var human Human
-				if tx.Get("principals", intent.Principal, &human) != nil || !human.Disabled || human.DeletionRequest != intent.RequestID || human.Generation != intent.Generation || human.Username != intent.Username {
-					return ErrUnavailable
-				}
 				result = append(result, intent)
 			}
 		}
 		return nil
 	})
-	return result, err
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // InspectHuman is local-administration only; it exposes no session or subject.
@@ -157,6 +204,9 @@ func (m *Manager) FinalizeDeletion(requestID, principal string, expected uint64)
 		if expected < 2 || intent.Digest != deletionDigest(requestID, principal, expected-1) {
 			return ErrConflict
 		}
+		if err := m.validateDeletion(tx, intent); err != nil {
+			return err
+		}
 		if intent.Complete {
 			return nil
 		}
@@ -180,7 +230,7 @@ func (m *Manager) FinalizeDeletion(requestID, principal string, expected uint64)
 		if tx.Delete("principals", principal) != nil {
 			return ErrUnavailable
 		}
-		return tx.Put("transactions", deletionPrefix+requestID, Deletion{RequestID: requestID, Epoch: tx.Epoch(), Digest: intent.Digest, Complete: true})
+		return tx.Put("transactions", deletionPrefix+requestID, Deletion{RequestID: requestID, Epoch: tx.Epoch(), Digest: intent.Digest, Complete: true, CompletedAt: tx.Now()})
 	})
 }
 
