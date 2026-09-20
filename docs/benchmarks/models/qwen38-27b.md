@@ -6,7 +6,7 @@
 
 !!! info "Decision snapshot"
 
-    - **Current RTX 5090 role:** human-approved Huihui NInfer MTP3 64K/C1 secondary, with direct/routed protocol, bounded quality, vision and native Hermes acceptance. Exact 32K remains rollback.
+    - **Product role:** human-approved Huihui NInfer MTP3 64K/C1 secondary on RTX 5090, with direct/routed protocol, bounded quality, vision and native Hermes acceptance. Exact 32K remains rollback.
     - **Historical product role:** former human-approved 96 GB single-service profile;
       retained as reproducible evidence. Official FP8 is the declared,
       unexercised rollback in the September 14 text-selection record.
