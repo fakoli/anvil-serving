@@ -1,6 +1,7 @@
 """Forward-only permanent-account deletion through native Connect authority."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -18,6 +19,7 @@ from .recovery import _path
 from .render import _authelia
 
 _PHASE_SCHEMA = "anvil-connect.user-deletion/v1"
+_LOCAL_PHASE_SCHEMA = "anvil-connect.user-deletion-idp-only/v1"
 _PHASE_DIR = "user-deletions"
 _PHASE_NAME = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.json$")
 _MAX_PHASES = 1024
@@ -58,7 +60,18 @@ def _phase_path(root: Path, request_id: str) -> Path:
 
 
 def _phase(value: object) -> dict:
-    if type(value) is not dict or set(value) != {
+    if type(value) is not dict:
+        raise _invalid("Permanent deletion recovery state is invalid.")
+    if value.get("schema") == _LOCAL_PHASE_SCHEMA:
+        if set(value) != {"schema", "request_id", "username", "entry_digest", "original_active"}:
+            raise _invalid("Permanent deletion recovery state is invalid.")
+        _request_id(value["request_id"])
+        if (not isinstance(value["username"], str) or _USER_RE.fullmatch(value["username"]) is None
+                or not isinstance(value["entry_digest"], str) or re.fullmatch(r"[0-9a-f]{64}", value["entry_digest"]) is None
+                or type(value["original_active"]) is not bool):
+            raise _invalid("Permanent deletion recovery state is invalid.")
+        return value
+    if set(value) != {
         "schema", "request_id", "principal", "username", "subject", "generation", "original_active", "idp_delete",
     } or value.get("schema") != _PHASE_SCHEMA:
         raise _invalid("Permanent deletion recovery state is invalid.")
@@ -72,6 +85,15 @@ def _phase(value: object) -> dict:
     if value["idp_delete"] != bool(value["subject"]) or (value["username"] == "" and value["idp_delete"]):
         raise _invalid("Permanent deletion recovery state is invalid.")
     return value
+
+
+_USER_RE = users._USER
+
+
+def _entry_digest(value: object) -> str:
+    if type(value) is not dict:
+        raise _invalid("Authelia account is invalid.")
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()).hexdigest()
 
 
 def _subject(value: object) -> bool:
@@ -279,7 +301,8 @@ _PURGE_RESULT_KEYS = frozenset((
 ))
 
 
-def _purge_as_idp(database: Path, username: str, subject: str, *, validate_only: bool, uid: int, gid: int) -> dict:
+def _purge_as_idp(database: Path, username: str, subject: str | None, *, validate_only: bool,
+                  require_zero_opaque: bool = False, uid: int, gid: int) -> dict:
     """Run the pinned database adapter as the IdP account, with a bounded result."""
     if type(uid) is not int or type(gid) is not int or uid <= 0 or gid <= 0:
         raise _invalid("Authelia IdP identity is invalid.")
@@ -292,7 +315,10 @@ def _purge_as_idp(database: Path, username: str, subject: str, *, validate_only:
             os.setgid(gid)
             os.setuid(uid)
             from .user_purge import purge
-            result = purge(database, username, expected_subject=subject, validate_only=validate_only, uid=uid, gid=gid)
+            options = {"expected_subject": subject, "validate_only": validate_only, "uid": uid, "gid": gid}
+            if require_zero_opaque:
+                options["require_zero_opaque"] = True
+            result = purge(database, username, **options)
             payload = {"ok": True, "result": result}
         except BaseException:
             payload = {"ok": False}
@@ -371,6 +397,78 @@ def _finalize_phase(data: dict, manifest: str, path: Path, phase: dict, phase_in
     return {"request_id": phase["request_id"], "applied": True, "finalized": True}
 
 
+def _complete_local_phase(path: Path, phase: dict, phase_info: os.stat_result) -> dict:
+    """Remove a local IdP-only phase after its exact recovery proof."""
+    try:
+        current = path.lstat()
+        if (current.st_dev, current.st_ino) != (phase_info.st_dev, phase_info.st_ino):
+            raise _invalid("Permanent deletion recovery state changed during completion.")
+        path.unlink()
+    except FileNotFoundError as exc:
+        raise _invalid("Permanent deletion recovery state changed during completion.") from exc
+    return {"request_id": phase["request_id"], "applied": True, "finalized": True}
+
+
+def _run_local_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_root: Path) -> dict:
+    """Delete a never-signed-in IdP account without fabricating native identity."""
+    phase = _phase(phase)
+    if phase["schema"] != _LOCAL_PHASE_SCHEMA:
+        raise _invalid("Permanent deletion recovery state is invalid.")
+    phase_info = path.lstat()
+    if (not stat.S_ISREG(phase_info.st_mode) or stat.S_ISLNK(phase_info.st_mode) or phase_info.st_nlink != 1
+            or phase_info.st_uid != os.geteuid() or stat.S_IMODE(phase_info.st_mode) != 0o600):
+        raise _invalid("Permanent deletion recovery state is unsafe.")
+    _config, active = _preflight(data, manifest, runner)
+    source = manage._read_unit(Path(data["config_root"]) / "systemd" / users._UNIT)
+    if source is None or manage._unit_exec_path(source) != Path(data["components"]["authelia"]):
+        raise _invalid("Authelia unit does not match its declared executable.")
+    manage._verify_unit(unit_root, users._UNIT, source)
+    manage._unit_metadata(runner, unit_root, (users._UNIT,), present=True)
+    stopped = False
+    removed = False
+    restart_needed = phase["original_active"] or active
+    try:
+        if active:
+            manage._action(runner, (manage._SYSTEMCTL, "stop", users._UNIT), 30, "Authelia stop failed")
+            stopped = True
+        if manage._unit_state(runner, users._UNIT)[0]:
+            raise manage.ManageError("Authelia is still active")
+        try:
+            raw, info = users._read_users(data)
+            database = users._database(raw)
+        except UsageError:
+            raise _invalid("Authelia users file is unavailable; permanent deletion remains held.") from None
+        entry = database["users"].get(phase["username"])
+        if entry is not None and _entry_digest(entry) != phase["entry_digest"]:
+            raise _invalid("Authelia account changed during permanent deletion; recovery remains held.")
+        records = users._oidc_identifiers(data, Path(data["config_root"]) / "authelia/configuration.yml", runner, missing_ok=False)
+        if any(row["username"] == phase["username"] for row in records):
+            raise _invalid("Authelia account acquired an OpenID Connect identity; recovery remains held.")
+        uid, gid = role_identity(data, "idp")
+        database_path = Path(data["authelia"]["state_directory"]) / "authelia.sqlite3"
+        preview = _purge_as_idp(database_path, phase["username"], None, validate_only=True,
+                                require_zero_opaque=True, uid=uid, gid=gid)
+        if any(preview[key] for key in ("opaque_identifiers", "oauth_sessions", "consent_sessions", "consent_preconfigurations")):
+            raise _invalid("Authelia account has retained identity state; recovery remains held.")
+        if entry is not None:
+            from .user_backup import snapshot
+            snapshot(data, manifest, users_raw=raw)
+            del database["users"][phase["username"]]
+            users._replace_users(Path(data["authelia"]["users_file"]),
+                                 (json.dumps(database, indent=2, ensure_ascii=True) + "\n").encode(), info)
+            removed = True
+        _purge_as_idp(database_path, phase["username"], None, validate_only=False,
+                      require_zero_opaque=True, uid=uid, gid=gid)
+        return _complete_local_phase(path, phase, phase_info)
+    except BaseException as exc:
+        raise manage.ManageError("Permanent deletion remains pending for forward recovery.", may_have_executed=removed or stopped) from exc
+    finally:
+        if restart_needed:
+            manage._action(runner, (manage._SYSTEMCTL, "start", users._UNIT), 30, "Authelia restart failed")
+            if not manage._unit_state(runner, users._UNIT)[0]:
+                raise manage.ManageError("Authelia restart failed after permanent deletion", may_have_executed=True)
+
+
 def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_root: Path, *, intent: dict | None = None) -> dict:
     phase = _phase(phase)
     phase_info = path.lstat()
@@ -393,7 +491,7 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
     manage._unit_metadata(runner, unit_root, (users._UNIT,), present=True)
     stopped = False
     removed = False
-    restart_needed = phase["original_active"]
+    restart_needed = phase["original_active"] or active
     try:
         if active:
             manage._action(runner, (manage._SYSTEMCTL, "stop", users._UNIT), 30, "Authelia stop failed")
@@ -466,6 +564,8 @@ def delete(manifest: str, username: str, *, apply: bool = False, runner=None, un
             raise _invalid("Permanent deletion recovery state is invalid.")
         if retained:
             path, phase = retained[0]
+            if phase["schema"] == _LOCAL_PHASE_SCHEMA:
+                return _run_local_phase(data, manifest, path, phase, runner, Path(unit_root))
             pending = {intent["request_id"]: intent for intent in _intents(data, manifest, runner)}
             intent = pending.get(phase["request_id"])
             if intent is not None:
@@ -481,7 +581,12 @@ def delete(manifest: str, username: str, *, apply: bool = False, runner=None, un
             raise _invalid("Account does not exist.")
         subject = users._oidc_subject(data, config, username, runner, missing_ok=True)
         if subject is None:
-            raise _invalid("The account has no unambiguous OpenID Connect subject; permanent deletion requires the native authority.")
+            phase = {
+                "schema": _LOCAL_PHASE_SCHEMA, "request_id": str(uuid.uuid4()), "username": username,
+                "entry_digest": _entry_digest(users._database(raw)["users"][username]), "original_active": active,
+            }
+            path = _write_phase(root, phase)  # Before the IdP is stopped or account data changes.
+            return _run_local_phase(data, manifest, path, phase, runner, Path(unit_root))
         principal = users._principal(data["gateway"]["oidc"]["issuer"], subject)
         inspection = _inspection(_human_response(
             data, manifest, {"operation": "human-inspect", "principal": principal}, runner, "human-inspect"))
@@ -515,7 +620,12 @@ def process_pending(manifest: str, *, apply: bool = False, runner=None, unit_roo
         root = _phase_root(manifest)
         intents = _intents(data, manifest, runner)
         phases = _phases(root)
+        local = next((item for item in phases.values() if item[1]["schema"] == _LOCAL_PHASE_SCHEMA), None)
         if not intents:
+            if local is not None:
+                path, phase = local
+                result = _run_local_phase(data, manifest, path, phase, runner, Path(unit_root))
+                return {"schema": _PHASE_SCHEMA, "operation": "process-pending", "applied": True, "processed": 1, "result": result}
             if not phases:
                 return {"schema": _PHASE_SCHEMA, "operation": "process-pending", "applied": True, "processed": 0}
             # Finalize accepts only its exact retained completed receipt. A

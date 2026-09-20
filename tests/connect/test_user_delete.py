@@ -53,6 +53,11 @@ def _phase(request_id: str, *, idp_delete: bool = True, original_active: bool = 
             "original_active": original_active, "idp_delete": idp_delete}
 
 
+def _local_phase(request_id: str, entry: dict, *, original_active: bool = False) -> dict:
+    return {"schema": user_delete._LOCAL_PHASE_SCHEMA, "request_id": request_id, "username": "owner",
+            "entry_digest": user_delete._entry_digest(entry), "original_active": original_active}
+
+
 def _native_inspection(*, found: bool, human: dict | None = None) -> dict:
     """Exact JSON shape from json.Marshal(admin.Response) for inspection."""
     value = {
@@ -401,3 +406,196 @@ def test_pending_nonblank_native_intent_without_identifier_holds_before_phase_or
 
     with pytest.raises(UsageError, match="identifier"):
         user_delete._new_phase({"config_root": "/private/current", "gateway": {"oidc": {"issuer": issuer}}}, "manifest", intent, None)
+
+
+def test_never_signed_in_phase_rechecks_zero_identity_state_then_purges_without_native(tmp_path, monkeypatch):
+    phase_root = tmp_path / "phases"
+    phase_root.mkdir(mode=0o700)
+    users_file = tmp_path / "users.yml"
+    entry = {"displayname": "Owner", "password": _HASH, "email": "owner@example.test", "groups": []}
+    raw = json.dumps({"users": {"owner": entry}}).encode()
+    users_file.write_bytes(raw)
+    users_file.chmod(0o600)
+    phase = _local_phase(_request(), entry)
+    path = user_delete._write_phase(phase_root, phase)
+    root = tmp_path / "rendered"
+    (root / "systemd").mkdir(parents=True)
+    source = b"unit"
+    (root / "systemd" / users._UNIT).write_bytes(source)
+    data = {"config_root": str(root), "components": {"authelia": str(tmp_path / "authelia")},
+            "authelia": {"users_file": str(users_file), "state_directory": str(tmp_path / "idp")}}
+    monkeypatch.setattr(user_delete, "_preflight", lambda *_: (root / "authelia/configuration.yml", False))
+    monkeypatch.setattr(manage, "_read_unit", lambda *_: source)
+    monkeypatch.setattr(manage, "_unit_exec_path", lambda *_: Path(data["components"]["authelia"]))
+    monkeypatch.setattr(manage, "_verify_unit", lambda *_: None)
+    monkeypatch.setattr(manage, "_unit_metadata", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(manage, "_unit_state", lambda *_: (False, "enabled"))
+    monkeypatch.setattr(users, "_read_users", lambda *_: (raw, users_file.stat()))
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(user_delete, "role_identity", lambda *_: (1001, 1001))
+    monkeypatch.setattr(manage, "_safe_authelia_users_file", lambda *_args, **_kwargs: users_file)
+    monkeypatch.setattr(__import__("anvil_serving.connect.user_backup", fromlist=["snapshot"]), "snapshot", lambda *_args, **_kwargs: {"ok": True})
+    replaced = []
+    monkeypatch.setattr(users, "_replace_users", lambda _path, value, _info: replaced.append(json.loads(value)))
+    native = []
+    monkeypatch.setattr(user_delete, "_human_response", lambda *_args: pytest.fail("must not call native finalization"))
+
+    def purge(_database, _username, _subject, *, validate_only, require_zero_opaque, uid, gid):
+        native.append((validate_only, require_zero_opaque, uid, gid))
+        return {"schema_version": 24, "validated_only": validate_only, "applied": not validate_only,
+                "username_records": 1, "opaque_identifiers": 0, "oauth_sessions": 0,
+                "consent_sessions": 0, "consent_preconfigurations": 0, "expected_subject_found": False}
+
+    monkeypatch.setattr(user_delete, "_purge_as_idp", purge)
+    result = user_delete._run_local_phase(data, "manifest", path, phase, None, tmp_path)
+
+    assert result["finalized"] and not path.exists()
+    assert native == [(True, True, 1001, 1001), (False, True, 1001, 1001)]
+    assert replaced == [{"users": {}}]
+
+
+def test_never_signed_in_phase_holds_if_recreated_username_changes_entry(tmp_path, monkeypatch):
+    phase_root = tmp_path / "phases"
+    phase_root.mkdir(mode=0o700)
+    entry = {"displayname": "Owner", "password": _HASH, "email": "owner@example.test", "groups": []}
+    phase = _local_phase(_request(), entry)
+    path = user_delete._write_phase(phase_root, phase)
+    changed = {**entry, "email": "new@example.test"}
+    data = {"config_root": str(tmp_path / "rendered"), "components": {"authelia": str(tmp_path / "authelia")},
+            "authelia": {"users_file": str(tmp_path / "users.yml"), "state_directory": str(tmp_path / "idp")}}
+    source = b"unit"
+    (tmp_path / "rendered" / "systemd").mkdir(parents=True)
+    (tmp_path / "rendered" / "systemd" / users._UNIT).write_bytes(source)
+    monkeypatch.setattr(user_delete, "_preflight", lambda *_: (tmp_path / "config", False))
+    monkeypatch.setattr(manage, "_read_unit", lambda *_: source)
+    monkeypatch.setattr(manage, "_unit_exec_path", lambda *_: Path(data["components"]["authelia"]))
+    monkeypatch.setattr(manage, "_verify_unit", lambda *_: None)
+    monkeypatch.setattr(manage, "_unit_metadata", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(manage, "_unit_state", lambda *_: (False, "enabled"))
+    monkeypatch.setattr(users, "_read_users", lambda *_: (json.dumps({"users": {"owner": changed}}).encode(), None))
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_args, **_kwargs: pytest.fail("must hold before identifier or adapter work"))
+    monkeypatch.setattr(user_delete, "_purge_as_idp", lambda *_args, **_kwargs: pytest.fail("must not purge"))
+
+    with pytest.raises(manage.ManageError, match="pending"):
+        user_delete._run_local_phase(data, "manifest", path, phase, None, tmp_path)
+    assert path.exists()
+
+
+def test_local_phase_restarts_an_idp_that_became_active_after_phase_creation(tmp_path, monkeypatch):
+    phase_root = tmp_path / "phases"
+    phase_root.mkdir(mode=0o700)
+    entry = {"displayname": "Owner", "password": _HASH, "email": "owner@example.test", "groups": []}
+    phase = _local_phase(_request(), entry, original_active=False)
+    path = user_delete._write_phase(phase_root, phase)
+    root = tmp_path / "rendered"
+    (root / "systemd").mkdir(parents=True)
+    source = b"unit"
+    (root / "systemd" / users._UNIT).write_bytes(source)
+    data = {"config_root": str(root), "components": {"authelia": str(tmp_path / "authelia")},
+            "authelia": {"users_file": str(tmp_path / "users.yml"), "state_directory": str(tmp_path / "idp")}}
+    state = {"active": True, "actions": []}
+    monkeypatch.setattr(user_delete, "_preflight", lambda *_: (root / "authelia/configuration.yml", state["active"]))
+    monkeypatch.setattr(manage, "_read_unit", lambda *_: source)
+    monkeypatch.setattr(manage, "_unit_exec_path", lambda *_: Path(data["components"]["authelia"]))
+    monkeypatch.setattr(manage, "_verify_unit", lambda *_: None)
+    monkeypatch.setattr(manage, "_unit_metadata", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(manage, "_unit_state", lambda *_: (state["active"], "enabled"))
+
+    def action(_runner, argv, *_args):
+        state["actions"].append(argv[1])
+        state["active"] = argv[1] == "start"
+
+    monkeypatch.setattr(manage, "_action", action)
+    monkeypatch.setattr(users, "_read_users", lambda *_: (json.dumps({"users": {"owner": {**entry, "email": "changed@example.test"}}}).encode(), None))
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_args, **_kwargs: pytest.fail("must hold before identity work"))
+
+    with pytest.raises(manage.ManageError, match="pending"):
+        user_delete._run_local_phase(data, "manifest", path, phase, None, tmp_path)
+    assert state == {"active": True, "actions": ["stop", "start"]}
+
+
+def test_local_phase_holds_when_identifier_appears_after_phase_creation(tmp_path, monkeypatch):
+    phase_root = tmp_path / "phases"
+    phase_root.mkdir(mode=0o700)
+    entry = {"displayname": "Owner", "password": _HASH, "email": "owner@example.test", "groups": []}
+    phase = _local_phase(_request(), entry)
+    path = user_delete._write_phase(phase_root, phase)
+    root = tmp_path / "rendered"
+    (root / "systemd").mkdir(parents=True)
+    source = b"unit"
+    (root / "systemd" / users._UNIT).write_bytes(source)
+    data = {"config_root": str(root), "components": {"authelia": str(tmp_path / "authelia")},
+            "authelia": {"users_file": str(tmp_path / "users.yml"), "state_directory": str(tmp_path / "idp")}}
+    monkeypatch.setattr(user_delete, "_preflight", lambda *_: (root / "authelia/configuration.yml", False))
+    monkeypatch.setattr(manage, "_read_unit", lambda *_: source)
+    monkeypatch.setattr(manage, "_unit_exec_path", lambda *_: Path(data["components"]["authelia"]))
+    monkeypatch.setattr(manage, "_verify_unit", lambda *_: None)
+    monkeypatch.setattr(manage, "_unit_metadata", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(manage, "_unit_state", lambda *_: (False, "enabled"))
+    monkeypatch.setattr(users, "_read_users", lambda *_: (json.dumps({"users": {"owner": entry}}).encode(), None))
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_args, **_kwargs: [
+        {"service": "openid", "sector_id": "", "username": "owner", "identifier": _SUBJECT},
+    ])
+    monkeypatch.setattr(user_delete, "_purge_as_idp", lambda *_args, **_kwargs: pytest.fail("must not purge"))
+    monkeypatch.setattr(user_delete, "_human_response", lambda *_args: pytest.fail("must not call native"))
+
+    with pytest.raises(manage.ManageError, match="pending"):
+        user_delete._run_local_phase(data, "manifest", path, phase, None, tmp_path)
+    assert path.exists()
+
+
+def test_local_phase_retry_after_yaml_removal_requires_clean_adapter_then_unlinks(tmp_path, monkeypatch):
+    phase_root = tmp_path / "phases"
+    phase_root.mkdir(mode=0o700)
+    entry = {"displayname": "Owner", "password": _HASH, "email": "owner@example.test", "groups": []}
+    phase = _local_phase(_request(), entry)
+    path = user_delete._write_phase(phase_root, phase)
+    root = tmp_path / "rendered"
+    (root / "systemd").mkdir(parents=True)
+    source = b"unit"
+    (root / "systemd" / users._UNIT).write_bytes(source)
+    data = {"config_root": str(root), "components": {"authelia": str(tmp_path / "authelia")},
+            "authelia": {"users_file": str(tmp_path / "users.yml"), "state_directory": str(tmp_path / "idp")}}
+    monkeypatch.setattr(user_delete, "_preflight", lambda *_: (root / "authelia/configuration.yml", False))
+    monkeypatch.setattr(manage, "_read_unit", lambda *_: source)
+    monkeypatch.setattr(manage, "_unit_exec_path", lambda *_: Path(data["components"]["authelia"]))
+    monkeypatch.setattr(manage, "_verify_unit", lambda *_: None)
+    monkeypatch.setattr(manage, "_unit_metadata", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(manage, "_unit_state", lambda *_: (False, "enabled"))
+    monkeypatch.setattr(users, "_read_users", lambda *_: (b'{"users":{}}', None))
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(user_delete, "role_identity", lambda *_: (1001, 1001))
+    calls = []
+
+    def purge(_database, _username, _subject, *, validate_only, require_zero_opaque, uid, gid):
+        calls.append((validate_only, require_zero_opaque))
+        return {"schema_version": 24, "validated_only": validate_only, "applied": not validate_only,
+                "username_records": 0, "opaque_identifiers": 0, "oauth_sessions": 0,
+                "consent_sessions": 0, "consent_preconfigurations": 0, "expected_subject_found": False}
+
+    monkeypatch.setattr(user_delete, "_purge_as_idp", purge)
+    monkeypatch.setattr(user_delete, "_human_response", lambda *_args: pytest.fail("must not call native"))
+    monkeypatch.setattr(users, "_replace_users", lambda *_args: pytest.fail("must not rewrite absent account"))
+
+    assert user_delete._run_local_phase(data, "manifest", path, phase, None, tmp_path)["finalized"]
+    assert calls == [(True, True), (False, True)] and not path.exists()
+
+
+def test_process_pending_dispatches_a_retained_local_phase(tmp_path, monkeypatch):
+    monkeypatch.setattr(users, "_require_root", lambda: None)
+    monkeypatch.setattr(user_delete, "_path", lambda _: None)
+    root = tmp_path / "current"
+    root.mkdir(mode=0o700)
+    phases = tmp_path / "phases"
+    phases.mkdir(mode=0o700)
+    entry = {"displayname": "Owner", "password": _HASH, "email": "owner@example.test", "groups": []}
+    phase = _local_phase(_request(), entry)
+    user_delete._write_phase(phases, phase)
+    monkeypatch.setattr(user_delete, "read_manifest", lambda _: {"config_root": str(root)})
+    monkeypatch.setattr(user_delete, "_phase_root", lambda _: phases)
+    monkeypatch.setattr(user_delete, "_intents", lambda *_: [])
+    calls = []
+    monkeypatch.setattr(user_delete, "_run_local_phase", lambda *_args: calls.append(_args[3]) or {"finalized": True})
+
+    result = user_delete.process_pending(str(tmp_path / "deployment.json"), apply=True)
+    assert result["processed"] == 1 and result["result"]["finalized"] and calls == [phase]
