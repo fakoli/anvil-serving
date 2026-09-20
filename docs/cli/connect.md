@@ -1,7 +1,7 @@
 # Anvil Connect commands
 
 `anvil-serving connect` manages application access for API clients and browsers.
-It belongs to Control Plane & Fleet. A local deployment JSON selects fixed
+It is the Anvil Connect product family. A local deployment JSON selects fixed
 resources, component binaries, service identities, and secret references.
 The existing `edge` commands continue to manage Tailscale independently.
 
@@ -15,10 +15,48 @@ deployment selectors; the command does not perform implicit SSH or controller
 dispatch. Mutations preview by default; `--confirm` applies the operation and
 `--dry-run` keeps it a preview even when both flags are supplied.
 
+The standalone `anvil-connect-ctl` displays help when run without arguments.
+`users` lists account operations, and `users create --help` (or another operation)
+shows only relevant arguments. Examples put options after the operation; existing
+option-first user commands remain accepted. Invalid arguments
+point to the relevant help without echoing private operands. Standalone command
+results remain JSON, now indented for readability.
+
+## Resources
+
+```sh
+sudo anvil-connect-ctl resources
+```
+
+Lists declared browser resource IDs, URLs, native authentication modes and
+copyable `resource:member` / `resource:admin` values. Use these exact IDs with
+`users create --grant` or `users access --grant`; application names need not match
+resource IDs. API resources are excluded because browser grants do not authorize
+API access. Passthrough applications retain their own internal permissions.
+
+The command defaults to `/etc/anvil-connect/deployment.json`, accepts `--manifest`,
+and works identically as `anvil-serving connect resources`. It reads only the
+declaration; it does not contact services, read referenced secrets or establish
+live readiness or current access. A deployment without browser resources returns
+an empty list.
+
 ## Users
 
 Follow [Invite a developer](../ANVIL-CONNECT-ONBOARDING.md) for password setup,
 passkey enrollment, terminal connection, and operator-assisted recovery.
+
+Inspect accounts first:
+
+```sh
+sudo anvil-connect-ctl users list
+sudo anvil-connect-ctl users show developer
+```
+
+Both require local root access and return only username, email, groups and disabled
+status from the checked Authelia file backend. They do not restart services or
+read factor storage. Output remains private account metadata. Groups and disabled
+status describe sign-in accounts, not Connect service grants; inspect those through
+**Manage access** on the service home. A missing username fails explicitly.
 
 Create an invited developer on the authentication host:
 

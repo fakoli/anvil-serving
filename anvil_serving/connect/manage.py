@@ -372,6 +372,8 @@ def _files(target: Target) -> set[str]:
     if target.kind == "gateway":
         return {
             "gateway.json", "caddy.json", "authelia/configuration.yml",
+            "authelia/notification-templates/IdentityVerificationJWT.html",
+            "authelia/notification-templates/IdentityVerificationJWT.txt",
             "systemd/anvil-connect-gateway.service", "systemd/anvil-connect-caddy.service",
             "systemd/anvil-connect-authelia.service",
         }
@@ -1666,7 +1668,13 @@ def _unit_required_files(unit: str, targets: tuple[Target, ...]) -> set[str]:
     if unit in _units(Target("gateway")):
         config = {"anvil-connect-gateway.service": "gateway.json", "anvil-connect-caddy.service": "caddy.json",
                   "anvil-connect-authelia.service": "authelia/configuration.yml"}[unit]
-        return {config, "systemd/" + unit}
+        files = {config, "systemd/" + unit}
+        if unit == "anvil-connect-authelia.service":
+            files.update({
+                "authelia/notification-templates/IdentityVerificationJWT.html",
+                "authelia/notification-templates/IdentityVerificationJWT.txt",
+            })
+        return files
     return next(_files(target) for target in targets if unit in _units(target))
 
 

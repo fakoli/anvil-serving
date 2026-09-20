@@ -670,6 +670,14 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
     if destination is not None:
         result["handoff_file"] = str(destination)
     if not apply:
+        result["preview"] = (
+            "Preview only. No account was created and no password setup email was sent. "
+            "Run again with --confirm to apply."
+            if operation == "create" else
+            "Preview only. No password changed or email was sent. Run again with --confirm to apply."
+            if operation == "reset-password" else
+            "Preview only. No changes were made. Run again with --confirm to apply."
+        )
         return result
     if operation == "access" and not users[username].get("disabled", False):
         with manage._deployment_lock(root):
@@ -848,6 +856,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 if delivery == "email":
                     _start_password_setup(auth, username)
                     result["password_setup_email_requested"] = True
+                    result["delivery_status"] = "Email requested; inbox delivery not verified."
                 else:
                     setup_url = _password_setup_url(auth, uid, gid, username, users[username]["email"])
                     handoff_inode = _exclusive(destination, _setup_handoff(username, setup_url, _service_home(data, grant_map)))

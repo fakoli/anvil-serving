@@ -349,6 +349,9 @@ function login(message) {
   const username = el("input", {
       name: "username",
       autocomplete: "username",
+      autocapitalize: "none",
+      autocorrect: "off",
+      spellcheck: "false",
       required: true,
     }),
     password = el("input", {

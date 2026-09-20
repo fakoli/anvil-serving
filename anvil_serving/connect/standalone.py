@@ -11,7 +11,7 @@ def main() -> None:
     result = dispatch(sys.argv[1:], prog="anvil-connect-ctl")
     if result.error:
         print(json.dumps({"ok": False, "code": result.error.code, "error": str(result.error),
-                          **({"data": result.data} if result.data is not None else {})}))
+                          **({"data": result.data} if result.data is not None else {})}, indent=2))
     else:
-        print(json.dumps({"ok": True, "data": result.data}, sort_keys=True))
+        print(json.dumps({"ok": True, "data": result.data}, sort_keys=True, indent=2))
     raise SystemExit(result.exit_code)

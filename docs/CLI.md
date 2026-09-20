@@ -378,7 +378,22 @@ required operands, choices, and defaults.
 | `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `connect` | Manage authenticated API and browser access with Anvil Connect. | `read` / `bounded` | - |
-| `connect users` | Manage local accounts, service entitlements, enrollment codes and authentication backups. | `mutate` / `bounded` | `--manifest`<br>`--email`<br>`--role`<br>`--grant`<br>`--output`<br>`--input`<br>`--include-gateway`<br>`--sha256`<br>`--destination`<br>`--dry-run`<br>`--confirm` |
+| `connect resources` | List declared browser services and copyable grant values. | `read` / `bounded` | `--manifest` |
+| `connect users` | Manage local accounts, service entitlements, enrollment codes and authentication backups. | `mutate` / `bounded` | - |
+| `connect users list` | List local sign-in accounts (not Connect grants). | `read` / `bounded` | `--manifest` |
+| `connect users show` | Show one local sign-in account (not Connect grants). | `read` / `bounded` | `--manifest` |
+| `connect users create` | Create an account and request a password-setup email or private handoff. | `mutate` / `bounded` | `--manifest`<br>`--email`<br>`--role`<br>`--grant`<br>`--output`<br>`--dry-run`<br>`--confirm` |
+| `connect users access` | Replace ALL browser grants, enable the account and revoke its Connect sessions. | `mutate` / `bounded` | `--manifest`<br>`--grant`<br>`--dry-run`<br>`--confirm` |
+| `connect users suspend` | Disable sign-in and revoke Connect browser and terminal sessions. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users delete` | Remove the account and factors; retain backups and disabled authority history. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users reset-password` | Request password setup; preserve groups, grants and registered factors. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
+| `connect users reset-mfa` | Remove passkeys and TOTP; suspend first for a lost or compromised device. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users code` | Export a fresh enrollment code or setup link when using filesystem delivery. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
+| `connect users backup` | Back up all authentication accounts and factors. | `mutate` / `bounded` | `--manifest`<br>`--include-gateway`<br>`--dry-run`<br>`--confirm` |
+| `connect users schedule` | Install the daily authentication and gateway backup timer. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users deletion-schedule` | Install the account-deletion processing timer. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users process-deletions` | Process one authorized permanent account deletion. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users restore` | Restore authentication backup into a fresh directory without activating it. | `mutate` / `bounded` | `--input`<br>`--sha256`<br>`--destination`<br>`--dry-run`<br>`--confirm` |
 | `connect qualify` | Run an isolated Connect qualification lane using saved local settings. | `process` / `bounded` | `--prepare-container`<br>`--lane`<br>`--config` |
 | `connect validate` | Validate declarations and selected native components. | `read` / `bounded` | `--manifest`<br>`--service` |
 | `connect render` | Preview or stage an owned configuration generation. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |

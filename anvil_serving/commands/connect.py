@@ -1,5 +1,6 @@
 """Explicit local deployment commands for Anvil Connect."""
 
+from ..connect.command_specs import USER_OPERATIONS
 from .family import command_family
 from .spec import CommandNode, _handler, _node, _option
 
@@ -11,6 +12,19 @@ _SERVICE = _option("--service", summary="gateway, connector:ID, or client:ID in 
 _CONFIRM = (
     _option("--dry-run", summary="Preview without changing files or services."),
     _option("--confirm", summary="Apply the declared operation; otherwise preview.", requires_confirmation=True),
+)
+
+
+_USER_OPTIONS = (
+    _option("--manifest", summary="Deployment JSON; defaults to /etc/anvil-connect/deployment.json.", value_name="PATH"),
+    _option("--email", summary="Recipient address for a new account.", value_name="EMAIL"),
+    _option("--role", summary="Creation role: member (default) or admin; stores members/admins group.", value_name="ROLE"),
+    _option("--grant", summary="Exact service:member or service:admin grant; repeat for each service on create/access.", value_name="GRANT"),
+    _option("--output", summary="Exclusive private handoff file; default is beside the manifest.", value_name="PATH"),
+    _option("--input", summary="Private authentication archive to restore.", value_name="PATH"),
+    _option("--include-gateway", summary="Also capture gateway authority after the authentication backup."),
+    _option("--sha256", summary="Independently retained authentication archive checksum for restore.", value_name="DIGEST"),
+    _option("--destination", summary="Fresh private recovery directory; does not activate restored accounts.", value_name="PATH"),
 )
 
 
@@ -33,19 +47,27 @@ def commands() -> CommandNode:
         "connect", "Manage authenticated API and browser access with Anvil Connect.",
         children=(
             _node(
+                "resources", "List declared browser services and copyable grant values.",
+                handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("resources",)),
+                options=(_option("--manifest", summary="Deployment JSON; defaults to /etc/anvil-connect/deployment.json.", value_name="PATH"),),
+                mutation_class="read", execution_policy="offline", docs_anchor="docs/cli/connect.md#resources",
+            ),
+            _node(
                 "users", "Manage local accounts, service entitlements, enrollment codes and authentication backups.",
-                handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("users",), forward_confirm_flag=True),
-                options=(
-                    _option("--manifest", summary="Deployment JSON; defaults to /etc/anvil-connect/deployment.json.", value_name="PATH"),
-                    _option("--email", summary="Recipient address for a new account.", value_name="EMAIL"),
-                    _option("--role", summary="Creation role: member (default) or admin; stores members/admins group.", value_name="ROLE"),
-                    _option("--grant", summary="Exact service:member or service:admin grant; repeat for each service on create/access.", value_name="GRANT"),
-                    _option("--output", summary="Exclusive private handoff file; default is beside the manifest.", value_name="PATH"),
-                    _option("--input", summary="Private authentication archive to restore.", value_name="PATH"),
-                    _option("--include-gateway", summary="Also capture gateway authority after the authentication backup."),
-                    _option("--sha256", summary="Independently retained authentication archive checksum for restore.", value_name="DIGEST"),
-                    _option("--destination", summary="Fresh private recovery directory; does not activate restored accounts.", value_name="PATH"),
-                ) + _CONFIRM,
+                # Legacy option-first calls retain their own parser confirmation gate.
+                handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("users",)),
+                children=tuple(
+                    _node(
+                        operation, summary,
+                        handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("users", operation),
+                                         forward_confirm_flag=operation not in {"list", "show"}),
+                        options=tuple(option for option in _USER_OPTIONS
+                                      if option.flags[0][2:] in names or (operation != "restore" and option.flags == ("--manifest",)))
+                        + (_CONFIRM if operation not in {"list", "show"} else ()),
+                        mutation_class="read" if operation in {"list", "show"} else "mutate", execution_policy="offline",
+                        docs_anchor="docs/cli/connect.md#users",
+                    ) for operation, (summary, names) in USER_OPERATIONS.items()
+                ),
                 mutation_class="mutate", execution_policy="offline",
                 docs_anchor="docs/cli/connect.md#users",
             ),

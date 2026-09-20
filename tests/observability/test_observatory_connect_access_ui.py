@@ -65,3 +65,12 @@ def test_access_route_skips_fleet_reads_and_auto_refresh() -> None:
     source = (STATIC / "observatory.js").read_text(encoding="utf-8")
     assert 'if (target.page !== "access") {' in source
     assert '"access","workbench","playground","models","work","compute","documentation"' in "".join(source.split())
+
+
+def test_legacy_username_input_disables_mobile_text_corrections() -> None:
+    source = (STATIC / "observatory.js").read_text(encoding="utf-8")
+    username = source.split('name: "username",', 1)[1].split('password = el', 1)[0]
+    assert 'autocomplete: "username"' in username
+    assert 'autocapitalize: "none"' in username
+    assert 'autocorrect: "off"' in username
+    assert 'spellcheck: "false"' in username

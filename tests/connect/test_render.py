@@ -356,7 +356,8 @@ def test_origin_proxy_limits_signed_identity_to_the_native_root_receiver() -> No
 
 
 def test_authelia_template_has_explicit_pkce_rs256_and_callbacks() -> None:
-    text = render(isolated_manifest())["files"]["authelia/configuration.yml"]
+    files = render(isolated_manifest())["files"]
+    text = files["authelia/configuration.yml"]
     assert "require_pkce: true" in text
     assert "pkce_challenge_method: S256" in text
     assert "id_token_signed_response_alg: RS256" in text
@@ -365,7 +366,20 @@ def test_authelia_template_has_explicit_pkce_rs256_and_callbacks() -> None:
     assert '{{- fileContent "/etc/anvil-connect/secrets/oidc-rs256-private-key" | nindent 10 }}' in text
     assert "identity_validation:" in text
     assert "notifier:" in text
+    assert "template_path: '/etc/anvil-connect/rendered/authelia/notification-templates'" in text
     assert "default_policy: two_factor" in text
+    html = files["authelia/notification-templates/IdentityVerificationJWT.html"]
+    plaintext = files["authelia/notification-templates/IdentityVerificationJWT.txt"]
+    assert "Set up or reset your Anvil Connect password" in html
+    assert 'href="{{ .LinkURL }}"' in html
+    assert "{{ .LinkURL }}" not in html.replace('href="{{ .LinkURL }}"', "")
+    assert "new password link" in html
+    assert "Registering a passkey and using it to finish sign-in are separate steps" in html
+    assert 'href="https://auth.example.test/reset-password/step1"' in html
+    assert "open your service home" not in html
+    assert "\r\n" in html and "\n" not in html.replace("\r\n", "")
+    assert "{{ .LinkURL }}" in plaintext
+    assert "\r\n" in plaintext and "\n" not in plaintext.replace("\r\n", "")
 
 
 def test_authelia_smtp_notifier_uses_a_protected_secret_reference() -> None:
@@ -479,11 +493,13 @@ def test_authelia_landing_resource_uses_same_host_trampoline_and_preserves_oidc(
 
     rendered = render(value)
     authelia = rendered["files"]["authelia/configuration.yml"]
+    invitation = rendered["files"]["authelia/notification-templates/IdentityVerificationJWT.html"]
     assert "domain: 'auth.example.test'" in authelia
     assert "authelia_url: 'https://auth.example.test'" in authelia
     assert "default_redirection_url: 'https://auth.example.test/_anvil-connect/home'" in authelia
     assert "https://dash.example.test/_anvil-connect/callback" in authelia
     assert "default_policy: two_factor" in authelia
+    assert 'href="https://auth.example.test/_anvil-connect/home"' in invitation
     baseline_authelia = baseline["files"]["authelia/configuration.yml"]
     assert "default_redirection_url:" not in baseline_authelia
     assert authelia.replace("      default_redirection_url: 'https://auth.example.test/_anvil-connect/home'\n", "") == baseline_authelia
@@ -575,7 +591,7 @@ def test_plan_and_staging_preserve_drift_and_are_idempotent(tmp_path: Path) -> N
     for name, content in rendered.items():
         target = owned / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content)
+        target.write_bytes(content.encode("utf-8"))
     assert plan(isolated_manifest(), owned)["state"] == "current"
     (owned / "gateway.json").write_text("tampered")
     report = plan(isolated_manifest(), owned)
@@ -763,7 +779,9 @@ def test_local_tunnel_omission_preserves_pre_slice_bytes() -> None:
 
     # Captured from the supported isolated fixture before Slice 1 changed either reader.
     expected = {
-        "authelia/configuration.yml": "6fd41c28c45c359715c3376df165fc2b74175df7433ccea42ec1e940ec766f43",
+        "authelia/configuration.yml": "53f2b4fc272dd89cd886b1a9557439a9ad99a093dd11fee34e6e75ee6bfff2f2",
+        "authelia/notification-templates/IdentityVerificationJWT.html": "a0d83413ce6574c618e4fd25ef18f0cf265693d9f316c25a27e27cc8a2b49ae2",
+        "authelia/notification-templates/IdentityVerificationJWT.txt": "c2f3d30f8e4a7145e0a47af2338e51d7901678cc9bc2d4fb226a6702568b75d9",
         "caddy.json": "c3810b3ba1096c911f9983d5999f8d8436d1fee169ae262a99704b74c383bec8",
         "clients/dashboard-api.json": "797df756cc7391a94bf230a3a5e8ba84545c5bc7a8a31e099218f5834f15a672",
         "connectors/dashboard.json": "2d6b1299fe15ea09c10a2438c035a15413ab78df31b39c379c0d25bede593716",
@@ -773,7 +791,7 @@ def test_local_tunnel_omission_preserves_pre_slice_bytes() -> None:
         "systemd/anvil-connect-client-dashboard-api.service": "213a3fd28ca1ce71e1288ddb249021763a4a08149b05b6eea2ec447d6dfbdacb",
         "systemd/anvil-connect-connector-dashboard.service": "c7d6da3ae0e75e203ae3dd6f3f7bce042d895e00351019aceb92f36d693b4f13",
         "systemd/anvil-connect-gateway.service": "d41891ef4907ca24a554827f6de463c2b5714269ef946bbeb0f437f44c381214",
-        "managed.json": "70b4e2eff91bb4f460a937b54d84399b47b432ec3aafa51ca6f744ee1ce82b01",
+        "managed.json": "1cba584f7cdde232b86423a6e9c76af5879f6ea8c1800af9c4af8b13463b7c89",
     }
     value = isolated_manifest()
     normalized = connect_config.canonical_manifest(value)

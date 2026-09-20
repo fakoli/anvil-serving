@@ -18,12 +18,14 @@ def test_portal_host_renders_gateway_owned_routes_and_oidc_callback():
     result = render(value)
     assert "home.example.test" in published_hosts(validate_manifest(value))
     files = result["files"]
+    invitation = files["authelia/notification-templates/IdentityVerificationJWT.html"]
     gateway = json.loads(files["gateway.json"])
     assert gateway["gateway"]["portal_host"] == "home.example.test"
     assert gateway["gateway"]["resources"] == json.loads(before["files"]["gateway.json"])["gateway"]["resources"]
     assert files["connectors/dashboard.json"] == before["files"]["connectors/dashboard.json"]
     assert "https://home.example.test/_anvil-connect/callback" in files["authelia/configuration.yml"]
     assert "default_redirection_url:" in files["authelia/configuration.yml"]
+    assert 'href="https://auth.example.test/_anvil-connect/home"' in invitation
     caddy = json.loads(files["caddy.json"])
     routes = caddy["apps"]["http"]["servers"]["anvil_connect"]["routes"]
     home = [r for r in routes if r.get("match", [{}])[0].get("host") == ["home.example.test"]]
