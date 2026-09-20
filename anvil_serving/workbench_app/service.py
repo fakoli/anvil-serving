@@ -12,6 +12,7 @@ from pathlib import Path
 from ..observability.dashboard.contracts import ObservatoryError, digest, fields, identifier
 from .config import validate_config
 from .playground import Playground
+from .project_files import ProjectFiles
 from .projects import Projects
 from .store import PrivateStore
 
@@ -42,6 +43,7 @@ class WorkbenchService:
             from .task_sandbox import ProductionTaskSandbox
             artifacts = TaskArtifacts(ProductionTaskSandbox(config["pi"]), is_active=self._task_runner_active)
         self.projects = projects or Projects(config, self.store, access, artifacts=artifacts)
+        self.project_files = ProjectFiles(self.projects)
         from .evidence_jobs import EvidenceJobs
         self.evidence_jobs = EvidenceJobs(self.projects, self.store, self.lock)
         self.playground = playground or Playground(config, self.store, access, environment)
@@ -268,6 +270,20 @@ class WorkbenchService:
             from .. import __version__
             return {"id": key, "title": title, "markdown": raw, "version": __version__, "digest": digest(raw), "source_url": DOCUMENT_SOURCES[key]}
         pieces = route.split("/")
+        if len(pieces) == 5 and pieces[0] == "projects" and pieces[2] == "roots":
+            project_id, root_id, action = pieces[1], pieces[3], pieces[4]
+            if action == "tree":
+                fields(query, optional=("path",))
+                return self.project_files.tree(session, project_id, root_id, query.get("path", ""))
+            if action == "text":
+                fields(query, required=("path",))
+                return self.project_files.text(session, project_id, root_id, query["path"])
+            if action == "diff":
+                fields(query, required=("path",), optional=("kind",))
+                return self.project_files.diff(session, project_id, root_id, query["path"], kind=query.get("kind", "working"))
+            if action == "worktree":
+                fields(query)
+                return self.project_files.worktree(session, project_id, root_id)
         if len(pieces) == 2 and pieces[0] == "projects":
             fields(query)
             return self.projects.read(session, pieces[1])
