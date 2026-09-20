@@ -196,8 +196,10 @@ Connect. Each service host retains its own Connect cookie; Authelia supplies SSO
 when opening another tile. An enabled Connect account can open the chooser even
 without access to the service hosting it. This grants no application, device or
 administrative access. Those endpoints still require their existing entitlements.
-Root sign-ins return to the chooser; explicit links to deeper application pages
-retain their destination.
+Without a dedicated home host, root sign-ins return to the chooser. With
+`portal_host` configured, opening an application tile returns to that application
+after sign-in; its explicit home path remains available for access editing.
+Links to deeper application pages retain their destination.
 
 A browser resource may declare up to eight fixed external OIDC return endpoints:
 

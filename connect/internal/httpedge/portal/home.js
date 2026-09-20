@@ -23,8 +23,11 @@ function serviceTile(service) {
   const path = document.createElementNS(icon.namespaceURI, "path");
   const icons = {
     workbench: "M3 4h18v16H3Z M7 9l3 3-3 3 M13 15h4",
+    dashboard: "M3 4h18v16H3Z M7 9l3 3-3 3 M13 15h4",
     observatory: "M3 3v18h18 M7 16v-5 M12 16V6 M17 16v-8",
+    grafana: "M3 3v18h18 M7 16v-5 M12 16V6 M17 16v-8",
     pi: "M4 7h16 M9 7v13 M16 7v10q0 3 4 3",
+    "pi-web": "M4 7h16 M9 7v13 M16 7v10q0 3 4 3",
   };
   path.setAttribute("d", icons[service.id] || "M3 3h7v7H3Z M14 3h7v7h-7Z M3 14h7v7H3Z M14 14h7v7h-7Z");
   icon.append(path);
@@ -80,7 +83,7 @@ byID("logout").addEventListener("click", async () => {
   try {
     const response = await fetch(settings.logout_path, {method:"POST",credentials:"same-origin",redirect:"manual"});
     if (!response.ok && response.type !== "opaqueredirect") throw new Error("Sign-out failed. Try again.");
-    byID("services").replaceChildren(); byID("administration").hidden=true; notice("Signed out of Connect. Your account provider may still have an active sign-in.");
+    byID("services").replaceChildren(); byID("administration").hidden=true; byID("manage-access-link").hidden=true; notice("Signed out of Connect. Your account provider may still have an active sign-in.");
   } catch(error) { notice(error.message); }
 });
 (async () => {
@@ -90,6 +93,7 @@ byID("logout").addEventListener("click", async () => {
     byID("service-count").textContent = settings.services.length + " enabled";
     const account=byID("account-link"); account.href=settings.account_url; account.hidden=false;
     const passkeys=byID("passkeys-link"); passkeys.href=settings.passkeys_url; passkeys.hidden=false;
+    if(settings.administration_url) { const link=byID("manage-access-link"); link.href=settings.administration_url; link.hidden=false; }
     notice(settings.services.length ? "" : "No services have been assigned. Contact your operator.");
     if(settings.administration_path) { byID("administration").hidden=false; await loadUsers(""); }
   } catch(error) { notice(error.message); }
