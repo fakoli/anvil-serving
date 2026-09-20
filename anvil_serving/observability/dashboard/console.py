@@ -25,6 +25,12 @@ PREVIEW_FIELDS = frozenset({"id", "host_id", "resource_id", "action_id", "label"
 _SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings", "logs", "access", "bench", "playground", "models", "work", "observability", "compute", "docs"})
 
 
+def _origin_identity(value):
+    parsed = urllib.parse.urlsplit(value)
+    default_port = 443 if parsed.scheme == "https" else 80
+    return parsed.scheme.lower(), parsed.hostname.lower(), parsed.port or default_port
+
+
 def _fallback_authentication(config, mode):
     fallback = config.get("fallback_authentication")
     if fallback is None:
@@ -95,6 +101,15 @@ class Console:
         if config.get("connect_access", False) and mode != "connect":
             raise ValueError("Connect access requires Connect authentication")
         fallback = _fallback_authentication(config, mode)
+        from ...workbench_app.config import validate_config
+        workbench = config.get("workbench", {"state_path": str(Path(config["state_path"]).with_name("workbench.sqlite3"))})
+        workbench = validate_config(workbench)
+        host_pi = workbench.get("host_pi")
+        blocked_origins = {_origin_identity(config["origin"])}
+        if fallback:
+            blocked_origins.add(_origin_identity(fallback["origin"]))
+        if host_pi and _origin_identity(host_pi["origin"]) in blocked_origins:
+            raise ValueError("Host Pi must use a separate application origin")
         self.store = IntentStore(config["state_path"])
         self.access = Access(config["users"], authenticate=authenticating,
                              origin=config["origin"], base_path=config["base_path"], operate=config.get("operate", False),
@@ -134,7 +149,6 @@ class Console:
         self.policy_digest = digest({"users": config["users"], "operate": config.get("operate", False),
                                      "controller": config.get("controller", {}), "authentication": authentication})
         from ...workbench_app.service import WorkbenchService
-        workbench = config.get("workbench", {"state_path": str(Path(config["state_path"]).with_name("workbench.sqlite3"))})
         self.workbench = WorkbenchService(workbench, self.access, env, adapter=self.adapter)
 
     def close(self):
@@ -474,6 +488,8 @@ def attach_console(server, console: Console):
     base = console.config["base_path"]
     root = files("anvil_serving.observability.dashboard.static")
     assets = {}
+    host_pi = console.workbench.config.get("host_pi", {})
+    frame_source = "frame-src 'self'" + (" " + host_pi["origin"] if host_pi else "")
     # Only packaged assets, never a user-supplied path or general file reader.
     def collect(directory, prefix=""):
         for path in directory.iterdir():
@@ -522,7 +538,7 @@ def attach_console(server, console: Console):
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+            self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; " + frame_source + "; frame-ancestors 'none'; form-action 'self'")
             if cookie:
                 self.send_header("Set-Cookie", cookie)
             self.end_headers()

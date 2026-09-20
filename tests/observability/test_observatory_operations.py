@@ -86,14 +86,18 @@ def site(tmp_path):
     owner = FakeOwner()
     config = {"origin": "https://console.example.test", "base_path": "/observatory/", "operate": True,
               "users": [{"id": "operator-fixture", "username": "operator", "role": "operator", "resources": ["*"], "actions": ["configuration.apply", "tier.quiesce"]}],
-              "authentication": {}, "state_path": str(tmp_path / "journal.sqlite"), "fixture": True}
+              "authentication": {}, "state_path": str(tmp_path / "journal.sqlite"), "fixture": True,
+              "workbench": {"state_path": str(tmp_path / "workbench.sqlite"), "host_pi": {
+                  "id": "host-pi", "resource_id": "host.pi", "origin": "https://pi.example.test",
+                  "owner_subject": "connect-owner", "version": "0.9.0", "runtime_sha256": "a" * 64,
+              }}}
     console = Console(config, metrics=FakeMetrics(), adapter=owner, authenticate=lambda u, p: u == "operator" and p == "fixture-password")
     server = create_dashboard_server(TelemetryRegistry(), port=0, auth_env="LEGACY_TOKEN", environment={"LEGACY_TOKEN": "fixture-legacy-read-token"})
     attach_console(server, console)
     thread = run_server_in_thread(server)
     session = {}
 
-    def call(method, route, body=None, *, authenticated=True, extra=None, raw=None):
+    def call(method, route, body=None, *, authenticated=True, extra=None, raw=None, include_headers=False):
         connection = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=10)
         headers = {"Host": "console.example.test", "Origin": config["origin"]}
         if authenticated and session:
@@ -109,8 +113,9 @@ def site(tmp_path):
         if route == "session" and method == "POST" and response.status == 200:
             session.update(cookie=response.getheader("Set-Cookie").split(";", 1)[0], csrf=data["data"]["csrf_token"])
         status = response.status
+        response_headers = dict(response.getheaders())
         connection.close()
-        return status, data
+        return (status, data, response_headers) if include_headers else (status, data)
 
     call("POST", "session", {"username": "operator", "password": "fixture-password"})
     yield console, owner, call
@@ -137,6 +142,39 @@ def terminal(call, key):
             return result["data"]
         time.sleep(0.01)
     raise AssertionError("operation did not reach expected state")
+
+
+def test_host_pi_frame_source_is_narrow_and_keeps_ancestors_denied(site):
+    _console, _owner, call = site
+    status, _body, headers = call("GET", "operations", include_headers=True)
+    assert status == 200
+    csp = headers["Content-Security-Policy"]
+    assert "frame-src 'self' https://pi.example.test" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "connect-src 'self'" in csp
+
+
+def test_host_pi_rejects_console_or_fallback_same_origin(tmp_path):
+    base = {"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
+            "authentication": {"grafana_url": "http://127.0.0.1:3000"}, "state_path": str(tmp_path / "journal.sqlite"),
+            "prometheus_url": "http://127.0.0.1:9090", "inventory": {}, "workbench": {
+                "state_path": str(tmp_path / "workbench.sqlite"), "host_pi": {
+                    "id": "host-pi", "resource_id": "host.pi", "origin": "https://console.example.test:443",
+                    "owner_subject": "connect-owner", "version": "0.9.0", "runtime_sha256": "a" * 64,
+                }}}
+    with pytest.raises(ValueError, match="separate application origin"):
+        Console(base, metrics=FakeMetrics())
+
+    fallback = {**base, "origin": "https://primary.example.test", "users": [{
+        "id": "operator-fixture", "username": "operator", "resources": ["host.pi"], "actions": [],
+    }], "authentication": {"mode": "connect", "connect": {
+        "resource": "observatory", "keys": [{"id": "current", "secret_env": "CONNECT_ASSERTION_CURRENT"}],
+        "principals": {"connect-owner": "operator-fixture"},
+    }}, "fallback_authentication": {
+        "origin": "https://console.example.test", "grafana_url": "http://127.0.0.1:3000", "users": ["operator-fixture"],
+    }}
+    with pytest.raises(ValueError, match="separate application origin"):
+        Console(fallback, metrics=FakeMetrics(), environment={"CONNECT_ASSERTION_CURRENT": "fixture-secret"})
 
 
 def test_preview_is_read_only_and_duplicate_confirmation_is_one_dispatch(site):
