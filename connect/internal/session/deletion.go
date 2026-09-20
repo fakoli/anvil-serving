@@ -28,7 +28,7 @@ type Deletion struct {
 	Epoch       string    `json:"epoch"`
 	Digest      string    `json:"digest"`
 	Complete    bool      `json:"complete"`
-	CompletedAt time.Time `json:"completed_at"`
+	CompletedAt time.Time `json:"completed_at,omitzero"`
 }
 
 func deletionDigest(id, principal string, expected uint64) string {
@@ -131,7 +131,18 @@ func (m *Manager) PrepareDeletionTx(tx *store.Tx, principal string, expected uin
 	if pending >= 32 || retainedCount >= 1024 {
 		return Deletion{}, ErrUnavailable
 	}
-	if err := m.UpdateHumanTx(tx, principal, expected, human.Resources, true); err != nil {
+	if len(human.Resources) == 0 {
+		// A native-absent deletion starts as a disabled zero-grant tombstone;
+		// enabled portal-only humans can also legitimately have no resource grant.
+		if human.ApplicationRoles != nil || human.Generation == ^uint64(0) {
+			return Deletion{}, ErrUnavailable
+		}
+		human.Generation++
+		human.Disabled = true
+		if err := tx.Put("principals", principal, human); err != nil {
+			return Deletion{}, ErrUnavailable
+		}
+	} else if err := m.UpdateHumanTx(tx, principal, expected, human.Resources, true); err != nil {
 		return Deletion{}, err
 	}
 	if tx.Get("principals", principal, &human) != nil {
@@ -150,6 +161,53 @@ func (m *Manager) PrepareDeletion(principal string, expected uint64, requestID s
 	err := m.state.Update(func(tx *store.Tx) error {
 		var err error
 		result, err = m.PrepareDeletionTx(tx, principal, expected, requestID)
+		return err
+	})
+	return result, err
+}
+
+// PrepareAbsentDeletion atomically fences an IdP identity that has no native
+// human record. The disabled, zero-grant record is only a deletion tombstone:
+// it cannot admit access and causes concurrent SetHuman calls to fail until
+// the ordinary durable deletion finalizer removes it.
+func (m *Manager) PrepareAbsentDeletion(principal, username, requestID string) (Deletion, error) {
+	if !config.ValidHumanID(principal) || !ValidUsername(username) || !deletionID.MatchString(requestID) {
+		return Deletion{}, ErrDenied
+	}
+	if m.administration != nil {
+		for _, operator := range m.administration.Operators {
+			if principal == operator {
+				return Deletion{}, ErrDenied
+			}
+		}
+	}
+	var result Deletion
+	err := m.state.Update(func(tx *store.Tx) error {
+		var prior Deletion
+		err := tx.Get("transactions", deletionPrefix+requestID, &prior)
+		if err == nil {
+			if prior.Complete || prior.Principal != principal || prior.Username != username || prior.Generation != 2 || prior.Digest != deletionDigest(requestID, principal, 1) {
+				return ErrConflict
+			}
+			if err := m.validateDeletion(tx, prior); err != nil {
+				return err
+			}
+			result = prior
+			return nil
+		}
+		if !errors.Is(err, store.ErrMissing) {
+			return ErrUnavailable
+		}
+		var existing Human
+		if err := tx.Get("principals", principal, &existing); err == nil {
+			return ErrConflict
+		} else if !errors.Is(err, store.ErrMissing) {
+			return ErrUnavailable
+		}
+		if err := tx.Put("principals", principal, Human{ID: principal, Username: username, Generation: 1, Disabled: true, Resources: []string{}}); err != nil {
+			return ErrUnavailable
+		}
+		result, err = m.PrepareDeletionTx(tx, principal, 1, requestID)
 		return err
 	})
 	return result, err
@@ -187,9 +245,92 @@ func (m *Manager) InspectHuman(principal string) (Human, error) {
 	if !config.ValidHumanID(principal) {
 		return Human{}, ErrDenied
 	}
+	// An operator stays protected even if a damaged or restored authority store
+	// no longer has its principal record. The native deletion lifecycle is the
+	// authority for this immutable startup policy, so absence must not turn a
+	// configured operator into an IdP-only deletion candidate.
+	if m.administration != nil {
+		for _, operator := range m.administration.Operators {
+			if principal == operator {
+				return Human{}, ErrDenied
+			}
+		}
+	}
 	var human Human
-	err := m.state.View(func(tx *store.Tx) error { return tx.Get("principals", principal, &human) })
+	err := m.state.View(func(tx *store.Tx) error {
+		if err := tx.Get("principals", principal, &human); errors.Is(err, store.ErrMissing) {
+			referenced, referenceErr := humanReferences(tx, principal)
+			if referenceErr != nil || referenced {
+				return ErrUnavailable
+			}
+			return store.ErrMissing
+		} else if err != nil {
+			return err
+		}
+		resources, valid := m.validateResources(human.Resources)
+		roles, rolesValid := m.validateApplicationRoles(resources, human.ApplicationRoles)
+		if human.ID != principal || human.Generation == 0 || (human.Username != "" && !ValidUsername(human.Username)) || (human.DeletionRequest != "" && !deletionID.MatchString(human.DeletionRequest)) || !valid || !rolesValid {
+			return ErrUnavailable
+		}
+		human.Resources, human.ApplicationRoles = resources, roles
+		return nil
+	})
 	return human, err
+}
+
+// humanReferences proves that an absent principal is not merely a damaged
+// record with native credentials or audit actions still attached. It shares
+// the bounded namespace scans used by final deletion, but never mutates state.
+func humanReferences(tx *store.Tx, principal string) (bool, error) {
+	for _, scope := range []struct{ bucket, prefix string }{{"sessions", "session:"}, {"api_keys", ""}, {"transactions", "device:"}, {"transactions", "administration-action:"}} {
+		rows, err := deletionRecords(tx, scope.bucket, scope.prefix)
+		if err != nil {
+			return false, err
+		}
+		for _, row := range rows {
+			switch scope.prefix {
+			case "session:":
+				var value Session
+				if json.Unmarshal(row.Value, &value) != nil || row.ID != "session:"+value.ID {
+					return false, ErrUnavailable
+				}
+				if value.Principal == principal {
+					return true, nil
+				}
+			case "":
+				var value access.Key
+				if json.Unmarshal(row.Value, &value) != nil || row.ID != value.ID {
+					return false, ErrUnavailable
+				}
+				if value.DeviceHuman == principal {
+					return true, nil
+				}
+			case "device:":
+				var value struct {
+					ID      string `json:"id"`
+					HumanID string `json:"human_id"`
+				}
+				if json.Unmarshal(row.Value, &value) != nil || row.ID != value.ID {
+					return false, ErrUnavailable
+				}
+				if value.HumanID == principal {
+					return true, nil
+				}
+			case "administration-action:":
+				var value struct {
+					Actor  string `json:"actor"`
+					Target string `json:"target"`
+				}
+				if json.Unmarshal(row.Value, &value) != nil {
+					return false, ErrUnavailable
+				}
+				if value.Actor == principal || value.Target == principal {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
 }
 
 func (m *Manager) FinalizeDeletion(requestID, principal string, expected uint64) error {
