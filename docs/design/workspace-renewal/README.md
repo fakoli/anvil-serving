@@ -1,7 +1,34 @@
 # Pi workspace, Workbench and Anvil Work renewal
 
-Status: proposed implementation plan, not an approved PRD or deployment authorization.
+Status: implementation authorized; live recovery and deployment remain separate.
 Observed: 2026-09-18. Product source inspected: `3048abeb2a066c159760e0e9ea168b801a078b84`.
+
+## Implementation direction — owner clarification, 2026-09-20
+
+**This workstream replaces the existing workspace UI. It is not an additive
+dashboard refresh.** The owner confirmed that this is not a live product and
+that the approved [mockups](mockups/GUIDE.md) describe the permanent design.
+Get as close to those mockups as possible: layout, pane placement, navigation,
+spacing, typography, colors, and responsive behavior are acceptance targets.
+
+There is no requirement to preserve the old UI's layout, controls, interaction
+patterns, components, or implementation. Remove or rewrite them wherever they
+conflict with the approved design. Do not preserve legacy presentation merely
+to minimize the diff, retain an old test selector, or layer new panels onto it.
+Existing tests may be rewritten to check the intended experience.
+
+Correctness at the end remains required: authorization, owner boundaries,
+session and data integrity, supported deep links, accessibility, and the agreed
+workflows must work. Reuse correct backend behavior where useful; reuse of old
+presentation is optional. Exercise the actual web UI and compare rendered
+desktop and narrow screens directly with the mockups before acceptance.
+
+This direction supersedes any earlier minimal-change or UI-preservation
+guidance in this packet. Full implementation is authorized; the original
+planning-only and one-slice instructions below describe the packet's creation
+and a reusable execution template, not a limit on this authorized workstream.
+Acceptance uses disposable canonical Anvil State. Live State recovery and
+deployment require their separate workstreams.
 
 Planned product label: **Pi** replaces **Playground** in navigation. Existing
 `#/playground` URLs and source filenames remain compatibility anchors. References
@@ -9,8 +36,8 @@ to Playground throughout this packet mean that same surface, not another app.
 
 ## Start here — execution agent
 
-The owner requested **planning only** in this session. Implement only after a
-subsequent implementation instruction. This packet is intended for a bounded
+The original packet was produced during a **planning-only** session. Subsequent
+implementation authorization and direction are recorded above. It is intended for a bounded
 coding agent such as GLM 5.3 Flash; do not attempt the entire redesign in one turn.
 
 1. Read this file and [the design and findings](PLAN.md). Then use the

@@ -29,7 +29,7 @@ def test_shipped_esmodule_parses(source, tmp_path):
     assert result.returncode == 0, f"{source.relative_to(STATIC)}: {result.stderr}"
 
 
-def test_workbench_only_pairs_one_closed_operation_and_benchmark_reference(tmp_path):
+def test_workbench_pairs_explicit_references_and_counts_only_working_runs(tmp_path):
     node = shutil.which("node")
     if node is None:
         pytest.skip("Node is required for the frontend behavior gate")
@@ -49,7 +49,7 @@ def test_workbench_only_pairs_one_closed_operation_and_benchmark_reference(tmp_p
     (tmp_path / "experiments.mjs").write_text("export const experimentsView=async()=>null;", encoding="utf-8")
     script = """
 import assert from 'node:assert/strict';
-import {coalesceRuns} from './workbench.mjs';
+import {coalesceRuns, isWorkingRun} from './workbench.mjs';
 const key = 'benchmark-job-' + 'a'.repeat(64);
 const row = (source, id, correlation) => ({id, source, native_id: id, correlation_id: correlation, updated_at: '2026-09-19T00:00:00Z'});
 const states = new Map([
@@ -61,6 +61,9 @@ const rows = coalesceRuns(states);
 assert.equal(rows.length, 4);
 assert.equal(rows.filter((item) => item.representations.length === 2).length, 1);
 assert.equal(rows.filter((item) => item.representations.length === 1).length, 3);
+for (const status of ['queued', 'running', 'verifying', 'recovering']) assert.equal(isWorkingRun({status}), true);
+for (const status of ['retained', 'ready', 'submitted_release_pending', 'outcome_unknown', 'manual_recovery_required', 'future_state']) assert.equal(isWorkingRun({status}), false);
+assert.equal(isWorkingRun({status: 'retained', native_state: 'running'}), false);
 """
     result = subprocess.run(
         [node, "--input-type=module", "--eval", script],

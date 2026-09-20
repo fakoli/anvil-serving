@@ -82,11 +82,14 @@ fs.mkdirSync(output, { recursive: true });
       fullPage: true,
     });
   };
-  const nav = async (name) =>
-    page
+  const nav = async (name) => {
+    if (await page.locator("#menu-toggle").getAttribute("aria-expanded") !== "true")
+      await page.locator("#menu-toggle").click();
+    await page
       .getByRole("navigation", { name: "Main", exact: true })
       .getByRole("link", { name, exact: true })
       .click();
+  };
   const choose = async (name, value) =>
     page.getByRole("combobox", { name, exact: true }).selectOption(value);
   try {
@@ -101,11 +104,11 @@ fs.mkdirSync(output, { recursive: true });
       .click();
     await page
       .getByRole("heading", {
-        name: "A place for the whole experiment.",
+        name: "Every run, in one place.",
         exact: true,
       })
       .waitFor();
-    await page.getByRole("tab", { name: "Run flow", exact: true }).click();
+    await page.getByRole("link", { name: "+ New experiment", exact: true }).click();
     await page
       .getByRole("button", { name: "Review experiment", exact: true })
       .waitFor();
@@ -155,20 +158,21 @@ fs.mkdirSync(output, { recursive: true });
       .waitFor();
     await page.getByRole("button", { name: "Close", exact: true }).click();
     receipts.journeys.push(
-      "empty Run flow, exact preview, one verified operation, reload without replay, retained evidence",
+      "new experiment, exact preview, one verified operation, reload without replay, retained evidence",
     );
 
     await nav("Settings");
+    await page.getByRole("link", { name: "Pi service", exact: true }).click();
     await choose("Default workspace", "compute");
     await choose("Density", "compact");
     await choose("Time zone", "America/Los_Angeles");
     await choose("Default range", "6h");
     await page
-      .getByRole("button", { name: "Save preferences", exact: true })
+      .getByRole("button", { name: "Save service defaults", exact: true })
       .click();
     await page
       .locator(".settings-feedback")
-      .getByText("Workspace preferences saved.", { exact: true })
+      .getByText("Workspace and new conversation defaults saved.", { exact: true })
       .waitFor();
     await page.goto(url);
     await page.getByRole("heading", { name: "Compute", exact: true }).waitFor();
@@ -181,9 +185,7 @@ fs.mkdirSync(output, { recursive: true });
       { compact: true, zone: "America/Los_Angeles", range: "6h" },
     );
     await nav("Settings");
-    await page
-      .getByRole("link", { name: "Pi environment", exact: true })
-      .click();
+    await page.getByRole("link", { name: "Pi service", exact: true }).click();
     await choose("Provider", "fixture-provider-b");
     assert.deepEqual(
       await page
@@ -193,11 +195,11 @@ fs.mkdirSync(output, { recursive: true });
       ["orion-fixture"],
     );
     await page
-      .getByRole("button", { name: "Save Pi defaults", exact: true })
+      .getByRole("button", { name: "Save service defaults", exact: true })
       .click();
     await page
       .locator(".settings-feedback")
-      .getByText("Pi defaults saved.", { exact: true })
+      .getByText("Workspace and new conversation defaults saved.", { exact: true })
       .waitFor();
     await page.reload();
     assert.equal(
@@ -206,17 +208,69 @@ fs.mkdirSync(output, { recursive: true });
         .inputValue(),
       "orion-fixture",
     );
-    await page.getByRole("link", { name: "General", exact: true }).click();
+    await page.getByRole("link", { name: "This thread", exact: true }).click();
+    const unloadIsDirty = () => page.evaluate(() => {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+    assert.equal(await unloadIsDirty(), false);
+    let projectSaveAttempts = 0;
+    await page.route("**/api/workbench/v1/projects/research-fixture/preferences", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({ json: { ok: true, data: {
+          roots: [
+            { id: "primary", label: "Primary", task_access: "read-write", state_root: true },
+            { id: "secondary", label: "Secondary", task_access: "read-write", state_root: false },
+          ],
+          defaults: { primary_root_id: "primary", writable_root_ids: [] },
+        } } });
+        return;
+      }
+      assert.equal(route.request().method(), "POST");
+      assert.deepEqual(route.request().postDataJSON(), { primary_root_id: "primary", writable_root_ids: ["secondary"] });
+      projectSaveAttempts += 1;
+      if (projectSaveAttempts === 1) {
+        await route.fulfill({ status: 500, json: { ok: false, error: { code: "fixture_save_failed", message: "Fixture project save failed." } } });
+      } else await route.fulfill({ json: { ok: true, data: {} } });
+    });
+    await page.getByRole("link", { name: "Project defaults", exact: true }).click();
+    const writableRoots = page.getByRole("checkbox");
+    await writableRoots.filter({ has: undefined }).nth(1).check();
+    assert.equal(await unloadIsDirty(), true);
+    await page.getByRole("link", { name: "Pi service", exact: true }).click();
+    await page.getByRole("link", { name: "Project defaults", exact: true }).click();
+    assert.equal(await writableRoots.nth(1).isChecked(), true);
+    await page.getByRole("button", { name: "Save project defaults", exact: true }).click();
+    await page.getByText("Fixture project save failed.", { exact: true }).waitFor();
+    assert.equal(await unloadIsDirty(), true);
+    await page.getByRole("button", { name: "Save project defaults", exact: true }).click();
+    await page.getByText("Project defaults saved for new sessions.", { exact: true }).waitFor();
+    assert.equal(await unloadIsDirty(), false);
+    assert.equal(await page.getByText("null", { exact: true }).count(), 0);
     await capture("settings-desktop");
     receipts.journeys.push(
       "server defaults apply and survive reload; provider selection changes and retains model options",
     );
 
+    let partialCoverage = false;
+    await page.route("**/api/observatory/v1/runs/benchmark**", async (route) => {
+      if (partialCoverage) return route.continue();
+      partialCoverage = true;
+      const response = await route.fetch();
+      const payload = await response.json();
+      payload.data.next_cursor = null;
+      payload.data.sources = [{ status: "fresh", partial: true, truncated: true }];
+      await route.fulfill({ response, json: payload });
+    });
     await nav("Workbench");
-    await page
-      .getByRole("tabpanel", { name: "Overview", exact: true })
-      .waitFor();
-    await page.getByRole("tab", { name: "Compare", exact: true }).click();
+    await page.getByRole("heading", { name: "Every run, in one place.", exact: true }).waitFor();
+    const coverage = page.getByLabel("Run source coverage", { exact: true });
+    await coverage.getByText("partial", { exact: true }).waitFor();
+    await coverage.getByText("More retained history", { exact: true }).waitFor();
+    assert.equal(partialCoverage, true);
+    await page.unroute("**/api/observatory/v1/runs/benchmark**");
+    await page.getByRole("link", { name: "Compare evidence", exact: true }).click();
     const choices = page.getByLabel("Retained evidence selections", { exact: true }).locator(".comparison-choice");
     await choices.filter({ hasText: "fixture" }).first().waitFor({ timeout: 10000 });
     const compatible = choices.filter({ hasText: "fixture" });
@@ -246,19 +300,21 @@ fs.mkdirSync(output, { recursive: true });
       document.dispatchEvent(new Event("visibilitychange"));
     });
     await refreshedEvidence;
-    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    await page.getByRole("link", { name: "← Active & recent", exact: true }).click();
+    await page.getByRole("link", { name: "All runs", exact: true }).click();
     await page.getByRole("combobox", { name: "Run source", exact: true }).selectOption("evidence");
     await page.locator("tr").filter({ hasText: "fixture retained evidence" }).first().getByRole("link", { name: "Open run →", exact: true }).click();
-    await page.getByRole("tab", { name: "Evidence", exact: true }).click();
     await page.getByRole("button", { name: "Open retained evidence detail", exact: true }).click();
     await page.getByRole("dialog", { name: "Retained evidence", exact: true }).getByText("Artifact", { exact: true }).waitFor({ timeout: 5000 });
     await page.getByRole("button", { name: "Close", exact: true }).click();
     receipts.evidence_compare = { compatible: true, incompatible: true, changed_reference: true, detail: true };
-    await page.getByRole("tab", { name: "Overview", exact: true }).click();
+    await page.goto(`${url}#/workbench`);
+    await page.getByRole("heading", { name: "Every run, in one place.", exact: true }).waitFor();
     await page.getByText("context-001", { exact: true }).waitFor();
     await page.getByText("fixture-active-benchmark", { exact: true }).first().waitFor();
     await page.getByText("Deterministic response check", { exact: true }).first().waitFor();
-    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    await page.getByRole("link", { name: "All runs", exact: true }).click();
+    await page.getByRole("heading", { name: "All retained runs", exact: true }).waitFor();
     const sourceFilter = page.getByRole("combobox", { name: "Run source", exact: true });
     await sourceFilter.focus();
     await page.waitForResponse(
@@ -268,7 +324,7 @@ fs.mkdirSync(output, { recursive: true });
     assert.equal(await page.evaluate(() => document.activeElement.getAttribute("aria-label")), "Run source");
     const discoveredAt = Date.now();
     await control("benchmark-new-run");
-    await page.getByText("fixture-discovered-benchmark", { exact: true }).waitFor({ timeout: 10000 });
+    await page.locator(".run-canvas").getByText("fixture-discovered-benchmark", { exact: true }).waitFor({ timeout: 10000 });
     const activeAt = Date.now();
     await control("benchmark-active-complete");
     await page.getByText("fixture-active-benchmark", { exact: true }).locator("xpath=ancestor::tr").getByText("completed", { exact: true }).waitFor({ timeout: 5000 });
@@ -287,12 +343,17 @@ fs.mkdirSync(output, { recursive: true });
     );
     assert.equal(await page.evaluate(() => document.activeElement.getAttribute("href")), contextHref);
     await contextRunLink.click();
-    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor();
+    const selectedInspector = page.locator(".run-inspector");
+    await page.waitForFunction(() => document.querySelector(".run-inspector")?.innerText.includes("context-001"));
+    assert.match(await selectedInspector.innerText(), /context-001/);
     await page.getByText("This source exposes native IDs and artifact references only; it has no declared run-detail route.", { exact: true }).waitFor();
+    const runIdentity = page.locator(".run-inspector .run-identity");
+    await runIdentity.locator("summary").click();
+    await runIdentity.locator("summary").focus();
     const selectedRunUrl = page.url();
     await page.setViewportSize({ width: 1440, height: 400 });
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    const selectedScroll = await page.evaluate(() => window.scrollY);
+    await page.locator(".run-canvas").evaluate((node) => node.scrollTo(0, node.scrollHeight));
+    const selectedScroll = await page.locator(".run-canvas").evaluate((node) => node.scrollTop);
     assert.ok(selectedScroll > 0);
     const delayedAt = Date.now();
     await control("benchmark-hang");
@@ -306,8 +367,10 @@ fs.mkdirSync(output, { recursive: true });
     assert.ok(pollObservation.stale_ms <= 5000);
     assert.ok(pollObservation.healthy_ms <= 10000);
     receipts.run_polling = pollObservation;
+    assert.equal(await page.locator(".run-inspector .run-identity").evaluate((node) => node.open), true);
+    assert.equal(await page.evaluate(() => document.activeElement?.dataset.focusKey), "run-identity");
     assert.equal(page.url(), selectedRunUrl);
-    assert.equal(await page.evaluate(() => window.scrollY), selectedScroll);
+    assert.equal(await page.locator(".run-canvas").evaluate((node) => node.scrollTop), selectedScroll);
     const readsBeforeHide = runRequests.length;
     await page.evaluate(() => {
       Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
@@ -343,7 +406,7 @@ fs.mkdirSync(output, { recursive: true });
     await control("restore-benchmark");
     const legacyOperationId = new URL(operationUrl).hash.split("/").at(-1);
     await page.goto(`${url}#/workbench/${encodeURIComponent(legacyOperationId)}/events`);
-    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor();
+    await page.locator(".run-inspector").waitFor();
     await page.getByRole("button", { name: "Open operation detail", exact: true }).waitFor();
     assert.equal(new URL(page.url()).hash, `#/workbench/${encodeURIComponent(legacyOperationId)}/events`);
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -351,20 +414,12 @@ fs.mkdirSync(output, { recursive: true });
       "CLI-created benchmark and UI-created operation appear in independently polled sources; a delayed benchmark turns stale within 5s while Operations refreshes within 10s, filter focus/selection/scroll persist, hide/resume pauses then refreshes, and an in-flight revoked source cannot restore stale rows",
     );
     await capture("workbench-desktop");
-    await page.getByRole("tab", { name: "Overview", exact: true }).focus();
-    await page.keyboard.press("ArrowRight");
-    assert.equal(
-      await page.evaluate(() => document.activeElement.textContent),
-      "Run flow",
-    );
-    await page.keyboard.press("Enter");
-    await page
-      .getByRole("button", { name: "Review experiment", exact: true })
-      .waitFor();
+    await page.getByRole("link", { name: "+ New experiment", exact: true }).click();
+    await page.getByRole("button", { name: "Review experiment", exact: true }).waitFor();
     await nav("Anvil work");
     await page.getByRole("navigation", { name: "Project plans", exact: true }).getByRole("link").click();
     await page.getByText("Persisted revision 1", { exact: false }).waitFor();
-    await page.getByRole("navigation", { name: "Plan outline", exact: true }).getByRole("link", { name: "Acceptance", exact: true }).click();
+    await page.getByRole("navigation", { name: "Selected plan outline", exact: true }).getByRole("link", { name: "Acceptance", exact: true }).click();
     await page.getByText("Persisted revision 1", { exact: false }).waitFor();
     assert.equal(new URL(page.url()).searchParams.get("plan"), "workspace");
     assert.equal(new URL(page.url()).searchParams.get("plan-section"), "acceptance");
@@ -372,9 +427,7 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByText("Persisted revision 1", { exact: false }).waitFor();
     receipts.journeys.push("persisted plan outline and deep link survive reload");
     await nav("Workbench");
-    await page
-      .getByRole("tabpanel", { name: "Overview", exact: true })
-      .waitFor();
+    await page.getByRole("heading", { name: "Every run, in one place.", exact: true }).waitFor();
     await page.setViewportSize({ width: 390, height: 844 });
     await capture("workbench-mobile");
     assert.ok(
@@ -404,8 +457,9 @@ fs.mkdirSync(output, { recursive: true });
       .getByRole("button", { name: "Open navigation", exact: true })
       .click();
     await nav("Settings");
+    await page.getByRole("link", { name: "Pi service", exact: true }).click();
     await page
-      .getByRole("button", { name: "Save preferences", exact: true })
+      .getByRole("button", { name: "Save service defaults", exact: true })
       .waitFor();
     await capture("settings-mobile");
     assert.ok(
@@ -418,12 +472,12 @@ fs.mkdirSync(output, { recursive: true });
     );
     await page.getByRole("button", { name: "Open navigation", exact: true }).click();
     await nav("Workbench");
-    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    await page.getByRole("link", { name: "All runs", exact: true }).click();
     await control("benchmark-pagination");
-    await page.getByText("fixture-page-000", { exact: true }).waitFor({ timeout: 10000 });
+    await page.locator(".run-canvas").getByText("fixture-page-000", { exact: true }).waitFor({ timeout: 10000 });
     await page.getByRole("button", { name: "Load more", exact: true }).click();
-    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
-    const retainedActive = page.getByText("fixture-page-100", { exact: true }).locator("xpath=ancestor::tr");
+    await page.locator(".run-canvas").getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    const retainedActive = page.locator(".run-canvas").getByText("fixture-page-100", { exact: true }).locator("xpath=ancestor::tr");
     await retainedActive.scrollIntoViewIfNeeded();
     await page.waitForRequest(
       (request) => request.url().includes("/api/observatory/v1/runs/benchmark") && request.url().includes("refresh_refs"),
@@ -435,13 +489,13 @@ fs.mkdirSync(output, { recursive: true });
     receipts.retained_active_refresh = { completed_ms: Date.now() - retainedAt, visible_only: true };
     assert.ok(receipts.retained_active_refresh.completed_ms <= 5000);
     await retainedActive.getByRole("link", { name: "Open run →", exact: true }).click();
-    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor({ timeout: 5000 });
-    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    await page.locator(".run-inspector").waitFor({ timeout: 5000 });
+    await page.locator(".run-inspector").getByText("benchmark · fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
     await page.reload();
-    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor({ timeout: 5000 });
-    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    await page.locator(".run-inspector").waitFor({ timeout: 5000 });
+    await page.locator(".run-inspector").getByText("benchmark · fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
     receipts.retained_stable_link = true;
-    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    await page.getByRole("link", { name: "All runs", exact: true }).click();
     await control("benchmark-pagination-new-head");
     await page.evaluate(() => {
       Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
@@ -449,8 +503,8 @@ fs.mkdirSync(output, { recursive: true });
       Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
       document.dispatchEvent(new Event("visibilitychange"));
     });
-    await page.getByText("fixture-page-new", { exact: true }).waitFor({ timeout: 5000 });
-    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    await page.locator(".run-canvas").getByText("fixture-page-new", { exact: true }).waitFor({ timeout: 5000 });
+    await page.locator(".run-canvas").getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
     await page.waitForFunction(() => [...document.querySelectorAll("tr small.mono")]
       .filter((item) => item.textContent.startsWith("fixture-page-")).length === 102, null, { timeout: 5000 });
     const pageIds = await page.locator("tr small.mono").allTextContents();
@@ -458,6 +512,7 @@ fs.mkdirSync(output, { recursive: true });
     assert.equal(retainedPageIds.length, 102);
     assert.equal(new Set(retainedPageIds).size, 102);
     receipts.pagination = { rows: retainedPageIds.length, stable_equal_timestamps: true };
+    assert.equal(await page.getByText("null", { exact: true }).count(), 0);
     assert.deepEqual(errors, []);
     receipts.status = await status();
     fs.writeFileSync(

@@ -13,7 +13,8 @@ export function hostThreadLink(projectId, sessionId) {
 export async function hostPiView(ctx, catalog) {
   const host = catalog.host_pi;
   const frame = el("iframe", { class: "host-pi-frame", title: "Pi conversations", src: host.origin + "/", referrerpolicy: "no-referrer", allow: "clipboard-write" });
-  const root = el("div", { class: "stack" }, notice(host.authority), frame);
+  const authority = el("span", { class: "meta", text: host.authority });
+  const root = el("div", { class: "host-pi-workspace" }, authority, frame);
   if (!host.bridge) return root;
   if (location.origin !== host.parent_origin) {
     root.prepend(notice("Project navigation is unavailable on this origin. Use the configured Workbench origin.", "warning")); return root;
@@ -41,12 +42,8 @@ export async function hostPiView(ctx, catalog) {
   } catch { pendingError = "The retained thread request is unavailable. Resolve browser storage before starting another thread."; }
   const status = el("div", { role: "status", class: "meta" });
   const rail = el("aside", { class: "conversation-rail panel stack", "aria-label": "Pi project threads" });
-  const narrow = matchMedia("(max-width: 780px)");
-  const navigation = el("details", { class: "host-pi-navigation", open: !narrow.matches },
+  const navigation = el("details", { class: "host-pi-navigation" },
     el("summary", { text: "Project threads" }), rail);
-  const resize = () => { navigation.open = !narrow.matches; };
-  narrow.addEventListener("change", resize);
-  ctx.signal.addEventListener("abort", () => narrow.removeEventListener("change", resize), { once: true });
   const rows = el("div", { class: "small-stack" });
   const selectedInfo = el("div", { class: "stack" });
   const title = el("input", { type: "text", maxlength: 192 });
@@ -61,7 +58,7 @@ export async function hostPiView(ctx, catalog) {
   }
   function open(item) {
     selected = item.native_id;
-    if (narrow.matches) navigation.open = false;
+    navigation.open = false;
     history.replaceState(null, "", hostThreadLink(projectId, selected));
     render();
     if (bridgeId) frame.contentWindow.postMessage({ v: 1, type: "open_session", bridge_id: bridgeId, native_id: selected, request_id: crypto.randomUUID(), sequence: ++sent }, host.origin);
@@ -135,7 +132,10 @@ export async function hostPiView(ctx, catalog) {
     field("Search threads", el("input", { type: "search", onInput: event => { search = event.target.value; render(); } })),
     field("Show archived threads", el("input", { type: "checkbox", onChange: event => { archived = event.target.checked; render(); } })),
     rows, selectedInfo, status, button("Refresh threads", () => refresh().catch(error => { status.textContent = error.message; }), "quiet-button"));
-  root.replaceChildren(notice(host.authority), el("div", { class: "playground-layout" }, navigation, frame), projectFilesView(ctx, project));
+  const files = projectFilesView(ctx, project);
+  const filePanel = el("details", { class: "host-pi-files" }, el("summary", { text: "Project files" }), files);
+  filePanel.addEventListener("toggle", () => { files.open = filePanel.open; });
+  root.replaceChildren(el("div", { class: "host-pi-tools" }, navigation, authority, filePanel), frame);
   try { await refresh(); status.textContent = pendingError || (pending ? "Reconcile the original request before starting another thread." : ""); }
   catch (error) { if (!ctx.signal.aborted) status.textContent = error.message; }
   controls(); return root;

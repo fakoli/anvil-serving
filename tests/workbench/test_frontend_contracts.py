@@ -71,7 +71,10 @@ def test_pi_chat_uses_declared_catalog_and_server_owned_session_state():
     assert '["prompt", "steer"].includes(name) && result.accepted' in source
     assert 'send("steer"' in source
     assert 'type: "submit"' in source
-    assert "root.replaceChildren(...children)" in source
+    assert 'query("pi/sessions", { project: projectId, task: taskId })' in source
+    assert 'query(`pi/sessions/${encodeURIComponent(sessionId)}/events`' in source
+    assert 'piSessionLink(current.session_id, projectId, taskId)' in source
+    assert 'ctx.signal.addEventListener("abort"' in source
     assert "replaceChildren(state.error ?" not in source
     assert "clearTimer();\n    const current" not in source
     assert "state.cursor = 0" not in source[source.index("const send ="):source.index("const selectSession")]

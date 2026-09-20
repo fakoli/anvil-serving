@@ -8,8 +8,7 @@ window.addEventListener("observatory-session-changed", () => { draft = { connect
 const active = data => ["running", "cancel_requested"].includes(data?.status);
 export async function playgroundView(ctx, tab = "pi") {
   const modelTest = tab === "model-test";
-  const root = el("div", { class: "workbench-page stack", "data-story": "US-PLAY-01" },
-    heading("Pi", "Your host conversations and isolated task sessions keep their own owners."),
+  const root = el("div", { class: "workbench-page playground-page stack", "data-story": "US-PLAY-01" },
     el("nav", { class: "local-tabs playground-modes", "aria-label": "Playground modes" },
       el("a", { href: "#/playground", "aria-current": !modelTest ? "page" : null, text: "Pi" }),
       el("a", { href: "#/playground/model-test", "aria-current": modelTest ? "page" : null, text: "Model test" })));
@@ -30,8 +29,7 @@ export async function playgroundView(ctx, tab = "pi") {
       const item = await workbenchRequest(query(`pi/sessions/${encodeURIComponent(managedSession)}`, { project: managedProject, task: managedTask }), { signal: ctx.signal });
       if (item.project_id !== managedProject || item.task_id !== managedTask) throw new Error("The managed Pi session does not match its task context.");
       const detail = await workbenchRequest(`projects/${encodeURIComponent(managedProject)}/tasks/${encodeURIComponent(managedTask)}`, { signal: ctx.signal, timeout: 30000 });
-      root.append(notice("Managed task session — tools use the frozen, isolated task roots."),
-        await piChatView(ctx, { projectId: managedProject, taskId: managedTask, detail, sessionId: managedSession }));
+      root.append(await piChatView(ctx, { projectId: managedProject, taskId: managedTask, detail, sessionId: managedSession }));
     } catch (error) { if (!ctx.signal.aborted) root.append(notice(error.message, "warning")); }
     return root;
   }

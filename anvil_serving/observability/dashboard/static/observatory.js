@@ -32,7 +32,12 @@ import {
   openOperation,
   closeDialog,
 } from "./views/operations.js";
-import { loadPreferences, pages } from "./views/settings.js";
+import {
+  loadPreferences,
+  pages,
+  clearDrafts as clearSettingsDrafts,
+  hasDirtyDraft as hasDirtySettingsDraft,
+} from "./views/settings.js";
 import { connectAccessView } from "./views/connect_access.js";
 import { configureConnectAccess } from "./views/connect_access_api.js";
 import { workbenchView } from "./views/workbench.js";
@@ -170,7 +175,7 @@ function parseRoute() {
 }
 const sidebar = document.getElementById("navigation"),
   workspace = document.querySelector(".workspace"),
-  mobile = matchMedia("(max-width:1119px)");
+  workspacePages = new Set(["workbench", "playground", "work"]);
 const menuToggle = document.getElementById("menu-toggle");
 const navClose = button(
   "Close navigation",
@@ -183,22 +188,15 @@ const navClose = button(
 sidebar.insertBefore(navClose, navigation);
 function syncNavigation() {
   const open = document.body.classList.contains("nav-open");
-  const drawerOpen = open && mobile.matches;
-  sidebar.inert = mobile.matches && !open;
-  workspace.inert = drawerOpen;
-  navClose.hidden = !mobile.matches;
+  sidebar.inert = !open;
+  workspace.inert = open;
+  navClose.hidden = !open;
   menuToggle.setAttribute("aria-expanded", String(open));
   menuToggle.setAttribute(
     "aria-label",
-    mobile.matches
-      ? open
-        ? "Close navigation"
-        : "Open navigation"
-      : open
-        ? "Collapse navigation"
-        : "Expand navigation",
+    open ? "Close navigation" : "Open navigation",
   );
-  if (drawerOpen) {
+  if (open) {
     sidebar.setAttribute("role", "dialog");
     sidebar.setAttribute("aria-modal", "true");
   } else {
@@ -206,7 +204,6 @@ function syncNavigation() {
     sidebar.removeAttribute("aria-modal");
   }
 }
-mobile.addEventListener("change", syncNavigation);
 syncNavigation();
 function closeNavigation() {
   document.body.classList.remove("nav-open");
@@ -215,13 +212,12 @@ function closeNavigation() {
 menuToggle.addEventListener("click", () => {
   const open = document.body.classList.toggle("nav-open");
   syncNavigation();
-  if (open && mobile.matches)
+  if (open)
     navigation.querySelector("[aria-current=page]")?.focus();
 });
 document.addEventListener("keydown", (event) => {
   if (
     event.key === "Tab" &&
-    mobile.matches &&
     document.body.classList.contains("nav-open")
   ) {
     const focusable = [...sidebar.querySelectorAll("a,button")].filter(
@@ -245,7 +241,6 @@ document.addEventListener("keydown", (event) => {
 document.addEventListener("click", (event) => {
   if (
     document.body.classList.contains("nav-open") &&
-    mobile.matches &&
     !event.target.closest(".sidebar") &&
     !event.target.closest("#menu-toggle")
   )
@@ -284,7 +279,7 @@ document
   .addEventListener("click", async () => {
     if (getSession()?.authenticated) {
       if (
-        hasDirtyDraft() &&
+        (hasDirtyDraft() || hasDirtySettingsDraft()) &&
         !window.confirm("Sign out and discard local configuration edits?")
       )
         return;
@@ -307,6 +302,8 @@ document
         form.action = endpoint.href;
         form.hidden = true;
         document.body.append(form);
+        clearDrafts();
+        clearSettingsDrafts();
         form.submit();
         return;
       }
@@ -318,6 +315,7 @@ document
       }
       setSession(null);
       clearDrafts();
+      clearSettingsDrafts();
       closeDialog();
     }
     await refresh();
@@ -464,7 +462,8 @@ function applyPreferences(saved) {
 }
 function updateHud() {
   const hud = document.getElementById("system-hud");
-  hud.hidden = !getSession()?.authenticated;
+  hud.hidden =
+    !getSession()?.authenticated || workspacePages.has(parseRoute().page);
   if (hud.hidden) return;
   const hosts = list(fleet?.hosts);
   const targets = list(fleet?.serves).filter(
@@ -633,14 +632,14 @@ async function refresh({ quiet = false } = {}) {
   ].join("/");
   const navigationChanged = currentPath !== lastRoute;
   lastRoute = currentPath;
-  if (mobile.matches) closeNavigation();
+  if (document.body.classList.contains("nav-open")) closeNavigation();
+  document.body.dataset.page = target.page;
   for (const link of navigation.querySelectorAll("a")) {
     if (link.dataset.page === target.page)
       link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   }
-  document.getElementById("breadcrumb").textContent =
-    `Local research / ${titles[target.page]}${target.id ? " / " + target.id : ""}`;
+  document.getElementById("breadcrumb").textContent = titles[target.page];
   document.title = `${titles[target.page]} · Anvil Workbench`;
   if (!quiet)
     main.replaceChildren(
@@ -876,6 +875,7 @@ window.addEventListener("observatory-session-expired", (event) => {
   currentController?.abort();
   clearTimeout(refreshTimer);
   clearDrafts();
+  clearSettingsDrafts();
   closeDialog();
   login(
     authenticationMode === "connect"

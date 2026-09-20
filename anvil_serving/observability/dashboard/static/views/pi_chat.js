@@ -1,5 +1,6 @@
 import { badge, button, el, empty, field, jsonDetails, notice, select, table, words } from "./common.js";
 import { query, workbenchRequest } from "./api.js";
+import { frozenProjectFilesView } from "./project_files.js";
 
 const drafts = new Map();
 if (typeof window !== "undefined") window.addEventListener("observatory-session-changed", () => drafts.clear());
@@ -228,7 +229,13 @@ function threadButtons(sessions, selected, choose, disabled) {
 }
 
 export async function piChatView(ctx, { projectId, taskId, detail, sessionId = "" }) {
-  const root = el("section", { class: "pi-chat panel stack", "aria-label": "Pi task conversation" });
+  const root = el("section", { class: "pi-chat", "aria-label": "Pi task conversation" });
+  const desktop = matchMedia("(min-width: 1000px)");
+  const resizePanes = () => {
+    for (const pane of root.querySelectorAll(".pi-session-navigation, .pi-context-navigation")) pane.open = desktop.matches;
+  };
+  desktop.addEventListener("change", resizePanes);
+  ctx.signal.addEventListener("abort", () => desktop.removeEventListener("change", resizePanes), { once: true });
   const state = { sessions: [], selected: sessionId, cursor: 0, events: [], resolvedExtensions: new Set(), transcriptDirty: false, transcriptDeferred: false, pending: false, stopped: false, timer: null, polling: false, error: "" };
   const taskKey = `${ctx.session?.identity}/${projectId}/${taskId}`;
   const startKey = `anvil-pi-start/${taskKey}`;
@@ -450,9 +457,10 @@ export async function piChatView(ctx, { projectId, taskId, detail, sessionId = "
     const createButton = button(retained ? "Reconcile original start" : "Start isolated run", () => create(), "primary", state.pending || ((!newClaimReady || projectPreferences?.stale) && !retained) || !draft.provider || !draft.model || !draft.thinking);
     const actions = current ? [submit, steer, button("Stop", () => send("abort"), "quiet-button", !commandsAllowed())] : [createButton];
     if (current && draft.pendingCommand) actions.push(button("Reconcile command", () => send(draft.pendingCommand.name, draft.pendingCommand.payload), "secondary-button", state.pending));
-    const compose = el("form", { class: "stack", onSubmit: (submitted) => { submitted.preventDefault(); if (current && message.value.trim()) void send("prompt", { message: message.value.trim() }); else if (!current) void create(); } }, el("div", { class: "form-grid" }, field("Provider", providerSelect), field("Model", modelSelect), field("Thinking", thinkingSelect)), current ? field("Message", message) : null, el("div", { class: "actions" }, actions));
-    const children = [toolbar, el("div", { class: "pi-chat-layout" }, rail, el("div", { class: "stack" }, output, compose))];
-    if (!current) children.unshift(el("section", { class: "stack", "aria-label": "Run with Pi preview" },
+    const settings = el("details", { class: "pi-session-settings", open: !current }, el("summary", { text: current ? `${target.model} · ${target.thinking} · Session settings` : "Session settings" }), el("div", { class: "form-grid" }, field("Provider", providerSelect), field("Model", modelSelect), field("Thinking", thinkingSelect)));
+    const compose = el("form", { class: "pi-composer stack", onSubmit: (submitted) => { submitted.preventDefault(); if (current && message.value.trim()) void send("prompt", { message: message.value.trim() }); else if (!current) void create(); } }, current ? field("Message", message) : null, el("div", { class: "actions" }, actions));
+    const context = el("aside", { class: "pi-context stack", "aria-label": "Task context" }, el("h2", { text: "Task context" }), el("strong", { text: detail?.task?.title || taskId }), badge("Isolated task roots"), settings);
+    if (!current) context.append(el("section", { class: "stack", "aria-label": "Run with Pi preview" },
       el("h2", { text: "Run with Pi" }),
       notice("Starting acquires a canonical task lease and creates an isolated workspace. The lease and frozen roots stay with this run; submission requires independent Anvil acceptance."),
       detail?.packet ? jsonDetails(detail.packet, "Preview canonical work packet") : notice("The canonical packet is unavailable.", "warning"),
@@ -462,15 +470,23 @@ export async function piChatView(ctx, { projectId, taskId, detail, sessionId = "
       el("a", { href: "#/settings/projects", text: "Change defaults for new project sessions" }),
       projectPreferences?.stale ? notice("Declared roots changed. Review and save the project defaults before starting a new task session.", "warning") : null,
       retained ? notice("A previous start has an unconfirmed outcome. Reconcile it before creating another run.", "warning") : null));
-    if (current) children.push(el("nav", { class: "actions", "aria-label": "Run links" },
+    if (current) context.append(el("nav", { class: "small-stack", "aria-label": "Run links" },
       el("a", { href: piSessionLink(current.session_id, projectId, taskId), text: "Open this session in Pi" }),
       current.run_id ? el("a", { href: `#/workbench/${encodeURIComponent(current.run_id)}`, text: "Open run in Workbench" }) : null,
       el("a", { href: `#/work/${encodeURIComponent(projectId)}/${encodeURIComponent(taskId)}/evidence`, text: "Review task evidence" })));
-    children.push(notice("Managed task sessions accept text prompts. Attachments and queued follow-up are unavailable; use Steer during a turn or send after it finishes. Changing provider requires a new isolated conversation."));
-    if (state.error) children.unshift(notice(state.error, "danger"));
-    if (draft.commandStorageError) children.unshift(notice(draft.commandStorageError, "danger"));
-    if (!newClaimReady && !current) children.push(notice(detail?.execution?.reason || "Task execution is not ready for a new Pi claim.", "warning"));
-    root.replaceChildren(...children);
+    if (current?.binding_id) context.append(frozenProjectFilesView(ctx, current.binding_id));
+    context.append(el("details", {}, el("summary", { text: "About managed sessions" }), notice("Tools use frozen, isolated task roots. Text prompts and Steer are supported; attachments and queued follow-up are unavailable. Changing provider requires a new conversation.")));
+    if (state.error) compose.prepend(notice(state.error, "danger"));
+    if (draft.commandStorageError) compose.prepend(notice(draft.commandStorageError, "danger"));
+    if (!newClaimReady && !current) compose.prepend(notice(detail?.execution?.reason || "Task execution is not ready for a new Pi claim.", "warning"));
+    const navigation = el("details", { class: "pi-session-navigation", open: desktop.matches }, el("summary", { text: "Task conversations" }), rail);
+    const inspector = el("details", { class: "pi-context-navigation", open: desktop.matches || !current }, el("summary", { text: "Task context and settings" }), context);
+    root.classList.toggle("pi-start-preview", !current);
+    if (!current) {
+      root.replaceChildren(context, compose, el("details", {}, el("summary", { text: "Existing task conversations" }), rail));
+      return;
+    }
+    root.replaceChildren(el("div", { class: "pi-chat-layout" }, navigation, el("section", { class: "pi-conversation" }, toolbar, output, compose), inspector));
   };
   try {
     [catalog, preferences, projectPreferences] = await Promise.all([workbenchRequest("catalog", { signal: ctx.signal }), workbenchRequest("preferences", { signal: ctx.signal }),
