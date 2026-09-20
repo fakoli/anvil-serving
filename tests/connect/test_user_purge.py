@@ -149,6 +149,20 @@ def test_rejects_collateral_delete_trigger_before_mutation(database):
     assert _count(database, "authentication_logs", "username", "bob") == 1
 
 
+@pytest.mark.parametrize("statement", (
+    "CREATE VIEW unexpected_view AS SELECT username FROM authentication_logs",
+    "CREATE INDEX unexpected_index ON authentication_logs (username)",
+    "ALTER TABLE authentication_logs ADD COLUMN unexpected TEXT NOT NULL DEFAULT ''",
+))
+def test_rejects_unpinned_schema_object_or_table_definition_before_mutation(database, statement):
+    with sqlite3.connect(database) as connection:
+        connection.execute(statement)
+    with pytest.raises(UsageError):
+        user_purge.purge(database, "alice", expected_subject=_ALICE)
+    assert _count(database, "authentication_logs", "username", "alice") == 1
+    assert _count(database, "authentication_logs", "username", "bob") == 1
+
+
 def test_transaction_rolls_back_on_delete_failure(database, monkeypatch):
     original_integrity = user_purge._integrity
     calls = 0
