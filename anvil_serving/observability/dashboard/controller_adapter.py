@@ -23,6 +23,7 @@ from ...transports import (
     TransportError,
 )
 from .contracts import ObservatoryError, canonical, digest, identifier, strict_json, validate_values
+from .run_projection import validated_benchmark_job_ref
 from . import runtime_candidates
 
 
@@ -667,6 +668,10 @@ class ControllerAdapter:
         response = {"ok": outcome != "failed", "owner_operation_id": intent_key,
                     "native_state": state, "execution_outcome": outcome,
                     "evidence": self._evidence(payload)}
+        if action_id == "experiment.start":
+            job_ref = self._benchmark_job_ref(payload)
+            if job_ref is not None:
+                response["benchmark_job_ref"] = job_ref
         if isinstance(payload.get("recovery"), Mapping):
             response["recovery"] = copy.deepcopy(dict(payload["recovery"]))
         return response
@@ -714,7 +719,11 @@ class ControllerAdapter:
                        .get(state, "unknown"))
             return {"ok": outcome not in {"failed", "unknown"}, "owner_operation_id": intent_key,
                     "native_state": state, "execution_outcome": outcome,
-                    "evidence": self._evidence(job_payload)}
+                    "evidence": self._evidence(job_payload),
+                    **({"benchmark_job_ref": job_ref} if (
+                        job_ref := self._benchmark_job_ref(job_payload)
+                    ) is not None else {}),
+                    }
         response = record.get("response")
         payload = self._payload(response) if isinstance(response, Mapping) else {}
         typed = self._typed_completion(preview.get("action_id"), payload, intent_key)
@@ -1392,6 +1401,13 @@ class ControllerAdapter:
         if isinstance(job, Mapping) and type(job.get("state")) is str:
             return job["state"]
         return "succeeded"
+
+    @staticmethod
+    def _benchmark_job_ref(payload: Mapping[str, Any]) -> dict[str, str] | None:
+        reference = payload.get("job_ref")
+        if reference is None and isinstance(payload.get("job"), Mapping):
+            reference = payload["job"].get("job_ref")
+        return validated_benchmark_job_ref(reference)
 
     @staticmethod
     def _evidence(payload: Mapping[str, Any]) -> Any:

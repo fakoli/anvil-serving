@@ -16,7 +16,7 @@ from pathlib import Path
 from .contracts import ObservatoryError, canonical, digest, identifier, timestamp
 
 TERMINAL = frozenset({"succeeded", "failed", "recovered"})
-PUBLIC_OPERATION = frozenset({"id", "resource_id", "host_id", "action_id", "label", "actor", "service_identity", "submitted_at", "updated_at", "status", "native_state", "owner_operation_id", "execution_outcome", "verification", "recovery", "events", "evidence_id", "candidate_digest", "baseline_digest"})
+PUBLIC_OPERATION = frozenset({"id", "resource_id", "host_id", "action_id", "label", "actor", "service_identity", "submitted_at", "updated_at", "status", "native_state", "owner_operation_id", "execution_outcome", "verification", "recovery", "events", "evidence_id", "benchmark_job_ref", "candidate_digest", "baseline_digest"})
 _RUN_RECORD_BYTES = 64 * 1024
 _RUN_PAGE_BYTES = 48 * 1024
 _RUN_SCAN_ROWS = 128
@@ -311,7 +311,7 @@ class IntentStore:
                         identifier(private["resource_id"])
                         item = {key: private.get(key) for key in (
                             "id", "resource_id", "host_id", "action_id", "label", "status",
-                            "native_state", "submitted_at", "updated_at", "evidence_id",
+                            "native_state", "submitted_at", "updated_at", "evidence_id", "benchmark_job_ref",
                         )}
                         encoded = canonical(item)
                     except Exception:

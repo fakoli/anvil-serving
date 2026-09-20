@@ -6,11 +6,40 @@ from collections.abc import Callable, Mapping
 from datetime import datetime
 from typing import Any
 
+from ...benchmarking.jobs import BenchmarkJobError
+from ...control_plane.controller.store import benchmark_job_ref
 from .contracts import ObservatoryError, digest, identifier
 
 
 BENCHMARK_SOURCE = "benchmark"
 MAX_NATIVE_ID_BYTES = 1024
+
+
+def validated_benchmark_job_ref(value: object) -> dict[str, str] | None:
+    """Accept only the closed owner-issued benchmark correlation contract."""
+    if not isinstance(value, Mapping) or set(value) != {
+        "schema", "issuer", "namespace", "native_id",
+    }:
+        return None
+    try:
+        expected = benchmark_job_ref(value["issuer"], value["native_id"])
+    except BenchmarkJobError:
+        return None
+    return expected if dict(value) == expected else None
+
+
+def benchmark_correlation(issuer: object, native_id: object) -> dict[str, str] | None:
+    """Derive a benchmark reference from the trusted list source and native ID."""
+    try:
+        return benchmark_job_ref(issuer, native_id)
+    except BenchmarkJobError:
+        return None
+
+
+def benchmark_correlation_id(value: object) -> str | None:
+    """Project a validated closed reference into one compact browser join key."""
+    reference = validated_benchmark_job_ref(value)
+    return "benchmark-job-" + digest(reference) if reference is not None else None
 
 
 def projected_run_id(owner_id: str, source: str, native_id: str) -> str:
@@ -124,6 +153,10 @@ def _project_benchmark_row(
         "finished_at": row.get("finished_at"),
         "observed_at": observed_at,
         "freshness": "fresh",
-        "correlation_id": row.get("correlation_id"),
+        # Never forward owner-supplied bare correlation strings. The list
+        # source identity and durable job-native ID form the only benchmark ref.
+        "correlation_id": benchmark_correlation_id(
+            benchmark_correlation(owner_id, native_id)
+        ),
         "evidence_refs": evidence_refs,
     }

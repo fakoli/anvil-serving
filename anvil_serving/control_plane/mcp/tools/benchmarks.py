@@ -71,6 +71,14 @@ def _job_for_suite(store: BenchmarkJobStore, run_id: str, suite: str) -> dict:
     return record
 
 
+def _job_with_ref(store: BenchmarkJobStore, record: dict) -> dict:
+    result = dict(record)
+    reference = store.job_ref(record["spec"]["run_id"])
+    if reference is not None:
+        result["job_ref"] = reference
+    return result
+
+
 def tool_benchmark_job_submit(args: dict) -> dict:
     suite = _str_arg(args, "suite", required=True)
     raw = _str_arg(args, "spec_json", required=True)
@@ -106,7 +114,7 @@ def tool_benchmark_job_submit(args: dict) -> dict:
     return _ok(
         {
             "disposition": disposition,
-            "job": job,
+            "job": _job_with_ref(store, job),
             "worker": launch,
             "follow": follow,
             "detached": detach or not follow,
@@ -143,7 +151,10 @@ def tool_benchmark_job_preflight(args: dict) -> dict:
 
 def tool_benchmark_job_status(args: dict) -> dict:
     store = _benchmark_job_store()
-    return _ok(_job_for_suite(store, _str_arg(args, "run_id", required=True), _str_arg(args, "suite", required=True)))
+    return _ok(_job_with_ref(
+        store,
+        _job_for_suite(store, _str_arg(args, "run_id", required=True), _str_arg(args, "suite", required=True)),
+    ))
 
 
 def tool_benchmark_job_list(args: dict) -> dict:

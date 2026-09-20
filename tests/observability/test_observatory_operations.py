@@ -236,7 +236,73 @@ def test_console_read_lists_independent_operation_and_benchmark_sources(site):
     assert operations["sources"][0]["truncated"] is False
     assert benchmarks["items"][0]["native_id"] == "benchmark-fixture-1"
     assert benchmarks["items"][0]["owner_id"] == "benchmark-owner"
-    assert benchmarks["items"][0]["correlation_id"] is None
+    assert benchmarks["items"][0]["correlation_id"].startswith("benchmark-job-")
+
+
+def test_lost_experiment_response_reconciles_to_the_owner_job_reference(site):
+    console, owner, _call = site
+    job_ref = {
+        "schema": "anvil-serving.run-correlation/v1", "issuer": "benchmark-owner",
+        "namespace": "benchmark-job", "native_id": "context-001",
+    }
+    owner.controls = lambda resource: {
+        "resource_id": resource, "baseline_digest": digest("experiment-baseline"),
+        "actions": [{"id": "experiment.start", "label": "Run fixture benchmark", "supported": True}],
+        "settings": [],
+    }
+    owner.preview = lambda resource, action, values=None, parameters=None: {
+        "host_id": "host-fixture-a", "resource_id": resource, "action_id": action,
+        "label": "Fixture benchmark", "baseline_digest": digest("experiment-baseline"),
+        "candidate_digest": digest(parameters or {}), "effect": "fixture benchmark", "diff": [],
+    }
+
+    def lose_response(_preview, intent_key):
+        owner.completed[intent_key] = {
+            "ok": True, "owner_operation_id": intent_key, "native_state": "completed",
+            "execution_outcome": "succeeded", "benchmark_job_ref": job_ref,
+        }
+        raise TimeoutError
+
+    owner.execute = lose_response
+    session = Session("experiment-session", "csrf", Principal(
+        "operator-fixture", "operator", "operator", frozenset({"*"}),
+        frozenset({"experiment.start"}),
+    ), time.time() + 60)
+    preview = console.create_preview(session, {
+        "resource_id": "serve-fixture-a", "action_id": "experiment.start", "parameters": {},
+    })
+    accepted = console.apply(session, {"preview_id": preview["id"], "intent_key": "fixture-experiment"})
+    deadline = time.monotonic() + 2
+    while console.store.get(accepted["id"])["status"] != "outcome_unknown":
+        assert time.monotonic() < deadline
+        time.sleep(0.01)
+    owner.reconciled = True
+    console._reconcile(console.store.get(accepted["id"]))
+    retained = console.store.get(accepted["id"])
+    assert retained["benchmark_job_ref"] == job_ref
+    operation = console._operation_run(retained)
+    owner.benchmark_rows = [{
+        "native_id": "context-001", "native_state": "completed", "suite": "context",
+        "profile": "fixture-profile", "model": "fixture-model",
+        "submitted_at": "2026-09-19T00:00:00Z", "updated_at": "2026-09-19T00:01:00Z",
+        "artifact": {"sha256": "a" * 64},
+    }]
+    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
+    benchmark = console.read("runs/benchmark", {"limit": "1"}, session)["items"][0]
+    assert operation["correlation_id"] == benchmark["correlation_id"]
+
+
+def test_run_sources_do_not_expose_the_other_side_without_its_grant(site):
+    console, _owner, _call = site
+    operation_only = Session("operation-only", "csrf", Principal(
+        "operation-only", "operation-only", "viewer", frozenset({"serve-fixture-a"}), frozenset(),
+    ), time.time() + 60)
+    catalog = console.read("run-sources", {}, operation_only)
+    assert {item["id"] for item in catalog["items"]} == {"operations"}
+    assert console.read("runs/operations", {"limit": "1"}, operation_only)["items"] == []
+    with pytest.raises(ObservatoryError) as denied:
+        console.read("runs/benchmark", {"limit": "1"}, operation_only)
+    assert denied.value.status == 403
 
 
 def test_benchmark_cache_is_authorized_before_stale_fallback(site):

@@ -69,10 +69,16 @@ def test_remote_job_tools_share_the_portable_spec(monkeypatch, tmp_path):
         },
     )
     assert result["ok"] is True
+    expected_ref = {
+        "schema": "anvil-serving.run-correlation/v1", "issuer": "controller-a",
+        "namespace": "benchmark-job", "native_id": "agentic-001",
+    }
+    assert result["data"]["job"]["job_ref"] == expected_ref
     status = mcp.call_tool(
         "benchmark_job_status", {"suite": "agentic", "run_id": "agentic-001"}
     )
     assert status["data"]["spec"] == result["data"]["job"]["spec"]
+    assert status["data"]["job_ref"] == expected_ref
     listed = mcp.call_tool("benchmark_job_list", {"limit": 1})
     assert listed["data"]["items"] == [{
         "native_id": "agentic-001",

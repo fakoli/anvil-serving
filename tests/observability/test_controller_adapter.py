@@ -49,10 +49,13 @@ class FakeTransport:
             else:
                 data = {"ok": True, "data": {"result": {
                     "status": "completed", "exit_code": 0, "output": "ready\n", "truncated": False}}}
-        elif operation.name == "benchmark_job_status":
+        elif operation.name in {"benchmark_job_submit", "benchmark_job_status"}:
             data = {"ok": True, "data": {
                 "spec": {"run_id": "smoke", "suite": "context"}, "spec_sha256": "a" * 64,
                 "state": "completed", "revision": 3, "failure": None,
+                "job_ref": {"schema": "anvil-serving.run-correlation/v1",
+                            "issuer": "benchmark-owner", "namespace": "benchmark-job",
+                            "native_id": "smoke"},
             }}
         elif operation.name == "benchmark_job_list":
             data = {"ok": True, "data": {
@@ -846,12 +849,14 @@ def test_experiment_preview_runs_preflight_but_never_submits():
     names = [call[0].name for call in FakeTransport.instances[-1].calls]
     assert "benchmark_job_preflight" in names
     assert "benchmark_job_submit" not in names
-    value.execute(preview, "intent.experiment")
+    executed = value.execute(preview, "intent.experiment")
     assert [call[0].name for call in FakeTransport.instances[-1].calls].count("benchmark_job_submit") == 1
+    assert executed["benchmark_job_ref"]["issuer"] == "benchmark-owner"
     reconciled = value.reconcile(preview, "intent.experiment")
     assert reconciled["native_state"] == "completed"
     assert reconciled["execution_outcome"] == "succeeded"
     assert reconciled["evidence"]["spec_sha256"] == "a" * 64
+    assert reconciled["benchmark_job_ref"] == executed["benchmark_job_ref"]
     assert value.verify(preview, reconciled)["status"] == "unavailable"
 
 

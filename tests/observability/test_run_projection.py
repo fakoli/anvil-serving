@@ -81,6 +81,32 @@ def test_benchmark_projection_uses_each_declared_owner_for_identical_native_ids(
     assert first_row["id"] != second_row["id"]
 
 
+def test_benchmark_correlation_uses_only_its_declared_owner_and_job_native_id():
+    first, second = BenchmarkOwner(), BenchmarkOwner()
+    original = second.list_benchmark_jobs
+
+    def valid_first(**kwargs):
+        response = BenchmarkOwner().list_benchmark_jobs(**kwargs)
+        response["items"][0]["native_id"] = "context-001"
+        response["items"][0]["correlation_id"] = "forged-bare-string"
+        return response
+
+    def valid_second(**kwargs):
+        response = original(**kwargs)
+        response["source"]["id"] = "controller-b"
+        response["items"][0]["native_id"] = "context-001"
+        response["items"][0]["correlation_id"] = "forged-bare-string"
+        return response
+
+    first.list_benchmark_jobs = valid_first
+    second.list_benchmark_jobs = valid_second
+    first_row = list_benchmark_runs(first, can_read=lambda _: True, resource_id="evaluation.runs")["items"][0]
+    second_row = list_benchmark_runs(second, can_read=lambda _: True, resource_id="evaluation.runs")["items"][0]
+    assert first_row["correlation_id"].startswith("benchmark-job-")
+    assert second_row["correlation_id"].startswith("benchmark-job-")
+    assert first_row["correlation_id"] != second_row["correlation_id"]
+
+
 def test_benchmark_projection_rejects_stale_or_undeclared_source_identity():
     owner = BenchmarkOwner()
     owner.list_benchmark_jobs = lambda **_kwargs: {

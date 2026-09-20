@@ -21,7 +21,9 @@ from .access import Access, GrafanaLogin
 from .contracts import (ObservatoryError, canonical, digest, fields, identifier,
                         preview_is_current, strict_json, timestamp, validate_values)
 from .intents import IntentStore
-from .run_projection import BENCHMARK_SOURCE, list_benchmark_runs, projected_run_id
+from .run_projection import (BENCHMARK_SOURCE, benchmark_correlation_id,
+                             list_benchmark_runs, projected_run_id,
+                             validated_benchmark_job_ref)
 
 PREVIEW_FIELDS = frozenset({"id", "host_id", "resource_id", "action_id", "label", "baseline_digest", "candidate_digest", "policy_digest", "expires_at_epoch_seconds", "effect", "diff", "affected_aliases", "workload_impact", "gpu_ids", "stop_semantics", "recovery", "planned_steps", "actor", "service_identity", "acknowledgement_required", "diagnostic"})
 _SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings", "logs", "access", "bench", "playground", "models", "work", "observability", "compute", "docs"})
@@ -382,10 +384,16 @@ class Console:
                 event=("facade", "reconciling", "Outcome unknown; reconciling with the owner. Do not repeat the action."))
 
     def _finish(self, item, result):
+        job_ref = (
+            validated_benchmark_job_ref(result.get("benchmark_job_ref"))
+            if item.get("action_id") == "experiment.start" and isinstance(result, dict) else None
+        )
+        job_ref_change = {"benchmark_job_ref": job_ref} if job_ref is not None else {}
         if not result or result.get("status") in {"outcome_unknown", "running", "submitting", "pending"} or result.get("execution_outcome") in {"running", "pending", "unknown"}:
             status = "running" if result and result.get("status") in {"running", "pending"} else "outcome_unknown"
             self.store.update(item["id"], status=status, native_state=(result or {}).get("native_state"),
-                event=("owner" if status == "running" else "facade", status, "Waiting for the existing owner operation to resolve."))
+                event=("owner" if status == "running" else "facade", status, "Waiting for the existing owner operation to resolve."),
+                **job_ref_change)
             return
         owner_id = result.get("owner_operation_id", item["intent_key"])
         # Failed runs are evidence too. Save before branching on execution or
@@ -397,15 +405,18 @@ class Console:
             self.store.update(item["id"], status="manual_recovery_required" if recovery.get("status") == "failed" else "failed",
                 owner_operation_id=owner_id, execution_outcome="failed", native_state=result.get("native_state"), recovery=recovery, evidence_id=evidence_id,
                 verification={"status": "failed", "message": "The owner reported that the requested change failed."},
-                event=("owner", "failed", "The requested change failed. Review the retained recovery outcome."))
+                event=("owner", "failed", "The requested change failed. Review the retained recovery outcome."),
+                **job_ref_change)
             return
         self.store.update(item["id"], status="verifying", owner_operation_id=owner_id, execution_outcome="succeeded", evidence_id=evidence_id,
-                          event=("facade", "verifying", "Checking resulting state independently with the owner."))
+                          event=("facade", "verifying", "Checking resulting state independently with the owner."),
+                          **job_ref_change)
         verification = self.adapter.verify(item["private_preview"], result)
         passed = verification.get("status") == "passed"
         self.store.update(item["id"], status="succeeded" if passed else "failed", native_state=result.get("native_state"),
             verification=verification, evidence_id=evidence_id,
             **({"recovery": result["recovery"]} if isinstance(result.get("recovery"), dict) else {}),
+            **job_ref_change,
             event=("facade", "succeeded" if passed else "verification_failed", "Resulting state verified." if passed else "Execution returned, but resulting state could not be verified."))
         original_id = item["private_preview"].get("private_recovery_of")
         if passed and item["action_id"] == "operation.recover" and original_id:
@@ -567,7 +578,9 @@ class Console:
             "native_state": item.get("native_state"), "status": item["status"],
             "submitted_at": item["submitted_at"], "updated_at": item["updated_at"],
             "started_at": None, "finished_at": None, "observed_at": None,
-            "freshness": "fresh", "correlation_id": None, "evidence_refs": evidence_refs,
+            "freshness": "fresh", "correlation_id": benchmark_correlation_id(
+                item.get("benchmark_job_ref")
+            ), "evidence_refs": evidence_refs,
         }
 
     def _operation_runs(self, session, query):

@@ -89,6 +89,21 @@ _BENCHMARK_LIST_SNAPSHOT_MAX_BYTES = 48 * 1024
 _BENCHMARK_LIST_RECORD_MAX_BYTES = 64 * 1024
 _BENCHMARK_LIST_CURSOR = re.compile(r"[a-f0-9]{32}\.[0-9]+\Z")
 _BENCHMARK_OWNER_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}\Z")
+BENCHMARK_JOB_REF_SCHEMA = "anvil-serving.run-correlation/v1"
+BENCHMARK_JOB_REF_NAMESPACE = "benchmark-job"
+
+
+def benchmark_job_ref(issuer: object, native_id: object) -> dict[str, str]:
+    """Build the closed correlation contract for one declared benchmark owner."""
+    if type(issuer) is not str or _BENCHMARK_OWNER_ID.fullmatch(issuer) is None:
+        raise BenchmarkJobError("bad_benchmark_owner", "benchmark source_id must be a stable identifier")
+    run_id = validate_job_id(native_id)
+    return {
+        "schema": BENCHMARK_JOB_REF_SCHEMA,
+        "issuer": issuer,
+        "namespace": BENCHMARK_JOB_REF_NAMESPACE,
+        "native_id": run_id,
+    }
 
 _BENCHMARK_WORKLOAD_SQL = """
 WITH extracted AS (
@@ -672,6 +687,12 @@ class BenchmarkJobStore:
             self.path, host, query, now,
             _snapshot_clock=self._snapshot_clock, _lock=self._lock,
         )
+
+    def job_ref(self, run_id: str) -> dict[str, str] | None:
+        """Return this declared owner's durable job identity, if it has one."""
+        if self.source_id is None:
+            return None
+        return benchmark_job_ref(self.source_id, run_id)
 
     def list_runs(self, *, limit: int = _BENCHMARK_LIST_LIMIT,
                   cursor: str | None = None) -> dict[str, Any]:
