@@ -17,6 +17,7 @@ _LEGACY_PRIMARY_ROOT_ID = "primary"
 _LOCAL_OWNER_ID = "local-owner"
 _LOCAL_RUNTIME_ID = "local-runtime"
 _LEGACY_ROOT_TASK_ACCESS = "read-write"
+_HTTPS_ORIGIN = re.compile(r"https://[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[1-9][0-9]{0,4})?")
 
 
 def absolute_path(value):
@@ -51,6 +52,37 @@ def _label(value):
     return value
 
 
+def _protected_credential_ref(value):
+    return (type(value) is str and (
+        re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", value)
+        or (value.startswith("file:/") and Path(value[5:]).is_absolute())
+    ))
+
+
+def _exact_https_origin(value):
+    if type(value) is not str or not _HTTPS_ORIGIN.fullmatch(value):
+        return False
+    url = urlsplit(value)
+    return bool(url.hostname and url.hostname != "localhost" and not url.username and not url.password
+                and not url.path and not url.query and not url.fragment
+                and (url.port is None or 1 <= url.port <= 65535))
+
+
+def _host_pi_bridge_url(value):
+    if type(value) is not str:
+        return False
+    url = urlsplit(value)
+    try:
+        port = url.port
+    except ValueError:
+        return False
+    if url.username or url.password or url.path or url.query or url.fragment:
+        return False
+    if url.scheme == "http":
+        return url.hostname == "127.0.0.1" and port is not None and 1 <= port <= 65535
+    return _exact_https_origin(value)
+
+
 def _paths_overlap(first, second):
     try:
         common = os.path.commonpath((os.path.normcase(first), os.path.normcase(second)))
@@ -82,9 +114,9 @@ def _normalize_project_roots(project):
     matching_checkout = []
     normalized_paths = []
     for root in roots:
-        fields(root, required=("id", "label", "owner_id", "runtime_id", "task_access", "path"))
+        fields(root, required=("id", "label", "owner_id", "runtime_id", "task_access", "path"), optional=("repository_id", "verification_commands", "expected_files"))
         root_id = identifier(root["id"])
-        if root_id in seen_ids:
+        if root_id.casefold() in {value.casefold() for value in seen_ids}:
             raise ValueError("Duplicate project root identity")
         seen_ids.add(root_id)
         _label(root["label"])
@@ -92,6 +124,17 @@ def _normalize_project_roots(project):
         identifier(root["runtime_id"])
         if root["task_access"] not in {"read-only", "read-write"}:
             raise ValueError("Project roots must declare task access")
+        if "repository_id" in root:
+            identifier(root["repository_id"])
+        commands = root.get("verification_commands", [])
+        if type(commands) is not list or len(commands) > 32 or any(type(command) is not str or not command or len(command.encode("utf-8")) > 1024 or any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in command) for command in commands):
+            raise ValueError("Project root verification commands must be bounded text")
+        scopes = root.get("expected_files", [])
+        if type(scopes) is not list or len(scopes) > 256:
+            raise ValueError("Project root file scope must be a bounded list")
+        from .task_artifacts import _safe_path
+        for scope in scopes:
+            _safe_path(scope)
         root["path"] = _root_path(root["path"])
         if any(_paths_overlap(root["path"], prior) for prior in normalized_paths):
             raise ValueError("Project roots must not overlap")
@@ -156,20 +199,26 @@ def validate_config(value):
                 _normalize_project_roots(row)
     if "host_pi" in value:
         host_pi = value["host_pi"]
-        fields(host_pi, required=("id", "resource_id", "origin", "owner_subject", "version", "runtime_sha256"))
+        fields(host_pi, required=("id", "resource_id", "origin", "owner_subject", "version", "runtime_sha256"),
+               optional=("token_ref", "parent_origin", "bridge_base_url"))
         identifier(host_pi["id"])
         identifier(host_pi["resource_id"])
         origin = host_pi["origin"]
-        if type(origin) is not str or not re.fullmatch(r"https://[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[1-9][0-9]{0,4})?", origin):
-            raise ValueError("Host Pi requires an exact HTTPS origin")
-        url = urlsplit(origin)
-        if url.hostname == "localhost" or (url.port is not None and not 1 <= url.port <= 65535):
+        if not _exact_https_origin(origin):
             raise ValueError("Host Pi requires an exact HTTPS origin")
         subject = host_pi["owner_subject"]
         if type(subject) is not str or not 1 <= len(subject.encode("utf-8")) <= 192 or any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in subject):
             raise ValueError("Host Pi requires one exact Connect owner subject")
         if host_pi["version"] != "0.9.0" or type(host_pi["runtime_sha256"]) is not str or not re.fullmatch(r"[a-f0-9]{64}", host_pi["runtime_sha256"]):
             raise ValueError("Host Pi requires the reviewed package version and runtime digest")
+        bridge_fields = {"token_ref", "parent_origin", "bridge_base_url"}
+        supplied = bridge_fields.intersection(host_pi)
+        if supplied and supplied != bridge_fields:
+            raise ValueError("Host Pi bridge settings must be declared together")
+        if supplied and (not _protected_credential_ref(host_pi["token_ref"])
+                         or not _exact_https_origin(host_pi["parent_origin"])
+                         or not _host_pi_bridge_url(host_pi["bridge_base_url"])):
+            raise ValueError("Host Pi bridge settings are invalid")
     if value.get("pi"):
         pi = value["pi"]
         fields(pi, required=("id", "state_root", "engine_binary", "image", "uid", "gid", "models", "thinking_levels"),

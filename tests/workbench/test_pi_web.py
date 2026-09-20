@@ -6,7 +6,9 @@ systemd root) so the reviewed behavior is proven without touching a real unit.
 
 from __future__ import annotations
 
+from importlib.resources import files
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -151,6 +153,17 @@ def test_config_requires_an_existing_declared_node_path(tmp_path: Path) -> None:
 def test_config_accepts_ip_literal_and_exact_hosts(tmp_path: Path) -> None:
     parsed = pi_web_config(_config(tmp_path, hostname="127.0.0.1", allowed_hosts=["127.0.0.1", "pi.example.test"]))
     assert parsed.allowed_hosts == ("127.0.0.1", "pi.example.test")
+
+
+@pytest.mark.parametrize("origin", ["https://workbench.example.test:65536", "https://workbench.example.test:99999"])
+def test_bridge_config_rejects_out_of_range_https_ports(tmp_path: Path, origin: str) -> None:
+    with pytest.raises(PiWebError, match="exact HTTPS origin"):
+        pi_web_config(_config(
+            tmp_path,
+            bridge_source=str(tmp_path / "source"),
+            bridge_parent_origin=origin,
+            bridge_token_env_file=str(tmp_path / "bridge-token.env"),
+        ))
 
 
 def test_load_config_uses_the_conventional_operator_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -366,8 +379,11 @@ def test_repeated_install_converges_without_restart_or_npm(installer_env, tmp_pa
         chown=(lambda target, uid, gid: None),
     )
     installer.install(confirm=True)
+    manifest_path = Path(str(config.install_root)) / "install-manifest.json"
+    first_manifest = manifest_path.read_text(encoding="utf-8")
     run.calls.clear()
     second = installer.install(confirm=True)
+    assert manifest_path.read_text(encoding="utf-8") == first_manifest
     assert second["package_installed"] is False
     assert second["unit_changed"] is False
     assert second["lifecycle"] == "unchanged"  # already active; left running
@@ -512,3 +528,269 @@ def test_probe_url_is_loopback_only() -> None:
 
     pi_web.probe(30444, opener=opener, attempts=1)
     assert seen == ["http://127.0.0.1:30444/"]
+# --- bridge artifact promotion ----------------------------------------------
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
+def test_bridge_plan_uses_a_staged_source_build_not_registry_install(tmp_path: Path) -> None:
+    token = tmp_path / "bridge-token.env"
+    token.write_text("PI_WEB_WORKBENCH_BRIDGE_TOKEN=private\n", encoding="utf-8")
+    token.chmod(0o600)
+    source = tmp_path / "source"
+    source.mkdir()
+    config = pi_web_config(_config(
+        tmp_path, bridge_source=str(source), bridge_parent_origin="https://workbench.example.test",
+        bridge_token_env_file=str(token),
+    ))
+    planned = pi_web.plan(config, node_path=_fake_node(tmp_path))
+    assert planned["bridge"] is True
+    commands = planned["commands"]
+    assert commands[0] == ["verify-pinned-source", str(source)]
+    assert commands[1][-1] == "ci" and commands[2][-2:] == ["run", "build"]
+    assert all("install" not in command for command in commands[:3])
+    assert all("-i" in command for command in commands[1:3])
+    assert all("NEXT_PUBLIC_WORKBENCH_ORIGIN=https://workbench.example.test" in command for command in commands[1:3] if command is commands[2])
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
+def test_bridge_install_updates_origin_converges_and_preserves_old_artifact_on_build_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = tmp_path / "bridge-token.env"
+    token.write_text("PI_WEB_WORKBENCH_BRIDGE_TOKEN=private\n", encoding="utf-8")
+    token.chmod(0o600)
+    source = tmp_path / "source"
+    source.mkdir()
+    config = pi_web_config(_config(
+        tmp_path, bridge_source=str(source), bridge_parent_origin="https://workbench.example.test",
+        bridge_token_env_file=str(token),
+    ))
+    run = _NpmResponder(config)
+    calls: list[str] = []
+
+    def staged(source_arg: Path, target: Path, **kwargs: object) -> dict[str, object]:
+        calls.append(str(kwargs["parent_origin"]))
+        entry = target / "bin" / "pi-web.js"
+        entry.parent.mkdir(parents=True)
+        entry.write_text("built=" + str(kwargs["parent_origin"]), encoding="utf-8")
+        return pi_web._bridge_install_descriptor(
+            parent_origin=str(kwargs["parent_origin"]), artifact_sha256=pi_web._artifact_tree_sha256(target),
+        )
+
+    monkeypatch.setattr(pi_web, "_build_staged_bridge", staged)
+    installer = PiWebInstaller(
+        config, run=run, systemd_root=tmp_path / "systemd", geteuid=lambda: 0,
+        probe_opener=lambda url: 200, node_path=_fake_node(tmp_path), platform="linux",
+        chown=lambda target, uid, gid: None,
+    )
+    first = installer.install(confirm=True)
+    version_dir = Path(str(config.install_root)) / config.version
+    manifest_path = Path(str(config.install_root)) / "install-manifest.json"
+    first_manifest = manifest_path.read_text(encoding="utf-8")
+    assert first["package_installed"] is True and calls == ["https://workbench.example.test"]
+    assert "built=https://workbench.example.test" in (version_dir / "bin" / "pi-web.js").read_text(encoding="utf-8")
+
+    run.calls.clear()
+    assert installer.install(confirm=True)["package_installed"] is False
+    assert calls == ["https://workbench.example.test"]
+    assert manifest_path.read_text(encoding="utf-8") == first_manifest
+
+    changed = PiWebConfig(**{**config.__dict__, "bridge_parent_origin": "https://renewed.example.test"})
+    changed_installer = PiWebInstaller(
+        changed, run=run, systemd_root=tmp_path / "systemd", geteuid=lambda: 0,
+        probe_opener=lambda url: 200, node_path=_fake_node(tmp_path), platform="linux",
+        chown=lambda target, uid, gid: None,
+    )
+    changed_result = changed_installer.install(confirm=True)
+    assert changed_result["package_installed"] is True and changed_result["lifecycle"] == "restarted"
+    assert calls[-1] == "https://renewed.example.test"
+    assert "renewed" in (version_dir / "bin" / "pi-web.js").read_text(encoding="utf-8")
+    assert json.loads(manifest_path.read_text(encoding="utf-8"))["bridge_install"]["parent_origin"] == "https://renewed.example.test"
+
+    old = (version_dir / "bin" / "pi-web.js").read_bytes()
+    monkeypatch.setattr(pi_web, "_build_staged_bridge", lambda *args, **kwargs: (_ for _ in ()).throw(PiWebError("build failed")))
+    failed = PiWebConfig(**{**changed.__dict__, "bridge_parent_origin": "https://failed.example.test"})
+    with pytest.raises(PiWebError, match="build failed"):
+        PiWebInstaller(
+            failed, run=run, systemd_root=tmp_path / "systemd", geteuid=lambda: 0,
+            probe_opener=lambda url: 200, node_path=_fake_node(tmp_path), platform="linux",
+            chown=lambda target, uid, gid: None,
+        ).install(confirm=True)
+    assert (version_dir / "bin" / "pi-web.js").read_bytes() == old
+    assert not list(Path(str(config.install_root)).glob("*.bridge-staging-*"))
+
+
+def test_bridge_archive_uses_the_pinned_git_blob_not_a_mutated_checkout(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    tracked = source / "tracked.txt"
+    tracked.write_text("reviewed\n", encoding="utf-8")
+    for command in (
+        ["git", "init", "-q"],
+        ["git", "config", "user.email", "test@example.test"],
+        ["git", "config", "user.name", "Test"],
+        ["git", "add", "tracked.txt"],
+        ["git", "commit", "-qm", "reviewed"],
+    ):
+        subprocess.run(command, cwd=source, check=True, capture_output=True, text=True)
+    commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=source, check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    tracked.write_text("changed after review\n", encoding="utf-8")
+    destination = tmp_path / "destination"
+    pi_web._archive_tracked_bridge_source(
+        source, destination, manifest={"source_commit": commit}, run=subprocess.run,
+        chown=lambda target, uid, gid: None, uid=os.getuid(),
+    )
+    assert (destination / "tracked.txt").read_text(encoding="utf-8") == "reviewed\n"
+
+
+def test_manifest_write_rejects_a_symlink_without_touching_its_target(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    root.chmod(0o755)
+    victim = tmp_path / "preserve"
+    victim.write_text("preserve", encoding="utf-8")
+    (root / "install-manifest.json").symlink_to(victim)
+    installer = PiWebInstaller(PiWebConfig(install_root=root, service_user="nobody"))
+    with pytest.raises(PiWebError, match="regular file"):
+        installer._record_manifest(root, node="/usr/bin/node", node_version=(22, 19, 0), bridge_install=None)
+    assert victim.read_text(encoding="utf-8") == "preserve"
+
+
+def test_manifest_write_is_atomic_when_promotion_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    root.chmod(0o755)
+    manifest = root / "install-manifest.json"
+    manifest.write_text("old manifest\n", encoding="utf-8")
+    installer = PiWebInstaller(PiWebConfig(install_root=root, service_user="nobody"))
+    monkeypatch.setattr(pi_web.os, "replace", lambda *args, **kwargs: (_ for _ in ()).throw(OSError("injected")))
+    with pytest.raises(PiWebError, match="write.*metadata"):
+        installer._record_manifest(root, node="/usr/bin/node", node_version=(22, 19, 0), bridge_install=None)
+    assert manifest.read_text(encoding="utf-8") == "old manifest\n"
+    assert not list(root.glob(".install-manifest.json.*.tmp"))
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
+def test_bridge_readiness_failure_restores_the_previous_artifact_and_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = tmp_path / "bridge-token.env"
+    token.write_text("PI_WEB_WORKBENCH_BRIDGE_TOKEN=private\n", encoding="utf-8")
+    token.chmod(0o600)
+    source = tmp_path / "source"
+    source.mkdir()
+    config = pi_web_config(_config(
+        tmp_path, bridge_source=str(source), bridge_parent_origin="https://workbench.example.test",
+        bridge_token_env_file=str(token),
+    ))
+    run = _NpmResponder(config)
+
+    def staged(source_arg: Path, target: Path, **kwargs: object) -> dict[str, object]:
+        entry = target / "bin" / "pi-web.js"
+        entry.parent.mkdir(parents=True)
+        entry.write_text("built=" + str(kwargs["parent_origin"]), encoding="utf-8")
+        return pi_web._bridge_install_descriptor(
+            parent_origin=str(kwargs["parent_origin"]), artifact_sha256=pi_web._artifact_tree_sha256(target),
+        )
+
+    monkeypatch.setattr(pi_web, "_build_staged_bridge", staged)
+    first = PiWebInstaller(
+        config, run=run, systemd_root=tmp_path / "systemd", geteuid=lambda: 0,
+        probe_opener=lambda url: 200, node_path=_fake_node(tmp_path), platform="linux",
+        chown=lambda target, uid, gid: None,
+    )
+    first.install(confirm=True)
+    root = Path(str(config.install_root))
+    version_dir = root / config.version
+    old_entry = (version_dir / "bin" / "pi-web.js").read_bytes()
+    old_manifest = (root / "install-manifest.json").read_bytes()
+    changed = PiWebConfig(**{**config.__dict__, "bridge_parent_origin": "https://renewed.example.test"})
+    monkeypatch.setattr(pi_web, "probe", lambda *args, **kwargs: {"ready": False, "url": "http://127.0.0.1:30141/", "attempts": 1})
+    with pytest.raises(PiWebError, match="readiness probe"):
+        PiWebInstaller(
+            changed, run=run, systemd_root=tmp_path / "systemd", geteuid=lambda: 0,
+            probe_opener=lambda url: 200, node_path=_fake_node(tmp_path), platform="linux",
+            chown=lambda target, uid, gid: None,
+        ).install(confirm=True)
+    assert (version_dir / "bin" / "pi-web.js").read_bytes() == old_entry
+    assert (root / "install-manifest.json").read_bytes() == old_manifest
+    assert not list(root.glob("*.previous-*"))
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
+@pytest.mark.parametrize("snapshot", ["state", "manifest", "unit"])
+def test_bridge_snapshot_failure_prevents_promotion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, snapshot: str,
+) -> None:
+    token = tmp_path / "bridge-token.env"
+    token.write_text("PI_WEB_WORKBENCH_BRIDGE_TOKEN=private\n", encoding="utf-8")
+    token.chmod(0o600)
+    root = tmp_path / "pi-web-home"
+    root.mkdir()
+    root.chmod(0o755)
+    version = root / "0.9.0"
+    old_entry = version / "bin" / "pi-web.js"
+    old_entry.parent.mkdir(parents=True)
+    old_entry.write_text("old bridge", encoding="utf-8")
+    old_manifest = b'{"old": true}\n'
+    (root / "install-manifest.json").write_bytes(old_manifest)
+    systemd = tmp_path / "systemd"
+    systemd.mkdir()
+    unit = systemd / pi_web.UNIT_NAME
+    unit.write_text("old unit", encoding="utf-8")
+    config = pi_web_config(_config(
+        tmp_path, install_root=str(root), bridge_source=str(tmp_path / "source"),
+        bridge_parent_origin="https://workbench.example.test", bridge_token_env_file=str(token),
+    ))
+    run = _NpmResponder(config)
+    if snapshot == "state":
+        monkeypatch.setattr(pi_web, "service_state", lambda **kwargs: (_ for _ in ()).throw(PiWebError("state unavailable")))
+    elif snapshot == "manifest":
+        monkeypatch.setattr(pi_web, "_read_regular_private_file", lambda *args, **kwargs: (_ for _ in ()).throw(PiWebError("manifest unavailable")))
+    else:
+        monkeypatch.setattr(PiWebInstaller, "_unit_snapshot", lambda self: (_ for _ in ()).throw(PiWebError("unit unavailable")))
+    with pytest.raises(PiWebError, match="unavailable"):
+        PiWebInstaller(
+            config, run=run, systemd_root=systemd, geteuid=lambda: 0,
+            probe_opener=lambda url: 200, node_path=_fake_node(tmp_path), platform="linux",
+            chown=lambda target, uid, gid: None,
+        ).install(confirm=True)
+    assert old_entry.read_text(encoding="utf-8") == "old bridge"
+    assert (root / "install-manifest.json").read_bytes() == old_manifest
+    assert unit.read_text(encoding="utf-8") == "old unit"
+    assert not list(root.glob("*.previous-*"))
+
+
+def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path) -> None:
+    """The packaged patch, rather than a dirty source checkout, supplies bridge APIs."""
+    patch = files("anvil_serving").joinpath("_pi_web_bridge", "0.9.0-host-bridge.patch")
+    assert pi_web.bridge_manifest()["patch_sha256"] == __import__("hashlib").sha256(patch.read_bytes()).hexdigest()
+    source = tmp_path / "staging"
+    source.mkdir()
+    runtime = {
+        "app/api/workbench/ensure/route.ts",
+        "app/api/workbench/associate/route.ts",
+        "app/api/workbench/sessions/route.ts",
+        "lib/workbench-bridge.ts",
+    }
+    # Reconstruct minimal preimages from the packaged unified diff.  This proves
+    # patch(1) produces the runtime artifact that the installer promotes.
+    for block in patch.read_text(encoding="utf-8").split("--- a/")[1:]:
+        name, body = block.split("\n", 1)
+        if name in runtime:
+            continue
+        old_lines = [
+            line[1:] for line in body.splitlines()[1:]
+            if line.startswith((" ", "-"))
+        ]
+        target = source / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("\n".join(old_lines) + "\n", encoding="utf-8")
+    pi_web._apply_bridge_patch(source, run=subprocess.run)
+    for name in runtime:
+        target = source / name
+        assert target.is_file(), name
+        assert target.read_text(encoding="utf-8")
+    assert not (source / "lib/workbench-bridge.test.mjs").exists()

@@ -8,6 +8,7 @@ const tabs = [["overview", "Overview"], ["run", "Run flow"], ["compare", "Compar
 // the visible 5s active and 10s discovery budgets.
 const SOURCE_TIMEOUT = 2500, DISCOVERY_INTERVAL = 6500, ACTIVE_INTERVAL = 1500;
 const HISTORY_LIMIT = 400, PAGE_LIMIT = 100;
+const HOST_PI_SOURCE = "workspace-host-pi";
 const TERMINAL = new Set(["succeeded", "failed", "cancelled", "completed", "imported", "retained"]);
 const BENCHMARK_CORRELATION = /^benchmark-job-[a-f0-9]{64}$/;
 const BENCHMARK_REFRESH_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$/;
@@ -89,7 +90,7 @@ function createRunFeed(ctx, update, selectedId) {
     state.controller?.abort(); state.controller = null;
     state.moreController?.abort(); state.moreController = null;
   };
-  const delayFor = (state) => state.source.kind === "imported" || (!state.head.some(activeRun) && !visibleBenchmarkRefreshRefs(state).length) ? DISCOVERY_INTERVAL : ACTIVE_INTERVAL;
+  const delayFor = (state) => state.source.kind === "imported" || (!state.head.some(activeRun) && !(state.source.id === HOST_PI_SOURCE && state.history.some(activeRun)) && !visibleBenchmarkRefreshRefs(state).length) ? DISCOVERY_INTERVAL : ACTIVE_INTERVAL;
   const schedule = (state, delay = delayFor(state)) => {
     clearTimeout(state.timer);
     if (!stopped && !document.hidden) state.timer = setTimeout(() => void readSource(state), delay);
@@ -109,6 +110,10 @@ function createRunFeed(ctx, update, selectedId) {
       state.history = state.history.map((item) => !headIds.has(item?.id) && activeRun(item) ? { ...item, freshness: "retained" } : item);
       state.head = applyBenchmarkUpdates(state.head, value?.updates);
       state.history = applyBenchmarkUpdates(state.history, value?.updates);
+      if (state.source.id === HOST_PI_SOURCE && Array.isArray(value?.refresh?.items)) {
+        const updates = new Map(value.refresh.items.map((row) => [row.id, row]));
+        state.history = state.history.map((row) => updates.has(row.id) ? { ...row, ...updates.get(row.id) } : { ...row, freshness: "stale" });
+      }
       // Once history is loaded, keep paging its original owner snapshot. A
       // newer head may be polled without creating gaps behind that snapshot.
       if (!state.snapshotActive && !state.historyExpired)
@@ -173,7 +178,10 @@ function createRunFeed(ctx, update, selectedId) {
         if (!source || typeof source.id !== "string") continue;
         available.add(source.id);
         const existing = states.get(source.id);
-        if (existing) { existing.source = source; continue; }
+        if (existing && JSON.stringify(existing.source) === JSON.stringify(source)) continue;
+        // A changed grant or owner binding invalidates retained pages as well
+        // as in-flight reads, even when the source remains available.
+        if (existing) clear(existing);
         const state = { source, head: [], history: [], items: [], status: "loading", sources: [], loading: false, moreLoading: false, controller: null, moreController: null, timer: null, next_cursor: null, snapshotActive: false, historyExpired: false, historyExhausted: false, refreshSignature: "", selectionBackfill: false, generation: 0 };
         states.set(source.id, state); void readSource(state);
       }
@@ -253,8 +261,18 @@ function runDetails(current, ctx, selectedId) {
   return el("section", { class: "focus-card stack", "aria-label": "Selected run", ...(benchmark && activeRun(benchmark) ? { "data-benchmark-refresh": "", "data-suite": benchmark.suite, "data-run-id": benchmark.native_id } : {}) },
     el("span", { class: "eyebrow", text: `RETAINED RUN / ${current.id.slice(0, 16)}` }),
     el("div", { class: "focus-top" }, el("div", {}, el("h2", { text: current.title || current.label || current.native_id || "Selected run" }), el("p", { text: `${current.source_label || current.source || "Owner source"} · ${current.native_id || current.id}` })), badge(current.status)),
+    current.source === HOST_PI_SOURCE ? el("a", { class: "text-link", href: `?${new URLSearchParams({ project: current.context_project_id, "pi-thread": current.native_id })}#/playground`, text: "Open native Pi thread →" }) : null,
+    current.source === "workspace-pi" ? el("a", { class: "text-link", href: `?${new URLSearchParams({ "pi-project": current.project_id, "pi-task": current.task_id, "pi-session": current.native_id })}#/playground`, text: "Open managed Pi session →" }) : null,
+    current.source === "workspace-tasks" ? el("a", { class: "text-link", href: taskEvidenceRoute(current), text: "Open task evidence →" }) : null,
     kv([["Freshness", badge(current.freshness || "fresh")], ["Updated", timestamp(current.updated_at, ctx.zone)], ["Native IDs", representations.map((row) => row.native_id || row.id).join(", ")], ["Correlation", validCorrelation(current) ? current.correlation_id : "No owner-declared benchmark correlation"]]),
   );
+}
+
+function taskEvidenceRoute(current) {
+  const target = new URL(location.href);
+  target.searchParams.set("binding", current.native_id);
+  target.hash = route("work", current.project_id, current.task_id, "evidence");
+  return target.href;
 }
 function evidenceReference(current) {
   const source = current?.representations?.find((row) => row.source === "evidence") || (current?.source === "evidence" ? current : null);
@@ -315,7 +333,7 @@ function comparisonPanel(runs, ctx, comparison, rerender) {
 function backfillControls(states, feed) {
   const pages = [...states.values()].filter((state) => state.next_cursor || state.historyExpired || state.historyExhausted || state.history.some(activeRun));
   if (!pages.length) return null;
-  return el("section", { class: "panel run-backfill stack" }, el("h2", { text: "Retained history" }), ...pages.map((state) => el("div", { class: "run-backfill-row" }, el("span", { text: `${sourceLabel(state.source)} · ${state.history.length} retained snapshot rows` }), state.historyExpired || state.historyExhausted ? button("Restart history", () => void feed.restartHistory(state)) : state.next_cursor ? button(state.moreLoading ? "Loading…" : "Load more", () => void feed.loadMore(state), "", state.moreLoading) : badge("retained history"))), pages.some((state) => state.historyExpired) ? notice("A source snapshot expired. Its last successful rows remain visible; restart history to continue from the current snapshot.", "warning") : null, pages.some((state) => state.historyExhausted) ? notice("History reached the 500-row display limit. Restart to browse from a current head; no loaded row was silently dropped.", "warning") : null, pages.some((state) => state.source.id === "benchmark" && state.history.some(activeRun)) ? notice("Visible retained benchmark rows are refreshed separately.", "warning") : null, pages.some((state) => state.source.id !== "benchmark" && state.history.some(activeRun)) ? notice("Retained active rows outside the owner head are not actively polled until they return to that head.", "warning") : null);
+  return el("section", { class: "panel run-backfill stack" }, el("h2", { text: "Retained history" }), ...pages.map((state) => el("div", { class: "run-backfill-row" }, el("span", { text: `${sourceLabel(state.source)} · ${state.history.length} retained snapshot rows` }), state.historyExpired || state.historyExhausted ? button("Restart history", () => void feed.restartHistory(state)) : state.next_cursor ? button(state.moreLoading ? "Loading…" : "Load more", () => void feed.loadMore(state), "", state.moreLoading) : badge("retained history"))), pages.some((state) => state.historyExpired) ? notice("A source snapshot expired. Its last successful rows remain visible; restart history to continue from the current snapshot.", "warning") : null, pages.some((state) => state.historyExhausted) ? notice("History reached the 500-row display limit. Restart to browse from a current head; no loaded row was silently dropped.", "warning") : null, pages.some((state) => state.source.id === "benchmark" && state.history.some(activeRun)) ? notice("Visible retained benchmark rows are refreshed separately.", "warning") : null, pages.some((state) => !["benchmark", HOST_PI_SOURCE].includes(state.source.id) && state.history.some(activeRun)) ? notice("Retained active rows outside the owner head are not actively polled until they return to that head.", "warning") : null);
 }
 function syncSelect(control, options, value) {
   const signature = JSON.stringify(options);

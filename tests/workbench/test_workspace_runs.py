@@ -192,3 +192,56 @@ def test_missing_safe_descriptor_primitive_keeps_canonical_sessions_durable(tmp_
     assert created is True and pi.get(session.session_id).session_id == session.session_id
     with pytest.raises(PiSessionError, match="unavailable"):
         pi.run_metadata_page("alice", frozenset({"alpha"}))
+
+
+def test_native_pi_pages_are_stable_bounded_and_reauthorize_before_cursor_read():
+    now, policy, allowed, calls = [1000], ["first"], [True], []
+    rows = [{"native_id": f"session-{i:03}", "title": "Native thread", "running": False,
+             "cwd": "/private/checkout", "transcript": "private", "request_key": "private"} for i in range(205)]
+    def authority(_session):
+        if not allowed[0]:
+            raise ObservatoryError("permission_denied", "denied", 403)
+        return {"project_ids": ["alpha"], "resource_ids": ["host", "project-alpha"], "authority_key": policy[0]}
+    def inventory(_session):
+        calls.append(True)
+        return rows
+    runs = WorkspaceRuns(None, _Projects(), None, clock=lambda: now[0], host_access=authority, host_inventory=inventory)
+    session = _session()
+    assert runs.sources(session)["items"][-1]["id"] == "workspace-host-pi" and not calls
+    first = runs.page(session, "workspace-host-pi")
+    rows.reverse()
+    second = runs.page(session, "workspace-host-pi", cursor=first["next_cursor"])
+    third = runs.page(session, "workspace-host-pi", cursor=second["next_cursor"])
+    assert len(calls) == 1
+    assert len({r["id"] for page in (first, second, third) for r in page["items"]}) == 205
+    assert all(r["context_project_id"] == "alpha" for r in first["items"])
+    assert not any(value in str(first) for value in ("/private/", "transcript", "request_key"))
+    # A fresh owner head refreshes the status of a row outside the first page.
+    rows[0]["running"] = True
+    refreshed = runs.page(session, "workspace-host-pi")
+    assert any(r["status"] == "running" for r in refreshed["refresh"]["items"])
+    policy[0] = "changed-binding"
+    with pytest.raises(ObservatoryError, match="current"):
+        runs.page(session, "workspace-host-pi", cursor=first["next_cursor"])
+    policy[0] = "first"; now[0] += 61
+    with pytest.raises(ObservatoryError, match="current"):
+        runs.page(session, "workspace-host-pi", cursor=first["next_cursor"])
+    allowed[0] = False
+    with pytest.raises(ObservatoryError) as error:
+        runs.page(session, "workspace-host-pi", cursor={"hostile": True})
+    assert error.value.status == 403 and len(calls) == 2
+
+
+@pytest.mark.parametrize("bad_rows", [
+    [{"native_id": "a", "title": "Title", "running": False}] * 2,
+    [{"native_id": f"id-{i}", "title": "Title", "running": False} for i in range(257)],
+    [{"native_id": "a", "title": "Title", "running": False, "project_id": "revoked"}],
+    [{"native_id": "a", "title": "Title", "running": "false"}],
+], ids=["duplicate", "overflow", "revoked", "invalid-state"])
+def test_native_pi_rejects_invalid_or_unbounded_owner_inventory(bad_rows):
+    runs = WorkspaceRuns(None, _Projects(), None,
+                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
+                         host_inventory=lambda _: bad_rows)
+    with pytest.raises(ObservatoryError) as error:
+        runs.host_page(_session())
+    assert error.value.status == 503

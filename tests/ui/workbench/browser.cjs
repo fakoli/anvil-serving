@@ -362,7 +362,7 @@ fs.mkdirSync(output, { recursive: true });
       .getByRole("button", { name: "Review experiment", exact: true })
       .waitFor();
     await nav("Anvil work");
-    await page.getByRole("button", { name: "Read plan", exact: true }).click();
+    await page.getByRole("navigation", { name: "Project plans", exact: true }).getByRole("link").click();
     await page.getByText("Persisted revision 1", { exact: false }).waitFor();
     await page.getByRole("navigation", { name: "Plan outline", exact: true }).getByRole("link", { name: "Acceptance", exact: true }).click();
     await page.getByText("Persisted revision 1", { exact: false }).waitFor();

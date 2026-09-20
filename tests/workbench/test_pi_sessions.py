@@ -195,6 +195,27 @@ def test_accepted_conversation_commands_retain_only_display_metadata(tmp_path, m
     assert store.get(key).next_cursor == before
 
 
+@pytest.mark.parametrize(
+    "name,payload",
+    [
+        ("prompt", {"message": "hello", "attachments": []}),
+        ("prompt", {"message": "hello", "follow_up": True}),
+        ("steer", {"message": "hello", "attachments": []}),
+        ("fork", {}),
+        ("clone", {}),
+    ],
+)
+def test_command_payloads_are_closed_and_branch_commands_are_refused(tmp_path, name, payload):
+    svc, store, processes, _, _ = service(tmp_path)
+    key = start(svc)["session_id"]
+    before = store.get(key).next_cursor
+    writes = len(processes[0].writes)
+    with pytest.raises(PiSessionAccessError):
+        svc.command(key, _binding(), name, payload)
+    assert store.get(key).next_cursor == before
+    assert len(processes[0].writes) == writes
+
+
 def test_failed_state_stops_runner_and_records_failure_without_false_running(tmp_path):
     svc, store, processes, stopped, _ = service(tmp_path)
     key = start(svc)["session_id"]

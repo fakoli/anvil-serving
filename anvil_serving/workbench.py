@@ -122,6 +122,7 @@ def _parser() -> argparse.ArgumentParser:
         )
         if name in {"install", "up", "down"}:
             child.add_argument("--confirm", action="store_true", help="Confirm the guarded mutation.")
+        if name in {"install", "up", "down"}:
             child.add_argument("--dry-run", action="store_true", help="Preview the exact commands without changing state.")
         if name == "logs":
             child.add_argument("--tail", type=_bounded_tail, default=200, help=f"Maximum journal lines (1 through {_MAX_LOG_TAIL}).")

@@ -174,6 +174,8 @@ class TaskSandbox(TaskArtifactSandbox):
         if not passed:
             return {"baseline_sha": baseline_sha, "verification_clean": True, "applied": False, "commands": rows}
         state = self.transfer_state(verification_base, target, baseline_sha, patch)
+        if not patch and state == "exact":
+            return {"baseline_sha": baseline_sha, "verification_clean": True, "applied": True, "commands": rows}
         if already_transferred:
             if state != "exact":
                 raise self._error("transfer_recovery_required", "The claimed workspace no longer matches the reviewed patch exactly.")
@@ -193,7 +195,7 @@ class TaskSandbox(TaskArtifactSandbox):
             "git -C /verify -c core.hooksPath=/dev/null -c core.fsmonitor=false -c core.attributesfile=/dev/null -c diff.external= clean -ffdqx",
             "test \"$(git -C /verify rev-parse HEAD)\" = \"$BASELINE\"",
             "test -z \"$(git -C /verify status --porcelain=v1 --untracked-files=all)\"",
-            "git -C /verify apply --binary --whitespace=nowarn /patch/reviewed.patch",
+            "if test -s /patch/reviewed.patch; then git -C /verify apply --binary --whitespace=nowarn /patch/reviewed.patch; fi",
             "failed=0",
             f"for ((n=0; n<{count}; n++)); do",
             "  started=$(date +%s)",
@@ -226,8 +228,8 @@ class TaskSandbox(TaskArtifactSandbox):
                 "tree_equal() { diff -qr --no-dereference -x .git \"$1\" \"$2\" >/dev/null && diff -q <(tree_manifest \"$1\") <(tree_manifest \"$2\") >/dev/null; }",
                 "git -C /verify -c core.hooksPath=/dev/null -c core.fsmonitor=false -c core.attributesfile=/dev/null -c diff.external= reset --hard \"$BASELINE\" >/dev/null",
                 "git -C /verify -c core.hooksPath=/dev/null -c core.fsmonitor=false -c core.attributesfile=/dev/null -c diff.external= clean -ffdqx",
-                "if tree_equal /verify /claim; then printf pristine; exit 0; fi",
-                "git -C /verify apply --binary --whitespace=nowarn /patch/reviewed.patch",
+                "if tree_equal /verify /claim; then if test -s /patch/reviewed.patch; then printf pristine; else printf exact; fi; exit 0; fi",
+                "if test -s /patch/reviewed.patch; then git -C /verify apply --binary --whitespace=nowarn /patch/reviewed.patch; fi",
                 "if tree_equal /verify /claim; then printf exact; else printf other; fi",
             ))
             result = self._container(("/bin/bash", "-ceu", script, "sandbox"), mounts=mounts, workdir="/tmp", timeout=120, extra_env=(f"BASELINE={baseline_sha}",))

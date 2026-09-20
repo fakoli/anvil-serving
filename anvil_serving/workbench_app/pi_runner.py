@@ -41,6 +41,19 @@ class PiContextMount:
 
 
 @dataclass(frozen=True)
+class PiWritableMount:
+    """One frozen private full clone selected by the owner for task writes."""
+
+    root_id: str
+    source: Path
+
+    def __post_init__(self) -> None:
+        if (not _NAME.fullmatch(self.root_id) or not self.source.is_absolute()
+                or self.source.is_symlink() or (self.source / ".git").is_file()):
+            raise ValueError("Pi writable mount must be an isolated full clone")
+
+
+@dataclass(frozen=True)
 class PiRunnerPolicy:
     """A CPU-only, unprivileged container invocation for one task session."""
 
@@ -62,6 +75,7 @@ class PiRunnerPolicy:
     network_id: str | None = None
     egress_ready: Callable[[], object] | None = None
     context_mounts: tuple[PiContextMount, ...] = ()
+    writable_mounts: tuple[PiWritableMount, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.engine_argv or not self.image or "\n" in self.image or "\x00" in self.image:
@@ -73,6 +87,10 @@ class PiRunnerPolicy:
         if (len(self.context_mounts) > 15 or any(not isinstance(mount, PiContextMount) for mount in self.context_mounts)
                 or len({mount.root_id for mount in self.context_mounts}) != len(self.context_mounts)):
             raise ValueError("Pi context mounts must have unique declared roots")
+        if (len(self.writable_mounts) > 15 or any(not isinstance(mount, PiWritableMount) for mount in self.writable_mounts)
+                or len({mount.root_id for mount in self.writable_mounts}) != len(self.writable_mounts)
+                or {mount.root_id for mount in self.writable_mounts} & {mount.root_id for mount in self.context_mounts}):
+            raise ValueError("Pi writable mounts must have unique declared roots")
         protected = (self.worktree.resolve(), self.agent_dir.resolve())
         context_sources = []
         for mount in self.context_mounts:
@@ -80,6 +98,12 @@ class PiRunnerPolicy:
             if (not source.is_dir() or any(self._overlap(source, item) for item in protected)
                     or any(self._overlap(source, item) for item in context_sources)):
                 raise ValueError("Pi context snapshots must be distinct directories")
+            context_sources.append(source)
+        for mount in self.writable_mounts:
+            source = mount.source.resolve()
+            if (not source.is_dir() or any(self._overlap(source, item) for item in protected)
+                    or any(self._overlap(source, item) for item in context_sources)):
+                raise ValueError("Pi writable mounts must be distinct private clones")
             context_sources.append(source)
         if self.uid < 1 or self.gid < 1:
             raise ValueError("Pi runner uid and gid must be explicitly configured")
@@ -102,6 +126,8 @@ class PiRunnerPolicy:
                  "proxy": self.proxy_url, "network_id": self.network_id, "session": self.session_id, "native_args": self.native_args, "credential_names": self.credential_names}
         if self.context_mounts:
             value["context_mounts"] = tuple((mount.root_id, str(mount.source.resolve())) for mount in self.context_mounts)
+        if self.writable_mounts:
+            value["writable_mounts"] = tuple((mount.root_id, str(mount.source.resolve())) for mount in self.writable_mounts)
         return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
     def argv(self, session_dir: Path, *, credential_names: tuple[str, ...], resume_file_name: str | None = None, detached: bool = False) -> tuple[str, ...]:
@@ -111,7 +137,7 @@ class PiRunnerPolicy:
         session = session_dir.resolve()
         if any(self._overlap(mount.source.resolve(), session) for mount in self.context_mounts):
             raise ValueError("Pi context snapshots must not overlap the session mount")
-        for path in (self.worktree, self.agent_dir, session_dir, *(mount.source for mount in self.context_mounts)):
+        for path in (self.worktree, self.agent_dir, session_dir, *(mount.source for mount in self.context_mounts), *(mount.source for mount in self.writable_mounts)):
             if "," in str(path) or "\n" in str(path) or "\x00" in str(path):
                 raise ValueError("Pi runner mount path is invalid")
         arguments: list[str] = [
@@ -155,6 +181,8 @@ class PiRunnerPolicy:
         ]
         for mount in self.context_mounts:
             arguments.extend(("--mount", f"type=bind,source={mount.source},target=/context/{mount.root_id},readonly"))
+        for mount in self.writable_mounts:
+            arguments.extend(("--mount", f"type=bind,source={mount.source},target=/roots/{mount.root_id}"))
         if detached:
             arguments.append("--detach")
         arguments.extend(["--network", "none" if self.network == "none" else self.network])
@@ -237,6 +265,7 @@ class PiContainerInspector:
             expected_mounts = {"/sessions": (session_dir, True), "/workspace": (policy.worktree, True),
                                "/home/pi/.pi/agent": (policy.agent_dir, True)}
             expected_mounts.update({f"/context/{mount.root_id}": (mount.source, False) for mount in policy.context_mounts})
+            expected_mounts.update({f"/roots/{mount.root_id}": (mount.source, True) for mount in policy.writable_mounts})
             mounts = item.get("Mounts", [])
             bound = [m for m in mounts if m.get("Type") == "bind"]
             if len(bound) != len(expected_mounts) or any(

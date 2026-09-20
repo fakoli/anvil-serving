@@ -787,6 +787,13 @@ def main():
         console.workbench.store.put(
             "task-binding", "operator-fixture", fixture_binding_row["id"], fixture_binding_row
         )
+        # Two retained bindings let the browser prove that a selected run never
+        # falls through to another same-task evidence record.
+        console.workbench.store.put(
+            "task-binding", "operator-fixture", "fixture-pi-binding-b", {
+                **fixture_binding_row, "id": "fixture-pi-binding-b", "lease_id": "fixture-pi-lease-b",
+            }
+        )
         fixture_pi_store = FixturePiStore(
             console.workbench.projects.pi_binding(fixture_binding_row)
         )

@@ -21,7 +21,16 @@ def test_pi_chat_keeps_drafts_isolated_and_transcript_ordered(tmp_path) -> None:
       const source = (await readFile({json.dumps(str(SOURCE))}, "utf8"))
         .replace(/^import .*;$/gm, "");
       const module = await import(`data:text/javascript;base64,${{Buffer.from(source).toString("base64")}}`);
-      const {{ conversationDraft, pendingTranscriptControlIds, replaceTranscript, sessionPresentationChanged, shouldPreserveTranscriptControls, transcriptItems }} = module;
+      const {{ conversationDraft, pendingTranscriptControlIds, replaceTranscript, retainStart, sessionPresentationChanged, shouldPreserveTranscriptControls, transcriptItems }} = module;
+
+      const saved = new Map();
+      const storage = {{ getItem: key => saved.get(key), setItem: (key, value) => saved.set(key, value) }};
+      const original = {{ project_id: "project", task_id: "task", request_id: "first", provider_id: "a", model_id: "one", thinking_level: "off" }};
+      assert.deepEqual(retainStart(storage, "owner/project/task", original), original);
+      assert.deepEqual(retainStart(storage, "owner/project/task", {{ ...original, request_id: "second", model_id: "two" }}), original);
+      assert.throws(() => retainStart(storage, "owner/project/task", {{ ...original, task_id: "foreign" }}));
+      assert.equal(retainStart(storage, "other/project/task", {{ request_id: "other" }}).request_id, "other");
+      assert.throws(() => retainStart({{ getItem: () => null, setItem: () => {{ throw Error("storage full"); }} }}, "key", original));
 
       const drafts = new Map();
       const fresh = conversationDraft(drafts, "project/task");

@@ -84,6 +84,31 @@ class PrivateStore:
             rows = self.db.execute("SELECT body FROM records WHERE kind=? AND owner=? ORDER BY updated DESC LIMIT 200", (kind, owner)).fetchall()
         return [json.loads(row[0]) for row in rows]
 
+    def host_pi_associations(self, owner):
+        """Read the complete bounded association set; truncation loses ownership."""
+        deadline = time.monotonic() + 0.25
+        if not self.lock.acquire(timeout=0.25):
+            raise ObservatoryError("host_pi_unavailable", "The native Pi association owner is busy.", 503)
+        previous_timeout = None
+        try:
+            previous_timeout = self.db.execute("PRAGMA busy_timeout").fetchone()[0]
+            self.db.execute("PRAGMA busy_timeout=250")
+            self.db.set_progress_handler(lambda: int(time.monotonic() >= deadline), 1000)
+            rows = self.db.execute(
+                "SELECT id,CASE WHEN length(CAST(body AS BLOB)) <= 16384 THEN body END FROM records "
+                "WHERE kind='host-pi-thread' AND owner=? LIMIT 257", (owner,),
+            ).fetchall()
+            if len(rows) > 256 or any(row[1] is None for row in rows):
+                raise ValueError
+            return [(key, json.loads(body)) for key, body in rows]
+        except (ValueError, sqlite3.OperationalError):
+            raise ObservatoryError("host_pi_unavailable", "The native Pi associations exceed their read bound.", 503) from None
+        finally:
+            self.db.set_progress_handler(None, 0)
+            if previous_timeout is not None:
+                self.db.execute("PRAGMA busy_timeout=" + str(previous_timeout))
+            self.lock.release()
+
     def task_binding_run_page(self, owner, projects, *, high_water=None, before=None, limit=100, deadline_seconds=2.0):
         """Read bounded task-binding metadata without materializing private bodies.
 

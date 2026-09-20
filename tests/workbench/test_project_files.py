@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
 
-from anvil_serving.observability.dashboard.contracts import ObservatoryError
+from anvil_serving.observability.dashboard.contracts import ObservatoryError, digest
 from anvil_serving.workbench_app import project_files
 from anvil_serving.workbench_app.project_files import MAX_GIT_BYTES, MAX_TEXT_BYTES, ProjectFiles
 
@@ -37,6 +40,26 @@ class Projects:
         return self.project_row
 
 
+class FrozenProjects(Projects):
+    def __init__(self, row, artifacts):
+        super().__init__({"id": "unused"})
+        self.row = row
+        self.artifacts = artifacts
+
+    def binding(self, session, binding_id):
+        assert session == "session" and binding_id == self.row["id"]
+        return self.row
+
+    @staticmethod
+    def _frozen_roots(row):
+        return tuple(row["root_bindings"])
+
+
+class Artifacts:
+    def load(self, row, artifact_digest):
+        return json.loads((Path(row["artifact_root"]) / (artifact_digest + ".json")).read_text(encoding="utf-8"))
+
+
 def _root(root_id, path, **extra):
     root = {
         "id": root_id,
@@ -56,6 +79,32 @@ def _reader(tmp_path, roots=None, **kwargs):
     project = {"id": "product", "resource_id": "serve-a", "roots": roots or [_root("primary", root)]}
     projects = Projects(project)
     return ProjectFiles(projects, **kwargs), projects, root
+
+
+def _frozen_reader(tmp_path):
+    checkout = tmp_path / "runner"
+    artifacts = tmp_path / "artifacts"
+    checkout.mkdir()
+    artifacts.mkdir()
+    patch = b"diff --git a/code.py b/code.py\n--- a/code.py\n+++ b/code.py\n@@ -1 +1 @@\n-old\n+new\n"
+    artifact_digest = hashlib.sha256(patch).hexdigest()
+    (artifacts / (artifact_digest + ".patch")).write_bytes(patch)
+    preview = {"artifact_digest": artifact_digest, "baseline_sha": "a" * 40,
+               "packet_digest": "b" * 64, "files": [{"path": "code.py", "status": "M", "mode": "100644"}]}
+    (artifacts / (artifact_digest + ".json")).write_text(json.dumps(preview), encoding="utf-8")
+    root = {"root_id": "root-a", "repository_id": "repo-a", "baseline_sha": "a" * 40,
+            "claim_worktree": "/retained/owner", "runner_checkout": str(checkout),
+            "verification_checkout": "/retained/verify", "artifact_root": str(artifacts),
+            "verification_commands": ["pytest -q"], "declared_paths": ["code.py"], "packet_digest": "b" * 64}
+    review_roots = [{"root_id": "root-a", "baseline_sha": root["baseline_sha"],
+                     "artifact_digest": artifact_digest, "files": preview["files"]}]
+    row = {"id": "binding-a", "root_bindings": [root], "root_binding": {"claim_id": "claim-a"},
+           "root_binding_digest": "", "packet_digest": "b" * 64,
+           "root_review": {"roots": review_roots, "manifest_digest": digest(review_roots), "rootset_digest": ""},
+           "root_transfer": {"root-a": {"state": "transferred"}}}
+    row["root_binding_digest"] = digest({"binding": row["root_binding"], "roots": row["root_bindings"]})
+    row["root_review"]["rootset_digest"] = row["root_binding_digest"]
+    return ProjectFiles(FrozenProjects(row, Artifacts())), row, checkout, artifacts
 
 
 def _error(call, code):
@@ -133,6 +182,52 @@ def test_openat_keeps_the_original_root_when_configured_path_is_replaced(tmp_pat
     monkeypatch.setattr(project_files.os, "open", raced)
     assert reader.text("session", "product", "primary", "safe.txt")["content"] == "safe"
     assert replaced
+
+
+@requires_safe_project_roots
+def test_frozen_task_reads_are_binding_scoped_and_never_invoke_git(tmp_path, monkeypatch):
+    reader, row, checkout, _ = _frozen_reader(tmp_path)
+    (checkout / "code.py").write_text("new\n", encoding="utf-8")
+    monkeypatch.setattr(reader, "_git", lambda *_: pytest.fail("managed task read invoked host Git"))
+
+    roots = reader.frozen_roots("session", "binding-a")
+    tree = reader.frozen_tree("session", "binding-a", "root-a")
+    text = reader.frozen_text("session", "binding-a", "root-a", "code.py")
+    patch = reader.frozen_diff("session", "binding-a", "root-a")
+    worktree = reader.frozen_worktree("session", "binding-a", "root-a")
+
+    assert roots == {"binding_id": "binding-a", "source": "frozen-task-workspace",
+                     "roots": [{"root_id": "root-a", "baseline_sha": "a" * 40, "reviewed": True}]}
+    assert tree["items"] == [{"name": "code.py", "kind": "file"}]
+    assert text["content"] == "new\n"
+    assert patch["kind"] == "reviewed" and "+new" in patch["diff"]
+    assert worktree == {"root_id": "root-a", "source": "frozen-task-workspace", "baseline_sha": "a" * 40,
+                        "packet_digest": "b" * 64, "binding_digest": row["root_binding_digest"],
+                        "transfer_state": "transferred"}
+    assert str(checkout) not in repr(roots) + repr(tree) + repr(text) + repr(patch) + repr(worktree)
+
+
+@requires_safe_project_roots
+def test_frozen_reviewed_patch_refuses_deleted_or_changed_artifacts(tmp_path):
+    reader, row, _, artifacts = _frozen_reader(tmp_path)
+    digest_value = row["root_review"]["roots"][0]["artifact_digest"]
+    (artifacts / (digest_value + ".patch")).unlink()
+    _error(lambda: reader.frozen_diff("session", "binding-a", "root-a"), "evidence_tampered")
+
+    changed = tmp_path / "changed"
+    changed.mkdir()
+    reader, row, _, artifacts = _frozen_reader(changed)
+    digest_value = row["root_review"]["roots"][0]["artifact_digest"]
+    (artifacts / (digest_value + ".patch")).write_text("changed", encoding="utf-8")
+    _error(lambda: reader.frozen_diff("session", "binding-a", "root-a"), "evidence_tampered")
+
+
+@requires_safe_project_roots
+def test_frozen_binding_authorizes_before_opening_any_task_root(tmp_path, monkeypatch):
+    reader, _, _, _ = _frozen_reader(tmp_path)
+    monkeypatch.setattr(reader.projects, "binding", lambda *_: (_ for _ in ()).throw(ObservatoryError("not_found", "no binding", 404)))
+    monkeypatch.setattr(reader, "_root_fd", lambda *_: pytest.fail("unowned frozen root opened"))
+    _error(lambda: reader.frozen_tree("session", "foreign-binding", "root-a"), "not_found")
 
 
 @requires_safe_project_roots

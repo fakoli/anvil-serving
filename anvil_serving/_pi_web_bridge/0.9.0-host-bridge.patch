@@ -1,0 +1,266 @@
+diff --git a/components/AppShell.tsx b/components/AppShell.tsx
+index 17fc63e..f4932cb 100644
+--- a/components/AppShell.tsx
++++ b/components/AppShell.tsx
+@@ -294,6 +294,11 @@ export function AppShell() {
+   }, []);
+   const [copiedSessionField, setCopiedSessionField] = useState<SessionCopyField | null>(null);
+   const sessionCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
++  // One document-scoped bridge identity survives effect recreation and reloads.
++  const workbenchBridgeIdRef = useRef<string | null>(null);
++  const workbenchBridgeIncomingSequenceRef = useRef(0);
++  const workbenchBridgeOpenGenerationRef = useRef(0);
++  const workbenchBridgeOutgoingSequenceRef = useRef(0);
+   const handleCopySessionField = useCallback((field: SessionCopyField, value: string) => {
+     void copyText(value).then(() => {
+       if (sessionCopyTimerRef.current) clearTimeout(sessionCopyTimerRef.current);
+@@ -726,6 +731,9 @@ export function AppShell() {
+         return;
+       }
+     }
++    if (typeof window !== "undefined" && typeof CustomEvent !== "undefined") {
++      window.dispatchEvent(new CustomEvent("pi-workbench-selection", { detail: session.id }));
++    }
+     setNewSessionCwd(null);
+     setSelectedSession(session);
+     setSessionKey((k) => k + 1);
+@@ -805,6 +813,71 @@ export function AppShell() {
+     }
+   }, [handleSelectSession]);
+ 
++  // The optional Workbench bridge exposes only opaque native session IDs.
++  useEffect(() => {
++    const configuredOrigin = process.env.NEXT_PUBLIC_WORKBENCH_ORIGIN;
++    if (!configuredOrigin) return;
++    let parentOrigin: string;
++    try {
++      const parsed = new URL(configuredOrigin);
++      if (
++        parsed.protocol !== "https:" || parsed.username || parsed.password ||
++        parsed.pathname !== "/" || parsed.search || parsed.hash ||
++        parsed.origin !== configuredOrigin
++      ) return;
++      parentOrigin = parsed.origin;
++    } catch {
++      return;
++    }
++    const validId = /^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$/;
++    if (!workbenchBridgeIdRef.current) {
++      if (!globalThis.crypto?.randomUUID) return;
++      workbenchBridgeIdRef.current = globalThis.crypto.randomUUID();
++    }
++    const bridgeId = workbenchBridgeIdRef.current;
++    if (!validId.test(bridgeId)) return;
++    const post = (message: Record<string, unknown>) => {
++      window.parent.postMessage({ ...message, bridge_id: bridgeId }, parentOrigin);
++    };
++    const announceSelection = (nativeId: string) => {
++      post({
++        v: 1,
++        type: "session_changed",
++        native_id: nativeId,
++        sequence: ++workbenchBridgeOutgoingSequenceRef.current,
++      });
++    };
++    const selection = (event: Event) => {
++      const nativeId = (event as CustomEvent<unknown>).detail;
++      if (typeof nativeId === "string" && validId.test(nativeId)) announceSelection(nativeId);
++    };
++    const receive = (event: MessageEvent<unknown>) => {
++      if (event.origin !== parentOrigin || event.source !== window.parent || !event.data || typeof event.data !== "object") return;
++      const message = event.data as Record<string, unknown>;
++      if (
++        Object.keys(message).length !== 6 ||
++        message.v !== 1 || message.type !== "open_session" || message.bridge_id !== bridgeId ||
++        typeof message.native_id !== "string" || !validId.test(message.native_id) ||
++        typeof message.request_id !== "string" || !validId.test(message.request_id) ||
++        !Number.isSafeInteger(message.sequence) || (message.sequence as number) <= workbenchBridgeIncomingSequenceRef.current
++      ) return;
++      workbenchBridgeIncomingSequenceRef.current = message.sequence as number;
++      const generation = ++workbenchBridgeOpenGenerationRef.current;
++      void fetch(`/api/sessions/${encodeURIComponent(message.native_id)}`, { cache: "no-store" }).then(async (response) => {
++        const data = await response.json() as { info?: SessionInfo };
++        if (!response.ok || !data.info || generation !== workbenchBridgeOpenGenerationRef.current) return;
++        handleSelectSession(data.info);
++      }).catch(() => {});
++    };
++    window.addEventListener("message", receive);
++    window.addEventListener("pi-workbench-selection", selection);
++    post({ v: 1, type: "ready", sequence: 0 });
++    return () => {
++      window.removeEventListener("message", receive);
++      window.removeEventListener("pi-workbench-selection", selection);
++    };
++  }, [handleSelectSession]);
++
+   // Called by ChatWindow when a new session gets its real id from pi
+   const handleSessionCreated = useCallback((session: SessionInfo, sourceDraftKey: string) => {
+     setRefreshKey((k) => k + 1);
+diff --git a/lib/rpc-manager.ts b/lib/rpc-manager.ts
+index 9c257b1..c8a2d8e 100644
+--- a/lib/rpc-manager.ts
++++ b/lib/rpc-manager.ts
+@@ -163,6 +163,7 @@ export interface RpcSessionStartOptions {
+   initialModel?: { provider: string; modelId: string };
+   allowInitialModelFallback?: boolean;
+   thinkingLevel?: ThinkingLevel;
++  sessionId?: string;
+ }
+ 
+ const CODING_TOOL_NAMES = ["read", "bash", "powershell", "edit", "write", "grep", "find", "ls"];
+@@ -1946,7 +1947,7 @@ export async function startRpcSession(
+     sessionManager = SessionManager.open(sessionFile, undefined);
+   } else {
+     if (!cwd) throw new Error("cwd is required for a new session");
+-    sessionManager = SessionManager.create(cwd, undefined);
++    sessionManager = SessionManager.create(cwd, undefined, options.sessionId ? { id: options.sessionId } : undefined);
+   }
+   const sessionCwd = sessionManager.getCwd();
+   const subagentResources = sessionFile
+--- a/app/api/workbench/ensure/route.ts
++++ b/app/api/workbench/ensure/route.ts
+@@ -0,0 +1,13 @@
++import { NextResponse } from "next/server";
++import { bridgeAuthorized, ensureWorkbenchSession } from "@/lib/workbench-bridge";
++
++export async function POST(request: Request) {
++  if (!bridgeAuthorized(request.headers.get("authorization"))) {
++    return NextResponse.json({ error: "not found" }, { status: 404 });
++  }
++  try {
++    return NextResponse.json({ v: 1, ...(await ensureWorkbenchSession(await request.json())) });
++  } catch {
++    return NextResponse.json({ error: "unavailable" }, { status: 409 });
++  }
++}
+--- a/app/api/workbench/associate/route.ts
++++ b/app/api/workbench/associate/route.ts
+@@ -0,0 +1,8 @@
++import { NextResponse } from "next/server";
++import { associateWorkbenchSession, bridgeAuthorized } from "@/lib/workbench-bridge";
++
++export async function POST(request: Request) {
++  if (!bridgeAuthorized(request.headers.get("authorization"))) return NextResponse.json({ error: "not found" }, { status: 404 });
++  try { return NextResponse.json({ v: 1, ...(await associateWorkbenchSession(await request.json())) }); }
++  catch { return NextResponse.json({ error: "unavailable" }, { status: 409 }); }
++}
+--- a/app/api/workbench/sessions/route.ts
++++ b/app/api/workbench/sessions/route.ts
+@@ -0,0 +1,8 @@
++import { NextResponse } from "next/server";
++import { bridgeAuthorized, listWorkbenchSessions } from "@/lib/workbench-bridge";
++
++export async function GET(request: Request) {
++  if (!bridgeAuthorized(request.headers.get("authorization"))) return NextResponse.json({ error: "not found" }, { status: 404 });
++  try { return NextResponse.json({ v: 1, items: await listWorkbenchSessions() }); }
++  catch { return NextResponse.json({ error: "unavailable" }, { status: 409 }); }
++}
+--- a/lib/workbench-bridge.ts
++++ b/lib/workbench-bridge.ts
+@@ -0,0 +1,106 @@
++import { timingSafeEqual } from "crypto";
++import { existsSync, mkdirSync, readFileSync } from "fs";
++import { SessionManager } from "@earendil-works/pi-coding-agent";
++import { isAbsolute, join, resolve } from "path";
++import { writePrivateFileAtomicSync } from "./atomic-file";
++import { getRpcSession, startRpcSession } from "./rpc-manager";
++import { getAgentDir, listAllSessions, resolveSessionPath } from "./session-reader";
++
++type Reservation = { project_id: string; session_id: string };
++type Registry = { version: 1; reservations: Record<string, Reservation> };
++
++const KEY = /^[a-f0-9]{64}$/;
++const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$/;
++const PROJECT = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}$/;
++const MAX_CWD_BYTES = 4096;
++
++function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
++  return Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
++}
++
++function registryPath(): string {
++  return join(getAgentDir(), "workbench-host-bridge.json");
++}
++
++function load(): Registry {
++  const path = registryPath();
++  if (!existsSync(path)) return { version: 1, reservations: {} };
++  try {
++    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
++    if (!parsed || typeof parsed !== "object") throw new Error();
++    const registry = parsed as Registry;
++    if (registry.version !== 1 || !registry.reservations || typeof registry.reservations !== "object" || Array.isArray(registry.reservations) || !exactKeys(registry as unknown as Record<string, unknown>, ["version", "reservations"])) throw new Error();
++    for (const [key, row] of Object.entries(registry.reservations)) {
++      if (!KEY.test(key) || !row || typeof row !== "object" || Array.isArray(row) || !exactKeys(row as Record<string, unknown>, ["project_id", "session_id"]) || !PROJECT.test(row.project_id) || !ID.test(row.session_id)) throw new Error();
++    }
++    return registry;
++  } catch {
++    throw new Error("host bridge registry unavailable");
++  }
++}
++
++function save(registry: Registry): void {
++  mkdirSync(getAgentDir(), { recursive: true, mode: 0o700 });
++  writePrivateFileAtomicSync(registryPath(), JSON.stringify(registry));
++}
++
++function nativeId(requestKey: string): string {
++  return `workbench-${requestKey}`;
++}
++
++export function bridgeAuthorized(value: string | null): boolean {
++  const token = process.env.PI_WEB_WORKBENCH_BRIDGE_TOKEN;
++  if (!token || !value || !value.startsWith("Bearer ")) return false;
++  const supplied = Buffer.from(value.slice(7));
++  const expected = Buffer.from(token);
++  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
++}
++
++export async function ensureWorkbenchSession(value: unknown): Promise<{ session_id: string }> {
++  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid request");
++  const body = value as Record<string, unknown>;
++  if (!exactKeys(body, ["v", "request_key", "project_id", "cwd"]) || body.v !== 1 || typeof body.request_key !== "string" || !KEY.test(body.request_key) || typeof body.project_id !== "string" || !PROJECT.test(body.project_id) || typeof body.cwd !== "string" || !isAbsolute(body.cwd) || Buffer.byteLength(body.cwd, "utf8") > MAX_CWD_BYTES) throw new Error("invalid request");
++  const registry = load();
++  const prior = registry.reservations[body.request_key];
++  if (prior && prior.project_id !== body.project_id) throw new Error("request conflict");
++  const session_id = prior?.session_id ?? nativeId(body.request_key);
++  if (!prior) {
++    registry.reservations[body.request_key] = { project_id: body.project_id, session_id };
++    save(registry);
++  }
++  if (!getRpcSession(session_id)?.isAlive()) {
++    const path = await resolveSessionPath(session_id);
++    await startRpcSession(session_id, path ?? "", body.cwd, { sessionId: session_id });
++  }
++  return { session_id };
++}
++
++function sameCwd(first: string, second: string): boolean {
++  return resolve(first) === resolve(second);
++}
++
++export async function associateWorkbenchSession(value: unknown): Promise<{ session_id: string }> {
++  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid request");
++  const body = value as Record<string, unknown>;
++  if (!exactKeys(body, ["v", "request_key", "project_id", "cwd", "native_id"]) || body.v !== 1 || typeof body.request_key !== "string" || !KEY.test(body.request_key) || typeof body.project_id !== "string" || !PROJECT.test(body.project_id) || typeof body.cwd !== "string" || !isAbsolute(body.cwd) || Buffer.byteLength(body.cwd, "utf8") > MAX_CWD_BYTES || typeof body.native_id !== "string" || !ID.test(body.native_id)) throw new Error("invalid request");
++  const path = await resolveSessionPath(body.native_id);
++  if (!path || !sameCwd(SessionManager.open(path).getCwd(), body.cwd)) throw new Error("native session is outside the declared root");
++  const registry = load();
++  const prior = registry.reservations[body.request_key];
++  if (prior && (prior.project_id !== body.project_id || prior.session_id !== body.native_id)) throw new Error("request conflict");
++  if (!prior) {
++    registry.reservations[body.request_key] = { project_id: body.project_id, session_id: body.native_id };
++    save(registry);
++  }
++  return { session_id: body.native_id };
++}
++
++export async function listWorkbenchSessions(): Promise<{ native_id: string; title: string; running: boolean }[]> {
++  const sessions = await listAllSessions();
++  if (sessions.length > 256) throw new Error("native session inventory exceeds the declared bridge limit");
++  return sessions.map((session) => ({
++    native_id: session.id,
++    title: (session.name || "Untitled session").slice(0, 192),
++    running: Boolean(getRpcSession(session.id)?.isRunning()),
++  }));
++}

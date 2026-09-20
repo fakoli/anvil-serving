@@ -22,6 +22,15 @@ from .pi_rpc import PiCommandId, PiRpcClient, PiRpcError
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9._-]{1,160}$")
 _RUN_METADATA_BYTES = 64 * 1024
+_COMMAND_PAYLOAD_KEYS = {
+    "prompt": frozenset({"message"}),
+    "steer": frozenset({"message"}),
+    "abort": frozenset(),
+    "get_state": frozenset(),
+    "set_model": frozenset({"provider", "model_id"}),
+    "set_thinking_level": frozenset({"level"}),
+    "extension_response": frozenset({"request_id", "response"}),
+}
 
 
 def _safe_metadata_text(value: Any, *, empty: bool = False) -> str:
@@ -866,6 +875,9 @@ class PiConversationService:
         client = self._clients.get(session_id)
         if client is None:
             raise PiStartUncertain("Pi runner is unavailable; recover without replaying the command")
+        if name in _COMMAND_PAYLOAD_KEYS:
+            if not isinstance(payload, Mapping) or set(payload) != _COMMAND_PAYLOAD_KEYS[name]:
+                raise PiSessionAccessError("Pi command payload is not supported")
         command_id: PiCommandId | None
         accepted_metadata: dict[str, Any] = {}
         if name == "prompt":

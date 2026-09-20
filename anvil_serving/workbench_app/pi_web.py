@@ -12,6 +12,7 @@ credential storage; this module never reads, copies, or prints them.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import ipaddress
 import json
 import os
@@ -21,7 +22,9 @@ import shutil
 import stat as stat_module
 import subprocess
 import sys
+import tarfile
 import time
+import uuid
 import urllib.error
 import urllib.request
 from typing import Callable, Mapping
@@ -49,6 +52,9 @@ _HOSTNAME_RE = re.compile(
     r"[A-Za-z](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$"
 )
 _USER_RE = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
+_BRIDGE_ORIGIN_RE = re.compile(
+    r"https://[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::([1-9][0-9]{0,4}))?"
+)
 
 
 def _valid_host_literal(value: str) -> bool:
@@ -61,6 +67,13 @@ def _valid_host_literal(value: str) -> bool:
     except ValueError:
         pass
     return _HOSTNAME_RE.fullmatch(value) is not None
+
+
+def _valid_bridge_origin(value: object) -> bool:
+    if type(value) is not str:
+        return False
+    matched = _BRIDGE_ORIGIN_RE.fullmatch(value)
+    return matched is not None and (matched.group(1) is None or int(matched.group(1)) <= 65535)
 
 
 class PiWebError(ValueError):
@@ -109,6 +122,9 @@ class PiWebConfig:
     service_user: str | None = None
     install_root: Path | None = None
     node_path: str | None = None
+    bridge_source: Path | None = None
+    bridge_parent_origin: str | None = None
+    bridge_token_env_file: Path | None = None
 
 
 def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
@@ -121,6 +137,7 @@ def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
     allowed = {
         "version", "port", "hostname", "allowed_hosts", "idle_timeout_ms",
         "password_env_file", "service_user", "install_root", "node_path",
+        "bridge_source", "bridge_parent_origin", "bridge_token_env_file",
     }
     if set(declared) - allowed:
         raise PiWebError("Pi Web configuration has unsupported fields")
@@ -160,6 +177,17 @@ def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
         if not node_path_value.is_file():
             raise PiWebError(f"declared pi_web.node_path does not exist: {node_path_value}")
         node_path = str(node_path_value)
+    bridge_source = declared.get("bridge_source")
+    bridge_parent_origin = declared.get("bridge_parent_origin")
+    bridge_token_env_file = declared.get("bridge_token_env_file")
+    bridge_values = (bridge_source, bridge_parent_origin, bridge_token_env_file)
+    if any(value is not None for value in bridge_values):
+        if any(value is None for value in bridge_values):
+            raise PiWebError("Pi Web bridge source, parent origin, and token reference must be declared together")
+        bridge_source = _absolute_path(bridge_source, "pi_web.bridge_source")
+        bridge_token_env_file = _absolute_path(bridge_token_env_file, "pi_web.bridge_token_env_file")
+        if not _valid_bridge_origin(bridge_parent_origin):
+            raise PiWebError("pi_web.bridge_parent_origin must be one exact HTTPS origin")
     return PiWebConfig(
         version=version,
         port=_integer(declared.get("port", DEFAULT_PORT), "pi_web.port", 1024, 65535),
@@ -170,6 +198,9 @@ def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
         service_user=service_user,
         install_root=install_root,
         node_path=node_path,
+        bridge_source=bridge_source,
+        bridge_parent_origin=bridge_parent_origin,
+        bridge_token_env_file=bridge_token_env_file,
     )
 
 
@@ -191,10 +222,10 @@ def load_config(path: str | os.PathLike[str] | None = None, *, required: bool) -
 
 
 def _bounded_run(
-    run: Callable[..., subprocess.CompletedProcess[str]], argv: list[str]
+    run: Callable[..., subprocess.CompletedProcess[str]], argv: list[str], *, cwd: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     try:
-        result = run(argv, check=False, text=True, capture_output=True, timeout=_COMMAND_TIMEOUT_SECONDS)
+        result = run(argv, check=False, text=True, capture_output=True, timeout=_COMMAND_TIMEOUT_SECONDS, cwd=cwd)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise PiWebError(f"cannot run {argv[0]} safely") from exc
     stdout = (result.stdout or "")[:_OUTPUT_LIMIT]
@@ -312,6 +343,8 @@ def unit_content(
     lines.append(f"Environment=PI_WEB_IDLE_TIMEOUT_MS={config.idle_timeout_ms}")
     if config.password_env_file is not None:
         lines.append(f"EnvironmentFile={_unit_value(config.password_env_file)}")
+    if config.bridge_token_env_file is not None:
+        lines.append(f"EnvironmentFile={_unit_value(config.bridge_token_env_file)}")
     lines.extend(
         [
             "NoNewPrivileges=yes",
@@ -329,6 +362,18 @@ def unit_content(
     return "\n".join(lines)
 
 
+def _build_env(*, node: str, user_home: str, parent_origin: str | None = None) -> list[str]:
+    """Return the deliberately small environment used for an unprivileged build."""
+    values = [
+        "env", "-i", f"HOME={user_home}",
+        f"PATH={Path(node).parent}:/usr/local/bin:/usr/bin:/bin",
+        "NPM_CONFIG_USERCONFIG=/dev/null",
+    ]
+    if parent_origin is not None:
+        values.append(f"NEXT_PUBLIC_WORKBENCH_ORIGIN={parent_origin}")
+    return values
+
+
 def plan(config: PiWebConfig, *, node_path: str | None = None) -> dict[str, object]:
     """Read-only exact plan for the managed install."""
     root = install_root_for(config)
@@ -340,12 +385,25 @@ def plan(config: PiWebConfig, *, node_path: str | None = None) -> dict[str, obje
     _, user_home = _service_identity(config.service_user)
     if config.password_env_file is not None:
         _password_file_proof(config.password_env_file)
-    entry = version_dir / PACKAGE_BIN
-    npm_command = [
-        "runuser", "-u", config.service_user, "--",
-        "env", f"PATH={Path(node).parent}:/usr/local/bin:/usr/bin:/bin",
-        node, str(npm_script), "install", "--prefix", str(version_dir), f"{PACKAGE}@{config.version}",
-    ]
+    bridge = config.bridge_source is not None
+    entry = version_dir / ("bin/pi-web.js" if bridge else PACKAGE_BIN)
+    prefix = ["runuser", "-u", config.service_user, "--", *_build_env(
+        node=node, user_home=user_home, parent_origin=config.bridge_parent_origin if bridge else None,
+    )]
+    commands: list[list[str]]
+    if bridge:
+        commands = [
+            ["verify-pinned-source", str(config.bridge_source)],
+            prefix + [node, str(npm_script), "ci"],
+            prefix + [node, str(npm_script), "run", "build"],
+        ]
+    else:
+        commands = [prefix + [node, str(npm_script), "install", "--prefix", str(version_dir), f"{PACKAGE}@{config.version}"]]
+    commands.extend([
+        ["systemctl", "daemon-reload"],
+        ["systemctl", "enable", UNIT_NAME],
+        ["systemctl", "restart", UNIT_NAME],
+    ])
     return {
         "package": f"{PACKAGE}@{config.version}",
         "version": config.version,
@@ -353,16 +411,12 @@ def plan(config: PiWebConfig, *, node_path: str | None = None) -> dict[str, obje
         "npm_script": str(npm_script),
         "install_root": str(version_dir),
         "entry_script": str(entry),
+        "bridge": bridge,
         "port": config.port,
         "hostname": config.hostname,
         "allowed_hosts": list(config.allowed_hosts),
         "unit_path": str(Path("/etc/systemd/system") / UNIT_NAME),
-        "commands": [
-            npm_command,
-            ["systemctl", "daemon-reload"],
-            ["systemctl", "enable", UNIT_NAME],
-            ["systemctl", "restart", UNIT_NAME],
-        ],
+        "commands": commands,
     }
 
 
@@ -446,12 +500,370 @@ def logs(config: PiWebConfig, *, tail: int = 200) -> str:
     return result.stdout or ""
 
 
+_MAX_BRIDGE_SOURCE_FILES = 50_000
+_MAX_BRIDGE_SOURCE_BYTES = 512 * 1024 * 1024
+_MAX_BRIDGE_ARTIFACT_FILES = 100_000
+_MAX_BRIDGE_ARTIFACT_BYTES = 3 * 1024 * 1024 * 1024
+
+
+def _regular_file(path: Path) -> bool:
+    try:
+        return stat_module.S_ISREG(os.lstat(path).st_mode)
+    except OSError:
+        return False
+
+
+def _bridge_origin(value: object) -> str:
+    if not _valid_bridge_origin(value):
+        raise PiWebError("the Pi Web bridge build requires one exact HTTPS parent origin")
+    return str(value)
+
+
+def _git_result(
+    run: Callable[..., subprocess.CompletedProcess[str]], argv: list[str], source: Path,
+) -> subprocess.CompletedProcess[str]:
+    try:
+        result = run(argv, cwd=source, check=False, text=True, capture_output=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise PiWebError("cannot verify the pinned Pi Web source") from exc
+    if result.returncode:
+        raise PiWebError("the Pi Web bridge source does not match the reviewed pin")
+    return result
+
+
+def _verify_bridge_source(source: Path, *, run: Callable[..., subprocess.CompletedProcess[str]]) -> dict[str, str]:
+    """Prove one complete, clean checkout before copying any source bytes."""
+    manifest = bridge_manifest()
+    source = Path(source)
+    package_json = source / "package.json"
+    app_shell = source / "components" / "AppShell.tsx"
+    if not source.is_dir() or not package_json.is_file() or not app_shell.is_file():
+        raise PiWebError("the Pi Web bridge source tree is incomplete")
+    if (hashlib.sha256(package_json.read_bytes()).hexdigest() != manifest["package_json_sha256"]
+            or hashlib.sha256(app_shell.read_bytes()).hexdigest() != manifest["app_shell_sha256"]):
+        raise PiWebError("the Pi Web bridge source does not match the reviewed pin")
+    revision = _git_result(run, ["git", "rev-parse", "HEAD"], source)
+    status = _git_result(run, ["git", "status", "--porcelain=v1", "--untracked-files=all"], source)
+    if (revision.stdout or "").strip() != manifest["source_commit"] or (status.stdout or "").strip():
+        raise PiWebError("the Pi Web bridge source must be a clean complete checkout")
+    return manifest
+
+
+def _safe_bridge_relative(name: str) -> Path:
+    relative = Path(name)
+    if (
+        not name
+        or relative.is_absolute()
+        or ".." in relative.parts
+        or any(part in {"", ".", ".git", ".npmrc"} for part in relative.parts)
+    ):
+        raise PiWebError("the pinned Pi Web source has an unsafe tracked path")
+    return relative
+
+
+def _archive_tracked_bridge_source(
+    source: Path,
+    destination: Path,
+    *,
+    manifest: Mapping[str, str],
+    run: Callable[..., subprocess.CompletedProcess[str]],
+    chown: Callable[[Path, int, int], None],
+    uid: int,
+) -> None:
+    """Extract only immutable blobs from the reviewed commit into fresh staging.
+
+    ``git archive`` reads the named commit object rather than the mutable
+    checkout files.  This makes a post-validation edit unable to alter build
+    inputs, while the strict extractor keeps ignored files, hooks, and links
+    out of the service-owned tree.
+    """
+    if destination.exists():
+        raise PiWebError("the Pi Web bridge staging directory already exists")
+    archive = destination.with_name(f".{destination.name}.source-{uuid.uuid4().hex}.tar")
+    try:
+        _git_result(
+            run,
+            ["git", "archive", "--format=tar", f"--output={archive}", manifest["source_commit"]],
+            source,
+        )
+        destination.mkdir(mode=0o755)
+        chown(destination, uid, uid)
+        copied = 0
+        count = 0
+        with tarfile.open(archive, mode="r:") as bundle:
+            for member in bundle.getmembers():
+                relative = _safe_bridge_relative(member.name.rstrip("/"))
+                count += 1
+                if count > _MAX_BRIDGE_SOURCE_FILES:
+                    raise PiWebError("the pinned Pi Web source has an unsafe tracked-file inventory")
+                target = destination / relative
+                if member.isdir():
+                    target.mkdir(mode=0o755, parents=True, exist_ok=True)
+                    chown(target, uid, uid)
+                    continue
+                if not member.isfile() or member.size < 0:
+                    raise PiWebError("the pinned Pi Web source contains a non-regular tracked file")
+                copied += member.size
+                if copied > _MAX_BRIDGE_SOURCE_BYTES:
+                    raise PiWebError("the pinned Pi Web source exceeds the staging byte limit")
+                target.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+                payload = bundle.extractfile(member)
+                if payload is None:
+                    raise PiWebError("cannot read the pinned Pi Web source archive")
+                descriptor = os.open(
+                    target,
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+                    0o755 if member.mode & 0o111 else 0o644,
+                )
+                try:
+                    with os.fdopen(descriptor, "wb", closefd=False) as output:
+                        shutil.copyfileobj(payload, output, length=64 * 1024)
+                    os.fsync(descriptor)
+                finally:
+                    payload.close()
+                    os.close(descriptor)
+                chown(target, uid, uid)
+        for directory, _, _ in os.walk(destination, followlinks=False):
+            chown(Path(directory), uid, uid)
+    except (OSError, tarfile.TarError) as exc:
+        raise PiWebError("cannot copy the pinned Pi Web source safely") from exc
+    finally:
+        try:
+            archive.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _artifact_tree_sha256(root: Path) -> str:
+    """Boundedly hash the promoted artifact, including symlink targets without following them."""
+    digest = hashlib.sha256()
+    count = 0
+    total = 0
+    for directory, names, files in os.walk(root, followlinks=False):
+        base = Path(directory)
+        for name in sorted([*names, *files]):
+            path = base / name
+            relative = path.relative_to(root).as_posix().encode("utf-8", "surrogateescape")
+            details = os.lstat(path)
+            count += 1
+            if count > _MAX_BRIDGE_ARTIFACT_FILES:
+                raise PiWebError("the Pi Web bridge artifact exceeds the file limit")
+            if stat_module.S_ISLNK(details.st_mode):
+                target = os.readlink(path).encode("utf-8", "surrogateescape")
+                after = os.lstat(path)
+                if (after.st_dev, after.st_ino, after.st_mode) != (details.st_dev, details.st_ino, details.st_mode):
+                    raise PiWebError("the Pi Web bridge artifact changed while hashing")
+                digest.update(b"L\0" + relative + b"\0" + target + b"\0")
+            elif stat_module.S_ISREG(details.st_mode):
+                total += details.st_size
+                if total > _MAX_BRIDGE_ARTIFACT_BYTES:
+                    raise PiWebError("the Pi Web bridge artifact exceeds the byte limit")
+                digest.update(f"F {details.st_mode & 0o777:o} {details.st_size} ".encode() + relative + b"\0")
+                try:
+                    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+                    opened = os.fstat(descriptor)
+                    if (
+                        not stat_module.S_ISREG(opened.st_mode)
+                        or (opened.st_dev, opened.st_ino, opened.st_size) != (details.st_dev, details.st_ino, details.st_size)
+                    ):
+                        raise PiWebError("the Pi Web bridge artifact changed while hashing")
+                    while True:
+                        chunk = os.read(descriptor, 64 * 1024)
+                        if not chunk:
+                            break
+                        digest.update(chunk)
+                    after = os.fstat(descriptor)
+                    if (after.st_dev, after.st_ino, after.st_size) != (opened.st_dev, opened.st_ino, opened.st_size):
+                        raise PiWebError("the Pi Web bridge artifact changed while hashing")
+                except OSError as exc:
+                    raise PiWebError("cannot hash the Pi Web bridge artifact safely") from exc
+                finally:
+                    try:
+                        os.close(descriptor)
+                    except (UnboundLocalError, OSError):
+                        pass
+            elif stat_module.S_ISDIR(details.st_mode):
+                digest.update(b"D\0" + relative + b"\0")
+            else:
+                raise PiWebError("the Pi Web bridge artifact contains an unsafe file")
+    return digest.hexdigest()
+
+
+def _apply_bridge_patch(source: Path, *, run: Callable[..., subprocess.CompletedProcess[str]]) -> None:
+    from importlib.resources import files
+    patch = files(_BRIDGE_PACKAGE).joinpath(_BRIDGE_DIR, "0.9.0-host-bridge.patch")
+    try:
+        result = run(["patch", "--batch", "--forward", "-p1", "-i", str(patch)], cwd=source, check=False, text=True, capture_output=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise PiWebError("cannot stage the pinned Pi Web bridge") from exc
+    if result.returncode:
+        raise PiWebError("cannot apply the pinned Pi Web bridge to the reviewed source")
+
+
+def _bridge_install_descriptor(*, parent_origin: str, artifact_sha256: str) -> dict[str, object]:
+    return {"bridge": bridge_manifest(), "parent_origin": parent_origin, "artifact_sha256": artifact_sha256}
+
+
+def _build_staged_bridge(
+    source: Path, destination: Path, *, node: str, parent_origin: str, service_user: str, user_home: str,
+    run: Callable[..., subprocess.CompletedProcess[str]], chown: Callable[[Path, int, int], None], uid: int,
+) -> dict[str, object]:
+    manifest = _verify_bridge_source(source, run=run)
+    _archive_tracked_bridge_source(
+        source, destination, manifest=manifest, run=run, chown=chown, uid=uid,
+    )
+    _apply_bridge_patch(destination, run=run)
+    npm = npm_script_for(node)
+    prefix = ["runuser", "-u", service_user, "--"]
+    _bounded_run(run, prefix + _build_env(node=node, user_home=user_home) + [node, str(npm), "ci"], cwd=destination)
+    _bounded_run(run, prefix + _build_env(node=node, user_home=user_home, parent_origin=parent_origin) + [node, str(npm), "run", "build"], cwd=destination)
+    entry = destination / "bin" / "pi-web.js"
+    if not _regular_file(entry):
+        raise PiWebError("the pinned Pi Web bridge did not produce its entry script")
+    return _bridge_install_descriptor(parent_origin=parent_origin, artifact_sha256=_artifact_tree_sha256(destination))
+
+
+def _safe_install_root(root: Path) -> None:
+    """Require a non-link, private directory beneath protected ancestors."""
+    root = Path(root)
+    expected_uid = os.geteuid()
+    parent = root.parent
+    try:
+        parent_details = os.lstat(parent)
+    except OSError as exc:
+        raise PiWebError("the Pi Web install root parent is unavailable") from exc
+    if not stat_module.S_ISDIR(parent_details.st_mode) or stat_module.S_ISLNK(parent_details.st_mode):
+        raise PiWebError("the Pi Web install root parent is not protected for this installer")
+    if parent_details.st_uid != expected_uid or parent_details.st_mode & 0o022:
+        raise PiWebError("the Pi Web install root parent is not protected for this installer")
+    try:
+        os.mkdir(root, 0o755)
+    except FileExistsError:
+        pass
+    except OSError as exc:
+        raise PiWebError("cannot create the protected Pi Web install root") from exc
+    try:
+        details = os.lstat(root)
+    except OSError as exc:
+        raise PiWebError("the Pi Web install root is unavailable") from exc
+    if (
+        not stat_module.S_ISDIR(details.st_mode)
+        or stat_module.S_ISLNK(details.st_mode)
+        or details.st_uid != expected_uid
+        or details.st_mode & 0o022
+    ):
+        raise PiWebError("the Pi Web install root is not protected for this installer")
+    for ancestor in root.parents:
+        try:
+            ancestor_details = os.lstat(ancestor)
+        except OSError as exc:
+            raise PiWebError("a Pi Web install root ancestor is unavailable") from exc
+        if not stat_module.S_ISDIR(ancestor_details.st_mode) or stat_module.S_ISLNK(ancestor_details.st_mode):
+            raise PiWebError("a Pi Web install root ancestor is not protected for this installer")
+        if ancestor_details.st_mode & 0o022:
+            # A sticky root-owned /tmp remains safe for an already-owned,
+            # non-writable private child; any other writable ancestor can
+            # replace the configured root between path operations.
+            if not (ancestor_details.st_mode & stat_module.S_ISVTX and ancestor_details.st_uid in {0, expected_uid}):
+                raise PiWebError("a Pi Web install root ancestor is not protected for this installer")
+
+
+def _read_regular_private_file(root: Path, name: str) -> bytes | None:
+    """Read one regular root child without following a replacement symlink."""
+    directory = os.open(root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        try:
+            before = os.lstat(name, dir_fd=directory)
+        except FileNotFoundError:
+            return None
+        if not stat_module.S_ISREG(before.st_mode):
+            raise PiWebError("the Pi Web install metadata is not a regular file")
+        descriptor = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=directory)
+        try:
+            opened = os.fstat(descriptor)
+            if not stat_module.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                raise PiWebError("the Pi Web install metadata changed while reading")
+            chunks: list[bytes] = []
+            while True:
+                chunk = os.read(descriptor, 64 * 1024)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            return b"".join(chunks)
+        finally:
+            os.close(descriptor)
+    except OSError as exc:
+        raise PiWebError("cannot read the Pi Web install metadata safely") from exc
+    finally:
+        os.close(directory)
+
+
+def _atomic_write_private_file(root: Path, name: str, rendered: bytes, *, mode: int = 0o644) -> None:
+    """Atomically replace one regular root child through an opened directory."""
+    directory = os.open(root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+    temporary = f".{name}.{uuid.uuid4().hex}.tmp"
+    try:
+        try:
+            existing = os.lstat(name, dir_fd=directory)
+        except FileNotFoundError:
+            existing = None
+        if existing is not None and not stat_module.S_ISREG(existing.st_mode):
+            raise PiWebError("the Pi Web install metadata is not a regular file")
+        descriptor = os.open(
+            temporary,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+            mode,
+            dir_fd=directory,
+        )
+        try:
+            offset = 0
+            while offset < len(rendered):
+                offset += os.write(descriptor, rendered[offset:])
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        os.replace(temporary, name, src_dir_fd=directory, dst_dir_fd=directory)
+        os.fsync(directory)
+    except OSError as exc:
+        raise PiWebError("cannot write the Pi Web install metadata safely") from exc
+    finally:
+        try:
+            os.unlink(temporary, dir_fd=directory)
+        except (FileNotFoundError, OSError):
+            pass
+        finally:
+            os.close(directory)
+
+
+def _remove_private_file(root: Path, name: str) -> None:
+    directory = os.open(root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        try:
+            details = os.lstat(name, dir_fd=directory)
+        except FileNotFoundError:
+            return
+        if not stat_module.S_ISREG(details.st_mode):
+            raise PiWebError("the Pi Web install metadata is not a regular file")
+        os.unlink(name, dir_fd=directory)
+        os.fsync(directory)
+    except OSError as exc:
+        raise PiWebError("cannot remove the Pi Web install metadata safely") from exc
+    finally:
+        os.close(directory)
+
+
+@dataclass(frozen=True)
+class _BridgePromotion:
+    version_dir: Path
+    backup: Path | None
+
+
 class PiWebInstaller:
     """One-shot, idempotent, root-gated install of the pinned session UI.
 
-    The npm tree is installed as the configured service user (its postinstall
-    runs unprivileged), the reviewed unit is written byte-exactly, and an
-    already-correct install converges without restarting the service.
+    A bridge artifact is built in a private same-filesystem staging directory.
+    The running version is left intact until both the source proof and build
+    proof succeed; promotion restores it if the final rename cannot complete.
     """
 
     def __init__(
@@ -475,6 +887,140 @@ class PiWebInstaller:
         self._platform = platform
         self._chown = chown or os.chown
 
+    def _bridge_descriptor(self, version_dir: Path) -> dict[str, object]:
+        return _bridge_install_descriptor(
+            parent_origin=_bridge_origin(self.config.bridge_parent_origin),
+            artifact_sha256=_artifact_tree_sha256(version_dir),
+        )
+
+    def _installed_bridge_matches(self, root: Path, version_dir: Path) -> bool:
+        try:
+            rendered = _read_regular_private_file(root, "install-manifest.json")
+            installed = json.loads(rendered) if rendered is not None else None
+        except (PiWebError, ValueError, UnicodeDecodeError):
+            return False
+        try:
+            return installed.get("bridge_install") == self._bridge_descriptor(version_dir)
+        except PiWebError:
+            return False
+
+    def _promote_bridge(self, staged: Path, version_dir: Path) -> _BridgePromotion:
+        backup = version_dir.with_name(version_dir.name + ".previous-" + uuid.uuid4().hex)
+        previous = version_dir.exists()
+        try:
+            if previous:
+                os.replace(version_dir, backup)
+            os.replace(staged, version_dir)
+        except OSError as exc:
+            if previous and backup.exists() and not version_dir.exists():
+                try:
+                    os.replace(backup, version_dir)
+                except OSError:
+                    pass
+            raise PiWebError("cannot promote the built Pi Web bridge artifact") from exc
+        return _BridgePromotion(version_dir=version_dir, backup=backup if previous else None)
+
+    @staticmethod
+    def _restore_promoted_bridge(promotion: _BridgePromotion) -> None:
+        try:
+            if promotion.version_dir.exists():
+                shutil.rmtree(promotion.version_dir)
+            if promotion.backup is not None and promotion.backup.exists():
+                os.replace(promotion.backup, promotion.version_dir)
+        except OSError as exc:
+            raise PiWebError("cannot restore the prior Pi Web bridge artifact") from exc
+
+    @staticmethod
+    def _finalize_promoted_bridge(promotion: _BridgePromotion) -> None:
+        if promotion.backup is None:
+            return
+        try:
+            shutil.rmtree(promotion.backup)
+        except OSError as exc:
+            raise PiWebError("the prior Pi Web bridge artifact could not be removed") from exc
+
+    def _install_bridge(self, root: Path, version_dir: Path, *, node: str, uid: int, user_home: str) -> tuple[bool, dict[str, object], _BridgePromotion | None]:
+        config = self.config
+        if config.bridge_source is None or config.service_user is None:
+            raise PiWebError("the Pi Web bridge needs a source and service user")
+        expected_origin = _bridge_origin(config.bridge_parent_origin)
+        if version_dir.is_dir() and _regular_file(version_dir / "bin" / "pi-web.js") and self._installed_bridge_matches(root, version_dir):
+            return False, self._bridge_descriptor(version_dir), None
+        _safe_install_root(root)
+        staged = root / f".{config.version}.bridge-staging-{uuid.uuid4().hex}"
+        try:
+            descriptor = _build_staged_bridge(
+                config.bridge_source, staged, node=node, parent_origin=expected_origin,
+                service_user=config.service_user, user_home=user_home, run=self._run,
+                chown=self._chown, uid=uid,
+            )
+            return True, descriptor, self._promote_bridge(staged, version_dir)
+        finally:
+            if staged.exists():
+                shutil.rmtree(staged, ignore_errors=True)
+
+    def _unit_snapshot(self) -> bytes | None:
+        target = self._systemd_root / UNIT_NAME
+        try:
+            details = os.lstat(target)
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise PiWebError("cannot read the managed Pi Web unit safely") from exc
+        if not stat_module.S_ISREG(details.st_mode):
+            raise PiWebError("existing Pi Web unit is not a regular file; refusing to manage it")
+        try:
+            return target.read_bytes()
+        except OSError as exc:
+            raise PiWebError("cannot read the managed Pi Web unit safely") from exc
+
+    def _restore_unit_snapshot(self, previous: bytes | None) -> None:
+        target = self._systemd_root / UNIT_NAME
+        if previous is None:
+            try:
+                target.unlink()
+            except FileNotFoundError:
+                return
+            return
+        temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            with open(temporary, "xb") as output:
+                output.write(previous)
+                output.flush()
+                os.fsync(output.fileno())
+            os.replace(temporary, target)
+        finally:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
+
+    def _rollback_bridge_install(
+        self,
+        promotion: _BridgePromotion,
+        *,
+        root: Path,
+        manifest_before: bytes | None,
+        unit_before: bytes | None,
+        was_active: bool,
+    ) -> None:
+        """Restore every post-promotion input, attempting each even after a failure."""
+        failures: list[str] = []
+        for label, action in (
+            ("artifact", lambda: self._restore_promoted_bridge(promotion)),
+            ("manifest", lambda: _remove_private_file(root, "install-manifest.json") if manifest_before is None else _atomic_write_private_file(root, "install-manifest.json", manifest_before)),
+            ("unit", lambda: self._restore_unit_snapshot(unit_before)),
+            ("daemon", lambda: _bounded_run(self._run, ["systemctl", "daemon-reload"])),
+            ("service", lambda: _bounded_run(self._run, ["systemctl", "restart" if was_active else "stop", UNIT_NAME])),
+        ):
+            try:
+                action()
+            except (PiWebError, OSError):
+                failures.append(label)
+        if failures:
+            joined = ", ".join(failures)
+            raise PiWebError(f"Pi Web bridge rollback is incomplete ({joined}); retained private recovery state requires inspection")
+
     def install(self, *, confirm: bool) -> dict[str, object]:
         if not confirm:
             return {"dry_run": True, **plan(self.config, node_path=self._node_path or self.config.node_path)}
@@ -488,80 +1034,108 @@ class PiWebInstaller:
             raise PiWebError("pi_web.service_user is required to install the managed service")
         if config.password_env_file is not None:
             _password_file_proof(config.password_env_file)
+        if config.bridge_token_env_file is not None:
+            _password_file_proof(config.bridge_token_env_file)
         root = install_root_for(config)
+        _safe_install_root(root)
         version_dir = root / config.version
         node, node_version = _node_details(self._node_path or config.node_path, run=self._run)
         uid, user_home = _service_identity(config.service_user)
-        entry = version_dir / PACKAGE_BIN
-        content = unit_content(
-            config,
-            node_path=node,
-            entry_script=entry,
-            user=config.service_user,
-            user_home=Path(user_home),
-            node_bin_dir=Path(node).parent,
-        )
-        existed = entry.is_file()
-        if not existed:
-            version_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
-            self._chown(version_dir, uid, uid)
-            npm_script = npm_script_for(node)
-            _bounded_run(self._run, [
-                "runuser", "-u", config.service_user, "--",
-                "env", f"PATH={Path(node).parent}:/usr/local/bin:/usr/bin:/bin",
-                node, str(npm_script), "install", "--prefix", str(version_dir), f"{PACKAGE}@{config.version}",
-            ])
-            if not entry.is_file():
-                raise PiWebError("the pinned Pi Web package did not produce its entry script")
-        self._record_manifest(root, node=node, node_version=node_version)
-        unit_changed = self._write_unit(content)
-        if unit_changed:
-            _bounded_run(self._run, ["systemctl", "daemon-reload"])
-        _bounded_run(self._run, ["systemctl", "enable", UNIT_NAME])
+        bridge = config.bridge_source is not None
+        entry = version_dir / ("bin/pi-web.js" if bridge else PACKAGE_BIN)
+        artifact_changed = False
+        promotion: _BridgePromotion | None = None
         state = service_state(run=self._run)
         was_active = state["active"] == "active"
-        if was_active and not unit_changed:
-            lifecycle = "unchanged"
-        elif was_active:
-            _bounded_run(self._run, ["systemctl", "restart", UNIT_NAME])
-            lifecycle = "restarted"
-        else:
-            _bounded_run(self._run, ["systemctl", "start", UNIT_NAME])
-            lifecycle = "started"
-        readback = service_state(run=self._run)
-        if readback["active"] != "active":
-            raise PiWebError("the managed Pi Web unit did not reach the active state; inspect the journal")
-        proof = probe(config.port, opener=self._probe_opener)
+        manifest_before = _read_regular_private_file(root, "install-manifest.json")
+        unit_before = self._unit_snapshot()
+        try:
+            if bridge:
+                artifact_changed, bridge_install, promotion = self._install_bridge(
+                    root, version_dir, node=node, uid=uid, user_home=user_home,
+                )
+            else:
+                bridge_install = None
+                if not entry.is_file():
+                    version_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
+                    self._chown(version_dir, uid, uid)
+                    npm_script = npm_script_for(node)
+                    _bounded_run(self._run, [
+                        "runuser", "-u", config.service_user, "--",
+                        *_build_env(node=node, user_home=user_home),
+                        node, str(npm_script), "install", "--prefix", str(version_dir), f"{PACKAGE}@{config.version}",
+                    ])
+                    artifact_changed = True
+            content = unit_content(
+                config, node_path=node, entry_script=entry, user=config.service_user,
+                user_home=Path(user_home), node_bin_dir=Path(node).parent,
+            )
+            if not _regular_file(entry):
+                raise PiWebError("the pinned Pi Web package did not produce its entry script")
+            self._record_manifest(root, node=node, node_version=node_version, bridge_install=bridge_install)
+            unit_changed = self._write_unit(content)
+            if unit_changed:
+                _bounded_run(self._run, ["systemctl", "daemon-reload"])
+            _bounded_run(self._run, ["systemctl", "enable", UNIT_NAME])
+            if was_active and not unit_changed and not artifact_changed:
+                lifecycle = "unchanged"
+            elif was_active:
+                _bounded_run(self._run, ["systemctl", "restart", UNIT_NAME])
+                lifecycle = "restarted"
+            else:
+                _bounded_run(self._run, ["systemctl", "start", UNIT_NAME])
+                lifecycle = "started"
+            readback = service_state(run=self._run)
+            if readback["active"] != "active":
+                raise PiWebError("the managed Pi Web unit did not reach the active state; inspect the journal")
+            proof = probe(config.port, opener=self._probe_opener)
+            if proof["ready"] is not True:
+                raise PiWebError("the managed Pi Web unit did not pass its loopback readiness probe")
+        except Exception as exc:
+            if promotion is not None:
+                try:
+                    self._rollback_bridge_install(
+                        promotion, root=root, manifest_before=manifest_before,
+                        unit_before=unit_before, was_active=was_active,
+                    )
+                except PiWebError as rollback_error:
+                    raise rollback_error from exc
+            raise
+        if promotion is not None:
+            self._finalize_promoted_bridge(promotion)
         return {
-            "installed": True,
-            "version": config.version,
-            "unit_path": str(self._systemd_root / UNIT_NAME),
-            "unit_changed": unit_changed,
-            "package_installed": not existed,
-            "lifecycle": lifecycle,
-            "node": {"path": node, "version": ".".join(str(part) for part in node_version)},
-            "probe": proof,
+            "installed": True, "version": config.version,
+            "unit_path": str(self._systemd_root / UNIT_NAME), "unit_changed": unit_changed,
+            "package_installed": artifact_changed, "lifecycle": lifecycle,
+            "node": {"path": node, "version": ".".join(str(part) for part in node_version)}, "probe": proof,
         }
 
-    def _record_manifest(self, root: Path, *, node: str, node_version: tuple[int, int, int]) -> None:
-        """Record the exact installed pin and runtime beside the npm tree."""
-        root.mkdir(parents=True, exist_ok=True, mode=0o755)
+    def _record_manifest(
+        self, root: Path, *, node: str, node_version: tuple[int, int, int], bridge_install: dict[str, object] | None,
+    ) -> None:
+        """Record the exact installed pin and output proof without timestamp churn."""
+        _safe_install_root(root)
+        previous: dict[str, object] = {}
+        try:
+            rendered_previous = _read_regular_private_file(root, "install-manifest.json")
+            candidate = json.loads(rendered_previous) if rendered_previous is not None else None
+            if isinstance(candidate, dict):
+                previous = candidate
+        except (ValueError, UnicodeDecodeError):
+            pass
         manifest = {
-            "schema": "anvil-serving.pi-web-install/v1",
-            "package": PACKAGE,
-            "version": self.config.version,
-            "port": self.config.port,
-            "hostname": self.config.hostname,
-            "allowed_hosts": list(self.config.allowed_hosts),
-            "service_user": self.config.service_user,
+            "schema": "anvil-serving.pi-web-install/v1", "package": PACKAGE,
+            "version": self.config.version, "port": self.config.port, "hostname": self.config.hostname,
+            "allowed_hosts": list(self.config.allowed_hosts), "service_user": self.config.service_user,
             "node": {"path": node, "version": ".".join(str(part) for part in node_version)},
-            "installed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "installed_at": previous.get("installed_at") if type(previous.get("installed_at")) is str else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            **({"bridge_install": bridge_install} if bridge_install is not None else {}),
         }
-        target = root / "install-manifest.json"
-        descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as output:
-            json.dump(manifest, output, indent=2, sort_keys=True)
-            output.write("\n")
+        rendered = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+        existing = _read_regular_private_file(root, "install-manifest.json")
+        if existing is not None and existing.decode("utf-8") == rendered:
+            return
+        _atomic_write_private_file(root, "install-manifest.json", rendered.encode("utf-8"))
 
     def _write_unit(self, content: str) -> bool:
         self._systemd_root.mkdir(parents=True, exist_ok=True, mode=0o755)
@@ -586,3 +1160,26 @@ def start_service(*, run: Callable[..., subprocess.CompletedProcess[str]] = subp
 
 def stop_service(*, run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run) -> None:
     _bounded_run(run, ["systemctl", "stop", UNIT_NAME])
+_BRIDGE_PACKAGE = "anvil_serving"
+_BRIDGE_DIR = "_pi_web_bridge"
+
+
+def bridge_manifest():
+    """Return the installed immutable bridge descriptor without staging it."""
+    from importlib.resources import files
+    try:
+        raw = files(_BRIDGE_PACKAGE).joinpath(_BRIDGE_DIR, "0.9.0-host-bridge.json").read_bytes()
+        manifest = json.loads(raw)
+    except (OSError, ValueError) as exc:
+        raise PiWebError("the pinned Pi Web bridge asset is unavailable") from exc
+    if (type(manifest) is not dict or manifest.get("schema") != "anvil-serving.pi-web-bridge/v1"
+            or manifest.get("package") != PACKAGE or manifest.get("version") != DEFAULT_VERSION
+            or not isinstance(manifest.get("patch_sha256"), str) or not re.fullmatch(r"[a-f0-9]{64}", manifest["patch_sha256"])):
+        raise PiWebError("the pinned Pi Web bridge asset is invalid")
+    patch = files(_BRIDGE_PACKAGE).joinpath(_BRIDGE_DIR, "0.9.0-host-bridge.patch").read_bytes()
+    if __import__("hashlib").sha256(patch).hexdigest() != manifest["patch_sha256"]:
+        raise PiWebError("the pinned Pi Web bridge asset changed")
+    for field in ("source_commit", "package_json_sha256", "app_shell_sha256"):
+        if type(manifest.get(field)) is not str or not re.fullmatch(r"[a-f0-9]{40,64}", manifest[field]):
+            raise PiWebError("the pinned Pi Web bridge asset is invalid")
+    return manifest

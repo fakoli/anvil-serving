@@ -487,6 +487,8 @@ class Console:
             row["freshness"] = "stale"
         for row in cached.get("updates", []):
             row["freshness"] = "stale"
+        for row in cached.get("refresh", {}).get("items", []):
+            row["freshness"] = "stale"
         return cached
 
     def _benchmark_runs(self, session, query):
@@ -562,7 +564,7 @@ class Console:
         if cursor is not None and (type(cursor) is not str or not 1 <= len(cursor) <= 512):
             raise ObservatoryError("invalid_workspace_run_cursor", "Select a current Workbench run page.", 400)
         authority = digest({"projects": self.workbench.config.get("projects", []),
-                            "grants": descriptor["resource_ids"]})
+                            "grants": descriptor["resource_ids"], "owner_authority": descriptor.get("authority_key")})
         key = (*self._run_cache_key(session, source, limit, cursor), authority)
         try:
             result = self.workbench.workspace_run_page(session, source, limit=limit, cursor=cursor)

@@ -571,6 +571,28 @@ main {
 .workbench-flow tr:last-child td {
   border-bottom: 0;
 }
+.work-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.work-reader, .work-rail { min-width: 0; }
+.work-selections { max-height: 40dvh; overflow: auto; gap: 6px; }
+.work-choice {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+.work-choice[aria-current="page"] { background: var(--accent-bg); border-color: var(--accent); }
+.work-choice .badge { justify-self: start; }
+@media (max-width: 900px) {
+  .work-layout { grid-template-columns: 1fr; }
+  .work-selections { max-height: 220px; }
+}
 .settings-layout {
   display: grid;
   grid-template-columns: 175px minmax(0, 1fr);
@@ -644,10 +666,12 @@ main {
   margin: 8px 0 0;
 }
 .pi-chat,
+.playground-layout,
 .pi-chat-layout {
   min-width: 0;
 }
-.pi-chat-layout {
+.pi-chat-layout,
+.playground-layout {
   display: grid;
   grid-template-columns: minmax(12rem, 17rem) minmax(0, 1fr);
   gap: 1rem;
@@ -806,7 +830,8 @@ main {
     grid-template-columns: 1fr;
     gap: 18px;
   }
-  .pi-chat-layout {
+  .pi-chat-layout,
+  .playground-layout {
     grid-template-columns: 1fr;
   }
   .pi-chat .form-grid {
@@ -851,3 +876,6 @@ main {
     border-bottom-color: Highlight;
   }
 }
+
+.host-pi-navigation { min-width: 0; }
+.host-pi-navigation > summary { cursor: pointer; padding: 0.75rem; color: var(--accent); }

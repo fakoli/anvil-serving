@@ -5,6 +5,7 @@ import { connectAccessView } from "./connect_access.js";
 const tabs = [
   ["general", "General"],
   ["connections", "Connections"],
+  ["projects", "Project roots"],
   ["pi", "Pi environment"],
   ["access", "Access"],
   ["data", "Data"],
@@ -205,6 +206,40 @@ export async function workbenchSettingsView(ctx, requestedTab = "general") {
         ? notice("No model connections are declared for this account.")
         : null,
     );
+  } else if (tab === "projects") {
+    content.append(el("h2", { text: "Project roots" }), notice("These defaults apply to your new sessions in the selected project. Existing sessions retain their frozen roots and permissions."));
+    const projects = catalog.projects || [];
+    const editor = el("div", { class: "stack" });
+    let generation = 0;
+    const load = async projectId => {
+      const current = ++generation;
+      editor.replaceChildren(notice("Loading declared roots…"));
+      try {
+        const data = await workbenchRequest(`projects/${encodeURIComponent(projectId)}/preferences`, { signal: ctx.signal });
+        if (ctx.signal.aborted || current !== generation) return;
+        const checks = data.roots.map(row => ({ row, input: el("input", { type: "checkbox", checked: row.state_root || data.defaults.writable_root_ids.includes(row.id), disabled: row.state_root || row.task_access !== "read-write" }) }));
+        const primary = select(data.roots.filter(row => row.task_access === "read-write").map(row => [row.id, row.label]), data.defaults.primary_root_id,
+          event => { const selected = checks.find(item => item.row.id === event.target.value); if (selected) selected.input.checked = true; });
+        const outcome = el("div", { role: "status" });
+        const saveRoots = button("Save project defaults", async () => {
+          saveRoots.disabled = true;
+          try {
+            await workbenchRequest(`projects/${encodeURIComponent(projectId)}/preferences`, { method: "POST", signal: ctx.signal,
+              body: { primary_root_id: primary.value, writable_root_ids: checks.filter(item => item.input.checked && !item.row.state_root && item.row.task_access === "read-write").map(item => item.row.id) } });
+            outcome.replaceChildren(notice("Project defaults saved for new sessions.", "success"));
+          } catch (error) { outcome.replaceChildren(notice(error.message, "danger")); }
+          finally { saveRoots.disabled = false; }
+        }, "primary");
+        editor.replaceChildren(data.stale ? notice("Declared roots changed. Review and save these updated defaults before starting a new task session.", "warning") : null,
+          field("Primary writable directory", primary), el("h3", { text: "Writable task roots" }),
+          ...checks.map(({ row, input }) => field(row.label, input, row.state_root ? "Canonical task root — included in every managed task claim." : row.task_access === "read-write" ? "Select to request write access for new task sessions." : "Read-only context.")),
+          notice("Owner claims and isolation are verified when a task starts. Host Pi sessions use operator account access; these task permissions do not sandbox host tools."), saveRoots, outcome);
+      } catch (error) { if (current === generation) editor.replaceChildren(notice(error.message, "danger")); }
+    };
+    if (projects.length) {
+      content.append(field("Project", select(projects.map(row => [row.id, row.label]), projects[0].id, event => void load(event.target.value))), editor);
+      await load(projects[0].id);
+    } else content.append(notice("No project roots are declared for this account."));
   } else if (tab === "pi") {
     const providers = Object.keys(catalog.pi?.models || {});
     draft.pi_provider = providers.includes(draft.pi_provider)
