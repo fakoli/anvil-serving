@@ -1,0 +1,6 @@
+verified complete cached snapshot lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4@181446902fc777c479749e98cf2abf2250263a8d (21492697071 bytes)
+loading managed recipe qwen38-huihui-ninfer-schemafix-mtp3-160k
+managed engine image sha256:22fa89d51912535dfb0ebc6cf035e33a99a06b6a27b592dfef1f112d5e349b43
+model path REDACTED_MODEL_PATH/qwen3_8_27b_nvfp4.ninfer
+flags: --max-context 163840 --kv-capacity 163840 --max-concurrency 1 --kv-dtype int8 --prefill-chunk 1024 --host-kv-mib 2048 --host-state-slots 2 --default-max-tokens 8192 --max-request-mib 384 --spec mtp --draft-tokens 3 --no-thinking --vision
+next: preflight before trusting this serve: anvil-serving eval preflight --base-url http://127.0.0.1:8080/v1 --model qwen38-huihui-ninfer-schemafix-mtp3-160k --confirm

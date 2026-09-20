@@ -55,6 +55,7 @@ def commands() -> CommandNode:
                                 "clients",
                                 "expected_config_sha256", "align_compaction_reserve",
                                 "pi_exclude_aliases", "openclaw_exclude_aliases",
+                                "openclaw_allow_aliases",
                                 "openclaw_config",
                                 "hermes_config",
                                 "hermes_bin",

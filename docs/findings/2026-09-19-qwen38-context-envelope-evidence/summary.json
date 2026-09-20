@@ -1,0 +1,87 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-19-qwen38-context-envelope",
+  "complete": true,
+  "identity": {
+    "model_revision": "181446902fc777c479749e98cf2abf2250263a8d",
+    "runtime_revision": "70434721b1ae29d0616f3de9b376c8a4d91590b5",
+    "image_digest": "sha256:22fa89d51912535dfb0ebc6cf035e33a99a06b6a27b592dfef1f112d5e349b43",
+    "context_tokens": 163840,
+    "concurrency": 1
+  },
+  "workload": {
+    "max_retained_input_tokens": 150144,
+    "visible_output_cap_tokens": 8192,
+    "cache_note": "depth suite first attempt cold or partial cache; later attempts warm"
+  },
+  "measurement": {
+    "path": "direct endpoint; bounded client compatibility summarized separately",
+    "warm_cold_state": "mixed only for depth retrieval; capacity cells use unique cache and canaries",
+    "sample_count": 9,
+    "statistics": [
+      "capacity long n=3 descriptive only"
+    ]
+  },
+  "gates": [
+    {
+      "name": "preflight",
+      "result": "passed 8/8",
+      "evidence": "preflight160-final.json"
+    },
+    {
+      "name": "quality",
+      "result": "passed three repetitions",
+      "evidence": "quality160-final.json"
+    },
+    {
+      "name": "vision",
+      "result": "passed 18/18",
+      "evidence": "vision160-final.json"
+    },
+    {
+      "name": "capacity",
+      "result": "short 12/12 and long 3/3",
+      "evidence": "capacity160-short.json, capacity160-long.json"
+    },
+    {
+      "name": "depth retrieval",
+      "result": "passed 9/9",
+      "evidence": "depths160-final.json"
+    }
+  ],
+  "headline_results": [
+    "150144 maximum retained input tokens",
+    "8192 visible-output cap",
+    "direct I/O followed observed host-cache pressure; causal proof is unproven"
+  ],
+  "failures": [
+    "128K default host-cache startup pressure",
+    "128K 2GiB host-cache resource-floor failure after successful load",
+    "192K and 204800 policy-infeasible under recorded free floor",
+    "macOS shell-marker initial failure; cause unproven"
+  ],
+  "limitations": [
+    "long capacity n=3 is descriptive",
+    "no cold latency or throughput claim from mixed-cache depth suite"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "qualified-reference"
+    ],
+    "recommendation": "163840 total tokens at C1 under the recorded 4096 MiB free-memory policy",
+    "deployment_state": "Private operator records; not disclosed by this benchmark."
+  },
+  "evidence": [
+    "artifact-manifest.json",
+    "preflight160-final.json",
+    "depths160-final.json",
+    "capacity160-long.json",
+    "client-compatibility.json"
+  ]
+}

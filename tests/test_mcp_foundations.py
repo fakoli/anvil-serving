@@ -22,7 +22,7 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "3c1485705f003f6573a20d8dafb7e981bbad2aad72e0e0502848a063442e590d"
+    "327e53ad939ff00e277485612c242de6e1cc4e0b4acfbcd5bc1765eb7bf57566"
 )
 HANDLER_MAP_SHA256 = (
     "7c235ff7468492ee6052e8a2886fc13e68ce18efa0ccef208810650efe592ee4"
@@ -159,7 +159,8 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
         "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
     }
 
-    # Reconstruct upstream PR #471's catalog without later declared additions.
+    # Reconstruct upstream PR #471's catalog: only the two diagnostic tools
+    # and member transition are added here. All unrelated fields stay exact.
     schema["maxProperties"] = 6
     transition["description"] = (
         "Inspect, quiesce, drain, or safely readmit a router tier "
@@ -168,9 +169,9 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     public_tools = [
         tool for tool in public_tools
         if tool["name"] not in {
-                    "controller_inspect", "controller_logs", "router_configuration",
-                    "serves_probe", "serves_profile", "recipe_settings", "recipe_manage", "runtime_experiment",
-                    "container_exec", "benchmark_job_list",
+            "controller_inspect", "controller_logs", "router_configuration",
+            "serves_probe", "serves_profile", "recipe_settings", "recipe_manage",
+            "runtime_experiment", "container_exec", "benchmark_job_list",
         }
     ]
     client_schema = next(tool for tool in public_tools if tool["name"] == "client_catalog_sync")["inputSchema"]
@@ -178,7 +179,8 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     client_schema["properties"].pop("align_compaction_reserve")
     client_schema["properties"].pop("pi_exclude_aliases")
     client_schema["properties"].pop("openclaw_exclude_aliases")
-    client_schema["maxProperties"] -= 4
+    client_schema["properties"].pop("openclaw_allow_aliases")
+    client_schema["maxProperties"] -= 5
     assert _canonical_sha256(public_tools) == (
         "d2145a64f57a847b97e0b72f36f59cf853fc11e76d5c9b89b98860b2c4654954"
     )

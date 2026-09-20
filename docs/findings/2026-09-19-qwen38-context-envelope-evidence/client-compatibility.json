@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.client-compatibility-summary/v1",
+  "tested_model": "qwen38-huihui-ninfer-schemafix-mtp3-160k",
+  "context_tokens": 163840,
+  "max_output_tokens": 8192,
+  "concurrency": 1,
+  "evidence_scope": "Bounded native client compatibility; deployment assignments and operator receipts are private.",
+  "checks": [
+    {
+      "client": "Pi",
+      "platforms": [
+        "Linux",
+        "macOS",
+        "Windows"
+      ],
+      "probe": "read-tool nonce and tool-result continuation",
+      "result": "passed"
+    },
+    {
+      "client": "OpenClaw",
+      "probe": "exact-provider/context read-tool nonce",
+      "result": "passed"
+    },
+    {
+      "client": "Hermes",
+      "probe": "terminal-tool nonce",
+      "result": "passed"
+    }
+  ],
+  "limitation": "One macOS OpenClaw shell-marker probe selected the expected model/provider/context without fallback but failed the exact response check. A separate read-tool nonce passed; the shell-marker cause remains unproven."
+}

@@ -1,6 +1,6 @@
 {
-  "schema": "anvil-serving.promotion-identity-receipt/v1",
-  "status": "completed_qualification_promoted",
+  "schema": "anvil-serving.qualification-identity-receipt/v1",
+  "status": "completed_qualification",
   "image_digest": "sha256:44377d56374ed4b832c2ca6e9265da492cf2ad79a297008bae92f442d27edfb6",
   "binary_sha256": "82ec9634bf221bee534bcf26c940a7c63f29fff36cd858de9bc57e75c3e6b25f",
   "source_revision": "70434721b1ae29d0616f3de9b376c8a4d91590b5",
@@ -10,13 +10,11 @@
   "recipe_snapshot": "recipe-64k-sanitized.toml",
   "exact_tested_recipe_snapshot": {
     "sanitized_snapshot": "recipe-64k-sanitized.toml",
-    "sanitized_snapshot_sha256": "fa0283c7b634a6f49d653950970bd6b22e724196b778a695addfdc0df42ce070",
+    "sanitized_snapshot_sha256": "074f66b545e71a0b0d44816bc0e0157f99052fa8dd92833f75174a18ab202b56",
     "redactions": [
-      "Hardware UUID line omitted; text serialized with LF."
-    ],
-    "private_launch_metadata": "Candidate/pending wording is immutable historical launch metadata; the promotion decision is recorded separately.",
-    "private_registry_sha256": "f434909360b30b6df562d29c4f490dbb2f96b6819d2df2a6ac52213c0eec7ea6",
-    "active_serve_manifest_sha256": "d41ad302e10fb53ec7690ab4923588694719476f31aebe05d98a7f55e7bf6b87"
+      "Hardware UUID line omitted; text serialized with LF.",
+      "Operational state and private launch bindings omitted; qualification identity retained."
+    ]
   },
   "bound_run_sha256": {
     "preflight-c1.json": "6cea10f49a3966399066980b01781091a9e83dc38268cc515cc0a776f01ec2f3",
@@ -37,7 +35,7 @@
     "source_commit": "46b84641b3096b6feb4d0f1f844c6106c1a01ac5",
     "wheel_sha256": "aa3d4dd46d827cca79b1832e58d9e70db094182cbf62ff098b8e813aec1c3bd6",
     "source_identity": "anvil_serving/cli.py",
-    "note": "Installed checksum-pinned client runtime; model runtime image unchanged."
+    "note": "Pinned qualification launcher; model runtime identity is recorded separately."
   },
   "raw_artifact_redactions": {
     "vision.json": [

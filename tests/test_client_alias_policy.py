@@ -111,24 +111,84 @@ def test_cli_and_mcp_forward_explicit_policy(monkeypatch):
     monkeypatch.setattr(sync, "sync_clients", lambda **kw: received.append(kw) or {})
     assert harness.main(["sync", "clients", "--base-url", "http://127.0.0.1:8000/v1",
         "--pi-exclude-aliases", "llm.secondary", "--openclaw-exclude-aliases", "llm.secondary",
+        "--openclaw-allow-aliases", "llm.primary",
         "--dry-run"]) == 0
     tool.tool_client_catalog_sync({"base_url": "http://127.0.0.1:8000/v1",
         "pi_exclude_aliases": "llm.secondary", "openclaw_exclude_aliases": "llm.secondary",
+        "openclaw_allow_aliases": "llm.primary",
         "dry_run": True})
     assert len(received) == 2
     for row in received:
         assert row["pi_exclude_aliases"] == row["openclaw_exclude_aliases"] == "llm.secondary"
+        assert row["openclaw_allow_aliases"] == "llm.primary"
+
+
+@pytest.mark.parametrize("scope", ["defaults", "entries", "list"])
+def test_openclaw_explicit_allow_restores_override_preserving_other_policy(scope):
+    source = catalog()
+    source["models"]["llm.secondary"]["context_window"] = 163840
+    doc = openclaw()
+    policy = {"allow": ["other/*", "anvil/llm.primary"], "deny": ["other/blocked"]}
+    if scope == "defaults":
+        target = doc["agents"]["defaults"]
+    elif scope == "entries":
+        doc["agents"]["entries"] = {"assistant": {}}
+        target = doc["agents"]["entries"]["assistant"]
+    else:
+        doc["agents"]["list"] = [{"id": "assistant"}]
+        target = doc["agents"]["list"][0]
+    target["modelPolicy"] = copy.deepcopy(policy)
+    rendered = sync._render_openclaw_document(source, doc, allow_aliases="llm.secondary")
+    actual = (rendered["agents"]["defaults"] if scope == "defaults" else
+              rendered["agents"]["entries"]["assistant"] if scope == "entries" else
+              rendered["agents"]["list"][0])
+    assert actual["modelPolicy"] == {**policy, "allow": policy["allow"] + ["anvil/llm.secondary"]}
+    assert target["modelPolicy"] == policy
+    assert rendered["agents"]["defaults"]["model"] == doc["agents"]["defaults"]["model"]
+    assert rendered["agents"]["defaults"]["compaction"] == doc["agents"]["defaults"]["compaction"]
+    assert sync._render_openclaw_document(source, rendered, allow_aliases="llm.secondary") == rendered
+
+
+@pytest.mark.parametrize("policy", [{}, {"allow": []}, {"allow": ["other/model"]}])
+def test_openclaw_allow_is_opt_in_and_keeps_unrestricted_policy(policy):
+    source = catalog()
+    source["models"]["llm.secondary"]["context_window"] = 163840
+    doc = openclaw()
+    doc["agents"]["defaults"]["modelPolicy"] = copy.deepcopy(policy)
+    default = sync._render_openclaw_document(source, doc)
+    assert default["agents"]["defaults"]["modelPolicy"] == policy
+    if not policy.get("allow"):
+        explicit = sync._render_openclaw_document(source, doc, allow_aliases="llm.secondary")
+        assert explicit["agents"]["defaults"]["modelPolicy"] == policy
+
+
+@pytest.mark.parametrize("allowed", ["unknown", "llm.secondary,llm.secondary", [], None, "x" * 4097])
+def test_openclaw_invalid_allow_fails(allowed):
+    with pytest.raises(sync.ClientCatalogError, match="allowed aliases"):
+        sync._render_openclaw_document(catalog(), openclaw(), allow_aliases=allowed)
+
+
+def test_openclaw_allow_cannot_override_exclusion():
+    with pytest.raises(sync.ClientCatalogError, match="excluded"):
+        sync._render_openclaw_document(catalog(), openclaw(), allow_aliases="llm.secondary", exclude_aliases="llm.secondary")
+    source = catalog()
+    source["models"]["llm.auxiliary"] = source["models"]["llm.secondary"]
+    with pytest.raises(sync.ClientCatalogError, match="excluded"):
+        sync._render_openclaw_document(source, openclaw(), allow_aliases="llm.auxiliary")
 
 
 @pytest.mark.parametrize("file_already_matches", [False, True])
-def test_policy_restart_remains_pending_across_apply_and_other_client(tmp_path, monkeypatch, file_already_matches):
+@pytest.mark.parametrize("restore_allow", [False, True])
+def test_policy_restart_remains_pending_across_apply_and_other_client(tmp_path, monkeypatch, file_already_matches, restore_allow):
     source = catalog()
     source["models"]["llm.secondary"]["context_window"] = 131072
     monkeypatch.setattr(sync, "fetch_client_catalog", lambda **kw: source)
     path = tmp_path / "openclaw.json"
     doc = openclaw()
+    doc["agents"]["defaults"]["modelPolicy"] = {"allow": ["anvil/llm.primary"]}
+    policy_args = {"allow_aliases": "llm.secondary"} if restore_allow else {"exclude_aliases": "llm.secondary"}
     if file_already_matches:
-        doc = sync._render_openclaw_document(source, doc, exclude_aliases="llm.secondary")
+        doc = sync._render_openclaw_document(source, doc, **policy_args)
     path.write_text(json.dumps(doc))
     state = tmp_path / "state.json"
     state.write_text(json.dumps({"client_excluded_aliases": {"openclaw": []},
@@ -137,7 +197,8 @@ def test_policy_restart_remains_pending_across_apply_and_other_client(tmp_path, 
     args = dict(base_url="http://127.0.0.1:8000/v1", clients="openclaw",
         openclaw_config=str(path), state_path=str(state), backup_root=str(tmp_path / "backups"),
         environ={"ANVIL_ROUTER_TOKEN": "test-only"}, confirm=True, dry_run=False,
-        openclaw_exclude_aliases="llm.secondary")
+        openclaw_exclude_aliases="" if restore_allow else "llm.secondary",
+        openclaw_allow_aliases="llm.secondary" if restore_allow else "")
     sync.sync_clients(**args)
     assert json.loads(state.read_text())["openclaw_restarted_sha256"] is None
     pi_models = tmp_path / "models.json"; pi_models.write_text("{}")
@@ -145,7 +206,8 @@ def test_policy_restart_remains_pending_across_apply_and_other_client(tmp_path, 
     sync.sync_clients(**{**args, "clients": "pi", "pi_models": str(pi_models),
         "pi_settings": str(pi_settings), "pi_exclude_aliases": "llm.secondary"})
     assert json.loads(state.read_text())["client_excluded_aliases"] == {
-        "openclaw": ["llm.secondary"], "pi": ["llm.secondary"]}
+        "openclaw": [] if restore_allow else ["llm.secondary"], "pi": ["llm.secondary"]}
+    assert json.loads(state.read_text())["openclaw_allowed_aliases"] == (["llm.secondary"] if restore_allow else [])
     restarts = []
     args.update(restart_openclaw_on_change=True, restart=lambda: restarts.append(1) or 0,
         refresh_openclaw_service=lambda: 0)

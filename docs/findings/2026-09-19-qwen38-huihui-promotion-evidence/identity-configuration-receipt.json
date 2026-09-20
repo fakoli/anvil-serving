@@ -1,6 +1,6 @@
 {
-  "schema": "anvil-serving.promotion-identity-receipt/v1",
-  "status": "completed_qualification_promoted",
+  "schema": "anvil-serving.qualification-identity-receipt/v1",
+  "status": "completed_qualification",
   "image_digest": "sha256:44377d56374ed4b832c2ca6e9265da492cf2ad79a297008bae92f442d27edfb6",
   "binary_sha256": "82ec9634bf221bee534bcf26c940a7c63f29fff36cd858de9bc57e75c3e6b25f",
   "source_revision": "70434721b1ae29d0616f3de9b376c8a4d91590b5",
@@ -17,11 +17,11 @@
   ],
   "exact_tested_recipe_snapshot": {
     "selector": "lyf/Qwen3.8-27B-Huihui-NInfer-NVFP4-MTP3-32K-Baked",
-    "private_registry_sha256": "cd99ba652e4051616d8755f3f7ebc28c56d45139f697370d9befa10ce9d7e70b",
     "sanitized_snapshot": "tested-recipe.toml",
     "sanitized_snapshot_sha256": "18fa51538298c0bf47d01cc0cfcd49c90f8348caf1b407de57e8296e5ffdebd2",
     "redactions": [
-      "GPU UUID replaced with a generic operator placeholder."
+      "GPU UUID replaced with a generic operator placeholder.",
+      "Operational state and private launch bindings omitted; qualification identity retained."
     ],
     "public_recipe_is_generic": true
   },

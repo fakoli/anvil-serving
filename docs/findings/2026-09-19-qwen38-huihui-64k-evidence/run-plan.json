@@ -9,7 +9,7 @@
     "long capacity",
     "vision",
     "router",
-    "client convergence"
+    "native client compatibility"
   ],
   "preflight_correction": "Initial invocation omitted profile-specific needle/tool-batch overrides; retained default128K/C20 failures, then used60000 nominal needle and batch1.",
   "capacity": {

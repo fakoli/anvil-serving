@@ -1,0 +1,580 @@
+{
+  "context": {
+    "cap_tokens": 154624,
+    "max_model_len": 163840,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 8192
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:8080/v1",
+    "candidate_id": "qwen38-huihui",
+    "config_id": "baked-mtp3-160k-directio",
+    "engine": "ninfer",
+    "model": "qwen38-huihui-ninfer-schemafix-mtp3-160k",
+    "started_at": "2026-09-20T01:09:51Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260920T010951Z",
+  "sampling": {
+    "temperature": {
+      "effective_request": 0.0,
+      "requested": null,
+      "sent": true
+    },
+    "top_p": {
+      "effective_request": null,
+      "requested": null,
+      "sent": false
+    }
+  },
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "unsupported",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "REDACTED_LOCAL_PATH/.anvil-serving\\evidence\\2026-09-19-qwen38-context-envelope\\serve-recipes.160k.toml#lyf/Qwen3.8-27B-Huihui-NInfer-NVFP4-MTP3-160K-Baked",
+    "serve_command": null
+  },
+  "suites": {
+    "context-depths-160k": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 8192,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 8192
+              },
+              "content": "K234345784487",
+              "content_chars": 13,
+              "content_excerpt": "K234345784487",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 46763.15940008499,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_retrieval",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 14,
+                "prompt_tokens": 150058,
+                "total_tokens": 150072
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 8192,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 8192
+              },
+              "content": "K234345784487",
+              "content_chars": 13,
+              "content_excerpt": "K234345784487",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 217.0992000028491,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_retrieval",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 14,
+                "prompt_tokens": 150058,
+                "total_tokens": 150072
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 8192,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 8192
+              },
+              "content": "K234345784487",
+              "content_chars": 13,
+              "content_excerpt": "K234345784487",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 199.66010004281998,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_retrieval",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 14,
+                "prompt_tokens": 150058,
+                "total_tokens": 150072
+              }
+            }
+          ],
+          "id": "native-needle-depth10",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 8192,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 8192
+              },
+              "content": "NAME=Iris Valen-6064 | UUID=ef03922b-db2f-30da-e01b-0ac62e8e6bae | NUMBER=58174988107 | IP=198.51.100.31 | SYMBOL=resolve_orchid_67889",
+              "content_chars": 134,
+              "content_excerpt": "NAME=Iris Valen-6064 | UUID=ef03922b-db2f-30da-e01b-0ac62e8e6bae | NUMBER=58174988107 | IP=198.51.100.31 | SYMBOL=resolve_orchid_67889",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 47204.63980000932,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_retrieval",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 87,
+                "prompt_tokens": 150144,
+                "total_tokens": 150231
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 8192,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 8192
+              },
+              "content": "NAME=Iris Valen-6064 | UUID=ef03922b-db2f-30da-e01b-0ac62e8e6bae | NUMBER=58174988107 | IP=198.51.100.31 | SYMBOL=resolve_orchid_67889",
+              "content_chars": 134,
+              "content_excerpt": "NAME=Iris Valen-6064 | UUID=ef03922b-db2f-30da-e01b-0ac62e8e6bae | NUMBER=58174988107 | IP=198.51.100.31 | SYMBOL=resolve_orchid_67889",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 618.4073999756947,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_retrieval",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 87,
+                "prompt_tokens": 150144,
+                "total_tokens": 150231
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 8192,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 8192
+              },
+              "content": "NAME=Iris Valen-6064 | UUID=ef03922b-db2f-30da-e01b-0ac62e8e6bae | NUMBER=58174988107 | IP=198.51.100.31 | SYMBOL=resolve_orchid_67889",
+              "content_chars": 134,
+              "content_excerpt": "NAME=Iris Valen-6064 | UUID=ef03922b-db2f-30da-e01b-0ac62e8e6bae | NUMBER=58174988107 | IP=198.51.100.31 | SYMBOL=resolve_orchid_67889",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 619.6746000787243,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_retrieval",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 87,
+                "prompt_tokens": 150144,
+                "total_tokens": 150231
+              }
+            }
+          ],
+          "id": "native-identifiers-depth50",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 8192,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 8192
+              },
+              "content": "ASTER -> Mara Quill-9422 -> 203.0.113.173 -> commit_aster_97930",
+              "content_chars": 63,
+              "content_excerpt": "ASTER -> Mara Quill-9422 -> 203.0.113.173 -> commit_aster_97930",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 46973.930999985896,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_retrieval",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 36,
+                "prompt_tokens": 150124,
+                "total_tokens": 150160
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 8192,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 8192
+              },
+              "content": "ASTER -> Mara Quill-9422 -> 203.0.113.173 -> commit_aster_97930",
+              "content_chars": 63,
+              "content_excerpt": "ASTER -> Mara Quill-9422 -> 203.0.113.173 -> commit_aster_97930",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 330.2955999970436,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_retrieval",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 36,
+                "prompt_tokens": 150124,
+                "total_tokens": 150160
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 8192,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 8192
+              },
+              "content": "ASTER -> Mara Quill-9422 -> 203.0.113.173 -> commit_aster_97930",
+              "content_chars": 63,
+              "content_excerpt": "ASTER -> Mara Quill-9422 -> 203.0.113.173 -> commit_aster_97930",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 331.26330003142357,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "exact_retrieval",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 36,
+                "prompt_tokens": 150124,
+                "total_tokens": 150160
+              }
+            }
+          ],
+          "id": "native-crosslink-depth90",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-09-19",
+      "evidence_use": "diagnostic",
+      "source": "REDACTED_LOCAL_PATH/.anvil-serving/evidence/2026-09-19-qwen38-context-envelope/context-depths-calibrated.suite.json",
+      "source_sha256": "ab0da633b63700e6a7e28f147120d44487687658a69f619773e20f7342868c05",
+      "status": "passed",
+      "validator_strength": "deterministic_marker",
+      "work_class": null
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "unsupported",
+    "control_requested": null,
+    "control_status": "unsupported",
+    "mode": "unsupported",
+    "reasoning_effort": null,
+    "unsupported": true
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": null,
+      "completion_tokens_mean": null,
+      "completion_tokens_mean_ci95_high": null,
+      "completion_tokens_mean_ci95_low": null,
+      "completion_tokens_min": null,
+      "completion_tokens_p25": null,
+      "completion_tokens_p50": null,
+      "completion_tokens_p75": null,
+      "completion_tokens_p90": null,
+      "completion_tokens_p95": null,
+      "completion_tokens_p99": null,
+      "completion_tokens_samples": 0,
+      "completion_tokens_stddev": null,
+      "content_chunks": 0,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": null,
+      "decode_tok_s_mean": null,
+      "decode_tok_s_mean_ci95_high": null,
+      "decode_tok_s_mean_ci95_low": null,
+      "decode_tok_s_min": null,
+      "decode_tok_s_p25": null,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p75": null,
+      "decode_tok_s_p90": null,
+      "decode_tok_s_p95": null,
+      "decode_tok_s_p99": null,
+      "decode_tok_s_samples": 0,
+      "decode_tok_s_stddev": null,
+      "e2e_max_ms": null,
+      "e2e_mean_ci95_high_ms": null,
+      "e2e_mean_ci95_low_ms": null,
+      "e2e_mean_ms": null,
+      "e2e_min_ms": null,
+      "e2e_p25_ms": null,
+      "e2e_p50_ms": null,
+      "e2e_p75_ms": null,
+      "e2e_p90_ms": null,
+      "e2e_p95_ms": null,
+      "e2e_p99_ms": null,
+      "e2e_samples": 0,
+      "e2e_stddev_ms": null,
+      "effective_prefill_tok_s_max": null,
+      "effective_prefill_tok_s_mean": null,
+      "effective_prefill_tok_s_mean_ci95_high": null,
+      "effective_prefill_tok_s_mean_ci95_low": null,
+      "effective_prefill_tok_s_min": null,
+      "effective_prefill_tok_s_p25": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p75": null,
+      "effective_prefill_tok_s_p90": null,
+      "effective_prefill_tok_s_p95": null,
+      "effective_prefill_tok_s_p99": null,
+      "effective_prefill_tok_s_samples": 0,
+      "effective_prefill_tok_s_stddev": null,
+      "generation_max_ms": null,
+      "generation_mean_ci95_high_ms": null,
+      "generation_mean_ci95_low_ms": null,
+      "generation_mean_ms": null,
+      "generation_min_ms": null,
+      "generation_p25_ms": null,
+      "generation_p50_ms": null,
+      "generation_p75_ms": null,
+      "generation_p90_ms": null,
+      "generation_p95_ms": null,
+      "generation_p99_ms": null,
+      "generation_samples": 0,
+      "generation_stddev_ms": null,
+      "mean_inter_token_latency_ms_max": null,
+      "mean_inter_token_latency_ms_mean": null,
+      "mean_inter_token_latency_ms_mean_ci95_high": null,
+      "mean_inter_token_latency_ms_mean_ci95_low": null,
+      "mean_inter_token_latency_ms_min": null,
+      "mean_inter_token_latency_ms_p25": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p75": null,
+      "mean_inter_token_latency_ms_p90": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "mean_inter_token_latency_ms_p99": null,
+      "mean_inter_token_latency_ms_samples": 0,
+      "mean_inter_token_latency_ms_stddev": null,
+      "mean_time_per_output_token_max_ms": null,
+      "mean_time_per_output_token_mean_ci95_high_ms": null,
+      "mean_time_per_output_token_mean_ci95_low_ms": null,
+      "mean_time_per_output_token_mean_ms": null,
+      "mean_time_per_output_token_min_ms": null,
+      "mean_time_per_output_token_p25_ms": null,
+      "mean_time_per_output_token_p50_ms": null,
+      "mean_time_per_output_token_p75_ms": null,
+      "mean_time_per_output_token_p90_ms": null,
+      "mean_time_per_output_token_p95_ms": null,
+      "mean_time_per_output_token_p99_ms": null,
+      "mean_time_per_output_token_samples": 0,
+      "mean_time_per_output_token_stddev_ms": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_max": null,
+      "prompt_tokens_mean": null,
+      "prompt_tokens_mean_ci95_high": null,
+      "prompt_tokens_mean_ci95_low": null,
+      "prompt_tokens_min": null,
+      "prompt_tokens_p25": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p75": null,
+      "prompt_tokens_p90": null,
+      "prompt_tokens_p95": null,
+      "prompt_tokens_p99": null,
+      "prompt_tokens_samples": 0,
+      "prompt_tokens_stddev": null,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": null,
+      "time_to_first_output_mean_ci95_high_ms": null,
+      "time_to_first_output_mean_ci95_low_ms": null,
+      "time_to_first_output_mean_ms": null,
+      "time_to_first_output_min_ms": null,
+      "time_to_first_output_p25_ms": null,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p75_ms": null,
+      "time_to_first_output_p90_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "time_to_first_output_p99_ms": null,
+      "time_to_first_output_samples": 0,
+      "time_to_first_output_stddev_ms": null,
+      "tpot_max_ms": null,
+      "tpot_mean_ci95_high_ms": null,
+      "tpot_mean_ci95_low_ms": null,
+      "tpot_mean_ms": null,
+      "tpot_min_ms": null,
+      "tpot_p25_ms": null,
+      "tpot_p50_ms": null,
+      "tpot_p75_ms": null,
+      "tpot_p90_ms": null,
+      "tpot_p95_ms": null,
+      "tpot_p99_ms": null,
+      "tpot_samples": 0,
+      "tpot_stddev_ms": null,
+      "ttft_max_ms": null,
+      "ttft_mean_ci95_high_ms": null,
+      "ttft_mean_ci95_low_ms": null,
+      "ttft_mean_ms": null,
+      "ttft_min_ms": null,
+      "ttft_p25_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p75_ms": null,
+      "ttft_p90_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_p99_ms": null,
+      "ttft_samples": 0,
+      "ttft_stddev_ms": null
+    },
+    "wall_ms": 143267.8992000874
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

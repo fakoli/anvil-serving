@@ -1,0 +1,26 @@
+# Sanitized public reconstruction of the final tested 160K recipe.
+[recipe]
+model = "lyf/Qwen3.8-27B-Huihui-NInfer-NVFP4-MTP3-160K-Baked"
+artifact_repo = "lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4"
+artifact_revision = "181446902fc777c479749e98cf2abf2250263a8d"
+artifact_sha256 = "f21f308d3b23ccd627071cd015e413db08deee4356643900518e2b251750fdc2"
+artifact_bytes = 21492695040
+engine = "ninfer"
+runtime_revision = "70434721b1ae29d0616f3de9b376c8a4d91590b5"
+image_digest = "sha256:22fa89d51912535dfb0ebc6cf035e33a99a06b6a27b592dfef1f112d5e349b43"
+binary_sha256 = "82ec9634bf221bee534bcf26c940a7c63f29fff36cd858de9bc57e75c3e6b25f"
+context_tokens = 163840
+concurrency = 1
+kv_dtype = "int8"
+kv_group_size = 64
+prefill_chunk_tokens = 1024
+host_kv_mib = 2048
+host_state_slots = 2
+default_max_tokens = 8192
+max_request_mib = 384
+speculation = "mtp"
+draft_tokens = 3
+thinking = false
+vision_enabled = true
+# Direct I/O verifies build artifacts; it is not the KV mode.
+direct_io_artifact_verification = true

@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.context-control/v1",
+  "control": "128K host2GiB2slots; buffered verifier versusdirect I/O",
+  "observed": {
+    "buffered_windows_min_mib": 387.28515625,
+    "directio_windows_min_mib": 14653.4453125,
+    "buffered_wsl_cached_max_mib": 18848.1640625,
+    "directio_wsl_cached_max_mib": 3024.56640625
+  },
+  "limitations": [
+    "whole-system sampled observations; not instantaneous peaks",
+    "cache/control order not randomized",
+    "no claim of causal throughput improvement"
+  ],
+  "source_artifacts": [
+    "load128-host2g.telemetry.json",
+    "load128-directio.telemetry.json"
+  ]
+}

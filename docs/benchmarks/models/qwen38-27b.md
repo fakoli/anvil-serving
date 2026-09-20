@@ -6,7 +6,7 @@
 
 !!! info "Decision snapshot"
 
-    - **Product role:** human-approved Huihui NInfer MTP3 64K/C1 secondary on RTX 5090, with direct/routed protocol, bounded quality, vision and native Hermes acceptance. Exact 32K remains rollback.
+    - **Product role:** qualified Huihui NInfer MTP3 160K/C1 text/tools/image profile on the measured RTX 5090; earlier 64K results remain a separate comparison. Actual assignments are private.
     - **Historical product role:** former human-approved 96 GB single-service profile;
       retained as reproducible evidence. Official FP8 is the declared,
       unexercised rollback in the September 14 text-selection record.
@@ -14,13 +14,13 @@
       throughput workload, two independent SGLang Inferact NVFP4 plus DFlash2
       K12/chunk1K TP1 replicas are the bounded winner; one TP1 is the selected
       single-card sustained-output arm, and RadixArk K8 is the lower-TTFT
-      tradeoff. Those PRO results remain separate from the promoted RTX 5090 Huihui lane.
+      tradeoff. Those PRO results remain separate from the qualified RTX 5090 Huihui lane.
     - **Measured hardware:** one- and two-card RTX PRO 6000 lanes and a
       separate single-RTX-5090 lane; results are not interchangeable across
       those topologies.
     - **Evidence:** functional, capacity, bounded quality, performance,
       multimodal, routed-client, and rejection evidence through 2026-09-19
-      UTC, including Huihui 64K preflight 7/7, routed 6/6, vision 12/12 and Hermes 9/9. The new matched sustained-output lane measured 1,401.8–1,423.4 aggregate
+      UTC, including Huihui 160K preflight 8/8, vision 18/18, capacity, and 150K retrieval and bounded native client compatibility. The new matched sustained-output lane measured 1,401.8–1,423.4 aggregate
       tok/s for two TP1 replicas, 764.3 for one TP1, and 587.9 for TP2, with
       mean/p50/p95/p99 TTFT, prefill, decode, TPOT/ITL, and E2E retained.
       Gittensor measured 50.9 ms warm median TTFT, 79.5 tok/s decode, and
@@ -30,7 +30,7 @@
     - **Decision:** retain DP2 as the bounded dual-PRO aggregate-throughput
       winner, one optimized TP1 as the single-card sustained-output selection,
       RadixArk K8 as its TTFT tradeoff, and kelnei/vLLM MTP2 as an alternate-
-      runtime gain over no-spec. Reject TP2; those PRO lanes remain `no-promotion`. Huihui 64K/C1 on RTX 5090 is separately `current` after human approval.
+      runtime gain over no-spec. Reject TP2; those PRO lanes remain `no-promotion`. Huihui 160K/C1 is the separately qualified RTX 5090 context reference.
     - **Important limitation:** TP2 failed strict JSON twice; unique-prefix
       82K/C8 remained unsuitable for interactive use; DP2 lacks a qualified
       balancing/failover/client path; and broad quality plus complete power and
@@ -341,7 +341,7 @@ TP=1, 131,072 tokens, one running request, FP8 E4M3 KV, FlashInfer attention,
 multimodal feature transport, no MTP, thinking disabled, and explicit ceilings
 of eight images and two videos. The managed recipe is
 `configs/qwen38-27b-radixark-nvfp4-sglang-rtx5090-128k-mm-recipe.toml`; the
-otherwise matched 64K recipe is retained as rollback.
+otherwise matched 64K recipe is retained as a comparison.
 
 ### RTX 5090 GGUF lane
 
@@ -354,11 +354,11 @@ without speculation and 25,408 MiB with MTP.
 
 ### RTX 5090 NInfer NVFP4 lane
 
-#### Huihui promotion addendum (2026-09-19)
+#### Huihui compatibility addendum (2026-09-19)
 
-**Status:** promoted through the managed alias after clean recreation and router preflight 6/6.
+**Status:** managed recreation and bounded router preflight 6/6 passed.
 
-**Evidence and limits:** the compatible-runtime follow-up remains the qualification record; the original scout remains a historical rejected result. Six eligible capacity artifacts are published in historical Workbench/Grafana views, while failed 128-word warmups remain excluded from performance rows and retained in the evidence bundle. Managed recreation and router acceptance passed; final client acceptance remains in progress.
+**Evidence and limits:** the compatible-runtime follow-up remains the qualification record; the original scout remains a historical rejected result. Six capacity artifacts were eligible for descriptive reporting; failed 128-word warmups remain excluded from performance rows and retained as failures. Bounded router/client compatibility passed.
 
 **Evidence:** [promotion addendum](../../findings/2026-09-19-qwen38-huihui-promotion-addendum.md).
 
@@ -374,7 +374,7 @@ without speculation and 25,408 MiB with MTP.
 
 #### Huihui compatible-runtime no-spec follow-up (2026-09-19)
 
-**Status:** historical recovery evidence; the exact baked profile is now promoted.
+**Status:** historical compatible-runtime qualification evidence.
 
 **Measured:** compatible v2 runtime `70434721` passed smoke 2/2, default and low core quality 9/9 each, C1 protocol 5/5, and vision 12/12. The tool argument recovered from original raw numeric `98101` to string `"98101"`. A 20-request burst completed 17/20 with three HTTP 429 responses. Off/low/generic boundary suites were 15/21, 12/21, and 18/21, retaining CRLF-to-LF normalization behavior.
 
@@ -649,15 +649,15 @@ passed the same surface at 105,649 prompt tokens.
 
 ## Decision and promotion state
 
-!!! warning "Promotion remains human-gated"
+!!! info "Qualification and deployment are separate records"
 
-    These findings preserve reproducible options and explicit rejection
-    reasons. They do not authorize a route, client-catalog, or live deployment
-    change.
+    The 160K profile is a qualified measured reference. Actual authorization,
+    deployment assignments, recovery profiles and operational receipts remain
+    in private operator records.
 
 ### Retained
 
-- **Current RTX 5090 secondary:** [Huihui NInfer MTP3 64K/C1](../../findings/2026-09-19-qwen38-huihui-64k.md) is human-approved and promoted. Direct/routed protocol, repeated bounded quality, vision 12/12 and native Hermes 9/9 passed. Post-workload GPU use is 24,224 MiB; no footprint win, endurance or comparative 64K speed claim. Exact 32K is retained as rollback. Older NInfer and GGUF entries below remain separate historical profiles.
+- **Qualified RTX 5090 context reference:** [Huihui NInfer MTP3 160K/C1](../../findings/2026-09-19-qwen38-context-envelope.md). Preflight 8/8, vision 18/18, depth retrieval 9/9, short capacity 12/12 and long capacity 3/3 passed. Maximum measured input was 150,144 tokens with an 8,192-token output allowance; long-capacity GPU free floor was 4,598 MiB. No matched speed or endurance claim.
 - **RTX PRO 6000 aggregate-throughput winner:** two independent current-
   SGLang Inferact NVFP4 plus DFlash2 K12/chunk1K TP1 replicas are retained at
   1,401.8–1,423.4 aggregate tok/s for the matched sustained-output C16 workload. One
@@ -915,4 +915,14 @@ capability RTX 5090 incumbent.
 
 ### 2026-09-19: Huihui 64K C1 promotion
 
-The promoted Huihui NInfer MTP3 profile now uses 65,536 context tokens at C1. Direct preflight passed 7/7, routed preflight 6/6, vision 12/12, and native Hermes 9/9 with the exact local alias. Descriptive, canary-free C1 short-input capacity passed 12/12 at 182.1 mean decode tokens/s; the long-input cell passed 6/6 at 167.1, with 60,769-60,776 actual prompt tokens. Post-workload GPU use was 24,224 MiB. The three fleet hosts and Open WebUI converged with zero repeat changes. The 32K results remain historical evidence and a rollback profile. Endurance, interactive browser acceptance, and a matched 64K no-spec control remain unmeasured. See [the 64K finding](../../findings/2026-09-19-qwen38-huihui-64k.md).
+The earlier Huihui NInfer MTP3 qualification used 65,536 context tokens at C1. Direct preflight passed 7/7, routed preflight 6/6, vision 12/12, and native Hermes 9/9 with the exact local alias. Descriptive, canary-free C1 short-input capacity passed 12/12 at 182.1 mean decode tokens/s; the long-input cell passed 6/6 at 167.1, with 60,769-60,776 actual prompt tokens. Post-workload GPU use was 24,224 MiB. The 32K results remain historical evidence. Endurance, interactive browser acceptance, and a matched 64K no-spec control remain unmeasured. See [the 64K finding](../../findings/2026-09-19-qwen38-huihui-64k.md).
+
+#### Huihui direct-I/O 160K context envelope (2026-09-19, accepted)
+
+**Status:** 160K/C1 direct qualification and bounded native client compatibility are complete. The 64K results remain a separate comparison; actual deployments are private.
+
+**Measured:** final baked 163,840-context/C1 MTP3 INT8-KV profile passed startup, preflight 8/8, and exact 150K retrieval 9/9. The retrieval cases used 150,058, 150,144, and 150,124 prompt tokens, three repetitions each. Preflight included a 144,425-token needle and a 147,941-token tool call.
+
+**Limits:** the visible-output request cap was 8,192 tokens; it is not a generated-output result. First retrieval attempts were cold or partially cached and later attempts warm, so this is neither a comparative throughput result nor nine independent cold samples. The direct-I/O host-cache-pressure fix is retained; bounded native client compatibility is recorded separately.
+
+**Evidence:** [context-envelope finding](../../findings/2026-09-19-qwen38-context-envelope.md) and [native artifact index](../../findings/2026-09-19-qwen38-context-envelope-evidence/README.md).

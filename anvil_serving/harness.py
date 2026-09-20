@@ -630,6 +630,7 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
                      dry_run=True, confirm=False, timeout_seconds=15,
                      expected_config_sha256=None, align_compaction_reserve=False,
                      pi_exclude_aliases="", openclaw_exclude_aliases="",
+                     openclaw_allow_aliases="",
                      _opener=None, _restart=None,
                      _refresh_openclaw_service=None, _restart_hermes=None,
                      _hermes_run=subprocess.run, _environ=None):
@@ -659,6 +660,7 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
             align_compaction_reserve=align_compaction_reserve,
             pi_exclude_aliases=pi_exclude_aliases,
             openclaw_exclude_aliases=openclaw_exclude_aliases,
+            openclaw_allow_aliases=openclaw_allow_aliases,
             opener=_opener,
             restart=_restart,
             refresh_openclaw_service=_refresh_openclaw_service,
@@ -784,6 +786,7 @@ def _build_parser():
     clients.add_argument("--align-compaction-reserve", action="store_true", help="Raise declared Pi/OpenClaw compaction reserves to fit router output limits")
     clients.add_argument("--pi-exclude-aliases", default="", help="Explicit comma-separated router aliases to omit from Pi")
     clients.add_argument("--openclaw-exclude-aliases", default="", help="Explicit comma-separated router aliases to omit from OpenClaw")
+    clients.add_argument("--openclaw-allow-aliases", default="", help="Explicit router aliases to add to existing restrictive OpenClaw override allowlists")
     clients.add_argument("--expected-config-sha256", help="Require the approved router config before client writes")
     hermes_media = sync_targets.add_parser("hermes-media")
     hermes_media.add_argument("--hermes-bin", default="~/.local/bin/hermes")
@@ -853,6 +856,7 @@ def main(argv=None):
                 align_compaction_reserve=args.align_compaction_reserve,
                 pi_exclude_aliases=args.pi_exclude_aliases,
                 openclaw_exclude_aliases=args.openclaw_exclude_aliases,
+                openclaw_allow_aliases=args.openclaw_allow_aliases,
                 openclaw_config=args.openclaw_config,
                 hermes_config=args.hermes_config,
                 hermes_bin=args.hermes_bin,

@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.image-build-receipt/v1",
+  "status": "final-tested-image",
+  "image_digest": "sha256:22fa89d51912535dfb0ebc6cf035e33a99a06b6a27b592dfef1f112d5e349b43",
+  "build_log_id": "4ab5a4df36b84d358b8a859e1028be4b",
+  "binary_sha256": "82ec9634bf221bee534bcf26c940a7c63f29fff36cd858de9bc57e75c3e6b25f",
+  "note": "Final image receipt. The b9c5376 artifact is retained separately as an intermediate direct-I/O build.",
+  "source_commit": "1fe8a09b3b10f64f62c62063dfb277c12a43d22b",
+  "dockerfile_sha256": "5786c08226ef470fb3aa97249df6bbd4f9b914805c4e79a69e30d9727dc93661",
+  "build_configuration": {
+    "kind": "actual-cached-final-build",
+    "cpus": 2,
+    "memory_mib": 1024,
+    "timeout_seconds": 600,
+    "platform": "linux/amd64"
+  },
+  "fresh_preview_configuration": {
+    "cpus": 4,
+    "memory_mib": 8192,
+    "timeout_seconds": 7200,
+    "platform": "linux/amd64"
+  },
+  "cached_layers_succeeded": true,
+  "fresh_cold_identical_rebuild_proven": false,
+  "build_log_sha256": "b64b343ae067c405a9534d2b8475fdfbd53062e7f74dbd0cc7b0f57335edcf3d",
+  "build_log_retention": "Private operator evidence; content omitted because it contains operator paths."
+}
