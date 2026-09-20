@@ -19,6 +19,7 @@ import pytest
 from anvil_serving.workbench_app.pi_rpc import PiRpcClient
 
 
+@pytest.mark.skipif(os.name == "nt", reason="requires the POSIX runner pipe contract")
 def test_official_pi_native_history_fork_resume_and_model_controls(tmp_path):
     binary = shutil.which("pi")
     if not binary or subprocess.run([binary, "--version"], capture_output=True, text=True, timeout=10).stdout.strip() != "0.85.1":

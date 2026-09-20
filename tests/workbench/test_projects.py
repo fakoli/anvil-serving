@@ -474,7 +474,11 @@ def test_nonzero_structured_plan_failure_is_typed_and_redacted(tmp_path, project
     assert "DO_NOT_EXPOSE" not in error.value.message
 
 
-@pytest.mark.parametrize("raw", [b"not-json", b"[]", b'{"ok":false,"error":[]}', b'{"ok":false,"error":{"schema_id":"anvil.state.read-error.v1","code":"private_error"}}', b"x" * (4 * 1024 * 1024 + 1)])
+@pytest.mark.parametrize(
+    "raw",
+    [b"not-json", b"[]", b'{"ok":false,"error":[]}', b'{"ok":false,"error":{"schema_id":"anvil.state.read-error.v1","code":"private_error"}}', b"x" * (4 * 1024 * 1024 + 1)],
+    ids=["not-json", "array", "error-array", "private-error", "oversized"],
+)
 def test_unrecognized_plan_failures_stay_generic(projects, raw):
     adapter, _, _ = projects
     adapter.run = lambda *_args, **_kwargs: (_ for _ in ()).throw(BoundedCommandFailure(raw))
