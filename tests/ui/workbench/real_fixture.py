@@ -692,7 +692,7 @@ def main():
                         "label": "Local research fixture",
                         "resource_id": "project-fixture",
                         "checkout": str(root),
-                        "anvil_binary": "/fixture/never-executed",
+                        "anvil_binary": str(root / "anvil"),
                     }
                 ],
                 "connectors": [

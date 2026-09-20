@@ -19,7 +19,7 @@ def test_workspace_sources_pages_and_stale_rows_follow_current_project_grants(tm
         "prometheus_url": "http://127.0.0.1:9090", "inventory": {},
         "workbench": {"state_path": str(tmp_path / "workspace.sqlite"), "projects": [
             {"id": key, "label": key, "resource_id": key, "checkout": str(tmp_path / key),
-             "anvil_binary": "/opt/anvil/bin/anvil"} for key in ("project-a", "project-b")
+             "anvil_binary": str(tmp_path / "anvil")} for key in ("project-a", "project-b")
         ]},
     }
     console = Console(config, metrics=object(), authenticate=lambda *_: False)

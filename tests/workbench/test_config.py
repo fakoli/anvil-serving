@@ -15,7 +15,7 @@ def _project(tmp_path, **extra):
         "label": "Product",
         "resource_id": "serve-a",
         "checkout": str(tmp_path / "checkout"),
-        "anvil_binary": "/usr/bin/anvil",
+        "anvil_binary": str(tmp_path / "anvil"),
         "runner_root": str(tmp_path / "runners"),
     }
     project.update(extra)

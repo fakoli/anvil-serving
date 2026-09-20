@@ -18,7 +18,7 @@ from test_playground import identity
 
 @pytest.fixture
 def projects(tmp_path):
-    config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": "/usr/bin/anvil", "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
+    config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": str(tmp_path / "anvil"), "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
     access = Access([], authenticate=lambda *_: False, origin="https://console.example.test", base_path="/", operate=True)
     state = {"status": "ready", "prd_status": "approved", "dependencies": [], "claims": [], "renew_failure": False}
     calls = []
@@ -126,7 +126,7 @@ def test_root_binding_digest_mismatch_refuses_live_pi_authority(projects):
 
 def test_lost_claim_response_reconciles_and_releases_without_force(tmp_path):
     import hashlib
-    config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": "/usr/bin/anvil", "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
+    config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": str(tmp_path / "anvil"), "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
     access = Access([], authenticate=lambda *_: False, origin="https://console.example.test", base_path="/", operate=True)
     actor = "workbench-" + hashlib.sha256(b"alice").hexdigest()[:16]
     claimed = tmp_path / "claimed"
@@ -184,7 +184,7 @@ def _multi_root_adapter(tmp_path, *, roots=None, primary_root_id="state"):
     for path in (checkout, secondary, claim):
         path.mkdir()
     config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a",
-                             "checkout": str(checkout), "anvil_binary": "/usr/bin/anvil",
+                             "checkout": str(checkout), "anvil_binary": str(tmp_path / "anvil"),
                              "runner_root": str(tmp_path / "runners"), "primary_root_id": primary_root_id,
                              "roots": roots or [
                                  {"id": "state", "label": "State", "owner_id": "local-owner", "runtime_id": "local-runtime", "task_access": "read-write", "path": str(checkout)},
@@ -342,7 +342,7 @@ def test_prepare_rejects_symlinked_or_aliased_secondary_before_claim(tmp_path):
 
 
 def test_task_evidence_uses_sandbox_and_submits_actual_cli_evidence(tmp_path):
-    config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": "/usr/bin/anvil", "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
+    config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": str(tmp_path / "anvil"), "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
     access = Access([], authenticate=lambda *_: False, origin="https://console.example.test", base_path="/", operate=True)
     claim = tmp_path / "claimed"
     claim.mkdir()
@@ -374,7 +374,7 @@ def test_task_evidence_uses_sandbox_and_submits_actual_cli_evidence(tmp_path):
 
 
 def test_submit_timeout_is_persisted_and_never_replayed(tmp_path):
-    config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": "/usr/bin/anvil", "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
+    config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": str(tmp_path / "anvil"), "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
     access = Access([], authenticate=lambda *_: False, origin="https://console.example.test", base_path="/", operate=True)
     root, digest = tmp_path / "evidence", "c" * 64
     root.mkdir()
