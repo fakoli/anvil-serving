@@ -2228,6 +2228,30 @@ def native_init(manifest_path: str | Path, target: Target, *, bundle: str | Path
     return result
 
 
+def native_reenroll(manifest_path: str | Path, target: Target, *, prior: str | Path,
+                    bundle: str | Path, apply: bool = False, runner: Runner | None = None) -> dict[str, Any]:
+    """Stage one exact connector identity replacement before normal enrollment."""
+    _require_supported_platform()
+    if target.kind != "connector":
+        raise ManageError("re-enrollment is defined only for a connector")
+    data = read_manifest(manifest_path)
+    _targets(data, target)
+    _current(data)
+    checked = _validate_data(data, target, runner)
+    _bound_active(data, target, checked["digests"])
+    values = {"prior": Path(prior), "bundle": Path(bundle)}
+    for name, value in values.items():
+        if not value.is_absolute() or str(value) != str({"prior": prior, "bundle": bundle}[name]):
+            raise ManageError(f"private re-enrollment {name} path is invalid")
+    result = {"schema": "anvil-connect.manage/v1", "action": "re-enroll", "target": target.text(),
+              "applied": bool(apply), "native_sha256": checked["digests"]["native"]}
+    if apply:
+        _action(runner, (data["binary"], "re-enroll", "--config", str(_config_path(data, target)),
+                         "--prior", str(values["prior"]), "--bundle", str(values["bundle"])),
+                _SYSTEMD_TIMEOUT, "native re-enrollment staging failed", _target_identity(data, target))
+    return result
+
+
 def _closed_identity(raw: bytes) -> dict[str, Any]:
     value = _strict_json(raw, "native identity output is invalid")
     allowed = {"id", "status", "fingerprint", "epoch", "generation", "resources"}

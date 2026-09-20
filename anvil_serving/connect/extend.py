@@ -53,7 +53,7 @@ from .manage import (
 _CONNECTOR_RESOURCE_LIMIT = 64
 _RECOVERY_SCHEMA = "anvil-connect.extend-recovery/v1"
 _RECOVERY_PHASES = {
-    "revoke-pending", "revoked", "invite-pending", "invited", "init-pending",
+    "revoke-pending", "revoked", "invite-pending", "invited", "re-enroll-pending", "init-pending",
     "redeemed", "approve-pending", "approved",
 }
 
@@ -329,6 +329,33 @@ def _retained_bundle(data: dict[str, Any], connector_id: str, name: str | None) 
     return path if _read_role_file(path, identity) is not None else None
 
 
+def _reenrollment_prior(data: dict[str, Any], connector_id: str, prior: dict[str, Any]) -> Path:
+    """Hand the native owner the exact non-secret local identity it must replace."""
+    identity = _role_identity(data, "connector", connector_id)
+    directory, _ = _role_directory(data, "connector", connector_id)
+    value = _closed_installation_status(prior, connector_id)
+    payload = {
+        "id": value["id"], "fingerprint": value["fingerprint"], "epoch": value["epoch"],
+        "generation": value["generation"], "resources": value["resources"],
+    }
+    return _write_handoff(
+        directory, "prior-" + secrets.token_hex(16) + ".json",
+        (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8"), identity,
+    )
+
+
+def _stop_connector(runner: Any, connector_unit: str) -> None:
+    """Stop the native state owner before it atomically replaces its identity."""
+    manage._action(runner, (_SYSTEMCTL, "stop", connector_unit), _SYSTEMD_TIMEOUT, "managed connector stop failed")
+    if manage._unit_state(runner, connector_unit)[0]:
+        raise ExtendError("managed connector did not stop before re-enrollment")
+
+
+def _start_connector(runner: Any, connector_unit: str) -> None:
+    """Resume a stopped connector without changing its enablement policy."""
+    manage._action(runner, (_SYSTEMCTL, "start", connector_unit), _SYSTEMD_TIMEOUT, "managed connector start failed")
+
+
 def extend_plan(data: dict[str, Any], target: Target) -> dict[str, Any]:
     """Read-only comparison of the enrolled connector with its declaration."""
     if target.kind != "connector":
@@ -507,14 +534,20 @@ def _invite(
     return _write_handoff(bundle_directory, bundle_name, encoded, identity)
 
 
-def _identity_fingerprint(manifest_path: str | Path, target: Target, runner: Any) -> str:
+def _connector_identity(manifest_path: str | Path, target: Target, runner: Any) -> dict[str, Any]:
     """Extract the closed native identity payload returned by ``manage.identity``."""
     identity = manage.identity(manifest_path, target, runner=runner)
     payload = identity.get("identity") if isinstance(identity, dict) else None
-    fingerprint = payload.get("fingerprint") if isinstance(payload, dict) else None
+    if not isinstance(payload, dict):
+        raise ExtendError("connector identity did not report a fingerprint after redemption")
+    fingerprint = payload.get("fingerprint")
     if not isinstance(fingerprint, str) or not fingerprint:
         raise ExtendError("connector identity did not report a fingerprint after redemption")
-    return fingerprint
+    return payload
+
+
+def _identity_fingerprint(manifest_path: str | Path, target: Target, runner: Any) -> str:
+    return str(_connector_identity(manifest_path, target, runner)["fingerprint"])
 
 
 def _installation_status(
@@ -553,7 +586,7 @@ def _resolve_recovery_phase(
         if not exact("revoked", prior["resources"] if fingerprint else declared, generation, fingerprint):
             raise ExtendError("installation status cannot prove the retained revoke outcome")
         return recovery
-    if phase == "invited":
+    if phase in {"invited", "re-enroll-pending"}:
         if not exact("invited", declared, generation, ""):
             raise ExtendError("installation status cannot prove the retained invitation outcome")
         return recovery
@@ -651,51 +684,60 @@ def _resume_enrollment(
         _write_recovery(data, connector_id, declared, "invited", bundle_name, prior, generation)
         phase = "invited"
     if phase == "invited":
+        _write_recovery(data, connector_id, declared, "re-enroll-pending", bundle_name, prior, generation)
+        phase = "re-enroll-pending"
+    if phase == "re-enroll-pending":
         bundle = _retained_bundle(data, connector_id, bundle_name)
-        if bundle is not None:
-            _write_recovery(data, connector_id, declared, "init-pending", bundle_name, prior, generation)
+        if bundle is None:
+            raise ExtendError("retained invitation is unavailable for connector re-enrollment")
+        prior_path = _reenrollment_prior(data, connector_id, prior)
+        try:
+            _stop_connector(runner, connector_unit)
+            manage.native_reenroll(manifest_path, target, prior=prior_path, bundle=bundle, apply=True, runner=runner)
+        finally:
+            try:
+                prior_path.unlink()
+            except FileNotFoundError:
+                pass
+        _write_recovery(data, connector_id, declared, "init-pending", bundle_name, prior, generation)
+        manage.native_init(manifest_path, target, bundle=bundle, apply=True, runner=runner)
+        try:
+            bundle.unlink()
+        except FileNotFoundError:
+            pass
+        phase = "init-pending"
+    if phase == "init-pending":
+        # Re-enrollment has already atomically staged the new pending local
+        # identity.  A still-invited authority proves ordinary init never
+        # redeemed the bundle, so retry that one operation only.  Any missing
+        # or drifted local identity is held without touching authority.
+        try:
+            identity = _connector_identity(manifest_path, target, runner)
+        except ManageError as exc:
+            raise ExtendError("connector identity is unavailable for retained re-enrollment") from exc
+        status = _installation_status(data, manifest_path, connector_id, runner)
+        fingerprint = identity["fingerprint"]
+        local_pending = (
+            identity.get("status") == "pending" and identity.get("id") == connector_id
+            and identity.get("epoch") == prior["epoch"] and identity.get("generation") == generation
+            and identity.get("resources") == declared
+        )
+        if (status["status"] == "invited" and status["epoch"] == prior["epoch"]
+                and status["generation"] == generation and status["resources"] == declared
+                and not status["fingerprint"]):
+            if not local_pending:
+                raise ExtendError("connector identity cannot prove the retained replacement stage")
+            bundle = _retained_bundle(data, connector_id, bundle_name)
+            if bundle is None:
+                raise ExtendError("retained invitation is unavailable for pending connector enrollment")
             manage.native_init(manifest_path, target, bundle=bundle, apply=True, runner=runner)
             try:
                 bundle.unlink()
             except FileNotFoundError:
                 pass
-        else:
-            # ``init`` may have consumed the bundle before an interrupted
-            # operation persisted the redeemed phase.  Identity verifies the
-            # exact declared local resource set before proceeding.
-            _identity_fingerprint(manifest_path, target, runner)
-        fingerprint = _identity_fingerprint(manifest_path, target, runner)
-        status = _installation_status(data, manifest_path, connector_id, runner)
-        if (status["status"] != "pending" or status["epoch"] != prior["epoch"]
-                or status["generation"] != generation or status["resources"] != declared
-                or status["fingerprint"] != fingerprint):
-            raise ExtendError("installation status cannot prove native enrollment")
-        _write_recovery(data, connector_id, declared, "redeemed", bundle_name, prior, generation, fingerprint)
-        phase = "redeemed"
-    if phase == "init-pending":
-        # Never replay an ambiguous init: it may have redeemed the one-time
-        # bundle before the caller lost its response.  Native identity is the
-        # exact local owner proof required to advance this retained phase.
-        try:
-            _identity_fingerprint(manifest_path, target, runner)
-        except ManageError:
-            status = _installation_status(data, manifest_path, connector_id, runner)
-            if (status["status"] != "invited" or status["epoch"] != prior["epoch"]
-                    or status["generation"] != generation or status["resources"] != declared
-                    or status["fingerprint"]):
-                raise
-            _revoke(data, manifest_path, connector_id, runner)
-            status = _installation_status(data, manifest_path, connector_id, runner)
-            if (status["status"] != "revoked" or status["epoch"] != prior["epoch"]
-                    or status["generation"] != generation + 1 or status["resources"] != declared
-                    or status["fingerprint"]):
-                raise ExtendError("installation status cannot prove the ambiguous initialization outcome")
-            _write_recovery(data, connector_id, declared, "revoked", prior=prior, generation=status["generation"], fingerprint="")
             return _resume_enrollment(
                 data, manifest_path, target, connector_unit, prior_connector, declared, runner, system_root,
             )
-        status = _installation_status(data, manifest_path, connector_id, runner)
-        fingerprint = _identity_fingerprint(manifest_path, target, runner)
         if (status["status"] != "pending" or status["epoch"] != prior["epoch"]
                 or status["generation"] != generation or status["resources"] != declared
                 or status["fingerprint"] != fingerprint):
@@ -715,8 +757,7 @@ def _resume_enrollment(
         _write_recovery(data, connector_id, declared, "approved", bundle_name, prior, generation, fingerprint)
     elif phase != "approved":
         raise ExtendError("extension recovery phase is not actionable")
-    active_connector, unit_file_state = prior_connector
-    _apply_unit_lifecycle(runner, connector_unit, active_connector, unit_file_state, start=True)
+    _start_connector(runner, connector_unit)
     manage._started_units(runner, system_root, (connector_unit,))
     _clear_recovery(data, connector_id, bundle_name)
     return fingerprint
@@ -791,9 +832,6 @@ def extend(
         # Authelia before any connector enrollment changes. Validate that full
         # closed role set up front, rather than accepting connector-only pins.
         checked = manage._validate_data(data, (Target("gateway"), target), runner)
-        prior_status = _installation_status(data, manifest_path, connector_id, runner)
-        if prior_status["status"] != "active" or prior_status["resources"] != previous:
-            raise ExtendError("installation state is not the declared prior connector enrollment")
         prior_connector = manage._unit_state(runner, connector_unit)
         gateway_units = _target_units((Target("gateway"),))
         prior_gateway = {unit: manage._unit_state(runner, unit) for unit in gateway_units}
@@ -813,6 +851,12 @@ def extend(
             if transaction.pending_record is not None:
                 _write_activation_record(root, transaction.pending_record)
                 transaction.pending_record = None
+            # The candidate root is now active and its activation record is
+            # published.  Native admin rejects an otherwise-valid status read
+            # until both binding proofs agree on that same generation.
+            prior_status = _installation_status(data, manifest_path, connector_id, runner)
+            if prior_status["status"] != "active" or prior_status["resources"] != previous:
+                raise ExtendError("installation state is not the declared prior connector enrollment")
             _write_recovery(
                 data, connector_id, declared, "revoke-pending", prior=prior_status,
                 generation=prior_status["generation"], fingerprint=prior_status["fingerprint"],
@@ -850,11 +894,13 @@ def extend(
                     transaction.commit()
                 retained = _read_recovery(data, connector_id, declared)
                 phase = retained["phase"] if retained is not None else "unknown"
-                if phase in {"revoke-pending", "init-pending"}:
+                if phase in {"revoke-pending", "re-enroll-pending", "init-pending"}:
                     guidance = (
                         "installation-status check before a new invitation is issued"
                         if phase == "revoke-pending"
-                        else "connector identity verification before any invitation is replayed"
+                        else ("retry of the exact retained connector replacement"
+                              if phase == "re-enroll-pending"
+                              else "connector identity verification before any invitation is replayed")
                     )
                     raise ExtendError(
                         f"extension {phase} outcome is uncertain; recovery state is retained for an {guidance}",

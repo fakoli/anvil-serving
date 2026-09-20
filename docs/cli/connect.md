@@ -692,16 +692,19 @@ widen one enrolled connector's resource set to its declaration in one managed
 operation: the preflight accepts purely additive resource-set changes
 (removals and renames are rejected with revoke-and-redeclare guidance), the
 new generation is activated with only gateway units restarted, the native
-admin revoke/invite pair runs against the running gateway, the connector
-redeems the invitation from its own state directory with `init --bundle`, the
-new fingerprint is approved, and the connector restarts and stabilizes. The
-whole sequence runs inside the deployment lock with rollback of the rendered
-tree and gateway units. Without `--confirm` it prints the same plan and
-changes nothing. Existing principals keep their prior resource lists until
-`connect admin human-set` extends each one.
+admin revoke/invite pair runs against the running gateway, and the connector
+is stopped before an exact retained local identity and the invitation stage an
+explicit replacement. Ordinary `init --bundle` then redeems that staged
+identity, the new fingerprint is approved, and the connector starts without
+changing its enablement policy. The whole sequence runs inside the deployment
+lock with rollback of the rendered tree and gateway units. Without `--confirm`
+it prints the same plan and changes nothing. Existing principals keep their
+prior resource lists until `connect admin human-set` extends each one.
 
 After a revoke, the operation keeps a private recovery record rather than
 restoring the old enrollment. A later `connect extend` first verifies the
 exact native installation status and either completes the retained forward
 transition or stops without further authority changes when the status has
-drifted. Invitation material is never shown or recreated from that record.
+drifted. A retained staged replacement can be retried only with the same
+invitation and exact prior identity; invitation material is never shown or
+recreated from that record.
