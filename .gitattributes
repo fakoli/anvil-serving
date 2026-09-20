@@ -33,6 +33,9 @@ configs/kernel-tunes/** -text
 # Keep runtime patch assets LF-stable and exempt their syntax from whitespace
 # linting; the derived-image build independently proves that each patch applies.
 configs/runtime-patches/**/*.patch text eol=lf -whitespace
+# The packaged Pi bridge uses the same unified-diff syntax and a pinned hash.
+anvil_serving/_pi_web_bridge/*.patch text eol=lf -whitespace
+anvil_serving/_pi_web_bridge/*.json text eol=lf
 # This published historical bundle uses byte hashes as evidence bindings. Keep
 # every text artifact LF-stable so the verifier behaves identically on Windows.
 docs/findings/eval-data/2026-06-28-planning-capability/** text eol=lf

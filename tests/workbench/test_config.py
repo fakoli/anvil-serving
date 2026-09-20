@@ -132,3 +132,49 @@ def test_project_root_rejects_conflicts_or_unsafe_declarations(tmp_path, root):
 
     with pytest.raises(ValueError):
         validate_config(config)
+
+
+def test_host_pi_optional_private_bridge_fields_are_all_or_nothing(tmp_path):
+    config = _config(tmp_path)
+    host_pi = {
+        "id": "host-pi", "resource_id": "host-pi", "origin": "https://workbench.example.test",
+        "owner_subject": "owner", "version": "0.9.0", "runtime_sha256": "a" * 64,
+    }
+    config["host_pi"] = host_pi
+    assert validate_config(config)["host_pi"] == host_pi  # legacy embedded host Pi
+
+    token_ref = f"file:{tmp_path / 'host-pi.token'}"
+    configured = _config(tmp_path)
+    configured["host_pi"] = host_pi | {
+        "token_ref": token_ref, "parent_origin": "https://workbench.example.test",
+        "bridge_base_url": "http://127.0.0.1:30123",
+    }
+    assert validate_config(configured)["host_pi"]["bridge_base_url"] == "http://127.0.0.1:30123"
+
+    for change in (
+        {"token_ref": "HOST_PI_TOKEN"},
+        {"token_ref": "bad ref", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://127.0.0.1:30123"},
+        {"token_ref": "file:relative.token", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://127.0.0.1:30123"},
+        {"token_ref": "file:C:relative.token", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://127.0.0.1:30123"},
+        {"token_ref": "file:", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://127.0.0.1:30123"},
+        {"token_ref": "HOST_PI_TOKEN", "parent_origin": "https://workbench.example.test/path", "bridge_base_url": "http://127.0.0.1:30123"},
+        {"token_ref": "HOST_PI_TOKEN", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://127.0.0.1:30123/path"},
+        {"token_ref": "HOST_PI_TOKEN", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://localhost:30123"},
+    ):
+        invalid = _config(tmp_path)
+        invalid["host_pi"] = host_pi | change
+        with pytest.raises(ValueError):
+            validate_config(invalid)
+
+
+def test_project_roots_reject_case_aliases_and_share_canonical_scope_bound(tmp_path):
+    aliases = _config(tmp_path, primary_root_id="app", roots=[
+        _root("app", tmp_path / "checkout"), _root("App", tmp_path / "secondary"),
+    ])
+    with pytest.raises(ValueError, match="Duplicate"):
+        validate_config(aliases)
+    root = _root("app", tmp_path / "checkout", expected_files=[f"file-{n}.py" for n in range(256)])
+    assert len(validate_config(_config(tmp_path, primary_root_id="app", roots=[root]))["projects"][0]["roots"][0]["expected_files"]) == 256
+    root["expected_files"].append("one-too-many.py")
+    with pytest.raises(ValueError, match="bounded"):
+        validate_config(_config(tmp_path, primary_root_id="app", roots=[root]))

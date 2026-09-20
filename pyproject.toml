@@ -87,6 +87,8 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
     "_pi_runner/Dockerfile",
     "_pi_runner/*.json",
     "_pi_runner/*.cjs",
+    "_pi_web_bridge/*.json",
+    "_pi_web_bridge/*.patch",
 ]
 "anvil_serving.observability.dashboard.static" = ["*.html", "*.js", "*.css", "views/*.js", "documents/*.md", "fonts/*.ttf", "fonts/*-OFL.txt"]
 "anvil_serving.connect" = ["components.lock.json"]

@@ -9,6 +9,7 @@ import json
 import re
 import secrets
 import time
+import threading
 from datetime import datetime, timezone
 from typing import Any
 
@@ -19,6 +20,7 @@ from .pi_sessions import PiSessionError
 
 _TASK_SOURCE = "workspace-tasks"
 _PI_SOURCE = "workspace-pi"
+_HOST_SOURCE = "workspace-host-pi"
 _OWNER_ID = "workbench-private"
 _CURSOR_TTL = 60.0
 _MAX_PAGE_BYTES = 128 * 1024
@@ -38,16 +40,21 @@ def _stamp(value: float) -> str:
 class WorkspaceRuns:
     """Read-only pages from the existing Workbench task and Pi owners."""
 
-    def __init__(self, store, projects, pi_store, *, clock=time.time, cursor_secret=None):
+    def __init__(self, store, projects, pi_store, *, clock=time.time, cursor_secret=None, host_access=None, host_inventory=None):
         self._store, self._projects, self._pi_store = store, projects, pi_store
         self._clock = clock
         self._cursor_secret = cursor_secret or secrets.token_bytes(32)
+        self._host_access, self._host_inventory = host_access, host_inventory
+        self._host_snapshots = {}
+        self._host_lock = threading.Lock()
 
     def page(self, session, source: str, *, limit: int = 100, cursor: str | None = None) -> dict[str, Any]:
         if source == _TASK_SOURCE:
             return self.task_page(session, limit=limit, cursor=cursor)
         if source == _PI_SOURCE:
             return self.pi_page(session, limit=limit, cursor=cursor)
+        if source == _HOST_SOURCE:
+            return self.host_page(session, limit=limit, cursor=cursor)
         raise ObservatoryError("not_found", "This Workbench run source is unavailable.", 404)
 
     def sources(self, session) -> dict[str, Any]:
@@ -61,7 +68,70 @@ class WorkspaceRuns:
         if self._pi_store is not None:
             items.append({"id": _PI_SOURCE, "label": "Managed Pi sessions", "kind": "workspace",
                           "resource_ids": grants})
+        if self._host_access:
+            try:
+                authority = self._host_access(session)
+                items.append({"id": _HOST_SOURCE, "label": "Native Pi sessions", "kind": "workspace",
+                              "resource_ids": authority["resource_ids"], "authority_key": authority["authority_key"]})
+            except ObservatoryError as error:
+                if error.status not in {403, 404}:
+                    raise
         return {"items": items}
+
+    def host_page(self, session, *, limit=100, cursor=None):
+        if self._host_access is None or self._host_inventory is None:
+            raise ObservatoryError("permission_denied", "This native Pi source is unavailable.", 403)
+        authority = self._host_access(session)  # Before parsing any cursor or reading retained rows.
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise ObservatoryError("invalid_workspace_run_page", "Select a bounded Workbench run page.", 400)
+        now, refresh = self._clock(), []
+        with self._host_lock:
+            self._host_snapshots = {key: value for key, value in self._host_snapshots.items() if value["expires"] > now}
+            if cursor is not None:
+                match = re.fullmatch(r"([a-f0-9]{32})\.([0-9]{1,3})", cursor) if type(cursor) is str else None
+                snapshot = self._host_snapshots.get(match[1]) if match else None
+                if not snapshot or snapshot["authority"] != authority["authority_key"]:
+                    raise ObservatoryError("invalid_workspace_run_cursor", "Select a current Workbench run page.", 400)
+                offset, token = int(match[2]), match[1]
+                if not 0 < offset < len(snapshot["items"]):
+                    raise ObservatoryError("invalid_workspace_run_cursor", "Select a current Workbench run page.", 400)
+        if cursor is None:
+            native = self._host_inventory(session)
+            if type(native) is not list or len(native) > 256:
+                raise ObservatoryError("workspace_source_unavailable", "The native Pi inventory exceeds its bound.", 503)
+            observed = _stamp(now)
+            items = []
+            from ..observability.dashboard.contracts import identifier
+            for row in native:
+                try:
+                    native_id = identifier(row["native_id"])
+                    title = row["title"]
+                    project_id = row.get("project_id")
+                    if (type(title) is not str or not 1 <= len(title) <= 192 or any(ord(c) < 32 or ord(c) == 127 for c in title)
+                            or type(row["running"]) is not bool or project_id not in [None, *authority["project_ids"]]):
+                        raise ValueError
+                    items.append({"id": projected_run_id(_OWNER_ID, _HOST_SOURCE, native_id), "owner_id": _OWNER_ID,
+                        "source": _HOST_SOURCE, "native_id": native_id, "kind": "native_pi_session", "title": title,
+                        "project_id": project_id, "context_project_id": project_id or authority["project_ids"][0],
+                        "native_state": "running" if row["running"] else "retained", "status": "running" if row["running"] else "retained",
+                        "updated_at": None, "observed_at": observed, "freshness": "fresh", "evidence_refs": [], "correlation_id": None})
+                except (KeyError, TypeError, ValueError, ObservatoryError):
+                    raise ObservatoryError("workspace_source_unavailable", "The native Pi inventory is unavailable.", 503) from None
+            if len({row["id"] for row in items}) != len(items) or len(canonical(items)) > _MAX_PAGE_BYTES:
+                raise ObservatoryError("workspace_source_unavailable", "The native Pi inventory exceeds its bound.", 503)
+            items.sort(key=lambda row: (row["status"] != "running", row["native_id"]))
+            refresh = [{key: row[key] for key in ("id", "native_state", "status", "observed_at", "freshness")} for row in items]
+            token, offset = secrets.token_hex(16), 0
+            snapshot = {"items": items, "authority": authority["authority_key"], "expires": now + _CURSOR_TTL, "observed": observed}
+            with self._host_lock:
+                if len(self._host_snapshots) >= 16:
+                    self._host_snapshots.pop(next(iter(self._host_snapshots)))
+                self._host_snapshots[token] = snapshot
+        page = snapshot["items"][offset:offset + limit]
+        next_cursor = f"{token}.{offset + limit}" if offset + limit < len(snapshot["items"]) else None
+        return {"items": page, "next_cursor": next_cursor, "refresh": {"items": refresh},
+                "sources": [{"id": _HOST_SOURCE, "owner_id": _OWNER_ID, "status": "fresh", "observed_at": snapshot["observed"],
+                             "deadline_seconds": 2, "partial": False, "truncated": next_cursor is not None}]}
 
     def _authorized_projects(self, session) -> tuple[dict[str, str], ...]:
         projects = []

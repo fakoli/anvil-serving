@@ -144,7 +144,9 @@ def test_pi_storage_failure_is_actionable_and_never_claims_a_task(site, monkeypa
 
     console, call, _ = site
     console.workbench.pi = SimpleNamespace(close=lambda: None)
+    console.workbench.config["projects"] = [{"id": "product", "resource_id": "serve-a"}]
     console.workbench.config["pi"] = {}
+    monkeypatch.setattr(console.workbench.projects, "project", lambda _session, project, *, execute=False: ({"id": project} if execute and project == "product" else pytest.fail("storage failure did not authorize the requested project")))
     monkeypatch.setattr(console.workbench.projects, "prepare", lambda *_: pytest.fail("storage failure acquired a task"))
 
     def unavailable(_):
@@ -208,3 +210,299 @@ def test_project_diff_route_passes_only_declared_identifiers_and_scope(site, mon
     assert call("GET", prefix + "?path=guide.txt&kind=staged")[0] == 200
     assert calls == [("product", "secondary", "guide.txt", {"kind": "staged"})]
     assert call("GET", prefix + "?path=guide.txt&command=anything")[0] == 400
+
+
+def test_frozen_task_file_routes_are_binding_scoped_and_closed(site, monkeypatch):
+    console, call, _ = site
+    calls = []
+    files = console.workbench.project_files
+    monkeypatch.setattr(files, "frozen_roots", lambda session, binding: calls.append(("roots", binding)) or {"roots": []})
+    monkeypatch.setattr(files, "frozen_tree", lambda session, binding, root, path: calls.append(("tree", binding, root, path)) or {"items": []})
+    monkeypatch.setattr(files, "frozen_text", lambda session, binding, root, path: calls.append(("text", binding, root, path)) or {"content": "safe"})
+    monkeypatch.setattr(files, "frozen_diff", lambda session, binding, root: calls.append(("diff", binding, root)) or {"diff": "reviewed"})
+    monkeypatch.setattr(files, "frozen_worktree", lambda session, binding, root: calls.append(("worktree", binding, root)) or {"source": "frozen-task-workspace"})
+
+    prefix = "artifacts/binding-a/roots/root-a"
+    assert call("GET", "artifacts/binding-a/roots")[1]["data"] == {"roots": []}
+    assert call("GET", prefix + "/tree?path=src")[1]["data"] == {"items": []}
+    assert call("GET", prefix + "/text?path=src%2Fsafe.py")[1]["data"] == {"content": "safe"}
+    assert call("GET", prefix + "/diff")[1]["data"] == {"diff": "reviewed"}
+    assert call("GET", prefix + "/worktree")[1]["data"] == {"source": "frozen-task-workspace"}
+    assert calls == [
+        ("roots", "binding-a"), ("tree", "binding-a", "root-a", "src"),
+        ("text", "binding-a", "root-a", "src/safe.py"), ("diff", "binding-a", "root-a"),
+        ("worktree", "binding-a", "root-a"),
+    ]
+    for suffix in ("/diff?path=src", "/tree?command=x", "/text", "/worktree?path=src"):
+        assert call("GET", prefix + suffix)[0] == 400
+
+
+def test_start_recovery_is_owner_scoped_read_only_and_returns_exact_session_links(site, tmp_path, monkeypatch):
+    from dataclasses import replace
+    from anvil_serving.workbench_app.pi_sessions import PiConversationService, PiSessionStore, PiTaskBinding
+
+    console, call, _ = site
+    service = console.workbench
+    service.config["projects"] = [{"id": "product", "resource_id": "serve-a"}]
+    binding = PiTaskBinding(principal_id="alice", project_id="product", task_id="plan:T001",
+                            lease_id="lease-a", runner_id="runner-a", provider_id="provider-a")
+    service.pi = SimpleNamespace(close=lambda: None, _session_json=PiConversationService._session_json)
+    service.pi_store = PiSessionStore(tmp_path / "pi", runtime_root=tmp_path / "runtime")
+    item, _ = service.pi_store.create(binding, "start-a", model_id="model-a", thinking_level="off")
+    monkeypatch.setattr(service.projects, "pi_binding", lambda row: binding)
+    service.store.put("task-binding", "alice", "start-a", {"id": "start-a", "project_id": "product", "task_id": "plan:T001",
+        "status": "ready", "runner_checkout": "/private/never-public", "actor": "private-actor"})
+    suffix = "?project=product&task=plan%3AT001"
+    status, result = call("GET", "pi/starts/start-a" + suffix)
+    assert status == 200
+    data = result["data"]
+    assert data["request_id"] == "start-a" and data["status"] == "ready"
+    assert len(data["sessions"]) == 1 and data["sessions"][0]["session_id"] == item.session_id
+    assert data["sessions"][0]["project_id"] == "product" and data["sessions"][0]["run_id"]
+    assert "private" not in json.dumps(data)
+    service.store.put("pi-command", "alice", "send-a", {"session_id": item.session_id, "result": {"accepted": True, "command_id": "native-command"}})
+    assert call("GET", f"pi/sessions/{item.session_id}/commands/send-a" + suffix)[1]["data"] == {"accepted": True, "command_id": "native-command"}
+    service.store.put("pi-command", "alice", "foreign-send", {"session_id": "other-session", "result": {"accepted": True}})
+    assert call("GET", f"pi/sessions/{item.session_id}/commands/foreign-send" + suffix)[0] == 404
+    assert call("GET", f"pi/sessions/{item.session_id}/commands/send-a?project=product&task=other-task")[0] == 404
+    service.store.put("task-binding", "another-owner", "foreign-start", {"project_id": "product"})
+    assert call("GET", "pi/starts/foreign-start" + suffix)[0] == 404
+    assert call("GET", "pi/starts/start-a?project=product&task=other-task")[0] == 404
+    assert call("POST", "pi/starts/start-a", {})[0] == 404
+    # A corrupted index cannot adopt a same-principal session with different root/lease/task authority.
+    monkeypatch.setattr(service.projects, "pi_binding", lambda row: replace(binding, task_id="foreign-task"))
+    assert call("GET", "pi/starts/start-a" + suffix)[0] == 409
+    service.config["projects"][0]["resource_id"] = "revoked-project"
+    monkeypatch.setattr(service.store, "get", lambda *_: pytest.fail("revoked project read private state"))
+    monkeypatch.setattr(service.pi_store, "get", lambda *_: pytest.fail("revoked project read Pi state"))
+    assert call("GET", "pi/starts/start-a" + suffix)[0] == 403
+    assert call("GET", "pi/starts/missing-start" + suffix)[0] == 403
+    assert call("GET", f"pi/sessions/{item.session_id}/commands/send-a" + suffix)[0] == 403
+
+
+def test_project_defaults_select_declared_roots_without_exposing_paths_or_changing_bindings(site, monkeypatch):
+    console, call, _ = site
+    service = console.workbench
+    project = {"id": "product", "checkout": "/private/code", "primary_root_id": "main", "resource_id": "serve-a",
+               "roots": [{"id": "main", "label": "Code", "task_access": "read-write", "path": "/private/code"},
+                         {"id": "library", "label": "Library", "task_access": "read-write", "path": "/private/lib"},
+                         {"id": "docs", "label": "Docs", "task_access": "read-only", "path": "/private/docs"}]}
+    authorized = []
+    def selected(session, project_id, *, execute=False):
+        assert project_id == "product"
+        authorized.append(execute)
+        return project
+    monkeypatch.setattr(service.projects, "project", selected)
+    service.store.put("task-binding", "alice", "retained", {"roots": "immutable-marker"})
+    status, data = call("GET", "projects/product/preferences")
+    assert status == 200 and "private" not in json.dumps(data)
+    assert data["data"]["defaults"] == {"primary_root_id": "main", "writable_root_ids": []}
+    for body in ({"primary_root_id": "absent", "writable_root_ids": []},
+                 {"primary_root_id": "main", "writable_root_ids": ["docs"]},
+                 {"primary_root_id": "main", "writable_root_ids": ["library", "library"]},
+                 {"primary_root_id": "main", "writable_root_ids": [{}]},
+                 {"primary_root_id": "docs", "writable_root_ids": []},
+                 {"primary_root_id": "library", "writable_root_ids": []}):
+        assert call("POST", "projects/product/preferences", body)[0] == 400
+    expected = {"primary_root_id": "library", "writable_root_ids": ["library"]}
+    assert call("POST", "projects/product/preferences", expected)[0] == 200
+    assert call("GET", "projects/product/preferences")[1]["data"]["defaults"] == expected
+    assert service.store.get("task-binding", "alice", "retained") == {"roots": "immutable-marker"}
+    assert authorized == [False, True, True, True, True, True, True, True, False]
+    project["roots"][1]["task_access"] = "read-only"
+    changed = call("GET", "projects/product/preferences")[1]["data"]
+    assert changed["stale"] is True
+    assert changed["defaults"] == {"primary_root_id": "main", "writable_root_ids": []}
+    assert service.store.get("project-preferences", "alice", "product") == expected  # Read never rewrites preferences.
+    assert call("POST", "projects/product/preferences", changed["defaults"])[0] == 200
+    assert call("GET", "projects/product/preferences")[1]["data"]["stale"] is False
+
+
+def test_host_thread_routes_keep_owner_identity_private_and_recover_one_request(site, tmp_path, monkeypatch):
+    from anvil_serving.observability.dashboard.contracts import ObservatoryError
+    from anvil_serving.workbench_app.host_pi import HostPi
+
+    console, call, mode = site
+    service = console.workbench
+    service.config["host_pi"] = {"id": "native", "resource_id": "serve-a", "owner_subject": "alice",
+        "origin": "https://pi.example.test", "version": "0.9.0", "runtime_sha256": "a" * 64,
+        "token_ref": "PRIVATE_BRIDGE_TOKEN", "parent_origin": "https://console.example.test", "bridge_base_url": "http://127.0.0.1:3111"}
+    service.config["projects"] = [{"id": "product", "label": "Product", "resource_id": "serve-a", "primary_root_id": "primary",
+        "roots": [{"id": "primary", "label": "Primary", "path": str(tmp_path / "private-checkout"), "task_access": "read-only"}]}]
+    class Client:
+        def __init__(self): self.calls = []
+        def ensure(self, **body):
+            self.calls.append(body)
+            if len(self.calls) == 1:
+                raise ObservatoryError("host_pi_unavailable", "The native response was lost.", 503)
+            return "native-thread"
+        def list_native(self): return [{"native_id": "native-thread", "title": "Native title", "running": True}]
+    client = Client()
+    service.host_pi = HostPi(service.config, service.store, service.projects, service.access, client)
+    prefix = "host-pi/projects/product/threads"
+    if mode == "legacy":
+        assert call("GET", prefix)[0] == 403
+        assert call("POST", prefix, {"request_id": "once"})[0] == 403
+        assert client.calls == []
+        return
+    assert call("POST", prefix, {"request_id": "once", "cwd": "/browser-supplied"})[0] == 400
+    assert call("POST", prefix, {"request_id": "once"})[0] == 503
+    first = call("POST", prefix, {"request_id": "once"})[1]["data"]
+    assert call("POST", prefix, {"request_id": "once"})[1]["data"] == first
+    assert len(client.calls) == 2 and client.calls[0] == client.calls[1]
+    assert call("GET", prefix + "/once")[1]["data"] == first
+    assert call("POST", prefix + "/once/rename", {"title": "Renamed"})[1]["data"]["title"] == "Renamed"
+    assert call("POST", prefix + "/once/archive", {"archived": True})[1]["data"]["archived"] is True
+    rows = call("GET", prefix)[1]["data"]
+    assert rows["items"][0]["title"] == "Renamed" and rows["items"][0]["provenance"] == "associated"
+    assert "private-checkout" not in json.dumps(rows)
+    service.config["projects"][0]["resource_id"] = "revoked-project"
+    monkeypatch.setattr(service.store, "get", lambda *_: pytest.fail("revoked project touched private association"))
+    assert call("GET", prefix + "/once")[0] == 403
+    assert call("POST", prefix, {"request_id": "new"})[0] == 403
+
+
+def test_managed_pi_routes_require_authorized_task_context_before_private_reads(site, tmp_path, monkeypatch):
+    from anvil_serving.workbench_app.pi_sessions import PiConversationService, PiSessionStore, PiTaskBinding
+
+    console, call, _ = site
+    service = console.workbench
+    service.config["projects"] = [{"id": "product", "resource_id": "serve-a"}]
+    binding = PiTaskBinding(principal_id="alice", project_id="product", task_id="plan:T001",
+                            lease_id="lease-a", runner_id="runner-a", provider_id="provider-a")
+    service.pi = SimpleNamespace(close=lambda: None, _session_json=PiConversationService._session_json)
+    service.pi_store = PiSessionStore(tmp_path / "pi", runtime_root=tmp_path / "runtime")
+    item, _ = service.pi_store.create(binding, "start-a", model_id="model-a", thinking_level="off")
+    service.store.put("task-binding", "alice", "binding-a", {
+        "id": "binding-a", "project_id": "product", "task_id": "plan:T001", "lease_id": "lease-a",
+        "root_binding_digest": "", "status": "ready",
+    })
+    suffix = "?project=product&task=plan%3AT001"
+    assert call("GET", f"pi/sessions/{item.session_id}" + suffix)[0] == 200
+    assert call("GET", f"pi/sessions/{item.session_id}/events" + suffix)[0] == 200
+    for route in (
+        f"pi/sessions/{item.session_id}",
+        f"pi/sessions/{item.session_id}/events?cursor=0",
+        f"pi/sessions/{item.session_id}/commands/request-a",
+    ):
+        assert call("GET", route)[0] == 400
+    assert call("GET", f"pi/sessions/{item.session_id}?project=product&task=other-task")[0] == 404
+
+    service.config["projects"][0]["resource_id"] = "revoked-project"
+    monkeypatch.setattr(service.pi_store, "get", lambda *_: pytest.fail("revoked context read Pi state"))
+    monkeypatch.setattr(service.pi_store, "list_for", lambda *_: pytest.fail("revoked context listed Pi state"))
+    for route in (
+        f"pi/sessions/{item.session_id}" + suffix,
+        f"pi/sessions/{item.session_id}/events" + suffix,
+        f"pi/sessions/{item.session_id}/commands/request-a" + suffix,
+        "pi/sessions" + suffix,
+    ):
+        assert call("GET", route)[0] == 403
+    for action, body in (
+        ("stop", {"project_id": "product", "task_id": "plan:T001"}),
+        ("delete", {"project_id": "product", "task_id": "plan:T001"}),
+        ("resume", {"project_id": "product", "task_id": "plan:T001"}),
+        ("command", {"project_id": "product", "task_id": "plan:T001", "request_id": "request-a", "name": "abort", "payload": {}}),
+    ):
+        assert call("POST", f"pi/sessions/{item.session_id}/{action}", body)[0] == 403
+    from anvil_serving.workbench_app import pi_storage
+    monkeypatch.setattr(pi_storage, "validate_pool", lambda *_: pytest.fail("revoked context inspected private Pi pool"))
+    assert call("POST", "pi/sessions", {
+        "project_id": "product", "task_id": "plan:T001", "request_id": "new-request",
+        "provider_id": "provider-a", "model_id": "model-a", "thinking_level": "off",
+    })[0] == 403
+
+
+def test_pi_command_receipts_retry_only_proven_pre_dispatch_rejections(site, monkeypatch):
+    from anvil_serving.observability.dashboard.contracts import ObservatoryError
+    from anvil_serving.workbench_app.pi_sessions import PiCommandNotDispatched, PiStartUncertain
+
+    console, _, _ = site
+    service = console.workbench
+    item = SimpleNamespace(session_id="managed-pi-session", binding=SimpleNamespace())
+    caller = SimpleNamespace(principal=SimpleNamespace(identity="alice"))
+    body = {"project_id": "product", "task_id": "plan:T001", "request_id": "command-once",
+            "name": "prompt", "payload": {"message": "one retained turn"}}
+    monkeypatch.setattr(service, "_pi_session", lambda *_args, **_kwargs: item)
+    monkeypatch.setattr(service.projects, "validate_pi_binding", lambda _binding: None)
+    monkeypatch.setattr(service.projects, "binding_for_pi", lambda _binding: {"id": "binding-a"})
+    monkeypatch.setattr(service.evidence_jobs, "ensure_idle", lambda _binding_id: None)
+
+    class PreDispatch:
+        writes = 0
+        ready = False
+
+        def command(self, *_args):
+            if not self.ready:
+                raise PiCommandNotDispatched(PiStartUncertain("runner is recovering"))
+            self.writes += 1
+            return {"accepted": True, "command_id": "native-once"}
+
+        def close(self):
+            pass
+
+    pre_dispatch = PreDispatch()
+    service.pi = pre_dispatch
+    with pytest.raises(ObservatoryError) as rejected:
+        service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller)
+    assert getattr(rejected.value, "code", None) == "pi_recovery_required"
+    assert pre_dispatch.writes == 0
+    with pytest.raises(ObservatoryError) as missing:
+        service.store.get("pi-command", "alice", body["request_id"])
+    assert getattr(missing.value, "status", None) == 404
+
+    pre_dispatch.ready = True
+    assert service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller) == {"accepted": True, "command_id": "native-once"}
+    assert service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller) == {"accepted": True, "command_id": "native-once"}
+    assert pre_dispatch.writes == 1
+
+    class AmbiguousWrite:
+        writes = 0
+
+        def command(self, *_args):
+            self.writes += 1
+            raise OSError("write acknowledgement lost")
+
+        def close(self):
+            pass
+
+    ambiguous = AmbiguousWrite()
+    service.pi = ambiguous
+    uncertain = body | {"request_id": "command-uncertain"}
+    with pytest.raises(OSError, match="acknowledgement lost"):
+        service._pi_mutate("pi/sessions/managed-pi-session/command", uncertain, caller)
+    assert service.store.get("pi-command", "alice", uncertain["request_id"])["result"] == {"accepted": False, "status": "outcome_unknown"}
+    assert service._pi_mutate("pi/sessions/managed-pi-session/command", uncertain, caller) == {"accepted": False, "status": "outcome_unknown"}
+    assert ambiguous.writes == 1
+
+
+def test_pre_dispatch_receipt_cleanup_failure_remains_non_replayable(site, monkeypatch):
+    from anvil_serving.workbench_app.pi_sessions import PiCommandNotDispatched, PiStartUncertain
+
+    console, _, _ = site
+    service = console.workbench
+    item = SimpleNamespace(session_id="managed-pi-session", binding=SimpleNamespace())
+    caller = SimpleNamespace(principal=SimpleNamespace(identity="alice"))
+    body = {"project_id": "product", "task_id": "plan:T001", "request_id": "command-cleanup-failed",
+            "name": "prompt", "payload": {"message": "one retained turn"}}
+    monkeypatch.setattr(service, "_pi_session", lambda *_args, **_kwargs: item)
+    monkeypatch.setattr(service.projects, "validate_pi_binding", lambda _binding: None)
+    monkeypatch.setattr(service.projects, "binding_for_pi", lambda _binding: {"id": "binding-a"})
+    monkeypatch.setattr(service.evidence_jobs, "ensure_idle", lambda _binding_id: None)
+
+    class PreDispatch:
+        writes = 0
+
+        def command(self, *_args):
+            raise PiCommandNotDispatched(PiStartUncertain("runner is recovering"))
+
+        def close(self):
+            pass
+
+    service.pi = PreDispatch()
+    monkeypatch.setattr(service.store, "delete", lambda *_args: (_ for _ in ()).throw(OSError("receipt cleanup failed")))
+    with pytest.raises(OSError, match="receipt cleanup failed"):
+        service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller)
+    assert service.store.get("pi-command", "alice", body["request_id"])["result"] == {"accepted": False, "status": "outcome_unknown"}
+    assert service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller) == {"accepted": False, "status": "outcome_unknown"}
+    assert service.pi.writes == 0

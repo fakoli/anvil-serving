@@ -43,19 +43,24 @@
         <header class="topbar">
           <button
             id="menu-toggle"
-            class="icon-button"
-            aria-label="Collapse navigation"
+            class="menu-toggle"
+            aria-label="Open navigation"
             aria-controls="navigation"
-            aria-expanded="true"
+            aria-expanded="false"
           >
-            ☰
+            <span aria-hidden="true">☰</span
+            ><span class="menu-label">Menu</span>
           </button>
+          <span class="shell-brand" aria-hidden="true">π</span>
           <div id="breadcrumb" class="breadcrumb">Workbench</div>
           <div class="topbar-end">
             <span id="fixture-label" class="badge warning" hidden
               >Isolated fixture</span
             ><span id="access-mode" class="badge">Signed out</span
-            ><button id="account-button" class="quiet-button">Sign in</button>
+            ><a class="topbar-settings quiet-button" href="#/settings/thread"
+              >Settings</a
+            >
+            <button id="account-button" class="quiet-button">Sign in</button>
           </div>
         </header>
         <section

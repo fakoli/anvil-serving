@@ -7,7 +7,7 @@ import subprocess
 
 import pytest
 
-from anvil_serving.workbench_app.pi_runner import PiContextMount, PiRunnerPolicy
+from anvil_serving.workbench_app.pi_runner import PiContextMount, PiRunnerPolicy, PiWritableMount
 
 
 def test_container_launch_keeps_secret_values_out_of_argv(tmp_path: Path) -> None:
@@ -145,6 +145,19 @@ def test_context_snapshot_mount_is_read_only_and_inspector_enforces_it(tmp_path)
     assert inspector.state(policy, tmp_path / "sessions") == "running"
     next(mount for mount in item["Mounts"] if mount["Destination"] == "/context/docs")["RW"] = True
     assert inspector.state(policy, tmp_path / "sessions") == "unsafe"
+
+
+def test_selected_secondary_clone_is_writable_and_bound_into_policy(tmp_path):
+    from dataclasses import replace
+
+    secondary = tmp_path / "secondary"
+    secondary.mkdir()
+    policy = replace(_policy(tmp_path), writable_mounts=(PiWritableMount("lib", secondary),))
+    argv = policy.argv(tmp_path / "sessions", credential_names=())
+    assert f"type=bind,source={secondary},target=/roots/lib" in argv
+    assert policy.policy_digest(tmp_path / "sessions") != _policy(tmp_path).policy_digest(tmp_path / "sessions")
+    with pytest.raises(ValueError, match="unique declared roots"):
+        replace(policy, context_mounts=(PiContextMount("lib", tmp_path / "context"),))
 
 
 def test_disposable_cpu_runner_reads_only_the_snapshot_context(tmp_path):

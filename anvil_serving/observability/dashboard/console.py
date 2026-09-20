@@ -30,6 +30,8 @@ _SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "c
 _RUN_CACHE_ENTRIES = 8
 _RUN_PAGE_BYTES = 128 * 1024
 _RUN_CACHE_BYTES = _RUN_CACHE_ENTRIES * _RUN_PAGE_BYTES
+_EARLY_REJECTION_DRAIN_BYTES = 65536
+_EARLY_REJECTION_DRAIN_SECONDS = 0.25
 
 
 def _run_bindings(config):
@@ -487,6 +489,8 @@ class Console:
             row["freshness"] = "stale"
         for row in cached.get("updates", []):
             row["freshness"] = "stale"
+        for row in cached.get("refresh", {}).get("items", []):
+            row["freshness"] = "stale"
         return cached
 
     def _benchmark_runs(self, session, query):
@@ -562,7 +566,7 @@ class Console:
         if cursor is not None and (type(cursor) is not str or not 1 <= len(cursor) <= 512):
             raise ObservatoryError("invalid_workspace_run_cursor", "Select a current Workbench run page.", 400)
         authority = digest({"projects": self.workbench.config.get("projects", []),
-                            "grants": descriptor["resource_ids"]})
+                            "grants": descriptor["resource_ids"], "owner_authority": descriptor.get("authority_key")})
         key = (*self._run_cache_key(session, source, limit, cursor), authority)
         try:
             result = self.workbench.workspace_run_page(session, source, limit=limit, cursor=cursor)
@@ -836,6 +840,9 @@ def attach_console(server, console: Console):
             self.wfile.write(raw)
 
         def _body(self):
+            # Mark before validating framing: a framing or parser failure must
+            # never cause the rejection path to attempt a second read.
+            self._body_started = True
             lengths = self.headers.get_all("Content-Length") or []
             content_types = self.headers.get_all("Content-Type") or []
             if self.headers.get_all("Transfer-Encoding") or len(lengths) != 1 or not re.fullmatch(r"[0-9]{1,6}", lengths[0]) or not 1 <= int(lengths[0]) <= 65536:
@@ -851,6 +858,43 @@ def attach_console(server, console: Console):
             if type(value) is not dict:
                 raise ObservatoryError("invalid_fields", "A JSON object is required.")
             return value
+
+        def _drain_early_rejection_body(self, method):
+            """Consume one safely framed rejected mutation body before closing.
+
+            BaseHTTPRequestHandler uses HTTP/1.0.  On Windows, closing after a
+            Host, Origin, or CSRF rejection while a small, already-declared
+            request body remains unread can reset the client before it receives
+            the original denial.  This is deliberately transport-only: it does
+            not parse JSON or call any owner code.
+            """
+            if method not in {"POST", "DELETE"} or self._body_started:
+                return
+            lengths = self.headers.get_all("Content-Length") or []
+            if (self.headers.get_all("Transfer-Encoding") or len(lengths) != 1
+                    or not re.fullmatch(r"[0-9]{1,6}", lengths[0])):
+                return
+            length = int(lengths[0])
+            if not 1 <= length <= _EARLY_REJECTION_DRAIN_BYTES:
+                return
+            deadline = time.monotonic() + _EARLY_REJECTION_DRAIN_SECONDS
+            remaining = length
+            try:
+                while remaining:
+                    timeout = deadline - time.monotonic()
+                    if timeout <= 0:
+                        return
+                    self.connection.settimeout(timeout)
+                    chunk = self.rfile.read1(min(remaining, 8192))
+                    if not chunk:
+                        return
+                    remaining -= len(chunk)
+            except OSError:
+                pass
+            finally:
+                # A drained body makes the original 4xx reliably observable;
+                # never retain this connection after a rejected mutation.
+                self.close_connection = True
 
         def _dispatch(self, method):
             relative, raw_query = self._relative()
@@ -939,9 +983,11 @@ def attach_console(server, console: Console):
             return True
 
         def _handle_console(self, method):
+            self._body_started = False
             try:
                 return self._dispatch(method)
             except ObservatoryError as error:
+                self._drain_early_rejection_body(method)
                 self._respond(error.status, {"ok": False, "error": {"code": error.code, "message": error.message}})
             except Exception:
                 self._respond(503, {"ok": False, "error": {"code": "source_unavailable", "message": "The requested source is unavailable. Existing operations are retained."}})

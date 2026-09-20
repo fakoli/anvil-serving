@@ -1,8 +1,42 @@
 # Acceptance and handoff contract
 
-All checks below are planned. This planning session ran no implementation tests
-and performed no live model generation. Unit-test paths in task packets are
-starting points; locate owner-specific tests when changing those owners.
+The checklist below defines acceptance for the original plan. Implementation
+receipts live in the selected private operator repository; the task manifest
+remains the original scope and dependency record.
+
+Implementation acceptance scope (2026-09-20 owner decision): use disposable
+canonical Anvil State, created and read through supported owner APIs, for the
+successful persisted-plan and task-execution journeys. This must exercise real
+State contracts, not mocked success responses. Recovery of existing live State
+and deployment are separate work; neither is required to certify the source
+implementation in this delivery. Retain those unperformed live checks explicitly
+in the final receipt. This scope supersedes the configured-live prerequisite in
+the original resume rules below, without weakening their independent review or
+dependency requirements.
+
+## Source acceptance (2026-09-20)
+
+The implementation retains separate native host Pi and isolated task authority.
+Native Pi Web is built from the pinned source and packaged bridge; task runs use
+frozen roots, canonical claims, reviewed patches, and owner-submitted evidence.
+The coordinated evidence path requires Anvil 0.6.11 / API 17.
+
+Repeatable browser checks are under `tests/ui/workbench/`:
+
+| Harness | Exercised contract |
+|---|---|
+| `state_browser.cjs` | Disposable canonical State through the production plan adapter, matching revision/digest, outline and reload |
+| `workspace_browser.cjs` | Task selection, managed Pi links, lost-response reconciliation, frozen files and evidence controls |
+| `host_browser.cjs` | Native thread metadata, context files, exact links, bounded history refresh, authority changes, responsive navigation |
+| `pi_native_browser.cjs` | Actual pinned Pi UI: prompt/stream, steer, follow-up, stop, ten-image limit, desktop/mobile embedding and bridge rejection |
+| `browser.cjs` | Workbench discovery, pagination, active history, retained evidence comparison, project defaults and keyboard navigation |
+
+The native Pi browser gate uses a deterministic RPC peer and makes no provider
+calls. Canonical State integration tests separately exercise real claims,
+multiple writable roots, read-only context, evidence submission and recovery.
+These source checks do not certify a live deployment, model quality, or repair
+of an existing State history. Existing live State recovery, service rollout and
+deployed client acceptance remain separate work by the owner's decision above.
 
 | Journey | Required evidence |
 |---|---|

@@ -6,6 +6,29 @@ review Pi, Workbench, and Anvil Work before an approved implementation slice.
 See the companion [UX notes](UX-NOTES.md) for observed, proposed, and deferred
 choices.
 
+## Implementation authority
+
+The owner confirmed on 2026-09-20 that these mockups are the permanent UI
+direction for a replacement implementation, not optional inspiration or
+add-ons to the old dashboard. Match their presentation as closely as possible.
+There is no requirement to preserve the old UI; correctness of the final
+experience is the gate. See the [recorded implementation direction](../README.md#implementation-direction-owner-clarification-2026-09-20).
+The synthetic prototype itself still proves no live behavior or deployment.
+
+## Implemented UI captures — 2026-09-20
+
+These captures show the running replacement UI with isolated synthetic data:
+
+- [Pi desktop](implemented-pi-desktop.png) and [Pi narrow layout](implemented-pi-mobile.png)
+- [Workbench desktop](implemented-workbench-desktop.png)
+- [Anvil Work desktop](implemented-anvil-work-desktop.png) and [Anvil Work narrow layout](implemented-anvil-work-mobile.png)
+
+Pi uses the pinned native app embedded in the actual Playground view. The local
+capture harness permits its HTTPS parent to embed a loopback HTTP fixture;
+that browser exception is test-only. These screenshots demonstrate rendering,
+not live deployment or provider acceptance. Behavior is covered separately by
+the browser journeys in `tests/ui/workbench/` and the native installer smoke.
+
 ## Open it
 
 Open [index.html](index.html) directly in a browser. No server, install,

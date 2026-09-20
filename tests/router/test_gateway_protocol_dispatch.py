@@ -4,7 +4,6 @@ import http.client
 import io
 import json
 import threading
-import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -586,18 +585,29 @@ media_public_origin = "http://127.0.0.1:8080"
         },
     )
     worker = server.anvil_media_worker
+    reconciled_after_submit = threading.Event()
+    submitted_id = None
+    reconcile_once = worker.reconcile_once
+
+    def observe_reconcile_once():
+        observed_submission = submitted_id
+        result = reconcile_once()
+        if observed_submission is not None:
+            reconciled_after_submit.set()
+        return result
+
+    # Observe the server-owned daemon after the durable submission; the test
+    # never drives reconciliation from its own thread.
+    worker.reconcile_once = observe_reconcile_once
     try:
         submitted = server.anvil_gateway.tasks.send_message(
             send_request()["params"], caller=CALLER
         )["task"]
-        deadline = time.monotonic() + 3
-        while time.monotonic() < deadline:
-            job = server.anvil_gateway.tasks.operations.jobs.get(
-                submitted["id"], principal="hermes"
-            )
-            if job.state == JobState.COMPLETED:
-                break
-            time.sleep(0.02)
+        submitted_id = submitted["id"]
+        assert reconciled_after_submit.wait(10), "media worker did not reconcile the submitted job"
+        job = server.anvil_gateway.tasks.operations.jobs.get(
+            submitted["id"], principal="hermes"
+        )
         assert job.state == JobState.COMPLETED
         assert len(job.artifacts) == 1
         assert server.anvil_gateway.artifacts.read(

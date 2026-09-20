@@ -1,13 +1,14 @@
 import { badge, button, el, empty, field, heading, jsonDetails, notice, select } from "./common.js";
-import { workbenchRequest } from "./api.js";
+import { query, workbenchRequest } from "./api.js";
+import { piChatView } from "./pi_chat.js";
+import { hostPiView } from "./host_pi.js";
 
 let draft = { connector: "", model: "", preset: "", message: "", conversation: null, pending: null };
 window.addEventListener("observatory-session-changed", () => { draft = { connector: "", model: "", preset: "", message: "", conversation: null, pending: null }; });
 const active = data => ["running", "cancel_requested"].includes(data?.status);
 export async function playgroundView(ctx, tab = "pi") {
   const modelTest = tab === "model-test";
-  const root = el("div", { class: "workbench-page stack", "data-story": "US-PLAY-01" },
-    heading("Pi", "Your host conversations and isolated task sessions keep their own owners."),
+  const root = el("div", { class: "workbench-page playground-page stack", "data-story": "US-PLAY-01" },
     el("nav", { class: "local-tabs playground-modes", "aria-label": "Playground modes" },
       el("a", { href: "#/playground", "aria-current": !modelTest ? "page" : null, text: "Pi" }),
       el("a", { href: "#/playground/model-test", "aria-current": modelTest ? "page" : null, text: "Model test" })));
@@ -15,15 +16,32 @@ export async function playgroundView(ctx, tab = "pi") {
     root.append(await modelTestView(ctx));
     return root;
   }
+  const locationParams = new URL(location.href).searchParams;
+  const managedSession = locationParams.get("pi-session");
+  const managedProject = locationParams.get("pi-project");
+  const managedTask = locationParams.get("pi-task");
+  if (managedSession) {
+    if (!managedProject || !managedTask) {
+      root.append(notice("This managed Pi link is missing its task context.", "warning"));
+      return root;
+    }
+    try {
+      const item = await workbenchRequest(query(`pi/sessions/${encodeURIComponent(managedSession)}`, { project: managedProject, task: managedTask }), { signal: ctx.signal });
+      if (item.project_id !== managedProject || item.task_id !== managedTask) throw new Error("The managed Pi session does not match its task context.");
+      const detail = await workbenchRequest(`projects/${encodeURIComponent(managedProject)}/tasks/${encodeURIComponent(managedTask)}`, { signal: ctx.signal, timeout: 30000 });
+      root.append(await piChatView(ctx, { projectId: managedProject, taskId: managedTask, detail, sessionId: managedSession }));
+    } catch (error) { if (!ctx.signal.aborted) root.append(notice(error.message, "warning")); }
+    return root;
+  }
   try {
-    const { host_pi: host } = await workbenchRequest("catalog", { signal: ctx.signal });
+    const catalog = await workbenchRequest("catalog", { signal: ctx.signal });
+    const host = catalog.host_pi;
     if (ctx.signal.aborted) return root;
     if (!host?.available) {
       root.append(notice(host?.reason || "The host Pi connection is unavailable.", "warning"));
       return root;
     }
-    root.append(notice(host.authority, "info"),
-      el("iframe", { class: "host-pi-frame", title: "Pi conversations", src: host.origin + "/", referrerpolicy: "no-referrer", allow: "clipboard-write" }));
+    root.append(await hostPiView(ctx, catalog));
   } catch (error) {
     if (!ctx.signal.aborted) root.append(notice(error.message, "warning"));
   }

@@ -245,49 +245,62 @@ class Projects:
                 if old["request_digest"] != request_digest:
                     raise ObservatoryError("request_conflict", "This start key belongs to a different task request.", 409)
                 if old["status"] != "ready":
+                    if old.get("root_request") and old.get("root_binding", {}).get("multi_root"):
+                        return self._recover_root_preparation(project, old)
                     raise ObservatoryError("start_uncertain", "The previous start needs reconciliation. Its claim will not be duplicated.", 409)
                 return old
             if not project.get("runner_root"):
                 raise ObservatoryError("runner_unavailable", "This project has no isolated runner storage configured.", 409)
-            root_binding = self._freeze_task_roots(project)
+            root_binding = self._freeze_task_roots(project, body)
             detail = self.task_detail(project, task_id)
             if not detail["execution"]["ready"]:
                 raise ObservatoryError("task_not_ready", detail["execution"]["reason"], 409)
             actor = "workbench-" + hashlib.sha256(owner.encode()).hexdigest()[:16]
             row = {"id": key, "project_id": project["id"], "task_id": task_id, "owner": owner, "actor": actor, "request_digest": request_digest,
                    "packet_digest": self.packet_contract_digest(detail["packet"], detail["prd"]), "status": "claiming", "created_at": time.time(), "provider_id": body["provider_id"], "model_id": body["model_id"],
-                   "thinking_level": body["thinking_level"], "root_binding": root_binding}
+                   "thinking_level": body["thinking_level"], "root_binding": root_binding,
+                   "task_verification_commands": detail["packet"].get("task", {}).get("verification", {}).get("commands", []),
+                   "task_declared_paths": detail["packet"].get("task", {}).get("likely_files", []),
+                   "prd_id": detail["prd"].get("id")}
             self.store.put("task-binding", owner, key, row)
             # Anvil creates its own isolated claim worktree; the shared checkout is never switched.
             try:
                 self._materialize_context_snapshots(row, project["runner_root"])
                 row["root_binding_digest"] = digest(row["root_binding"])
                 self.store.put("task-binding", owner, key, row)
-                claimed = self.cli(project, "claim", task_id, "--worktree", "--branch", "workbench/" + uuid.uuid4().hex,
-                                   "--actor", actor, "--lease", "240", "--json")
-                claim = claimed["claim"]
-                row.update(lease_id=claim["id"], claim_worktree=claimed.get("worktree"), claim_branch=claimed.get("branch"),
-                           lease_expires_at=claim["lease_expires_at"], status="provisioning")
+                if root_binding.get("multi_root"):
+                    request_path = self._root_request(row, project["runner_root"])
+                    lookup = self.cli(project, "roots", "request-digest", task_id, "--request-file", str(request_path), "--actor", actor, "--json")
+                    row["root_request"] = {"path": str(request_path), **lookup}
+                    self.store.put("task-binding", owner, key, row)
+                    claimed = self.cli(project, "roots", "claim", task_id, "--request-file", str(request_path), "--actor", actor, "--lease", "240", "--json")
+                    self._record_root_claim(row, claimed)
+                    self._provision_root_claim(project, row)
+                else:
+                    claimed = self.cli(project, "claim", task_id, "--worktree", "--branch", "workbench/" + uuid.uuid4().hex,
+                                       "--actor", actor, "--lease", "240", "--json")
+                    claim = claimed["claim"]
+                    row.update(lease_id=claim["id"], claim_worktree=claimed.get("worktree"), claim_branch=claimed.get("branch"),
+                               lease_expires_at=claim["lease_expires_at"], status="provisioning")
                 self.store.put("task-binding", owner, key, row)
                 claim_path = row["claim_worktree"]
                 if not claim_path or not Path(claim_path).is_absolute():
                     raise ObservatoryError("runner_unavailable", "Anvil did not return an isolated claim workspace.", 409)
-                root = Path(project["runner_root"])
-                runner_checkout, verification_checkout, baseline, artifact_root = self.artifacts.provision(claim_path, str(root), key)
-                row.update(runner_checkout=runner_checkout, verification_checkout=verification_checkout, baseline_sha=baseline, artifact_root=artifact_root)
+                if not root_binding.get("multi_root"):
+                    root = Path(project["runner_root"])
+                    runner_checkout, verification_checkout, baseline, artifact_root = self.artifacts.provision(claim_path, str(root), key)
+                    row.update(runner_checkout=runner_checkout, verification_checkout=verification_checkout, baseline_sha=baseline, artifact_root=artifact_root)
                 self.store.put("task-binding", owner, key, row)
-                packet = self.cli(project, "packet", task_id, "--format", "json")
-                fresh_prds = self.cli(project, "prd", "list", "--json")["prds"]
-                fresh_prd = next((item for item in fresh_prds if item["id"] == detail["prd"].get("id")), None)
-                if fresh_prd is None or self.packet_contract_digest(packet, fresh_prd) != row["packet_digest"]:
-                    raise ObservatoryError("packet_changed", "The task or PRD contract changed while the claim was prepared. The claim was released.", 409)
-                row.update(verification_commands=packet.get("task", {}).get("verification", {}).get("commands", []),
-                           declared_paths=packet.get("task", {}).get("likely_files", []), status="ready")
-                self.store.put("task-binding", owner, key, row)
-                return row
+                return self._finalize_preparation(project, row)
             except Exception:
                 # A lost claim response is reconciled through State before
-                # compensation. No database edits and no blind second claim.
+                # compensation. A root-set may already own every repository or
+                # have one private clone completed, so retain it unchanged for
+                # the exact original-request retry; never release or re-claim.
+                if row.get("root_request") and root_binding.get("multi_root"):
+                    row.update(status="provisioning", error="The retained root-set request needs reconciliation.")
+                    self.store.put("task-binding", owner, key, row)
+                    raise ObservatoryError("preparation_failed", "The isolated task workspace could not be prepared. Review its retained cleanup state before retrying.", 409) from None
                 try:
                     self._release_preparation(project, row)
                 except Exception:
@@ -295,7 +308,7 @@ class Projects:
                 self.store.put("task-binding", owner, key, row)
                 raise ObservatoryError("preparation_failed", "The isolated task workspace could not be prepared. Review its retained cleanup state before retrying.", 409) from None
 
-    def _freeze_task_roots(self, project):
+    def _freeze_task_roots(self, project, body=None):
         """Materialize the immutable, single-writer task root set before claim.
 
         T03c deliberately accepts only the legacy State checkout as the writable
@@ -309,7 +322,11 @@ class Projects:
         if not isinstance(roots, list) or not roots:
             raise ObservatoryError("project_root_invalid", "This project has no declared task roots.", 409)
         try:
-            primary_id = identifier(project.get("primary_root_id", "primary"))
+            body = body or {}
+            primary_id = identifier(body.get("primary_root_id", project.get("primary_root_id", "primary")))
+            selected_writable = body.get("writable_root_ids", ())
+            if type(selected_writable) not in (list, tuple) or any(type(item) is not str for item in selected_writable) or len(set(selected_writable)) != len(selected_writable):
+                raise ObservatoryError("project_root_invalid", "Writable root selection is invalid.", 409)
         except ObservatoryError:
             raise ObservatoryError("project_root_invalid", "This project primary root is invalid.", 409)
         declared = []
@@ -322,7 +339,7 @@ class Projects:
                 root_id = identifier(item.get("id"))
             except ObservatoryError:
                 root_id = ""
-            if not root_id or root_id in seen_ids:
+            if not root_id or root_id.casefold() in {value.casefold() for value in seen_ids}:
                 raise ObservatoryError("project_root_invalid", "This project root declaration is invalid.", 409)
             seen_ids.add(root_id)
             if item.get("owner_id") != _LOCAL_OWNER_ID or item.get("runtime_id") != _LOCAL_RUNTIME_ID:
@@ -335,22 +352,28 @@ class Projects:
                 raise ObservatoryError("project_root_invalid", "Declared task roots overlap or alias one another.", 409)
             canonical_paths.append(canonical)
             declared.append({"id": root_id, "owner_id": item["owner_id"], "runtime_id": item["runtime_id"],
-                             "task_access": access, "canonical_path": str(canonical), "source_identity": root_identity})
+                             "task_access": access, "repository_id": item.get("repository_id"), "verification_commands": list(item.get("verification_commands", [])),
+                             "expected_files": list(item.get("expected_files", [])), "canonical_path": str(canonical), "source_identity": root_identity})
         primary = next((item for item in declared if item["id"] == primary_id), None)
         claim_root = next((item for item in declared if Path(item["canonical_path"]) == checkout), None)
         if primary is None or claim_root is None:
             raise ObservatoryError("project_root_invalid", "The project task root set is incomplete.", 409)
-        if Path(primary["canonical_path"]) != checkout:
-            raise ObservatoryError("primary_root_unsupported", "The selected primary root is not the canonical State checkout for this task.", 409)
+        if any(root_id not in seen_ids for root_id in selected_writable) or (primary_id != claim_root["id"] and primary_id not in selected_writable):
+            raise ObservatoryError("project_root_invalid", "Writable root selection does not match the declared primary root.", 409)
+        if primary["task_access"] != "read-write":
+            raise ObservatoryError("primary_root_unsupported", "The selected primary root is not writable for this task.", 409)
         if claim_root["task_access"] != "read-write":
             raise ObservatoryError("claim_root_unsupported", "The canonical State checkout must remain this task's writable claim root.", 409)
         for item in declared:
             item["source_path"] = item["canonical_path"]
-            if item["id"] == claim_root["id"]:
+            selected = item["id"] == claim_root["id"] or item["id"] in selected_writable
+            if selected:
+                if item["task_access"] != "read-write" or (selected_writable and not item["repository_id"]):
+                    raise ObservatoryError("secondary_write_unsupported", "Writable roots require a declared owner repository identity.", 409)
+                if item["id"] != claim_root["id"] and (not item["expected_files"] or not item["verification_commands"]):
+                    raise ObservatoryError("secondary_write_unsupported", "Writable secondary roots need declared file scope and verification commands.", 409)
                 item["mount"] = "workspace"
                 continue
-            if item["task_access"] != "read-only":
-                raise ObservatoryError("secondary_write_unsupported", "Writable secondary roots require the reviewed multi-root claim contract.", 409)
             item["mount"] = "context-read-only"
         for item in declared:
             item.pop("canonical_path")
@@ -360,7 +383,189 @@ class Projects:
             "claim_root_id": claim_root["id"],
             "cwd_root_id": primary_id,
             "roots": declared,
+            "multi_root": len([item for item in declared if item["mount"] == "workspace"]) > 1,
         }
+
+    def _root_request(self, row, runner_root):
+        roots = []
+        for item in row["root_binding"]["roots"]:
+            if item["mount"] != "workspace":
+                continue
+            commands = row["task_verification_commands"] if item["id"] == row["root_binding"]["claim_root_id"] else item["verification_commands"]
+            roots.append({"root_id": item["id"], "repository_id": item["repository_id"], "path": item["source_path"],
+                          "expected_files": row["task_declared_paths"] if item["id"] == row["root_binding"]["claim_root_id"] else item["expected_files"],
+                          "verification_commands": commands})
+        request = {"schema": "anvil.root-set-request/v1", "request_id": row["id"], "primary_root_id": row["root_binding"]["claim_root_id"], "roots": roots}
+        encoded = json.dumps(request, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        parent = Path(runner_root) / ".workbench-root-requests"
+        parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if parent.is_symlink():
+            raise ObservatoryError("runner_unavailable", "Private root request storage is unavailable.", 409)
+        name = digest({"owner": row["owner"], "project_id": row["project_id"], "request_id": row["id"]}) + ".json"
+        path = parent / name
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(path, flags, 0o600)
+        except FileExistsError:
+            read_flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+            try:
+                descriptor = os.open(path, read_flags)
+                info = os.fstat(descriptor)
+                existing = os.read(descriptor, len(encoded) + 1)
+            except OSError as error:
+                raise ObservatoryError("task_root_binding_lost", "The retained root request is unavailable.", 409) from error
+            finally:
+                try:
+                    os.close(descriptor)
+                except (OSError, UnboundLocalError):
+                    pass
+            if not stat.S_ISREG(info.st_mode) or existing != encoded:
+                raise ObservatoryError("task_root_binding_lost", "The retained root request does not match this start.", 409)
+            return path
+        try:
+            offset = 0
+            while offset < len(encoded):
+                offset += os.write(descriptor, encoded[offset:])
+            os.fsync(descriptor)
+        except OSError as error:
+            raise ObservatoryError("runner_unavailable", "Private root request storage is unavailable.", 409) from error
+        finally:
+            os.close(descriptor)
+        return path
+
+    def _root_request_identity(self, project, row):
+        request = row.get("root_request")
+        if not isinstance(request, dict) or not isinstance(request.get("path"), str):
+            raise ObservatoryError("task_root_binding_lost", "The original root-set request is unavailable.", 409)
+        path = Path(request["path"])
+        if not path.is_file():
+            raise ObservatoryError("task_root_binding_lost", "The original root-set request is unavailable.", 409)
+        derived = self.cli(project, "roots", "request-digest", row["task_id"], "--request-file", str(path),
+                           "--actor", row["actor"], "--json")
+        if (derived.get("request_id") != row["id"]
+                or derived.get("request_id") != request.get("request_id")
+                or derived.get("request_digest") != request.get("request_digest")):
+            raise ObservatoryError("task_root_binding_lost", "The original root-set request no longer matches this task binding.", 409)
+        return derived
+
+    def _root_facts(self, row, response):
+        if not isinstance(response, dict) or response.get("status") != "ready" or response.get("request_id") != row["id"]:
+            raise ObservatoryError("task_root_binding_lost", "The owner returned a different root-set claim.", 409)
+        request = row.get("root_request") or {}
+        if response.get("request_digest") != request.get("request_digest"):
+            raise ObservatoryError("task_root_binding_lost", "The owner returned a different root-set claim.", 409)
+        roots = response.get("roots")
+        selected = [item for item in row["root_binding"]["roots"] if item["mount"] == "workspace"]
+        expected = {(item["id"], item["repository_id"]): item for item in selected}
+        if not isinstance(roots, list) or len(roots) != len(expected):
+            raise ObservatoryError("task_root_binding_lost", "The owner root-set facts are incomplete.", 409)
+        facts = {}
+        worktrees = []
+        required = ("root_id", "repository_id", "canonical_root", "claim_worktree", "branch", "baseline_sha", "verification_commands", "state")
+        for fact in roots:
+            if not isinstance(fact, dict) or any(field not in fact for field in required):
+                raise ObservatoryError("task_root_binding_lost", "The owner root-set facts are incomplete.", 409)
+            pair = (fact["root_id"], fact["repository_id"])
+            declared = expected.get(pair)
+            if (declared is None or pair in facts or fact["state"] != "prepared"
+                    or not isinstance(fact["claim_worktree"], str) or not Path(fact["claim_worktree"]).is_absolute()
+                    or not isinstance(fact["canonical_root"], str) or not Path(fact["canonical_root"]).is_absolute()
+                    or not isinstance(fact["branch"], str) or not fact["branch"]):
+                raise ObservatoryError("task_root_binding_lost", "The owner root-set facts do not match this task binding.", 409)
+            canonical, worktree = Path(fact["canonical_root"]).resolve(), Path(fact["claim_worktree"]).resolve()
+            if (canonical != Path(declared["source_path"])
+                    or any(self._paths_overlap(worktree, Path(item["source_path"])) for item in selected)
+                    or any(self._paths_overlap(worktree, prior) for prior in worktrees)):
+                raise ObservatoryError("task_root_binding_lost", "The owner root workspaces do not match their declared repositories.", 409)
+            worktrees.append(worktree)
+            commands = row["task_verification_commands"] if fact["root_id"] == row["root_binding"]["claim_root_id"] else declared["verification_commands"]
+            if fact["verification_commands"] != commands or not isinstance(fact["baseline_sha"], str) or not re.fullmatch(r"[0-9a-f]{40}(?:[0-9a-f]{24})?", fact["baseline_sha"]):
+                raise ObservatoryError("task_root_binding_lost", "The owner root-set facts do not match this task binding.", 409)
+            facts[pair] = {field: fact[field] for field in required}
+        if set(facts) != set(expected):
+            raise ObservatoryError("task_root_binding_lost", "The owner root-set facts do not match this task binding.", 409)
+        return facts
+
+    def _record_root_claim(self, row, claimed):
+        facts = self._root_facts(row, claimed)
+        if (not isinstance(claimed.get("claim_id"), str) or not isinstance(claimed.get("lease_expires_at"), str)
+                or (row.get("lease_id") is not None and row["lease_id"] != claimed["claim_id"])):
+            raise ObservatoryError("task_root_binding_lost", "The owner claim identity is unavailable.", 409)
+        existing = {item.get("root_id"): item for item in row.get("root_bindings", []) if isinstance(item, dict)}
+        rows = []
+        for root in row["root_binding"]["roots"]:
+            if root["mount"] != "workspace":
+                continue
+            fact = facts[(root["id"], root["repository_id"])]
+            retained = existing.get(root["id"], {})
+            for field, value in fact.items():
+                if field in retained and retained[field] != value:
+                    raise ObservatoryError("task_root_binding_lost", "The retained root facts no longer match the owner claim.", 409)
+            rows.append(dict(retained) | fact)
+        row.update(lease_id=claimed["claim_id"], lease_expires_at=claimed["lease_expires_at"],
+                   root_claim=claimed, root_bindings=rows,
+                   status="provisioning" if row.get("status") in {None, "claiming"} else row["status"])
+        self.store.put("task-binding", row["owner"], row["id"], row)
+
+    def _provision_root_claim(self, project, row):
+        for root in row["root_bindings"]:
+            fields = ("runner_checkout", "verification_checkout", "artifact_root")
+            base = Path(project["runner_root"]) / root["root_id"]
+            name = row["id"] + "-" + root["root_id"]
+            expected = (base / name, base / (name + "-verify"), base / ".workbench-artifacts" / name)
+            if any(root.get(field) is not None and Path(root[field]).resolve() != path.resolve()
+                   for field, path in zip(fields, expected)):
+                raise ObservatoryError("task_root_binding_lost", "A retained private root path no longer matches this task binding.", 409)
+            if all(isinstance(root.get(field), str) and Path(root[field]).is_dir() for field in fields):
+                continue
+            runner_checkout, verification_checkout, baseline, artifact_root = self.artifacts.provision(
+                root["claim_worktree"], str(Path(project["runner_root"]) / root["root_id"]), row["id"] + "-" + root["root_id"])
+            if baseline != root["baseline_sha"]:
+                raise ObservatoryError("task_root_binding_lost", "The private clone no longer matches its owner baseline.", 409)
+            root.update(runner_checkout=runner_checkout, verification_checkout=verification_checkout, artifact_root=artifact_root)
+            self.store.put("task-binding", row["owner"], row["id"], row)
+        primary = next((item for item in row["root_bindings"] if item["root_id"] == row["root_binding"]["primary_root_id"]), None)
+        if primary is None:
+            raise ObservatoryError("task_root_binding_lost", "The selected task root is unavailable.", 409)
+        row.update(claim_worktree=primary["claim_worktree"], runner_checkout=primary["runner_checkout"],
+                   verification_checkout=primary["verification_checkout"], baseline_sha=primary["baseline_sha"],
+                   artifact_root=primary["artifact_root"])
+        self.store.put("task-binding", row["owner"], row["id"], row)
+
+    def _finalize_preparation(self, project, row):
+        packet = self.cli(project, "packet", row["task_id"], "--format", "json")
+        fresh_prds = self.cli(project, "prd", "list", "--json")["prds"]
+        fresh_prd = next((item for item in fresh_prds if item["id"] == row.get("prd_id")), None)
+        if fresh_prd is None or self.packet_contract_digest(packet, fresh_prd) != row["packet_digest"]:
+            raise ObservatoryError("packet_changed", "The task or PRD contract changed while the claim was prepared. The claim was released.", 409)
+        commands = packet.get("task", {}).get("verification", {}).get("commands", [])
+        paths = packet.get("task", {}).get("likely_files", [])
+        if commands != row["task_verification_commands"] or paths != row["task_declared_paths"]:
+            raise ObservatoryError("packet_changed", "The task work packet changed while the claim was prepared. The claim was released.", 409)
+        if row.get("root_bindings"):
+            scopes = {item["id"]: item["expected_files"] for item in row["root_binding"]["roots"]}
+            for item in row["root_bindings"]:
+                item.update(declared_paths=paths if item["root_id"] == row["root_binding"]["claim_root_id"] else scopes[item["root_id"]],
+                            packet_digest=row["packet_digest"])
+        binding_digest = (digest({"binding": row["root_binding"], "roots": row["root_bindings"]})
+                          if row.get("root_bindings") else digest(row["root_binding"]))
+        row.update(verification_commands=commands, declared_paths=paths, root_binding_digest=binding_digest, status="ready", error=None)
+        self.store.put("task-binding", row["owner"], row["id"], row)
+        return row
+
+    def _recover_root_preparation(self, project, row):
+        """Reconcile exactly one retained request; never issue another claim."""
+        try:
+            lookup = self._root_request_identity(project, row)
+            claimed = self.cli(project, "roots", "reconcile", "--request-id", lookup["request_id"],
+                               "--request-digest", lookup["request_digest"], "--actor", row["actor"], "--json")
+            self._record_root_claim(row, claimed)
+            self._provision_root_claim(project, row)
+            return self._finalize_preparation(project, row)
+        except ObservatoryError:
+            row.update(status="cleanup_required", error="The retained root-set request needs owner reconciliation.")
+            self.store.put("task-binding", row["owner"], row["id"], row)
+            raise ObservatoryError("start_uncertain", "The previous start needs reconciliation. Its claim will not be duplicated.", 409) from None
 
     @staticmethod
     def _paths_overlap(first, second):
@@ -596,8 +801,15 @@ class Projects:
             row.update(lease_id=claim["id"], claim_worktree=claim.get("worktree_path"))
             self.store.put("task-binding", row["owner"], row["id"], row)
             self.cli(project, "release", claim["id"], "--actor", row["actor"], "--reason", "Workbench workspace preparation or execution closed; artifacts retained", "--json")
+        if row.get("root_request"):
+            # The canonical reduction is complete before this explicit stop
+            # confirmation frees the owner-global whole-repository reservation.
+            lookup = self._root_request_identity(project, row)
+            terminal = ("--cancel-if-no-claim",) if not claims else ("--confirm-runner-stopped",)
+            self.cli(project, "roots", "reconcile", "--request-id", lookup["request_id"],
+                     "--request-digest", lookup["request_digest"], "--actor", row["actor"], *terminal, "--json")
         # Only a clean, owned worktree can be removed. Dirty work is retained.
-        if row.get("claim_worktree") and Path(row["claim_worktree"]).is_dir():
+        if not row.get("root_request") and row.get("claim_worktree") and Path(row["claim_worktree"]).is_dir():
             try:
                 self.run(["git", "worktree", "remove", "--", row["claim_worktree"]], cwd=project["checkout"])
                 row["worktree_cleanup"] = "removed_clean_worktree"
@@ -623,6 +835,15 @@ class Projects:
     def validate_pi_binding(self, binding):
         """Server timer and Pi routes verify the exact live lease independently of browser state."""
         project = self.configured(binding.project_id)
+        row = self.binding_for_pi(binding)
+        if row.get("root_request"):
+            # The owner validates the immutable request/facts against the live
+            # canonical claim while holding its global reservation lock.
+            lookup = self._root_request_identity(project, row)
+            claimed = self.cli(project, "roots", "reconcile", "--request-id", lookup["request_id"],
+                               "--request-digest", lookup["request_digest"], "--actor", row["actor"], "--json")
+            self._record_root_claim(row, claimed)
+            self._frozen_roots(row)
         data = self.cli(project, "show", binding.task_id, "--json")
         expected_actor = "workbench-" + hashlib.sha256(binding.principal_id.encode()).hexdigest()[:16]
         claim = next((c for c in data.get("active_claims", []) if c.get("id") == binding.lease_id and c.get("claimed_by") == expected_actor), None)
@@ -633,7 +854,6 @@ class Projects:
             raise ObservatoryError("lease_expired", "The task lease expired. Recover ownership before continuing.", 409)
         # Anvil renewal is progress-gated. A no-op is never described as a
         # renewed lease; the original expiry remains authoritative.
-        row = self.binding_for_pi(binding)
         if expiry - datetime.now(timezone.utc) < timedelta(minutes=60) and time.time() - row.get("last_renew_attempt", 0) > 60:
             row["last_renew_attempt"] = time.time()
             renewal = self.cli(project, "renew", binding.lease_id, "--actor", expected_actor, "--lease", "240", "--json")
@@ -652,11 +872,39 @@ class Projects:
             if row.get("lease_id") == binding.lease_id and row["task_id"] == binding.task_id and row["project_id"] == binding.project_id:
                 if binding.rootset_digest != row.get("root_binding_digest", ""):
                     raise ObservatoryError("task_root_binding_lost", "The frozen task root binding no longer matches this runner session.", 409)
+                self._frozen_roots(row)
                 return row
         raise ObservatoryError("not_found", "This task runner binding is unavailable.", 404)
 
+    @staticmethod
+    def _frozen_roots(row):
+        """Return immutable prepared roots or fail before a runner can write."""
+        roots = row.get("root_bindings")
+        if not roots:
+            return ()
+        if not isinstance(roots, list) or not all(isinstance(item, dict) for item in roots):
+            raise ObservatoryError("task_root_binding_lost", "The frozen task root binding is unavailable.", 409)
+        root_ids = [item.get("root_id") for item in roots]
+        required = {"root_id", "repository_id", "baseline_sha", "claim_worktree", "runner_checkout", "verification_checkout", "artifact_root", "verification_commands", "declared_paths", "packet_digest"}
+        if len(set(root_ids)) != len(root_ids) or any(not required.issubset(item) for item in roots):
+            raise ObservatoryError("task_root_binding_lost", "The frozen task root binding is unavailable.", 409)
+        expected = digest({"binding": row.get("root_binding"), "roots": roots})
+        if row.get("root_binding_digest") != expected:
+            raise ObservatoryError("task_root_binding_lost", "The frozen task root binding no longer matches this runner session.", 409)
+        return tuple(roots)
+
     def evidence(self, session, binding_id):
         row = self.binding(session, binding_id)
+        if row.get("root_bindings"):
+            review = row.get("root_review")
+            verification = row.get("root_verification")
+            return {"binding_id": binding_id, "source": "isolated-sandbox", "observed_at": time.time(),
+                    "acceptance": "independent_review_required", "packet_digest": row["packet_digest"],
+                    "status": row.get("status"), "worktree_cleanup": row.get("worktree_cleanup"),
+                    "rootset_digest": row.get("root_binding_digest"), "review": review,
+                    "verification": verification, "transfer": row.get("root_transfer"),
+                    "submission": row.get("submission"),
+                    "binding": asdict(self.pi_binding(row)) if row.get("lease_id") else None}
         artifact = None
         verification = row.get("verification")
         if row.get("artifact_digest") and row.get("artifact_root"):
@@ -670,6 +918,20 @@ class Projects:
 
     def review_evidence(self, session, binding_id):
         row = self.binding(session, binding_id, execute=True)
+        if row.get("root_bindings"):
+            self._frozen_roots(row)
+            if row.get("root_review") and (row.get("status") != "verification_failed" or any(item.get("state") != "verification_failed" for item in row.get("root_transfer", {}).values())):
+                if row.get("root_review", {}).get("rootset_digest") != row.get("root_binding_digest"):
+                    raise ObservatoryError("task_root_binding_lost", "The reviewed root set no longer matches this runner session.", 409)
+                return row["root_review"]
+            if row.get("status") not in {"ready", "verification_failed"}:
+                raise ObservatoryError("evidence_unavailable", "This task binding is not available for evidence review.", 409)
+            review = self.artifacts.capture_roots(row)
+            review["rootset_digest"] = row["root_binding_digest"]
+            row.update(root_review=review, root_transfer={}, root_verification=None,
+                       status="evidence_reviewed", verification=None, submission=None)
+            self.store.put("task-binding", row["owner"], row["id"], row)
+            return review
         if row.get("status") not in {"ready", "evidence_reviewed", "verified", "verification_failed"}:
             raise ObservatoryError("evidence_unavailable", "This task binding is not available for evidence review.", 409)
         preview = self.artifacts.capture(row)
@@ -679,6 +941,8 @@ class Projects:
 
     def verify_evidence(self, session, binding_id, artifact_digest):
         row = self.binding(session, binding_id, execute=True)
+        if row.get("root_bindings"):
+            return self._verify_root_evidence(row, artifact_digest)
         if row.get("artifact_digest") != artifact_digest:
             raise ObservatoryError("artifact_stale", "Verify the exact reviewed patch shown in the evidence preview.", 409)
         if (row.get("verification") or {}).get("artifact_digest") == artifact_digest:
@@ -703,6 +967,8 @@ class Projects:
 
     def submit_evidence(self, session, binding_id, artifact_digest):
         row = self.binding(session, binding_id, execute=True)
+        if row.get("root_bindings"):
+            return self._submit_root_evidence(row, artifact_digest)
         verification = row.get("verification") or {}
         if verification.get("artifact_digest") != artifact_digest:
             raise ObservatoryError("evidence_unverified", "Run the frozen task verification for this reviewed patch before submission.", 409)
@@ -740,6 +1006,265 @@ class Projects:
                    "acceptance": "independent_review_required"})
         self.store.put("task-binding", row["owner"], row["id"], row)
         return row["submission"]
+
+    def _root_submission_material(self, row, manifest_digest):
+        """Build one private owner manifest from exact reviewed root evidence."""
+        roots = {item["root_id"]: item for item in self._frozen_roots(row)}
+        review = row.get("root_review")
+        verification = row.get("root_verification")
+        if (
+            not isinstance(review, dict)
+            or not isinstance(verification, dict)
+            or not isinstance(review.get("roots"), list)
+            or review.get("manifest_digest") != manifest_digest
+            or digest(review.get("roots")) != manifest_digest
+            or verification.get("manifest_digest") != manifest_digest
+            or review.get("rootset_digest") != row.get("root_binding_digest")
+            or verification.get("rootset_digest") != row.get("root_binding_digest")
+            or verification.get("passed") is not True
+            or verification.get("transferred") is not True
+        ):
+            raise ObservatoryError(
+                "evidence_unverified",
+                "Verify every frozen root transfer for this reviewed manifest before submission.",
+                409,
+            )
+        reviewed = {item.get("root_id"): item for item in review.get("roots", []) if isinstance(item, dict)}
+        verified = {item.get("root_id"): item.get("evidence") for item in verification.get("roots", []) if isinstance(item, dict)}
+        if set(reviewed) != set(roots) or set(verified) != set(roots):
+            raise ObservatoryError("artifact_stale", "The reviewed root manifest does not match this task binding.", 409)
+        entries = []
+        for root_id in sorted(roots):
+            root, review_entry, evidence = roots[root_id], reviewed[root_id], verified[root_id]
+            if (
+                not isinstance(review_entry, dict)
+                or not isinstance(evidence, dict)
+                or review_entry.get("baseline_sha") != root["baseline_sha"]
+                or evidence.get("baseline_sha") != root["baseline_sha"]
+                or review_entry.get("artifact_digest") != evidence.get("artifact_digest")
+                or evidence.get("passed") is not True
+                or evidence.get("transferred") is not True
+            ):
+                raise ObservatoryError("evidence_tampered", "The retained per-root verification does not match its reviewed patch.", 409)
+            files = review_entry.get("files")
+            if (
+                not isinstance(files, list)
+                or any(not isinstance(item, dict) or type(item.get("path")) is not str for item in files)
+            ):
+                raise ObservatoryError("evidence_tampered", "The retained root file evidence is unavailable.", 409)
+            artifact_digest = evidence.get("artifact_digest")
+            if type(artifact_digest) is not str:
+                raise ObservatoryError("evidence_tampered", "The retained root patch is unavailable.", 409)
+            artifact_row = row | root
+            try:
+                preview = self.artifacts.load(artifact_row, artifact_digest)
+                patch = (Path(root["artifact_root"]) / (artifact_digest + ".patch")).read_bytes()
+                retained = self._read_verification(artifact_row, artifact_digest)
+            except (OSError, ObservatoryError):
+                raise ObservatoryError("evidence_tampered", "The retained root evidence is unavailable.", 409) from None
+            if (
+                hashlib.sha256(patch).hexdigest() != artifact_digest
+                or preview.get("baseline_sha") != root["baseline_sha"]
+                or preview.get("packet_digest") != row["packet_digest"]
+                or preview.get("files") != files
+                or retained.get("artifact_digest") != artifact_digest
+                or retained.get("baseline_sha") != root["baseline_sha"]
+                or retained.get("packet_digest") != row["packet_digest"]
+                or retained.get("files") != files
+                or retained.get("passed") is not True
+                or retained.get("transferred") is not True
+            ):
+                raise ObservatoryError("evidence_tampered", "The retained per-root evidence does not match its reviewed patch.", 409)
+            command_rows = retained.get("commands")
+            commands = root.get("verification_commands")
+            if (
+                not isinstance(commands, list)
+                or not commands
+                or not isinstance(command_rows, list)
+                or any(not isinstance(item, dict) for item in command_rows)
+                or [item.get("command") for item in command_rows] != commands
+                or any(item.get("exit_code") != 0 for item in command_rows)
+            ):
+                raise ObservatoryError("verification_contract_invalid", "Per-root verification commands do not match the frozen owner policy.", 409)
+            verification_digest = digest({
+                "root_id": root_id, "baseline_sha": root["baseline_sha"],
+                "artifact_digest": artifact_digest,
+                "commands": [{"command": item["command"], "exit_code": item["exit_code"]} for item in command_rows],
+                "files": files,
+            })
+            entries.append({"root_id": root_id, "baseline_sha": root["baseline_sha"],
+                            "artifact_digest": artifact_digest, "verification_digest": verification_digest,
+                            "commands": commands, "files": [item["path"] for item in files]})
+        serving_manifest_digest = digest({
+            "root_binding_digest": row["root_binding_digest"],
+            "review_manifest_digest": manifest_digest,
+            "roots": entries,
+        })
+        return {
+            "schema": "anvil.root-set-evidence/v1",
+            "submission_id": digest({"owner": row["owner"], "binding_id": row["id"], "serving_manifest_digest": serving_manifest_digest}),
+            "serving_manifest_digest": serving_manifest_digest,
+            "roots": entries,
+        }
+
+    def _root_submission_file(self, row, manifest):
+        """Persist a byte-identical private manifest without browser filenames."""
+        runner_root = Path(self.configured(row["project_id"])["runner_root"])
+        directory = runner_root / ".workbench-root-evidence"
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if directory.is_symlink():
+            raise ObservatoryError("runner_unavailable", "Private evidence storage is unavailable.", 409)
+        encoded = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        name = digest({"owner": row["owner"], "project_id": row["project_id"], "submission_id": manifest["submission_id"]}) + ".json"
+        path = directory / name
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(path, flags, 0o600)
+        except FileExistsError:
+            try:
+                descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0))
+                info = os.fstat(descriptor)
+                retained = os.read(descriptor, len(encoded) + 1)
+            except OSError as error:
+                raise ObservatoryError("evidence_tampered", "The retained owner evidence manifest is unavailable.", 409) from error
+            finally:
+                try:
+                    os.close(descriptor)
+                except (OSError, UnboundLocalError):
+                    pass
+            if not stat.S_ISREG(info.st_mode) or retained != encoded:
+                raise ObservatoryError("evidence_tampered", "The retained owner evidence manifest does not match this task.", 409)
+            return path
+        try:
+            offset = 0
+            while offset < len(encoded):
+                offset += os.write(descriptor, encoded[offset:])
+            os.fsync(descriptor)
+        except OSError as error:
+            raise ObservatoryError("runner_unavailable", "Private evidence storage is unavailable.", 409) from error
+        finally:
+            os.close(descriptor)
+        return path
+
+    def _submit_root_evidence(self, row, manifest_digest):
+        """Submit/recover one reviewed root set through the canonical owner CLI."""
+        self.artifacts.ensure_quiescent(row)
+        manifest = self._root_submission_material(row, manifest_digest)
+        manifest_path = self._root_submission_file(row, manifest)
+        project = self.configured(row["project_id"])
+        lookup = self._root_request_identity(project, row)
+        submission = row.get("submission") if isinstance(row.get("submission"), dict) else None
+        if submission and submission.get("serving_manifest_digest") != manifest["serving_manifest_digest"]:
+            raise ObservatoryError("submission_recovery_required", "A different per-root evidence submission is retained for this task.", 409)
+        if submission and row.get("status") == "submitted":
+            return submission
+        if submission and row.get("status") == "submitted_release_pending":
+            # Evidence is already canonical.  Only the conservative owner
+            # reservation release remains, so retry that exact reconciliation
+            # without reading or submitting a second evidence manifest.
+            return self._record_root_submission(
+                project, row, manifest, submission.get("state"), lookup
+            )
+        status_args = ("roots", "evidence-status", row["task_id"], "--request-file", row["root_request"]["path"],
+                       "--manifest-file", str(manifest_path), "--actor", row["actor"], "--json")
+        if submission:
+            recovered = self.cli(project, *status_args)
+            if recovered.get("status") == "submitted":
+                return self._record_root_submission(project, row, manifest, recovered, lookup)
+            if recovered.get("status") != "not_submitted":
+                raise ObservatoryError("submission_recovery_required", "The owner evidence outcome needs reconciliation.", 409)
+        row.update(status="submission_uncertain", submission={
+            "status": "outcome_unknown", "serving_manifest_digest": manifest["serving_manifest_digest"],
+            "submission_id": manifest["submission_id"], "acceptance": "independent_review_required",
+        })
+        self.store.put("task-binding", row["owner"], row["id"], row)
+        result = self.cli(project, "roots", "submit-evidence", row["task_id"], "--request-file", row["root_request"]["path"],
+                          "--manifest-file", str(manifest_path), "--actor", row["actor"], "--json")
+        return self._record_root_submission(project, row, manifest, result, lookup)
+
+    def _record_root_submission(self, project, row, manifest, result, lookup):
+        if (
+            not isinstance(result, dict)
+            or result.get("status") != "submitted"
+            or result.get("submission_id") != manifest["submission_id"]
+            or type(result.get("evidence_id")) is not str
+        ):
+            raise ObservatoryError("submission_recovery_required", "The owner evidence result does not match this task binding.", 409)
+        submission = {"status": "submitted", "state": result,
+                      "serving_manifest_digest": manifest["serving_manifest_digest"],
+                      "submission_id": manifest["submission_id"],
+                      "acceptance": "independent_review_required"}
+        row.update(status="submitted_release_pending", submission=submission)
+        self.store.put("task-binding", row["owner"], row["id"], row)
+        # State terminal reduction precedes this explicit owner-global release.
+        self.cli(project, "roots", "reconcile", "--request-id", lookup["request_id"],
+                 "--request-digest", lookup["request_digest"], "--actor", row["actor"],
+                 "--confirm-runner-stopped", "--json")
+        row.update(status="submitted")
+        self.store.put("task-binding", row["owner"], row["id"], row)
+        return submission
+
+    def _verify_root_evidence(self, row, manifest_digest):
+        self._frozen_roots(row)
+        review = row.get("root_review")
+        if (not isinstance(review, dict) or review.get("manifest_digest") != manifest_digest
+                or digest(review.get("roots")) != manifest_digest
+                or review.get("rootset_digest") != row.get("root_binding_digest")):
+            raise ObservatoryError("artifact_stale", "The reviewed root manifest does not match this task binding.", 409)
+        previous = row.get("root_verification")
+        if isinstance(previous, dict) and previous.get("manifest_digest") == manifest_digest:
+            return previous
+        entries = review.get("roots")
+        roots = {item["root_id"]: row | item for item in self._frozen_roots(row)}
+        if not isinstance(entries, list) or len(entries) != len(roots):
+            raise ObservatoryError("artifact_stale", "The reviewed root manifest does not match this task binding.", 409)
+        by_id = {item.get("root_id"): item for item in entries if isinstance(item, dict)}
+        if set(by_id) != set(roots):
+            raise ObservatoryError("artifact_stale", "The reviewed root manifest does not match this task binding.", 409)
+        progress = row.setdefault("root_transfer", {})
+        results = []
+        for root_id, root in roots.items():
+            entry = by_id[root_id]
+            if entry.get("baseline_sha") != root["baseline_sha"] or not isinstance(entry.get("artifact_digest"), str):
+                raise ObservatoryError("artifact_stale", "The reviewed root manifest does not match this task binding.", 409)
+            item = progress.get(root_id)
+            if item and (item.get("artifact_digest") != entry["artifact_digest"]
+                         or item.get("rootset_digest") != row["root_binding_digest"]):
+                raise ObservatoryError("transfer_recovery_required", "A different root patch has an unfinished transfer intent.", 409)
+            if item and item.get("state") == "transferred":
+                if self.artifacts.transfer_state(root, entry["artifact_digest"]) != "exact":
+                    raise ObservatoryError("transfer_recovery_required", "A transferred root no longer matches its reviewed patch.", 409)
+                evidence = self._read_verification(root, entry["artifact_digest"])
+            else:
+                if item:
+                    state = self.artifacts.transfer_state(root, entry["artifact_digest"])
+                    if state == "other":
+                        raise ObservatoryError("transfer_recovery_required", "A root changed during transfer recovery.", 409)
+                    already_transferred = state == "exact"
+                else:
+                    progress[root_id] = {"artifact_digest": entry["artifact_digest"],
+                                         "rootset_digest": row["root_binding_digest"], "state": "intent",
+                                         "recorded_at": time.time()}
+                    self.store.put("task-binding", row["owner"], row["id"], row)
+                    already_transferred = False
+                try:
+                    evidence = self.artifacts.verify(root, entry["artifact_digest"], already_transferred=already_transferred)
+                except ObservatoryError:
+                    row.update(status="transfer_recovery_required")
+                    self.store.put("task-binding", row["owner"], row["id"], row)
+                    raise
+                progress[root_id].update(state="transferred" if evidence["transferred"] else "verification_failed",
+                                         verified_at=time.time())
+                self.store.put("task-binding", row["owner"], row["id"], row)
+            results.append({"root_id": root_id, "evidence": evidence})
+        passed = all(item["evidence"].get("passed") is True for item in results)
+        transferred = all(item["evidence"].get("transferred") is True for item in results)
+        result = {"manifest_digest": manifest_digest, "rootset_digest": row["root_binding_digest"],
+                  "roots": results, "passed": passed, "transferred": transferred,
+                  "partial_transfer": any(item["evidence"].get("transferred") for item in results) and not transferred}
+        row.update(root_verification=result, status="verified" if passed and transferred else "verification_failed")
+        self.store.put("task-binding", row["owner"], row["id"], row)
+        return result
 
     def _read_verification(self, row, artifact_digest):
         path = Path(row["artifact_root"]) / (artifact_digest + ".verification.json")

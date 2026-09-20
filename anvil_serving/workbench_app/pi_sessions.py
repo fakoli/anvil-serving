@@ -22,6 +22,15 @@ from .pi_rpc import PiCommandId, PiRpcClient, PiRpcError
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9._-]{1,160}$")
 _RUN_METADATA_BYTES = 64 * 1024
+_COMMAND_PAYLOAD_KEYS = {
+    "prompt": frozenset({"message"}),
+    "steer": frozenset({"message"}),
+    "abort": frozenset(),
+    "get_state": frozenset(),
+    "set_model": frozenset({"provider", "model_id"}),
+    "set_thinking_level": frozenset({"level"}),
+    "extension_response": frozenset({"request_id", "response"}),
+}
 
 
 def _safe_metadata_text(value: Any, *, empty: bool = False) -> str:
@@ -119,6 +128,14 @@ class PiSessionAccessError(PiSessionError):
 
 class PiStartUncertain(PiSessionError):
     """A start key was reserved, so retrying must not replay a Pi prompt."""
+
+
+class PiCommandNotDispatched(PiSessionError):
+    """A managed command was rejected before any runner write was attempted."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+        super().__init__(str(error))
 
 
 @dataclass(frozen=True)
@@ -859,53 +876,70 @@ class PiConversationService:
         return self._start_transport(session, recovered=True, attach=mode == "running")
 
     def command(self, session_id: str, binding: PiTaskBinding, name: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-        self._coordinator.validate_pi_binding(binding)
-        session = self._store.resume(session_id, binding)
-        if session.status != "running":
-            raise PiStartUncertain("Wait for native Pi identity and target verification before sending commands")
-        client = self._clients.get(session_id)
-        if client is None:
-            raise PiStartUncertain("Pi runner is unavailable; recover without replaying the command")
-        command_id: PiCommandId | None
-        accepted_metadata: dict[str, Any] = {}
+        try:
+            self._coordinator.validate_pi_binding(binding)
+            session = self._store.resume(session_id, binding)
+            if session.status != "running":
+                raise PiStartUncertain("Wait for native Pi identity and target verification before sending commands")
+            client = self._clients.get(session_id)
+            if client is None:
+                raise PiStartUncertain("Pi runner is unavailable; recover without replaying the command")
+            if name in _COMMAND_PAYLOAD_KEYS:
+                if not isinstance(payload, Mapping) or set(payload) != _COMMAND_PAYLOAD_KEYS[name]:
+                    raise PiSessionAccessError("Pi command payload is not supported")
+            command_id: PiCommandId | None
+            accepted_metadata: dict[str, Any] = {}
+            target = None
+            if name == "prompt":
+                message = self._message(payload)
+                accepted_metadata["message"] = message
+            elif name == "steer":
+                message = self._message(payload)
+                accepted_metadata["message"] = message
+            elif name in {"abort", "get_state"}:
+                pass
+            elif name == "set_model":
+                provider, model_id = self._text(payload, "provider"), self._text(payload, "model_id")
+                if provider != session.binding.provider_id:
+                    raise PiSessionAccessError("Changing provider requires a new isolated conversation")
+                if model_id not in self._models.get(provider, frozenset()):
+                    raise PiSessionAccessError("model is not allowed for this Pi runner")
+                target = {"model_id": model_id}
+            elif name == "set_thinking_level":
+                level = self._text(payload, "level")
+                if level not in self._thinking:
+                    raise PiSessionAccessError("thinking level is not allowed for this Pi runner")
+                target = {"thinking_level": level}
+            elif name in {"fork", "clone"}:
+                raise PiSessionAccessError("Stop and branch through a new bound conversation")
+            elif name == "extension_response":
+                request_id = self._text(payload, "request_id")
+                response = payload.get("response")
+                if (not isinstance(response, Mapping) or len(response) != 1
+                        or not set(response).issubset({"value", "confirmed", "cancelled"})):
+                    raise ValueError("extension response must contain value, confirmed, or cancelled")
+                accepted_metadata["request_id"] = request_id
+            else:
+                raise PiSessionAccessError("Pi command is not supported")
+            if target:
+                self._persist_target_intent(session, target, name)
+        except (PiSessionError, ValueError, OSError, OverflowError) as error:
+            raise PiCommandNotDispatched(error) from error
         if name == "prompt":
-            message = self._message(payload)
             command_id = client.prompt(message)
-            accepted_metadata["message"] = message
         elif name == "steer":
-            message = self._message(payload)
             command_id = client.steer(message)
-            accepted_metadata["message"] = message
         elif name == "abort":
             command_id = client.abort()
         elif name == "get_state":
             command_id = client.get_state()
         elif name == "set_model":
-            provider, model_id = self._text(payload, "provider"), self._text(payload, "model_id")
-            if provider != session.binding.provider_id:
-                raise PiSessionAccessError("Changing provider requires a new isolated conversation")
-            if model_id not in self._models.get(provider, frozenset()):
-                raise PiSessionAccessError("model is not allowed for this Pi runner")
-            self._persist_target_intent(session, {"model_id": model_id}, name)
             command_id = client.set_model(provider, model_id)
         elif name == "set_thinking_level":
-            level = self._text(payload, "level")
-            if level not in self._thinking:
-                raise PiSessionAccessError("thinking level is not allowed for this Pi runner")
-            self._persist_target_intent(session, {"thinking_level": level}, name)
             command_id = client.set_thinking_level(level)
-        elif name in {"fork", "clone"}:
-            raise PiSessionAccessError("Stop and branch through a new bound conversation")
-        elif name == "extension_response":
-            request_id = self._text(payload, "request_id")
-            response = payload.get("response")
-            if not isinstance(response, Mapping):
-                raise ValueError("extension response must be an object")
+        else:
             client.extension_response(request_id, response)
             command_id = None
-            accepted_metadata["request_id"] = request_id
-        else:
-            raise PiSessionAccessError("Pi command is not supported")
         # Retain the bounded private user turn or request identity only after
         # the runner write succeeds. Extension form values remain runner-only.
         accepted = {"name": name, "command_id": command_id} | accepted_metadata

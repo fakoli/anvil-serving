@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import selectors
@@ -14,7 +15,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import unquote
 
-from ..observability.dashboard.contracts import ObservatoryError, identifier
+from ..observability.dashboard.contracts import ObservatoryError, digest, identifier
 
 
 MAX_TREE_ENTRIES = 200
@@ -96,6 +97,32 @@ class ProjectFiles:
 
     def tree(self, session, project_id, root_id, relative_path=""):
         root = self._root(session, project_id, root_id)
+        return self._tree(root, relative_path)
+
+    def frozen_roots(self, session, binding_id):
+        """Return safe identifiers for a prepared task's immutable root set."""
+        row = self.projects.binding(session, binding_id)
+        roots = self._checked_frozen_roots(row)
+        review = row.get("root_review") if isinstance(row.get("root_review"), dict) else {}
+        reviewed = {
+            item.get("root_id") for item in review.get("roots", ())
+            if isinstance(item, dict)
+        }
+        return {
+            "binding_id": row["id"],
+            "source": "frozen-task-workspace",
+            "roots": [
+                {"root_id": root["root_id"], "baseline_sha": root["baseline_sha"],
+                 "reviewed": root["root_id"] in reviewed}
+                for root in roots
+            ],
+        }
+
+    def frozen_tree(self, session, binding_id, root_id, relative_path=""):
+        _, root = self._frozen_root(session, binding_id, root_id)
+        return self._tree({"id": root["root_id"], "path": root["runner_checkout"]}, relative_path)
+
+    def _tree(self, root, relative_path):
         deadline = self._deadline()
         with self._root_fd(root) as root_fd:
             with self._open_directory(root_fd, _safe_relative(relative_path, allow_empty=True)) as directory:
@@ -142,6 +169,13 @@ class ProjectFiles:
 
     def text(self, session, project_id, root_id, relative_path):
         root = self._root(session, project_id, root_id)
+        return self._text(root, relative_path)
+
+    def frozen_text(self, session, binding_id, root_id, relative_path):
+        _, root = self._frozen_root(session, binding_id, root_id)
+        return self._text({"id": root["root_id"], "path": root["runner_checkout"]}, relative_path)
+
+    def _text(self, root, relative_path):
         deadline = self._deadline()
         parts = _safe_relative(relative_path, allow_empty=False)
         try:
@@ -170,6 +204,62 @@ class ProjectFiles:
         except UnicodeDecodeError:
             raise _error("project_text_unavailable", "This project file is not text.") from None
         return {"root_id": root["id"], "path": "/".join(parts), "content": content}
+
+    def frozen_diff(self, session, binding_id, root_id):
+        """Return only a revalidated reviewed patch; never invoke host Git here."""
+        row, root = self._frozen_root(session, binding_id, root_id)
+        review = row.get("root_review")
+        if not isinstance(review, dict) or review.get("rootset_digest") != row.get("root_binding_digest"):
+            raise _error("evidence_unavailable", "A reviewed frozen patch is unavailable.")
+        entries = review.get("roots")
+        if not isinstance(entries, list) or digest(entries) != review.get("manifest_digest"):
+            raise _error("evidence_tampered", "The reviewed frozen patch is unavailable.")
+        frozen = {item["root_id"] for item in self._checked_frozen_roots(row)}
+        reviewed = {item.get("root_id"): item for item in entries if isinstance(item, dict)}
+        if len(reviewed) != len(entries) or set(reviewed) != frozen:
+            raise _error("evidence_tampered", "The reviewed frozen patch is unavailable.")
+        entry = reviewed.get(root["root_id"])
+        if not isinstance(entry, dict) or entry.get("baseline_sha") != root["baseline_sha"]:
+            raise _error("evidence_tampered", "The reviewed frozen patch is unavailable.")
+        artifact_digest = entry.get("artifact_digest")
+        if type(artifact_digest) is not str or not re.fullmatch(r"[0-9a-f]{64}", artifact_digest):
+            raise _error("evidence_tampered", "The reviewed frozen patch is unavailable.")
+        artifact_row = row | root
+        try:
+            preview = self.projects.artifacts.load(artifact_row, artifact_digest)
+            with self._root_fd({"id": root["root_id"], "path": root["artifact_root"]}) as artifact_fd:
+                with self._open_file(artifact_fd, (artifact_digest + ".patch",)) as descriptor:
+                    patch = self._read_descriptor(descriptor, MAX_GIT_BYTES, self._deadline())
+        except (OSError, ObservatoryError):
+            raise _error("evidence_tampered", "The reviewed frozen patch is unavailable.") from None
+        if (
+            hashlib.sha256(patch).hexdigest() != artifact_digest
+            or preview.get("files") != entry.get("files")
+            or preview.get("baseline_sha") != root["baseline_sha"]
+            or preview.get("packet_digest") != row.get("packet_digest")
+        ):
+            raise _error("evidence_tampered", "The reviewed frozen patch is unavailable.")
+        if b"\0" in patch:
+            raise _error("project_diff_unavailable", "This reviewed patch is unavailable.")
+        try:
+            text = patch.decode("utf-8", "strict")
+        except UnicodeDecodeError:
+            raise _error("project_diff_unavailable", "This reviewed patch is unavailable.") from None
+        return {"root_id": root["root_id"], "kind": "reviewed", "diff": text,
+                "artifact_digest": artifact_digest}
+
+    def frozen_worktree(self, session, binding_id, root_id):
+        """Expose immutable task identity without consulting Git in an agent checkout."""
+        row, root = self._frozen_root(session, binding_id, root_id)
+        transfer = row.get("root_transfer") if isinstance(row.get("root_transfer"), dict) else {}
+        return {
+            "root_id": root["root_id"],
+            "source": "frozen-task-workspace",
+            "baseline_sha": root["baseline_sha"],
+            "packet_digest": root["packet_digest"],
+            "binding_digest": row["root_binding_digest"],
+            "transfer_state": (transfer.get(root["root_id"]) or {}).get("state", "not_reviewed"),
+        }
 
     def diff(self, session, project_id, root_id, relative_path, *, kind="working"):
         root = self._root(session, project_id, root_id)
@@ -230,6 +320,40 @@ class ProjectFiles:
         if not all(hasattr(os, name) for name in ("O_DIRECTORY", "O_NOFOLLOW")):
             raise _error("project_root_unsupported", "This platform cannot safely read project roots.", 503)
         return root
+
+    def _frozen_root(self, session, binding_id, root_id):
+        row = self.projects.binding(session, binding_id)
+        selected = identifier(root_id)
+        roots = self._checked_frozen_roots(row)
+        root = next((item for item in roots if item["root_id"] == selected), None)
+        if root is None:
+            raise _error("project_root_not_found", "This frozen task root is unavailable.", 404)
+        if not all(hasattr(os, name) for name in ("O_DIRECTORY", "O_NOFOLLOW")):
+            raise _error("project_root_unsupported", "This platform cannot safely read task roots.", 503)
+        return row, root
+
+    def _checked_frozen_roots(self, row):
+        roots = self.projects._frozen_roots(row)
+        for root in roots:
+            try:
+                root_id = root["root_id"]
+                identifier(root_id)
+                baseline = root["baseline_sha"]
+                packet = root["packet_digest"]
+                checkout = root["runner_checkout"]
+                artifact_root = root["artifact_root"]
+            except (KeyError, TypeError, ObservatoryError):
+                raise _error("task_root_binding_lost", "The frozen task root binding is unavailable.") from None
+            if (
+                type(baseline) is not str
+                or not re.fullmatch(r"[0-9a-f]{40}(?:[0-9a-f]{24})?", baseline)
+                or type(packet) is not str
+                or not re.fullmatch(r"[0-9a-f]{64}", packet)
+                or any(type(path) is not str or not os.path.isabs(path) or any(ord(char) < 32 for char in path)
+                       for path in (checkout, artifact_root))
+            ):
+                raise _error("task_root_binding_lost", "The frozen task root binding is unavailable.")
+        return roots
 
     def _deadline(self):
         return self.clock() + self.deadline_seconds

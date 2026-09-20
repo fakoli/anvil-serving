@@ -38,6 +38,30 @@ def test_project_evidence_requires_a_reviewed_digest_and_keeps_acceptance_indepe
     assert "innerHTML" not in source
 
 
+def test_root_set_submission_keeps_the_release_pending_retry_enabled():
+    source = (STATIC / "views" / "project_work.js").read_text(encoding="utf-8")
+    assert 'const releasePending = evidence?.status === "submitted_release_pending";' in source
+    assert 'evidence?.submission?.status === "submitted" && !releasePending' in source
+    assert 'releasePending ? "Retry owner release reconciliation" : "Submit evidence to Anvil"' in source
+    assert "frozenProjectFilesView(ctx, bindingId)" in source
+    files = (STATIC / "views" / "project_files.js").read_text(encoding="utf-8")
+    assert "frozenProjectFilesView" in files
+    assert 'artifacts/${encodeURIComponent(bindingId)}/roots' in files
+    assert "never run host Git" in files
+
+
+def test_task_evidence_and_managed_pi_links_keep_exact_server_owned_context():
+    work = (STATIC / "views" / "project_work.js").read_text(encoding="utf-8")
+    assert 'new URL(location.href).searchParams.get("binding")' in work
+    assert "!bindings.includes(requestedBinding)" in work
+    assert "artifact" in work and "bindingId = requestedBinding || bindings[0]" in work
+    assert 'prdFilter.value === "default" && !task.id.includes(":")' in work
+    runs = (STATIC / "views" / "workbench.js").read_text(encoding="utf-8")
+    assert 'target.searchParams.set("binding", current.native_id)' in runs
+    assert '"pi-project": current.project_id' in runs
+    assert '"pi-task": current.task_id' in runs
+
+
 def test_pi_chat_uses_declared_catalog_and_server_owned_session_state():
     source = (STATIC / "views" / "pi_chat.js").read_text(encoding="utf-8")
     assert 'workbenchRequest("catalog"' in source
@@ -47,7 +71,10 @@ def test_pi_chat_uses_declared_catalog_and_server_owned_session_state():
     assert '["prompt", "steer"].includes(name) && result.accepted' in source
     assert 'send("steer"' in source
     assert 'type: "submit"' in source
-    assert "root.replaceChildren(...children)" in source
+    assert 'query("pi/sessions", { project: projectId, task: taskId })' in source
+    assert 'query(`pi/sessions/${encodeURIComponent(sessionId)}/events`' in source
+    assert 'piSessionLink(current.session_id, projectId, taskId)' in source
+    assert 'ctx.signal.addEventListener("abort"' in source
     assert "replaceChildren(state.error ?" not in source
     assert "clearTimer();\n    const current" not in source
     assert "state.cursor = 0" not in source[source.index("const send ="):source.index("const selectSession")]

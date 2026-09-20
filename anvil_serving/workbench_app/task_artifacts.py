@@ -87,10 +87,11 @@ def _error(code: str, message: str) -> ObservatoryError:
 
 
 def _safe_path(value: object) -> str:
-    if type(value) is not str or not value or len(value) > 512 or "\\" in value:
+    if (type(value) is not str or not value or len(value.encode("utf-8")) > 512 or "\\" in value
+            or any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in value)):
         raise _error("unsafe_artifact_path", "The captured change contains an unsupported path.")
     path = Path(value)
-    if path.is_absolute() or any(part in {"", ".", "..", ".git", ".anvil"} for part in path.parts):
+    if path.is_absolute() or any(part in {"", ".", "..", ".git", ".anvil"} for part in value.rstrip("/").split("/")):
         raise _error("unsafe_artifact_path", "The captured change contains an unsupported path.")
     return path.as_posix()
 
@@ -146,16 +147,16 @@ class TaskArtifacts:
         artifact_root.mkdir(parents=True, exist_ok=True, mode=0o700)
         return str(checkout), str(verification_checkout), baseline, str(artifact_root)
 
-    def capture(self, row: Mapping[str, Any]) -> dict[str, Any]:
+    def capture(self, row: Mapping[str, Any], *, allow_empty=False) -> dict[str, Any]:
         self.ensure_quiescent(row)
         result = self.sandbox.capture(Path(row["runner_checkout"]), row["baseline_sha"])
         if result.get("baseline_sha") != row["baseline_sha"]:
             raise _error("baseline_changed", "The isolated checkout no longer matches its claimed baseline.")
         patch = result.get("patch")
-        if not isinstance(patch, bytes) or not patch or len(patch) > self.max_patch_bytes:
+        if not isinstance(patch, bytes) or (not patch and not allow_empty) or len(patch) > self.max_patch_bytes:
             raise _error("artifact_too_large", "The captured patch is empty or exceeds the task evidence bound.")
         files = result.get("files")
-        if not isinstance(files, list) or not files or len(files) > MAX_PATHS:
+        if not isinstance(files, list) or (not files and not allow_empty) or len(files) > MAX_PATHS or bool(files) != bool(patch):
             raise _error("artifact_paths_invalid", "The captured task change has an unsupported file list.")
         observed = []
         seen = set()
@@ -207,6 +208,22 @@ class TaskArtifacts:
         self._write_json(root / (digest + ".json"), preview)
         return preview
 
+    def capture_roots(self, row: Mapping[str, Any]) -> dict[str, Any]:
+        """Capture one independent reviewed patch per frozen writable root."""
+        roots = self._root_rows(row)
+        captured = []
+        for root in roots:
+            preview = self.capture(root, allow_empty=True)
+            if len(preview["files"]) > 256:
+                raise _error("artifact_too_large", "A root patch exceeds the canonical evidence file bound.")
+            captured.append({"root_id": root["root_id"], "baseline_sha": root["baseline_sha"],
+                             "artifact_digest": preview["artifact_digest"], "files": preview["files"],
+                             "patch": preview["patch"], "patch_bytes": preview["patch_bytes"]})
+        from ..observability.dashboard.contracts import canonical, digest
+        if len(canonical(captured)) > MAX_ARTIFACT_JSON_BYTES:
+            raise _error("artifact_too_large", "The combined root patches exceed the review display bound.")
+        return {"roots": captured, "manifest_digest": digest(captured)}
+
     def verify(self, row: Mapping[str, Any], artifact_digest: str, *, already_transferred=False) -> dict[str, Any]:
         self.ensure_quiescent(row)
         preview = self.load(row, artifact_digest)
@@ -257,6 +274,22 @@ class TaskArtifacts:
         if state not in {"pristine", "exact", "other"}:
             raise _error("transfer_recovery_invalid", "The transfer recovery check returned an unsupported result.")
         return state
+
+    @staticmethod
+    def _root_rows(row: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+        roots = row.get("root_bindings")
+        if not isinstance(roots, list) or not roots:
+            return (dict(row),)
+        result = []
+        seen = set()
+        for item in roots:
+            if not isinstance(item, Mapping) or type(item.get("root_id")) is not str or item["root_id"] in seen:
+                raise _error("task_root_binding_lost", "The frozen task root binding is unavailable.")
+            seen.add(item["root_id"])
+            combined = dict(row)
+            combined.update(item)
+            result.append(combined)
+        return tuple(result)
 
     def load(self, row: Mapping[str, Any], artifact_digest: str) -> dict[str, Any]:
         if type(artifact_digest) is not str or not re.fullmatch(r"[0-9a-f]{64}", artifact_digest):

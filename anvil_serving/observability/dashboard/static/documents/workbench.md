@@ -119,6 +119,58 @@ grant. A wildcard grant alone is insufficient. Host Pi retains its native
 history and filesystem authority; this declaration does not make it a confined
 task runner. Its origin must differ from the dashboard origin.
 
+### Native project navigation
+
+For project/thread navigation and native run discovery, enable the packaged
+bridge in the private `workbench/pi-web.json` declaration:
+
+```json
+{
+  "version": "0.9.0",
+  "service_user": "operator",
+  "install_root": "/opt/anvil-pi-web",
+  "allowed_hosts": ["pi.example.test"],
+  "bridge_source": "/srv/sources/pi-web",
+  "bridge_parent_origin": "https://workbench.example.test",
+  "bridge_token_env_file": "/etc/anvil-serving/pi-web-bridge.env"
+}
+```
+
+The source must be the clean pinned Pi Web commit
+`0d1df12130c5069d86484051435a40d49e49db94`. Installation builds an archive of
+that commit with the packaged patch. Source preparation runs in the installer;
+npm installation and compilation run as the service account without runtime
+credentials. It binds the resulting artifact to the exact parent origin.
+Use the same `pi-web-install` preview/apply commands above. Changing the parent
+origin requires rebuilding; repeating unchanged setup verifies the retained
+artifact before reporting it current. The protected environment file supplies
+`PI_WEB_WORKBENCH_BRIDGE_TOKEN` only to the native service.
+
+Add `parent_origin`, `bridge_base_url` and `token_ref` together to `host_pi`:
+
+```json
+{
+  "parent_origin": "https://workbench.example.test",
+  "bridge_base_url": "http://127.0.0.1:30141",
+  "token_ref": "file:/etc/anvil-serving/pi-web-bridge.token"
+}
+```
+
+The token file contains the same bridge credential, separate from the native
+service's environment-file format. Workbench reads it through its protected
+secret-reference boundary; browser state contains neither credential nor bridge
+endpoint. After shared token or configuration changes, reload both the managed native Pi
+service and the Workbench/dashboard service to reconstruct their owner clients.
+
+Playground keeps native Pi's composer, tools, extensions and history inside the
+page. The surrounding project rail adds search, stable thread links and new
+threads in declared directories. Existing native threads are owner-only until
+associated with a matching directory; association cannot move a running thread.
+Rename and archive apply to the Workbench view and retain native history.
+Project file browsing and copied `@root:path` references do not change the
+active native session's directory or grant task authority. On narrow screens,
+**Project threads** collapses so the native composer remains reachable.
+
 ## Retained runs
 
 Workbench discovers Operations from its journal. Optional benchmark and
@@ -141,7 +193,14 @@ Configured projects also expose the current user's retained task bindings and
 managed Pi sessions under their existing project read grants. Pi metadata
 reads are unavailable on platforms without the required safe filesystem
 descriptor operations; canonical session storage continues to work.
-These managed sessions are separate from native host Pi Web history.
+The optional native bridge adds a separate **Native Pi sessions** source for
+the exact Connect owner with explicit host and project grants. It projects
+metadata from the native owner once, without copying transcripts. Its complete
+inventory is bounded to 256 sessions and 128 KiB; larger or malformed inventories
+report unavailable rather than silently dropping sessions. Pages retain one
+60-second snapshot, and active rows already loaded from history refresh too.
+Native and managed Pi rows open their exact conversation; task rows open their
+evidence.
 
 Each source requires its own read grant, distinct from controller resources and
 other run sources, for the optional benchmark and evidence declarations above.
@@ -232,6 +291,37 @@ from the pool. `runner_storage_root` and every project `runner_root` must be
 inside the pool. The pool validator rejects symlink escapes, nested mounts,
 wrong loop backing files, wrong size or ownership, and missing `nodev,nosuid`.
 
+## Project roots and new-session defaults
+
+Old projects without `roots` retain one `primary` root at their checkout.
+Explicit projects declare up to 16 disjoint roots with stable IDs, labels,
+`owner_id`, `runtime_id`, `task_access` and absolute private `path` values.
+`primary_root_id` selects the starting directory. Managed execution currently
+supports `local-owner` / `local-runtime` on descriptor-safe POSIX hosts.
+Root IDs must remain distinct without regard to case.
+
+**Settings → Project roots** saves defaults only for future conversations. The
+new-run preview shows the selected primary and writable secondary roots; the
+canonical State root always remains writable. Read-only roots become private
+snapshots. A saved default that no longer matches configuration needs review
+before a new start. Existing threads keep their frozen bindings.
+
+Writable secondary roots additionally require `repository_id`, nonempty
+`expected_files` (at most 256 paths or patterns), and frozen
+`verification_commands` matching their enrollment in Anvil. Multi-root
+submission requires Anvil **0.6.11 / API 17** or a compatible owner build,
+including `roots request-digest`, `claim`, `reconcile`, `evidence-status`, and
+`submit-evidence`. These APIs coordinate one claim across the root set.
+Install that owner capability before enabling writable secondary roots.
+
+Each root has its own baseline, reviewed patch, command results and transfer
+state. An unchanged root still runs its verification commands with an empty
+patch. Partial transfer recovery checks each claimed worktree before proceeding.
+Submission reopens retained evidence, verifies its digests, and sends the exact
+root manifest to Anvil. A lost response is reconciled against that manifest;
+a failed reservation release can be retried without a second submission.
+Independent State acceptance remains separate.
+
 ## Workspace journeys
 
 **Workbench** presents active and retained owner runs. Review the exact target, limits,
@@ -261,8 +351,15 @@ Web's separate session or account authority.
 Workbench claims an Anvil worktree, creates isolated full runner and verifier
 clones, and binds them to the frozen packet and lease. The Pi runner uses the
 pinned unprivileged image with CPU, memory, process, read-only-root and network
-policy limits. Browser recovery reads retained cursors and never resends a
-command. A stopped or lost lease prevents further task work.
+policy limits. Browser recovery retains the original request identity. A lost start or command
+requires **Reconcile original start** or **Reconcile command**; an unknown
+command after reload is never reconstructed from private prompt text in browser
+storage. A stopped or lost lease prevents further task work.
+
+Managed Pi exposes queued follow-up and attachments as unavailable because its
+current owner accepts text prompts only. Host Pi retains the formats and queue
+behavior supported by its pinned native UI. Provider changes require a new
+managed conversation; model and thinking changes stay within its allowlist.
 
 Review captures the baseline-relative patch, including committed and untracked
 changes, in a separate networkless sandbox. It validates paths, modes, declared

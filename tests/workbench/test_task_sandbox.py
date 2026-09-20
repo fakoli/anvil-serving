@@ -112,3 +112,23 @@ def test_crash_recovery_refuses_target_with_only_an_executable_mode_difference(t
     else:
         raise AssertionError("mode-only target difference must refuse crash recovery")
     assert any("find . -path ./.git -prune" in script and "-printf '%y %m %p" in script for script in scripts)
+
+
+def test_unchanged_root_verifies_commands_without_a_transfer_write(tmp_path):
+    runner, verifier, target = (tmp_path / name for name in ("runner", "verify", "claim"))
+    for directory in (runner, verifier, target):
+        directory.mkdir()
+    calls = []
+    def run(argv, **_kwargs):
+        calls.append(argv)
+        if any("tree_manifest()" in argument for argument in argv):
+            return CommandResult(0, b"exact", b"", 0.01)
+        results = next(value for value in argv if "target=/results" in value)
+        directory = Path(results.split("source=", 1)[1].split(",target=", 1)[0])
+        (directory / "0.meta").write_text("0 0\n", encoding="ascii")
+        (directory / "0.out").write_text("unchanged root checked", encoding="utf-8")
+        (directory / "0.err").write_text("", encoding="utf-8")
+        return CommandResult(0, b"", b"", 0.01)
+    evidence = ProductionTaskSandbox(_config(tmp_path), run=run).verify_transfer(runner, verifier, target, BASE, b"", ("true",))
+    assert evidence["applied"] is True and evidence["commands"][0]["stdout"] == "unchanged root checked"
+    assert len(calls) == 2  # Verification and read comparison; no transfer container.
