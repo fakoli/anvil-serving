@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import http.client
 import json
+import os
 import time
 import uuid
 from types import SimpleNamespace
@@ -25,6 +26,9 @@ class Metrics:
 
 
 KEY = bytes(range(32))
+_SAFE_PROJECT_READS = os.name == "posix" and all(
+    hasattr(os, name) for name in ("O_DIRECTORY", "O_CLOEXEC", "O_NOFOLLOW", "O_NONBLOCK")
+)
 
 
 def b64(value):
@@ -160,3 +164,47 @@ def test_encoded_separators_and_double_encoding_never_reach_adapter(site, compon
     console, call, _ = site
     console.workbench.projects.task = lambda *_: pytest.fail("invalid route reached adapter")
     assert call("GET", f"projects/product/tasks/{component}")[0] == 400
+
+
+def test_project_root_reads_authorize_before_open_and_keep_paths_server_side(site, tmp_path, monkeypatch):
+    console, call, _ = site
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    (checkout / "guide.txt").write_text("Project guide", encoding="utf-8")
+    root = {"id": "primary", "label": "Source", "owner_id": "local-owner", "runtime_id": "local-runtime",
+            "task_access": "read-write", "path": str(checkout)}
+    console.workbench.config["projects"] = [
+        {"id": "product", "label": "Product", "resource_id": "serve-a", "roots": [root]},
+        {"id": "private", "label": "Private", "resource_id": "other", "roots": [root]},
+    ]
+    prefix = "projects/product/roots/primary"
+    assert call("POST", prefix + "/text", {"path": "guide.txt", "content": "changed"})[0] == 405
+    with monkeypatch.context() as scoped:
+        scoped.setattr(console.workbench.project_files, "_root_fd", lambda *_: pytest.fail("unauthorized root opened"))
+        assert call("GET", "projects/private/roots/primary/tree")[0] == 403
+        assert call("GET", "projects/unknown/roots/primary/tree")[0] == 404
+        assert call("GET", "projects/product/roots/unknown/tree")[0] == 404
+    if not _SAFE_PROJECT_READS:
+        for suffix in ("/tree", "/text?path=guide.txt"):
+            status, result = call("GET", prefix + suffix)
+            assert status == 503 and result["error"]["code"] == "project_root_unsupported"
+        return
+
+    status, tree = call("GET", prefix + "/tree")
+    assert status == 200 and tree["data"]["items"] == [{"name": "guide.txt", "kind": "file"}]
+    status, text = call("GET", prefix + "/text?path=guide.txt")
+    assert status == 200 and text["data"]["content"] == "Project guide"
+    assert str(checkout) not in json.dumps(tree) + json.dumps(text)
+    for suffix in ("/text?path=..%252foutside", "/text?path=.env", "/tree?checkout=/tmp", "/text", "/worktree?path=x"):
+        assert call("GET", prefix + suffix)[0] in {400, 409}
+
+
+def test_project_diff_route_passes_only_declared_identifiers_and_scope(site, monkeypatch):
+    console, call, _ = site
+    calls = []
+    monkeypatch.setattr(console.workbench.project_files, "diff",
+        lambda session, project, root, path, **kwargs: calls.append((project, root, path, kwargs)) or {"diff": ""})
+    prefix = "projects/product/roots/secondary/diff"
+    assert call("GET", prefix + "?path=guide.txt&kind=staged")[0] == 200
+    assert calls == [("product", "secondary", "guide.txt", {"kind": "staged"})]
+    assert call("GET", prefix + "?path=guide.txt&command=anything")[0] == 400

@@ -15,7 +15,12 @@ fs.mkdirSync(output, { recursive: true });
   const fixture = spawn(
     process.env.OBSERVATORY_TEST_PYTHON || "python3",
     [path.join(__dirname, "real_fixture.py"), output],
-    { stdio: ["pipe", "pipe", "pipe"] },
+    {
+      stdio: ["pipe", "pipe", "pipe"],
+      // The selected Python may be editable-installed from another worktree.
+      // Serve the source beside this fixture, including its packaged assets.
+      env: { ...process.env, PYTHONPATH: path.resolve(__dirname, "../../..") },
+    },
   );
   const lines = readline.createInterface({ input: fixture.stdout });
   const pending = [],
@@ -45,6 +50,10 @@ fs.mkdirSync(output, { recursive: true });
     fixture.stdin.write('{"command":"status"}\n');
     return next();
   };
+  const control = (command) => {
+    fixture.stdin.write(JSON.stringify({ command }) + "\n");
+    return next();
+  };
   const { url } = await next();
   const browser = await chromium.launch({
     executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
@@ -55,6 +64,16 @@ fs.mkdirSync(output, { recursive: true });
     viewport: { width: 1440, height: 900 },
   });
   const errors = [];
+  const operationReads = [];
+  const runRequests = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/observatory/v1/runs/")) runRequests.push(request.url());
+  });
+  page.on("response", async (response) => {
+    if (response.url().includes("/api/observatory/v1/operations/")) {
+      operationReads.push({ status: response.status(), body: await response.json().catch(() => null) });
+    }
+  });
   page.on("pageerror", (error) => errors.push(error.message));
   const receipts = { fixture: true, journeys: [] };
   const capture = async (name) => {
@@ -105,6 +124,11 @@ fs.mkdirSync(output, { recursive: true });
     await page
       .getByRole("button", { name: "Apply change", exact: true })
       .click();
+    await page.waitForURL(/#\/operations\//);
+    await page.getByRole("dialog").waitFor();
+    // Native close events are queued: an old close must not stop this view's
+    // in-flight read or polling after the shared dialog opens again.
+    await page.getByRole("dialog").evaluate((dialog) => dialog.dispatchEvent(new Event("close")));
     await page
       .getByRole("dialog")
       .getByText("Independent deterministic fixture check passed.", {
@@ -192,6 +216,140 @@ fs.mkdirSync(output, { recursive: true });
     await page
       .getByRole("tabpanel", { name: "Overview", exact: true })
       .waitFor();
+    await page.getByRole("tab", { name: "Compare", exact: true }).click();
+    const choices = page.getByLabel("Retained evidence selections", { exact: true }).locator(".comparison-choice");
+    await choices.filter({ hasText: "fixture" }).first().waitFor({ timeout: 10000 });
+    const compatible = choices.filter({ hasText: "fixture" });
+    await compatible.nth(0).getByRole("checkbox").check();
+    await compatible.nth(1).getByRole("checkbox").check();
+    await control("evidence-compare-delay");
+    await page.getByRole("button", { name: "Compare 2 selected", exact: true }).click();
+    assert.equal(await compatible.nth(0).getByRole("checkbox").isDisabled(), true);
+    await page.getByText("compatible", { exact: true }).waitFor({ timeout: 5000 });
+    await compatible.nth(1).getByRole("checkbox").uncheck();
+    await choices.filter({ hasText: "incompatible" }).getByRole("checkbox").check();
+    await page.getByRole("button", { name: "Compare 2 selected", exact: true }).click();
+    await page.getByText("incompatible", { exact: true }).waitFor({ timeout: 5000 });
+    await control("evidence-change-compatible");
+    await page.getByRole("button", { name: "Compare 2 selected", exact: true }).click();
+    await page.getByText(/retained evidence changed/i).waitFor({ timeout: 5000 });
+    assert.equal(await page.getByText("Comparable", { exact: true }).count(), 0);
+    await control("evidence-reset-compatible");
+    const refreshedEvidence = page.waitForResponse(
+      (response) => response.url().includes("/api/observatory/v1/runs/evidence") && response.status() === 200,
+      { timeout: 5000 },
+    );
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await refreshedEvidence;
+    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    await page.getByRole("combobox", { name: "Run source", exact: true }).selectOption("evidence");
+    await page.locator("tr").filter({ hasText: "fixture retained evidence" }).first().getByRole("link", { name: "Open run →", exact: true }).click();
+    await page.getByRole("tab", { name: "Evidence", exact: true }).click();
+    await page.getByRole("button", { name: "Open retained evidence detail", exact: true }).click();
+    await page.getByRole("dialog", { name: "Retained evidence", exact: true }).getByText("Artifact", { exact: true }).waitFor({ timeout: 5000 });
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    receipts.evidence_compare = { compatible: true, incompatible: true, changed_reference: true, detail: true };
+    await page.getByRole("tab", { name: "Overview", exact: true }).click();
+    await page.getByText("context-001", { exact: true }).waitFor();
+    await page.getByText("fixture-active-benchmark", { exact: true }).first().waitFor();
+    await page.getByText("Deterministic response check", { exact: true }).first().waitFor();
+    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    const sourceFilter = page.getByRole("combobox", { name: "Run source", exact: true });
+    await sourceFilter.focus();
+    await page.waitForResponse(
+      (response) => response.url().includes("/api/observatory/v1/runs/benchmark") && response.status() === 200,
+      { timeout: 4000 },
+    );
+    assert.equal(await page.evaluate(() => document.activeElement.getAttribute("aria-label")), "Run source");
+    const discoveredAt = Date.now();
+    await control("benchmark-new-run");
+    await page.getByText("fixture-discovered-benchmark", { exact: true }).waitFor({ timeout: 10000 });
+    const activeAt = Date.now();
+    await control("benchmark-active-complete");
+    await page.getByText("fixture-active-benchmark", { exact: true }).locator("xpath=ancestor::tr").getByText("completed", { exact: true }).waitFor({ timeout: 5000 });
+    receipts.run_discovery = { new_run_ms: activeAt - discoveredAt, active_update_ms: Date.now() - activeAt };
+    assert.ok(receipts.run_discovery.new_run_ms <= 10000);
+    assert.ok(receipts.run_discovery.active_update_ms <= 5000);
+    const contextRunLink = page
+      .getByText("context-001", { exact: true })
+      .locator("xpath=ancestor::tr")
+      .getByRole("link", { name: "Open run →", exact: true });
+    await contextRunLink.focus();
+    const contextHref = await contextRunLink.getAttribute("href");
+    await page.waitForResponse(
+      (response) => response.url().includes("/api/observatory/v1/runs/benchmark") && response.status() === 200,
+      { timeout: 4000 },
+    );
+    assert.equal(await page.evaluate(() => document.activeElement.getAttribute("href")), contextHref);
+    await contextRunLink.click();
+    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor();
+    await page.getByText("This source exposes native IDs and artifact references only; it has no declared run-detail route.", { exact: true }).waitFor();
+    const selectedRunUrl = page.url();
+    await page.setViewportSize({ width: 1440, height: 400 });
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const selectedScroll = await page.evaluate(() => window.scrollY);
+    assert.ok(selectedScroll > 0);
+    const delayedAt = Date.now();
+    await control("benchmark-hang");
+    const healthyObserved = page.waitForResponse(
+      (response) => response.url().includes("/api/observatory/v1/runs/operations") && response.status() === 200,
+      { timeout: 10000 },
+    ).then(() => Date.now());
+    const staleObserved = page.getByLabel("Run source coverage").getByText("stale", { exact: true }).waitFor({ timeout: 5000 }).then(() => Date.now());
+    const [healthyAt, staleAt] = await Promise.all([healthyObserved, staleObserved]);
+    const pollObservation = { stale_ms: staleAt - delayedAt, healthy_ms: healthyAt - delayedAt };
+    assert.ok(pollObservation.stale_ms <= 5000);
+    assert.ok(pollObservation.healthy_ms <= 10000);
+    receipts.run_polling = pollObservation;
+    assert.equal(page.url(), selectedRunUrl);
+    assert.equal(await page.evaluate(() => window.scrollY), selectedScroll);
+    const readsBeforeHide = runRequests.length;
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.waitForTimeout(300);
+    assert.equal(runRequests.length, readsBeforeHide);
+    const inFlightBenchmark = page.waitForRequest(
+      (request) => request.url().includes("/api/observatory/v1/runs/benchmark"),
+      { timeout: 3000 },
+    );
+    const resumedOperations = page.waitForResponse(
+      (response) => response.url().includes("/api/observatory/v1/runs/operations") && response.status() === 200,
+      { timeout: 3000 },
+    );
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await Promise.all([inFlightBenchmark, resumedOperations]);
+    assert.equal(page.url(), selectedRunUrl);
+    await control("revoke-benchmark");
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.getByText("The selected retained run is unavailable from the current authorized sources.", { exact: true }).waitFor({ timeout: 3000 });
+    assert.equal(await page.getByText("context-001", { exact: true }).count(), 0);
+    await page.waitForTimeout(6500);
+    assert.equal(await page.getByText("context-001", { exact: true }).count(), 0);
+    await control("restore-benchmark");
+    const legacyOperationId = new URL(operationUrl).hash.split("/").at(-1);
+    await page.goto(`${url}#/workbench/${encodeURIComponent(legacyOperationId)}/events`);
+    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Open operation detail", exact: true }).waitFor();
+    assert.equal(new URL(page.url()).hash, `#/workbench/${encodeURIComponent(legacyOperationId)}/events`);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    receipts.journeys.push(
+      "CLI-created benchmark and UI-created operation appear in independently polled sources; a delayed benchmark turns stale within 5s while Operations refreshes within 10s, filter focus/selection/scroll persist, hide/resume pauses then refreshes, and an in-flight revoked source cannot restore stale rows",
+    );
     await capture("workbench-desktop");
     await page.getByRole("tab", { name: "Overview", exact: true }).focus();
     await page.keyboard.press("ArrowRight");
@@ -202,6 +360,20 @@ fs.mkdirSync(output, { recursive: true });
     await page.keyboard.press("Enter");
     await page
       .getByRole("button", { name: "Review experiment", exact: true })
+      .waitFor();
+    await nav("Anvil work");
+    await page.getByRole("button", { name: "Read plan", exact: true }).click();
+    await page.getByText("Persisted revision 1", { exact: false }).waitFor();
+    await page.getByRole("navigation", { name: "Plan outline", exact: true }).getByRole("link", { name: "Acceptance", exact: true }).click();
+    await page.getByText("Persisted revision 1", { exact: false }).waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("plan"), "workspace");
+    assert.equal(new URL(page.url()).searchParams.get("plan-section"), "acceptance");
+    await page.reload();
+    await page.getByText("Persisted revision 1", { exact: false }).waitFor();
+    receipts.journeys.push("persisted plan outline and deep link survive reload");
+    await nav("Workbench");
+    await page
+      .getByRole("tabpanel", { name: "Overview", exact: true })
       .waitFor();
     await page.setViewportSize({ width: 390, height: 844 });
     await capture("workbench-mobile");
@@ -244,6 +416,48 @@ fs.mkdirSync(output, { recursive: true });
     receipts.journeys.push(
       "1440 and 390 viewport reflow, keyboard tabs, inert mobile drawer and Escape return",
     );
+    await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+    await nav("Workbench");
+    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    await control("benchmark-pagination");
+    await page.getByText("fixture-page-000", { exact: true }).waitFor({ timeout: 10000 });
+    await page.getByRole("button", { name: "Load more", exact: true }).click();
+    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    const retainedActive = page.getByText("fixture-page-100", { exact: true }).locator("xpath=ancestor::tr");
+    await retainedActive.scrollIntoViewIfNeeded();
+    await page.waitForRequest(
+      (request) => request.url().includes("/api/observatory/v1/runs/benchmark") && request.url().includes("refresh_refs"),
+      { timeout: 5000 },
+    );
+    const retainedAt = Date.now();
+    await control("benchmark-retained-complete");
+    await retainedActive.getByText("completed", { exact: true }).waitFor({ timeout: 5000 });
+    receipts.retained_active_refresh = { completed_ms: Date.now() - retainedAt, visible_only: true };
+    assert.ok(receipts.retained_active_refresh.completed_ms <= 5000);
+    await retainedActive.getByRole("link", { name: "Open run →", exact: true }).click();
+    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor({ timeout: 5000 });
+    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    await page.reload();
+    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor({ timeout: 5000 });
+    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    receipts.retained_stable_link = true;
+    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    await control("benchmark-pagination-new-head");
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.getByText("fixture-page-new", { exact: true }).waitFor({ timeout: 5000 });
+    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    await page.waitForFunction(() => [...document.querySelectorAll("tr small.mono")]
+      .filter((item) => item.textContent.startsWith("fixture-page-")).length === 102, null, { timeout: 5000 });
+    const pageIds = await page.locator("tr small.mono").allTextContents();
+    const retainedPageIds = pageIds.filter((item) => item.startsWith("fixture-page-"));
+    assert.equal(retainedPageIds.length, 102);
+    assert.equal(new Set(retainedPageIds).size, 102);
+    receipts.pagination = { rows: retainedPageIds.length, stable_equal_timestamps: true };
     assert.deepEqual(errors, []);
     receipts.status = await status();
     fs.writeFileSync(
@@ -251,6 +465,18 @@ fs.mkdirSync(output, { recursive: true });
       JSON.stringify(receipts, null, 2),
     );
     console.log(JSON.stringify(receipts));
+  } catch (error) {
+    await capture("failure");
+    fs.writeFileSync(path.join(output, "failure.json"), JSON.stringify({
+      error: error.message, url: page.url(), errors,
+      text: await page.locator("body").innerText(), status: await status(),
+      operationReads,
+      latestOperation: await page.evaluate(async () => {
+        const id = location.hash.match(/^#\/operations\/(.+)$/)?.[1];
+        return id ? (await fetch(location.pathname + "api/observatory/v1/operations/" + id)).json() : null;
+      }),
+    }, null, 2));
+    throw error;
   } finally {
     await browser.close();
     fixture.stdin.end('{"command":"stop"}\n');

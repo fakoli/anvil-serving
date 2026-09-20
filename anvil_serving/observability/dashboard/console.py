@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import copy
+from collections import OrderedDict
 import html
 import json
 import mimetypes
@@ -18,11 +19,57 @@ from pathlib import Path
 
 from .access import Access, GrafanaLogin
 from .contracts import (ObservatoryError, canonical, digest, fields, identifier,
-                        preview_is_current, strict_json, validate_values)
+                        preview_is_current, strict_json, timestamp, validate_values)
 from .intents import IntentStore
+from .run_projection import (BENCHMARK_SOURCE, benchmark_correlation_id,
+                             list_benchmark_runs, projected_run_id, validated_benchmark_refresh_refs,
+                             validated_benchmark_job_ref)
 
 PREVIEW_FIELDS = frozenset({"id", "host_id", "resource_id", "action_id", "label", "baseline_digest", "candidate_digest", "policy_digest", "expires_at_epoch_seconds", "effect", "diff", "affected_aliases", "workload_impact", "gpu_ids", "stop_semantics", "recovery", "planned_steps", "actor", "service_identity", "acknowledgement_required", "diagnostic"})
 _SHELL_ROUTES = frozenset({"overview", "workstations", "serves", "workloads", "configuration", "experiments", "operations", "settings", "logs", "access", "bench", "playground", "models", "work", "observability", "compute", "docs"})
+_RUN_CACHE_ENTRIES = 8
+_RUN_PAGE_BYTES = 128 * 1024
+_RUN_CACHE_BYTES = _RUN_CACHE_ENTRIES * _RUN_PAGE_BYTES
+
+
+def _run_bindings(config):
+    raw = config.get("runs", {})
+    fields(raw, optional=("benchmark", "evidence"))
+    # A logical run grant is configured independently. It cannot quietly reuse
+    # a controller resource as browser read authority.
+    controller = config.get("controller", {})
+    resources = controller.get("resources", []) if isinstance(controller, dict) else []
+    if isinstance(resources, dict):
+        resources = [dict(value, id=key) for key, value in resources.items() if isinstance(value, dict)]
+    bindings = {}
+    grants = set()
+    for source, binding in raw.items():
+        required = ("resource_id", "owner_id", "root") if source == "evidence" else ("resource_id",)
+        fields(binding, required=required)
+        resource_id = identifier(binding["resource_id"])
+        if resource_id in grants or any(
+            isinstance(item, dict) and item.get("id") == resource_id
+            for item in resources
+        ):
+            raise ValueError("run sources require distinct dedicated read grants")
+        grants.add(resource_id)
+        value = {"resource_id": resource_id}
+        if source == "evidence":
+            root = binding["root"]
+            if (type(root) is not str or len(root.encode("utf-8")) > 4096
+                    or any(ord(char) < 32 or ord(char) == 127 for char in root)
+                    or not Path(root).is_absolute() or Path(root) == Path(Path(root).anchor)
+                    or ".." in Path(root).parts):
+                raise ValueError("evidence runs require a bounded declared catalog root")
+            value.update(owner_id=identifier(binding["owner_id"]), root=str(Path(root)))
+        bindings[source] = value
+    return bindings
+
+
+def _origin_identity(value):
+    parsed = urllib.parse.urlsplit(value)
+    default_port = 443 if parsed.scheme == "https" else 80
+    return parsed.scheme.lower(), parsed.hostname.lower(), parsed.port or default_port
 
 
 def _fallback_authentication(config, mode):
@@ -51,7 +98,7 @@ def load_config(path: str) -> dict:
         raise ValueError("use an absolute bounded private Observatory config")
     config = strict_json(source.read_bytes())
     fields(config, required=("schema", "origin", "base_path", "users", "authentication", "inventory", "prometheus_url", "state_path"),
-           optional=("operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence", "logs", "connect_access", "workbench", "fallback_authentication"))
+           optional=("operate", "grafana_url", "controller", "workload", "build", "fixture", "strip_prefix", "evidence", "logs", "connect_access", "workbench", "fallback_authentication", "runs"))
     if config["schema"] != "anvil-observatory/config/v1":
         raise ValueError("unsupported Observatory configuration")
     if type(config.get("operate", False)) is not bool or type(config.get("fixture", False)) is not bool:
@@ -71,6 +118,7 @@ def load_config(path: str) -> dict:
     if config.get("connect_access", False) and mode != "connect":
         raise ValueError("Connect access requires Connect authentication")
     _fallback_authentication(config, mode)
+    _run_bindings(config)
     if not Path(config["state_path"]).is_absolute():
         raise ValueError("journal path must be absolute")
     return config
@@ -95,6 +143,16 @@ class Console:
         if config.get("connect_access", False) and mode != "connect":
             raise ValueError("Connect access requires Connect authentication")
         fallback = _fallback_authentication(config, mode)
+        self.run_bindings = _run_bindings(config)
+        from ...workbench_app.config import validate_config
+        workbench = config.get("workbench", {"state_path": str(Path(config["state_path"]).with_name("workbench.sqlite3"))})
+        workbench = validate_config(workbench)
+        host_pi = workbench.get("host_pi")
+        blocked_origins = {_origin_identity(config["origin"])}
+        if fallback:
+            blocked_origins.add(_origin_identity(fallback["origin"]))
+        if host_pi and _origin_identity(host_pi["origin"]) in blocked_origins:
+            raise ValueError("Host Pi must use a separate application origin")
         self.store = IntentStore(config["state_path"])
         self.access = Access(config["users"], authenticate=authenticating,
                              origin=config["origin"], base_path=config["base_path"], operate=config.get("operate", False),
@@ -132,12 +190,22 @@ class Console:
                 policy = load_authorization_policy(binding["authorization_policy"], env=env)
                 self.workload_service = WorkloadHTTPService(binding["controller_url"], binding["expected_node"], policy)
         self.policy_digest = digest({"users": config["users"], "operate": config.get("operate", False),
-                                     "controller": config.get("controller", {}), "authentication": authentication})
+                                     "controller": config.get("controller", {}), "authentication": authentication,
+                                     "runs": self.run_bindings})
         from ...workbench_app.service import WorkbenchService
-        workbench = config.get("workbench", {"state_path": str(Path(config["state_path"]).with_name("workbench.sqlite3"))})
         self.workbench = WorkbenchService(workbench, self.access, env, adapter=self.adapter)
+        self._run_cache = OrderedDict()
+        self._run_cache_bytes = 0
+        self._run_cache_lock = threading.Lock()
+        self._benchmark_slot = threading.BoundedSemaphore(1)
+        self.evidence_runs = None
+        if "evidence" in self.run_bindings:
+            from .evidence_runs import EvidenceRuns
+            self.evidence_runs = EvidenceRuns(self.run_bindings["evidence"])
 
     def close(self):
+        if self.evidence_runs is not None:
+            self.evidence_runs.close()
         self.workbench.close()
         self._workers.shutdown(wait=True)
         self.store.close()
@@ -316,10 +384,16 @@ class Console:
                 event=("facade", "reconciling", "Outcome unknown; reconciling with the owner. Do not repeat the action."))
 
     def _finish(self, item, result):
+        job_ref = (
+            validated_benchmark_job_ref(result.get("benchmark_job_ref"))
+            if item.get("action_id") == "experiment.start" and isinstance(result, dict) else None
+        )
+        job_ref_change = {"benchmark_job_ref": job_ref} if job_ref is not None else {}
         if not result or result.get("status") in {"outcome_unknown", "running", "submitting", "pending"} or result.get("execution_outcome") in {"running", "pending", "unknown"}:
             status = "running" if result and result.get("status") in {"running", "pending"} else "outcome_unknown"
             self.store.update(item["id"], status=status, native_state=(result or {}).get("native_state"),
-                event=("owner" if status == "running" else "facade", status, "Waiting for the existing owner operation to resolve."))
+                event=("owner" if status == "running" else "facade", status, "Waiting for the existing owner operation to resolve."),
+                **job_ref_change)
             return
         owner_id = result.get("owner_operation_id", item["intent_key"])
         # Failed runs are evidence too. Save before branching on execution or
@@ -331,15 +405,18 @@ class Console:
             self.store.update(item["id"], status="manual_recovery_required" if recovery.get("status") == "failed" else "failed",
                 owner_operation_id=owner_id, execution_outcome="failed", native_state=result.get("native_state"), recovery=recovery, evidence_id=evidence_id,
                 verification={"status": "failed", "message": "The owner reported that the requested change failed."},
-                event=("owner", "failed", "The requested change failed. Review the retained recovery outcome."))
+                event=("owner", "failed", "The requested change failed. Review the retained recovery outcome."),
+                **job_ref_change)
             return
         self.store.update(item["id"], status="verifying", owner_operation_id=owner_id, execution_outcome="succeeded", evidence_id=evidence_id,
-                          event=("facade", "verifying", "Checking resulting state independently with the owner."))
+                          event=("facade", "verifying", "Checking resulting state independently with the owner."),
+                          **job_ref_change)
         verification = self.adapter.verify(item["private_preview"], result)
         passed = verification.get("status") == "passed"
         self.store.update(item["id"], status="succeeded" if passed else "failed", native_state=result.get("native_state"),
             verification=verification, evidence_id=evidence_id,
             **({"recovery": result["recovery"]} if isinstance(result.get("recovery"), dict) else {}),
+            **job_ref_change,
             event=("facade", "succeeded" if passed else "verification_failed", "Resulting state verified." if passed else "Execution returned, but resulting state could not be verified."))
         original_id = item["private_preview"].get("private_recovery_of")
         if passed and item["action_id"] == "operation.recover" and original_id:
@@ -357,6 +434,215 @@ class Console:
                     self._reconciling.add(item["id"])
                     self._workers.submit(self._reconcile, item)
         return self.store.public(item)
+
+    @staticmethod
+    def _run_limit(query):
+        value = query.get("limit", "100")
+        if type(value) is not str or re.fullmatch(r"[1-9][0-9]{0,2}", value) is None:
+            raise ObservatoryError("invalid_run_list", "Select a list limit between 1 and 100.")
+        limit = int(value)
+        if limit > 100:
+            raise ObservatoryError("invalid_run_list", "Select a list limit between 1 and 100.")
+        return limit
+
+    def _run_cache_key(self, session, resource_id, limit, cursor):
+        return (session.principal.identity, resource_id, self.policy_digest, limit, cursor)
+
+    def _cached_runs(self, key):
+        with self._run_cache_lock:
+            cached = self._run_cache.get(key)
+            if cached is None:
+                return None
+            self._run_cache.move_to_end(key)
+            return json.loads(canonical(cached[1]))
+
+    def _cache_runs(self, key, result):
+        if not isinstance(result.get("items"), list) or len(result["items"]) > 100:
+            return
+        raw = canonical(result)
+        if len(raw) > _RUN_PAGE_BYTES:
+            return
+        with self._run_cache_lock:
+            old = self._run_cache.pop(key, None)
+            if old is not None:
+                self._run_cache_bytes -= old[0]
+            while self._run_cache and (len(self._run_cache) >= _RUN_CACHE_ENTRIES
+                                       or self._run_cache_bytes + len(raw) > _RUN_CACHE_BYTES):
+                _old_key, old = self._run_cache.popitem(last=False)
+                self._run_cache_bytes -= old[0]
+            if self._run_cache_bytes + len(raw) <= _RUN_CACHE_BYTES:
+                self._run_cache[key] = (len(raw), json.loads(raw))
+                self._run_cache_bytes += len(raw)
+
+    def _stale_runs(self, key, source_id):
+        cached = self._cached_runs(key)
+        if cached is None:
+            return {"items": [], "next_cursor": None, "sources": [{
+                "id": source_id, "status": "unavailable", "deadline_seconds": 2.0,
+                "truncated": False, "partial": False,
+            }]}
+        for source in cached.get("sources", []):
+            source["status"] = "stale"
+        for row in cached.get("items", []):
+            row["freshness"] = "stale"
+        for row in cached.get("updates", []):
+            row["freshness"] = "stale"
+        return cached
+
+    def _benchmark_runs(self, session, query):
+        binding = self.run_bindings.get(BENCHMARK_SOURCE)
+        if binding is None:
+            raise ObservatoryError("not_found", "This run source is unavailable.", 404)
+        resource_id = binding["resource_id"]
+        # Permit before a cache key, cursor, count, or owner call can be used.
+        self.access.permit(session, resource_id)
+        fields(query, optional=("limit", "cursor", "refresh_refs"))
+        limit = self._run_limit(query)
+        cursor = query.get("cursor")
+        if cursor is not None and (type(cursor) is not str or len(cursor) > 128):
+            raise ObservatoryError("invalid_run_list", "Select a valid run cursor.")
+        raw_refs = query.get("refresh_refs")
+        if raw_refs is not None and (type(raw_refs) is not str or len(raw_refs.encode("utf-8")) > 8192):
+            raise ObservatoryError("invalid_run_list", "Select up to 20 distinct benchmark runs.")
+        refresh_refs = None if raw_refs is None else validated_benchmark_refresh_refs(strict_json(raw_refs.encode("utf-8")))
+        cache_cursor = cursor if refresh_refs is None else (cursor or "") + ".refresh." + digest(refresh_refs)
+        key = self._run_cache_key(session, resource_id, limit, cache_cursor)
+        if self.adapter is None or not self._benchmark_slot.acquire(blocking=False):
+            return self._stale_runs(key, BENCHMARK_SOURCE)
+        try:
+            result = list_benchmark_runs(
+                self.adapter, can_read=session.principal.can_read, resource_id=resource_id,
+                limit=limit, cursor=cursor, refresh_refs=refresh_refs,
+            )
+        except Exception:
+            return self._stale_runs(key, BENCHMARK_SOURCE)
+        finally:
+            self._benchmark_slot.release()
+        self._cache_runs(key, result)
+        return result
+
+    def _evidence_runs(self, session, query):
+        binding = self.run_bindings.get("evidence")
+        if binding is None:
+            raise ObservatoryError("not_found", "This run source is unavailable.", 404)
+        resource_id = binding["resource_id"]
+        self.access.permit(session, resource_id)
+        limit, cursor = self._run_limit(query), query.get("cursor")
+        if cursor is not None and (type(cursor) is not str or len(cursor) > 128):
+            raise ObservatoryError("invalid_run_list", "Select a valid run cursor.")
+        key = self._run_cache_key(session, resource_id, limit, cursor)
+        authority = digest({"principal": session.principal.identity, "resource": resource_id,
+                            "policy": self.policy_digest})
+        try:
+            result = self.evidence_runs.page(limit=limit, cursor=cursor, authority_key=authority)
+        except ObservatoryError as error:
+            if error.status < 500:
+                raise
+            return self._stale_runs(key, binding["owner_id"])
+        except Exception:
+            return self._stale_runs(key, binding["owner_id"])
+        self._cache_runs(key, result)
+        return result
+
+    def _evidence_authority(self, session):
+        binding = self.run_bindings.get("evidence")
+        if binding is None or self.evidence_runs is None:
+            raise ObservatoryError("not_found", "This run source is unavailable.", 404)
+        self.access.permit(session, binding["resource_id"])
+        return digest({"principal": session.principal.identity, "resource": binding["resource_id"],
+                       "policy": self.policy_digest})
+
+    def _workspace_runs(self, session, source, query):
+        # Authorize current projects before parsing cursors or consulting last-good rows.
+        descriptor = next((item for item in self.workbench.workspace_run_sources(session)["items"]
+                           if item["id"] == source), None)
+        if descriptor is None:
+            raise ObservatoryError("permission_denied", "This Workbench run source is unavailable.", 403)
+        limit, cursor = self._run_limit(query), query.get("cursor")
+        if cursor is not None and (type(cursor) is not str or not 1 <= len(cursor) <= 512):
+            raise ObservatoryError("invalid_workspace_run_cursor", "Select a current Workbench run page.", 400)
+        authority = digest({"projects": self.workbench.config.get("projects", []),
+                            "grants": descriptor["resource_ids"]})
+        key = (*self._run_cache_key(session, source, limit, cursor), authority)
+        try:
+            result = self.workbench.workspace_run_page(session, source, limit=limit, cursor=cursor)
+        except ObservatoryError as error:
+            if error.status < 500:
+                raise
+            return self._stale_runs(key, source)
+        except Exception:
+            return self._stale_runs(key, source)
+        if any(item.get("status") != "fresh" for item in result.get("sources", [])):
+            return self._stale_runs(key, source)
+        self._cache_runs(key, result)
+        return result
+
+    def _evidence_detail(self, session, query):
+        authority = self._evidence_authority(session)
+        fields(query, required=("artifact_id", "sha256"))
+        return self.evidence_runs.detail(
+            artifact_id=query["artifact_id"], sha256=query["sha256"], authority_key=authority,
+        )
+
+    def _evidence_compare(self, session, query):
+        authority = self._evidence_authority(session)
+        fields(query, required=("refs",))
+        raw = query["refs"]
+        if type(raw) is not str or len(raw) > 8192:
+            raise ObservatoryError("invalid_comparison", "Select bounded evidence references.", 409)
+        try:
+            refs = strict_json(raw.encode("utf-8"))
+        except (ObservatoryError, UnicodeError):
+            raise ObservatoryError("invalid_comparison", "Select bounded evidence references.", 409) from None
+        if not isinstance(refs, list):
+            raise ObservatoryError("invalid_comparison", "Select bounded evidence references.", 409)
+        return self.evidence_runs.compare(refs=refs, authority_key=authority)
+
+    @staticmethod
+    def _operation_run(item):
+        native_id = item["id"]
+        evidence_refs = []
+        if type(item.get("evidence_id")) is str:
+            evidence_refs.append({"owner_id": "observatory", "artifact_id": item["evidence_id"]})
+        return {
+            "id": projected_run_id("observatory", "operations", native_id),
+            "owner_id": "observatory", "source": "operations", "native_id": native_id,
+            "kind": "operation", "resource_id": item["resource_id"], "title": item["label"],
+            "native_state": item.get("native_state"), "status": item["status"],
+            "submitted_at": item["submitted_at"], "updated_at": item["updated_at"],
+            "started_at": None, "finished_at": None, "observed_at": None,
+            "freshness": "fresh", "correlation_id": benchmark_correlation_id(
+                item.get("benchmark_job_ref")
+            ), "evidence_refs": evidence_refs,
+        }
+
+    def _operation_runs(self, session, query):
+        limit = self._run_limit(query)
+        page = self.store.list_run_page(
+            frozenset(session.principal.resources), limit=limit, cursor=query.get("cursor"),
+        )
+        observed_at = timestamp()
+        items = [self._operation_run(item) for item in page["items"]]
+        for item in items:
+            item["observed_at"] = observed_at
+        return {"items": items, "next_cursor": page["next_cursor"], "sources": [{
+            "id": "operations", "status": "fresh", "observed_at": observed_at,
+            "deadline_seconds": 1.0, "truncated": page["truncated"], "partial": page["partial"],
+        }]}
+
+    def run_sources(self, session):
+        items = [{"id": "operations", "kind": "operation", "status": "available"}]
+        benchmark = self.run_bindings.get(BENCHMARK_SOURCE)
+        if benchmark and session.principal.can_read(benchmark["resource_id"]):
+            items.append({"id": BENCHMARK_SOURCE, "kind": "benchmark",
+                          "resource_id": benchmark["resource_id"], "status": "available"})
+        evidence = self.run_bindings.get("evidence")
+        if evidence and session.principal.can_read(evidence["resource_id"]):
+            items.append({"id": "evidence", "kind": "imported", "label": "Retained evidence",
+                          "resource_id": evidence["resource_id"], "status": "available"})
+        items.extend({**item, "status": "available"}
+                     for item in self.workbench.workspace_run_sources(session)["items"])
+        return {"items": items}
 
     def _reconcile(self, item):
         try:
@@ -417,6 +703,25 @@ class Console:
                 if any(not session.principal.can_read(item["id"]) for item in selected):
                     raise ObservatoryError("permission_denied", "Select an authorized serve for inference metrics.", 403)
             return self.metrics.chart(query["chart"], host_id=query.get("host"), serve_id=query.get("serve"), window=query.get("range", "1h"))
+        if route == "run-sources":
+            fields(query)
+            return self.run_sources(session)
+        if route == "runs/evidence/detail":
+            return self._evidence_detail(session, query)
+        if route == "runs/evidence/compare":
+            return self._evidence_compare(session, query)
+        if route == "runs/benchmark":
+            return self._benchmark_runs(session, query)
+        if route.startswith("runs/"):
+            fields(query, optional=("limit", "cursor"))
+            source = identifier(route.split("/", 1)[1])
+            if source == "operations":
+                return self._operation_runs(session, query)
+            if source == "evidence":
+                return self._evidence_runs(session, query)
+            if source in {"workspace-tasks", "workspace-pi"}:
+                return self._workspace_runs(session, source, query)
+            raise ObservatoryError("not_found", "This run source is unavailable.", 404)
         if route == "operations":
             fields(query)
             rows = [item for item in self.store.list_private() if session.principal.can_read(item["resource_id"])]
@@ -474,6 +779,8 @@ def attach_console(server, console: Console):
     base = console.config["base_path"]
     root = files("anvil_serving.observability.dashboard.static")
     assets = {}
+    host_pi = console.workbench.config.get("host_pi", {})
+    frame_source = "frame-src " + (host_pi["origin"] if host_pi else "'none'")
     # Only packaged assets, never a user-supplied path or general file reader.
     def collect(directory, prefix=""):
         for path in directory.iterdir():
@@ -522,7 +829,7 @@ def attach_console(server, console: Console):
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+            self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; " + frame_source + "; frame-ancestors 'none'; form-action 'self'")
             if cookie:
                 self.send_header("Set-Cookie", cookie)
             self.end_headers()

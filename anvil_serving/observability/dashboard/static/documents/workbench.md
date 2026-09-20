@@ -31,6 +31,142 @@ the configured loopback address, commonly `127.0.0.1`. It does not require a
 separate public authentication service. A missing Workbench policy leaves the
 legacy dashboard behavior available.
 
+## Pi Web
+
+Pi Web is the separately owned session UI for the operator's existing local Pi
+sessions: it reads the same agent directory, session files, and model settings
+as the terminal Pi, and adds browser-side conversation control. It is the
+reuse candidate studied in [the Pi workspace reuse decision](https://github.com/fakoli/anvil-serving/blob/main/docs/design/workbench/PI-REUSE.md);
+this managed service installs the pinned third-party release
+(`@agegr/pi-web`) as one systemd unit instead of a hand-run process.
+
+Pi Web must be able to read and write the agent data directory and the working
+directories its sessions reference, so the service runs as one declared POSIX
+account and binds only `127.0.0.1`. A reverse proxy is the supported way to
+reach it from a browser; the exact external host names must be declared in the
+configuration so Pi Web's own host allow-list accepts them. Keep the private
+declaration in the operator home as `workbench/pi-web.json`:
+
+```json
+{
+  "version": "0.9.0",
+  "port": 30141,
+  "hostname": "127.0.0.1",
+  "allowed_hosts": ["pi.example.test"],
+  "idle_timeout_ms": 600000,
+  "service_user": "operator"
+}
+```
+
+`service_user` is the account whose Pi sessions the UI serves. `password_env_file`
+is an optional protected environment file (`PI_WEB_PASSWORD=...`, mode 0600)
+for a second, direct-to-service factor; the managed Connect exposure below is
+Authelia-gated and does not require it. The lifecycle:
+
+```bash
+anvil-serving workbench pi-web-install --dry-run
+sudo anvil-serving workbench pi-web-install --confirm
+anvil-serving workbench pi-web-status
+anvil-serving workbench pi-web-logs --tail 100
+sudo anvil-serving workbench pi-web-down --confirm
+sudo anvil-serving workbench pi-web-up --confirm
+```
+
+The install command pins the exact declared release below the operator home,
+installs the npm tree as the declared service user (the package postinstall
+never runs as root), writes the reviewed `anvil-pi-web.service` unit, enables
+and starts it, and then probes `127.0.0.1` until the UI answers. A repeated
+install converges without an unnecessary restart when the unit is unchanged.
+
+### Pi Web through Anvil Connect
+
+The supported browser path is an Anvil Connect browser resource: one dedicated
+resource host whose origin is the loopback Pi Web port. The public template is
+[connect/examples/pi-web-resource.json](https://github.com/fakoli/anvil-serving/blob/main/connect/examples/pi-web-resource.json).
+Merge its resource into the deployment manifest's connector, render, and apply:
+
+```bash
+anvil-serving connect validate --manifest /path/private/deployment.json
+sudo anvil-serving connect render --manifest /path/private/deployment.json --confirm
+sudo anvil-serving connect up --manifest /path/private/deployment.json --services gateway,caddy,connector-<id> --confirm
+```
+
+Connect's classic-upgrade and SSE forwarding carry Pi Web's event streams;
+the declared limits allow long agent turns (one-hour request duration) and
+file uploads (25 MB request ceiling). Browser access is Authelia-gated at the
+Connect edge; Pi Web's own session, cookie, and CSRF state stay separate from
+the Connect session. Do not bind Pi Web wider than loopback and do not disable
+Connect admission for it.
+
+To show that native UI in Playground, add the following `host_pi` fragment to
+the Observatory policy's `workbench` section. It names the dedicated Connect resource, its HTTPS origin,
+the exact owner subject, and the inspected runtime pin:
+
+```json
+{
+  "host_pi": {
+    "id": "host-pi", "resource_id": "host-pi",
+    "origin": "https://pi.example.test", "owner_subject": "example-owner-subject",
+    "version": "0.9.0",
+    "runtime_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}
+```
+
+Replace the illustrative digest with the inspected installed runtime digest.
+The signed Connect subject must match the owner and have the explicit resource
+grant. A wildcard grant alone is insufficient. Host Pi retains its native
+history and filesystem authority; this declaration does not make it a confined
+task runner. Its origin must differ from the dashboard origin.
+
+## Retained runs
+
+Workbench discovers Operations from its journal. Optional benchmark and
+retained-evidence owners are declared once in the top-level `runs` section of
+the private Observatory policy, alongside `workbench`:
+
+```json
+{
+  "runs": {
+    "benchmark": {"resource_id": "benchmark-runs"},
+    "evidence": {
+      "resource_id": "retained-evidence", "owner_id": "evidence-catalog",
+      "root": "/srv/anvil-serving/docs/findings"
+    }
+  }
+}
+```
+
+Configured projects also expose the current user's retained task bindings and
+managed Pi sessions under their existing project read grants. Pi metadata
+reads are unavailable on platforms without the required safe filesystem
+descriptor operations; canonical session storage continues to work.
+These managed sessions are separate from native host Pi Web history.
+
+Each source requires its own read grant, distinct from controller resources and
+other run sources, for the optional benchmark and evidence declarations above.
+Benchmark enumeration uses the declared controller's
+`benchmark_job_list`; the evidence source reads recognized JSON artifacts below
+its declared local directory. New records need no per-run configuration entry.
+Paths, raw payloads and transcripts are excluded from the run projection.
+
+Visible sources refresh independently. An unavailable owner leaves its last
+authorized rows marked stale; it does not change their retained outcome.
+Imported evidence preserves failures, incomplete measurements and external
+priors. Source cards report partial or truncated coverage explicitly. The
+local catalog requires descriptor-safe filesystem reads and refuses symlinks,
+special files and protected credential paths.
+
+Use **All runs** to filter by source or outcome and load older pages. The view
+keeps a current page and bounded retained history, with a maximum of 500 rows
+per source. Expired cursors keep the last successful rows and offer **Restart
+history**. A retained row's freshness is separate from its recorded outcome.
+
+Use **Compare** to select two through twenty retained evidence artifacts. The
+comparison reports compatible, different, unknown and invalid measurement
+dimensions. A changed artifact requires fresh references; the previous result
+is cleared. Compatibility does not rank models or authorize promotion.
+
 ## Private policy shape
 
 The following is the `workbench` section of the existing authenticated
@@ -82,6 +218,10 @@ Every path below is illustrative and every model identity is explicit.
 }
 ```
 
+Local project file reads and isolated task preparation require safe POSIX
+descriptor operations for each declared project root. Unsupported hosts refuse
+these actions.
+
 The image digest must be exactly 64 lowercase hexadecimal digits. The provider endpoint must use HTTPS and match one declared egress origin. Its
 credential selector must name an entry for that provider and that entry must be
 a protected `file:` reference. The runner receives no provider secret: a
@@ -94,13 +234,14 @@ wrong loop backing files, wrong size or ownership, and missing `nodev,nosuid`.
 
 ## Workspace journeys
 
-**Workbench** presents declared evaluations. Review the exact target, limits,
+**Workbench** presents active and retained owner runs. Review the exact target, limits,
 phases, retained evidence and comparison before asking the owner to run an
 experiment. A result does not promote a model.
 
-**Playground** sends a real request only to the selected configured connector,
-model and preset. It keeps a user-scoped conversation, effective parameters,
-stream state and cancellation; provider credentials do not enter browser state.
+**Playground** opens the authorized native host Pi workspace when configured.
+The separate **Model test** view sends requests to the selected connector,
+model and preset, retaining user-scoped conversations, effective parameters,
+stream state and cancellation. Provider credentials do not enter browser state.
 
 **Models** displays owner-managed recipes and revisions. Edit supported fields,
 review the exact diff, and use the existing owner lifecycle. Stale revisions

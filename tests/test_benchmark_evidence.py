@@ -212,6 +212,42 @@ def test_compare_rejects_different_capacity_measurement_protocols(tmp_path: Path
     ]
 
 
+def test_pure_helpers_match_file_backed_wrappers(tmp_path: Path) -> None:
+    first_raw = _complete_capacity("one", concurrency=5, no_thinking=True)
+    second_raw = _complete_capacity("two", concurrency=5, no_thinking=True)
+    first = _write(tmp_path / "first.json", first_raw)
+    second = _write(tmp_path / "second.json", second_raw)
+
+    def payload_summaries(*paths: Path) -> list[dict]:
+        return [
+            benchmark_evidence.summarize_payload(
+                json.loads(path.read_text(encoding="utf-8")), path
+            )
+            for path in paths
+        ]
+
+    compatible = payload_summaries(first, second)
+    assert compatible[0] == benchmark_evidence.summarize_artifact(first)
+    assert compatible[1] == benchmark_evidence.summarize_artifact(second)
+    assert benchmark_evidence.compare_summaries(compatible) == (
+        benchmark_evidence.compare_artifacts([first, second])
+    )
+    assert benchmark_evidence.compare_summaries(compatible)["comparable"] is True
+
+    second_raw["concurrency"] = 1
+    incompatible = _write(tmp_path / "incompatible.json", second_raw)
+    mixed = payload_summaries(first, incompatible)
+    assert benchmark_evidence.compare_summaries(mixed) == (
+        benchmark_evidence.compare_artifacts([first, incompatible])
+    )
+    assert benchmark_evidence.compare_summaries(mixed)["differences"] == {
+        "concurrency": [5, 1]
+    }
+
+    with pytest.raises(benchmark_evidence.EvidenceError, match="between 2 and"):
+        benchmark_evidence.compare_summaries(compatible[:1])
+
+
 def test_cli_evidence_list_emits_structured_json(tmp_path: Path, capsys) -> None:
     _write(tmp_path / "run.json", {
         "schema": "anvil-serving.benchmark/v1",

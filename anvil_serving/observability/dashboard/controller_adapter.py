@@ -9,8 +9,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import copy
+from datetime import datetime
 import json
 import math
+import multiprocessing
 import re
 import time
 from typing import Any
@@ -21,7 +23,9 @@ from ...transports import (
     Operation,
     TransportError,
 )
-from .contracts import ObservatoryError, digest, identifier, validate_values
+from ...benchmarking.jobs import JOB_STATES
+from .contracts import ObservatoryError, canonical, digest, identifier, strict_json, validate_values
+from .run_projection import validated_benchmark_job_ref, validated_benchmark_refresh_refs
 from . import runtime_candidates
 
 
@@ -34,10 +38,11 @@ _TOOLS = frozenset(
         "serves_status", "serves_manage", "serves_probe", "serves_profile", "serves_logs",
         "router_transition", "router_configuration", "recipe_settings", "recipe_manage",
         "recipe_containers", "benchmark_job_preflight", "benchmark_job_submit",
-        "benchmark_job_status", "runtime_experiment", "host_services_status",
+        "benchmark_job_status", "benchmark_job_list", "runtime_experiment", "host_services_status",
         "host_services_logs", "host_services_manage", "container_exec",
     }
 )
+_BENCHMARK_WORKER_IPC_BYTES = 64 * 1024
 
 
 def _mapping(value: object, message: str) -> dict[str, Any]:
@@ -54,6 +59,105 @@ def _safe(value: object, field: str) -> str:
 
 def _public_error(message: str = "The resource owner is unavailable.") -> ObservatoryError:
     return ObservatoryError("owner_unavailable", message, 503)
+
+
+def _benchmark_refresh_row(payload: object, expected: Mapping[str, str]) -> dict[str, str] | None:
+    """Keep only an exact, public status identity from an owner response."""
+    if not isinstance(payload, Mapping) or not isinstance(payload.get("spec"), Mapping):
+        return None
+    spec = payload["spec"]
+    state, updated_at = payload.get("state"), payload.get("updated_at")
+    if (spec.get("suite") != expected["suite"] or spec.get("run_id") != expected["run_id"]
+            or state not in JOB_STATES
+            or type(updated_at) is not str):
+        return None
+    try:
+        datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    row = {"suite": expected["suite"], "run_id": expected["run_id"], "native_state": state, "updated_at": updated_at}
+    for field in ("started_at", "finished_at"):
+        value = payload.get(field)
+        if value is None:
+            continue
+        if type(value) is not str:
+            return None
+        try:
+            datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        row[field] = value
+    artifact = payload.get("artifact")
+    if isinstance(artifact, Mapping) and type(artifact.get("sha256")) is str and re.fullmatch(r"[a-f0-9]{64}", artifact["sha256"]):
+        row["artifact_sha256"] = artifact["sha256"]
+    return row
+
+
+def _benchmark_list_worker(sender, bundle: Mapping[str, Any], arguments: Mapping[str, Any]) -> None:
+    """One disposable worker owns every blocking controller phase for a run read."""
+    try:
+        transport = ControllerTransport(
+            bundle["endpoint"], auth_env=bundle["auth_env"],
+            allowed_operations=bundle["allowed_operations"], environment=bundle["environment"],
+            timeout_seconds=bundle["timeout_seconds"], max_response_bytes=bundle["max_response_bytes"],
+            expected_node=bundle["expected_node"],
+        )
+        declarations = transport.tool_catalog()
+        relevant = sorted(
+            (item for item in declarations if item.get("name") in _TOOLS),
+            key=lambda item: item["name"],
+        )
+        if (bundle["expected_catalog_digest"] is not None
+                and digest(relevant) != bundle["expected_catalog_digest"]):
+            raise ValueError("controller catalog digest mismatch")
+        declared = {item["name"] for item in relevant}
+        refresh_refs = arguments.pop("refresh_refs", [])
+        if "benchmark_job_list" not in declared or (refresh_refs and "benchmark_job_status" not in declared):
+            raise ValueError("benchmark list unavailable")
+        result = ControllerAdapter._payload(transport.execute(
+            Operation("benchmark_job_list", arguments, tool_name="benchmark_job_list")
+        ).data)
+        if refresh_refs:
+            updates, partial = [], False
+            for ref in refresh_refs:
+                try:
+                    payload = ControllerAdapter._payload(transport.execute(
+                        Operation("benchmark_job_status", ref, tool_name="benchmark_job_status")
+                    ).data)
+                    row = _benchmark_refresh_row(payload, ref)
+                    if row is None:
+                        partial = True
+                    else:
+                        updates.append(row)
+                except Exception:
+                    partial = True
+            result["refresh"] = {"items": updates, "partial": partial}
+        message: object = {"ok": True, "data": result}
+    except Exception:
+        message = {"ok": False}
+    try:
+        raw = canonical(message)
+        if len(raw) > _BENCHMARK_WORKER_IPC_BYTES:
+            raw = canonical({"ok": False})
+        sender.send_bytes(raw)
+    except (BrokenPipeError, OSError, ValueError, ObservatoryError):
+        pass
+    finally:
+        sender.close()
+
+
+def _stop_benchmark_worker(process) -> bool:
+    if process.is_alive():
+        process.terminate()
+        process.join(timeout=0.1)
+    if process.is_alive():
+        process.kill()
+        process.join(timeout=0.1)
+    if process.is_alive():
+        return False
+    process.join(timeout=0)
+    process.close()
+    return True
 
 
 class ControllerAdapter:
@@ -120,6 +224,7 @@ class ControllerAdapter:
         self._catalog: frozenset[str] | None = None
         self._catalog_error = False
         self._catalog_checked_at = float("-inf")
+        self._benchmark_worker_poisoned = False
 
     @staticmethod
     def _validate_resource(item: dict[str, Any]) -> None:
@@ -614,6 +719,10 @@ class ControllerAdapter:
         response = {"ok": outcome != "failed", "owner_operation_id": intent_key,
                     "native_state": state, "execution_outcome": outcome,
                     "evidence": self._evidence(payload)}
+        if action_id == "experiment.start":
+            job_ref = self._benchmark_job_ref(payload)
+            if job_ref is not None:
+                response["benchmark_job_ref"] = job_ref
         if isinstance(payload.get("recovery"), Mapping):
             response["recovery"] = copy.deepcopy(dict(payload["recovery"]))
         return response
@@ -661,7 +770,11 @@ class ControllerAdapter:
                        .get(state, "unknown"))
             return {"ok": outcome not in {"failed", "unknown"}, "owner_operation_id": intent_key,
                     "native_state": state, "execution_outcome": outcome,
-                    "evidence": self._evidence(job_payload)}
+                    "evidence": self._evidence(job_payload),
+                    **({"benchmark_job_ref": job_ref} if (
+                        job_ref := self._benchmark_job_ref(job_payload)
+                    ) is not None else {}),
+                    }
         response = record.get("response")
         payload = self._payload(response) if isinstance(response, Mapping) else {}
         typed = self._typed_completion(preview.get("action_id"), payload, intent_key)
@@ -669,6 +782,104 @@ class ControllerAdapter:
             return typed
         return {"ok": True, "owner_operation_id": intent_key, "native_state": "succeeded",
                 "execution_outcome": "succeeded", "evidence": self._evidence(payload)}
+
+    def list_benchmark_jobs(
+        self, *, limit: int = 100, cursor: str | None = None, refresh_refs: object = None,
+        deadline_seconds: float = 2.0,
+    ) -> dict[str, Any]:
+        """Read a benchmark list in one process that is killed at the source deadline."""
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
+            raise ObservatoryError("invalid_run_list", "Select a list limit between 1 and 100.")
+        if cursor is not None and (type(cursor) is not str or len(cursor) > 128):
+            raise ObservatoryError("invalid_run_list", "Select a valid run cursor.")
+        if (type(deadline_seconds) not in {int, float} or isinstance(deadline_seconds, bool)
+                or not 0 < deadline_seconds <= 2):
+            raise ObservatoryError("invalid_run_list", "Select a bounded owner deadline.")
+        refs = [] if refresh_refs is None else validated_benchmark_refresh_refs(refresh_refs)
+        arguments = {"limit": limit, **({"cursor": cursor} if cursor is not None else {})}
+        if refs:
+            arguments["refresh_refs"] = refs
+        isolated = self._isolated_benchmark_list(
+            arguments,
+            float(deadline_seconds),
+        )
+        if isolated is not None:
+            return isolated
+        tools = self._tools()
+        if "benchmark_job_list" not in tools or (refs and "benchmark_job_status" not in tools):
+            raise _public_error("The benchmark owner does not expose a run list.")
+        result = self._call("benchmark_job_list", {
+            "limit": limit,
+            **({"cursor": cursor} if cursor is not None else {}),
+        })
+        if refs:
+            updates, partial = [], False
+            for ref in refs:
+                try:
+                    row = _benchmark_refresh_row(self._call("benchmark_job_status", ref), ref)
+                    if row is None:
+                        partial = True
+                    else:
+                        updates.append(row)
+                except ObservatoryError:
+                    partial = True
+            result["refresh"] = {"items": updates, "partial": partial}
+        return result
+
+    def _isolated_benchmark_list(
+        self, arguments: Mapping[str, Any], deadline_seconds: float,
+    ) -> dict[str, Any] | None:
+        """Use a killable subprocess only for the real read-only controller transport.
+
+        Test adapters remain in-process. Production ``ControllerTransport`` calls
+        otherwise block in DNS, TLS, or HTTP-header parsing where urllib exposes no
+        cancellation handle to release the console's one-source slot.
+        """
+        if type(self._transport) is not ControllerTransport:
+            return None
+        if self._benchmark_worker_poisoned:
+            raise _public_error("The benchmark source worker is unavailable.")
+        environment = None
+        if self._transport._environment_injected:
+            token = self._transport.environment.get(self._transport.auth_env)
+            environment = {self._transport.auth_env: token} if type(token) is str else {}
+        bundle = {
+            "endpoint": self._transport.endpoint,
+            "auth_env": self._transport.auth_env,
+            "allowed_operations": tuple(self._transport.allowed_operations),
+            "environment": environment,
+            "timeout_seconds": deadline_seconds,
+            "max_response_bytes": self._transport.max_response_bytes,
+            "expected_node": self._transport.expected_node,
+            "expected_catalog_digest": self._expected_catalog_digest,
+        }
+        context = multiprocessing.get_context("spawn")
+        receiver, sender = context.Pipe(duplex=False)
+        process = context.Process(
+            target=_benchmark_list_worker,
+            args=(sender, bundle, dict(arguments)),
+            name="observatory-benchmark-list",
+        )
+        deadline = time.monotonic() + deadline_seconds
+        try:
+            process.start()
+            sender.close()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not receiver.poll(remaining):
+                raise TimeoutError
+            raw = receiver.recv_bytes(_BENCHMARK_WORKER_IPC_BYTES)
+            response = strict_json(raw)
+            if not isinstance(response, Mapping) or response.get("ok") is not True:
+                raise ValueError("benchmark worker failed")
+            return self._payload(response.get("data", {}))
+        except (EOFError, OSError, TimeoutError, ValueError, ObservatoryError):
+            raise _public_error() from None
+        finally:
+            receiver.close()
+            sender.close()
+            if process.pid is not None and not _stop_benchmark_worker(process):
+                self._benchmark_worker_poisoned = True
+                raise _public_error("The benchmark source worker did not exit.")
 
     def verify(self, preview: Mapping[str, Any], result: Mapping[str, Any]) -> dict[str, str]:
         binding = self._binding(preview)
@@ -1260,6 +1471,13 @@ class ControllerAdapter:
         if isinstance(job, Mapping) and type(job.get("state")) is str:
             return job["state"]
         return "succeeded"
+
+    @staticmethod
+    def _benchmark_job_ref(payload: Mapping[str, Any]) -> dict[str, str] | None:
+        reference = payload.get("job_ref")
+        if reference is None and isinstance(payload.get("job"), Mapping):
+            reference = payload["job"].get("job_ref")
+        return validated_benchmark_job_ref(reference)
 
     @staticmethod
     def _evidence(payload: Mapping[str, Any]) -> Any:

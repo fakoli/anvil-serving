@@ -11,8 +11,9 @@ import pytest
 from anvil_serving.observability.api import TelemetryRegistry, run_server_in_thread
 from anvil_serving.observability.dashboard.app import create_dashboard_server
 from anvil_serving.observability.dashboard.console import Console, attach_console
-from anvil_serving.observability.dashboard.contracts import digest
+from anvil_serving.observability.dashboard.contracts import canonical, digest
 from anvil_serving.observability.dashboard.intents import IntentStore
+from anvil_serving.observability.dashboard import intents as intents_module
 from anvil_serving.observability.dashboard.access import Principal, Session
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
 
@@ -42,6 +43,8 @@ class FakeOwner:
         self.completed = {}
         self.gate = threading.Event()
         self.gate.set()
+        self.benchmark_rows = None
+        self.benchmark_states = {}
 
     def snapshot(self):
         return {"hosts": [{"id": "host-fixture-a", "controller": {"status": "complete"}}], "serves": []}
@@ -80,20 +83,46 @@ class FakeOwner:
         correct = self.observed == preview["private_values"].get("max_output", self.current)
         return {"status": "passed" if correct else "failed", "message": "Fixture owner checked independently."}
 
+    def list_benchmark_jobs(self, *, limit=100, cursor=None, refresh_refs=None):
+        if self.fail_verification:
+            raise TimeoutError("fixture benchmark owner unavailable")
+        rows = self.benchmark_rows or [{
+            "native_id": "benchmark-fixture-1", "native_state": "completed", "suite": "context",
+            "profile": "fixture-profile", "model": "fixture-model", "submitted_at": "2026-09-19T00:00:00Z",
+            "updated_at": "2026-09-19T00:01:00Z", "artifact": {"sha256": "a" * 64},
+        }]
+        result = {"schema": "anvil-serving.benchmark-job-list/v1", "items": rows[:limit], "next_cursor": None, "source": {
+            "id": "benchmark-owner", "status": "fresh", "observed_at": "2026-09-19T00:01:00Z",
+            "deadline_seconds": 1.0,
+        }}
+        if refresh_refs:
+            updates = []
+            for ref in refresh_refs:
+                state = self.benchmark_states.get((ref["suite"], ref["run_id"]))
+                if state is not None:
+                    updates.append({**ref, "native_state": state, "updated_at": "2026-09-19T00:02:00Z"})
+            result["refresh"] = {"items": updates, "partial": len(updates) != len(refresh_refs)}
+        return result
+
 
 @pytest.fixture
 def site(tmp_path):
     owner = FakeOwner()
     config = {"origin": "https://console.example.test", "base_path": "/observatory/", "operate": True,
               "users": [{"id": "operator-fixture", "username": "operator", "role": "operator", "resources": ["*"], "actions": ["configuration.apply", "tier.quiesce"]}],
-              "authentication": {}, "state_path": str(tmp_path / "journal.sqlite"), "fixture": True}
+              "authentication": {}, "state_path": str(tmp_path / "journal.sqlite"), "fixture": True,
+              "runs": {"benchmark": {"resource_id": "benchmark.runs"}},
+              "workbench": {"state_path": str(tmp_path / "workbench.sqlite"), "host_pi": {
+                  "id": "host-pi", "resource_id": "host.pi", "origin": "https://pi.example.test",
+                  "owner_subject": "connect-owner", "version": "0.9.0", "runtime_sha256": "a" * 64,
+              }}}
     console = Console(config, metrics=FakeMetrics(), adapter=owner, authenticate=lambda u, p: u == "operator" and p == "fixture-password")
     server = create_dashboard_server(TelemetryRegistry(), port=0, auth_env="LEGACY_TOKEN", environment={"LEGACY_TOKEN": "fixture-legacy-read-token"})
     attach_console(server, console)
     thread = run_server_in_thread(server)
     session = {}
 
-    def call(method, route, body=None, *, authenticated=True, extra=None, raw=None):
+    def call(method, route, body=None, *, authenticated=True, extra=None, raw=None, include_headers=False):
         connection = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=10)
         headers = {"Host": "console.example.test", "Origin": config["origin"]}
         if authenticated and session:
@@ -109,8 +138,9 @@ def site(tmp_path):
         if route == "session" and method == "POST" and response.status == 200:
             session.update(cookie=response.getheader("Set-Cookie").split(";", 1)[0], csrf=data["data"]["csrf_token"])
         status = response.status
+        response_headers = dict(response.getheaders())
         connection.close()
-        return status, data
+        return (status, data, response_headers) if include_headers else (status, data)
 
     call("POST", "session", {"username": "operator", "password": "fixture-password"})
     yield console, owner, call
@@ -137,6 +167,260 @@ def terminal(call, key):
             return result["data"]
         time.sleep(0.01)
     raise AssertionError("operation did not reach expected state")
+
+
+def test_host_pi_frame_source_is_narrow_and_keeps_ancestors_denied(site):
+    _console, _owner, call = site
+    status, _body, headers = call("GET", "operations", include_headers=True)
+    assert status == 200
+    csp = headers["Content-Security-Policy"]
+    assert "frame-src https://pi.example.test" in csp
+    assert "frame-src 'self'" not in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "connect-src 'self'" in csp
+
+
+def test_console_frame_source_is_none_without_host_pi(tmp_path):
+    config = {"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
+              "authentication": {"grafana_url": "http://127.0.0.1:3000"},
+              "state_path": str(tmp_path / "journal.sqlite"), "prometheus_url": "http://127.0.0.1:9090",
+              "inventory": {}, "workbench": {"state_path": str(tmp_path / "workbench.sqlite")}}
+    console = Console(config, metrics=FakeMetrics())
+    server = create_dashboard_server(TelemetryRegistry(), port=0)
+    attach_console(server, console)
+    thread = run_server_in_thread(server)
+    try:
+        connection = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=5)
+        connection.request("GET", "/observatory/", headers={"Host": "console.example.test"})
+        response = connection.getresponse()
+        response.read()
+        csp = response.getheader("Content-Security-Policy")
+        connection.close()
+        assert response.status == 200
+        assert "frame-src 'none'" in csp
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+        console.close()
+
+
+def test_host_pi_rejects_console_or_fallback_same_origin(tmp_path):
+    base = {"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
+            "authentication": {"grafana_url": "http://127.0.0.1:3000"}, "state_path": str(tmp_path / "journal.sqlite"),
+            "prometheus_url": "http://127.0.0.1:9090", "inventory": {}, "workbench": {
+                "state_path": str(tmp_path / "workbench.sqlite"), "host_pi": {
+                    "id": "host-pi", "resource_id": "host.pi", "origin": "https://console.example.test:443",
+                    "owner_subject": "connect-owner", "version": "0.9.0", "runtime_sha256": "a" * 64,
+                }}}
+    with pytest.raises(ValueError, match="separate application origin"):
+        Console(base, metrics=FakeMetrics())
+
+    fallback = {**base, "origin": "https://primary.example.test", "users": [{
+        "id": "operator-fixture", "username": "operator", "resources": ["host.pi"], "actions": [],
+    }], "authentication": {"mode": "connect", "connect": {
+        "resource": "observatory", "keys": [{"id": "current", "secret_env": "CONNECT_ASSERTION_CURRENT"}],
+        "principals": {"connect-owner": "operator-fixture"},
+    }}, "fallback_authentication": {
+        "origin": "https://console.example.test", "grafana_url": "http://127.0.0.1:3000", "users": ["operator-fixture"],
+    }}
+    with pytest.raises(ValueError, match="separate application origin"):
+        Console(fallback, metrics=FakeMetrics(), environment={"CONNECT_ASSERTION_CURRENT": "fixture-secret"})
+
+
+def test_console_read_lists_independent_operation_and_benchmark_sources(site):
+    console, _owner, call = site
+    review = preview(call)
+    _, response = call("POST", "operations", {"preview_id": review["id"], "intent_key": "fixture-run-list"})
+    operation = terminal(call, response["data"]["id"])
+    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
+
+    catalog = console.read("run-sources", {}, session)
+    assert {item["id"] for item in catalog["items"]} == {"operations", "benchmark"}
+    operations = console.read("runs/operations", {"limit": "1"}, session)
+    benchmarks = console.read("runs/benchmark", {"limit": "1"}, session)
+
+    assert operations["items"][0]["native_id"] == operation["id"]
+    assert operations["items"][0]["source"] == "operations"
+    assert operations["sources"][0]["truncated"] is False
+    assert benchmarks["items"][0]["native_id"] == "benchmark-fixture-1"
+    assert benchmarks["items"][0]["owner_id"] == "benchmark-owner"
+    assert benchmarks["items"][0]["correlation_id"].startswith("benchmark-job-")
+
+
+def test_lost_experiment_response_reconciles_to_the_owner_job_reference(site):
+    console, owner, _call = site
+    job_ref = {
+        "schema": "anvil-serving.run-correlation/v1", "issuer": "benchmark-owner",
+        "namespace": "benchmark-job", "native_id": "context-001",
+    }
+    owner.controls = lambda resource: {
+        "resource_id": resource, "baseline_digest": digest("experiment-baseline"),
+        "actions": [{"id": "experiment.start", "label": "Run fixture benchmark", "supported": True}],
+        "settings": [],
+    }
+    owner.preview = lambda resource, action, values=None, parameters=None: {
+        "host_id": "host-fixture-a", "resource_id": resource, "action_id": action,
+        "label": "Fixture benchmark", "baseline_digest": digest("experiment-baseline"),
+        "candidate_digest": digest(parameters or {}), "effect": "fixture benchmark", "diff": [],
+    }
+
+    def lose_response(_preview, intent_key):
+        owner.completed[intent_key] = {
+            "ok": True, "owner_operation_id": intent_key, "native_state": "completed",
+            "execution_outcome": "succeeded", "benchmark_job_ref": job_ref,
+        }
+        raise TimeoutError
+
+    owner.execute = lose_response
+    session = Session("experiment-session", "csrf", Principal(
+        "operator-fixture", "operator", "operator", frozenset({"*"}),
+        frozenset({"experiment.start"}),
+    ), time.time() + 60)
+    preview = console.create_preview(session, {
+        "resource_id": "serve-fixture-a", "action_id": "experiment.start", "parameters": {},
+    })
+    accepted = console.apply(session, {"preview_id": preview["id"], "intent_key": "fixture-experiment"})
+    deadline = time.monotonic() + 2
+    while console.store.get(accepted["id"])["status"] != "outcome_unknown":
+        assert time.monotonic() < deadline
+        time.sleep(0.01)
+    owner.reconciled = True
+    console._reconcile(console.store.get(accepted["id"]))
+    retained = console.store.get(accepted["id"])
+    assert retained["benchmark_job_ref"] == job_ref
+    operation = console._operation_run(retained)
+    owner.benchmark_rows = [{
+        "native_id": "context-001", "native_state": "completed", "suite": "context",
+        "profile": "fixture-profile", "model": "fixture-model",
+        "submitted_at": "2026-09-19T00:00:00Z", "updated_at": "2026-09-19T00:01:00Z",
+        "artifact": {"sha256": "a" * 64},
+    }]
+    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
+    benchmark = console.read("runs/benchmark", {"limit": "1"}, session)["items"][0]
+    assert operation["correlation_id"] == benchmark["correlation_id"]
+
+
+def test_run_sources_do_not_expose_the_other_side_without_its_grant(site):
+    console, _owner, _call = site
+    operation_only = Session("operation-only", "csrf", Principal(
+        "operation-only", "operation-only", "viewer", frozenset({"serve-fixture-a"}), frozenset(),
+    ), time.time() + 60)
+    catalog = console.read("run-sources", {}, operation_only)
+    assert {item["id"] for item in catalog["items"]} == {"operations"}
+    assert console.read("runs/operations", {"limit": "1"}, operation_only)["items"] == []
+    with pytest.raises(ObservatoryError) as denied:
+        console.read("runs/benchmark", {"limit": "1"}, operation_only)
+    assert denied.value.status == 403
+
+
+def test_benchmark_cache_is_authorized_before_stale_fallback(site):
+    console, owner, _call = site
+    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
+    fresh = console.read("runs/benchmark", {"limit": "1"}, session)
+    owner.fail_verification = True
+    stale = console.read("runs/benchmark", {"limit": "1"}, session)
+    denied = Session("denied-session", "csrf", Principal("denied", "denied", "viewer", frozenset(), frozenset()), time.time() + 60)
+
+    assert fresh["sources"][0]["status"] == "fresh"
+    assert stale["sources"][0]["status"] == "stale"
+    assert stale["items"][0]["freshness"] == "stale"
+    with pytest.raises(ObservatoryError, match="does not grant"):
+        console.read("runs/benchmark", {"limit": "1"}, denied)
+
+
+def test_benchmark_head_poll_carries_bounded_off_head_status_updates(site):
+    console, owner, _call = site
+    owner.benchmark_rows = [{
+        "native_id": "older-active", "native_state": "running", "suite": "context",
+        "profile": "fixture-profile", "model": "fixture-model",
+        "submitted_at": "2026-09-19T00:00:00Z", "updated_at": "2026-09-19T00:01:00Z",
+    }]
+    owner.benchmark_states[("context", "older-active")] = "completed"
+    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
+    result = console.read("runs/benchmark", {
+        "limit": "1", "refresh_refs": json.dumps([{"suite": "context", "run_id": "older-active"}]),
+    }, session)
+    assert result["items"][0]["native_state"] == "running"
+    assert result["updates"][0]["native_state"] == "completed"
+    assert result["sources"][0]["partial"] is False
+
+    denied = Session("denied", "csrf", Principal("denied", "denied", "viewer", frozenset(), frozenset()), time.time() + 60)
+    with pytest.raises(ObservatoryError) as exc:
+        console.read("runs/benchmark", {"refresh_refs": "not-json"}, denied)
+    assert exc.value.status == 403
+
+    with pytest.raises(ObservatoryError, match="distinct valid"):
+        console.read("runs/benchmark", {"refresh_refs": json.dumps([{"suite": "bad/path", "run_id": "older-active"}])}, session)
+
+
+def test_benchmark_cache_retains_a_projected_hundred_row_page(site):
+    console, owner, _call = site
+    owner.benchmark_rows = [{
+        "native_id": f"benchmark-fixture-{number:03d}", "native_state": "completed",
+        "suite": "context", "profile": "profile-" + "p" * 240,
+        "model": "model-" + "m" * 240,
+        "submitted_at": "2026-09-19T00:00:00Z", "updated_at": "2026-09-19T00:01:00Z",
+        "artifact": {"sha256": "a" * 64},
+    } for number in range(100)]
+    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
+
+    fresh = console.read("runs/benchmark", {"limit": "100"}, session)
+    assert len(canonical(fresh)) > 48 * 1024
+    assert len(canonical(fresh)) <= 128 * 1024
+
+    owner.fail_verification = True
+    stale = console.read("runs/benchmark", {"limit": "100"}, session)
+    assert len(stale["items"]) == 100
+    assert stale["sources"][0]["status"] == "stale"
+    assert {row["freshness"] for row in stale["items"]} == {"stale"}
+
+
+def test_console_operation_runs_page_past_the_legacy_hundred_row_cap(site):
+    console, _owner, _call = site
+    for number in range(101):
+        native_id = f"operation-{number:03d}"
+        item = {
+            "id": native_id, "resource_id": "serve-fixture-a", "host_id": "host-fixture-a",
+            "action_id": "configuration.apply", "label": native_id, "actor": "operator-fixture",
+            "service_identity": "fixture", "submitted_at": "2026-09-19T00:00:00Z",
+            "updated_at": "2026-09-19T00:00:00Z", "status": "succeeded", "native_state": "completed",
+            "owner_operation_id": native_id, "execution_outcome": "succeeded", "verification": {},
+            "recovery": {}, "events": [], "evidence_id": None, "candidate_digest": "a" * 64,
+            "baseline_digest": "b" * 64,
+        }
+        console.store.db.execute(
+            "INSERT INTO intents VALUES(?,?,?,?,?,?,?,?)",
+            (native_id, "key-" + native_id, digest(native_id), "operator-fixture", "serve-fixture-a",
+             canonical(item).decode(), float(number), float(number)),
+        )
+    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
+    first = page = console.read("runs/operations", {"limit": "100"}, session)
+    native_ids = []
+    while True:
+        native_ids.extend(item["native_id"] for item in page["items"])
+        if page["next_cursor"] is None:
+            break
+        page = console.read("runs/operations", {"limit": "100", "cursor": page["next_cursor"]}, session)
+
+    assert first["sources"][0]["truncated"] is True
+    assert len(native_ids) == 101 and len(set(native_ids)) == 101
+
+
+def test_operation_run_query_has_an_enforced_sqlite_deadline(tmp_path, monkeypatch):
+    store = IntentStore(tmp_path / "journal.sqlite")
+    try:
+        for number in range(256):
+            store.db.execute(
+                "INSERT INTO intents VALUES(?,?,?,?,?,?,?,?)",
+                (f"operation-{number}", f"key-{number}", "f", "operator", "resource", "{}", float(number), float(number)),
+            )
+        calls = iter((0.0, 0.0, 2.0, 2.0))
+        monkeypatch.setattr(intents_module.time, "monotonic", lambda: next(calls, 2.0))
+        with pytest.raises(ObservatoryError, match="read deadline"):
+            store.list_run_page(frozenset({"resource"}), limit=100)
+    finally:
+        store.close()
 
 
 def test_preview_is_read_only_and_duplicate_confirmation_is_one_dispatch(site):

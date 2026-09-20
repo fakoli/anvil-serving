@@ -1,8 +1,13 @@
 import copy
+import http.server
+import json
+import multiprocessing
+import threading
+import time
 
 import pytest
 
-from anvil_serving.observability.dashboard.controller_adapter import ControllerAdapter
+from anvil_serving.observability.dashboard.controller_adapter import ControllerAdapter, _benchmark_refresh_row
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
 from anvil_serving.transports import TransportError, TransportResult, DEFAULT_MAX_RESPONSE_BYTES
 
@@ -20,7 +25,7 @@ class FakeTransport:
     def tool_catalog(self):
         names = {"serves_status", "serves_manage", "serves_probe", "serves_profile",
                  "router_transition",
-                 "benchmark_job_preflight", "benchmark_job_submit", "host_services_status",
+                 "benchmark_job_preflight", "benchmark_job_submit", "benchmark_job_list", "benchmark_job_status", "host_services_status",
                  "host_services_logs", "host_services_manage", "container_exec"}
         return tuple({"name": name, "inputSchema": {"type": "object"}} for name in names)
 
@@ -45,10 +50,18 @@ class FakeTransport:
             else:
                 data = {"ok": True, "data": {"result": {
                     "status": "completed", "exit_code": 0, "output": "ready\n", "truncated": False}}}
-        elif operation.name == "benchmark_job_status":
+        elif operation.name in {"benchmark_job_submit", "benchmark_job_status"}:
             data = {"ok": True, "data": {
                 "spec": {"run_id": "smoke", "suite": "context"}, "spec_sha256": "a" * 64,
-                "state": "completed", "revision": 3, "failure": None,
+                "state": "completed", "updated_at": "2026-09-19T00:01:00Z", "revision": 3, "failure": None,
+                "job_ref": {"schema": "anvil-serving.run-correlation/v1",
+                            "issuer": "benchmark-owner", "namespace": "benchmark-job",
+                            "native_id": "smoke"},
+            }}
+        elif operation.name == "benchmark_job_list":
+            data = {"ok": True, "data": {
+                "schema": "anvil-serving.benchmark-job-list/v1", "items": [],
+                "next_cursor": None, "source": {"id": "benchmark-owner", "status": "fresh"},
             }}
         elif operation.name == "router_transition" and operation.arguments.get("action") == "status":
             data = {"ok": True, "data": {"tiers": [
@@ -129,6 +142,152 @@ def test_catalog_gates_declared_resource_actions_and_hides_bindings():
         "tier.quiesce", "tier.drain", "tier.readmit",
     }
     assert "/private" not in repr(controls)
+
+
+def test_benchmark_list_uses_only_the_declared_bounded_tool():
+    value = adapter()
+    cursor = "a" * 32 + ".1"
+    assert value.list_benchmark_jobs(limit=2, cursor=cursor)["schema"] == "anvil-serving.benchmark-job-list/v1"
+    operation, kwargs = FakeTransport.instances[-1].calls[-1]
+    assert operation.name == "benchmark_job_list"
+    assert operation.arguments == {"limit": 2, "cursor": cursor}
+    assert kwargs == {}
+
+
+def test_benchmark_list_refreshes_only_exact_bounded_status_refs():
+    value = adapter()
+    result = value.list_benchmark_jobs(refresh_refs=[{"suite": "context", "run_id": "smoke"}])
+    assert result["refresh"] == {"items": [{
+        "suite": "context", "run_id": "smoke", "native_state": "completed", "updated_at": "2026-09-19T00:01:00Z",
+    }], "partial": False}
+    assert [call[0].name for call in FakeTransport.instances[-1].calls[-2:]] == [
+        "benchmark_job_list", "benchmark_job_status",
+    ]
+    with pytest.raises(ObservatoryError, match="up to 20"):
+        value.list_benchmark_jobs(refresh_refs=[])
+
+
+@pytest.mark.parametrize("state", ["completed", "cancelling"])
+def test_benchmark_refresh_accepts_declared_owner_states(state):
+    assert _benchmark_refresh_row({
+        "spec": {"suite": "context", "run_id": "smoke"}, "state": state,
+        "updated_at": "2026-09-19T00:01:00Z",
+    }, {"suite": "context", "run_id": "smoke"})["native_state"] == state
+
+
+def test_real_benchmark_owner_header_stall_is_killed_at_the_total_deadline():
+    request_started = threading.Event()
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/health":
+                raw = b'{"status":"ok","service":"anvil-serving-controller","request_id":"fixture.1","node":"host-a"}'
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+                return
+            request_started.set()
+            self.connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n")
+            time.sleep(5)
+
+        def log_message(self, *_args):
+            pass
+
+    class Server(http.server.ThreadingHTTPServer):
+        daemon_threads = True
+
+    server = Server(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    value = ControllerAdapter({"controller": {
+        "url": f"http://127.0.0.1:{server.server_address[1]}", "token_env": "FIXTURE_TOKEN",
+        "expected_node": "host-a", "topology": "fixture", "execution_host": "host-a",
+        "execution_runtime": "native",
+    }, "resources": []}, {"FIXTURE_TOKEN": "fixture-token"})
+    started = time.monotonic()
+    try:
+        with pytest.raises(ObservatoryError, match="unavailable"):
+            # Include spawn/import time in the real two-second owner budget.
+            # A 200ms fixture can kill a healthy worker before it reaches HTTP.
+            value.list_benchmark_jobs(limit=1, deadline_seconds=2.0)
+        elapsed = time.monotonic() - started
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=1)
+    assert request_started.is_set()
+    assert elapsed < 2.5
+    assert not [child for child in multiprocessing.active_children()
+                if child.name == "observatory-benchmark-list"]
+
+
+def test_benchmark_owner_rejects_a_dns_name_before_a_worker_can_resolve_it():
+    value = ControllerAdapter({"controller": {
+        "url": "https://resolver-stall.example.test", "token_env": "FIXTURE_TOKEN",
+        "topology": "fixture", "execution_host": "host-a", "execution_runtime": "native",
+    }, "resources": []}, {"FIXTURE_TOKEN": "fixture-token"})
+    started = time.monotonic()
+    with pytest.raises(ObservatoryError, match="unavailable"):
+        value.list_benchmark_jobs(limit=1, deadline_seconds=0.2)
+    assert time.monotonic() - started < 0.8
+
+
+def test_real_benchmark_owner_worker_returns_the_declared_list():
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/health":
+                raw = b'{"status":"ok","service":"anvil-serving-controller","request_id":"fixture.1","node":"host-a"}'
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+                return
+            raw = b'{"tools":[{"name":"benchmark_job_list","inputSchema":{"type":"object"}},{"name":"benchmark_job_status","inputSchema":{"type":"object"}}]}'
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def do_POST(self):
+            request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            raw = (b'{"ok":true,"data":{"schema":"anvil-serving.benchmark-job-list/v1",'
+                   b'"items":[{"native_id":"job-native-1"}],"next_cursor":null,'
+                   b'"source":{"id":"owner-a","status":"fresh"}}}' if request["name"] == "benchmark_job_list" else
+                   b'{"ok":true,"data":{"spec":{"suite":"context","run_id":"job-native-1"},"state":"completed","updated_at":"2026-09-19T00:01:00Z"}}')
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def log_message(self, *_args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    value = ControllerAdapter({"controller": {
+        "url": f"http://127.0.0.1:{server.server_address[1]}", "token_env": "FIXTURE_TOKEN",
+        "expected_node": "host-a", "topology": "fixture", "execution_host": "host-a",
+        "execution_runtime": "native",
+    }, "resources": []}, {"FIXTURE_TOKEN": "fixture-token"})
+    try:
+        result = value.list_benchmark_jobs(limit=1, refresh_refs=[{"suite": "context", "run_id": "job-native-1"}], deadline_seconds=2.0)
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=1)
+    assert result["source"]["id"] == "owner-a"
+    assert result["items"] == [{"native_id": "job-native-1"}]
+    assert result["refresh"] == {"items": [{
+        "suite": "context", "run_id": "job-native-1", "native_state": "completed", "updated_at": "2026-09-19T00:01:00Z",
+    }], "partial": False}
+    assert not [child for child in multiprocessing.active_children()
+                if child.name == "observatory-benchmark-list"]
 
 
 def test_preview_binds_exact_private_resource_and_execute_uses_durable_context():
@@ -721,12 +880,14 @@ def test_experiment_preview_runs_preflight_but_never_submits():
     names = [call[0].name for call in FakeTransport.instances[-1].calls]
     assert "benchmark_job_preflight" in names
     assert "benchmark_job_submit" not in names
-    value.execute(preview, "intent.experiment")
+    executed = value.execute(preview, "intent.experiment")
     assert [call[0].name for call in FakeTransport.instances[-1].calls].count("benchmark_job_submit") == 1
+    assert executed["benchmark_job_ref"]["issuer"] == "benchmark-owner"
     reconciled = value.reconcile(preview, "intent.experiment")
     assert reconciled["native_state"] == "completed"
     assert reconciled["execution_outcome"] == "succeeded"
     assert reconciled["evidence"]["spec_sha256"] == "a" * 64
+    assert reconciled["benchmark_job_ref"] == executed["benchmark_job_ref"]
     assert value.verify(preview, reconciled)["status"] == "unavailable"
 
 

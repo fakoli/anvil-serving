@@ -5,10 +5,12 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, replace
 import hashlib
 import json
+import multiprocessing
 import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import stat
 import tempfile
 import threading
 import time
@@ -19,6 +21,92 @@ from .pi_rpc import PiCommandId, PiRpcClient, PiRpcError
 
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9._-]{1,160}$")
+_RUN_METADATA_BYTES = 64 * 1024
+
+
+def _safe_metadata_text(value: Any, *, empty: bool = False) -> str:
+    if type(value) is not str or len(value.encode("utf-8")) > 256 or (not empty and not value) or any(ord(char) < 32 for char in value):
+        raise ValueError("invalid Pi session metadata")
+    return value
+
+
+def _metadata_open_flags() -> int:
+    """Require descriptor primitives needed for safe optional projections."""
+    flags = []
+    for name in ("O_RDONLY", "O_CLOEXEC", "O_NOFOLLOW", "O_NONBLOCK"):
+        value = getattr(os, name, None)
+        if type(value) is not int:
+            raise PiSessionError("Pi session metadata is unavailable")
+        flags.append(value)
+    return flags[0] | flags[1] | flags[2] | flags[3]
+
+
+def _regular_file_info(path: Path) -> os.stat_result:
+    """Stat one file through a non-following, nonblocking descriptor."""
+    descriptor = os.open(path, _metadata_open_flags())
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISREG(info.st_mode):
+            raise ValueError("metadata file is not a regular file")
+        return info
+    finally:
+        os.close(descriptor)
+
+
+def _read_regular_metadata(path: Path) -> tuple[bytes, os.stat_result]:
+    """Read one bounded owner-created metadata index without following a replacement."""
+    descriptor = os.open(path, _metadata_open_flags())
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISREG(info.st_mode) or info.st_size > _RUN_METADATA_BYTES:
+            raise ValueError("metadata file is not a bounded regular file")
+        raw = os.read(descriptor, info.st_size + 1)
+        if len(raw) != info.st_size:
+            raise ValueError("metadata file changed during read")
+        return raw, info
+    finally:
+        os.close(descriptor)
+
+
+def _run_metadata_worker(result_path: str, paths: tuple[str, ...], legacy_partial: bool) -> None:
+    """Read small owner-created metadata indexes in a reaped child."""
+    try:
+        rows, partial = [], False
+        for raw_path in paths:
+            path = Path(raw_path)
+            try:
+                raw, _index_info = _read_regular_metadata(path)
+                value = json.loads(raw)
+                if value.get("version") != 1 or not isinstance(value.get("items"), list):
+                    raise ValueError("invalid metadata index")
+                for row in value["items"]:
+                    session_id = row.get("session_id") if isinstance(row, dict) else None
+                    fingerprint = row.get("file") if isinstance(row, dict) else None
+                    # Validate before deriving a session path or touching its metadata.
+                    if not isinstance(session_id, str) or not _SAFE_ID.fullmatch(session_id):
+                        partial = True
+                        continue
+                    session_path = path.parent.parent / "sessions" / f"{session_id}.json"
+                    info = _regular_file_info(session_path)
+                    if fingerprint != [info.st_size, info.st_mtime_ns]:
+                        partial = True
+                        continue
+                    rows.append(row)
+            except FileNotFoundError:
+                continue
+            except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+                partial = True
+        payload = json.dumps({"ok": True, "items": rows, "partial": partial or legacy_partial}, sort_keys=True, separators=(",", ":")).encode()
+        if len(payload) > 128 * 1024:
+            payload = b'{"ok":false}'
+        with open(result_path, "wb") as handle:
+            handle.write(payload)
+    except Exception:
+        try:
+            with open(result_path, "wb") as handle:
+                handle.write(b'{"ok":false}')
+        except Exception:
+            pass
 
 
 class PiSessionError(RuntimeError):
@@ -41,15 +129,24 @@ class PiTaskBinding:
     lease_id: str
     runner_id: str
     provider_id: str
+    rootset_digest: str = ""
 
     def __post_init__(self) -> None:
-        for value in asdict(self).values():
+        for value in (self.principal_id, self.project_id, self.task_id, self.lease_id, self.runner_id, self.provider_id):
             if type(value) is not str or not 1 <= len(value.encode("utf-8")) <= 192 or any(ord(c) < 32 for c in value):
                 raise ValueError("Pi task binding identifiers must be bounded opaque identities")
+        if self.rootset_digest and (type(self.rootset_digest) is not str or not re.fullmatch(r"[0-9a-f]{64}", self.rootset_digest)):
+            raise ValueError("Pi task root binding digest must be a SHA-256 identity")
 
     @property
     def fingerprint(self) -> str:
-        encoded = json.dumps(asdict(self), sort_keys=True, separators=(",", ":")).encode()
+        # Retained single-root session records predate root bindings.  Keeping
+        # their exact serialized fields preserves resume/fingerprint behavior;
+        # new multi-root preparations bind the frozen root-set digest too.
+        value = asdict(self)
+        if not self.rootset_digest:
+            value.pop("rootset_digest")
+        encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(encoded).hexdigest()
 
 
@@ -68,6 +165,7 @@ class PiSession:
     resume_file_name: str | None = None
     container_name: str | None = None
     runtime_command: tuple[str, ...] = ()
+    launch_policy: dict[str, Any] | None = None
     status: str = "reserved"
     parent_session_id: str | None = None
     pending_target: dict[str, Any] | None = None
@@ -119,6 +217,8 @@ class PiSessionStore:
         self._root = state_root
         self._runtime_root = runtime_root or state_root
         self._sessions = state_root / "sessions"
+        self._run_index = state_root / "run-index"
+        self._metadata_coverage = self._run_index / "coverage-v1.json"
         self._starts = state_root / "starts.json"
         self._max_events = max_events
         self._max_event_bytes = max_event_bytes
@@ -126,8 +226,22 @@ class PiSessionStore:
         self._max_state_bytes = max_state_bytes
         self._now = now
         self._lock = threading.RLock()
+        self._metadata_slot = threading.Lock()
+        self._metadata_poisoned = False
+        self._metadata_available = True
         self._sessions.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(self._sessions, 0o700)
+        try:
+            self._run_index.mkdir(parents=True, exist_ok=True, mode=0o700)
+            os.chmod(self._run_index, 0o700)
+            if not self._metadata_coverage.exists() and not any(self._sessions.glob("*.json")):
+                self._write_json(self._metadata_coverage, {"version": 1})
+            self._legacy_metadata_partial = not self._metadata_coverage.exists()
+        except (OSError, PiSessionError):
+            # Projection storage is optional.  Its failure cannot prevent the
+            # canonical owner from starting, stopping, or retaining a session.
+            self._metadata_available = False
+            self._legacy_metadata_partial = True
 
     def create(self, binding: PiTaskBinding, start_key: str, *, model_id: str = "", thinking_level: str = "", parent_session_id: str | None = None) -> tuple[PiSession, bool]:
         self._safe(start_key)
@@ -217,6 +331,27 @@ class PiSessionStore:
         with self._lock:
             return tuple(self._decode_session(self._read_json(path)["session"]) for path in self._sessions.glob("*.json"))
 
+    def backfill_run_metadata(self, sessions: tuple[PiSession, ...]) -> None:
+        """Atomically rebuild optional projections from canonical startup records."""
+        with self._lock:
+            if not self._metadata_available:
+                self._legacy_metadata_partial = True
+                return
+            grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+            try:
+                for session in sessions:
+                    key = (session.binding.principal_id, session.binding.project_id)
+                    grouped.setdefault(key, []).append(self._run_metadata_row(session))
+                # This replaces each complete owner group only after its canonical
+                # records were decoded; it also repairs a corrupted old index.
+                for (principal_id, project_id), items in grouped.items():
+                    self._write_json(self._metadata_index_path(principal_id, project_id), {"version": 1, "items": items})
+                self._write_json(self._metadata_coverage, {"version": 1})
+                self._legacy_metadata_partial = False
+            except (OSError, PiSessionError, ValueError):
+                self._metadata_available = False
+                self._legacy_metadata_partial = True
+
     def find_start(self, binding: PiTaskBinding, start_key: str) -> PiSession | None:
         self._safe(start_key)
         key = self._load_starts().get(start_key)
@@ -224,9 +359,13 @@ class PiSessionStore:
 
     def delete(self, session_id: str, binding: PiTaskBinding) -> None:
         with self._lock:
-            self.resume(session_id, binding)
+            session = self.resume(session_id, binding)
             starts = {key: value for key, value in self._load_starts().items() if value != session_id}
             self._write_json(self._starts, starts)
+            try:
+                self._remove_run_metadata(session)
+            except (OSError, PiSessionError):
+                self._legacy_metadata_partial = True
             self._session_path(session_id).unlink()
             for parent in ("runner-sessions", "agents"):
                 target = self._runtime_root / parent / session_id
@@ -270,6 +409,99 @@ class PiSessionStore:
                     result.append(session)
         return tuple(sorted(result, key=lambda value: value.updated_at, reverse=True))
 
+    def run_metadata_page(self, principal_id: str, projects: frozenset[str], *, limit: int = 100, deadline_seconds: float = 2.0) -> dict[str, Any]:
+        """Read authorized session metadata without decoding event payloads."""
+        if (type(principal_id) is not str or not principal_id or not isinstance(projects, frozenset)
+                or not projects or any(type(value) is not str or not value for value in projects)
+                or type(limit) is not int or isinstance(limit, bool) or not 1 <= limit <= 100
+                or type(deadline_seconds) not in {int, float} or isinstance(deadline_seconds, bool)
+                or not 0 < deadline_seconds <= 2):
+            raise ValueError("invalid Pi run metadata page")
+        deadline = time.monotonic() + float(deadline_seconds)
+        if self._metadata_poisoned or not self._metadata_available:
+            raise PiSessionError("Pi session metadata is unavailable")
+        # Never start a child or weaken path checks where safe descriptor
+        # primitives are absent on this platform.
+        _metadata_open_flags()
+        if not self._lock.acquire(timeout=max(0, deadline - time.monotonic())):
+            raise PiSessionError("Pi session owner is busy")
+        try:
+            paths = tuple(str(self._metadata_index_path(principal_id, project_id)) for project_id in sorted(projects))
+        finally:
+            self._lock.release()
+        if time.monotonic() >= deadline:
+            raise PiSessionError("Pi session owner exceeded its read deadline")
+        if not self._metadata_slot.acquire(blocking=False):
+            raise PiSessionError("Pi session owner is busy")
+        result_path, worker, exitcode, unreaped = None, None, None, False
+        try:
+            descriptor, result_path = tempfile.mkstemp(prefix="pi-run-metadata-")
+            os.close(descriptor)
+            context = multiprocessing.get_context("spawn")
+            worker = context.Process(target=_run_metadata_worker, args=(result_path, paths, self._legacy_metadata_partial), daemon=True)
+            worker.start()
+            # Keep 120ms for terminate/kill/reap inside the total source budget.
+            remaining = deadline - time.monotonic() - 0.12
+            if remaining <= 0:
+                raise PiSessionError("Pi session owner exceeded its read deadline")
+            worker.join(remaining)
+            if worker.is_alive():
+                raise PiSessionError("Pi session owner exceeded its read deadline")
+            if time.monotonic() >= deadline:
+                raise PiSessionError("Pi session owner exceeded its read deadline")
+            if os.path.getsize(result_path) > 128 * 1024:
+                raise PiSessionError("Pi session metadata is unavailable")
+            with open(result_path, "rb") as handle:
+                value = json.loads(handle.read(128 * 1024 + 1))
+            if not isinstance(value, dict) or value.get("ok") is not True or not isinstance(value.get("items"), list):
+                raise PiSessionError("Pi session metadata is unavailable")
+        except (EOFError, OSError, ValueError, TypeError, json.JSONDecodeError) as error:
+            raise PiSessionError("Pi session metadata is unavailable") from error
+        finally:
+            if worker is not None and worker.is_alive():
+                worker.terminate()
+                worker.join(timeout=min(0.05, max(0, deadline - time.monotonic())))
+            if worker is not None and worker.is_alive() and hasattr(worker, "kill"):
+                worker.kill()
+                worker.join(timeout=min(0.05, max(0, deadline - time.monotonic())))
+            if worker is not None and worker.is_alive():
+                self._metadata_poisoned = True
+                unreaped = True
+            if worker is not None and not unreaped:
+                exitcode = worker.exitcode
+                try:
+                    worker.close()
+                except (OSError, ValueError):
+                    self._metadata_poisoned = True
+                    unreaped = True
+            try:
+                if result_path is not None:
+                    os.unlink(result_path)
+            except OSError:
+                pass
+            self._metadata_slot.release()
+        if unreaped:
+            raise PiSessionError("Pi session metadata is unavailable")
+        if exitcode not in {0, None}:
+            raise PiSessionError("Pi session metadata is unavailable")
+        items, partial = [], bool(value.get("partial")) or self._legacy_metadata_partial
+        for row in value["items"]:
+            try:
+                binding = PiTaskBinding(row["principal_id"], row["project_id"], row["task_id"], row["lease_id"],
+                                        "metadata", row["provider_id"])
+                if (binding.principal_id != principal_id or binding.project_id not in projects
+                        or type(row.get("binding_fingerprint")) is not str
+                        or not _SAFE_ID.fullmatch(row["session_id"])):
+                    raise ValueError
+                items.append({"session_id": row["session_id"], "binding": binding, "created_at": float(row["created_at"]),
+                              "updated_at": float(row["updated_at"]), "status": _safe_metadata_text(row["status"]),
+                              "model_id": _safe_metadata_text(row.get("model_id", ""), empty=True),
+                              "parent_session_id": row.get("parent_session_id")})
+            except (KeyError, TypeError, ValueError):
+                partial = True
+        items.sort(key=lambda value: (value["updated_at"], value["session_id"]), reverse=True)
+        return {"items": tuple(items[:limit]), "partial": partial, "truncated": len(items) > limit}
+
     def session_dir(self, session_id: str) -> Path:
         """Private session storage passed to the runner; never return it to the browser."""
         self._safe(session_id)
@@ -290,6 +522,10 @@ class PiSessionStore:
 
     def _write_session(self, session: PiSession, events: list[PiSessionEvent]) -> None:
         self._write_json(self._session_path(session.session_id), {"session": asdict(session), "events": [asdict(event) for event in events]})
+        try:
+            self._upsert_run_metadata(session)
+        except (OSError, PiSessionError):
+            self._legacy_metadata_partial = True
 
     def _session_path(self, session_id: str) -> Path:
         self._safe(session_id)
@@ -316,6 +552,63 @@ class PiSessionStore:
                 return json.load(handle)
         except FileNotFoundError as exc:
             raise PiSessionError("Pi session does not exist") from exc
+
+    def _metadata_index_path(self, principal_id: str, project_id: str) -> Path:
+        token = hashlib.sha256(json.dumps([principal_id, project_id], separators=(",", ":")).encode()).hexdigest()
+        return self._run_index / (token + ".json")
+
+    def _read_metadata_index(self, principal_id: str, project_id: str) -> list[dict[str, Any]]:
+        path = self._metadata_index_path(principal_id, project_id)
+        try:
+            descriptor = os.open(path, _metadata_open_flags())
+        except FileNotFoundError:
+            return []
+        try:
+            info = os.fstat(descriptor)
+            if not stat.S_ISREG(info.st_mode) or info.st_size > _RUN_METADATA_BYTES:
+                raise PiSessionError("Pi session metadata index is unavailable")
+            raw = os.read(descriptor, info.st_size + 1)
+            if len(raw) != info.st_size:
+                raise PiSessionError("Pi session metadata index is unavailable")
+            try:
+                value = json.loads(raw)
+            except (ValueError, TypeError) as error:
+                raise PiSessionError("Pi session metadata index is unavailable") from error
+        finally:
+            os.close(descriptor)
+        if not isinstance(value, dict) or value.get("version") != 1 or not isinstance(value.get("items"), list):
+            raise PiSessionError("Pi session metadata index is unavailable")
+        return value["items"]
+
+    def _run_metadata_row(self, session: PiSession) -> dict[str, Any]:
+        path = self._session_path(session.session_id)
+        info = path.stat()
+        return {
+            "session_id": session.session_id, "binding_fingerprint": session.binding.fingerprint,
+            "principal_id": session.binding.principal_id, "project_id": session.binding.project_id,
+            "task_id": session.binding.task_id, "lease_id": session.binding.lease_id,
+            "provider_id": session.binding.provider_id, "created_at": session.created_at,
+            "updated_at": session.updated_at, "status": session.status, "model_id": session.model_id,
+            "parent_session_id": session.parent_session_id,
+            "file": [info.st_size, info.st_mtime_ns],
+        }
+
+    def _upsert_run_metadata(self, session: PiSession) -> None:
+        path = self._metadata_index_path(session.binding.principal_id, session.binding.project_id)
+        # A corrupted optional index must not be replaced with one current row;
+        # canonical writes stay durable and startup performs the full repair.
+        items = self._read_metadata_index(session.binding.principal_id, session.binding.project_id)
+        items = [item for item in items if isinstance(item, dict) and item.get("session_id") != session.session_id]
+        items.append(self._run_metadata_row(session))
+        self._write_json(path, {"version": 1, "items": items})
+
+    def _remove_run_metadata(self, session: PiSession) -> None:
+        path = self._metadata_index_path(session.binding.principal_id, session.binding.project_id)
+        try:
+            items = self._read_metadata_index(session.binding.principal_id, session.binding.project_id)
+        except PiSessionError:
+            return
+        self._write_json(path, {"version": 1, "items": [item for item in items if not isinstance(item, dict) or item.get("session_id") != session.session_id]})
 
     def over_quota(self) -> bool:
         return sum(item.stat().st_size for item in self._root.rglob("*") if item.is_file()) >= self._max_state_bytes
@@ -440,7 +733,12 @@ class PiConversationService:
         self._state_requested: dict[str, float] = {}
         # Retained identities count even when transport was lost or inspect is
         # unavailable. Only definitive absence frees their capacity.
-        for session in self._store.all():
+        retained = self._store.all()
+        # Backfill every canonical record already decoded during startup.  Active
+        # records below are replaced with their reconciled state; stopped and
+        # failed retained records stay in the projection too.
+        refreshed = {session.session_id: session for session in retained}
+        for session in retained:
             if session.status in {"reserved", "starting", "running", "recoverable", "quarantined"}:
                 try:
                     mode = self._reconcile(session, self._store.session_dir(session.session_id))
@@ -448,7 +746,8 @@ class PiConversationService:
                     mode = "unavailable"
                 if mode not in {"absent", "stopped"}:
                     self._active.add(session.session_id)
-                self._store.mark_recoverable(session.session_id)
+                refreshed[session.session_id] = self._store.mark_recoverable(session.session_id)
+        self._store.backfill_run_metadata(tuple(refreshed.values()))
 
     def capacity(self, principal_id: str, project_id: str, task_id: str, *, exclude: str | None = None) -> None:
         sessions = [self._store.get(key) for key in self._active if key != exclude]

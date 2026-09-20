@@ -12,6 +12,7 @@ from pathlib import Path
 from ..observability.dashboard.contracts import ObservatoryError, digest, fields, identifier
 from .config import validate_config
 from .playground import Playground
+from .project_files import ProjectFiles
 from .projects import Projects
 from .store import PrivateStore
 
@@ -42,6 +43,7 @@ class WorkbenchService:
             from .task_sandbox import ProductionTaskSandbox
             artifacts = TaskArtifacts(ProductionTaskSandbox(config["pi"]), is_active=self._task_runner_active)
         self.projects = projects or Projects(config, self.store, access, artifacts=artifacts)
+        self.project_files = ProjectFiles(self.projects)
         from .evidence_jobs import EvidenceJobs
         self.evidence_jobs = EvidenceJobs(self.projects, self.store, self.lock)
         self.playground = playground or Playground(config, self.store, access, environment)
@@ -57,6 +59,8 @@ class WorkbenchService:
                 max_wall_seconds=pi_config.get("max_wall_seconds", 4 * 3600), max_per_principal=pi_config.get("max_per_principal", 2), max_per_task=pi_config.get("max_per_task", 1), reconcile=self._reconcile, attach_factory=self._attach, stop_runner=self._stop_runner)
             self.timer = threading.Thread(target=self._tick, daemon=True, name="workbench-pi-events")
             self.timer.start()
+        from .workspace_runs import WorkspaceRuns
+        self.workspace_runs = WorkspaceRuns(self.store, self.projects, self.pi_store)
 
     def _runner(self, session, session_dir):
         from .pi_rpc import PiRpcClient
@@ -65,11 +69,12 @@ class WorkbenchService:
         validate_pool(self.config)
         config = self.config["pi"]
         row = self.projects.binding_for_pi(session.binding)
+        contexts = self._context_mounts(row)
         agent_dir = Path(config["runner_storage_root"]) / "agents" / session.session_id
         agent_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         # Never broaden mount permissions. Installation must arrange private
         # ownership for the configured unprivileged identity.
-        for path in (agent_dir, session_dir, Path(row["runner_checkout"])):
+        for path in (agent_dir, session_dir, Path(row["runner_checkout"]), *(mount.source for mount in contexts)):
             if path.is_symlink() or path.stat().st_uid != config["uid"]:
                 raise ObservatoryError("pi_mount_ownership", "Pi private mounts must belong to the configured runner UID.", 409)
         native = ["--mode", "rpc", "--no-extensions", "--session-dir", "/sessions"]
@@ -84,6 +89,7 @@ class WorkbenchService:
         session = self.pi_store._replace(session.session_id, runtime_command=tuple(native))
         PiEgress(config).setup(session.binding.provider_id, confirm=True, session_id=session.session_id, runner_name=session.container_name)
         policy = self._policy_for(session)
+        session = self.pi_store._replace(session.session_id, launch_policy=self._retain_launch_policy(policy))
         if policy.network != "none":
             policy.egress_ready()
         custom = config.get("provider_endpoints", {}).get(session.binding.provider_id)
@@ -104,14 +110,81 @@ class WorkbenchService:
         return PiRpcClient((config["engine_binary"], "attach", "--sig-proxy=false", session.container_name), cwd=Path(row["runner_checkout"]), environment={key: environment[key] for key in ("PATH", "HOME") if key in environment})
 
     def _policy_for(self, session):
-        from .pi_runner import PiRunnerPolicy
+        from .pi_runner import PiContextMount, PiRunnerPolicy
         from .pi_egress import PiEgress
         import json
         config = self.config["pi"]
         row = self.projects.binding_for_pi(session.binding)
         egress = PiEgress(config)
         proof = json.loads(egress.record_path(session.binding.provider_id, session.session_id).read_text()) if config.get("provider_egress", {}).get(session.binding.provider_id) else None
-        return PiRunnerPolicy(engine_argv=(config["engine_binary"],), image=config["image"], worktree=Path(row["runner_checkout"]), agent_dir=Path(config["runner_storage_root"]) / "agents" / session.session_id, uid=config["uid"], gid=config["gid"], cpu_limit=config.get("cpus", 2), memory_limit_bytes=config.get("memory_bytes", 2 * 1024**3), pids_limit=config.get("pids", 256), network=proof["network"] if proof else "none", proxy_url=("http://" + proof["proxy"] + ":3128") if proof else None, container_name=session.container_name or "", session_id=session.session_id, native_args=session.runtime_command, credential_names=(), network_id=proof["network_id"] if proof else None, egress_ready=(lambda: egress.verify(session.binding.provider_id, session_id=session.session_id)) if proof else None)
+        contexts = tuple(PiContextMount(item["id"], Path(item["context_snapshot"]["path"]))
+                         for item in self._context_roots(row))
+        return PiRunnerPolicy(engine_argv=(config["engine_binary"],), image=config["image"], worktree=Path(row["runner_checkout"]), agent_dir=Path(config["runner_storage_root"]) / "agents" / session.session_id, uid=config["uid"], gid=config["gid"], cpu_limit=config.get("cpus", 2), memory_limit_bytes=config.get("memory_bytes", 2 * 1024**3), pids_limit=config.get("pids", 256), network=proof["network"] if proof else "none", proxy_url=("http://" + proof["proxy"] + ":3128") if proof else None, container_name=session.container_name or "", session_id=session.session_id, native_args=session.runtime_command, credential_names=(), network_id=proof["network_id"] if proof else None, egress_ready=(lambda: egress.verify(session.binding.provider_id, session_id=session.session_id)) if proof else None, context_mounts=contexts)
+
+    def _context_roots(self, row):
+        """Read only the frozen private binding; routes never supply mount paths."""
+        binding = row.get("root_binding")
+        if binding is None:
+            return ()  # Retained single-root sessions keep their original policy.
+        if digest(binding) != row.get("root_binding_digest") or binding.get("version") != 1:
+            raise ObservatoryError("task_root_binding_invalid", "The frozen task root binding is unavailable.", 409)
+        roots = binding.get("roots")
+        if not isinstance(roots, list):
+            raise ObservatoryError("task_root_binding_invalid", "The frozen task root binding is unavailable.", 409)
+        contexts = []
+        for item in roots:
+            if not isinstance(item, dict):
+                raise ObservatoryError("task_root_binding_invalid", "The frozen task root binding is unavailable.", 409)
+            if item.get("mount") == "context-read-only":
+                snapshot = item.get("context_snapshot")
+                if not isinstance(snapshot, dict) or type(snapshot.get("path")) is not str:
+                    raise ObservatoryError("task_root_binding_invalid", "The frozen task context is unavailable.", 409)
+                contexts.append(item)
+        return tuple(contexts)
+
+    def _context_mounts(self, row):
+        from .pi_runner import PiContextMount
+        return tuple(PiContextMount(item["id"], Path(item["context_snapshot"]["path"]))
+                     for item in self._context_roots(row))
+
+    @staticmethod
+    def _retain_launch_policy(policy):
+        """Store the verified, non-secret launch facts needed for safe stop."""
+        return {
+            "version": 1,
+            "image": policy.image,
+            "worktree": str(policy.worktree),
+            "agent_dir": str(policy.agent_dir),
+            "uid": policy.uid,
+            "gid": policy.gid,
+            "cpu_limit": policy.cpu_limit,
+            "memory_limit_bytes": policy.memory_limit_bytes,
+            "pids_limit": policy.pids_limit,
+            "network": policy.network,
+            "proxy_url": policy.proxy_url,
+            "network_id": policy.network_id,
+            "native_args": list(policy.native_args),
+            "context_mounts": [{"root_id": item.root_id, "source": str(item.source)} for item in policy.context_mounts],
+        }
+
+    def _retained_policy(self, session):
+        from .pi_runner import PiContextMount, PiRunnerPolicy
+
+        value = session.launch_policy
+        if not isinstance(value, dict) or value.get("version") != 1:
+            raise ObservatoryError("pi_stop_unverified", "The retained Pi launch policy is unavailable.", 409)
+        try:
+            contexts = tuple(PiContextMount(item["root_id"], Path(item["source"])) for item in value["context_mounts"])
+            return PiRunnerPolicy(
+                engine_argv=(self.config["pi"]["engine_binary"],), image=value["image"], worktree=Path(value["worktree"]),
+                agent_dir=Path(value["agent_dir"]), uid=value["uid"], gid=value["gid"], cpu_limit=value["cpu_limit"],
+                memory_limit_bytes=value["memory_limit_bytes"], pids_limit=value["pids_limit"], network=value["network"],
+                proxy_url=value["proxy_url"], container_name=session.container_name or "", session_id=session.session_id,
+                native_args=tuple(value["native_args"]), credential_names=(), network_id=value["network_id"],
+                context_mounts=contexts,
+            )
+        except (KeyError, TypeError, ValueError):
+            raise ObservatoryError("pi_stop_unverified", "The retained Pi launch policy is unavailable.", 409) from None
 
     def _pi_absence(self, session):
         result = subprocess.run((self.config["pi"]["engine_binary"], "inspect", "--type", "container", session.container_name), capture_output=True, text=True, timeout=5)
@@ -138,7 +211,8 @@ class WorkbenchService:
         # reservation. No name-only stop is authorized.
         session = self.pi_store.get(session.session_id)
         from .pi_runner import PiContainerInspector
-        mode = "absent" if self._pi_absence(session) else PiContainerInspector(self.config["pi"]["engine_binary"]).state(self._policy_for(session), self.pi_store.session_dir(session.session_id), require_egress_ready=False)
+        policy = self._retained_policy(session) if session.launch_policy else self._policy_for(session)
+        mode = "absent" if self._pi_absence(session) else PiContainerInspector(self.config["pi"]["engine_binary"]).state(policy, self.pi_store.session_dir(session.session_id), require_egress_ready=False)
         if mode in {"absent", "stopped"}:
             self._remove_pi_gateway(session)
             return
@@ -149,7 +223,7 @@ class WorkbenchService:
             raise ObservatoryError("pi_stop_failed", "The Pi runner did not confirm shutdown.", 409)
         import time
         for _ in range(20):
-            state = PiContainerInspector(self.config["pi"]["engine_binary"]).state(self._policy_for(session), self.pi_store.session_dir(session.session_id), require_egress_ready=False)
+            state = PiContainerInspector(self.config["pi"]["engine_binary"]).state(policy, self.pi_store.session_dir(session.session_id), require_egress_ready=False)
             if state == "absent":
                 self._remove_pi_gateway(session)
                 return
@@ -210,7 +284,23 @@ class WorkbenchService:
         config = self.config.get("pi", {})
         result["pi"] = {"configured": self.pi is not None, "models": config.get("models", {}), "thinking": config.get("thinking_levels", []),
                         "runner_id": config.get("id"), "network": config.get("network", "none")}
+        host = self.config.get("host_pi")
+        if (host and session.connect_binding is not None
+                and session.connect_binding.subject == host["owner_subject"]
+                and host["resource_id"] in session.principal.resources):
+            result["host_pi"] = {"available": True, "id": host["id"], "origin": host["origin"], "version": host["version"],
+                                 "authority": "Owner host session — tools use operator account access"}
+        else:
+            result["host_pi"] = {"available": False, "reason": "Host Pi is available only to its configured Connect owner. Manage the connection in private operator configuration."}
         return result
+
+    def workspace_run_page(self, session, source, *, limit=100, cursor=None):
+        """List one authorized Workbench-owned run source for the dashboard."""
+        return self.workspace_runs.page(session, identifier(source), limit=limit, cursor=cursor)
+
+    def workspace_run_sources(self, session):
+        """Discover only configured run sources with current project grants."""
+        return self.workspace_runs.sources(session)
 
     def read(self, route, query, session):
         if route.startswith("workloads/") and route.endswith("/logs") and len(route.split("/")) == 3:
@@ -260,6 +350,20 @@ class WorkbenchService:
             from .. import __version__
             return {"id": key, "title": title, "markdown": raw, "version": __version__, "digest": digest(raw), "source_url": DOCUMENT_SOURCES[key]}
         pieces = route.split("/")
+        if len(pieces) == 5 and pieces[0] == "projects" and pieces[2] == "roots":
+            project_id, root_id, action = pieces[1], pieces[3], pieces[4]
+            if action == "tree":
+                fields(query, optional=("path",))
+                return self.project_files.tree(session, project_id, root_id, query.get("path", ""))
+            if action == "text":
+                fields(query, required=("path",))
+                return self.project_files.text(session, project_id, root_id, query["path"])
+            if action == "diff":
+                fields(query, required=("path",), optional=("kind",))
+                return self.project_files.diff(session, project_id, root_id, query["path"], kind=query.get("kind", "working"))
+            if action == "worktree":
+                fields(query)
+                return self.project_files.worktree(session, project_id, root_id)
         if len(pieces) == 2 and pieces[0] == "projects":
             fields(query)
             return self.projects.read(session, pieces[1])

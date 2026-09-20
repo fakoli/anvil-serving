@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import os
 from pathlib import Path
 import runpy
 import ssl
@@ -18,7 +19,11 @@ import sys
 import tempfile
 import threading
 import time
+from unittest.mock import patch
 
+from anvil_serving.benchmarking import jobs_cli
+from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
+from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 from anvil_serving.observability.api import TelemetryRegistry, run_server_in_thread
 from anvil_serving.observability.dashboard.app import create_dashboard_server
 from anvil_serving.observability.dashboard.console import Console, attach_console
@@ -38,6 +43,28 @@ BASE = runpy.run_path(
 
 
 class Owner(BASE["FakeOwner"]):
+    def __init__(self):
+        super().__init__()
+        self.benchmark_delay = 0
+
+    def list_benchmark_jobs(self, *, limit=100, cursor=None, refresh_refs=None):
+        if self.benchmark_delay:
+            time.sleep(self.benchmark_delay)
+        result = super().list_benchmark_jobs(limit=100, cursor=None)
+        rows = list(self.benchmark_rows or result["items"])
+        if cursor not in {None, "fixture-page-100"}:
+            raise ValueError("unknown fixture benchmark cursor")
+        start = 100 if cursor else 0
+        result["items"] = rows[start:start + limit]
+        result["next_cursor"] = "fixture-page-100" if start + limit < len(rows) else None
+        if refresh_refs:
+            states = {(row["suite"], row["native_id"]): row["native_state"] for row in rows}
+            updates = [{**ref, "native_state": states[(ref["suite"], ref["run_id"])], "updated_at": next(
+                row["updated_at"] for row in rows if (row["suite"], row["native_id"]) == (ref["suite"], ref["run_id"]))}
+                       for ref in refresh_refs if (ref["suite"], ref["run_id"]) in states]
+            result["refresh"] = {"items": updates, "partial": len(updates) != len(refresh_refs)}
+        return result
+
     def snapshot(self):
         result = super().snapshot()
         result["services"] = self.read_services()
@@ -606,6 +633,27 @@ def main():
                 "label": "Deterministic response check",
             },
         ]
+        evidence_root = root / "retained-evidence"
+        evidence_root.mkdir()
+
+        def evidence_payload(model="fixture", concurrency=1):
+            return {
+                "schema": "anvil-serving.benchmark/v1", "run_id": f"{model}-{concurrency}",
+                "identity": {"model": model}, "requests": 4, "completed": 4,
+                "concurrency": concurrency, "context_tokens": 1024,
+                "max_context_tokens": 4096, "max_tokens": 128,
+                "engine": "fixture-engine", "gpu": "fixture-gpu", "cache_policy": "warm", "prompt_set_id": "fixture-prompts",
+                "sampling": {"temperature": {"requested": 0.0, "effective_request": 0.0, "sent": True}, "top_p": {"requested": 1.0, "effective_request": 1.0, "sent": True}},
+                "serve_flags": {"thinking_mode": "default", "no_thinking": False, "shared_prefix_burst": False},
+                "metrics": {"throughput_tok_s": 12.5},
+            }
+
+        evidence_files = {
+            "compatible-a.json": evidence_payload(), "compatible-b.json": evidence_payload(),
+            "incompatible.json": evidence_payload("incompatible", 2),
+        }
+        for name, payload in evidence_files.items():
+            (evidence_root / name).write_text(json.dumps(payload), encoding="utf-8")
         config = {
             "origin": origin,
             "base_path": "/workbench-fixture/",
@@ -633,6 +681,9 @@ def main():
             "fixture": True,
             "build": "isolated-real-console-fixture",
             "controller": {"resources": resources},
+            "runs": {"benchmark": {"resource_id": "benchmark.runs"}, "evidence": {
+                "resource_id": "evaluation.evidence", "owner_id": "evidence-owner", "root": str(evidence_root),
+            }},
             "workbench": {
                 "state_path": str(root / "private.sqlite"),
                 "projects": [
@@ -641,7 +692,7 @@ def main():
                         "label": "Local research fixture",
                         "resource_id": "project-fixture",
                         "checkout": str(root),
-                        "anvil_binary": "/fixture/never-executed",
+                        "anvil_binary": str(root / "anvil"),
                     }
                 ],
                 "connectors": [
@@ -666,12 +717,54 @@ def main():
             },
         }
         owner = Owner()
+        benchmark_db, benchmark_root = root / "jobs.sqlite3", root / "benchmark-runs"
+        previous_environment = {
+            name: os.environ.get(name)
+            for name in ("ANVIL_BENCHMARK_JOB_DB", "ANVIL_BENCHMARK_RUN_ROOT")
+        }
+        os.environ["ANVIL_BENCHMARK_JOB_DB"] = str(benchmark_db)
+        os.environ["ANVIL_BENCHMARK_RUN_ROOT"] = str(benchmark_root)
+        spec = json.dumps({
+            "schema": JOB_SPEC_SCHEMA,
+            "run_id": "context-001",
+            "ownership_id": "fixture-campaign",
+            "suite": "context",
+            "profile": "fixture-smoke",
+            "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "fixture-model"},
+            "worker": {"id": "fixture-worker"},
+            "submitted_at": "2026-09-19T00:00:00Z",
+            "timeout_s": 60,
+            "parameters": {},
+        })
+        with patch("anvil_serving.benchmarking.jobs_cli.launch_benchmark_job", return_value={"launched": True, "pid": 123}):
+            jobs_cli.run(["context", "submit", "--spec-json", spec, "--confirm"])
+        benchmark_store = BenchmarkJobStore(
+            str(benchmark_db), run_root=str(benchmark_root), source_id="benchmark-owner"
+        )
+        benchmark_store.claim("context-001")
+        benchmark_store.transition("context-001", "completed", results={"fixture": True})
+        owner.benchmark_rows = benchmark_store.list_runs(limit=100)["items"] + [{
+            "native_id": "fixture-active-benchmark", "suite": "context", "profile": "fixture-live",
+            "model": "fixture-model", "native_state": "running",
+            "submitted_at": "2026-09-19T00:00:00Z", "updated_at": "2026-09-19T00:01:00Z",
+            "started_at": "2026-09-19T00:00:30Z", "finished_at": None,
+            "artifact": None, "correlation_id": None,
+        }]
         console = Console(
             config,
             adapter=owner,
             metrics=Metrics(),
             authenticate=lambda u, p: u == "operator" and p == "fixture-password",
         )
+        evidence_delay = [0.0]
+        evidence_worker = console.evidence_runs._worker
+
+        def delayed_evidence_worker(*args, **kwargs):
+            if evidence_delay[0]:
+                time.sleep(evidence_delay[0])
+            return evidence_worker(*args, **kwargs)
+
+        console.evidence_runs._worker = delayed_evidence_worker
         model_trust = ssl.create_default_context(cafile=str(certificate))
         console.workbench.playground.open_request = urllib.request.build_opener(
             urllib.request.ProxyHandler({}),
@@ -734,6 +827,75 @@ def main():
                 command = json.loads(line).get("command")
                 if command == "stop":
                     break
+                if command == "benchmark-hang":
+                    owner.benchmark_delay = 6
+                    print(json.dumps({"fixture": True, "benchmark_delay": owner.benchmark_delay}), flush=True)
+                    continue
+                if command == "benchmark-new-run":
+                    owner.benchmark_rows.append({
+                        "native_id": "fixture-discovered-benchmark", "suite": "context",
+                        "profile": "fixture-live", "model": "fixture-model", "native_state": "running",
+                        "submitted_at": "2026-09-19T00:02:00Z", "updated_at": "2026-09-19T00:02:00Z",
+                        "started_at": "2026-09-19T00:02:00Z", "finished_at": None, "artifact": None,
+                    })
+                    print(json.dumps({"fixture": True, "new_benchmark": True}), flush=True)
+                    continue
+                if command == "benchmark-active-complete":
+                    for row in owner.benchmark_rows:
+                        if row.get("native_id") == "fixture-active-benchmark":
+                            row.update(native_state="completed", updated_at="2026-09-19T00:03:00Z", finished_at="2026-09-19T00:03:00Z")
+                    print(json.dumps({"fixture": True, "active_completed": True}), flush=True)
+                    continue
+                if command == "benchmark-pagination":
+                    owner.benchmark_delay = 0
+                    owner.benchmark_rows = [{
+                        "native_id": f"fixture-page-{number:03d}", "suite": "context",
+                        "profile": "fixture-page", "model": "fixture-model", "native_state": "running" if number == 100 else "completed",
+                        "submitted_at": "2026-09-19T00:04:00Z", "updated_at": "2026-09-19T00:04:00Z",
+                        "started_at": None, "finished_at": "2026-09-19T00:04:00Z", "artifact": None,
+                    } for number in range(101)]
+                    print(json.dumps({"fixture": True, "pagination": 101}), flush=True)
+                    continue
+                if command == "benchmark-retained-complete":
+                    for row in owner.benchmark_rows:
+                        if row.get("native_id") == "fixture-page-100":
+                            row.update(native_state="completed", updated_at="2026-09-19T00:05:00Z", finished_at="2026-09-19T00:05:00Z")
+                    print(json.dumps({"fixture": True, "retained_completed": True}), flush=True)
+                    continue
+                if command == "benchmark-pagination-new-head":
+                    owner.benchmark_rows.insert(0, {
+                        "native_id": "fixture-page-new", "suite": "context",
+                        "profile": "fixture-page", "model": "fixture-model", "native_state": "completed",
+                        "submitted_at": "2026-09-19T00:04:00Z", "updated_at": "2026-09-19T00:04:00Z",
+                        "started_at": None, "finished_at": "2026-09-19T00:04:00Z", "artifact": None,
+                    })
+                    print(json.dumps({"fixture": True, "pagination_new_head": True}), flush=True)
+                    continue
+                if command == "evidence-change-compatible":
+                    for name in ("compatible-a.json", "compatible-b.json"):
+                        (evidence_root / name).write_text(json.dumps(evidence_payload(concurrency=3)), encoding="utf-8")
+                    print(json.dumps({"fixture": True, "evidence_changed": True}), flush=True)
+                    continue
+                if command == "evidence-reset-compatible":
+                    for name in ("compatible-a.json", "compatible-b.json"):
+                        (evidence_root / name).write_text(json.dumps(evidence_payload()), encoding="utf-8")
+                    print(json.dumps({"fixture": True, "evidence_reset": True}), flush=True)
+                    continue
+                if command == "evidence-compare-delay":
+                    evidence_delay[0] = 0.5
+                    print(json.dumps({"fixture": True, "evidence_delay_seconds": evidence_delay[0]}), flush=True)
+                    continue
+                if command in {"revoke-benchmark", "restore-benchmark"}:
+                    resources = (frozenset({
+                        "serve-fixture-a", "experiment-fixture", "project-fixture",
+                        "host-fixture-a", "service-fixture-native", "service-fixture-container",
+                    }) if command == "revoke-benchmark" else frozenset({"*"}))
+                    console.access._sessions = {
+                        key: replace(session, principal=replace(session.principal, resources=resources))
+                        for key, session in console.access._sessions.items()
+                    }
+                    print(json.dumps({"fixture": True, "benchmark_granted": command == "restore-benchmark"}), flush=True)
+                    continue
                 if command != "status":
                     raise ValueError("Unsupported fixture control")
                 print(
@@ -749,6 +911,11 @@ def main():
                     flush=True,
                 )
         finally:
+            for name, value in previous_environment.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
             server.shutdown()
             server.server_close()
             thread.join()

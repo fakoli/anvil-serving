@@ -2,11 +2,21 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from ..observability.dashboard.contracts import fields, identifier
+
+
+_MAX_PROJECT_ROOTS = 16
+_LEGACY_PRIMARY_ROOT_ID = "primary"
+# These compatibility identities name the existing local owner/runtime. A later
+# owner service resolves them; this parser does not grant filesystem access.
+_LOCAL_OWNER_ID = "local-owner"
+_LOCAL_RUNTIME_ID = "local-runtime"
+_LEGACY_ROOT_TASK_ACCESS = "read-write"
 
 
 def absolute_path(value):
@@ -21,8 +31,81 @@ def integer(value, low, high):
     return value
 
 
+def _root_path(value):
+    absolute_path(value)
+    if (
+        not value
+        or any(ord(char) < 32 or ord(char) == 127 for char in value)
+        or ".." in Path(value).parts
+    ):
+        raise ValueError("Project roots must be safe absolute private paths")
+    path = os.path.normpath(value)
+    if path == Path(path).anchor:
+        raise ValueError("Project roots must not be filesystem roots")
+    return path
+
+
+def _label(value):
+    if type(value) is not str or not 1 <= len(value) <= 192 or any(ord(char) < 32 for char in value):
+        raise ValueError("Workbench labels must be bounded text")
+    return value
+
+
+def _paths_overlap(first, second):
+    try:
+        common = os.path.commonpath((os.path.normcase(first), os.path.normcase(second)))
+    except ValueError:
+        return False
+    return common in {os.path.normcase(first), os.path.normcase(second)}
+
+
+def _normalize_project_roots(project):
+    checkout = _root_path(project["checkout"])
+    if "roots" not in project:
+        if "primary_root_id" in project:
+            raise ValueError("Primary root requires declared project roots")
+        project["roots"] = [{
+            "id": _LEGACY_PRIMARY_ROOT_ID,
+            "label": _label(project["label"]),
+            "owner_id": _LOCAL_OWNER_ID,
+            "runtime_id": _LOCAL_RUNTIME_ID,
+            "task_access": _LEGACY_ROOT_TASK_ACCESS,
+            "path": checkout,
+        }]
+        project["primary_root_id"] = _LEGACY_PRIMARY_ROOT_ID
+
+    roots = project["roots"]
+    if type(roots) is not list or not 1 <= len(roots) <= _MAX_PROJECT_ROOTS:
+        raise ValueError("Declare between 1 and 16 project roots")
+    primary_root_id = identifier(project.get("primary_root_id"))
+    seen_ids = set()
+    matching_checkout = []
+    normalized_paths = []
+    for root in roots:
+        fields(root, required=("id", "label", "owner_id", "runtime_id", "task_access", "path"))
+        root_id = identifier(root["id"])
+        if root_id in seen_ids:
+            raise ValueError("Duplicate project root identity")
+        seen_ids.add(root_id)
+        _label(root["label"])
+        identifier(root["owner_id"])
+        identifier(root["runtime_id"])
+        if root["task_access"] not in {"read-only", "read-write"}:
+            raise ValueError("Project roots must declare task access")
+        root["path"] = _root_path(root["path"])
+        if any(_paths_overlap(root["path"], prior) for prior in normalized_paths):
+            raise ValueError("Project roots must not overlap")
+        normalized_paths.append(root["path"])
+        if root["path"] == checkout:
+            matching_checkout.append(root)
+    if primary_root_id not in seen_ids:
+        raise ValueError("Primary root must name a declared root")
+    if len(matching_checkout) != 1:
+        raise ValueError("Project roots must include the declared checkout exactly once")
+
+
 def validate_config(value):
-    fields(value, required=("state_path",), optional=("connectors", "presets", "projects", "pi", "pi_storage", "retention_days"))
+    fields(value, required=("state_path",), optional=("connectors", "presets", "projects", "pi", "pi_storage", "host_pi", "retention_days"))
     absolute_path(value["state_path"])
     integer(value.get("retention_days", 30), 1, 365)
     for group in ("connectors", "presets", "projects"):
@@ -62,12 +145,31 @@ def validate_config(value):
                 if type(row.get("system", "")) is not str or len(row.get("system", "")) > 16384:
                     raise ValueError("System instructions exceed their bound")
             else:
-                fields(row, required=("id", "label", "resource_id", "checkout", "anvil_binary"), optional=("runner_root",))
+                fields(row, required=("id", "label", "resource_id", "checkout", "anvil_binary"),
+                       optional=("runner_root", "roots", "primary_root_id"))
                 identifier(row["resource_id"])
+                _label(row["label"])
                 absolute_path(row["checkout"])
                 absolute_path(row["anvil_binary"])
                 if "runner_root" in row:
                     absolute_path(row["runner_root"])
+                _normalize_project_roots(row)
+    if "host_pi" in value:
+        host_pi = value["host_pi"]
+        fields(host_pi, required=("id", "resource_id", "origin", "owner_subject", "version", "runtime_sha256"))
+        identifier(host_pi["id"])
+        identifier(host_pi["resource_id"])
+        origin = host_pi["origin"]
+        if type(origin) is not str or not re.fullmatch(r"https://[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[1-9][0-9]{0,4})?", origin):
+            raise ValueError("Host Pi requires an exact HTTPS origin")
+        url = urlsplit(origin)
+        if url.hostname == "localhost" or (url.port is not None and not 1 <= url.port <= 65535):
+            raise ValueError("Host Pi requires an exact HTTPS origin")
+        subject = host_pi["owner_subject"]
+        if type(subject) is not str or not 1 <= len(subject.encode("utf-8")) <= 192 or any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in subject):
+            raise ValueError("Host Pi requires one exact Connect owner subject")
+        if host_pi["version"] != "0.9.0" or type(host_pi["runtime_sha256"]) is not str or not re.fullmatch(r"[a-f0-9]{64}", host_pi["runtime_sha256"]):
+            raise ValueError("Host Pi requires the reviewed package version and runtime digest")
     if value.get("pi"):
         pi = value["pi"]
         fields(pi, required=("id", "state_root", "engine_binary", "image", "uid", "gid", "models", "thinking_levels"),

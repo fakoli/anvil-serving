@@ -22,10 +22,10 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "ba7bb28ae5e46d65152723ab9a9482ce2336c9a8dfa2d68df53d47288f29ac7e"
+    "327e53ad939ff00e277485612c242de6e1cc4e0b4acfbcd5bc1765eb7bf57566"
 )
 HANDLER_MAP_SHA256 = (
-    "dc25ef88f384ee53b0747a8f1fbd9b31f991bc0151de25d2eeaab469da5d1b5b"
+    "7c235ff7468492ee6052e8a2886fc13e68ce18efa0ccef208810650efe592ee4"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -93,6 +93,7 @@ TOOL_NAMES = [
     "benchmark_job_preflight",
     "benchmark_job_submit",
     "benchmark_job_status",
+    "benchmark_job_list",
     "benchmark_job_logs",
     "benchmark_job_cancel",
     "benchmark_job_artifact",
@@ -168,9 +169,9 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     public_tools = [
         tool for tool in public_tools
         if tool["name"] not in {
-                "controller_inspect", "controller_logs", "router_configuration",
-                "serves_probe", "serves_profile", "recipe_settings", "recipe_manage", "runtime_experiment",
-                "container_exec",
+            "controller_inspect", "controller_logs", "router_configuration",
+            "serves_probe", "serves_profile", "recipe_settings", "recipe_manage",
+            "runtime_experiment", "container_exec", "benchmark_job_list",
         }
     ]
     client_schema = next(tool for tool in public_tools if tool["name"] == "client_catalog_sync")["inputSchema"]

@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -25,6 +26,18 @@ class PiRunnerLaunch:
 
     argv: tuple[str, ...]
     environment: Mapping[str, str]
+
+
+@dataclass(frozen=True)
+class PiContextMount:
+    """One server-created, immutable secondary-root context snapshot."""
+
+    root_id: str
+    source: Path
+
+    def __post_init__(self) -> None:
+        if not _NAME.fullmatch(self.root_id) or not self.source.is_absolute() or self.source.is_symlink():
+            raise ValueError("Pi context mount must be a declared non-symlink snapshot")
 
 
 @dataclass(frozen=True)
@@ -48,6 +61,7 @@ class PiRunnerPolicy:
     credential_names: tuple[str, ...] = ()
     network_id: str | None = None
     egress_ready: Callable[[], object] | None = None
+    context_mounts: tuple[PiContextMount, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.engine_argv or not self.image or "\n" in self.image or "\x00" in self.image:
@@ -56,6 +70,17 @@ class PiRunnerPolicy:
             raise ValueError("Pi runner worktree and agent directory must be absolute")
         if self.worktree.exists() and (self.worktree / ".git").is_file():
             raise ValueError("Pi runner checkout must be an isolated full clone, not a linked worktree")
+        if (len(self.context_mounts) > 15 or any(not isinstance(mount, PiContextMount) for mount in self.context_mounts)
+                or len({mount.root_id for mount in self.context_mounts}) != len(self.context_mounts)):
+            raise ValueError("Pi context mounts must have unique declared roots")
+        protected = (self.worktree.resolve(), self.agent_dir.resolve())
+        context_sources = []
+        for mount in self.context_mounts:
+            source = mount.source.resolve()
+            if (not source.is_dir() or any(self._overlap(source, item) for item in protected)
+                    or any(self._overlap(source, item) for item in context_sources)):
+                raise ValueError("Pi context snapshots must be distinct directories")
+            context_sources.append(source)
         if self.uid < 1 or self.gid < 1:
             raise ValueError("Pi runner uid and gid must be explicitly configured")
         if not _NAME.fullmatch(self.container_name) or not _NAME.fullmatch(self.session_id):
@@ -75,13 +100,18 @@ class PiRunnerPolicy:
                  "session_dir": str(session_dir.resolve()), "uid": self.uid, "gid": self.gid, "cpu": self.cpu_limit,
                  "memory": self.memory_limit_bytes, "pids": self.pids_limit, "network": self.network,
                  "proxy": self.proxy_url, "network_id": self.network_id, "session": self.session_id, "native_args": self.native_args, "credential_names": self.credential_names}
+        if self.context_mounts:
+            value["context_mounts"] = tuple((mount.root_id, str(mount.source.resolve())) for mount in self.context_mounts)
         return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
     def argv(self, session_dir: Path, *, credential_names: tuple[str, ...], resume_file_name: str | None = None, detached: bool = False) -> tuple[str, ...]:
         """Build the configured container command without exposing host Pi state."""
         if not session_dir.is_absolute():
             raise ValueError("Pi session directory must be absolute")
-        for path in (self.worktree, self.agent_dir, session_dir):
+        session = session_dir.resolve()
+        if any(self._overlap(mount.source.resolve(), session) for mount in self.context_mounts):
+            raise ValueError("Pi context snapshots must not overlap the session mount")
+        for path in (self.worktree, self.agent_dir, session_dir, *(mount.source for mount in self.context_mounts)):
             if "," in str(path) or "\n" in str(path) or "\x00" in str(path):
                 raise ValueError("Pi runner mount path is invalid")
         arguments: list[str] = [
@@ -123,6 +153,8 @@ class PiRunnerPolicy:
             "--env",
             "PI_CODING_AGENT_DIR=/home/pi/.pi/agent",
         ]
+        for mount in self.context_mounts:
+            arguments.extend(("--mount", f"type=bind,source={mount.source},target=/context/{mount.root_id},readonly"))
         if detached:
             arguments.append("--detach")
         arguments.extend(["--network", "none" if self.network == "none" else self.network])
@@ -159,6 +191,14 @@ class PiRunnerPolicy:
         parsed = urlsplit(value)
         return parsed.scheme == "http" and bool(parsed.hostname) and not parsed.username and not parsed.password and not parsed.query and not parsed.fragment
 
+    @staticmethod
+    def _overlap(first: Path, second: Path) -> bool:
+        try:
+            common = Path(os.path.commonpath((first, second)))
+        except ValueError:
+            return False
+        return common in {first, second}
+
 
 class PiContainerInspector:
     """Reconcile a server-generated container identity before recovery."""
@@ -194,10 +234,17 @@ class PiContainerInspector:
             image_facts = json.loads(image.stdout)[0]
             if item.get("Image") != image_facts.get("Id"):
                 return "unsafe"
-            expected_mounts = {"/sessions": session_dir, "/workspace": policy.worktree, "/home/pi/.pi/agent": policy.agent_dir}
+            expected_mounts = {"/sessions": (session_dir, True), "/workspace": (policy.worktree, True),
+                               "/home/pi/.pi/agent": (policy.agent_dir, True)}
+            expected_mounts.update({f"/context/{mount.root_id}": (mount.source, False) for mount in policy.context_mounts})
             mounts = item.get("Mounts", [])
             bound = [m for m in mounts if m.get("Type") == "bind"]
-            if len(bound) != len(expected_mounts) or any(m.get("Destination") not in expected_mounts or Path(m.get("Source", "")).resolve() != expected_mounts[m["Destination"]].resolve() or m.get("RW") is not True for m in bound):
+            if len(bound) != len(expected_mounts) or any(
+                m.get("Destination") not in expected_mounts
+                or Path(m.get("Source", "")).resolve() != expected_mounts[m["Destination"]][0].resolve()
+                or m.get("RW") is not expected_mounts[m["Destination"]][1]
+                for m in bound
+            ):
                 return "unsafe"
             if any(m.get("Type") not in {"bind", "tmpfs"} or (m.get("Type") == "tmpfs" and m.get("Destination") != "/tmp") for m in mounts):
                 return "unsafe"

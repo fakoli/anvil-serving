@@ -81,6 +81,29 @@ _STORE_SNAPSHOT_SECONDS = 1.0
 _STORE_PROGRESS_INSTRUCTIONS = 1000
 _STORE_TIMESTAMP_BYTES = 65
 _UNKNOWN_STATE = "__unknown__"
+_BENCHMARK_LIST_LIMIT = 100
+_BENCHMARK_LIST_SNAPSHOT_LIMIT = 1000
+_BENCHMARK_LIST_SNAPSHOT_SECONDS = 60
+_BENCHMARK_LIST_SNAPSHOT_MAX_COUNT = 8
+_BENCHMARK_LIST_SNAPSHOT_MAX_BYTES = 48 * 1024
+_BENCHMARK_LIST_RECORD_MAX_BYTES = 64 * 1024
+_BENCHMARK_LIST_CURSOR = re.compile(r"[a-f0-9]{32}\.[0-9]+\Z")
+_BENCHMARK_OWNER_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}\Z")
+BENCHMARK_JOB_REF_SCHEMA = "anvil-serving.run-correlation/v1"
+BENCHMARK_JOB_REF_NAMESPACE = "benchmark-job"
+
+
+def benchmark_job_ref(issuer: object, native_id: object) -> dict[str, str]:
+    """Build the closed correlation contract for one declared benchmark owner."""
+    if type(issuer) is not str or _BENCHMARK_OWNER_ID.fullmatch(issuer) is None:
+        raise BenchmarkJobError("bad_benchmark_owner", "benchmark source_id must be a stable identifier")
+    run_id = validate_job_id(native_id)
+    return {
+        "schema": BENCHMARK_JOB_REF_SCHEMA,
+        "issuer": issuer,
+        "namespace": BENCHMARK_JOB_REF_NAMESPACE,
+        "native_id": run_id,
+    }
 
 _BENCHMARK_WORKLOAD_SQL = """
 WITH extracted AS (
@@ -382,6 +405,16 @@ def _remaining(deadline: float, monotonic: Clock) -> float:
         return 0.0
 
 
+def _install_deadline_progress_handler(
+    connection: sqlite3.Connection, *, deadline: float, monotonic: Clock,
+) -> None:
+    """Interrupt SQLite work at the owner deadline, rather than reporting late."""
+    connection.set_progress_handler(
+        lambda: int(_remaining(deadline, monotonic) <= 0),
+        _STORE_PROGRESS_INSTRUCTIONS,
+    )
+
+
 def _read_snapshot_rows(
     path: str,
     *,
@@ -621,6 +654,7 @@ class BenchmarkJobStore:
         path: str = DEFAULT_BENCHMARK_JOB_DB_PATH,
         *,
         run_root: str = DEFAULT_BENCHMARK_RUN_ROOT,
+        source_id: str | None = None,
         _snapshot_clock: Clock = time.monotonic,
     ) -> None:
         if not isinstance(path, str) or not path:
@@ -629,6 +663,10 @@ class BenchmarkJobStore:
             raise ValueError("benchmark run root must be a non-empty string")
         if not callable(_snapshot_clock):
             raise ValueError("benchmark snapshot clock must be callable")
+        if source_id is not None and (
+            type(source_id) is not str or _BENCHMARK_OWNER_ID.fullmatch(source_id) is None
+        ):
+            raise ValueError("benchmark source_id must be a stable identifier")
         self.path = path
         self.run_root = os.path.realpath(os.path.abspath(os.path.expanduser(run_root)))
         Path(self.run_root).mkdir(parents=True, exist_ok=True)
@@ -639,6 +677,7 @@ class BenchmarkJobStore:
         )
         self._lock = threading.RLock()
         self._snapshot_clock = _snapshot_clock
+        self.source_id = source_id
 
     def list_workloads(
         self, host: str, query: WorkloadQuery, now: datetime,
@@ -648,6 +687,185 @@ class BenchmarkJobStore:
             self.path, host, query, now,
             _snapshot_clock=self._snapshot_clock, _lock=self._lock,
         )
+
+    def job_ref(self, run_id: str) -> dict[str, str] | None:
+        """Return this declared owner's durable job identity, if it has one."""
+        if self.source_id is None:
+            return None
+        return benchmark_job_ref(self.source_id, run_id)
+
+    def list_runs(self, *, limit: int = _BENCHMARK_LIST_LIMIT,
+                  cursor: str | None = None) -> dict[str, Any]:
+        """List one stable, bounded page of safe benchmark owner records."""
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= _BENCHMARK_LIST_LIMIT:
+            raise BenchmarkJobError("bad_list_limit", "benchmark list limit must be between 1 and 100")
+        if cursor is not None and (
+            not isinstance(cursor, str) or not _BENCHMARK_LIST_CURSOR.fullmatch(cursor)
+        ):
+            raise BenchmarkJobError("bad_list_cursor", "benchmark list cursor is invalid")
+        if self.source_id is None:
+            raise BenchmarkJobError(
+                "benchmark_owner_unconfigured",
+                "benchmark list owner identity is not declared",
+            )
+        before_rowid: int | None = None
+        high_water = 0
+        has_more = False
+        partial = False
+        deadline = self._snapshot_clock() + _STORE_SNAPSHOT_SECONDS
+        remaining = _remaining(deadline, self._snapshot_clock)
+        if remaining <= 0 or not self._lock.acquire(timeout=remaining):
+            raise BenchmarkJobError("list_deadline_exceeded", "benchmark list owner did not respond before its deadline")
+        try:
+            with self._connection(timeout=_remaining(deadline, self._snapshot_clock)) as connection:
+                if _remaining(deadline, self._snapshot_clock) <= 0:
+                    raise BenchmarkJobError("list_deadline_exceeded", "benchmark list owner did not respond before its deadline")
+                _install_deadline_progress_handler(
+                    connection, deadline=deadline, monotonic=self._snapshot_clock,
+                )
+                try:
+                    now = time.time()
+                    connection.execute("BEGIN IMMEDIATE")
+                    connection.execute("DELETE FROM benchmark_run_snapshots WHERE expires_at < ?", (now,))
+                    if cursor:
+                        snapshot_id, offset_text = cursor.split(".", 1)
+                        row = connection.execute(
+                            "SELECT observed_at, items, has_more, partial, high_water, next_rowid "
+                            "FROM benchmark_run_snapshots WHERE snapshot_id = ? AND expires_at >= ?",
+                            (snapshot_id, now),
+                        ).fetchone()
+                        if row is None:
+                            connection.rollback()
+                            raise BenchmarkJobError("list_cursor_expired", "benchmark list cursor expired; restart the list")
+                        observed_at, rows, offset = row["observed_at"], _strict_json_loads(row["items"]), int(offset_text)
+                        if not isinstance(rows, list) or offset > len(rows):
+                            connection.rollback()
+                            raise BenchmarkJobError("list_cursor_expired", "benchmark list cursor expired; restart the list")
+                        has_more = bool(row["has_more"])
+                        partial = bool(row["partial"])
+                        if offset == len(rows) and row["has_more"]:
+                            if (
+                                type(row["high_water"]) is not int
+                                or type(row["next_rowid"]) is not int
+                            ):
+                                connection.rollback()
+                                raise BenchmarkJobError("list_cursor_expired", "benchmark list cursor expired; restart the list")
+                            cursor = None
+                            before_rowid, high_water = row["next_rowid"], row["high_water"]
+                            has_more = False
+                            partial = False
+                        elif offset == len(rows):
+                            connection.rollback()
+                            raise BenchmarkJobError("list_cursor_expired", "benchmark list cursor expired; restart the list")
+                    if cursor is None:
+                        if high_water == 0:
+                            high_water = connection.execute(
+                                "SELECT COALESCE(MAX(rowid), 0) FROM benchmark_jobs"
+                            ).fetchone()[0]
+                        raw_rows = connection.execute(
+                            "SELECT rowid, CASE WHEN typeof(record) = 'text' "
+                            "AND length(CAST(record AS BLOB)) <= ? AND json_valid(record) THEN record END AS record "
+                            "FROM benchmark_jobs WHERE rowid <= ? "
+                            "AND (? IS NULL OR rowid < ?) ORDER BY rowid DESC LIMIT ?",
+                            (
+                                _BENCHMARK_LIST_RECORD_MAX_BYTES,
+                                high_water,
+                                before_rowid,
+                                before_rowid,
+                                _BENCHMARK_LIST_SNAPSHOT_LIMIT + 1,
+                            ),
+                        ).fetchall()
+                        rows = []
+                        scanned = 0
+                        next_rowid = before_rowid
+                        for raw in raw_rows[:_BENCHMARK_LIST_SNAPSHOT_LIMIT]:
+                            if _remaining(deadline, self._snapshot_clock) <= 0:
+                                raise BenchmarkJobError("list_deadline_exceeded", "benchmark list owner did not respond before its deadline")
+                            if raw["record"] is None:
+                                partial = True
+                                scanned += 1
+                                next_rowid = raw["rowid"]
+                                continue
+                            candidate = self._public_run(self._decode_record(raw["record"]))
+                            encoded = _json_dumps(rows + [candidate]).encode("utf-8")
+                            if len(encoded) > _BENCHMARK_LIST_SNAPSHOT_MAX_BYTES:
+                                has_more = True
+                                break
+                            rows.append(candidate)
+                            scanned += 1
+                            next_rowid = raw["rowid"]
+                        if raw_rows and not rows and not partial:
+                            raise BenchmarkJobError("list_response_too_large", "benchmark list row exceeds the bounded response limit")
+                        has_more = has_more or len(raw_rows) > scanned
+                        if not has_more:
+                            next_rowid = None
+                        observed_at, offset, snapshot_id = (
+                            datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+                            0,
+                            uuid.uuid4().hex,
+                        )
+                        if rows or has_more:
+                            encoded_rows = _json_dumps(rows)
+                            connection.execute(
+                                "INSERT INTO benchmark_run_snapshots (snapshot_id, expires_at, observed_at, items, has_more, partial, high_water, next_rowid) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                (snapshot_id, now + _BENCHMARK_LIST_SNAPSHOT_SECONDS, observed_at, encoded_rows, int(has_more), int(partial), high_water, next_rowid),
+                            )
+                        connection.execute(
+                            "DELETE FROM benchmark_run_snapshots WHERE snapshot_id IN (SELECT snapshot_id FROM benchmark_run_snapshots ORDER BY expires_at DESC, snapshot_id DESC LIMIT -1 OFFSET ?)",
+                            (_BENCHMARK_LIST_SNAPSHOT_MAX_COUNT,),
+                        )
+                    if _remaining(deadline, self._snapshot_clock) <= 0:
+                        raise BenchmarkJobError("list_deadline_exceeded", "benchmark list owner did not respond before its deadline")
+                    connection.commit()
+                finally:
+                    connection.set_progress_handler(None, 0)
+        except sqlite3.Error as exc:
+            if _remaining(deadline, self._snapshot_clock) <= 0:
+                raise BenchmarkJobError("list_deadline_exceeded", "benchmark list owner did not respond before its deadline") from None
+            raise BenchmarkJobError("list_unavailable", "benchmark list owner is unavailable") from exc
+        finally:
+            self._lock.release()
+        page = rows[offset:offset + limit]
+        next_offset = offset + len(page)
+        continuation = has_more
+        return {
+            "schema": "anvil-serving.benchmark-job-list/v1",
+            "items": page,
+            "next_cursor": f"{snapshot_id}.{next_offset}" if next_offset < len(rows) or continuation else None,
+            "source": {
+                "id": self.source_id,
+                "status": "fresh",
+                "observed_at": observed_at,
+                "deadline_seconds": _STORE_SNAPSHOT_SECONDS,
+                "truncated": continuation,
+                "partial": partial,
+            },
+        }
+
+    @staticmethod
+    def _public_run(record: Mapping[str, Any]) -> dict[str, Any]:
+        spec = record["spec"]
+        artifact = record.get("artifact")
+        artifact_ref = None
+        if isinstance(artifact, Mapping):
+            artifact_ref = {
+                "schema": artifact.get("schema"),
+                "sha256": artifact.get("sha256"),
+            }
+        return {
+            "native_id": spec["run_id"],
+            "suite": spec["suite"],
+            "profile": spec["profile"],
+            "model": spec["endpoint"]["model"],
+            "native_state": record["state"],
+            "submitted_at": record["submitted_at"],
+            "updated_at": record["updated_at"],
+            "started_at": record.get("started_at"),
+            "finished_at": record.get("finished_at"),
+            "artifact": artifact_ref,
+            # No benchmark-to-operation correlation is currently owner-declared.
+            "correlation_id": None,
+        }
 
     def submit(self, spec: Mapping[str, Any]) -> tuple[str, dict[str, Any]]:
         """Create a queued job, or return the identical existing run."""
@@ -873,10 +1091,10 @@ class BenchmarkJobStore:
             ) from exc
 
     @contextmanager
-    def _connection(self) -> Iterator[sqlite3.Connection]:
+    def _connection(self, *, timeout: float = 5.0) -> Iterator[sqlite3.Connection]:
         path = Path(self.path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(str(path), timeout=5.0, isolation_level=None)
+        connection = sqlite3.connect(str(path), timeout=max(0.0, timeout), isolation_level=None)
         try:
             connection.row_factory = sqlite3.Row
             connection.execute("PRAGMA journal_mode=WAL")
@@ -891,6 +1109,33 @@ class BenchmarkJobStore:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS benchmark_run_snapshots (
+                    snapshot_id TEXT PRIMARY KEY,
+                    expires_at REAL NOT NULL,
+                    observed_at TEXT NOT NULL,
+                    items TEXT NOT NULL,
+                    has_more INTEGER NOT NULL DEFAULT 0,
+                    partial INTEGER NOT NULL DEFAULT 0,
+                    high_water INTEGER,
+                    next_rowid INTEGER
+                )
+                """
+            )
+            columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(benchmark_run_snapshots)")
+            }
+            for name, declaration in (
+                ("has_more", "INTEGER NOT NULL DEFAULT 0"),
+                ("partial", "INTEGER NOT NULL DEFAULT 0"),
+                ("high_water", "INTEGER"),
+                ("next_rowid", "INTEGER"),
+            ):
+                if name not in columns:
+                    connection.execute(
+                        f"ALTER TABLE benchmark_run_snapshots ADD COLUMN {name} {declaration}"
+                    )
             yield connection
         finally:
             connection.close()

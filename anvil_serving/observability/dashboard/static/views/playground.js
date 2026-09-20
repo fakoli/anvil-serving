@@ -4,8 +4,34 @@ import { workbenchRequest } from "./api.js";
 let draft = { connector: "", model: "", preset: "", message: "", conversation: null, pending: null };
 window.addEventListener("observatory-session-changed", () => { draft = { connector: "", model: "", preset: "", message: "", conversation: null, pending: null }; });
 const active = data => ["running", "cancel_requested"].includes(data?.status);
-export async function playgroundView(ctx) {
-  const root = el("div", { class: "workbench-page stack", "data-story": "US-PLAY-01" }, heading("Playground", "Choose a model and preset, try a prompt, and keep the conversation."));
+export async function playgroundView(ctx, tab = "pi") {
+  const modelTest = tab === "model-test";
+  const root = el("div", { class: "workbench-page stack", "data-story": "US-PLAY-01" },
+    heading("Pi", "Your host conversations and isolated task sessions keep their own owners."),
+    el("nav", { class: "local-tabs playground-modes", "aria-label": "Playground modes" },
+      el("a", { href: "#/playground", "aria-current": !modelTest ? "page" : null, text: "Pi" }),
+      el("a", { href: "#/playground/model-test", "aria-current": modelTest ? "page" : null, text: "Model test" })));
+  if (modelTest) {
+    root.append(await modelTestView(ctx));
+    return root;
+  }
+  try {
+    const { host_pi: host } = await workbenchRequest("catalog", { signal: ctx.signal });
+    if (ctx.signal.aborted) return root;
+    if (!host?.available) {
+      root.append(notice(host?.reason || "The host Pi connection is unavailable.", "warning"));
+      return root;
+    }
+    root.append(notice(host.authority, "info"),
+      el("iframe", { class: "host-pi-frame", title: "Pi conversations", src: host.origin + "/", referrerpolicy: "no-referrer", allow: "clipboard-write" }));
+  } catch (error) {
+    if (!ctx.signal.aborted) root.append(notice(error.message, "warning"));
+  }
+  return root;
+}
+
+async function modelTestView(ctx) {
+  const root = el("div", { class: "stack" }, heading("Model test", "Choose a model and preset, try a prompt, and keep the conversation."));
   let catalog, history, current = null;
   try {
     [catalog, history] = await Promise.all([workbenchRequest("catalog", { signal: ctx.signal }), workbenchRequest("conversations", { signal: ctx.signal })]);

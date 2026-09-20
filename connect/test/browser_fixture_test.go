@@ -19,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/signal"
@@ -123,12 +124,24 @@ type browserFixture struct {
 	nativeBypass  atomic.Bool
 	dispatcher    *transport.Dispatcher
 	resource      config.Resource
+	parent        http.Handler
 }
 
 func (f *browserFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Host {
 	case idpHost:
 		f.idp.serveHTTP(w, r)
+	case "console.example.test":
+		if f.parent != nil {
+			f.parent.ServeHTTP(w, r)
+			return
+		}
+		if os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") == "" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-src https://dash.example.test; style-src 'unsafe-inline'; frame-ancestors 'none'")
+		_, _ = io.WriteString(w, `<!doctype html><title>Pi integration fixture</title><h1>Pi</h1><p>Owner host session — tools use operator account access</p><iframe title="Pi conversations" src="https://dash.example.test/" style="width:100%;height:85vh;border:0"></iframe>`)
 	case dashHost:
 		if f.sessionBypass.Load() {
 			// Fixture-only negative control: make a missing Connect session check
@@ -208,7 +221,7 @@ func browserTLS(t *testing.T) (tls.Certificate, *x509.CertPool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	template := &x509.Certificate{SerialNumber: serial, Subject: pkix.Name{CommonName: dashHost}, DNSNames: []string{dashHost, idpHost}, NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour), IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	template := &x509.Certificate{SerialNumber: serial, Subject: pkix.Name{CommonName: dashHost}, DNSNames: []string{dashHost, idpHost, "console.example.test"}, NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour), IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
 	if err != nil {
 		t.Fatal(err)
@@ -247,7 +260,33 @@ func TestBrowserFixture(t *testing.T) {
 	issuerURL := "https://" + idpHost
 	idp := &oidcFixture{issuer: issuerURL, key: key, subject: "allowed-subject"}
 	fixture := &browserFixture{idp: idp}
-	native := httptest.NewServer(http.HandlerFunc(fixture.nativeDashboard))
+	if raw := os.Getenv("ANVIL_CONNECT_PI_PARENT_ORIGIN"); raw != "" {
+		target, parseErr := url.Parse(raw)
+		if parseErr != nil || target.Scheme != "http" || target.Hostname() != "127.0.0.1" || target.User != nil || target.Path != "" || target.RawQuery != "" || target.Fragment != "" || os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") == "" {
+			t.Fatal("Parent fixture origin must be a bare loopback HTTP origin in Pi mode")
+		}
+		fixture.parent = httputil.NewSingleHostReverseProxy(target)
+	}
+	var nativeHandler http.Handler = http.HandlerFunc(fixture.nativeDashboard)
+	if raw := os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN"); raw != "" {
+		target, parseErr := url.Parse(raw)
+		if parseErr != nil || target.Scheme != "http" || target.Hostname() != "127.0.0.1" || target.User != nil || target.Path != "" || target.RawQuery != "" || target.Fragment != "" {
+			t.Fatal("Pi fixture origin must be a bare loopback HTTP origin")
+		}
+		proxy := httputil.NewSingleHostReverseProxy(target)
+		director := proxy.Director
+		proxy.Director = func(r *http.Request) {
+			director(r)
+			r.SetBasicAuth("pi", "synthetic-pi-fixture")
+		}
+		proxy.ModifyResponse = func(r *http.Response) error {
+			r.Header.Set("Content-Security-Policy", "frame-ancestors https://console.example.test")
+			return nil
+		}
+		proxy.FlushInterval = -1
+		nativeHandler = proxy
+	}
+	native := httptest.NewServer(nativeHandler)
 	defer native.Close()
 
 	// The manager's owned OIDC client still validates TLS and issuer origin; its
@@ -260,7 +299,10 @@ func TestBrowserFixture(t *testing.T) {
 		return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "tcp4", dialAddress)
 	}}
 	defer oidcTransport.CloseIdleConnections()
-	state, err := store.Open(filepath.Join(t.TempDir(), "session"), nil)
+	var clockOffset atomic.Int64
+	state, err := store.Open(filepath.Join(t.TempDir(), "session"), func() time.Time {
+		return time.Now().Add(time.Duration(clockOffset.Load()))
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +350,13 @@ func TestBrowserFixture(t *testing.T) {
 	if probe.StatusCode != http.StatusOK {
 		t.Fatalf("synthetic OIDC discovery status: %d", probe.StatusCode)
 	}
-	manager, err := session.New(context.Background(), state, []config.Rule{gateway.Resources[0].Rule}, session.Config{Issuer: issuerURL, ClientID: "connect-browser", ClientSecret: "fixture-secret", CallbackPath: httpedge.BrowserCallbackPath, TransactionLifetime: session.DefaultTransactionLifetime, SessionLifetime: time.Hour, MaxTransactions: 8, MaxPerBrowser: 2, HTTPClient: &http.Client{Transport: oidcTransport}})
+	managerRules := []config.Rule{gateway.Resources[0].Rule}
+	if os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") != "" {
+		otherDashboard := gateway.Resources[0].Rule
+		otherDashboard.ID, otherDashboard.Host = "operator-dashboard", "console.example.test"
+		managerRules = append(managerRules, otherDashboard)
+	}
+	manager, err := session.New(context.Background(), state, managerRules, session.Config{Issuer: issuerURL, ClientID: "connect-browser", ClientSecret: "fixture-secret", CallbackPath: httpedge.BrowserCallbackPath, TransactionLifetime: session.DefaultTransactionLifetime, SessionLifetime: time.Hour, MaxTransactions: 8, MaxPerBrowser: 2, HTTPClient: &http.Client{Transport: oidcTransport}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,11 +365,20 @@ func TestBrowserFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	operator, err := manager.SetHuman(issuerURL, "operator-subject", []string{"dash"}, false)
+	operatorGrants := []string{"dash"}
+	if os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") != "" {
+		// A host Pi resource is dedicated to its OS owner. Dashboard operators
+		// must not inherit access to that owner's sessions or tool authority.
+		operatorGrants = []string{"operator-dashboard"}
+	}
+	operator, err := manager.SetHuman(issuerURL, "operator-subject", operatorGrants, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	gateway.BrowserAdministration = &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{operator.ID}}
+	if os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") != "" {
+		gateway.BrowserAdministration.Operators = []string{member.ID}
+	}
 	adminAuthority, err := administration.New(state, manager, gateway)
 	if err != nil {
 		t.Fatal(err)
@@ -371,6 +428,12 @@ func TestBrowserFixture(t *testing.T) {
 				idp.mu.Lock()
 				idp.subject = "denied-subject"
 				idp.mu.Unlock()
+			case "revoke member":
+				if _, err := manager.RevokeHumanSessions(issuerURL, "allowed-subject"); err != nil {
+					t.Fatal(err)
+				}
+			case "expire sessions":
+				clockOffset.Store(int64(2 * time.Hour))
 			case "mode session-bypass":
 				fixture.sessionBypass.Store(true)
 			case "mode session-enforce":

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from dataclasses import replace
 from pathlib import Path
 
@@ -22,6 +23,13 @@ class _Coordinator:
 
 def _binding(**changes):
     return PiTaskBinding(**({"principal_id": "operator-a", "project_id": "project-a", "task_id": "task-4", "lease_id": "lease-1", "runner_id": "runner-1", "provider_id": "provider-a"} | changes))
+
+
+def test_legacy_binding_fingerprint_is_preserved_and_new_roots_are_bound():
+    legacy = _binding()
+    expected = hashlib.sha256(json.dumps({"principal_id": "operator-a", "project_id": "project-a", "task_id": "task-4", "lease_id": "lease-1", "runner_id": "runner-1", "provider_id": "provider-a"}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    assert legacy.fingerprint == expected
+    assert _binding(rootset_digest="a" * 64).fingerprint != legacy.fingerprint
 
 
 class Process:

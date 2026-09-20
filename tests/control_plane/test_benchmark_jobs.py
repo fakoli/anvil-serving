@@ -45,7 +45,7 @@ def _spec(run_id: str = "run-001", **changes):
 
 def _store(tmp_path: Path) -> BenchmarkJobStore:
     return BenchmarkJobStore(
-        str(tmp_path / "jobs.sqlite3"), run_root=str(tmp_path / "runs")
+        str(tmp_path / "jobs.sqlite3"), run_root=str(tmp_path / "runs"), source_id="controller-a",
     )
 
 
@@ -74,6 +74,154 @@ def test_status_and_cursor_logs_survive_restart(tmp_path):
     page = restarted.logs("run-001", cursor=1, limit=1)
     assert [entry["message"] for entry in page["entries"]] == ["worker assigned"]
     assert page["next_cursor"] == 2
+
+
+def test_run_list_uses_a_stable_bounded_snapshot_and_hides_private_bindings(tmp_path):
+    store = _store(tmp_path)
+    store.submit(_spec("run-001"))
+    store.submit(_spec("run-002"))
+
+    first = store.list_runs(limit=1)
+    assert first["items"][0]["native_id"] == "run-002"
+    assert first["next_cursor"]
+    assert "ownership_id" not in repr(first)
+    assert "127.0.0.1" not in repr(first)
+    assert first["items"][0]["correlation_id"] is None
+
+    store.transition("run-002", "running")
+    second = store.list_runs(limit=1, cursor=first["next_cursor"])
+    assert [row["native_id"] for row in second["items"]] == ["run-001"]
+    assert second["next_cursor"] is None
+    assert second["source"]["deadline_seconds"] == 1.0
+
+
+def test_run_list_empty_owner_is_fresh_without_a_cursor(tmp_path):
+    page = _store(tmp_path).list_runs()
+
+    assert page["items"] == []
+    assert page["next_cursor"] is None
+    assert page["source"]["status"] == "fresh"
+
+
+def test_run_list_immutable_high_water_ignores_mid_page_mutation_and_insert(tmp_path, monkeypatch):
+    store = _store(tmp_path)
+    monkeypatch.setattr(store_module, "_BENCHMARK_LIST_SNAPSHOT_LIMIT", 2)
+    for run_id in ("run-001", "run-002", "run-003"):
+        store.submit(_spec(run_id))
+
+    first = store.list_runs(limit=2)
+    store.transition("run-001", "running")
+    store.submit(_spec("run-004"))
+    second = store.list_runs(limit=2, cursor=first["next_cursor"])
+
+    assert [row["native_id"] for row in first["items"] + second["items"]] == [
+        "run-003", "run-002", "run-001",
+    ]
+    assert second["next_cursor"] is None
+    monkeypatch.setattr(store_module, "_BENCHMARK_LIST_SNAPSHOT_LIMIT", 1000)
+    assert [row["native_id"] for row in store.list_runs()["items"]] == [
+        "run-004", "run-003", "run-002", "run-001",
+    ]
+
+
+def test_run_list_skips_oversized_raw_record_before_decoding(tmp_path, monkeypatch):
+    store = _store(tmp_path)
+    store.submit(_spec())
+    with closing(sqlite3.connect(store.path)) as connection, connection:
+        connection.execute(
+            "UPDATE benchmark_jobs SET record = ? WHERE run_id = ?",
+            ("x" * (store_module._BENCHMARK_LIST_RECORD_MAX_BYTES + 1), "run-001"),
+        )
+    monkeypatch.setattr(store, "_decode_record", lambda _raw: pytest.fail("decode"))
+
+    page = store.list_runs()
+
+    assert page["items"] == []
+    assert page["source"]["partial"] is True
+
+
+def test_run_list_does_not_decode_one_thousand_oversized_records(tmp_path, monkeypatch):
+    store = _store(tmp_path)
+    for index in range(1001):
+        store.submit(_spec(f"run-{index:04d}"))
+    monkeypatch.setattr(store_module, "_BENCHMARK_LIST_RECORD_MAX_BYTES", 1)
+    monkeypatch.setattr(store, "_decode_record", lambda _raw: pytest.fail("decode"))
+
+    page = store.list_runs()
+
+    assert page["items"] == []
+    assert page["next_cursor"] is not None
+    assert page["source"]["partial"] is True
+
+
+def test_run_list_requires_a_declared_server_owner_identity(tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.sqlite3"), run_root=str(tmp_path / "runs"))
+    store.submit(_spec())
+
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.list_runs()
+
+    assert exc.value.code == "benchmark_owner_unconfigured"
+
+
+def test_run_list_interrupts_sql_before_the_owner_deadline_and_releases_lock(tmp_path, monkeypatch):
+    store = _store(tmp_path)
+    store.submit(_spec())
+    ticks = iter((0.0, 0.0, 2.0))
+    store._snapshot_clock = lambda: next(ticks, 2.0)
+    monkeypatch.setattr(store_module, "_STORE_PROGRESS_INSTRUCTIONS", 1)
+
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.list_runs()
+
+    assert exc.value.code == "list_deadline_exceeded"
+    assert store._lock.acquire(blocking=False)
+    store._lock.release()
+
+
+def test_run_list_backfills_more_than_one_thousand_records(tmp_path):
+    store = _store(tmp_path)
+    for index in range(1001):
+        store.submit(_spec(f"run-{index:04d}"))
+
+    seen, cursor = [], None
+    while True:
+        page = store.list_runs(limit=100, cursor=cursor)
+        seen.extend(row["native_id"] for row in page["items"])
+        cursor = page["next_cursor"]
+        if cursor is None:
+            break
+
+    assert seen == [f"run-{index:04d}" for index in reversed(range(1001))]
+
+
+def test_run_list_discovers_a_new_job_before_more_than_one_hundred_retained_rows(tmp_path):
+    store = _store(tmp_path)
+    for index in range(101):
+        store.submit(_spec(f"run-{index:04d}"))
+
+    first = store.list_runs(limit=1)
+    store.submit(_spec("run-0101"))
+    refreshed = store.list_runs(limit=1)
+
+    assert first["items"][0]["native_id"] == "run-0100"
+    assert refreshed["items"][0]["native_id"] == "run-0101"
+
+
+def test_run_list_prunes_snapshot_cache_to_the_declared_count(tmp_path, monkeypatch):
+    store = _store(tmp_path)
+    store.submit(_spec())
+    monkeypatch.setattr(store_module, "_BENCHMARK_LIST_SNAPSHOT_MAX_COUNT", 2)
+
+    for _ in range(3):
+        store.list_runs()
+
+    with closing(sqlite3.connect(store.path)) as connection:
+        count, total_bytes = connection.execute(
+            "SELECT COUNT(*), COALESCE(SUM(length(items)), 0) FROM benchmark_run_snapshots"
+        ).fetchone()
+    assert count == 2
+    assert total_bytes <= 2 * store_module._BENCHMARK_LIST_SNAPSHOT_MAX_BYTES
 
 
 def test_terminal_artifact_survives_restart_and_is_digest_checked(tmp_path):
