@@ -44,7 +44,7 @@ function accountEditor(user) {
   for (const service of settings.choices) {
     const label = element("label", choiceName(service), "grant"), select = element("select");
     const current = (user.resources || []).includes(service.id) ? (user.application_roles?.[service.id] || "legacy") : "none";
-    const roleOptions = service.managed_role ? [["member","Member"],["admin","Admin"]] : [["member","Access · app sets role"], ...(current === "admin" ? [["admin","Access · app sets role"]] : [])];
+    const roleOptions = service.managed_role ? [["member","Member"],["admin","Admin"]] : [[current === "admin" ? "admin" : "member","Access · app sets role"]];
     for (const [value,text] of [["none","No access"],...roleOptions, ...(current === "legacy" ? [["legacy","App-managed role"]] : [])]) {
       const option = element("option", text); option.value = value; select.append(option);
     }
