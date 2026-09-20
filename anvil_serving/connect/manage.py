@@ -26,7 +26,7 @@ from typing import Any, Callable, Iterator, Literal
 from contextlib import contextmanager
 
 from .config import ManifestError, read_manifest, require_isolated, role_identity
-from .render import plan, plan_for_inspection, render as render_config, stage
+from .render import MAX_OWNED_FILES, plan, plan_for_inspection, render as render_config, stage
 
 # The package and command help remain portable.  The actual ownership model
 # below deliberately depends on Linux uid/gid, openat-style flags, flock and
@@ -907,7 +907,7 @@ def _owned_marker(root: Path) -> tuple[str, dict[str, str]]:
     generation, files = value.get("generation"), value.get("files")
     if not isinstance(generation, str) or len(generation) != 64 or any(char not in "0123456789abcdef" for char in generation):
         raise ManageError("active ownership marker is invalid")
-    if not isinstance(files, dict) or len(files) > 128:
+    if not isinstance(files, dict) or len(files) > MAX_OWNED_FILES:
         raise ManageError("active ownership marker is invalid")
     checked: dict[str, str] = {}
     for name, digest in files.items():

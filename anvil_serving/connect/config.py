@@ -16,7 +16,10 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 SCHEMA = "anvil-connect.deployment/v1"
-_MAX_ITEMS = 64
+# Connect may declare up to this many connectors and clients. Render/lifecycle
+# ownership limits derive from it so a valid declaration cannot outgrow them.
+MAX_DEPLOYMENT_ITEMS = 64
+_MAX_ITEMS = MAX_DEPLOYMENT_ITEMS
 _LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _ID = re.compile(r"[a-z][a-z0-9-]{0,62}$")
 _ENV = re.compile(r"[A-Z][A-Z0-9_]{0,127}$")

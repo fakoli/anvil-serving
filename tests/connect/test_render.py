@@ -12,8 +12,9 @@ from pathlib import Path, PureWindowsPath
 import pytest
 
 from anvil_serving.connect import config as connect_config
+from anvil_serving.connect import manage as connect_manage
 from anvil_serving.connect.config import ManifestError, parse_manifest_text, read_manifest, validate_manifest
-from anvil_serving.connect.render import plan, plan_for_inspection, render, render_for_inspection, stage
+from anvil_serving.connect.render import MAX_OWNED_FILES, plan, plan_for_inspection, render, render_for_inspection, stage
 
 
 ROOT = Path(__file__).parents[2]
@@ -44,6 +45,66 @@ def isolated_manifest() -> dict:
         "clients": {"dashboard-api": {"memory_max_bytes": 268435456, "tasks_max": 32}},
     }
     value["caddy"]["state_directory"] = "/var/lib/anvil-connect/caddy"
+    return value
+
+
+def scaled_manifest(*, connector_count: int, client_count: int) -> dict:
+    """Build a schema-valid isolated deployment at the ownership boundary."""
+    assert 1 <= connector_count <= 64
+    assert 0 <= client_count < connector_count
+    value = isolated_manifest()
+    browser = value["connectors"][0]["resources"][0]
+    api = value["connectors"][0]["resources"][1]
+    browser_rule = value["gateway"]["gateway"]["resources"][0]["rule"]
+    api_rule = value["gateway"]["gateway"]["resources"][1]["rule"]
+    connector_template = value["connectors"][0]
+    client_template = value["clients"][0]
+    value["connectors"] = []
+    value["clients"] = []
+    value["gateway"]["gateway"]["resources"] = []
+    for collection in ("connectors", "clients"):
+        value["service_identities"][collection] = {}
+        value["service_limits"][collection] = {}
+        value["environment_files"][collection] = {}
+    for index in range(connector_count):
+        name = f"resource{index}"
+        resource = copy.deepcopy(browser if index == 0 else api)
+        rule = resource["envelope"]["rule"]
+        rule["id"] = name
+        rule["host"] = f"{name}.example.test"
+        if index:
+            resource["envelope"]["token_env"] = f"ANVIL_CONNECT_RESOURCE_{index}_TOKEN"
+        resource["envelope"]["listen"] = f"127.0.0.1:{18000 + index}"
+        resource["reverse_address"] = f"127.0.0.1:{17000 + index}"
+        connector = copy.deepcopy(connector_template)
+        connector["id"] = name
+        connector["resources"] = [resource]
+        connector["state_directory"] = f"/var/lib/anvil-connect/connectors/{name}"
+        value["connectors"].append(connector)
+        gateway_resource = {
+            "connector": name,
+            "tunnel_address": resource["reverse_address"],
+            "rule": copy.deepcopy(browser_rule if index == 0 else api_rule),
+        }
+        gateway_resource["rule"]["id"] = name
+        gateway_resource["rule"]["host"] = rule["host"]
+        value["gateway"]["gateway"]["resources"].append(gateway_resource)
+        identity = {"uid": 1300 + index, "gid": 1300 + index}
+        value["service_identities"]["connectors"][name] = identity
+        value["service_limits"]["connectors"][name] = copy.deepcopy(value["service_limits"]["gateway"])
+        value["environment_files"]["connectors"][name] = f"/etc/anvil-connect/secrets/connectors/{name}.env"
+    for index in range(1, client_count + 1):
+        name = f"resource{index}"
+        client = copy.deepcopy(client_template)
+        client["listen"] = f"127.0.0.1:{18100 + index}"
+        client["local_key_env"] = f"ANVIL_CONNECT_RESOURCE_{index}_LOCAL_KEY"
+        client["remote_key_env"] = f"ANVIL_CONNECT_RESOURCE_{index}_REMOTE_KEY"
+        client["rule"] = copy.deepcopy(value["gateway"]["gateway"]["resources"][index]["rule"])
+        value["clients"].append(client)
+        identity = {"uid": 1400 + index, "gid": 1400 + index}
+        value["service_identities"]["clients"][name] = identity
+        value["service_limits"]["clients"][name] = copy.deepcopy(value["service_limits"]["gateway"])
+        value["environment_files"]["clients"][name] = f"/etc/anvil-connect/secrets/clients/{name}.env"
     return value
 
 
@@ -598,6 +659,30 @@ def test_plan_and_staging_preserve_drift_and_are_idempotent(tmp_path: Path) -> N
     assert report["state"] == "drift"
     assert "gateway.json" in report["corrupt"]
     assert (owned / "gateway.json").read_text() == "tampered"
+
+
+@_NATIVE
+@pytest.mark.parametrize(
+    ("connector_count", "client_count", "expected_files"),
+    [(61, 0, 130), (64, 63, 262)],
+    ids=["former-128-file-cap", "schema-maximum"],
+)
+def test_large_generation_passes_activation_ownership_gate(
+    tmp_path: Path, connector_count: int, client_count: int, expected_files: int,
+) -> None:
+    """Every schema-valid ownership boundary stages and passes activation checks."""
+    value = scaled_manifest(connector_count=connector_count, client_count=client_count)
+    rendered = render(value)
+    assert len(rendered["ownership"]["files"]) == expected_files
+    assert len(rendered["ownership"]["files"]) <= MAX_OWNED_FILES
+    staged = stage(value, tmp_path / "rendered")
+    root = Path(staged["path"])
+    assert plan(value, root)["state"] == "current"
+    # _activate performs this same ownership check before it publishes a stage.
+    assert connect_manage._verify_owned_tree(root, strict=False) == (
+        rendered["generation"], rendered["ownership"]["files"],
+    )
+    assert stage(value, tmp_path / "rendered") == staged
 
 
 def test_systemd_units_have_real_argv_and_reject_unsafe_paths() -> None:

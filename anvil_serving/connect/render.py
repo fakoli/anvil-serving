@@ -9,7 +9,7 @@ import stat
 from pathlib import Path
 from typing import Any
 
-from .config import ManifestError, canonical_manifest, require_isolated, role_identity, role_limits, validate_manifest
+from .config import MAX_DEPLOYMENT_ITEMS, ManifestError, canonical_manifest, require_isolated, role_identity, role_limits, validate_manifest
 
 _RENDER_SCHEMA = "anvil-connect.render/v1"
 _OWNERSHIP = "anvil-connect.ownership/v1"
@@ -21,6 +21,9 @@ _CADDY_GRACE_PERIOD_SECONDS = 15
 _CADDY_GRACE_PERIOD = f"{_CADDY_GRACE_PERIOD_SECONDS}s"
 _SERVICE_STOP_TIMEOUT_SECONDS = 20
 _NOTIFICATION_TEMPLATE_DIRECTORY = "authelia/notification-templates"
+# gateway/caddy/Authelia configs and units plus two Authelia templates (8),
+# then one config and unit for each schema-permitted connector and client.
+MAX_OWNED_FILES = 8 + 4 * MAX_DEPLOYMENT_ITEMS
 _DROP_IDENTITY_HEADERS = [
     "Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP",
     "X-Anvil-Connect-User", "X-Anvil-Connect-Groups", "X-Anvil-Connect-Identity", "X-Auth-Request-User",
@@ -415,7 +418,6 @@ def render(manifest: dict[str, Any]) -> dict[str, Any]:
 _MAX_MARKER_BYTES = 64 * 1024
 _MAX_RENDERED_FILE_BYTES = 2 * 1024 * 1024
 _MAX_DIRECTORY_ENTRIES = 256
-_MAX_OWNED_FILES = 128
 _SHA256 = re.compile(r"[0-9a-f]{64}$")
 _SAFE_RENDERED_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$")
 
@@ -520,7 +522,7 @@ def _read_marker(marker: Path) -> dict[str, Any] | None:
     if not isinstance(value, dict) or set(value) != {"schema", "generation", "files"} or value["schema"] != _OWNERSHIP:
         return None
     generation, files = value["generation"], value["files"]
-    if not isinstance(generation, str) or not _SHA256.fullmatch(generation) or not isinstance(files, dict) or not 0 < len(files) <= _MAX_OWNED_FILES:
+    if not isinstance(generation, str) or not _SHA256.fullmatch(generation) or not isinstance(files, dict) or not 0 < len(files) <= MAX_OWNED_FILES:
         return None
     if any(name == "managed.json" or not _safe_rendered_name(name) or not isinstance(digest, str) or not _SHA256.fullmatch(digest) for name, digest in files.items()):
         return None
