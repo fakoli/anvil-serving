@@ -22,7 +22,7 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "c2ec5c3f6fb4011615ef71147176015a7cd42676dc7edc0e86091f83e5dde6ff"
+    "ba7bb28ae5e46d65152723ab9a9482ce2336c9a8dfa2d68df53d47288f29ac7e"
 )
 HANDLER_MAP_SHA256 = (
     "dc25ef88f384ee53b0747a8f1fbd9b31f991bc0151de25d2eeaab469da5d1b5b"
@@ -178,7 +178,8 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     client_schema["properties"].pop("align_compaction_reserve")
     client_schema["properties"].pop("pi_exclude_aliases")
     client_schema["properties"].pop("openclaw_exclude_aliases")
-    client_schema["maxProperties"] -= 4
+    client_schema["properties"].pop("openclaw_allow_aliases")
+    client_schema["maxProperties"] -= 5
     assert _canonical_sha256(public_tools) == (
         "d2145a64f57a847b97e0b72f36f59cf853fc11e76d5c9b89b98860b2c4654954"
     )
