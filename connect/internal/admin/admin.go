@@ -118,7 +118,7 @@ type Response struct {
 	Entries          []EntryStatus      `json:"entries,omitempty"`
 	Human            *session.Human     `json:"human,omitempty"`
 	Deletion         *session.Deletion  `json:"deletion,omitempty"`
-	Deletions        []session.Deletion `json:"deletions,omitempty"`
+	Deletions        []session.Deletion `json:"deletions,omitzero"`
 }
 
 // Handler invokes only existing authority managers. keys and sessions can be

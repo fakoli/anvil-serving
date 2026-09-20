@@ -190,6 +190,14 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 	if unchanged, err := sessions.InspectHuman(created.ID); err != nil || unchanged.Disabled || unchanged.Generation != created.Generation {
 		t.Fatalf("rejected deletion changed authority: %#v, %v", unchanged, err)
 	}
+	empty, err := handler.apply(Request{Operation: "human-deletions"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire, err := json.Marshal(empty)
+	if err != nil || !bytes.Contains(wire, []byte(`"deletions":[]`)) {
+		t.Fatalf("empty deletion queue lost its array contract: %s, %v", wire, err)
+	}
 	name := "target.user"
 	set, err := handler.apply(Request{Operation: "human-set", Issuer: issuer.URL, Subject: "target", Username: name, Resources: []string{"dashboard"}})
 	if err != nil || set.Username != name || set.Principal != human.ID {
