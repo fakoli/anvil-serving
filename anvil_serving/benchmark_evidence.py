@@ -327,7 +327,12 @@ def _artifact_kind(raw: Mapping[str, Any]) -> str | None:
 def summarize_artifact(path: str | Path) -> dict[str, Any]:
     """Return a prompt-free normalized summary for one benchmark artifact."""
     artifact_path = Path(path)
-    raw = _load_json(artifact_path)
+    return summarize_payload(_load_json(artifact_path), artifact_path)
+
+
+def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[str, Any]:
+    """Normalize already-opened artifact bytes without opening any path."""
+    artifact_path = Path(display_path)
     kind = _artifact_kind(raw)
     if kind is None:
         raise EvidenceError(f"JSON file is not recognized benchmark evidence: {artifact_path}")
@@ -642,14 +647,24 @@ def _value_at(summary: Mapping[str, Any], path: Sequence[str]) -> Any:
     return value
 
 
-def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
-    """Compare normalized evidence and report material workload mismatches."""
-    path_list = list(paths)
-    if not 2 <= len(path_list) <= MAX_COMPARE_ARTIFACTS:
+def _check_compare_count(count: int) -> None:
+    if not 2 <= count <= MAX_COMPARE_ARTIFACTS:
         raise EvidenceError(
             f"compare requires between 2 and {MAX_COMPARE_ARTIFACTS} artifacts"
         )
-    summaries = [summarize_artifact(path) for path in path_list]
+
+
+def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
+    """Compare normalized evidence and report material workload mismatches."""
+    path_list = list(paths)
+    _check_compare_count(len(path_list))
+    return compare_summaries([summarize_artifact(path) for path in path_list])
+
+
+def compare_summaries(summaries: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Compare already-normalized evidence summaries without opening paths."""
+    summaries = list(summaries)
+    _check_compare_count(len(summaries))
     fields = {
         "kind": ("kind",),
         "schema": ("schema",),
