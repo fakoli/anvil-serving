@@ -277,7 +277,14 @@ class VoicePipeline:
         self.manager.start_all()
 
     def stop(self, *, join_timeout: Optional[float] = 2.0) -> None:
+        deadline = None if join_timeout is None else time.monotonic() + join_timeout
+        advisor = getattr(self, "jev_advisor", None)
+        if advisor is not None:
+            advisor.configure(False)
         self.manager.stop_all(join_timeout=join_timeout)
+        if advisor is not None:
+            remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+            advisor.close(join_timeout=remaining)
 
     def shutdown_gracefully(self, *, join_timeout: Optional[float] = 2.0) -> None:
         """Push :data:`PIPELINE_END` and wait (up to ``join_timeout``) for the
@@ -287,7 +294,8 @@ class VoicePipeline:
         forwarded the sentinel downstream and broke out of its run loop
         *because it saw the sentinel*, rather than being cut off by
         :meth:`stop`'s stop-event mid-item -- then call :meth:`stop` on every
-        stage as a bounded safety net.
+        stage as a bounded safety net, sharing the remaining timeout with
+        optional advisory cleanup rather than starting a fresh wait budget.
 
         That safety-net call is a near-instant no-op for a stage that already
         exited on the sentinel (its thread is already dead, so ``join``
@@ -295,7 +303,8 @@ class VoicePipeline:
         drained the sentinel before ``join_timeout`` elapsed (e.g. it was
         blocked inside a slow ``process()`` call), in which case it falls
         back to the old best-effort "signal stop, join with a timeout"
-        behavior. If ``join_timeout`` is ``None``, waits indefinitely for the
+        behavior using only the remaining budget. If ``join_timeout`` is
+        ``None``, waits indefinitely for the
         drain (matching :meth:`stop`'s own ``None`` == "wait forever").
 
         Deliberately does NOT read from ``audio_out`` to detect the drain
@@ -306,9 +315,14 @@ class VoicePipeline:
         OR after ``shutdown_gracefully`` and still see everything that was
         produced.
         """
+        deadline = None if join_timeout is None else time.monotonic() + join_timeout
+        advisor = getattr(self, "jev_advisor", None)
+        if advisor is not None:
+            advisor.configure(False)
         self.audio_in.put(PIPELINE_END)
         self._wait_for_last_stage_to_drain(timeout=join_timeout)
-        self.manager.stop_all(join_timeout=join_timeout)
+        remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+        self.stop(join_timeout=remaining)
 
     def _wait_for_last_stage_to_drain(self, *, timeout: Optional[float]) -> None:
         stage = self.manager.stages[-1] if self.manager.stages else None
@@ -316,9 +330,12 @@ class VoicePipeline:
             return
         deadline = None if timeout is None else time.monotonic() + timeout
         while stage.is_alive():
-            if deadline is not None and time.monotonic() >= deadline:
-                return
-            time.sleep(0.02)
+            interval = 0.02
+            if deadline is not None:
+                interval = min(interval, deadline - time.monotonic())
+                if interval <= 0:
+                    return
+            time.sleep(interval)
 
     def drain_audio_out(self, *, timeout: float = 2.0) -> List[Any]:
         """Collect every item currently available on ``audio_out`` (test helper)."""

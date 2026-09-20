@@ -1,9 +1,11 @@
 import { button, el, field, heading, notice, select } from "./common.js";
 import { workbenchRequest } from "./api.js";
+import { jevAssistanceView } from "./jev.js";
 const tabs = [
   ["thread", "This thread"],
   ["project", "Project defaults"],
   ["service", "Pi service"],
+  ["jev", "Jev assistance"],
 ];
 const workspaces = [
   ["bench", "Workbench"],
@@ -163,7 +165,9 @@ export async function workbenchSettingsView(ctx, requestedTab = "thread") {
       feedback.replaceChildren(notice(error.message, "danger"));
     }
   };
-  if (tab === "thread") {
+  if (tab === "jev") {
+    content.append(jevAssistanceView(ctx, catalog));
+  } else if (tab === "thread") {
     append(
       content,
       el("h2", { text: "This thread" }),
