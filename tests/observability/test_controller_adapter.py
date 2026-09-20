@@ -187,13 +187,18 @@ def test_real_benchmark_owner_header_stall_is_killed_at_the_total_deadline():
     started = time.monotonic()
     try:
         with pytest.raises(ObservatoryError, match="unavailable"):
-            value.list_benchmark_jobs(limit=1, deadline_seconds=0.2)
+            # Include spawn/import time in the real two-second owner budget.
+            # A 200ms fixture can kill a healthy worker before it reaches HTTP.
+            value.list_benchmark_jobs(limit=1, deadline_seconds=2.0)
+        elapsed = time.monotonic() - started
     finally:
         server.shutdown()
         server.server_close()
         thread.join(timeout=1)
     assert request_started.is_set()
-    assert time.monotonic() - started < 1.5
+    assert elapsed < 2.5
+    assert not [child for child in multiprocessing.active_children()
+                if child.name == "observatory-benchmark-list"]
 
 
 def test_benchmark_owner_rejects_a_dns_name_before_a_worker_can_resolve_it():
