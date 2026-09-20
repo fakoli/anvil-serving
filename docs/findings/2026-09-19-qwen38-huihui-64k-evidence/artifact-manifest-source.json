@@ -13,9 +13,8 @@
       "capacity"
     ],
     "decision_labels": [
-      "current"
-    ],
-    "promotion_authorized": true
+      "qualified-reference"
+    ]
   },
   "native_evidence_schemas": [
     "anvil-serving.benchmark/v1",

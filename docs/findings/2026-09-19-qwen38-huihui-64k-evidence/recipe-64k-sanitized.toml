@@ -17,7 +17,7 @@ total_params_b = 27
   gpu = "NVIDIA GeForce RTX 5090"
   arch = "sm_120a"
   vram_total_gb = 32
-  vram_note = "64K allocation candidate, C1, MTP3 and vision. Resource bounds and exact-context gates pending; retain 32K rollback."
+  vram_note = "64K allocation candidate, C1, MTP3 and vision. Historical pre-qualification notes: resource bounds and exact-context gates pending."
 
   [recipe.serve]
   engine = "ninfer"

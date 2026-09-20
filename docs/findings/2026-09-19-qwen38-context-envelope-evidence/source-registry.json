@@ -1,0 +1,50 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-19-qwen38-context-envelope",
+  "observed_at": "2026-09-20T01:17:08Z",
+  "sources": [
+    {
+      "id": "qwen-model-card",
+      "url": "https://huggingface.co/lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4",
+      "published_or_observed": "2026-09-20",
+      "observed_at": "2026-09-20T02:08:18.522812+00:00",
+      "age_class": "current",
+      "evidence_type": "upstream-model-card",
+      "hardware_runtime_relevance": "artifact identity only",
+      "decision_impact": "pinned candidate revision",
+      "date_basis": "Re-observed upstream page during publication; original publication date not verified."
+    },
+    {
+      "id": "ninfer-schema-fix",
+      "url": "https://github.com/Neroued/ninfer/commit/0e4cdf84f04d74abf6e28b6021b2bd83239d5a1b",
+      "published_or_observed": "2026-09-20",
+      "observed_at": "2026-09-20T02:08:18.522827+00:00",
+      "age_class": "current",
+      "evidence_type": "upstream-source",
+      "hardware_runtime_relevance": "schema typing fix research",
+      "decision_impact": "context investigation provenance",
+      "date_basis": "Re-observed upstream page during publication; original publication date not verified."
+    },
+    {
+      "id": "ninfer-contract-fix",
+      "url": "https://github.com/Neroued/ninfer/commit/70434721b1ae29d0616f3de9b376c8a4d91590b5",
+      "published_or_observed": "2026-09-20",
+      "observed_at": "2026-09-20T02:08:18.522830+00:00",
+      "age_class": "current",
+      "evidence_type": "upstream-source",
+      "hardware_runtime_relevance": "tested compatible runtime",
+      "decision_impact": "selected runtime revision",
+      "date_basis": "Re-observed upstream page during publication; original publication date not verified."
+    },
+    {
+      "id": "local-native-results",
+      "url": "local:artifact-manifest.json",
+      "published_or_observed": "2026-09-20",
+      "observed_at": "2026-09-20T01:17:08Z",
+      "age_class": "current",
+      "evidence_type": "local-result",
+      "hardware_runtime_relevance": "RTX 5090 C1 direct-I/O profile",
+      "decision_impact": "qualification evidence"
+    }
+  ]
+}

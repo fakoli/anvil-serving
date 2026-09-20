@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-19-qwen38-context-envelope",
+  "status": "private-operator-record",
+  "disclosure": "Lifecycle, restoration, authorization and active assignments are retained in private operator evidence. This public qualification record does not disclose deployment state.",
+  "public_post_run_checks": [
+    "direct preflight 8/8",
+    "bounded native client compatibility; see client-compatibility.json"
+  ]
+}

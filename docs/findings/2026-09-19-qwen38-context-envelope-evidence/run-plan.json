@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.context-envelope-plan/v1",
+  "created_at": "2026-09-20T00:38:08.934423+00:00",
+  "objective": "Largest useful C1 prompt budget with low card pressure, same pinned artifact and runtime.",
+  "authority": "Authorized bounded context qualification; operational authorization and decisions are retained privately.",
+  "runtime": "70434721b1ae29d0616f3de9b376c8a4d91590b5",
+  "model_revision": "181446902fc777c479749e98cf2abf2250263a8d",
+  "output_reserve_tokens": 8192,
+  "protocol_reserve_tokens": 1024,
+  "gpu_free_floor_mib": 4096,
+  "windows_available_floor_mib": 2048,
+  "concurrency": 1,
+  "candidate_ladder": [
+    131072,
+    163840,
+    196608,
+    204800
+  ],
+  "maximum_trials": 6,
+  "search_budget_minutes": 90,
+  "qualification_and_restoration_reserve_minutes": 30,
+  "acceptance": {
+    "deterministic_checks": "all pass, including long tools and retrieval at multiple depths",
+    "stability": "no OOM,Cuda error,crash,restart or unexplained loss; GPU/host memory sampled",
+    "latency": "report measured TTFT by input size; do not infer all-context latency from short prompt",
+    "capacity": "unique-cache requests with canaries and exact32-word controlled output; same seeds across configs",
+    "memory": "keep4096MiB actually free, with allocation estimates and observed peaks distinct"
+  },
+  "tooling_gaps": [
+    "No Anvil MCP/controller wrappers exposed in this session; use verified installed/product CLI.",
+    "Shared session-improvement-loop research skill unavailable; using pinned upstream source, deterministic local evidence, and independent Sol review."
+  ],
+  "publication": "Publish sanitized qualification evidence and preserve prior measurements. Operational deployment and recovery records remain private.",
+  "baseline": "qwen38-huihui-ninfer-schemafix-mtp3-64k"
+}

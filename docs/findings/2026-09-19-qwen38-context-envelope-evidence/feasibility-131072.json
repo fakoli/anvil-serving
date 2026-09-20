@@ -1,0 +1,130 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "huihui-context-131072",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 121856,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "Campaign useful prompt target including tokenization guard",
+        "observed_at": "2026-09-20"
+      },
+      "output_reserve": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "Campaign usable answer reserve",
+        "observed_at": "2026-09-20"
+      },
+      "protocol": {
+        "value": 1024,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "Tokenization and protocol guard",
+        "observed_at": "2026-09-20"
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "requests",
+      "status": "assumed",
+      "source": "One request on isolated GPU",
+      "observed_at": "2026-09-20"
+    },
+    "physical_vram_bytes": {
+      "value": 34190917632,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "gpu-start.csv",
+      "observed_at": "2026-09-20"
+    },
+    "vram_reserves": {
+      "headroom": {
+        "kind": "policy",
+        "variable": {
+          "value": 4294967296,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "Existing managed GPU reserve retained",
+          "observed_at": "2026-09-20"
+        }
+      },
+      "telemetry_residual": {
+        "kind": "policy",
+        "variable": {
+          "value": 439353344,
+          "unit": "bytes",
+          "status": "measured",
+          "source": "GPU reported total-used-free arithmetic",
+          "observed_at": "2026-09-20",
+          "notes": "Accounting allowance, not an independently measured driver allocation. Require actual free>=4096MiB."
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "Every deterministic check must pass",
+        "observed_at": "2026-09-20"
+      }
+    }
+  },
+  "tracked_variables": {
+    "peak_host_ram": {
+      "unit": "bytes",
+      "status": "unknown",
+      "notes": "Will sample Windows available and Docker WSL memory around representative workloads."
+    },
+    "instantaneous_gpu_peak": {
+      "unit": "bytes",
+      "status": "unknown",
+      "notes": "500ms sampled extrema cannot establish instantaneous peaks."
+    }
+  },
+  "candidates": [
+    {
+      "id": "huihui-131072",
+      "runtime_context_limit_tokens": {
+        "value": 131072,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "Explicit proposed managed recipe",
+        "observed_at": "2026-09-20"
+      },
+      "resident_components": {
+        "observed_non_kv_plus_uncertainty": {
+          "min": 23047700480,
+          "max": 23316135936,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "64K post-workload24224MiB minus exact2244MiB KV; +256MiB planning allowance",
+          "observed_at": "2026-09-20",
+          "notes": "Whole-GPU baseline includes co-resident and fixed runtime terms once; provisional range, verify live."
+        }
+      },
+      "per_sequence_components": {},
+      "per_token_components": {
+        "text_and_mtp_int8_kv": {
+          "value": 35904,
+          "unit": "bytes/token",
+          "status": "confirmed",
+          "source": "https://github.com/Neroued/ninfer/blob/70434721b1ae29d0616f3de9b376c8a4d91590b5/src/targets/qwen3_6/impl/state/decoder_state.cpp",
+          "observed_at": "2026-09-20",
+          "notes": "17 full-attention KV layers*(2*(4*256 INT8+4*4 FP16 scale))=35904 bytes/token;64tokenpages"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "confirmed",
+        "source": "Explicit C1 KV capacity",
+        "observed_at": "2026-09-20"
+      },
+      "metrics": {},
+      "hard_failures": []
+    }
+  ]
+}
