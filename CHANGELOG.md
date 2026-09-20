@@ -6,6 +6,32 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-20
+
+### Added
+
+- Renewed Workbench, Playground and Anvil Work interfaces with retained Pi
+  conversations, explicit project roots, task execution and evidence review.
+- A dedicated Connect service home, readable service tiles and username/ID
+  access administration, including permanent account deletion and username reuse.
+- Connect application roles with server-enforced administrator-only Host Pi
+  access, plus bounded external OIDC redirects for native application SSO.
+- Managed native-memory probes, model-cache inventory, and expanded benchmark
+  evidence covering multimodal inputs, context capacity and prefix-cache behavior.
+- Authenticated standalone Media MCP and bounded media image-build and
+  qualification workflows.
+
+### Fixed
+
+- Connector resource extension recovers interrupted enrollment and expired,
+  un-staged invitations without replacing authority state.
+- HTTP/2 response idle deadlines apply to individual streams, preventing a
+  cancelled upload from poisoning the next request on a shared connection.
+- Workspace history, browser recovery, narrow-screen layouts and Windows
+  request-cancellation and test-isolation behavior.
+- Client reconciliation verifies approved router bindings and effective access
+  before reporting promotion convergence.
+
 ## [1.2.1] - 2026-09-12
 
 ### Fixed
@@ -2508,7 +2534,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/fakoli/anvil-serving/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/fakoli/anvil-serving/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/fakoli/anvil-serving/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fakoli/anvil-serving/compare/v1.0.0...v1.1.0

@@ -291,6 +291,8 @@ def _validate_local_tunnels(data: dict[str, Any]) -> None:
         *(r["rule"]["host"] for r in gateway["gateway"]["resources"]),
         *(c["id"] + ".connector.anvil-connect.internal" for c in connectors),
     }
+    if "portal_host" in gateway["gateway"]:
+        hosts.add(gateway["gateway"]["portal_host"])
     if listener["server_name"] in hosts or listener["http_host"] in hosts:
         raise _error("$.gateway.local_tunnel", "must not reuse an existing service identity")
     addresses = {gateway["gateway"]["listen"], gateway["tunnel_listen"], data["authelia"]["listen"],
@@ -406,6 +408,13 @@ def _device_label(value: Any, path: str) -> str:
         raise _error(path, "must contain only valid Unicode scalar values") from exc
     if len(encoded) > 128 or any(ord(char) < 32 or ord(char) == 127 for char in text):
         raise _error(path, "must be at most 128 UTF-8 bytes without ASCII controls")
+    return text
+
+
+def _display_name(value: Any, path: str) -> str:
+    text = _device_label(value, path)
+    if not text or text != text.strip():
+        raise _error(path, "must be nonempty without surrounding whitespace")
     return text
 
 
@@ -648,6 +657,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         embedded_fields.add("device_authorizations")
     if isinstance(gateway_raw["gateway"], dict) and "browser_administration" in gateway_raw["gateway"]:
         embedded_fields.add("browser_administration")
+    if isinstance(gateway_raw["gateway"], dict) and "portal_host" in gateway_raw["gateway"]:
+        embedded_fields.add("portal_host")
     embedded = _mapping(gateway_raw["gateway"], "$.gateway.gateway", embedded_fields)
     if embedded["schema"] != "anvil-connect.gateway/v1":
         raise _error("$.gateway.gateway.schema", "must equal anvil-connect.gateway/v1")
@@ -659,15 +670,20 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     for index, resource_raw in enumerate(resource_raws):
         item_path = f"$.gateway.gateway.resources[{index}]"
         identity_fields = {"identity_key_env", "identity_key_id"}
-        optional_fields = identity_fields.intersection(resource_raw) if isinstance(resource_raw, dict) else set()
-        item = _mapping(resource_raw, item_path, {"connector", "tunnel_address", "rule"} | optional_fields)
+        identity_present = identity_fields.intersection(resource_raw) if isinstance(resource_raw, dict) else set()
+        display_present = {"display_name"} if isinstance(resource_raw, dict) and "display_name" in resource_raw else set()
+        item = _mapping(resource_raw, item_path, {"connector", "tunnel_address", "rule"} | identity_present | display_present)
         resource = {
             "connector": _ident(item["connector"], item_path + ".connector"),
             "tunnel_address": _loopback(item["tunnel_address"], item_path + ".tunnel_address"),
             "rule": _rule(item["rule"], item_path + ".rule"),
         }
+        if "display_name" in item:
+            if resource["rule"]["access"] != "browser":
+                raise _error(item_path + ".display_name", "requires browser access")
+            resource["display_name"] = _display_name(item["display_name"], item_path + ".display_name")
         if resource["rule"]["native_auth"] == "signed-identity":
-            if optional_fields != identity_fields:
+            if identity_present != identity_fields:
                 raise _error(item_path, "signed-identity requires identity_key_env and identity_key_id")
             key_env = _env(item["identity_key_env"], item_path + ".identity_key_env")
             if key_env in identity_envs:
@@ -678,7 +694,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
                 raise _error(item_path + ".identity_key_id", "must be distinct for each signed-identity resource")
             identity_ids.add(key_id)
             resource.update(identity_key_env=key_env, identity_key_id=key_id)
-        elif optional_fields:
+        elif identity_present:
             raise _error(item_path, "identity key references require signed-identity mode")
         resources.append(resource)
     if len({r["rule"]["id"] for r in resources}) != len(resources):
@@ -732,14 +748,23 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         device_authorizations.sort(key=lambda item: item["browser_resource"])
     browser_administration = None
     if "browser_administration" in embedded:
-        raw_admin = _mapping(embedded["browser_administration"], "$.gateway.gateway.browser_administration", {"browser_resource", "operators"})
+        admin_fields = {"browser_resource", "operators"}
+        if isinstance(embedded["browser_administration"], dict) and "user_deletion" in embedded["browser_administration"]:
+            admin_fields.add("user_deletion")
+        raw_admin = _mapping(embedded["browser_administration"], "$.gateway.gateway.browser_administration", admin_fields)
         browser_id = _ident(raw_admin["browser_resource"], "$.gateway.gateway.browser_administration.browser_resource")
         browser = gateway_resource_index.get(browser_id)
         operators = _list(raw_admin["operators"], "$.gateway.gateway.browser_administration.operators")
         if browser is None or browser["rule"]["access"] != "browser" or not {"GET", "POST"}.issubset(browser["rule"]["methods"]) or not 1 <= len(operators) <= _MAX_ITEMS or len(set(operators)) != len(operators) or any(not isinstance(item, str) or not _DEVICE_HUMAN.fullmatch(item) for item in operators):
             raise _error("$.gateway.gateway.browser_administration", "must name a GET/POST browser resource and unique opaque operators")
         browser_administration = {"browser_resource": browser_id, "operators": sorted(operators)}
+        if "user_deletion" in raw_admin:
+            if type(raw_admin["user_deletion"]) is not bool:
+                raise _error("$.gateway.gateway.browser_administration.user_deletion", "must be boolean")
+            browser_administration["user_deletion"] = raw_admin["user_deletion"]
     gateway_embedded = {"schema": embedded["schema"], "listen": gateway_listen, "max_concurrent": _positive(embedded["max_concurrent"], "$.gateway.gateway.max_concurrent", 512), "resources": sorted(resources, key=lambda r: r["rule"]["id"])}
+    if "portal_host" in embedded:
+        gateway_embedded["portal_host"] = _host(embedded["portal_host"], "$.gateway.gateway.portal_host")
     if "device_authorizations" in embedded:
         gateway_embedded["device_authorizations"] = device_authorizations
     if browser_administration is not None:
@@ -1071,6 +1096,9 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if len(secret_files) != len(set(secret_files)):
         raise _error("$.authelia", "must use distinct protected secret files")
     all_hosts = {gateway["control_host"], gateway["tunnel_host"], *(r["rule"]["host"] for r in gateway["gateway"]["resources"])}
+    if "portal_host" in gateway_embedded:
+        if gateway_embedded["portal_host"] in all_hosts | {authelia["host"]}:
+            raise _error("$.gateway.gateway.portal_host", "must be distinct from resource, authentication, control, and tunnel hosts")
     if authelia["host"] in all_hosts:
         raise _error("$.authelia.host", "must be distinct from public resource, control, and tunnel hosts")
     if ("origin_proxy" in caddy and any(

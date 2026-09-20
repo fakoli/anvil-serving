@@ -80,6 +80,7 @@ func TestRuntimeOwnedProcessAPISmoke(t *testing.T) {
 	}
 	apiHost, controlHost, tunnelHost := "api.example.test", "control.example.test", "tunnel.example.test"
 	gatewayCfg := connectruntime.GatewayConfig{Schema: "anvil-connect.gateway-runtime/v1", Gateway: config.Gateway{Schema: "anvil-connect.gateway/v1", Listen: labAddress(t), MaxConcurrent: 4, Resources: []config.Resource{{Rule: config.Rule{ID: "router", Host: apiHost, PathPrefix: "/", Methods: []string{"GET"}, Access: "api", NativeAuth: "delegate-bearer", Limits: config.Limits{RequestBytes: 4096, Concurrent: 1, BufferBytes: 4096, IdleSeconds: 2, DurationSeconds: 10}}, Connector: "connector-a", TunnelAddress: labAddress(t)}}}, ControlHost: controlHost, TunnelHost: tunnelHost, StateDirectory: filepath.Join(root, "gateway"), TunnelBinary: binary, TunnelListen: labAddress(t)}
+	gatewayCfg.Gateway.Resources = append(gatewayCfg.Gateway.Resources, config.Resource{Rule: config.Rule{ID: "metrics", Host: "metrics.example.test", PathPrefix: "/", Methods: []string{"GET"}, Access: "api", NativeAuth: "delegate-bearer", Limits: config.Limits{RequestBytes: 4096, Concurrent: 1, BufferBytes: 4096, IdleSeconds: 2, DurationSeconds: 10}}, Connector: "connector-a", TunnelAddress: labAddress(t)})
 	if err := connectruntime.InitializeGateway(gatewayCfg); err != nil {
 		t.Fatal(err)
 	}
@@ -165,11 +166,51 @@ func TestRuntimeOwnedProcessAPISmoke(t *testing.T) {
 	if _, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "approve", Installation: "connector-a", Fingerprint: identity.Fingerprint}); err != nil {
 		t.Fatal(err)
 	}
+	prior := connectruntime.ConnectorPrior{ID: identity.ID, Fingerprint: identity.Fingerprint, Epoch: identity.Epoch, Generation: identity.Generation, Resources: append([]string(nil), identity.Resources...)}
+	if _, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "installation-revoke", Installation: "connector-a"}); err != nil {
+		t.Fatal(err)
+	}
+	nextConnectorCfg := connectorCfg
+	nextConnectorCfg.Resources = append(nextConnectorCfg.Resources, connectruntime.ConnectorResource{Envelope: config.Envelope{Rule: gatewayCfg.Gateway.Resources[1].Rule, Listen: labAddress(t), OriginURL: "http://" + nativeAddr, TokenEnv: "NATIVE"}, ReverseAddress: gatewayCfg.Gateway.Resources[1].TunnelAddress})
+	nextInvite, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "invite", Installation: "connector-a", Role: "connector", Resources: []string{"metrics", "router"}, LifetimeSeconds: 60})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := connectruntime.ReenrollConnector(nextConnectorCfg, prior, nextInvite); err != nil {
+		t.Fatalf("stage connector re-enrollment: %v", err)
+	}
+	if err := connectruntime.InitializeConnector(context.Background(), nextConnectorCfg, nextInvite); err != nil {
+		t.Fatalf("redeem staged connector re-enrollment: %v", err)
+	}
+	identity, err = connectruntime.ConnectorIdentity(nextConnectorCfg)
+	if err != nil || identity.Status != "enrolled" || identity.Generation != nextInvite.Generation || len(identity.Resources) != 2 || identity.Fingerprint == prior.Fingerprint {
+		t.Fatalf("new connector identity = %#v err=%v", identity, err)
+	}
+	if _, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "approve", Installation: "connector-a", Fingerprint: identity.Fingerprint}); err != nil {
+		t.Fatal(err)
+	}
+	connectorCfg = nextConnectorCfg
 	connector, err := connectruntime.StartConnector(context.Background(), connectorCfg, func(name string) (string, bool) { return "synthetic-native", name == "NATIVE" })
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer connector.Close()
+	for _, resource := range gatewayCfg.Gateway.Resources {
+		ready := false
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			connection, dialErr := net.DialTimeout("tcp4", resource.TunnelAddress, 200*time.Millisecond)
+			if dialErr == nil {
+				connection.Close()
+				ready = true
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		if !ready {
+			t.Fatalf("re-enrolled resource %s did not establish its declared reverse listener", resource.Rule.ID)
+		}
+	}
 	grants := []access.Grant{{Resource: "router", Methods: []string{"GET"}}}
 	if _, err := admin.Call(context.Background(), adminPin.Path(), admin.Request{Operation: "principal-set", Principal: "sdk", Grants: grants}); err != nil {
 		t.Fatal(err)

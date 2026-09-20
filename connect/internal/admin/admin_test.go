@@ -2,6 +2,7 @@ package admin
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"encoding/pem"
@@ -174,6 +175,132 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 	created, err := sessions.SetHuman(issuer.URL, "unprovisioned", []string{"dashboard"}, false)
 	if err != nil || created.Generation != 1 {
 		t.Fatalf("rejected request provisioned a grant: %#v, %v", created, err)
+	}
+	inspected, err := handler.apply(Request{Operation: "human-inspect", Principal: created.ID})
+	if err != nil || inspected.Found == nil || !*inspected.Found || inspected.Human == nil || inspected.Human.ID != created.ID || inspected.Human.Generation != created.Generation {
+		t.Fatalf("existing human inspect response = %#v, %v", inspected, err)
+	}
+	missingID := "human:0000000000000000000000000000000000000000000000000000000000000000"
+	missingInspect, err := handler.apply(Request{Operation: "human-inspect", Principal: missingID})
+	if err != nil || missingInspect.Found == nil || *missingInspect.Found || missingInspect.Human != nil {
+		t.Fatalf("absent human inspect response = %#v, %v", missingInspect, err)
+	}
+	missingWire, err := json.Marshal(missingInspect)
+	if err != nil || !bytes.Contains(missingWire, []byte(`"found":false`)) || bytes.Contains(missingWire, []byte(`"human"`)) {
+		t.Fatalf("absent human inspect wire shape = %s, %v", missingWire, err)
+	}
+	expectedAbsentWire := `{"operation":"human-inspect","epoch":"","secret":"","key_id":"","principal":"","grants":[],"invitation":"","installation":"","role":"","resources":[],"generation":0,"fingerprint":"","found":false,"status":{"id":"","status":"","fingerprint":"","epoch":"","generation":0,"resources":[]}}`
+	if string(missingWire) != expectedAbsentWire {
+		t.Fatalf("absent human inspect envelope = %s", missingWire)
+	}
+	if _, err := handler.apply(Request{Operation: "human-inspect", Principal: "malformed"}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("malformed inspect principal accepted: %v", err)
+	}
+	if _, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-delete-prepare-absent", Principal: created.ID, Username: "unprovisioned", RequestID: "c2f1e253-cd05-4e26-9b27-284a20e4aa7f"}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("existing principal accepted as native-absent deletion: %v", err)
+	}
+	fenced, err := sessions.SetHuman(issuer.URL, "fence-subject", []string{"dashboard"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := state.Update(func(tx *store.Tx) error { return tx.Delete("principals", fenced.ID) }); err != nil {
+		t.Fatal(err)
+	}
+	requestID := "d2f1e253-cd05-4e26-9b27-284a20e4aa7f"
+	prepared, err := handler.apply(Request{Operation: "human-delete-prepare-absent", Principal: fenced.ID, Username: "idp-only", RequestID: requestID, usernamePresent: true})
+	if err != nil || prepared.Deletion == nil || prepared.Deletion.Principal != fenced.ID || prepared.Deletion.Username != "idp-only" || prepared.Deletion.Generation != 2 {
+		t.Fatalf("native-absent deletion fence = %#v, %v", prepared, err)
+	}
+	wirePrepared, err := json.Marshal(prepared)
+	if err != nil || !bytes.Contains(wirePrepared, []byte(`"completed_at":"0001-01-01T00:00:00Z"`)) {
+		t.Fatalf("pending native-absent deletion wire timestamp = %s, %v", wirePrepared, err)
+	}
+	var decodedPrepared Response
+	if err := config.Decode(bytes.NewReader(wirePrepared), &decodedPrepared); err != nil || decodedPrepared.Deletion == nil || !decodedPrepared.Deletion.CompletedAt.IsZero() {
+		t.Fatalf("pending native-absent deletion response decoder = %#v, %v", decodedPrepared, err)
+	}
+	for _, raw := range [][]byte{
+		[]byte(`{"operation":"human-inspect","operation":"human-inspect"}`),
+		[]byte(`{"operation":"\ud800"}`),
+	} {
+		var output Response
+		if err := config.Decode(bytes.NewReader(raw), &output); err == nil {
+			t.Fatalf("closed native response decoder accepted %s", raw)
+		}
+	}
+	retry, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-delete-prepare-absent", Principal: fenced.ID, Username: "idp-only", RequestID: requestID})
+	if err != nil || retry.Deletion == nil || retry.Deletion.RequestID != requestID || retry.Deletion.Generation != 2 {
+		t.Fatalf("native-absent deletion retry = %#v, %v", retry, err)
+	}
+	if _, err := sessions.SetHuman(issuer.URL, "fence-subject", []string{"dashboard"}, false); !errors.Is(err, session.ErrConflict) {
+		t.Fatalf("native-absent deletion did not fence concurrent provisioning: %v", err)
+	}
+	if err := sessions.FinalizeDeletion(requestID, fenced.ID, 2); err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := sessions.SetHuman(issuer.URL, "fence-subject", []string{"dashboard"}, false)
+	if err != nil || fresh.ID != fenced.ID || fresh.Generation != 1 {
+		t.Fatalf("finalized native-absent tombstone did not release identity: %#v, %v", fresh, err)
+	}
+	for _, request := range []Request{
+		{Operation: "human-inspect", Principal: created.ID},
+		{Operation: "human-deletions"},
+		{Operation: "human-delete-prepare", Principal: created.ID, ExpectedGeneration: created.Generation, RequestID: "b2f1e253-cd05-4e26-9b27-284a20e4aa7f"},
+		{Operation: "human-delete-finalize", Principal: created.ID, ExpectedGeneration: created.Generation + 1, RequestID: "b2f1e253-cd05-4e26-9b27-284a20e4aa7f"},
+	} {
+		request.Issuer = issuer.URL
+		if _, err := handler.apply(request); !errors.Is(err, ErrAdmin) {
+			t.Fatalf("%s accepted ignored issuer: %v", request.Operation, err)
+		}
+	}
+	if unchanged, err := sessions.InspectHuman(created.ID); err != nil || unchanged.Disabled || unchanged.Generation != created.Generation {
+		t.Fatalf("rejected deletion changed authority: %#v, %v", unchanged, err)
+	}
+	empty, err := handler.apply(Request{Operation: "human-deletions"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire, err := json.Marshal(empty)
+	if err != nil || !bytes.Contains(wire, []byte(`"deletions":[]`)) {
+		t.Fatalf("empty deletion queue lost its array contract: %s, %v", wire, err)
+	}
+	name := "target.user"
+	set, err := handler.apply(Request{Operation: "human-set", Issuer: issuer.URL, Subject: "target", Username: name, Resources: []string{"dashboard"}})
+	if err != nil || set.Username != name || set.Principal != human.ID {
+		t.Fatalf("human-set username response = %#v, %v", set, err)
+	}
+	retained, err := handler.apply(Request{Operation: "human-set", Issuer: issuer.URL, Subject: "target", Resources: []string{"dashboard"}})
+	if err != nil || retained.Username != name {
+		t.Fatalf("omitted username did not retain metadata: %#v, %v", retained, err)
+	}
+	if _, err := handler.apply(Request{Operation: "human-set", Issuer: issuer.URL, Subject: "target", Username: "Target", Resources: []string{"dashboard"}}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("invalid native username accepted: %v", err)
+	}
+	if _, err := handler.apply(Request{Operation: "human-suspend", Issuer: issuer.URL, Subject: "target", Username: name}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("username was accepted outside human-set: %v", err)
+	}
+	for _, raw := range [][]byte{
+		[]byte(`{"operation":"human-set","username":""}`),
+		[]byte(`{"operation":"human-set","username":null}`),
+	} {
+		var request Request
+		if err := config.Decode(bytes.NewReader(raw), &request); err == nil {
+			t.Fatalf("explicit malformed username accepted: %s", raw)
+		}
+	}
+	if err := state.Update(func(tx *store.Tx) error {
+		return tx.Put("principals", created.ID, session.Human{ID: created.ID})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handler.apply(Request{Operation: "human-inspect", Principal: created.ID}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("malformed stored human reported as found: %v", err)
+	}
+	if err := sessions.ConfigureAdministration(config.BrowserAdministration{BrowserResource: "dashboard", Operators: []string{missingID}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handler.apply(Request{Operation: "human-inspect", Principal: missingID}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("absent configured operator was reported as deletable: %v", err)
 	}
 }
 

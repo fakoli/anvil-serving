@@ -50,6 +50,7 @@ _MAX_BINARY = 512 * 1024 * 1024
 _SYSTEMD_TIMEOUT = 30.0
 _VALIDATE_TIMEOUT = 10.0
 _ID = re.compile(r"[a-z][a-z0-9-]{0,62}\Z")
+_USER = re.compile(r"[a-z][a-z0-9_.-]{0,63}\Z")
 _EVENT_REASONS = {
     "entry_bind_failed", "entry_tls_failed", "entry_stopped", "entry_listening", "entry_capacity_exhausted",
     "tunnel_established", "tunnel_establishment_failed", "tunnel_disconnected",
@@ -2227,6 +2228,30 @@ def native_init(manifest_path: str | Path, target: Target, *, bundle: str | Path
     return result
 
 
+def native_reenroll(manifest_path: str | Path, target: Target, *, prior: str | Path,
+                    bundle: str | Path, apply: bool = False, runner: Runner | None = None) -> dict[str, Any]:
+    """Stage one exact connector identity replacement before normal enrollment."""
+    _require_supported_platform()
+    if target.kind != "connector":
+        raise ManageError("re-enrollment is defined only for a connector")
+    data = read_manifest(manifest_path)
+    _targets(data, target)
+    _current(data)
+    checked = _validate_data(data, target, runner)
+    _bound_active(data, target, checked["digests"])
+    values = {"prior": Path(prior), "bundle": Path(bundle)}
+    for name, value in values.items():
+        if not value.is_absolute() or str(value) != str({"prior": prior, "bundle": bundle}[name]):
+            raise ManageError(f"private re-enrollment {name} path is invalid")
+    result = {"schema": "anvil-connect.manage/v1", "action": "re-enroll", "target": target.text(),
+              "applied": bool(apply), "native_sha256": checked["digests"]["native"]}
+    if apply:
+        _action(runner, (data["binary"], "re-enroll", "--config", str(_config_path(data, target)),
+                         "--prior", str(values["prior"]), "--bundle", str(values["bundle"])),
+                _SYSTEMD_TIMEOUT, "native re-enrollment staging failed", _target_identity(data, target))
+    return result
+
+
 def _closed_identity(raw: bytes) -> dict[str, Any]:
     value = _strict_json(raw, "native identity output is invalid")
     allowed = {"id", "status", "fingerprint", "epoch", "generation", "resources"}
@@ -2273,15 +2298,18 @@ def _admin_preview(request: Path) -> dict[str, str]:
     if raw is None:
         raise ManageError("administrative request is unavailable")
     value = _strict_json(raw, "administrative request is invalid")
-    allowed = {"operation", "principal", "grants", "disabled", "key_id", "installation", "role", "resources", "application_roles", "lifetime_seconds", "fingerprint", "issuer", "subject"}
+    allowed = {"operation", "principal", "grants", "disabled", "key_id", "installation", "role", "resources", "application_roles", "lifetime_seconds", "fingerprint", "issuer", "subject", "username", "request_id", "expected_generation"}
     operation = value.get("operation")
-    operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "human-revoke-sessions", "authority-reset"}
+    operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "human-revoke-sessions", "human-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset"}
     if set(value) - allowed or not isinstance(operation, str) or operation not in operations:
         raise ManageError("administrative request is invalid")
     fingerprint = value.get("fingerprint")
     if fingerprint is not None and (not isinstance(fingerprint, str) or len(fingerprint) != 43 or any(char not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for char in fingerprint)):
         raise ManageError("administrative request is invalid")
     if operation == "approve" and fingerprint is None:
+        raise ManageError("administrative request is invalid")
+    if "username" in value and (operation not in {"human-set", "human-delete-prepare-absent"} or not isinstance(value["username"], str)
+                              or _USER.fullmatch(value["username"]) is None):
         raise ManageError("administrative request is invalid")
     scope = "authority" if operation == "authority-reset" else ("installation" if operation in {"invite", "approve", "installation-revoke", "installation-status"} else ("api-key" if operation.startswith("api-key") else "principal"))
     return {"operation": operation, "scope": scope}

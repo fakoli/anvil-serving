@@ -58,6 +58,33 @@ func (a *Authority) Mutate(ctx context.Context, admitted session.Admission, requ
 	if err != nil || generation == 0 || strconv.FormatUint(generation, 10) != request.ExpectedGeneration || !requestIDPattern.MatchString(request.RequestID) {
 		return ErrInvalid
 	}
+	if request.Action == "human-delete" {
+		if !a.settings.UserDeletion {
+			return ErrDenied
+		}
+		if request.Principal == admitted.Principal || !config.ValidHumanID(request.Principal) || request.Disabled != nil || request.Resources != nil || request.ApplicationRoles != nil || request.SessionType != "" || request.SessionID != "" {
+			return ErrInvalid
+		}
+		return a.state.Update(func(tx *store.Tx) error {
+			if ctx.Err() != nil {
+				return ErrUnavailable
+			}
+			if err := a.authorize(tx, admitted); err != nil {
+				return err
+			}
+			_, err := a.sessions.PrepareDeletionTx(tx, request.Principal, generation, request.RequestID)
+			if errors.Is(err, session.ErrConflict) {
+				return ErrConflict
+			}
+			if errors.Is(err, session.ErrDenied) {
+				return ErrDenied
+			}
+			if err != nil {
+				return ErrUnavailable
+			}
+			return nil
+		})
+	}
 	target := ""
 	switch request.Action {
 	case "human-update":

@@ -27,6 +27,7 @@ const usage = `anvil-connect validate --mode gateway|connector|client --config F
 anvil-connect preflight --mode gateway|connector|client --config FILE [--input GATEWAY_FILE] [--socket LOCAL_ADDRESS]
 anvil-connect init --mode gateway --config FILE
 anvil-connect init --mode connector --config FILE --bundle PRIVATE_FILE
+anvil-connect re-enroll --config FILE --prior PRIVATE_FILE --bundle PRIVATE_FILE
 anvil-connect gateway|connector|client --config FILE
 anvil-connect login [--config FILE] [--json]
 anvil-connect identity --config FILE
@@ -72,7 +73,7 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 	if command == "login" {
 		fs.BoolVar(&jsonOutput, "json", false, "machine-readable login output")
 	}
-	var mode, file, bundle, socket, request, output, input, digest string
+	var mode, file, bundle, prior, socket, request, output, input, digest string
 	switch command {
 	case "validate", "preflight", "init":
 		fs.StringVar(&mode, "mode", "", "native mode")
@@ -84,6 +85,11 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 		if command == "init" {
 			fs.StringVar(&bundle, "bundle", "", "private enrollment invitation")
 		}
+	case "re-enroll":
+		mode = "connector"
+		fs.StringVar(&file, "config", "", "closed connector declaration")
+		fs.StringVar(&prior, "prior", "", "retained public connector identity")
+		fs.StringVar(&bundle, "bundle", "", "private enrollment invitation")
 	case "gateway", "connector", "client", "login", "identity":
 		fs.StringVar(&file, "config", "", "closed declaration")
 		mode = command
@@ -174,6 +180,9 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 		return invalid()
 	}
 	if command == "init" && ((mode == "gateway" && bundle != "") || (mode == "connector" && bundle == "") || mode == "client") {
+		return invalid()
+	}
+	if command == "re-enroll" && (mode != "connector" || bundle == "" || prior == "") {
 		return invalid()
 	}
 	if command == "login" {
@@ -283,6 +292,19 @@ func run(ctx context.Context, args []string, out, diagnostics io.Writer, lookup 
 			return fail()
 		}
 		return status(admin.InstallationStatus{ID: installation.ID, Status: installation.Status, Fingerprint: installation.Fingerprint, Epoch: installation.Epoch, Generation: installation.Generation, Resources: installation.Resources})
+	}
+	if command == "re-enroll" {
+		priorData, priorErr := readPrivate(prior)
+		bundleData, bundleErr := readPrivate(bundle)
+		var retained connectruntime.ConnectorPrior
+		var invitation admin.Response
+		if priorErr != nil || bundleErr != nil || config.Decode(bytes.NewReader(priorData), &retained) != nil || config.Decode(bytes.NewReader(bundleData), &invitation) != nil {
+			return invalid()
+		}
+		if connectruntime.ReenrollConnector(connector, retained, invitation) != nil {
+			return fail()
+		}
+		return status(map[string]string{"mode": mode, "status": "replacement-staged"})
 	}
 	if command == "init" {
 		if mode == "gateway" {

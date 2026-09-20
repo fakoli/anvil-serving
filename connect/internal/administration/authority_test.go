@@ -78,7 +78,7 @@ func setup(t *testing.T) fixture {
 			api = resource.Rule.ID
 		}
 	}
-	manager, err := session.New(context.Background(), state, rules, session.Config{Issuer: server.URL, ClientID: "test-client", ClientSecret: "synthetic-test-secret", CallbackPath: "/_connect/callback", TransactionLifetime: time.Minute, SessionLifetime: time.Hour, MaxTransactions: 8, MaxPerBrowser: 2, HTTPClient: server.Client()})
+	manager, err := session.New(context.Background(), state, rules, session.Config{Issuer: server.URL, ClientID: "test-client", ClientSecret: "synthetic-test-secret", CallbackPath: "/_connect/callback", TransactionLifetime: time.Minute, SessionLifetime: time.Hour, MaxTransactions: 8, MaxPerBrowser: 2, HTTPClient: server.Client(), PortalHost: "home.example.test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,6 +194,44 @@ func TestApplicationRoleMutationInvalidatesSessionsWithoutGatewayOperator(t *tes
 		if user.ID == updated.ID && user.ApplicationRoles[f.a.settings.BrowserResource] != "admin" {
 			t.Fatal("role inventory omitted target role")
 		}
+	}
+}
+
+func TestUserInventoryPreservesUsernameAndZeroScopeRecords(t *testing.T) {
+	f := setup(t)
+	name := "target.user"
+	target, err := f.sessions.SetHumanWithUsername(f.issuer, "target", &name, []string{f.a.settings.BrowserResource}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.a.Mutate(context.Background(), f.ownerSession, update(target, f.a.settings.BrowserResource, 91)); err != nil {
+		t.Fatal(err)
+	}
+	grantlessName := "home-only"
+	grantless, err := f.sessions.SetHumanWithUsername(f.issuer, "home-only", &grantlessName, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inventory, err := f.a.List(context.Background(), f.ownerSession, "users", "", 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundNamed, foundGrantless := false, false
+	for _, raw := range inventory.Items {
+		user := raw.(userItem)
+		if user.ID == target.ID {
+			foundNamed = user.Username == name
+		}
+		if user.ID == grantless.ID {
+			foundGrantless = user.Username == grantlessName && len(user.Resources) == 0 && user.Resources != nil
+		}
+	}
+	if !foundNamed || !foundGrantless {
+		t.Fatalf("inventory lost trusted metadata or empty grant list: %#v", inventory.Items)
+	}
+	encoded, err := json.Marshal(inventory)
+	if err != nil || bytes.Contains(encoded, []byte(`"resources":null`)) {
+		t.Fatalf("inventory did not serialize empty resources as an array: %s %v", encoded, err)
 	}
 }
 func TestConcurrentCrossDisablePreservesOneOperator(t *testing.T) {

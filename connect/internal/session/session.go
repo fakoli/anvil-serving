@@ -14,6 +14,7 @@ import (
 	"maps"
 	"math"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -38,6 +39,12 @@ const (
 	MaximumSessionLifetime     = 24 * time.Hour
 )
 
+// PortalResource is deliberately not a public Resource ID. It cannot enter
+// grants, connector declarations, tunnels, or native credentials.
+const PortalResource = "_connect-home"
+
+const portalReturnPath = "/_anvil-connect/home"
+
 // Config identifies the one managed OIDC issuer. ClientSecret must come from
 // a secret reference at the lifecycle layer; it is never written to Store.
 // CallbackPath is mounted independently on every browser resource hostname.
@@ -51,6 +58,7 @@ type Config struct {
 	MaxTransactions     int
 	MaxPerBrowser       int
 	HTTPClient          *http.Client
+	PortalHost          string
 }
 
 // Human is a locally provisioned browser principal. ID is a one-way digest of
@@ -58,12 +66,20 @@ type Config struct {
 // A generation change invalidates every previously issued Connect session.
 type Human struct {
 	ID                      string            `json:"id"`
+	Username                string            `json:"username,omitempty"`
+	DeletionRequest         string            `json:"deletion_request,omitempty"`
 	Generation              uint64            `json:"generation"`
 	Disabled                bool              `json:"disabled"`
 	Resources               []string          `json:"resources"`
 	ApplicationRoles        map[string]string `json:"application_roles,omitempty"`
 	BrowserTransactionFloor uint64            `json:"browser_transaction_floor"`
 }
+
+var username = regexp.MustCompile(`^[a-z][a-z0-9_.-]{0,63}$`)
+
+// ValidUsername matches the canonical local account name accepted by the
+// supported users bridge. It is display metadata, never an OIDC assertion.
+func ValidUsername(value string) bool { return username.MatchString(value) }
 
 // Session is the persisted server-side half of a host-only opaque cookie.
 // Digest is a hash of the full cookie value. No IdP assertion appears here.
@@ -156,6 +172,7 @@ type Manager struct {
 	provider               *oidc.Provider
 	endpoint               oauth2.Endpoint
 	client                 *http.Client
+	portalHost             string
 }
 
 // New discovers the issuer and constructs a strict verifier. It deliberately
@@ -177,7 +194,7 @@ func New(ctx context.Context, state *store.Store, rules []config.Rule, settings 
 		clientID: settings.ClientID, clientSecret: settings.ClientSecret,
 		callbackPath: settings.CallbackPath, transactionLifetime: settings.TransactionLifetime,
 		sessionLifetime: settings.SessionLifetime, maxTransactions: settings.MaxTransactions,
-		maxPerBrowser: settings.MaxPerBrowser, client: client,
+		maxPerBrowser: settings.MaxPerBrowser, client: client, portalHost: settings.PortalHost,
 	}
 	hosts := map[string]bool{}
 	for _, rule := range rules {
@@ -193,6 +210,10 @@ func New(ctx context.Context, state *store.Store, rules []config.Rule, settings 
 		rule.ExternalRedirects = append([]string(nil), rule.ExternalRedirects...)
 		m.rules[rule.ID] = rule
 		hosts[rule.Host] = true
+	}
+	if settings.PortalHost != "" && (hosts[settings.PortalHost] || !config.ValidHost(settings.PortalHost)) {
+		m.Close()
+		return nil, ErrConfiguration
 	}
 	ctx = oidc.ClientContext(ctx, m.client)
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, m.client)
@@ -235,7 +256,8 @@ func validSettings(settings Config) bool {
 	if !config.CanonicalPath(settings.CallbackPath) || settings.CallbackPath == "/" || strings.HasSuffix(settings.CallbackPath, "/") {
 		return false
 	}
-	return settings.TransactionLifetime >= time.Minute && settings.TransactionLifetime <= 10*time.Minute &&
+	return (settings.PortalHost == "" || config.ValidHost(settings.PortalHost)) &&
+		settings.TransactionLifetime >= time.Minute && settings.TransactionLifetime <= 10*time.Minute &&
 		settings.SessionLifetime >= time.Minute && settings.SessionLifetime <= MaximumSessionLifetime &&
 		settings.MaxTransactions >= 1 && settings.MaxTransactions <= 128 && settings.MaxPerBrowser >= 1 && settings.MaxPerBrowser <= 8
 }
@@ -249,7 +271,7 @@ func humanID(issuer, subject string) (string, bool) {
 }
 
 func (m *Manager) validateResources(resources []string) ([]string, bool) {
-	if len(resources) < 1 || len(resources) > len(m.rules) {
+	if len(resources) > len(m.rules) || (len(resources) == 0 && m.portalHost == "") {
 		return nil, false
 	}
 	seen := map[string]bool{}
@@ -314,6 +336,19 @@ func (m *Manager) ApplicationRoles(human Human) (map[string]string, bool) {
 // SetHuman provisions an exact issuer+subject identity. Valid OIDC assertions
 // for identities absent here are denied; there is no implicit administrator.
 func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled bool, roleInput ...map[string]string) (Human, error) {
+	return m.setHuman(issuer, subject, nil, resources, disabled, roleInput...)
+}
+
+// SetHumanWithUsername accepts a trusted local users-bridge name. A nil name
+// preserves a retained value; the OIDC subject is never interpreted as a name.
+func (m *Manager) SetHumanWithUsername(issuer, subject string, username *string, resources []string, disabled bool, roleInput ...map[string]string) (Human, error) {
+	if username != nil && !ValidUsername(*username) {
+		return Human{}, ErrDenied
+	}
+	return m.setHuman(issuer, subject, username, resources, disabled, roleInput...)
+}
+
+func (m *Manager) setHuman(issuer, subject string, username *string, resources []string, disabled bool, roleInput ...map[string]string) (Human, error) {
 	if len(roleInput) > 1 {
 		return Human{}, ErrDenied
 	}
@@ -342,7 +377,10 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 		if err != nil && !errors.Is(err, store.ErrMissing) {
 			return ErrUnavailable
 		}
-		if old.Generation == math.MaxUint64 {
+		if old.DeletionRequest != "" {
+			return ErrConflict
+		}
+		if old.Generation == math.MaxUint64 || (old.Username != "" && !ValidUsername(old.Username)) {
 			return ErrUnavailable
 		}
 		if old.ApplicationRoles != nil {
@@ -353,7 +391,11 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 		if applicationRoles == nil {
 			applicationRoles = retainApplicationRoles(old.ApplicationRoles, resources)
 		}
-		result = Human{ID: id, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles, BrowserTransactionFloor: old.BrowserTransactionFloor}
+		name := old.Username
+		if username != nil {
+			name = *username
+		}
+		result = Human{ID: id, Username: name, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles, BrowserTransactionFloor: old.BrowserTransactionFloor}
 		if err := m.preserveAdministrators(tx, result); err != nil {
 			return err
 		}
@@ -383,17 +425,17 @@ func (m *Manager) SuspendHuman(issuer, subject string) (Human, error) {
 		if errors.Is(err, store.ErrMissing) {
 			return nil
 		}
-		if err != nil || human.ID != id || human.Generation == 0 {
+		if err != nil || human.ID != id || human.Generation == 0 || (human.Username != "" && !ValidUsername(human.Username)) {
 			return ErrUnavailable
 		}
 		if human.Disabled {
-			result = Human{ID: human.ID, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
+			result = Human{ID: human.ID, Username: human.Username, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
 			return nil
 		}
 		if err := m.UpdateHumanTx(tx, id, human.Generation, human.Resources, true); err != nil {
 			return err
 		}
-		result = Human{ID: human.ID, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
+		result = Human{ID: human.ID, Username: human.Username, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
 		return nil
 	})
 	if err != nil {
@@ -411,7 +453,7 @@ func (m *Manager) CurrentHuman(admitted Admission) (Human, error) {
 		if m.CheckTx(tx, admitted) != nil {
 			return ErrDenied
 		}
-		if tx.Get("principals", admitted.Principal, &result) != nil || result.ID != admitted.Principal {
+		if tx.Get("principals", admitted.Principal, &result) != nil || result.ID != admitted.Principal || (result.Username != "" && !ValidUsername(result.Username)) {
 			return ErrDenied
 		}
 		result.Resources = append([]string(nil), result.Resources...)
@@ -489,6 +531,19 @@ func (m *Manager) Begin(resource, returnPath, binding string) (Challenge, error)
 	if !exists || !validBinding(binding) || !config.CanonicalPath(returnPath) || !underPrefix(rule.PathPrefix, returnPath) {
 		return Challenge{}, ErrDenied
 	}
+	return m.begin(resource, rule.Host, returnPath, binding)
+}
+
+// BeginPortal creates an OIDC transaction tied to the separately declared
+// home host. It has no public resource grant and can never select an app host.
+func (m *Manager) BeginPortal(binding string) (Challenge, error) {
+	if m.portalHost == "" || !validBinding(binding) {
+		return Challenge{}, ErrDenied
+	}
+	return m.begin(PortalResource, m.portalHost, portalReturnPath, binding)
+}
+
+func (m *Manager) begin(resource, host, returnPath, binding string) (Challenge, error) {
 	state, err := randomURLValue(32)
 	if err != nil {
 		return Challenge{}, err
@@ -503,7 +558,7 @@ func (m *Manager) Begin(resource, returnPath, binding string) (Challenge, error)
 	}
 	txRecord := transaction{
 		State: hashValue(state), Binding: hashValue(binding), Nonce: hashValue(nonce), PKCEVerifier: verifier,
-		Resource: resource, Host: rule.Host, RedirectURL: callbackURL(rule.Host, m.callbackPath), ReturnPath: returnPath,
+		Resource: resource, Host: host, RedirectURL: callbackURL(host, m.callbackPath), ReturnPath: returnPath,
 	}
 	// Transaction admission is finalized in oidc.go so it can centrally purge
 	// expired records while enforcing both configured transaction caps.
@@ -516,6 +571,18 @@ func (m *Manager) Begin(resource, returnPath, binding string) (Challenge, error)
 
 func (m *Manager) oauthConfig(redirectURL string) oauth2.Config {
 	return oauth2.Config{ClientID: m.clientID, ClientSecret: m.clientSecret, Endpoint: m.endpoint, RedirectURL: redirectURL, Scopes: []string{oidc.ScopeOpenID}}
+}
+
+func (m *Manager) portalTarget(resource, host string) bool {
+	return resource == PortalResource && m.portalHost != "" && host == m.portalHost
+}
+
+func (m *Manager) configuredTarget(resource, host string) (config.Rule, bool) {
+	if m.portalTarget(resource, host) {
+		return config.Rule{}, true
+	}
+	rule, ok := m.rules[resource]
+	return rule, ok && rule.Host == host
 }
 
 func sessionID(raw string) (string, bool) {
@@ -548,8 +615,8 @@ func (m *Manager) authorize(tx *store.Tx, raw, host string, requireResource bool
 	if tx.Get("sessions", sessionRecord(id), &session) != nil {
 		return Session{}, Human{}, ErrDenied
 	}
-	rule, configured := m.rules[session.Resource]
-	if !configured || rule.Host != host || session.ID != id || session.Host != host || session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || subtle.ConstantTimeCompare(session.Digest[:], digest[:]) != 1 || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || (requireResource && !hasResource(human.Resources, session.Resource)) {
+	_, configured := m.configuredTarget(session.Resource, host)
+	if !configured || session.ID != id || session.Host != host || session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || subtle.ConstantTimeCompare(session.Digest[:], digest[:]) != 1 || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || (human.Username != "" && !ValidUsername(human.Username)) || human.Disabled || human.Generation != session.PrincipalGeneration || (requireResource && !hasResource(human.Resources, session.Resource)) {
 		return Session{}, Human{}, ErrDenied
 	}
 	if _, valid := m.validateApplicationRoles(human.Resources, human.ApplicationRoles); !valid {
@@ -597,12 +664,12 @@ func (m *Manager) CheckTx(tx *store.Tx, admitted Admission) error {
 	}
 
 	var session Session
-	rule, configured := m.rules[admitted.Resource]
-	if tx.Get("sessions", sessionRecord(admitted.SessionID), &session) != nil || session.ID != admitted.SessionID || !configured || rule.Host != admitted.Host || session.Generation != admitted.SessionGeneration || session.Principal != admitted.Principal || session.PrincipalGeneration != admitted.PrincipalGeneration || session.Resource != admitted.Resource || session.Host != admitted.Host || session.Epoch != admitted.Epoch || !session.ExpiresAt.Equal(admitted.ExpiresAt) {
+	_, configured := m.configuredTarget(admitted.Resource, admitted.Host)
+	if tx.Get("sessions", sessionRecord(admitted.SessionID), &session) != nil || session.ID != admitted.SessionID || !configured || session.Generation != admitted.SessionGeneration || session.Principal != admitted.Principal || session.PrincipalGeneration != admitted.PrincipalGeneration || session.Resource != admitted.Resource || session.Host != admitted.Host || session.Epoch != admitted.Epoch || !session.ExpiresAt.Equal(admitted.ExpiresAt) {
 		return ErrDenied
 	}
 	var human Human
-	if session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || !hasResource(human.Resources, session.Resource) {
+	if session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || (human.Username != "" && !ValidUsername(human.Username)) || human.Disabled || human.Generation != session.PrincipalGeneration || !hasResource(human.Resources, session.Resource) {
 		return ErrDenied
 	}
 	if _, valid := m.validateApplicationRoles(human.Resources, human.ApplicationRoles); !valid || human.ApplicationRoles[session.Resource] != admitted.ApplicationRole {

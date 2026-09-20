@@ -76,10 +76,16 @@ class HostPi:
         self.config, self.store, self.projects, self.access, self.client = config, store, projects, access, client
         self.lock = threading.RLock()
 
+    @staticmethod
+    def permitted(config, session):
+        host = config.get("host_pi")
+        binding = getattr(session, "connect_binding", None)
+        return bool(host and binding and getattr(binding, "role", None) == "admin"
+                    and host["resource_id"] in session.principal.resources)
+
     def _project(self, session, project_id):
         host = self.config.get("host_pi")
-        if (not host or not session.connect_binding or session.connect_binding.subject != host["owner_subject"]
-                or host["resource_id"] not in session.principal.resources):
+        if not self.permitted(self.config, session):
             raise ObservatoryError("permission_denied", "Your session does not grant this resource action.", 403)
         self.access.permit(session, host["resource_id"])
         return self.projects.project(session, identifier(project_id))
@@ -88,8 +94,7 @@ class HostPi:
     def authority(config, projects, access, session):
         host = config.get("host_pi")
         binding = getattr(session, "connect_binding", None)
-        if (not host or "token_ref" not in host or not binding or binding.subject != host["owner_subject"]
-                or host["resource_id"] not in session.principal.resources):
+        if not HostPi.permitted(config, session) or "token_ref" not in host:
             raise ObservatoryError("permission_denied", "This native Pi source is unavailable.", 403)
         access.permit(session, host["resource_id"])
         allowed = []

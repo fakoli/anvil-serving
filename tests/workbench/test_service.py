@@ -35,12 +35,12 @@ def b64(value):
     return base64.urlsafe_b64encode(value).decode().rstrip("=")
 
 
-def assertion(method, target):
+def assertion(method, target, *, role="admin"):
     now = int(time.time())
     payload = {"v": 1, "iss": "anvil-connect", "kid": "key", "sub": "alice", "sid": "a" * 32, "sg": 1, "pg": 1,
                "epoch": "b" * 64, "resource": "workbench", "host": "console.example.test", "method": method,
                "target_sha256": hashlib.sha256(target.encode()).hexdigest(), "iat": now, "exp": now + 20,
-               "session_exp": now + 300, "jti": uuid.uuid4().hex}
+               "session_exp": now + 300, "jti": uuid.uuid4().hex, "role": role}
     encoded = b64(json.dumps(payload, separators=(",", ":"), sort_keys=True).encode())
     return "acai1." + encoded + "." + b64(hmac.new(KEY, ("acai1." + encoded).encode(), hashlib.sha256).digest())
 
@@ -48,9 +48,10 @@ def assertion(method, target):
 @pytest.fixture(params=["legacy", "connect"])
 def site(tmp_path, request):
     mode = request.param
-    auth = {} if mode == "legacy" else {"mode": "connect", "connect": {"resource": "workbench", "keys": [{"id": "key", "secret_env": "WB_SIGNING_KEY"}], "principals": {"alice": "alice"}}}
+    auth = {} if mode == "legacy" else {"mode": "connect", "connect": {"resource": "workbench", "keys": [{"id": "key", "secret_env": "WB_SIGNING_KEY"}], "principals": {"alice": "alice", "member": "member"}, "roles": {"admin": "alice", "member": "member"}}}
     config = {"origin": "https://console.example.test", "base_path": "/workbench/", "operate": True,
-              "users": [{"id": "alice", "username": "alice", "role": "operator", "resources": ["serve-a"], "actions": ["playground.request"]}],
+              "users": [{"id": "alice", "username": "alice", "role": "operator", "resources": ["serve-a"], "actions": ["playground.request"]},
+                        {"id": "member", "username": "member", "role": "viewer", "resources": ["serve-a"], "actions": []}],
               "authentication": auth, "state_path": str(tmp_path / "journal.sqlite"),
               "workbench": {"state_path": str(tmp_path / "private.sqlite"), "connectors": [{"id": "selected", "label": "Selected", "resource_id": "serve-a", "models": ["model-a"], "base_url": "http://127.0.0.1:30000/v1", "token_env": "PRIVATE_MODEL_KEY"}]}}
     console = Console(config, metrics=Metrics(), authenticate=lambda u, p: u == "alice" and p == "test-password", environment={"WB_SIGNING_KEY": b64(KEY), "PRIVATE_MODEL_KEY": "private-marker"})
@@ -58,11 +59,11 @@ def site(tmp_path, request):
     attach_console(server, console)
     thread = run_server_in_thread(server)
     saved = {}
-    def call(method, route, body=None, *, namespace="workbench", signed=True, extra=None):
+    def call(method, route, body=None, *, namespace="workbench", signed=True, extra=None, role="admin"):
         target = f"/workbench/api/{namespace}/v1/{route}"
         headers = {"Host": "console.example.test", "Origin": config["origin"], **saved}
         if signed and mode == "connect":
-            headers["X-Anvil-Connect-Identity"] = assertion(method, target)
+            headers["X-Anvil-Connect-Identity"] = assertion(method, target, role=role)
         headers.update(extra or {})
         raw = None
         if body is not None:
@@ -324,8 +325,7 @@ def test_host_thread_routes_keep_owner_identity_private_and_recover_one_request(
 
     console, call, mode = site
     service = console.workbench
-    service.config["host_pi"] = {"id": "native", "resource_id": "serve-a", "owner_subject": "alice",
-        "origin": "https://pi.example.test", "version": "0.9.0", "runtime_sha256": "a" * 64,
+    service.config["host_pi"] = {"id": "native", "resource_id": "serve-a", "origin": "https://pi.example.test", "version": "0.9.0", "runtime_sha256": "a" * 64,
         "token_ref": "PRIVATE_BRIDGE_TOKEN", "parent_origin": "https://console.example.test", "bridge_base_url": "http://127.0.0.1:3111"}
     service.config["projects"] = [{"id": "product", "label": "Product", "resource_id": "serve-a", "primary_root_id": "primary",
         "roots": [{"id": "primary", "label": "Primary", "path": str(tmp_path / "private-checkout"), "task_access": "read-only"}]}]
@@ -345,6 +345,13 @@ def test_host_thread_routes_keep_owner_identity_private_and_recover_one_request(
         assert call("POST", prefix, {"request_id": "once"})[0] == 403
         assert client.calls == []
         return
+    assert call("GET", "session", namespace="observatory", role="member")[1]["data"]["host_pi_available"] is False
+    assert call("GET", prefix, role="member")[0] == 403
+    sources = call("GET", "run-sources", namespace="observatory", role="member")[1]["data"]["items"]
+    assert "workspace-host-pi" not in {item["id"] for item in sources}
+    assert client.calls == []
+    assert call("GET", "session", namespace="observatory", role="admin")[1]["data"]["host_pi_available"] is True
+    assert "workspace-host-pi" in {item["id"] for item in call("GET", "run-sources", namespace="observatory")[1]["data"]["items"]}
     assert call("POST", prefix, {"request_id": "once", "cwd": "/browser-supplied"})[0] == 400
     assert call("POST", prefix, {"request_id": "once"})[0] == 503
     first = call("POST", prefix, {"request_id": "once"})[1]["data"]

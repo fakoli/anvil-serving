@@ -37,10 +37,14 @@ func (s *portalStub) AccountURL() string { return "https://idp.example.test/" }
 func TestPortalGrantsAndReservedRoutes(t *testing.T) {
 	declaration := browserDeclaration("passthrough")
 	declaration.Resources[0].Rule.PathPrefix = "/app"
+	name := "Workbench"
+	declaration.Resources[0].DisplayName = &name
 	other := declaration.Resources[0]
 	other.Rule.ID = "private-pi"
 	other.Rule.Host = "pi.example.test"
 	other.TunnelAddress = "127.0.0.1:17892"
+	otherName := "Private Pi"
+	other.DisplayName = &otherName
 	declaration.Resources = append(declaration.Resources, other)
 	authority := &portalStub{browserAuthorityStub: newBrowserAuthorityStub(), human: session.Human{ID: "human-id", Generation: 1, Resources: []string{"dash"}, ApplicationRoles: map[string]string{"dash": "member"}}}
 	dispatched := false
@@ -87,7 +91,7 @@ func TestPortalGrantsAndReservedRoutes(t *testing.T) {
 				Account        string          `json:"account_url"`
 				Passkeys       string          `json:"passkeys_url"`
 			}
-			if json.Unmarshal(w.Body.Bytes(), &result) != nil || len(result.Services) != 1 || result.Services[0].ID != "dash" || result.Services[0].Role != "member" || result.Services[0].URL != "https://dash.example.test/app" || len(result.Choices) != 0 || result.Administration != "" {
+			if json.Unmarshal(w.Body.Bytes(), &result) != nil || len(result.Services) != 1 || result.Services[0].ID != "dash" || result.Services[0].Name != "Workbench" || result.Services[0].Role != "member" || result.Services[0].URL != "https://dash.example.test/app" || len(result.Choices) != 0 || result.Administration != "" {
 				t.Fatal("portal widened grants or exposed operator inventory")
 			}
 			if strings.Contains(w.Body.String(), "private-pi") {
@@ -156,4 +160,63 @@ func TestPortalOnlyIdentityCannotEnterLandingApplication(t *testing.T) {
 	if w := request("dash.example.test", "/"); w.Code != http.StatusUnauthorized || dispatched {
 		t.Fatalf("landing application accepted portal-only identity: %d", w.Code)
 	}
+}
+
+func TestPortalDisplayNamesPreserveChoiceIDs(t *testing.T) {
+	declaration := browserDeclaration("none")
+	workbench := "Workbench"
+	declaration.Resources[0].DisplayName = &workbench
+	other := declaration.Resources[0]
+	other.Rule.ID, other.Rule.Host, other.TunnelAddress = "private-pi", "pi.example.test", "127.0.0.1:17892"
+	pi := "Private Pi"
+	other.DisplayName = &pi
+	declaration.Resources = append(declaration.Resources, other)
+	authority := &portalStub{browserAuthorityStub: newBrowserAuthorityStub(), human: session.Human{ID: "human-id", Generation: 1, Resources: []string{"dash"}, ApplicationRoles: map[string]string{"dash": "member"}}}
+	browser, err := NewBrowser(declaration, authority, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(browser.Close)
+	browser.administration = &AccessAdministration{resourceID: "dash", host: "dash.example.test", path: "/_anvil-connect/access", operators: map[string]bool{"human-id": true}}
+	r := browserRequest(http.MethodGet, "/_anvil-connect/home/data", nil)
+	r.AddCookie(&http.Cookie{Name: BrowserSessionCookie, Value: "opaque-session"})
+	w := httptest.NewRecorder()
+	browser.ServeHTTP(w, r)
+	var result struct {
+		Services []portalService `json:"services"`
+		Choices  []portalService `json:"choices"`
+	}
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &result) != nil || len(result.Services) != 1 || result.Services[0].ID != "dash" || result.Services[0].Name != "Workbench" || len(result.Choices) != 2 || result.Choices[0].ID != "dash" || result.Choices[0].Name != "Workbench" || result.Choices[1].ID != "private-pi" || result.Choices[1].Name != "Private Pi" {
+		t.Fatalf("display names lost stable portal IDs: %d %#v", w.Code, result)
+	}
+}
+
+func TestPortalOmittedDisplayNamePreservesLegacyTileFallback(t *testing.T) {
+	declaration := browserDeclaration("none")
+	declaration.Resources[0].Rule.ID, declaration.Resources[0].Rule.Host = "open-webui", "open-webui.example.test"
+	authority := &portalStub{browserAuthorityStub: newBrowserAuthorityStub()}
+	authority.admitted.Resource, authority.admitted.Host = "open-webui", "open-webui.example.test"
+	authority.human = session.Human{ID: "human-id", Generation: 1, Resources: []string{"open-webui"}}
+	browser, err := NewBrowser(declaration, authority, func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(browser.Close)
+	r := browserRequest(http.MethodGet, "/_anvil-connect/home/data", nil)
+	r.Host = "open-webui.example.test"
+	r.AddCookie(&http.Cookie{Name: BrowserSessionCookie, Value: "opaque-session"})
+	w := httptest.NewRecorder()
+	browser.ServeHTTP(w, r)
+	if w.Code != http.StatusOK || strings.Contains(w.Body.String(), `"name"`) || !strings.Contains(string(portalFilesMustRead(t, "portal/home.js")), `service.name || service.id.replaceAll("-", " ")`) {
+		t.Fatalf("omitted display name changed legacy chooser text: %d %s", w.Code, w.Body.String())
+	}
+}
+
+func portalFilesMustRead(t *testing.T, name string) []byte {
+	t.Helper()
+	data, err := portalFiles.ReadFile(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
 }

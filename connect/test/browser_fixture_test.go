@@ -361,7 +361,8 @@ func TestBrowserFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer manager.Close()
-	member, err := manager.SetHuman(issuerURL, "allowed-subject", []string{"dash"}, false)
+	memberUsername := "member.one"
+	member, err := manager.SetHumanWithUsername(issuerURL, "allowed-subject", &memberUsername, []string{"dash"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,11 +372,11 @@ func TestBrowserFixture(t *testing.T) {
 		// must not inherit access to that owner's sessions or tool authority.
 		operatorGrants = []string{"operator-dashboard"}
 	}
-	operator, err := manager.SetHuman(issuerURL, "operator-subject", operatorGrants, false)
+	operator, err := manager.SetHuman(issuerURL, "operator-subject", operatorGrants, false, map[string]string{operatorGrants[0]: "admin"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	gateway.BrowserAdministration = &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{operator.ID}}
+	gateway.BrowserAdministration = &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{operator.ID}, UserDeletion: true}
 	if os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") != "" {
 		gateway.BrowserAdministration.Operators = []string{member.ID}
 	}

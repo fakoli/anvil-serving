@@ -89,3 +89,33 @@ func TestBrowserSessionLifetimeDeclarationRejectsMalformedValues(t *testing.T) {
 		t.Fatal("API-only gateway accepted a browser session lifetime")
 	}
 }
+
+func TestPortalHostCannotShadowRuntimeAuthorities(t *testing.T) {
+	valid := browserLifetimeGateway(t)
+	valid.Gateway.PortalHost = "home.example.test"
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid dedicated portal host rejected: %v", err)
+	}
+	for name, mutate := range map[string]func(*GatewayConfig){
+		"control": func(c *GatewayConfig) { c.Gateway.PortalHost = c.ControlHost },
+		"tunnel":  func(c *GatewayConfig) { c.Gateway.PortalHost = c.TunnelHost },
+		"issuer":  func(c *GatewayConfig) { c.Gateway.PortalHost = "auth.example.test" },
+		"resource": func(c *GatewayConfig) {
+			c.Gateway.PortalHost = c.Gateway.Resources[1].Rule.Host
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := valid
+			candidate.Gateway.Resources = append([]config.Resource(nil), valid.Gateway.Resources...)
+			mutate(&candidate)
+			if candidate.Validate() == nil {
+				t.Fatal("portal host shadowed an existing runtime authority")
+			}
+		})
+	}
+	local := valid
+	local.LocalTunnel = &LocalTunnelListener{Listen: "127.0.0.1:18443", ServerName: valid.Gateway.PortalHost, HTTPHost: "local-http.example.test", CertificateFile: "/etc/connect-local/leaf.pem", PrivateKeyFile: "/etc/connect-local/leaf.key", TrustFile: "/etc/connect-local/root.pem"}
+	if local.Validate() == nil {
+		t.Fatal("local tunnel reused the portal host service identity")
+	}
+}

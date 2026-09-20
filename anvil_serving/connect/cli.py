@@ -34,7 +34,7 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
     users = actions.add_parser("users", allow_abbrev=False)
-    users.add_argument("operation", choices=("create", "access", "suspend", "delete", "reset-password", "reset-mfa", "code", "backup", "schedule", "restore"),
+    users.add_argument("operation", choices=("create", "access", "suspend", "delete", "reset-password", "reset-mfa", "code", "backup", "schedule", "deletion-schedule", "process-deletions", "restore"),
                        help="create adds an account and, with SMTP, requests Authelia's password-setup email.")
     users.add_argument("username", nargs="?")
     users.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
@@ -179,11 +179,16 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         action = args.action
         if action == "users":
             from .users import DEFAULT_MANIFEST, operate
-            if args.operation == "schedule":
+            if args.operation in {"schedule", "deletion-schedule", "process-deletions"}:
                 if args.include_gateway or any((args.username, args.email, args.role, args.output, args.input, args.sha256, args.destination, args.grant)):
                     raise UsageError("Use users schedule --confirm to install the daily authentication backup timer.", code="connect_users_invalid")
-                from .user_schedule import schedule
-                result = schedule(args.manifest or DEFAULT_MANIFEST, apply=apply)
+                if args.operation == "process-deletions":
+                    from .user_delete import process_pending
+                    result = process_pending(args.manifest or DEFAULT_MANIFEST, apply=apply)
+                else:
+                    from .user_schedule import schedule
+                    options = {"deletions": True} if args.operation == "deletion-schedule" else {}
+                    result = schedule(args.manifest or DEFAULT_MANIFEST, apply=apply, **options)
             elif args.operation == "restore":
                 if not args.input or not args.destination or not args.sha256 or args.include_gateway or any((args.username, args.manifest, args.email, args.role, args.output, args.grant)):
                     raise UsageError("Use users restore --input ARCHIVE --sha256 DIGEST --destination NEW_DIRECTORY.", code="connect_users_invalid")

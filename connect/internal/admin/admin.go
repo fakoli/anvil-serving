@@ -4,6 +4,7 @@
 package admin
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/hex"
@@ -39,19 +40,46 @@ var ErrAdmin = errors.New("local administrative request denied")
 // Request contains only scalar administrative inputs. Operations select which
 // fields are meaningful; unsupported capabilities fail closed.
 type Request struct {
-	Operation        string            `json:"operation"`
-	Principal        string            `json:"principal"`
-	Grants           []access.Grant    `json:"grants"`
-	Disabled         bool              `json:"disabled"`
-	KeyID            string            `json:"key_id"`
-	Installation     string            `json:"installation"`
-	Role             string            `json:"role"`
-	Resources        []string          `json:"resources"`
-	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
-	LifetimeSeconds  int64             `json:"lifetime_seconds"`
-	Fingerprint      string            `json:"fingerprint"`
-	Issuer           string            `json:"issuer"`
-	Subject          string            `json:"subject"`
+	Operation          string            `json:"operation"`
+	Principal          string            `json:"principal"`
+	Grants             []access.Grant    `json:"grants"`
+	Disabled           bool              `json:"disabled"`
+	KeyID              string            `json:"key_id"`
+	Installation       string            `json:"installation"`
+	Role               string            `json:"role"`
+	Resources          []string          `json:"resources"`
+	ApplicationRoles   map[string]string `json:"application_roles,omitempty"`
+	LifetimeSeconds    int64             `json:"lifetime_seconds"`
+	Fingerprint        string            `json:"fingerprint"`
+	Issuer             string            `json:"issuer"`
+	Subject            string            `json:"subject"`
+	Username           string            `json:"username,omitempty"`
+	RequestID          string            `json:"request_id,omitempty"`
+	ExpectedGeneration uint64            `json:"expected_generation,omitempty"`
+	usernamePresent    bool
+}
+
+// UnmarshalJSON distinguishes an omitted username (retain legacy metadata)
+// from malformed explicit empty or null input without widening this native
+// command's closed request grammar.
+func (r *Request) UnmarshalJSON(data []byte) error {
+	type request Request
+	var raw map[string]json.RawMessage
+	var decoded request
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*r = Request(decoded)
+	if value, present := raw["username"]; present {
+		r.usernamePresent = true
+		if bytes.Equal(bytes.TrimSpace(value), []byte("null")) || r.Username == "" {
+			return ErrAdmin
+		}
+	}
+	return nil
 }
 
 // InstallationStatus intentionally excludes public-key bodies and all prior
@@ -69,24 +97,33 @@ type InstallationStatus struct {
 // Response returns a bearer credential only for issue and invite. It must be
 // written by the native CLI to an exclusive owner-only file, never stdout.
 type Response struct {
-	Operation        string             `json:"operation"`
-	Epoch            string             `json:"epoch"`
-	Secret           string             `json:"secret"`
-	KeyID            string             `json:"key_id"`
-	Principal        string             `json:"principal"`
-	Grants           []access.Grant     `json:"grants"`
-	Invitation       string             `json:"invitation"`
-	Installation     string             `json:"installation"`
-	Role             string             `json:"role"`
-	Resources        []string           `json:"resources"`
-	ApplicationRoles map[string]string  `json:"application_roles,omitempty"`
-	Generation       uint64             `json:"generation"`
-	Fingerprint      string             `json:"fingerprint"`
-	ControlHost      string             `json:"control_host,omitempty"`
-	TunnelHost       string             `json:"tunnel_host,omitempty"`
-	InnerCAPEM       string             `json:"inner_ca_pem,omitempty"`
-	Status           InstallationStatus `json:"status"`
-	Entries          []EntryStatus      `json:"entries,omitempty"`
+	Operation        string            `json:"operation"`
+	Epoch            string            `json:"epoch"`
+	Secret           string            `json:"secret"`
+	KeyID            string            `json:"key_id"`
+	Principal        string            `json:"principal"`
+	Grants           []access.Grant    `json:"grants"`
+	Invitation       string            `json:"invitation"`
+	Installation     string            `json:"installation"`
+	Role             string            `json:"role"`
+	Resources        []string          `json:"resources"`
+	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
+	Generation       uint64            `json:"generation"`
+	Fingerprint      string            `json:"fingerprint"`
+	// Found is set only for human-inspect. It is an explicit boolean there, so
+	// the root lifecycle can distinguish a proven absent principal from a
+	// malformed or unavailable native authority response without changing other
+	// administrative operation contracts.
+	Found       *bool              `json:"found,omitempty"`
+	Username    string             `json:"username,omitempty"`
+	ControlHost string             `json:"control_host,omitempty"`
+	TunnelHost  string             `json:"tunnel_host,omitempty"`
+	InnerCAPEM  string             `json:"inner_ca_pem,omitempty"`
+	Status      InstallationStatus `json:"status"`
+	Entries     []EntryStatus      `json:"entries,omitempty"`
+	Human       *session.Human     `json:"human,omitempty"`
+	Deletion    *session.Deletion  `json:"deletion,omitempty"`
+	Deletions   []session.Deletion `json:"deletions,omitzero"`
 }
 
 // Handler invokes only existing authority managers. keys and sessions can be
@@ -214,7 +251,58 @@ func (h *Handler) apply(input Request) (Response, error) {
 		return Response{}, ErrAdmin
 	}
 	response := Response{Operation: input.Operation, Grants: []access.Grant{}, Resources: []string{}, Status: InstallationStatus{Resources: []string{}}}
+	if input.Operation != "human-set" && input.Operation != "human-delete-prepare-absent" && (input.Username != "" || input.usernamePresent) {
+		return Response{}, ErrAdmin
+	}
 	var err error
+	if strings.HasPrefix(input.Operation, "human-delete-") || input.Operation == "human-deletions" || input.Operation == "human-inspect" {
+		if h.sessions == nil || input.Issuer != "" || input.Subject != "" || (input.Operation != "human-delete-prepare-absent" && (input.Username != "" || input.usernamePresent)) || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
+			return Response{}, ErrAdmin
+		}
+		switch input.Operation {
+		case "human-inspect":
+			if input.RequestID != "" || input.ExpectedGeneration != 0 {
+				return Response{}, ErrAdmin
+			}
+			human, e := h.sessions.InspectHuman(input.Principal)
+			found := false
+			response.Found = &found
+			if errors.Is(e, store.ErrMissing) {
+				return response, nil
+			}
+			if e != nil || !validInspection(input.Principal, human) {
+				return Response{}, ErrAdmin
+			}
+			found = true
+			response.Found = &found
+			response.Human = &human
+		case "human-deletions":
+			if input.Principal != "" || input.RequestID != "" || input.ExpectedGeneration != 0 {
+				return Response{}, ErrAdmin
+			}
+			response.Deletions, err = h.sessions.Deletions()
+		case "human-delete-prepare":
+			intent, e := h.sessions.PrepareDeletion(input.Principal, input.ExpectedGeneration, input.RequestID)
+			err = e
+			response.Deletion = &intent
+		case "human-delete-prepare-absent":
+			if !input.usernamePresent || input.ExpectedGeneration != 0 {
+				return Response{}, ErrAdmin
+			}
+			intent, e := h.sessions.PrepareAbsentDeletion(input.Principal, input.Username, input.RequestID)
+			err = e
+			response.Deletion = &intent
+		case "human-delete-finalize":
+			err = h.sessions.FinalizeDeletion(input.RequestID, input.Principal, input.ExpectedGeneration)
+		}
+		if err != nil {
+			return Response{}, ErrAdmin
+		}
+		return response, nil
+	}
+	if input.RequestID != "" || input.ExpectedGeneration != 0 {
+		return Response{}, ErrAdmin
+	}
 	switch input.Operation {
 	case "status":
 		response.Epoch, err = h.epoch()
@@ -278,13 +366,17 @@ func (h *Handler) apply(input Request) (Response, error) {
 			response.Status = status
 		}
 	case "human-set":
-		if h.sessions == nil || input.Issuer == "" || input.Subject == "" {
+		if h.sessions == nil || input.Issuer == "" || input.Subject == "" || (input.Username != "" && !session.ValidUsername(input.Username)) {
 			return Response{}, ErrAdmin
 		}
+		var username *string
+		if input.Username != "" {
+			username = &input.Username
+		}
 		var human session.Human
-		human, err = h.sessions.SetHuman(input.Issuer, input.Subject, input.Resources, input.Disabled, input.ApplicationRoles)
+		human, err = h.sessions.SetHumanWithUsername(input.Issuer, input.Subject, username, input.Resources, input.Disabled, input.ApplicationRoles)
 		if err == nil {
-			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
+			response.Principal, response.Username, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Username, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
 	case "human-suspend":
 		if h.sessions == nil || input.Issuer == "" || input.Subject == "" || input.Principal != "" || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
@@ -293,7 +385,7 @@ func (h *Handler) apply(input Request) (Response, error) {
 		var human session.Human
 		human, err = h.sessions.SuspendHuman(input.Issuer, input.Subject)
 		if err == nil {
-			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string{}, human.Resources...), maps.Clone(human.ApplicationRoles)
+			response.Principal, response.Username, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Username, human.Generation, append([]string{}, human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
 	case "human-revoke-sessions":
 		if h.sessions == nil || input.Issuer == "" || input.Subject == "" || input.Principal != "" || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
@@ -302,7 +394,7 @@ func (h *Handler) apply(input Request) (Response, error) {
 		var human session.Human
 		human, err = h.sessions.RevokeHumanSessions(input.Issuer, input.Subject)
 		if err == nil {
-			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string{}, human.Resources...), maps.Clone(human.ApplicationRoles)
+			response.Principal, response.Username, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Username, human.Generation, append([]string{}, human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
 	case "authority-reset":
 		err = h.state.ResetAuthority()
@@ -314,6 +406,11 @@ func (h *Handler) apply(input Request) (Response, error) {
 		return Response{}, ErrAdmin
 	}
 	return response, nil
+}
+
+func validInspection(principal string, human session.Human) bool {
+	return config.ValidHumanID(principal) && human.ID == principal && human.Generation != 0 &&
+		(human.Username == "" || session.ValidUsername(human.Username))
 }
 
 func (h *Handler) epoch() (string, error) {
@@ -340,7 +437,7 @@ func (h *Handler) installationStatus(id string) (InstallationStatus, error) {
 // ValidOperation is the closed native administrative operation vocabulary.
 func ValidOperation(operation string) bool {
 	switch operation {
-	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "human-revoke-sessions", "authority-reset":
+	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "human-revoke-sessions", "human-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset":
 		return true
 	default:
 		return false

@@ -69,6 +69,7 @@ type Browser struct {
 	devices        *device.Authority
 	administration *AccessAdministration
 	dispatch       BrowserDispatch
+	dedicatedHome  bool
 }
 
 func NewBrowser(declaration config.Gateway, authority BrowserAuthority, dispatch BrowserDispatch) (*Browser, error) {
@@ -93,6 +94,7 @@ func newBrowser(declaration config.Gateway, authority BrowserAuthority, identiti
 		return nil, ErrBrowserConfiguration
 	}
 	b := &Browser{authority: authority, resources: map[string]browserResource{}, slots: make(chan struct{}, declaration.MaxConcurrent), identities: map[string]*browseridentity.Signer{}, devices: devices, dispatch: dispatch}
+	b.dedicatedHome = declaration.PortalHost != ""
 	b.control = make(chan struct{}, min(8, declaration.MaxConcurrent))
 	b.logoutSlots = make(chan struct{}, min(8, declaration.MaxConcurrent))
 	b.deviceSlots = make(chan struct{}, min(8, declaration.MaxConcurrent))
@@ -107,6 +109,10 @@ func newBrowser(declaration config.Gateway, authority BrowserAuthority, identiti
 		}
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
 		resource.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
+		if resource.DisplayName != nil {
+			name := *resource.DisplayName
+			resource.DisplayName = &name
+		}
 		if resource.Rule.NativeAuth == "signed-identity" {
 			signer := identities[resource.Rule.ID]
 			if signer == nil {
@@ -492,10 +498,13 @@ func (b *Browser) login(w http.ResponseWriter, r *http.Request, resource browser
 		return
 	}
 	returnPath := portalPath(resource)
+	if b.dedicatedHome {
+		returnPath = resource.declaration.Rule.PathPrefix
+	}
 	if query.Has("return") {
 		returnPath = query.Get("return")
 	}
-	if returnPath == resource.declaration.Rule.PathPrefix {
+	if !b.dedicatedHome && returnPath == resource.declaration.Rule.PathPrefix {
 		returnPath = portalPath(resource)
 	}
 	if !sameResourcePath(resource.declaration.Rule, returnPath) {
@@ -527,7 +536,7 @@ func (b *Browser) callback(w http.ResponseWriter, r *http.Request, resource brow
 		return
 	}
 	completion, err := b.authority.Complete(r.Context(), session.Callback{Host: r.Host, State: query.Get("state"), Code: query.Get("code"), Binding: cookies.transaction, Issuer: query.Get("iss")})
-	if completion.ReturnPath == resource.declaration.Rule.PathPrefix {
+	if !b.dedicatedHome && completion.ReturnPath == resource.declaration.Rule.PathPrefix {
 		completion.ReturnPath = portalPath(resource)
 	}
 	if err != nil || completion.Host != r.Host || completion.Resource != resource.declaration.Rule.ID || !sameResourcePath(resource.declaration.Rule, completion.ReturnPath) || completion.Cookie == "" || completion.ExpiresAt.IsZero() {

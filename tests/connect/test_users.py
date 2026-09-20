@@ -244,6 +244,38 @@ def test_admin_role_is_explicit_and_resets_preserve_groups(environment):
         run("reset-password", role="member", apply=True)
 
 
+def test_create_and_access_send_the_authoritative_username_with_human_set(environment, monkeypatch):
+    run, _, _, _ = environment
+    data = users.read_manifest("unused")
+    data["gateway"] = {
+        "oidc": {"issuer": "https://auth.example.test"},
+        "gateway": {"resources": [{"rule": {"id": "workbench", "access": "browser"}}]},
+    }
+    data["authelia"]["smtp"] = {
+        "address": "smtp.example.test:465", "username": "smtp-user",
+        "password_file": "/private/smtp-password", "sender": "Connect <connect@example.test>",
+    }
+    subject = "00000000-0000-4000-8000-000000000001"
+    requests = []
+    monkeypatch.setattr(
+        users, "_oidc_subject",
+        lambda _data, _config, _username, _runner, *, missing_ok=False: None if missing_ok else subject,
+    )
+    monkeypatch.setattr(
+        users, "_human_admin",
+        lambda _data, _manifest, payload, _runner: requests.append(payload) or {"applied": True},
+    )
+    monkeypatch.setattr(users, "_start_password_setup", lambda *_args: None)
+
+    run("create", "developer", email="developer@example.test", grants=["workbench:member"], apply=True)
+    run("access", "developer", grants=["workbench:admin"], apply=True)
+
+    human_sets = [payload for payload in requests if payload["operation"] == "human-set"]
+    assert len(human_sets) == 2
+    assert all(payload["username"] == "developer" for payload in human_sets)
+    assert human_sets[1]["subject"] == subject
+
+
 def test_factor_reset_is_explicit_native_and_partial_failures_restart(environment):
     run, db, state, _ = environment
     before = db.read_bytes()
@@ -888,9 +920,9 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(
     # Repeating the reset with missing factors is idempotent.
     run("reset-mfa", "dev", apply=True)
     check_passwords(second_password)
-    # Exercise suspension, explicit access restoration and deletion against the
-    # pinned provider. Only the gateway authority is replaced by a local stub;
-    # its real generation fences are covered by the native session/admin tests.
+    # Exercise suspension and explicit access restoration against the pinned
+    # provider. Permanent deletion is a native-authorized worker lifecycle and
+    # is covered with an isolated fake runner in test_user_delete.py.
     subject = "00000000-0000-4000-8000-000000000001"
     added = subprocess.run([binary, "storage", "user", "identifiers", "add", "dev", "--identifier", subject,
                             "--service", "openid", "--sector", "", "--config", str(root / "authelia/configuration.yml")],
@@ -909,9 +941,5 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(
     assert retained.returncode != 0
     run("access", "dev", grants=["pi:member"], apply=True)
     check_passwords(second_password)
-    assert run("delete", "dev", apply=True)["account_deleted"]
-    check_passwords(None, second_password)
-    assert [request["operation"] for request in requests] == ["human-suspend", "human-set", "human-suspend"]
-    generate_totp()  # Deletion removed the former factor.
-    with pytest.raises(UsageError, match="retained OpenID identifier"):
-        run("create", email="new@example.test", apply=True)
+    assert [request["operation"] for request in requests] == ["human-suspend", "human-set"]
+    generate_totp()  # Restored access does not recreate the removed factor.

@@ -138,7 +138,7 @@ def test_host_pi_optional_private_bridge_fields_are_all_or_nothing(tmp_path):
     config = _config(tmp_path)
     host_pi = {
         "id": "host-pi", "resource_id": "host-pi", "origin": "https://workbench.example.test",
-        "owner_subject": "owner", "version": "0.9.0", "runtime_sha256": "a" * 64,
+        "version": "0.9.0", "runtime_sha256": "a" * 64,
     }
     config["host_pi"] = host_pi
     assert validate_config(config)["host_pi"] == host_pi  # legacy embedded host Pi

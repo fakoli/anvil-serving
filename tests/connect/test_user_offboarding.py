@@ -5,7 +5,7 @@ from contextlib import contextmanager
 
 import pytest
 
-from anvil_serving.connect import manage, users
+from anvil_serving.connect import manage, user_delete, users
 from anvil_serving.connect.cli import dispatch
 from anvil_serving.operator_output import UsageError
 from tests.connect import test_users
@@ -13,6 +13,15 @@ from tests.connect.test_users import record
 
 pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="local Linux account administration")
 _SUBJECT = "00000000-0000-4000-8000-000000000001"
+
+
+@pytest.fixture(autouse=True)
+def _deny_real_subprocesses(monkeypatch):
+    """Deletion tests must supply their own lifecycle runner."""
+    monkeypatch.setattr(
+        manage, "_bounded_run",
+        lambda *_args, **_kwargs: pytest.fail("unexpected real subprocess from test"),
+    )
 
 
 @pytest.fixture
@@ -55,7 +64,7 @@ def test_suspend_preserves_password_groups_and_factors_then_access_resumes(offbo
     run("suspend", apply=True)
     resumed = run("access", grants=["pi:member"], apply=True)
     assert not json.loads(db.read_text())["users"]["dev"]["disabled"]
-    assert requests[-1] == {"operation": "human-set", "subject": _SUBJECT,
+    assert requests[-1] == {"operation": "human-set", "username": "dev", "subject": _SUBJECT,
                             "resources": ["pi"], "application_roles": {"pi": "member"}}
     assert resumed["grants_changed"] and resumed["existing_connect_sessions_revoked"]
 
@@ -81,22 +90,18 @@ def test_password_reset_replaces_hash_before_revoking_existing_connect_sessions(
     assert not result["initial_password_saved"] and state["active"]
 
 
-def test_delete_removes_only_selected_account_and_factors(offboarding):
+def test_delete_delegates_to_the_native_forward_only_worker(offboarding, monkeypatch):
     run, db, state, requests = offboarding
-    result = run("delete", apply=True)
-    assert json.loads(db.read_text())["users"] == {"owner": record()}
-    assert result["account_deleted"] and result["existing_connect_sessions_revoked"]
-    assert requests == [{"operation": "human-suspend", "subject": _SUBJECT}]
-    calls = [c for c in state["calls"] if c[1:3] == ("storage", "user")]
-    assert len(calls) == 2
-    assert calls[0][3:7] == ("webauthn", "delete", "dev", "--all")
-    assert calls[1][3:6] == ("totp", "delete", "dev")
-    assert "handoff_file" not in result and state["active"]
-    with pytest.raises(UsageError, match="Account does not exist"):
-        run("delete", apply=True)
+    before = db.read_bytes()
+    calls = []
+    monkeypatch.setattr(user_delete, "delete", lambda manifest, username, **kwargs: calls.append((manifest, username, kwargs)) or {"finalized": True})
+
+    assert run("delete", apply=True) == {"finalized": True}
+    assert len(calls) == 1 and calls[0][1] == "dev" and calls[0][2]["apply"] is True
+    assert db.read_bytes() == before and not requests and not state["calls"]
 
 
-@pytest.mark.parametrize("operation", ["suspend", "delete"])
+@pytest.mark.parametrize("operation", ["suspend"])
 def test_authority_rejection_preserves_account_and_factors(offboarding, operation):
     run, db, state, _ = offboarding
     before = db.read_bytes()
@@ -117,34 +122,13 @@ def test_password_reset_authority_rejection_restores_the_prior_hash_before_resta
     assert requests == [{"operation": "human-revoke-sessions", "subject": _SUBJECT}]
 
 
-@pytest.mark.parametrize("failure", ["factor", "start"])
-def test_failed_delete_never_reactivates_account(offboarding, failure):
+def test_failed_native_delete_preserves_legacy_account_data(offboarding, monkeypatch):
     run, db, state, _ = offboarding
-    state["fail_" + failure] = True
-    with pytest.raises(manage.ManageError) as error:
-        run("delete", apply=True)
-    accounts = json.loads(db.read_text())["users"]
-    assert "dev" not in accounts or accounts["dev"]["disabled"]
-    assert accounts["owner"] == record() and state["active"]
-    assert error.value.recovery["existing_connect_sessions_revoked"]
-    assert error.value.recovery["backup"]["sha256"]
-
-
-def test_never_signed_in_account_can_be_deleted(offboarding, monkeypatch):
-    run, db, _, requests = offboarding
-    monkeypatch.setattr(users, "_oidc_subject", lambda *args, **kwargs: None)
-    assert run("delete", apply=True)["account_deleted"]
-    assert "dev" not in json.loads(db.read_text())["users"] and not requests
-
-
-def test_deleted_identity_cannot_be_silently_reused(offboarding):
-    run, db, state, _ = offboarding
-    run("delete", apply=True)
     before = db.read_bytes()
-    state["calls"].clear()
-    with pytest.raises(UsageError, match="retained OpenID identifier"):
-        run("create", email="new@example.test", apply=True)
-    assert db.read_bytes() == before and not state["calls"]
+    monkeypatch.setattr(user_delete, "delete", lambda *_args, **_kwargs: (_ for _ in ()).throw(manage.ManageError("native held", may_have_executed=True)))
+    with pytest.raises(manage.ManageError):
+        run("delete", apply=True)
+    assert db.read_bytes() == before and state["active"] and not state["calls"]
 
 
 def test_access_refuses_stale_account_after_waiting_for_offboarding(offboarding, monkeypatch):

@@ -83,7 +83,7 @@ func (f *syntheticIDP) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		f.mu.Unlock()
 		clientID, clientSecret, basic := r.BasicAuth()
 		redirectURI := r.Form.Get("redirect_uri")
-		if !basic || clientID != "connect-browser" || clientSecret != "fixture-secret" || r.Form.Get("grant_type") != "authorization_code" || r.Form.Get("code") != "code" || (redirectURI != "https://dash.example.test/_connect/callback" && redirectURI != "https://other.example.test/_connect/callback") || r.Form.Get("code_verifier") == "" || oauth2.S256ChallengeFromVerifier(r.Form.Get("code_verifier")) != challenge {
+		if !basic || clientID != "connect-browser" || clientSecret != "fixture-secret" || r.Form.Get("grant_type") != "authorization_code" || r.Form.Get("code") != "code" || (redirectURI != "https://dash.example.test/_connect/callback" && redirectURI != "https://other.example.test/_connect/callback" && redirectURI != "https://home.example.test/_connect/callback") || r.Form.Get("code_verifier") == "" || oauth2.S256ChallengeFromVerifier(r.Form.Get("code_verifier")) != challenge {
 			http.Error(w, "exchange rejected", http.StatusBadRequest)
 			return
 		}
@@ -172,6 +172,27 @@ func sessionFixture(t *testing.T, maximum, perBrowser int) (*Manager, *store.Sto
 		t.Fatal(err)
 	}
 	return manager, state, idp, &now, directory
+}
+
+func portalSessionFixture(t *testing.T) (*Manager, *syntheticIDP) {
+	t.Helper()
+	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	state, err := store.Open(filepath.Join(t.TempDir(), "authority"), func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = state.Close() })
+	idp := newSyntheticIDP(t)
+	idp.now = func() time.Time { return now }
+	manager, err := New(context.Background(), state, sessionRules(), Config{
+		Issuer: idp.issuer(), ClientID: "connect-browser", ClientSecret: "fixture-secret", CallbackPath: "/_connect/callback",
+		TransactionLifetime: DefaultTransactionLifetime, SessionLifetime: time.Hour, MaxTransactions: 8, MaxPerBrowser: 2,
+		HTTPClient: idp.server.Client(), PortalHost: "home.example.test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return manager, idp
 }
 
 func challengeValues(t *testing.T, challenge Challenge) url.Values {
@@ -628,6 +649,96 @@ func TestPortalOnlySessionCanLogout(t *testing.T) {
 	}
 	if _, _, err := manager.PortalSession(completed.Cookie, "dash.example.test"); err == nil {
 		t.Fatal("logout retained portal-only session")
+	}
+}
+
+func TestDedicatedPortalSessionIsHostBoundAndGrantlessOnlyAtPortalSurface(t *testing.T) {
+	manager, idp := portalSessionFixture(t)
+	if _, err := manager.SetHuman(idp.issuer(), "zero-scope", nil, false); err != nil {
+		t.Fatalf("portal host did not permit an enabled zero-scope human: %v", err)
+	}
+	binding, err := NewBinding()
+	if err != nil {
+		t.Fatal(err)
+	}
+	challenge, err := manager.BeginPortal(binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := challengeValues(t, challenge)
+	if query.Get("redirect_uri") != "https://home.example.test/_connect/callback" {
+		t.Fatalf("portal redirect URI = %q", query.Get("redirect_uri"))
+	}
+	completed := completeOnHost(t, manager, idp, challenge, "zero-scope", "home.example.test")
+	if completed.Resource != PortalResource || completed.Host != "home.example.test" || completed.ReturnPath != portalReturnPath {
+		t.Fatalf("portal completion = %#v", completed)
+	}
+	admitted, human, err := manager.PortalSession(completed.Cookie, "home.example.test")
+	if err != nil || admitted.Resource != PortalResource || human.ID == "" || len(human.Resources) != 0 {
+		t.Fatalf("portal admission = %#v %#v %v", admitted, human, err)
+	}
+	if _, err := manager.Authenticate(completed.Cookie, "home.example.test"); err == nil {
+		t.Fatal("grantless portal session authenticated as an application")
+	}
+	if err := manager.Check(admitted); err == nil {
+		t.Fatal("grantless portal admission passed generic authority recheck")
+	}
+	if _, _, err := manager.PortalSession(completed.Cookie, "dash.example.test"); err == nil {
+		t.Fatal("portal session crossed onto an application host")
+	}
+
+	// The established per-application chooser exception remains available to an
+	// enabled person without that application's resource grant.
+	appBinding, _ := NewBinding()
+	appChallenge, err := manager.Begin("dash", "/_anvil-connect/home", appBinding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := complete(t, manager, idp, appChallenge, "zero-scope")
+	if _, _, err := manager.PortalSession(app.Cookie, "dash.example.test"); err != nil {
+		t.Fatalf("application chooser session changed: %v", err)
+	}
+	if _, err := manager.Authenticate(app.Cookie, "dash.example.test"); err == nil {
+		t.Fatal("application chooser session bypassed the application grant")
+	}
+	if _, err := manager.SetHuman(idp.issuer(), "disabled-zero-scope", nil, true); err != nil {
+		t.Fatal(err)
+	}
+	disabledBinding, _ := NewBinding()
+	disabledChallenge, err := manager.BeginPortal(disabledBinding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query = configureToken(idp, disabledChallenge, tokenClaims{Subject: "disabled-zero-scope"})
+	if _, err := manager.Complete(context.Background(), Callback{Host: "home.example.test", State: query.Get("state"), Code: "code", Binding: disabledBinding}); err == nil {
+		t.Fatal("disabled zero-scope human completed a portal transaction")
+	}
+}
+
+func TestTrustedUsernameMetadataIsCanonicalAndPreserved(t *testing.T) {
+	manager, _, idp, _, _ := sessionFixture(t, 8, 2)
+	name := "alice.ops"
+	created, err := manager.SetHumanWithUsername(idp.issuer(), "named", &name, []string{"dash"}, false)
+	if err != nil || created.Username != name {
+		t.Fatalf("named human = %#v, %v", created, err)
+	}
+	updated, err := manager.SetHuman(idp.issuer(), "named", []string{"other"}, false)
+	if err != nil || updated.Username != name {
+		t.Fatalf("ordinary grant update lost username: %#v, %v", updated, err)
+	}
+	suspended, err := manager.SuspendHuman(idp.issuer(), "named")
+	if err != nil || suspended.Username != name {
+		t.Fatalf("suspend lost username: %#v, %v", suspended, err)
+	}
+	revoked, err := manager.RevokeHumanSessions(idp.issuer(), "named")
+	if err != nil || revoked.Username != name {
+		t.Fatalf("revoke lost username: %#v, %v", revoked, err)
+	}
+	for _, candidate := range []string{"", "Alice", "1alice", "alice space", strings.Repeat("a", 65)} {
+		candidate := candidate
+		if _, err := manager.SetHumanWithUsername(idp.issuer(), "invalid-"+strings.Repeat("x", len(candidate)%5), &candidate, []string{"dash"}, false); err == nil {
+			t.Fatalf("invalid username accepted: %q", candidate)
+		}
 	}
 }
 

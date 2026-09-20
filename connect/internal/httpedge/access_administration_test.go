@@ -88,6 +88,41 @@ func administrationUsers() administration.Inventory {
 	}}}
 }
 
+func TestAccessInventoryUsernameIsOptionalAndCanonical(t *testing.T) {
+	for _, username := range []any{nil, "", "Display Name", "<script>", "member\n", "member\r", "member\x00", strings.Repeat("a", 65), strings.Repeat("a", 64), "member.one"} {
+		inventory := administrationUsers()
+		inventory.Items[0].(map[string]any)["username"] = username
+		items, _, valid := normalizeInventory(inventory, "users")
+		if valid != (username == "member.one" || username == strings.Repeat("a", 64)) {
+			t.Fatalf("username %#v: valid=%v", username, valid)
+		}
+		if valid && items[0].(accessUser).Username != username {
+			t.Fatal("username lost in HTTP inventory")
+		}
+	}
+	if _, _, valid := normalizeInventory(administrationUsers(), "users"); !valid {
+		t.Fatal("legacy ID-only inventory was rejected")
+	}
+}
+
+func TestAccessInventoryAllowsAccountsAwaitingTheirFirstGrant(t *testing.T) {
+	inventory := administrationUsers()
+	user := inventory.Items[0].(map[string]any)
+	user["resources"] = []string{}
+	user["application_roles"] = map[string]string{}
+	items, _, valid := normalizeInventory(inventory, "users")
+	if !valid || len(items[0].(accessUser).Resources) != 0 || items[0].(accessUser).Resources == nil {
+		t.Fatal("account with no grants made the operator inventory unavailable")
+	}
+	if accessResources([]string{}) {
+		t.Fatal("inventory support widened the browser mutation contract")
+	}
+	user["resources"] = nil
+	if _, _, valid := normalizeInventory(inventory, "users"); valid {
+		t.Fatal("null resources accepted")
+	}
+}
+
 func accessRequest(method, target, body string) *http.Request {
 	r := browserRequest(method, target, strings.NewReader(body))
 	r.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")

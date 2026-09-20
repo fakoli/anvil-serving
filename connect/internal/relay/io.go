@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -17,6 +18,33 @@ import (
 
 // WrapConn applies a fresh idle deadline to each network read and write.
 func WrapConn(conn net.Conn, idle time.Duration) net.Conn { return &Conn{Conn: conn, idle: idle} }
+
+// ResponseBody bounds one response stream without setting a deadline on the
+// shared HTTP/2 socket. Closing its body cancels only that stream.
+func ResponseBody(body io.ReadCloser, idle time.Duration) io.ReadCloser {
+	return &responseBody{ReadCloser: body, idle: idle}
+}
+
+type responseBody struct {
+	io.ReadCloser
+	idle time.Duration
+	once sync.Once
+	err  error
+}
+
+func (b *responseBody) Read(p []byte) (int, error) {
+	timer := time.AfterFunc(b.idle, func() { _ = b.Close() })
+	n, err := b.ReadCloser.Read(p)
+	if !timer.Stop() {
+		return n, os.ErrDeadlineExceeded
+	}
+	return n, err
+}
+
+func (b *responseBody) Close() error {
+	b.once.Do(func() { b.err = b.ReadCloser.Close() })
+	return b.err
+}
 
 // Writer preserves streaming and upgrades while binding them to request lifetime.
 func Writer(w http.ResponseWriter, ctx context.Context, idle time.Duration) http.ResponseWriter {

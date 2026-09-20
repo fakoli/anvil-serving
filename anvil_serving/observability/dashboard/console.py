@@ -235,7 +235,8 @@ class Console:
                 "csrf_token": session.csrf if session else None, "expires_at": session.expires_at if session else None,
                 "base_path": self.config["base_path"], "build": self.config.get("build", "development"), "fixture": self.config.get("fixture", False),
                 "authentication_mode": "connect" if self.access.connect is not None else "legacy",
-                "profile_id": session.profile_id if session else None}
+                "profile_id": session.profile_id if session else None,
+                "host_pi_available": bool(session and self.workbench.host_pi_available(session))}
         if self.config.get("connect_access", False) and self.access.connect is not None:
             result["connect_access_path"] = self.config["base_path"].rstrip("/") + "/_anvil-connect/access"
         return result

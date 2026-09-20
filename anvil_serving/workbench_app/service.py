@@ -308,14 +308,12 @@ class WorkbenchService:
         result["pi"] = {"configured": self.pi is not None, "models": config.get("models", {}), "thinking": config.get("thinking_levels", []),
                         "runner_id": config.get("id"), "network": config.get("network", "none")}
         host = self.config.get("host_pi")
-        if (host and session.connect_binding is not None
-                and session.connect_binding.subject == host["owner_subject"]
-                and host["resource_id"] in session.principal.resources):
+        if self.host_pi_available(session):
             result["host_pi"] = {"available": True, "id": host["id"], "origin": host["origin"], "version": host["version"],
                                  "bridge": "token_ref" in host, "parent_origin": host.get("parent_origin"),
-                                 "authority": "Owner host session — tools use operator account access"}
+                                 "authority": "Connect administrator session with an explicit Host Pi grant"}
         else:
-            result["host_pi"] = {"available": False, "reason": "Host Pi is available only to its configured Connect owner. Manage the connection in private operator configuration."}
+            result["host_pi"] = {"available": False, "reason": "Host Pi is available only to Workbench administrators with its explicit Connect grant."}
         return result
 
     def workspace_run_page(self, session, source, *, limit=100, cursor=None):
@@ -494,10 +492,13 @@ class WorkbenchService:
             return self._pi_mutate(route, body, session)
         raise ObservatoryError("method_denied", "This Workbench route does not accept this action.", 405)
 
+    def host_pi_available(self, session):
+        from .host_pi import HostPi
+        return HostPi.permitted(self.config, session)
+
     def _host_pi_route(self, route, payload, session, *, mutate=False):
         host = self.config.get("host_pi")
-        if (not host or not session.connect_binding or session.connect_binding.subject != host["owner_subject"]
-                or host["resource_id"] not in session.principal.resources):
+        if not self.host_pi_available(session):
             raise ObservatoryError("permission_denied", "Your session does not grant this resource action.", 403)
         self.access.permit(session, host["resource_id"])
         pieces = route.split("/")

@@ -115,7 +115,7 @@ def site(tmp_path):
               "runs": {"benchmark": {"resource_id": "benchmark.runs"}},
               "workbench": {"state_path": str(tmp_path / "workbench.sqlite"), "host_pi": {
                   "id": "host-pi", "resource_id": "host.pi", "origin": "https://pi.example.test",
-                  "owner_subject": "connect-owner", "version": "0.9.0", "runtime_sha256": "a" * 64,
+                  "version": "0.9.0", "runtime_sha256": "a" * 64,
               }}}
     console = Console(config, metrics=FakeMetrics(), adapter=owner, authenticate=lambda u, p: u == "operator" and p == "fixture-password")
     server = create_dashboard_server(TelemetryRegistry(), port=0, auth_env="LEGACY_TOKEN", environment={"LEGACY_TOKEN": "fixture-legacy-read-token"})
@@ -213,7 +213,7 @@ def test_host_pi_rejects_console_or_fallback_same_origin(tmp_path):
             "prometheus_url": "http://127.0.0.1:9090", "inventory": {}, "workbench": {
                 "state_path": str(tmp_path / "workbench.sqlite"), "host_pi": {
                     "id": "host-pi", "resource_id": "host.pi", "origin": "https://console.example.test:443",
-                    "owner_subject": "connect-owner", "version": "0.9.0", "runtime_sha256": "a" * 64,
+                    "version": "0.9.0", "runtime_sha256": "a" * 64,
                 }}}
     with pytest.raises(ValueError, match="separate application origin"):
         Console(base, metrics=FakeMetrics())

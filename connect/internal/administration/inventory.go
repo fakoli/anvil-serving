@@ -16,11 +16,13 @@ import (
 
 type userItem struct {
 	ID               string            `json:"id"`
+	Username         string            `json:"username,omitempty"`
 	Generation       string            `json:"generation"`
 	Disabled         bool              `json:"disabled"`
 	Resources        []string          `json:"resources"`
 	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
 	Administrator    bool              `json:"administrator"`
+	Deleting         bool              `json:"deleting,omitempty"`
 }
 type sessionItem struct {
 	ID            string    `json:"id"`
@@ -98,7 +100,7 @@ func (a *Authority) List(ctx context.Context, admitted session.Admission, kind, 
 					return ErrUnavailable
 				}
 				var human session.Human
-				if json.Unmarshal(record.Value, &human) != nil || human.ID != record.ID || !config.ValidHumanID(human.ID) || human.Generation == 0 || len(human.Resources) < 1 || len(human.Resources) > 64 {
+				if json.Unmarshal(record.Value, &human) != nil || human.ID != record.ID || !config.ValidHumanID(human.ID) || (human.Username != "" && !session.ValidUsername(human.Username)) || human.Generation == 0 || len(human.Resources) > 64 {
 					return ErrUnavailable
 				}
 				roles, valid := a.sessions.ApplicationRoles(human)
@@ -119,7 +121,7 @@ func (a *Authority) List(ctx context.Context, admitted session.Admission, kind, 
 						administrator = true
 					}
 				}
-				result.Items = append(result.Items, userItem{human.ID, strconv.FormatUint(human.Generation, 10), human.Disabled, append([]string(nil), human.Resources...), roles, administrator})
+				result.Items = append(result.Items, userItem{human.ID, human.Username, strconv.FormatUint(human.Generation, 10), human.Disabled, append([]string{}, human.Resources...), roles, administrator, human.DeletionRequest != ""})
 			}
 			if more {
 				result.NextCursor = encodeCursor(kind, phase, records[len(records)-1].ID)

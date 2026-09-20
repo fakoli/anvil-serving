@@ -54,12 +54,13 @@ type accessCSRF struct {
 // AccessAdministration owns the fixed, same-origin browser adapter. It has
 // neither local-admin-socket access nor credentials for an origin service.
 type AccessAdministration struct {
-	authority  AccessAdministrationAuthority
-	resourceID string
-	host       string
-	path       string
-	operators  map[string]bool
-	slots      chan struct{}
+	authority    AccessAdministrationAuthority
+	resourceID   string
+	host         string
+	path         string
+	operators    map[string]bool
+	userDeletion bool
+	slots        chan struct{}
 
 	mu   sync.Mutex
 	csrf map[string]accessCSRF
@@ -98,7 +99,7 @@ func NewAccessAdministration(declaration config.Gateway, authority AccessAdminis
 		}
 		operators[operator] = true
 	}
-	return &AccessAdministration{authority: authority, resourceID: browser.Rule.ID, host: browser.Rule.Host, path: path, operators: operators, slots: make(chan struct{}, capacity), csrf: map[string]accessCSRF{}}, nil
+	return &AccessAdministration{authority: authority, resourceID: browser.Rule.ID, host: browser.Rule.Host, path: path, operators: operators, userDeletion: settings.UserDeletion, slots: make(chan struct{}, capacity), csrf: map[string]accessCSRF{}}, nil
 }
 
 func (a *AccessAdministration) matches(resource browserResource, path string) bool {
@@ -180,11 +181,13 @@ func (a *AccessAdministration) validCSRF(token string, admitted session.Admissio
 
 type accessUser struct {
 	ID               string            `json:"id"`
+	Username         string            `json:"username,omitempty"`
 	Generation       string            `json:"generation"`
 	Disabled         bool              `json:"disabled"`
 	Resources        []string          `json:"resources"`
 	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
 	Administrator    bool              `json:"administrator"`
+	Deleting         bool              `json:"deleting,omitempty"`
 }
 
 type accessSession struct {
@@ -200,7 +203,11 @@ type accessSession struct {
 }
 
 func accessResources(resources []string) bool {
-	if len(resources) < 1 || len(resources) > 64 {
+	return len(resources) > 0 && accessInventoryResources(resources)
+}
+
+func accessInventoryResources(resources []string) bool {
+	if resources == nil || len(resources) > 64 {
 		return false
 	}
 	seen := map[string]bool{}
@@ -276,13 +283,22 @@ func normalizeInventory(inventory administration.Inventory, requested string) ([
 		result := make([]any, 0, len(decoded.Items))
 		for index, item := range decoded.Items {
 			fields := []string{"id", "generation", "disabled", "resources", "administrator"}
+			if item.Deleting {
+				fields = append(fields, "deleting")
+			}
+			if item.Username != "" {
+				if !session.ValidUsername(item.Username) {
+					return nil, nil, false
+				}
+				fields = append(fields, "username")
+			}
 			if item.ApplicationRoles != nil {
 				fields = append(fields, "application_roles")
 			}
-			if !exactAccessObject(objects.Items[index], fields...) || !config.ValidHumanID(item.ID) || !accessDecimal.MatchString(item.Generation) || !accessResources(item.Resources) || (item.ApplicationRoles != nil && !accessApplicationRoles(item.Resources, item.ApplicationRoles)) {
+			if !exactAccessObject(objects.Items[index], fields...) || !config.ValidHumanID(item.ID) || !accessDecimal.MatchString(item.Generation) || !accessInventoryResources(item.Resources) || (item.ApplicationRoles != nil && !accessApplicationRoles(item.Resources, item.ApplicationRoles)) {
 				return nil, nil, false
 			}
-			item.Resources = append([]string(nil), item.Resources...)
+			item.Resources = append([]string{}, item.Resources...)
 			sort.Strings(item.Resources)
 			item.ApplicationRoles = maps.Clone(item.ApplicationRoles)
 			result = append(result, item)
@@ -369,6 +385,11 @@ func decodeAccessMutation(w http.ResponseWriter, r *http.Request, admitted sessi
 	}
 	mutation := administration.Mutation{Action: input.Action, RequestID: input.RequestID, ExpectedGeneration: input.ExpectedGeneration}
 	switch input.Action {
+	case "human-delete":
+		if !exactMutationFields(body, "action", "request_id", "expected_generation", "csrf", "principal") || !config.ValidHumanID(input.Principal) || input.Principal == admitted.Principal {
+			return administration.Mutation{}, http.StatusBadRequest
+		}
+		mutation.Principal = input.Principal
 	case "human-update":
 		baseFields := []string{"action", "request_id", "expected_generation", "csrf", "principal", "disabled", "resources"}
 		withRoles := append(append([]string(nil), baseFields...), "application_roles")
@@ -448,7 +469,8 @@ func (a *AccessAdministration) ServeHTTP(w http.ResponseWriter, r *http.Request,
 			CSRF             string  `json:"csrf"`
 			CurrentPrincipal string  `json:"current_principal"`
 			CurrentSession   string  `json:"current_session"`
-		}{Schema: accessSchema, Kind: query.Get("kind"), Items: items, NextCursor: cursor, CSRF: csrf, CurrentPrincipal: admitted.Principal, CurrentSession: admitted.SessionID})
+			UserDeletion     bool    `json:"user_deletion"`
+		}{Schema: accessSchema, Kind: query.Get("kind"), Items: items, NextCursor: cursor, CSRF: csrf, CurrentPrincipal: admitted.Principal, CurrentSession: admitted.SessionID, UserDeletion: a.userDeletion})
 	case http.MethodPost:
 		mutation, status := decodeAccessMutation(w, r, admitted, a)
 		if status != http.StatusOK {

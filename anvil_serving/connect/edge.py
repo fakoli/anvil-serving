@@ -151,6 +151,11 @@ def published_hosts(data: Mapping[str, object]) -> tuple[str, ...]:
                 hosts.add(rule["host"].lower())
     if not hosts:
         raise EdgeError("deployment declaration publishes no resources")
+    gateway = data.get("gateway")
+    embedded = gateway.get("gateway") if isinstance(gateway, Mapping) else None
+    portal_host = embedded.get("portal_host") if isinstance(embedded, Mapping) else None
+    if isinstance(portal_host, str):
+        hosts.add(portal_host)
     return tuple(sorted(hosts))
 
 

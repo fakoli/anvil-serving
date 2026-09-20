@@ -613,6 +613,31 @@ def test_init_bootstraps_from_temporary_declaration_without_start(tmp_path: Path
     assert not any(call[0] == "/usr/bin/systemctl" and call[1] in {"enable", "restart"} for call in runner.calls)
 
 
+def test_reenroll_uses_the_current_bound_connector_declaration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, native = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    runner = SyntheticRunner(); runner.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    prior = tmp_path / "prior.json"
+    bundle = tmp_path / "invitation.json"
+    prior.write_text(json.dumps({"id": "dashboard", "fingerprint": "A" * 43,
+                                 "epoch": "a" * 64, "generation": 1,
+                                 "resources": ["dashboard", "dashboard-api"]}))
+    bundle.write_text("private invitation")
+
+    result = manage.native_reenroll(
+        manifest, manage.Target("connector", "dashboard"), prior=prior, bundle=bundle,
+        apply=True, runner=runner,
+    )
+
+    assert result["action"] == "re-enroll"
+    call = next(call for call in runner.calls if call[:2] == (str(native), "re-enroll"))
+    assert Path(call[call.index("--config") + 1]) == Path(value["config_root"]) / "connectors" / "dashboard.json"
+    assert call[call.index("--prior") + 1] == str(prior)
+    assert call[call.index("--bundle") + 1] == str(bundle)
+
+
 def test_start_failure_restores_generation_and_preserves_private_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manifest, value, _ = deployment(tmp_path, monkeypatch)
     units = tmp_path / "units"
@@ -847,6 +872,26 @@ def test_admin_preview_accepts_only_real_fingerprint_shape(tmp_path: Path, monke
     request.write_text(json.dumps({"operation": "approve", "installation": "dashboard", "fingerprint": "a" * 64}), encoding="utf-8")
     with pytest.raises(manage.ManageError, match="administrative request"):
         manage.admin(manifest, request_path=request, runner=runner)
+
+
+def test_admin_preview_allows_username_only_for_the_closed_human_operations(tmp_path: Path) -> None:
+    request = tmp_path / "request.json"
+    request.write_text(json.dumps({"operation": "human-set", "username": "developer"}), encoding="utf-8")
+    assert manage._admin_preview(request)["scope"] == "principal"
+    request.write_text(json.dumps({"operation": "human-delete-prepare-absent", "username": "developer"}), encoding="utf-8")
+    assert manage._admin_preview(request)["scope"] == "principal"
+    for payload in (
+        {"operation": "human-set", "username": ""},
+        {"operation": "human-set", "username": "Developer"},
+        {"operation": "human-set", "username": None},
+        {"operation": "human-suspend", "username": "developer"},
+        {"operation": "human-suspend", "username": None},
+        {"operation": "human-delete-prepare-absent", "username": "Developer"},
+        {"operation": "human-delete-prepare-absent", "username": None},
+    ):
+        request.write_text(json.dumps(payload), encoding="utf-8")
+        with pytest.raises(manage.ManageError, match="administrative request"):
+            manage._admin_preview(request)
 
 
 def test_connector_validation_uses_only_its_declared_environment_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

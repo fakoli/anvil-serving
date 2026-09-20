@@ -411,8 +411,8 @@ def _identifier_value(value: str) -> str:
     raise _invalid("Authelia opaque-identifier export is invalid.")
 
 
-def _identifier_subject(raw: bytes, username: str, *, missing_ok: bool = False) -> str | None:
-    """Read exactly the one OIDC identifier this account is entitled through."""
+def _identifier_records(raw: bytes) -> list[dict[str, str]]:
+    """Parse the closed all-identifiers export without trusting its YAML."""
     try:
         lines = raw.decode("utf-8").splitlines()
     except UnicodeDecodeError as exc:
@@ -444,29 +444,34 @@ def _identifier_subject(raw: bytes, username: str, *, missing_ok: bool = False) 
         raise _invalid("Authelia opaque-identifier export is invalid.")
     if current is not None:
         records.append(current)
-    # The rendered OIDC client omits sector_identifier_uri, so only Authelia's
-    # blank-sector OpenID identifier is the subject Connect will receive.
-    matches = [record["identifier"] for record in records if set(record) == {"service", "sector_id", "username", "identifier"} and record["username"] == username and record["service"] == "openid" and record["sector_id"] == ""]
-    if header and not records and missing_ok:
-        return None
-    if not matches and missing_ok and records and all(set(record) == {"service", "sector_id", "username", "identifier"} for record in records):
+    if not header or any(set(record) != {"service", "sector_id", "username", "identifier"} for record in records):
+        raise _invalid("Authelia opaque-identifier export is invalid.")
+    for record in records:
+        if record["service"] != "openid" or record["sector_id"] != "":
+            continue
+        try:
+            subject = uuid.UUID(record["identifier"])
+        except ValueError as exc:
+            raise _invalid("Authelia opaque-identifier export is invalid.") from exc
+        if subject.version != 4 or str(subject) != record["identifier"].lower() or not _USER.fullmatch(record["username"]):
+            raise _invalid("Authelia opaque-identifier export is invalid.")
+    return records
+
+
+def _identifier_subject(raw: bytes, username: str, *, missing_ok: bool = False) -> str | None:
+    """Read exactly the one OIDC identifier this account is entitled through."""
+    records = _identifier_records(raw)
+    matches = [record["identifier"] for record in records if record["service"] == "openid" and record["sector_id"] == "" and record["username"] == username]
+    if not matches and missing_ok:
         return None
     if len(matches) != 1:
         raise _invalid("The account has no unambiguous OpenID Connect subject; sign in once or repair its Authelia identifier.")
-    try:
-        subject = uuid.UUID(matches[0])
-    except ValueError as exc:
-        raise _invalid("Authelia opaque-identifier export is invalid.") from exc
-    if subject.version != 4 or str(subject) != matches[0].lower():
-        raise _invalid("Authelia opaque-identifier export is invalid.")
-    return str(subject)
+    return str(uuid.UUID(matches[0]))
 
 
-def _oidc_subject(data: dict, config: Path, username: str, runner, *, missing_ok: bool = False) -> str | None:
-    """Export all opaque identifiers privately, then discard the PII-bearing file."""
+def _oidc_identifiers(data: dict, config: Path, runner, *, missing_ok: bool = False) -> list[dict[str, str]]:
+    """Export bounded opaque OIDC identifiers privately, then delete the export."""
     state = Path(data["authelia"]["state_directory"])
-    if missing_ok and not os.path.lexists(state / "authelia.sqlite3"):
-        return None
     uid, gid = role_identity(data, "idp")
     manage._safe_private_runtime_directory(state, uid, gid)
     directory = Path(tempfile.mkdtemp(prefix=".anvil-connect-identifiers-", dir=state))
@@ -475,8 +480,9 @@ def _oidc_subject(data: dict, config: Path, username: str, runner, *, missing_ok
     export = directory / "identifiers.yml"
     try:
         result = manage._run(runner, (data["components"]["authelia"], "storage", "user", "identifiers", "export", "--file", str(export), "--config", str(config), "--config.experimental.filters", "template"), 15, manage._role_service_identity(data, "idp"))
-        if missing_ok and result.returncode == 1 and not result.stdout and result.stderr.splitlines()[:1] == [b"Error: no data to export"]:
-            return None
+        if (missing_ok and result.returncode == 1
+                and result.stdout == b"" and result.stderr == b"Error: no data to export\n"):
+            return []
         manage._fail(result, "Authelia opaque-identifier export failed")
         info = export.lstat()
         if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_nlink != 1 or stat.S_IMODE(info.st_mode) != 0o600 or info.st_uid != uid or info.st_gid != gid):
@@ -484,7 +490,7 @@ def _oidc_subject(data: dict, config: Path, username: str, runner, *, missing_ok
         raw = manage._read_regular(export, _MAX_FILE)
         if raw is None:
             raise _invalid("Authelia opaque-identifier export is unavailable.")
-        return _identifier_subject(raw, username, missing_ok=missing_ok)
+        return _identifier_records(raw)
     finally:
         try:
             export.unlink()
@@ -496,9 +502,23 @@ def _oidc_subject(data: dict, config: Path, username: str, runner, *, missing_ok
             pass
 
 
-def _human_set(data: dict, manifest: str, subject: str, grants: dict[str, str], runner) -> dict:
+def _oidc_subject(data: dict, config: Path, username: str, runner, *, missing_ok: bool = False) -> str | None:
+    """Read exactly the one OIDC subject without retaining the PII-bearing export."""
+    state = Path(data["authelia"]["state_directory"])
+    if missing_ok and not os.path.lexists(state / "authelia.sqlite3"):
+        return None
+    records = _oidc_identifiers(data, config, runner, missing_ok=missing_ok)
+    matches = [row["identifier"] for row in records if row["service"] == "openid" and row["sector_id"] == "" and row["username"] == username]
+    if not matches and missing_ok:
+        return None
+    if len(matches) != 1:
+        raise _invalid("The account has no unambiguous OpenID Connect subject; sign in once or repair its Authelia identifier.")
+    return str(uuid.UUID(matches[0]))
+
+
+def _human_set(data: dict, manifest: str, username: str, subject: str, grants: dict[str, str], runner) -> dict:
     """Use the pinned same-user native admin socket; never touch Connect storage."""
-    return _human_admin(data, manifest, {"operation": "human-set", "subject": subject,
+    return _human_admin(data, manifest, {"operation": "human-set", "username": username, "subject": subject,
                                        "resources": list(grants), "application_roles": grants}, runner)
 
 
@@ -512,6 +532,39 @@ def _human_admin(data: dict, manifest: str, payload: dict, runner) -> dict:
         return manage.admin(manifest, request_path=request, apply=True, runner=runner)
     finally:
         _remove_owned(request, inode)
+
+
+def _human_admin_read(data: dict, manifest: str, payload: dict, runner) -> dict:
+    """Read one closed native human response through a gateway-owned output file."""
+    state = Path(data["gateway"]["state_directory"])
+    uid, gid = role_identity(data, "gateway")
+    manage._safe_private_runtime_directory(state, uid, gid)
+    request = state / (".anvil-connect-human-" + secrets.token_hex(12) + ".json")
+    inode = _exclusive(request, (json.dumps(payload, sort_keys=True) + "\n").encode(), uid, gid)
+    directory = Path(tempfile.mkdtemp(prefix=".anvil-connect-human-output-", dir=state))
+    output = directory / "response.json"
+    try:
+        os.chown(directory, uid, gid)
+        os.chmod(directory, 0o700)
+        manage.admin(manifest, request_path=request, output_path=output, apply=True, runner=runner)
+        info = output.lstat()
+        if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_nlink != 1
+                or stat.S_IMODE(info.st_mode) != 0o600 or info.st_uid != uid or info.st_gid != gid):
+            raise _invalid("Native human response is unavailable.")
+        raw = manage._read_regular(output, 32 * 1024)
+        if raw is None:
+            raise _invalid("Native human response is unavailable.")
+        return manage._strict_json(raw, "Native human response is invalid")
+    finally:
+        _remove_owned(request, inode)
+        try:
+            output.unlink()
+        except FileNotFoundError:
+            pass
+        try:
+            directory.rmdir()
+        except FileNotFoundError:
+            pass
 
 
 def operate(manifest: str, operation: str, username: str | None, *, email: str | None = None, role: str | None = None,
@@ -538,6 +591,13 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         raise _invalid("--role is only accepted for account creation; resets preserve existing groups.")
     if operation not in {"create", "reset-password", "code"} and output is not None:
         raise _invalid("This operation does not produce a credential handoff file.")
+    if operation == "delete":
+        if grants is not None:
+            raise _invalid("--grant is only accepted for account creation or access provisioning.")
+        if include_gateway:
+            raise _invalid("--include-gateway is not supported for permanent account deletion.")
+        from .user_delete import delete
+        return delete(manifest, username, apply=apply, runner=runner, unit_root=unit_root)
     _path(manifest)
     data = read_manifest(manifest)
     auth = data["authelia"]
@@ -624,7 +684,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             if manage._digest(Path(data["components"]["authelia"])) != manage._component_lock()["authelia"]:
                 raise _invalid("Authelia executable does not match the pinned component.")
             subject = _oidc_subject(data, config, username, runner)
-            _human_set(data, manifest, subject, grant_map, runner)
+            _human_set(data, manifest, username, subject, grant_map, runner)
         return {**result, "applied": True, "grants_changed": True, "existing_connect_sessions_revoked": True,
                 "principal": _principal(data["gateway"]["oidc"]["issuer"], subject)}
     with manage._deployment_lock(root):
@@ -699,7 +759,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 if subject is not None:
                     changed = True
                     if operation == "access":
-                        _human_set(data, manifest, subject, grant_map, runner)
+                        _human_set(data, manifest, username, subject, grant_map, runner)
                     else:
                         _human_admin(data, manifest, {"operation": "human-suspend", "subject": subject}, runner)
                     result["existing_connect_sessions_revoked"] = True
@@ -804,7 +864,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 raise _partial("Account operation completed, but backup retention did not finish.", result) from exc
         if operation == "create" and grant_map is not None:
             try:
-                _human_set(data, manifest, oidc_subject, grant_map, runner)
+                _human_set(data, manifest, username, oidc_subject, grant_map, runner)
             except BaseException as exc:
                 raise _partial("Account and OpenID Connect identity were created, but access provisioning may not have completed; inspect the account, then use users access with the intended grants to retry access provisioning.", result) from exc
             result.update({"grants_changed": True, "principal": _principal(data["gateway"]["oidc"]["issuer"], oidc_subject)})
