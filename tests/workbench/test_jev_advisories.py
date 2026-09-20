@@ -14,7 +14,7 @@ from tests.workbench.test_service import site as site  # real authenticated HTTP
 
 def settings():
     return jev.validate_policy({"enabled": True, "capabilities": list(jev.CAPABILITIES), "allow_api": True,
-                                "allow_export": True, "anvil_binary": "/usr/bin/anvil"})
+                                "allow_export": True, "anvil_binary": str(Path(__file__).absolute())})
 
 
 def body(resource="serve-a"):
