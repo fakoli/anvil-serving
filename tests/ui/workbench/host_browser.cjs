@@ -77,6 +77,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       </script>` });
     });
     await page.goto("https://workbench.example.test/#/playground");
+    const nativeTabLink = page.getByRole("link", { name: "Open Pi Web", exact: true });
+    assert.equal(await nativeTabLink.getAttribute("href"), "https://pi.example.test/");
+    assert.equal(await nativeTabLink.getAttribute("target"), "_blank");
+    assert.equal(await nativeTabLink.getAttribute("rel"), "noopener noreferrer");
     const threadPanel = page.locator(".host-pi-navigation");
     const openThreads = async () => {
       if (!await threadPanel.evaluate((node) => node.open))
@@ -88,7 +92,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     await openThreads();
     await page.frameLocator("iframe").locator("#selected").filter({ hasText: "retained" }).waitFor();
     const oldBridge = await page.frameLocator("iframe").locator("body").evaluate(() => window.bridgeId);
-    await page.frameLocator("iframe").locator("body").evaluate(() => location.reload());
+    await page.getByRole("button", { name: "Reload Pi", exact: true }).click();
     await page.frameLocator("iframe").locator("#selected").filter({ hasText: "retained" }).waitFor();
     await openThreads();
     await page.frameLocator("iframe").locator("body").evaluate((_, old) => parent.postMessage({ v: 1, type: "session_changed", bridge_id: old, native_id: "stale", sequence: 999 }, 'https://workbench.example.test'), oldBridge);
