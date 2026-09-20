@@ -65,7 +65,7 @@ jobs:
         run: python -m pytest tests/connect/ -q
 
       - name: Run tests
-        run: python -m pytest tests/ -x -q
+        run: python -m pytest tests/ -x -q -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
 
   connect-linux:
     name: Connect native contracts (Linux)
