@@ -33,6 +33,8 @@ class WorkbenchService:
     def __init__(self, config, access, environment, *, adapter=None, store=None, projects=None, playground=None):
         self.config = validate_config(config)
         self.access, self.environment, self.adapter = access, environment, adapter
+        from .advisories import Advisories
+        self.advisories = Advisories(environment)
         self.store = store or PrivateStore(config["state_path"], retention_days=config.get("retention_days", 30))
         self.pi = None
         self.pi_store = None
@@ -295,6 +297,12 @@ class WorkbenchService:
 
     def catalog(self, session):
         result = self.playground.catalog(session)
+        from .. import jev
+        result["jev"] = jev.status()
+        result["advisory_resources"] = [{"id": key, "label": key} for key in sorted(session.principal.resources) if key != "*"]
+        for project in self.config.get("projects", []):
+            if session.principal.can_read(project["resource_id"]) and not any(row["id"] == project["resource_id"] for row in result["advisory_resources"]):
+                result["advisory_resources"].append({"id": project["resource_id"], "label": project["label"]})
         result["projects"] = [self.projects.public_project(p) for p in self.config.get("projects", []) if session.principal.can_read(p["resource_id"])]
         config = self.config.get("pi", {})
         result["pi"] = {"configured": self.pi is not None, "models": config.get("models", {}), "thinking": config.get("thinking_levels", []),
@@ -435,7 +443,10 @@ class WorkbenchService:
             return self._pi_read(route, query, session)
         raise ObservatoryError("not_found", "This Workbench route is unavailable.", 404)
 
-    def mutate(self, route, body, session):
+    def mutate(self, route, body, session, *, access=None):
+        if route.startswith("advisories/") and len(route.split("/")) == 2:
+            return self.advisories.request(route.split("/")[1], body, session,
+                access=self.access if access is None else access)
         if route.startswith("host-pi/"):
             return self._host_pi_route(route, body, session, mutate=True)
         if route == "messages":
