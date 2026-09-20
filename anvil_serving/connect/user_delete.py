@@ -250,10 +250,10 @@ def _mapped_subject(data: dict, config: Path, principal: str, username: str, run
         if matches:
             raise _invalid("Native deletion metadata is incomplete for an IdP-linked account.")
         return ""
-    if len(matches) > 1 or (matches and matches[0]["username"] != username) or any(
+    if len(matches) != 1 or matches[0]["username"] != username or any(
             users._principal(issuer, row["identifier"]) != principal for row in same_username):
         raise _invalid("Authelia identifier does not match the native deletion intent.")
-    return matches[0]["identifier"] if matches else ""
+    return matches[0]["identifier"]
 
 
 def _preflight(data: dict, manifest: str, runner) -> tuple[Path, bool]:

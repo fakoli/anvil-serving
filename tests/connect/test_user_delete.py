@@ -391,3 +391,13 @@ def test_blank_native_username_is_connect_only_only_after_full_identifier_absenc
     ])
     with pytest.raises(UsageError):
         user_delete._mapped_subject({"gateway": {"oidc": {"issuer": issuer}}}, Path("/unused"), principal, "", None)
+
+
+def test_pending_nonblank_native_intent_without_identifier_holds_before_phase_or_mutation(monkeypatch):
+    issuer = "https://auth.example.test"
+    intent = _intent(_request())
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(manage, "_unit_state", lambda *_args, **_kwargs: pytest.fail("must not inspect or mutate IdP service"))
+
+    with pytest.raises(UsageError, match="identifier"):
+        user_delete._new_phase({"config_root": "/private/current", "gateway": {"oidc": {"issuer": issuer}}}, "manifest", intent, None)
