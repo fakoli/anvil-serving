@@ -60,9 +60,11 @@ type binding struct {
 type trackedConn struct {
 	net.Conn
 	registry *connRegistry
+	closed   atomic.Bool
 }
 
 func (c *trackedConn) Close() error {
+	c.closed.Store(true)
 	c.registry.remove(c)
 	return c.Conn.Close()
 }
@@ -80,16 +82,25 @@ func newConnRegistry() *connRegistry {
 	return &connRegistry{conns: map[*trackedConn][]byte{}, byLeaf: map[string]map[*trackedConn]struct{}{}, timers: map[*trackedConn]*time.Timer{}}
 }
 
-func (r *connRegistry) add(c *trackedConn) {
+func (r *connRegistry) add(c *trackedConn) bool {
+	if c.closed.Load() {
+		return false
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.conns[c] = nil
+	if c.closed.Load() {
+		return false
+	}
+	if _, exists := r.conns[c]; !exists {
+		r.conns[c] = nil
+	}
+	return true
 }
 
 // bind records the connection's verified leaf and schedules retirement before
 // that leaf expires. Never infer a new generation from a reused key. Reused
 // connections bind once: the leaf does not change while the pool entry lives.
-func (r *connRegistry) bind(c *trackedConn, leaf *x509.Certificate) {
+func (r *connRegistry) bind(c *trackedConn, leaf *x509.Certificate) bool {
 	key := string(leaf.Raw)
 	lifetime := leaf.NotAfter.Sub(leaf.NotBefore)
 	margin := lifetime / 10
@@ -99,11 +110,14 @@ func (r *connRegistry) bind(c *trackedConn, leaf *x509.Certificate) {
 	delay := time.Until(leaf.NotAfter) - margin
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if c.closed.Load() {
+		return false
+	}
 	if bound, seen := r.conns[c]; !seen {
-		return
+		return false
 	} else if string(bound) == key {
 		if _, scheduled := r.timers[c]; scheduled {
-			return
+			return true
 		}
 	} else {
 		set := r.byLeaf[string(bound)]
@@ -121,15 +135,17 @@ func (r *connRegistry) bind(c *trackedConn, leaf *x509.Certificate) {
 	set[c] = struct{}{}
 	if delay <= 0 {
 		go r.retire(c)
-		return
+		return true
 	}
 	timer := time.AfterFunc(delay, func() { r.retire(c) })
 	r.timers[c] = timer
+	return true
 }
 
 // retire closes one connection and drops it from every index. Closing the raw
 // connection makes the transport discard the pool entry and dial fresh.
 func (r *connRegistry) retire(c *trackedConn) {
+	c.closed.Store(true)
 	r.mu.Lock()
 	_, live := r.conns[c]
 	delete(r.conns, c)
@@ -162,7 +178,21 @@ func (r *connRegistry) retireLeaf(der []byte) {
 	}
 }
 
-func (r *connRegistry) remove(c *trackedConn) { r.retire(c) }
+func (r *connRegistry) remove(c *trackedConn) {
+	r.mu.Lock()
+	delete(r.conns, c)
+	for key, set := range r.byLeaf {
+		delete(set, c)
+		if len(set) == 0 {
+			delete(r.byLeaf, key)
+		}
+	}
+	if timer, ok := r.timers[c]; ok {
+		timer.Stop()
+		delete(r.timers, c)
+	}
+	r.mu.Unlock()
+}
 
 func (r *connRegistry) close() {
 	r.mu.Lock()
@@ -253,9 +283,10 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 				}
 				// HTTP/2 reads share a socket. A socket read deadline can expire
 				// during one cancelled upload and poison the next admitted stream.
-				tracked := &trackedConn{Conn: conn, registry: conns}
-				conns.add(tracked)
-				return tracked, nil
+				// A raw socket is not pool-tracked until GotConn confirms its
+				// current connector authority. A failed concurrent TLS handshake
+				// must not linger as an unbound registry entry.
+				return &trackedConn{Conn: conn, registry: conns}, nil
 			},
 		}
 		// Ordinary requests require h2 so an admitted unknown-length HTTP/2 body
@@ -425,6 +456,12 @@ func (d *Dispatcher) dispatch(w http.ResponseWriter, r *http.Request, resource c
 			cancel()
 			return
 		}
+		// GotConn runs for both a fresh TLS socket and every h2 reuse. add is
+		// idempotent so repeated streams never reset a bound leaf or its timer.
+		if !target.conns.add(tracked) {
+			cancel()
+			return
+		}
 		if _, err := d.peers.VerifyPeer(resource.Rule.ID, leaf); err != nil {
 			// Retire the offending pooled connection before cancelling so the
 			// pool cannot re-offer it to the next request.
@@ -432,7 +469,18 @@ func (d *Dispatcher) dispatch(w http.ResponseWriter, r *http.Request, resource c
 			cancel()
 			return
 		}
-		target.conns.bind(tracked, leaf)
+		if !target.conns.bind(tracked, leaf) {
+			cancel()
+			return
+		}
+		// A revocation can land between the first authority check and binding
+		// the leaf into the registry. Recheck after bind so a later active sweep
+		// always finds the leaf and can retire its pooled connection.
+		if _, err := d.peers.VerifyPeer(resource.Rule.ID, leaf); err != nil {
+			target.conns.retire(tracked)
+			cancel()
+			return
+		}
 		if !establishment.Stop() {
 			cancel()
 		}

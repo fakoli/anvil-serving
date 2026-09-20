@@ -72,6 +72,21 @@ func (i *revocableIssuer) VerifyPeer(resource string, leaf *x509.Certificate) (i
 	return i.inner.VerifyPeer(resource, leaf)
 }
 
+// postBindRevocationIssuer accepts the TLS verifier and GotConn's first check,
+// then rejects the post-bind check. It fixes the authority transition between
+// initial verification and leaf indexing without scheduler timing.
+type postBindRevocationIssuer struct {
+	inner PeerAuthority
+	calls atomic.Int32
+}
+
+func (i *postBindRevocationIssuer) VerifyPeer(resource string, leaf *x509.Certificate) (identity.Installation, error) {
+	if i.calls.Add(1) >= 3 {
+		return identity.Installation{}, errors.New("connector authority revoked after bind")
+	}
+	return i.inner.VerifyPeer(resource, leaf)
+}
+
 type burstEnvelope struct {
 	server     *httptest.Server
 	gated      *gatedListener
@@ -178,6 +193,55 @@ func trackedConns(t *testing.T, d *Dispatcher, id string) []*trackedConn {
 		live = append(live, c)
 	}
 	return live
+}
+
+func TestUnverifiedDialDoesNotTrackConnection(t *testing.T) {
+	d, resource, _ := newBurstStack(t, 0, nil)
+	target := d.resources[resource.Rule.ID]
+
+	// DialContext returns before TLS verification. The previous eager registry
+	// insert left this socket tracked when a concurrent peer-authority rejection
+	// raced transport cleanup.
+	conn, err := target.transport.DialContext(context.Background(), "tcp", resource.TunnelAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if live := trackedConns(t, d, resource.Rule.ID); len(live) != 0 {
+		t.Fatalf("%d unverified connections tracked after dial", len(live))
+	}
+}
+
+func TestClosedUnverifiedConnectionCannotRegister(t *testing.T) {
+	registry := newConnRegistry()
+	raw, other := net.Pipe()
+	defer other.Close()
+	conn := &trackedConn{Conn: raw, registry: registry}
+	if err := conn.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// A transport close may race GotConn. The closed wrapper must not return
+	// to the registry after its raw socket has already been closed.
+	registry.add(conn)
+	registry.mu.Lock()
+	tracked := len(registry.conns)
+	registry.mu.Unlock()
+	if tracked != 0 {
+		t.Fatalf("%d closed connections re-entered registry", tracked)
+	}
+}
+
+func TestPostBindAuthorityRevocationRetiresConnection(t *testing.T) {
+	issuer := &postBindRevocationIssuer{}
+	d, resource, _ := newBurstStack(t, 0, func(inner PeerAuthority) PeerAuthority { issuer.inner = inner; return issuer })
+
+	codes := burstRequests(t, d, resource, 1, "/v1/models")
+	if len(codes) != 1 || codes[0] != http.StatusBadGateway {
+		t.Fatalf("post-bind revocation returned %v; want 502", codes)
+	}
+	if live := trackedConns(t, d, resource.Rule.ID); len(live) != 0 {
+		t.Fatalf("%d connections tracked after post-bind revocation", len(live))
+	}
 }
 
 func TestColdBurstMultiplexesOverBoundedConnections(t *testing.T) {
