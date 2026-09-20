@@ -74,7 +74,13 @@ function accountEditor(user) {
 }
 async function loadUsers(next) {
   inventory = await request(settings.administration_path + "?" + new URLSearchParams({kind:"users",limit:"20",...(next ? {cursor:next} : {})}));
-  byID("users").replaceChildren(...inventory.items.map(accountEditor));
+  // ponytail: Sorting is page-local because this request is capped at 20
+  // accounts; preserve the API cursor's backend key order across pages.
+  const accounts = [...inventory.items].sort((left, right) =>
+    Number(left.disabled) - Number(right.disabled) ||
+    (left.username || left.id).localeCompare(right.username || right.id) ||
+    left.id.localeCompare(right.id));
+  byID("users").replaceChildren(...accounts.map(accountEditor));
   cursor = inventory.next_cursor; byID("next-users").hidden = !cursor;
 }
 byID("terminal").addEventListener("click", () => { const panel=byID("terminal-help"); panel.hidden=!panel.hidden; byID("terminal").setAttribute("aria-expanded", String(!panel.hidden)); });

@@ -176,6 +176,34 @@ test('operator service editor changes access and invalidates the member session'
   await fixture.command('subject allowed');
 });
 
+test('operator access editor puts active accounts before disabled legacy accounts', async () => {
+  await fixture.command('subject operator');
+  const context = await fixture.browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.route(url => {
+      const request = new URL(url);
+      return request.pathname === '/_anvil-connect/access' &&
+        request.searchParams.get('kind') === 'users' &&
+        request.searchParams.get('limit') === '20';
+    }, route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      kind: 'users',
+      items: [
+        { id: 'human:legacy', generation: '1', disabled: true, resources: ['dash'], administrator: false },
+        { id: 'human:later', username: 'zeta', generation: '1', disabled: false, resources: ['dash'], administrator: false },
+        { id: 'human:earlier', username: 'alpha', generation: '1', disabled: false, resources: ['dash'], administrator: false },
+        { id: 'human:missing-name', generation: '1', disabled: false, resources: ['dash'], administrator: false },
+      ],
+      next_cursor: null,
+    }) }));
+    await page.goto(fixture.url+'/_anvil-connect/home');
+    await expect(page.locator('.user-id')).toHaveText(['human:earlier', 'human:missing-name', 'human:later', 'human:legacy']);
+  } finally {
+    await context.close();
+    await fixture.command('subject allowed');
+  }
+});
+
 test('unprovisioned OIDC subject is denied in Chromium', async () => {
   await fixture.command('subject denied');
   const context = await fixture.browser.newContext({ extraHTTPHeaders: { Authorization: 'Bearer browser-api-key-must-not-bypass-connect' } });
