@@ -544,6 +544,31 @@ class Console:
         return digest({"principal": session.principal.identity, "resource": binding["resource_id"],
                        "policy": self.policy_digest})
 
+    def _workspace_runs(self, session, source, query):
+        # Authorize current projects before parsing cursors or consulting last-good rows.
+        descriptor = next((item for item in self.workbench.workspace_run_sources(session)["items"]
+                           if item["id"] == source), None)
+        if descriptor is None:
+            raise ObservatoryError("permission_denied", "This Workbench run source is unavailable.", 403)
+        limit, cursor = self._run_limit(query), query.get("cursor")
+        if cursor is not None and (type(cursor) is not str or not 1 <= len(cursor) <= 512):
+            raise ObservatoryError("invalid_workspace_run_cursor", "Select a current Workbench run page.", 400)
+        authority = digest({"projects": self.workbench.config.get("projects", []),
+                            "grants": descriptor["resource_ids"]})
+        key = (*self._run_cache_key(session, source, limit, cursor), authority)
+        try:
+            result = self.workbench.workspace_run_page(session, source, limit=limit, cursor=cursor)
+        except ObservatoryError as error:
+            if error.status < 500:
+                raise
+            return self._stale_runs(key, source)
+        except Exception:
+            return self._stale_runs(key, source)
+        if any(item.get("status") != "fresh" for item in result.get("sources", [])):
+            return self._stale_runs(key, source)
+        self._cache_runs(key, result)
+        return result
+
     def _evidence_detail(self, session, query):
         authority = self._evidence_authority(session)
         fields(query, required=("artifact_id", "sha256"))
@@ -607,6 +632,8 @@ class Console:
         if evidence and session.principal.can_read(evidence["resource_id"]):
             items.append({"id": "evidence", "kind": "imported", "label": "Retained evidence",
                           "resource_id": evidence["resource_id"], "status": "available"})
+        items.extend({**item, "status": "available"}
+                     for item in self.workbench.workspace_run_sources(session)["items"])
         return {"items": items}
 
     def _reconcile(self, item):
@@ -684,6 +711,8 @@ class Console:
                 return self._benchmark_runs(session, query)
             if source == "evidence":
                 return self._evidence_runs(session, query)
+            if source in {"workspace-tasks", "workspace-pi"}:
+                return self._workspace_runs(session, source, query)
             raise ObservatoryError("not_found", "This run source is unavailable.", 404)
         if route == "operations":
             fields(query)
