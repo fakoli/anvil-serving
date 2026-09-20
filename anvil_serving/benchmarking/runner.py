@@ -36,6 +36,7 @@ from .requests import (
     post_chat,
     response_observation,
     stream_chat,
+    tool_argument_observations,
     validate_function_tool_call,
     validate_stream_result,
 )
@@ -612,6 +613,7 @@ def run_bakeoff(
                     ),
                     "valid_tool_call_count": len(valid),
                     "arguments": valid[0]["arguments"] if valid else None,
+                    "tool_argument_observations": tool_argument_observations(messages),
                     "validation_errors": [
                         item["error"] for item in validations if item["error"]
                     ],
@@ -837,6 +839,7 @@ def run_bakeoff(
                         attempt["tool_call"] = {
                             "valid": bool(valid),
                             "arguments": valid[0]["arguments"] if valid else None,
+                            "observations": tool_argument_observations(messages),
                             "validation_errors": [
                                 value["error"] for value in validations if value["error"]
                             ],

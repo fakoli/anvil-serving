@@ -1,0 +1,15 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "Huihui NInfer compatible-runtime 8K/C1 strict 32-word comparison",
+  "subtitle": "NInfer no-spec/MTP3 pair is isolated. GGUF is a separately labeled cross-profile comparison with different checkpoint, runtime, and quantization.",
+  "metric_semantics": {"population": "12 strict controlled-output requests per arm", "boundary": "No p99 claim. 32K is not plotted; GGUF is not speculation-control evidence."},
+  "svg_output": "benchmark-matrix.svg",
+  "data_output": "benchmark-graph-data.json",
+  "charts": [
+    {"title":"Mean decode", "metric":"metrics.decode_tok_s_mean", "x_label":"matched 8K/C1 strict 32-word", "y_label":"tok/s", "series":[{"label":"Runtime arm", "points":[{"x":"No speculation","artifact":"capacity-nospec-32.json"},{"x":"MTP3","artifact":"capacity-mtp3-32.json"}]}]},
+    {"title":"Median TTFT", "metric":"metrics.ttft_p50_ms", "x_label":"matched 8K/C1 strict 32-word", "y_label":"ms", "series":[{"label":"Runtime arm", "points":[{"x":"No speculation","artifact":"capacity-nospec-32.json"},{"x":"MTP3","artifact":"capacity-mtp3-32.json"}]}]},
+    {"title":"Median E2E", "metric":"metrics.e2e_p50_ms", "x_label":"matched 8K/C1 strict 32-word", "y_label":"ms", "series":[{"label":"Runtime arm", "points":[{"x":"No speculation","artifact":"capacity-nospec-32.json"},{"x":"MTP3","artifact":"capacity-mtp3-32.json"}]}]},
+    {"title":"Cross-profile mean decode", "metric":"metrics.decode_tok_s_mean", "x_label":"8K/C1 strict 32-word; not a speculation control", "y_label":"tok/s", "series":[{"label":"GGUF incumbent (separate runtime/quant)", "points":[{"x":"8K/C1","artifact":"capacity-incumbent-32.json"}]},{"label":"Huihui MTP3", "points":[{"x":"8K/C1","artifact":"capacity-mtp3-32.json"}]}]},
+    {"title":"Cross-profile mean E2E", "metric":"metrics.e2e_mean_ms", "x_label":"8K/C1 strict 32-word; not a speculation control", "y_label":"ms", "series":[{"label":"GGUF incumbent (separate runtime/quant)", "points":[{"x":"8K/C1","artifact":"capacity-incumbent-32.json"}]},{"label":"Huihui MTP3", "points":[{"x":"8K/C1","artifact":"capacity-mtp3-32.json"}]}]}
+  ]
+}

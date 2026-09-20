@@ -211,7 +211,7 @@ _ENGINE_ALIASES = {
 # no OpenAI-compatible surface at all. "q36" is the dedicated q36 CUDA engine;
 # it exposes an OpenAI-compatible chat surface but is not vLLM/llama.cpp.
 _ENGINES = {
-    "vllm", "sglang", "llamacpp", "q36",
+    "vllm", "sglang", "llamacpp", "q36", "ninfer",
     "audio", "embedding", "reranker", "image", "mlx-lm", "mlx-vlm", "none",
 }
 # ADR-0017 GPU residency reservations: the residency vocabulary for a serve's
@@ -6079,7 +6079,7 @@ def probe_serve(
             "endpoint": endpoint,
             "devices": len(devices) if isinstance(devices, list) else 0,
         }
-    if not image_path and engine in {"vllm", "sglang", "q36"}:
+    if not image_path and engine in {"vllm", "sglang", "q36", "ninfer"}:
         endpoint = base + "/v1/chat/completions"
         payload = {
             "model": model,
@@ -6108,7 +6108,7 @@ def probe_serve(
             "finish_reason": finish_reason,
             "incomplete": incomplete,
         }
-    if image_path and engine in {"vllm", "sglang", "q36"}:
+    if image_path and engine in {"vllm", "sglang", "q36", "ninfer"}:
         resolved = os.path.abspath(os.path.expanduser(image_path))
         size = os.path.getsize(resolved)
         if size > 20 * 1024 * 1024:

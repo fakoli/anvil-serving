@@ -96,6 +96,14 @@ def commands() -> CommandNode:
                             ),
                         ),
                     ),
+                    _resource_node(
+                        "pi-media",
+                        "Withdraw Pi's owned direct Anvil media MCP entry.",
+                        "anvil_serving.harness",
+                        role="gateway",
+                        options=CONFIRM_OPTIONS,
+                        mutation="mutate",
+                    ),
                 ),
             ),
             _node(

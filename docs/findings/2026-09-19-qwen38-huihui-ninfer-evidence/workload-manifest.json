@@ -1,0 +1,69 @@
+{
+  "schema": "anvil-serving.benchmark-workload/v1",
+  "campaign_id": "2026-09-19-qwen38-huihui-ninfer",
+  "selection": "Repository native deterministic preflight, intelligence/tool quality, and six-case synthetic image corpus. No evaluated-model self grading.",
+  "launcher_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+  "files": [
+    {
+      "path": "anvil_serving/benchmarking/runner.py",
+      "sha256": "f9fbf37f1a048a0bd7b02d36b1631754ee2df96f4654a4684d4f3e0e134549b8"
+    },
+    {
+      "path": "anvil_serving/benchmarking/requests.py",
+      "sha256": "20d43653e9f2938194be7b0ea111bc5206827bd0db37d18d071601e9490ea9a0"
+    },
+    {
+      "path": "tests/fixtures/eval-data/agents-a1-v1/image-corpus.json",
+      "sha256": "a514ae146b5aab3bcb55ae9fb27f55a41791a20863304d1bb95947e93931cd12"
+    }
+  ],
+  "image_corpus": {
+    "schema": "multimodal-corpus/v1",
+    "license": "CC0-1.0",
+    "media_hashes": "Each media SHA-256 is retained in the referenced repository corpus.",
+    "cases": [
+      "scene",
+      "OCR",
+      "chart",
+      "UI",
+      "spatial count",
+      "multi-image comparison"
+    ],
+    "repetitions": 2,
+    "total": 12
+  },
+  "quality": {
+    "suites": [
+      "intelligence",
+      "tool"
+    ],
+    "checks": [
+      "unified_diff_timeout_edit",
+      "parallel_timeout_triage",
+      "record_weather_zip typed zip string"
+    ],
+    "repetitions": 3,
+    "required_pass_rate": 1.0,
+    "candidate_off_visible_tokens": 1024,
+    "candidate_low_visible_tokens": 1024,
+    "candidate_low_reasoning_headroom": 4096,
+    "incumbent_visible_tokens": 1024,
+    "controls": "Direct loopback, sequential requests, C1. Thinking-off and reasoning-low are separate candidate cells; incumbent off is a correctness control."
+  },
+  "execution_order": [
+    "initial smoke unsupported field failure",
+    "smoke+JSON server default",
+    "protocol preflight",
+    "quality off",
+    "quality reasoning-low",
+    "vision-disabled failure",
+    "managed vision reload and 12 image attempts",
+    "managed unload then incumbent preflight and repeated quality",
+    "managed unload and media restoration"
+  ],
+  "measurement": {
+    "path": "online direct",
+    "warm_cold_state": "Cold managed start followed by sequential mixed warm probes; no controlled performance series.",
+    "statistics": "Pass counts only; incidental latency/throughput fields are not headline performance evidence."
+  }
+}

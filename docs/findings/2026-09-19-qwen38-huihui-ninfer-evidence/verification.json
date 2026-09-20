@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.campaign-verification/v1",
+  "focused": {
+    "command": "python scripts/run_tests.py tests/test_serve_recipes.py tests/test_benchmark_docs_skill.py -x -q",
+    "passed": 80,
+    "failed": 0
+  },
+  "full_suite": {
+    "command": "python scripts/run_tests.py tests/ -x -q",
+    "passed": 7924,
+    "skipped": 416,
+    "failed": 1,
+    "stopped_early": true,
+    "duration_seconds": 385.65,
+    "failure": "tests/workbench/test_pi_official_smoke.py::test_official_pi_native_history_fork_resume_and_model_controls",
+    "error": "PiProcessExited: Pi runner exited with status 134",
+    "bounded_diagnosis": "Installed Pi startup with the test's minimal environment and no inference request reproduces Node ncrypto::CSPRNG(nullptr, 0) assertion. Standalone Node --version passes. Exact shim/environment cause remains unresolved.",
+    "disposition": "Separate Windows Pi startup ticket; no clean full-suite pass claimed."
+  },
+  "recipe_validation": {
+    "method": "anvil_serving.serve_recipes.load_registry",
+    "selectors": 2,
+    "status": "passed",
+    "scope": "Registry validity only; MTP was not loaded or qualified."
+  },
+  "markdown_links": {
+    "checked": 675,
+    "ok": true,
+    "problems": []
+  }
+}

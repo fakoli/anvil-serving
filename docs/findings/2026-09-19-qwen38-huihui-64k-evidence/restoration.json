@@ -1,0 +1,18 @@
+{
+  "schema": "anvil-serving.restoration/v1",
+  "starting_profile": "qwen38-huihui-ninfer-schemafix-mtp3-32k",
+  "ending_profile": "qwen38-huihui-ninfer-schemafix-mtp3-64k",
+  "state": "authorized promotion retained",
+  "rollback": "Exact original 32K registry retained; managed unload64/load32 plus router/catalog rollback required.",
+  "checks": {
+    "router_identity": "ready",
+    "media_workflows": "remain withdrawn",
+    "gpu_single_owner": "qwen-local",
+    "hermes_native": "passed",
+    "fleet_repeat": "unchanged",
+    "workbench_cards": 2,
+    "historical_result_rows": 234,
+    "observer_readiness": 1
+  },
+  "browser_acceptance": "not verified"
+}

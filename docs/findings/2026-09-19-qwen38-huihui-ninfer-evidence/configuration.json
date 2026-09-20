@@ -1,0 +1,95 @@
+{
+  "schema": "anvil-serving.benchmark-configuration/v1",
+  "campaign_id": "2026-09-19-qwen38-huihui-ninfer",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.0.0",
+    "revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "dirty_state": "new campaign recipe and evidence only"
+  },
+  "hardware": {
+    "host": "Secondary Node",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "reported_vram_mib": 32607,
+    "driver": "616.92",
+    "os": "Windows Docker Desktop WSL2",
+    "host_ram_gib": 30.9,
+    "wsl_memory_limit_gib": 20,
+    "wsl_swap_gib": 4
+  },
+  "candidate": {
+    "repo": "lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4",
+    "revision": "181446902fc777c479749e98cf2abf2250263a8d",
+    "artifact": "qwen3_8_27b_nvfp4.ninfer",
+    "artifact_bytes": 21492695040,
+    "artifact_sha256": "f21f308d3b23ccd627071cd015e413db08deee4356643900518e2b251750fdc2",
+    "engine": "NInfer",
+    "engine_revision": "a99407c63fc5bbd25d9fb597cbb8ab352bdb01ef",
+    "binary_sha256": "3e348cef87a25b79afae483dc4966bcd52b4665f674380ce54fc36e6b1ce46c0",
+    "base_image": "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca",
+    "context": 8192,
+    "concurrency": 1,
+    "kv_dtype": "int8",
+    "speculation": "off",
+    "served_model": "qwen38-huihui-ninfer-nvfp4-nospec-8k",
+    "base_url": "http://127.0.0.1:8081/v1",
+    "server_thinking": "--no-thinking",
+    "request_controls": [
+      "thinking-mode unsupported omits unsupported chat_template_kwargs",
+      "reasoning-effort low requested; owning logs show thinking=on; native artifact marks requested_unverified"
+    ],
+    "identity_caveat": "Source revision, artifact and local executable pinned; apt packages and linked runtime are not immutably baked. No clean-build reproduction proof."
+  },
+  "run_bindings": [
+    {
+      "configuration": "initial text profile",
+      "recipe": "recipe-initial-text.toml",
+      "sha256": "7eb930dca91f34216f5d22fd227e66db11ba54a4e225e79c207de51d7cf0995d",
+      "evidence": [
+        "preflight-nospec-smoke.json",
+        "preflight-nospec-server-control.json",
+        "preflight-nospec-protocol.json",
+        "quality-nospec-8k.json",
+        "quality-nospec-reasoning-low.json",
+        "multimodal-nospec-8k.json"
+      ],
+      "vision": false,
+      "binary_identity": "cold source build; hash measured subsequently"
+    },
+    {
+      "configuration": "vision reload",
+      "recipe": "recipe-vision-qualification.toml",
+      "sha256": "301f83f33e625010191562c56313161f6daaf2f634f72aa4562b0b5b9c6bf767",
+      "evidence": [
+        "multimodal-nospec-8k-vision.json"
+      ],
+      "vision": true,
+      "binary_identity": "same measured executable; entrypoint verifies binary SHA before serve",
+      "owning_logs": "runtime-log-excerpts.txt",
+      "native_artifact_limitation": "engine_build_ref is null; native artifacts do not encode vision flag transition. This companion binds the observed managed reload, not an immutable image reconstruction.",
+      "managed_launch_receipt": "vision-managed-launch.txt",
+      "recipe_scope": "Public template snapshot; device selected by managed loader override. Receipt retains actual launch flags and labels with GPU UUID redacted."
+    }
+  ],
+  "incumbent": {
+    "repo": "unsloth/Qwen3.8-27B-GGUF",
+    "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+    "image": "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",
+    "served_model": "qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-262k",
+    "context": 262144,
+    "concurrency": 1,
+    "quantization": "UD-Q4_K_XL target, Q4_0 KV, F16 mmproj",
+    "speculation": "native MTP3",
+    "reasoning": "off",
+    "base_url": "http://127.0.0.1:8080/v1",
+    "comparison_scope": "same correctness assertions and repeated tool gate only; contexts/runtimes differ, so no comparative speed or residency claim"
+  },
+  "memory_observations": {
+    "candidate_text_idle_mib": 20866,
+    "candidate_vision_after_probe_mib": 21584,
+    "incumbent_load_observation_mib": 26170,
+    "classification": "unmatched diagnostic snapshots; not comparable capacity benchmark",
+    "disk_comparison": "Candidate artifact has the same 21492695040-byte size as prior neroued NInfer artifact."
+  },
+  "public_normalization": "Public text uses LF line endings; private originals retained. Recipe snapshot hashes refer to public normalized bytes."
+}

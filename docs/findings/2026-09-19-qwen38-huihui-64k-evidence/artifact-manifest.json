@@ -1,0 +1,196 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-19-qwen38-huihui-64k",
+    "capability": "text-tools-image",
+    "repository_revision": "46b84641b3096b6feb4d0f1f844c6106c1a01ac5",
+    "dirty_state": "clean tested client wheel; publication edits followed",
+    "started_at": "2026-09-19T23:26:16Z",
+    "completed_at": "2026-09-19T23:52:41.376209+00:00",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity"
+    ],
+    "decision_labels": [
+      "current"
+    ],
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "client-acceptance",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "c6bbf42f7d078866060572cf6ae79f21ee0eac1bffcf92204f256cdee0965697",
+          "bytes": 468
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "600b0508d2f58588d1434c17b9fd4a936bd3475d223a526dfab21d4a9fd13b6d",
+          "bytes": 1866
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "f5b55b516a52d3da0a1dbd15eb0be8a8c912dc39eac95d8aa87e1390316e7e09",
+          "bytes": 5535
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "354c58f92f38a0be8d36edc254edd2f4fbc734d1a2824de99d6d35ab7db29671",
+          "bytes": 974
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "recipe-64k-sanitized.toml",
+          "sha256": "fa0283c7b634a6f49d653950970bd6b22e724196b778a695addfdc0df42ce070",
+          "bytes": 2612
+        },
+        {
+          "path": "identity-receipt.json",
+          "sha256": "02d8dd8dd0e1eda407cd73c613691b2068f1703e03cd74a9cc7e0a8ae88833d7",
+          "bytes": 2644
+        },
+        {
+          "path": "memory-post-workload.json",
+          "sha256": "950630c4934dd9f72e10740f65595c2e374e108d4da9fa560c8923f34b803d69",
+          "bytes": 268
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "preflight-c1.json",
+          "sha256": "6cea10f49a3966399066980b01781091a9e83dc38268cc515cc0a776f01ec2f3",
+          "bytes": 6497
+        },
+        {
+          "path": "preflight-default-128k-failure.json",
+          "sha256": "8143bbe458d1c79db2b2c06bf96d4b85accfab32b529d7a6e0f22ac44a2ac338",
+          "bytes": 14681
+        },
+        {
+          "path": "quality.json",
+          "sha256": "cffce1f478faef91423ca1832a91d2896b7cd87f9a36bdac6a45d195817c81f6",
+          "bytes": 26964
+        },
+        {
+          "path": "capacity-short.json",
+          "sha256": "b71e8c7f88235c838c84d813b5e6fbd8b317d781e0edbab3a5aee5e1061ed363",
+          "bytes": 23788
+        },
+        {
+          "path": "capacity-long.json",
+          "sha256": "0c2ddb7ad2c610aff5307f0a973e6da47db69b5be671bb5157a5586cdf6066cb",
+          "bytes": 17722
+        },
+        {
+          "path": "vision.json",
+          "sha256": "fafd1dd4522c9a1a831e29fe94d7ff671f20a03effce91b18c4bb5a028be43d4",
+          "bytes": 24587
+        },
+        {
+          "path": "hermes-native.json",
+          "sha256": "c64ae53d61865cb6164dd810a98a042f06498796d97d530a3513d9d1d7e3be9d",
+          "bytes": 1323
+        },
+        {
+          "path": "router-preflight.json",
+          "sha256": "4749bacff513dcd9e77256e6f97d812de4a143d38f64a3fd1a6c89b3938ea7c2",
+          "bytes": 5583
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "a7a5f55f129b3116980262cce707e8ba019d1960a27ca956d045e48494f1ed03",
+          "bytes": 1201
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "491ab19a2196fc04bfc785dce964eb45b34154612d0ba7ee62591c6f5362ea69",
+          "bytes": 662
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "6b0ae0c9e5ffcf392545fd87dc4246a2a32a20e738b4f07b2b3dd4e263049e7e",
+          "bytes": 1097
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "18a1bece58a81a0c8f17954919cfd4bd9ffc4c1a8a11cb5f83d853781cd29bcc",
+          "bytes": 2719
+        }
+      ],
+      "reason": ""
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

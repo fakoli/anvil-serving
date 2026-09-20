@@ -1,0 +1,80 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-19-qwen38-huihui-runtime-followup",
+  "status": "complete",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "media_worker": {
+      "state": "running",
+      "http_status": 200
+    },
+    "media_mcp": {
+      "state": "running",
+      "http_status": 200
+    },
+    "manifest_qwen_local": "absent",
+    "original_incumbent_container": "stopped, exited, unhealthy",
+    "mode": "split",
+    "gpu_used_mib": 686,
+    "evidence": [
+      "private operator serves-before.json",
+      "private operator recipes-before.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "observed_at": "2026-09-19T19:32:31.605509+00:00",
+    "media_worker": {
+      "state": "running",
+      "http_status": 200
+    },
+    "media_mcp": {
+      "state": "running",
+      "http_status": 200
+    },
+    "manifest_qwen_local": "absent",
+    "original_incumbent_container": "stopped, exited, unhealthy",
+    "temporary_containers": "absent",
+    "mode": "split",
+    "gpu_used_mib": 686,
+    "evidence": [
+      "private operator followup/media-status-after.json",
+      "private operator followup/recipes-running-after.json",
+      "private operator followup/media-restore.log"
+    ]
+  },
+  "differences": [
+    "Model cache and revision-specific704 runtime build cache retained; no cache reclamation.",
+    "Temporary qualification containers removed. No deployment or route assignments changed."
+  ],
+  "configuration_hashes": [
+    {
+      "file": "serves.comfyui.toml",
+      "before_sha256": "99ed0d61d76b1ec10fb92edaf4b955c62c6d8b952c027172f62c738b23591816",
+      "after_sha256": "99ed0d61d76b1ec10fb92edaf4b955c62c6d8b952c027172f62c738b23591816",
+      "unchanged": true
+    },
+    {
+      "file": "serves.media-mcp.toml",
+      "before_sha256": "8b22af3bd520ec410beca927b27a53891eca275e2c1a843507ca24255faf03d6",
+      "after_sha256": "8b22af3bd520ec410beca927b27a53891eca275e2c1a843507ca24255faf03d6",
+      "unchanged": true
+    },
+    {
+      "file": "serves.qwen-local.toml",
+      "before_sha256": "4d6c58d8833d91e61ecd5cf3253a9f8e11c5505e9cc6556bd91925980aa18c96",
+      "after_sha256": "4d6c58d8833d91e61ecd5cf3253a9f8e11c5505e9cc6556bd91925980aa18c96",
+      "unchanged": true
+    }
+  ],
+  "post_run_checks": [
+    "Managed candidate and temporary incumbent unload succeeded.",
+    "Managed media up succeeded; writable mounts 4/4 worker and 1/1 gateway.",
+    "Managed serves status reports both media HTTP 200.",
+    "Managed recipe inventory contains only the originally stopped incumbent.",
+    "No route, alias, Workbench or Grafana assignment was changed."
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}

@@ -1,0 +1,33 @@
+{
+  "campaign": "2026-09-19-qwen38-huihui-ninfer",
+  "launcher": {
+    "version": "1.0.0",
+    "commit": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "module": "anvil_serving/cli.py"
+  },
+  "model_revision": "181446902fc777c479749e98cf2abf2250263a8d",
+  "runtime_revision": "a99407c63fc5bbd25d9fb597cbb8ab352bdb01ef",
+  "stages": [
+    "8K no-spec scout",
+    "separate MTP feasibility then matched MTP scout",
+    "capability and context expansion",
+    "matched incumbent and prior NInfer comparison",
+    "quality and endurance",
+    "digest-pinned runtime and clean deployment repeatability",
+    "reviewable promotion decision",
+    "authorized deployment and live observability acceptance",
+    "publication"
+  ],
+  "scout_limits": {
+    "feasibility_applies_to": "8K C1 no-spec only",
+    "current_runtime": "single-build challenger intake; cached build is not promotion-grade",
+    "failed_load_disposition": "capture owning error, then unload this exact candidate through managed lifecycle",
+    "promotion_requires": "clean reproducible runtime, all hard gates, preserved capabilities, and concrete human-reviewed deployment"
+  },
+  "comparison_policy": {
+    "minimum_gain": 0.05,
+    "correctness_pass_rate": 1,
+    "material_regression_blocks": true,
+    "footprint_comparison_requires_matched_context": true
+  }
+}

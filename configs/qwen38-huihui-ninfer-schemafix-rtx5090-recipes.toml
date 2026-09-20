@@ -1,0 +1,185 @@
+# SchemaFix upstream schema-fix qualification; not promoted. Exact local executable SHA is verified before execution.
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "lyf/Qwen3.8-27B-Huihui-NInfer-SchemaFix-NVFP4-NoSpec-8K"
+status = "candidate"
+source = "Huihui-derived Qwen3.8-27B NVFP4 matched no-speculation control staged on 2026-09-19"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4"
+revision = "181446902fc777c479749e98cf2abf2250263a8d"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120a"
+gpu_uuid = "GPU-REPLACE-WITH-HOST-DISCOVERED-UUID"
+vram_total_gb = 32
+vram_note = "Pinned compatible upstream with schema-aware tool parsing. Exact binary SHA measured in the cold build is verified before reuse and emitted into managed logs. Apt/runtime resolution is not an immutable image; isolated qualification only."
+
+[recipe.serve]
+engine = "ninfer"
+image = "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca"
+entrypoint = ["/bin/bash", "-lc", 'set -euo pipefail; model_path="$1"; shift; revision="70434721b1ae29d0616f3de9b376c8a4d91590b5"; artifact_sha="f21f308d3b23ccd627071cd015e413db08deee4356643900518e2b251750fdc2"; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install --yes --no-install-recommends ca-certificates cmake git libavcodec-dev libavformat-dev libavutil-dev libcurl4-openssl-dev libswscale-dev ninja-build pkg-config; if [ ! -d /opt/ninfer-cache/repo/.git ]; then git clone https://github.com/Neroued/ninfer.git /opt/ninfer-cache/repo; fi; git -C /opt/ninfer-cache/repo fetch --depth 1 origin "$revision"; git -C /opt/ninfer-cache/repo checkout --detach "$revision"; test "$(git -C /opt/ninfer-cache/repo rev-parse HEAD)" = "$revision"; if [ ! -x /opt/ninfer-cache/build/apps/ninfer-serve ]; then cmake -S /opt/ninfer-cache/repo -B /opt/ninfer-cache/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNINFER_BUILD_APPS=ON -DBUILD_TESTING=OFF -DNINFER_BUILD_BENCHMARKS=OFF; cmake --build /opt/ninfer-cache/build --parallel 8 --target ninfer ninfer-serve; printf "%s\n" "$revision" > /opt/ninfer-cache/build-revision; fi; test "$(cat /opt/ninfer-cache/build-revision)" = "$revision"; printf "%s  %s\n" "$artifact_sha" "$model_path" | sha256sum --check; printf "%s  %s\n" "666fd58c2217cc5ff92a91755623672e832c46d976abd711829315889399dc9c" "/opt/ninfer-cache/build/apps/ninfer-serve" | sha256sum --check; sha256sum /opt/ninfer-cache/build/apps/ninfer-serve; exec /opt/ninfer-cache/build/apps/ninfer-serve "$model_path" "$@"', "ninfer-build-run"]
+model_path = "/root/.cache/huggingface/hub/models--lyf--Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4/snapshots/181446902fc777c479749e98cf2abf2250263a8d/qwen3_8_27b_nvfp4.ninfer"
+named_volumes = ["anvil-ninfer-70434721-build:/opt/ninfer-cache"]
+quantization = "NInfer NVFP4/row-scaled-FP8 mixed target with INT8 group-64 KV"
+context_tokens = 8192
+port = 8081
+health = "/health"
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-huihui-ninfer-schemafix-nospec-8k"
+flags = [
+  "--host 0.0.0.0",
+  "--port 8081",
+  "--model-id qwen38-huihui-ninfer-schemafix-nospec-8k",
+  "--max-context 8192",
+  "--kv-capacity 8192",
+  "--max-concurrency 1",
+  "--kv-dtype int8",
+  "--default-max-tokens 2048",
+  "--max-request-mib 384",
+  "--no-thinking",
+  "--vision",
+]
+note = "Matched no-speculation control. NInfer is source-built inside the managed recipe container from exact revision 70434721b1ae29d0616f3de9b376c8a4d91590b5 and cached in a revision-specific named volume. The exact locally compiled binary SHA is verified before execution, but apt resolution is not digest-pinned; a different clean build fails closed. This remains a challenger intake path, not a promotion-grade baked image."
+
+[recipe.fit]
+suited = ["qualification-reproduction"]
+not_suited = ["automatic-promotion", "large-scale-continuous-batching", "qualified-multimodal"]
+rationale = "Reopen exact model qualification after upstream tool argument schema fix. Keep weights, 8K context, C1, INT8 KV and vision fixed while comparing runtime and reasoning controls."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4/tree/181446902fc777c479749e98cf2abf2250263a8d",
+  "https://github.com/Neroued/ninfer/tree/70434721b1ae29d0616f3de9b376c8a4d91590b5",
+  "https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated/tree/d42ca8978c5a66e92c3446d46e8adfe03ef692ff",
+]
+
+
+[[recipe]]
+model = "lyf/Qwen3.8-27B-Huihui-NInfer-SchemaFix-NVFP4-MTP3-8K"
+status = "candidate"
+source = "Huihui-derived Qwen3.8-27B NVFP4 matched MTP3 comparison staged on 2026-09-19"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4"
+revision = "181446902fc777c479749e98cf2abf2250263a8d"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120a"
+gpu_uuid = "GPU-REPLACE-WITH-HOST-DISCOVERED-UUID"
+vram_total_gb = 32
+vram_note = "Pinned compatible upstream with schema-aware tool parsing. Exact binary SHA measured in the cold build is verified before reuse and emitted into managed logs. Apt/runtime resolution is not an immutable image; isolated qualification only."
+
+[recipe.serve]
+engine = "ninfer"
+image = "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca"
+entrypoint = ["/bin/bash", "-lc", 'set -euo pipefail; model_path="$1"; shift; revision="70434721b1ae29d0616f3de9b376c8a4d91590b5"; artifact_sha="f21f308d3b23ccd627071cd015e413db08deee4356643900518e2b251750fdc2"; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install --yes --no-install-recommends ca-certificates cmake git libavcodec-dev libavformat-dev libavutil-dev libcurl4-openssl-dev libswscale-dev ninja-build pkg-config; if [ ! -d /opt/ninfer-cache/repo/.git ]; then git clone https://github.com/Neroued/ninfer.git /opt/ninfer-cache/repo; fi; git -C /opt/ninfer-cache/repo fetch --depth 1 origin "$revision"; git -C /opt/ninfer-cache/repo checkout --detach "$revision"; test "$(git -C /opt/ninfer-cache/repo rev-parse HEAD)" = "$revision"; if [ ! -x /opt/ninfer-cache/build/apps/ninfer-serve ]; then cmake -S /opt/ninfer-cache/repo -B /opt/ninfer-cache/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNINFER_BUILD_APPS=ON -DBUILD_TESTING=OFF -DNINFER_BUILD_BENCHMARKS=OFF; cmake --build /opt/ninfer-cache/build --parallel 8 --target ninfer ninfer-serve; printf "%s\n" "$revision" > /opt/ninfer-cache/build-revision; fi; test "$(cat /opt/ninfer-cache/build-revision)" = "$revision"; printf "%s  %s\n" "$artifact_sha" "$model_path" | sha256sum --check; printf "%s  %s\n" "666fd58c2217cc5ff92a91755623672e832c46d976abd711829315889399dc9c" "/opt/ninfer-cache/build/apps/ninfer-serve" | sha256sum --check; sha256sum /opt/ninfer-cache/build/apps/ninfer-serve; exec /opt/ninfer-cache/build/apps/ninfer-serve "$model_path" "$@"', "ninfer-build-run"]
+model_path = "/root/.cache/huggingface/hub/models--lyf--Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4/snapshots/181446902fc777c479749e98cf2abf2250263a8d/qwen3_8_27b_nvfp4.ninfer"
+named_volumes = ["anvil-ninfer-70434721-build:/opt/ninfer-cache"]
+quantization = "NInfer NVFP4/row-scaled-FP8 mixed target with INT8 group-64 KV"
+context_tokens = 8192
+port = 8081
+health = "/health"
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-huihui-ninfer-schemafix-mtp3-8k"
+flags = [
+  "--host 0.0.0.0",
+  "--port 8081",
+  "--model-id qwen38-huihui-ninfer-schemafix-mtp3-8k",
+  "--max-context 8192",
+  "--kv-capacity 8192",
+  "--max-concurrency 1",
+  "--kv-dtype int8",
+  "--default-max-tokens 2048",
+  "--max-request-mib 384",
+  "--spec mtp",
+  "--draft-tokens 3",
+  "--no-thinking",
+  "--vision",
+]
+note = "Matched MTP3 comparison. NInfer is source-built inside the managed recipe container from exact revision 70434721b1ae29d0616f3de9b376c8a4d91590b5 and cached in a revision-specific named volume. The exact locally compiled binary SHA is verified before execution, but apt resolution is not digest-pinned; a different clean build fails closed. This remains a challenger intake path, not a promotion-grade baked image."
+
+[recipe.fit]
+suited = ["qualification-reproduction"]
+not_suited = ["automatic-promotion", "large-scale-continuous-batching", "qualified-multimodal"]
+rationale = "Reopen exact model qualification after upstream tool argument schema fix. Keep weights, 8K context, C1, INT8 KV and vision fixed while comparing runtime and reasoning controls."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4/tree/181446902fc777c479749e98cf2abf2250263a8d",
+  "https://github.com/Neroued/ninfer/tree/70434721b1ae29d0616f3de9b376c8a4d91590b5",
+  "https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated/tree/d42ca8978c5a66e92c3446d46e8adfe03ef692ff",
+]
+
+
+[[recipe]]
+model = "lyf/Qwen3.8-27B-Huihui-NInfer-SchemaFix-NVFP4-MTP3-32K"
+status = "candidate"
+source = "Huihui-derived Qwen3.8-27B NVFP4 matched MTP3 comparison staged on 2026-09-19"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4"
+revision = "181446902fc777c479749e98cf2abf2250263a8d"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120a"
+gpu_uuid = "GPU-REPLACE-WITH-HOST-DISCOVERED-UUID"
+vram_total_gb = 32
+vram_note = "Pinned compatible upstream with schema-aware tool parsing. Exact binary SHA measured in the cold build is verified before reuse and emitted into managed logs. Apt/runtime resolution is not an immutable image; isolated qualification only."
+
+[recipe.serve]
+engine = "ninfer"
+image = "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca"
+entrypoint = ["/bin/bash", "-lc", 'set -euo pipefail; model_path="$1"; shift; revision="70434721b1ae29d0616f3de9b376c8a4d91590b5"; artifact_sha="f21f308d3b23ccd627071cd015e413db08deee4356643900518e2b251750fdc2"; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install --yes --no-install-recommends ca-certificates cmake git libavcodec-dev libavformat-dev libavutil-dev libcurl4-openssl-dev libswscale-dev ninja-build pkg-config; if [ ! -d /opt/ninfer-cache/repo/.git ]; then git clone https://github.com/Neroued/ninfer.git /opt/ninfer-cache/repo; fi; git -C /opt/ninfer-cache/repo fetch --depth 1 origin "$revision"; git -C /opt/ninfer-cache/repo checkout --detach "$revision"; test "$(git -C /opt/ninfer-cache/repo rev-parse HEAD)" = "$revision"; if [ ! -x /opt/ninfer-cache/build/apps/ninfer-serve ]; then cmake -S /opt/ninfer-cache/repo -B /opt/ninfer-cache/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNINFER_BUILD_APPS=ON -DBUILD_TESTING=OFF -DNINFER_BUILD_BENCHMARKS=OFF; cmake --build /opt/ninfer-cache/build --parallel 8 --target ninfer ninfer-serve; printf "%s\n" "$revision" > /opt/ninfer-cache/build-revision; fi; test "$(cat /opt/ninfer-cache/build-revision)" = "$revision"; printf "%s  %s\n" "$artifact_sha" "$model_path" | sha256sum --check; printf "%s  %s\n" "666fd58c2217cc5ff92a91755623672e832c46d976abd711829315889399dc9c" "/opt/ninfer-cache/build/apps/ninfer-serve" | sha256sum --check; sha256sum /opt/ninfer-cache/build/apps/ninfer-serve; exec /opt/ninfer-cache/build/apps/ninfer-serve "$model_path" "$@"', "ninfer-build-run"]
+model_path = "/root/.cache/huggingface/hub/models--lyf--Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4/snapshots/181446902fc777c479749e98cf2abf2250263a8d/qwen3_8_27b_nvfp4.ninfer"
+named_volumes = ["anvil-ninfer-70434721-build:/opt/ninfer-cache"]
+quantization = "NInfer NVFP4/row-scaled-FP8 mixed target with INT8 group-64 KV"
+context_tokens = 32768
+port = 8081
+health = "/health"
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-huihui-ninfer-schemafix-mtp3-32k"
+flags = [
+  "--host 0.0.0.0",
+  "--port 8081",
+  "--model-id qwen38-huihui-ninfer-schemafix-mtp3-32k",
+  "--max-context 32768",
+  "--kv-capacity 32768",
+  "--max-concurrency 1",
+  "--kv-dtype int8",
+  "--default-max-tokens 2048",
+  "--max-request-mib 384",
+  "--spec mtp",
+  "--draft-tokens 3",
+  "--no-thinking",
+  "--vision",
+]
+note = "32K MTP3 context expansion. NInfer is source-built inside the managed recipe container from exact revision 70434721b1ae29d0616f3de9b376c8a4d91590b5 and cached in a revision-specific named volume. The exact locally compiled binary SHA is verified before execution, but apt resolution is not digest-pinned; a different clean build fails closed. This remains a challenger intake path, not a promotion-grade baked image."
+
+[recipe.fit]
+suited = ["qualification-reproduction"]
+not_suited = ["automatic-promotion", "large-scale-continuous-batching", "qualified-multimodal"]
+rationale = "Reopen exact model qualification after upstream tool argument schema fix. Keep weights, 32K context, C1, INT8 KV and vision fixed while comparing runtime and reasoning controls."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4/tree/181446902fc777c479749e98cf2abf2250263a8d",
+  "https://github.com/Neroued/ninfer/tree/70434721b1ae29d0616f3de9b376c8a4d91590b5",
+  "https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated/tree/d42ca8978c5a66e92c3446d46e8adfe03ef692ff",
+]

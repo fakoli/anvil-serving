@@ -1,0 +1,33 @@
+{
+  "schema": "anvil-serving.public-artifact-manifest/v1",
+  "artifacts": [
+    {
+      "path": "capacity-baked-31k.json",
+      "sha256": "b424696ae54f596b0b959916c3880b5bb37d86403efbe8cc0c8de752785d5a28"
+    },
+    {
+      "path": "capacity-baked-32.json",
+      "sha256": "4449f16f0b3e702ad1fdad1548f4e74f946fc9779fb8349e1a3be3d9a75f9435"
+    },
+    {
+      "path": "identity-configuration-receipt.json",
+      "sha256": "9160ba245dd08be9863369a38c765fa248064764c7b24fa6eddd454533991dd0"
+    },
+    {
+      "path": "media-withdrawal-receipt.json",
+      "sha256": "198231346720906f11ed7d1e2a3243a2628649634e4b8bbea54f3d21449d2963"
+    },
+    {
+      "path": "quality-baked-summary.json",
+      "sha256": "32e9209e841a4edd94a177b14d0dc6096da348e8d4f88eb8616cfe8d3b5c4131"
+    },
+    {
+      "path": "tested-recipe.toml",
+      "sha256": "18fa51538298c0bf47d01cc0cfcd49c90f8348caf1b407de57e8296e5ffdebd2"
+    },
+    {
+      "path": "vision-baked.json",
+      "sha256": "7de6fe85b92fc3e75ac4d51b92d8cc0e6db50ff05dd7e69f98f378600d76fba6"
+    }
+  ]
+}

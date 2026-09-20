@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.benchmark-workload/v1",
+  "core": "Native deterministic tool and intelligence checks,3repetitions,1024visible tokens,unchanged validators. Off and low separately.",
+  "boundaries": [
+    "tool-string-boundaries.json",
+    "tool-string-boundaries-instructions.json"
+  ],
+  "boundary_interpretation": "Seven exact typed-string cases,3repetitions each. Generic system instruction changes prompt only; expected values unchanged. Diagnostic, not a replacement for built-in quality gates.",
+  "vision": {
+    "path": "tests/fixtures/eval-data/agents-a1-v1/image-corpus.json",
+    "sha256": "a514ae146b5aab3bcb55ae9fb27f55a41791a20863304d1bb95947e93931cd12",
+    "cases": 6,
+    "repetitions": 2,
+    "license": "CC0-1.0 synthetic"
+  },
+  "capacity": "See run-plan and native files; strict128 warmups fail, separate strict32 short-output diagnostic n12seed43 completes. No performance from failed requests.",
+  "licenses": "Repository-native synthetic fixtures; no imported scored dataset.",
+  "public_serialization": {
+    "native_suite_source_hashes": "Native source_sha256 fields remain original input byte hashes. Private originals retained. Physical line endings normalized for public repository; escaped CRLF inside JSON string values unchanged.",
+    "transforms": [
+      {
+        "file": "vision-schemafix-mtp3.json",
+        "original_sha256": "ab126db2f72c0a6af4da49dc6decda3da5132d8a6324c79f1839ef6d66249e0d",
+        "public_sha256": "947722a772a1e903e1a39c4d0e36e7995a4fa5b0d01ae2fcf101aa62d565d7cf",
+        "change": "physical CRLF to LF, final blank-line normalization; JSON values unchanged"
+      },
+      {
+        "file": "vision-schemafix-nospec.json",
+        "original_sha256": "7d6f0957752d07578c167cd0778ea5dd2ea4e7d91af63fa983f640b4dd5f6c51",
+        "public_sha256": "1a626a15eca05004238ea471db11b1b3eb183a9f0cbef8f5019198f82fe21438",
+        "change": "physical CRLF to LF, final blank-line normalization; JSON values unchanged"
+      }
+    ]
+  }
+}

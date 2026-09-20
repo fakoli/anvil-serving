@@ -1,0 +1,16 @@
+Sanitized owning runtime log excerpts; full originals retained privately.
+Vision reload:
+HEAD is now at a99407c6 docs(eval): add official qwen3.8 bf16 comparison to model card
+[2026-09-19 18:13:54.258] [info] ninfer-serve: loading model...
+[2026-09-19 18:13:55.102] [info] ninfer-serve: load        weights                      0.00%           0 B /      19.25 GiB     0.000 s
+[2026-09-19 18:13:58.869] [info] ninfer-serve: load        weights                    100.00%     19.25 GiB /      19.25 GiB     3.767 s
+[2026-09-19 18:14:01.374] [info] ninfer-serve: model loaded in 7.11574 s
+[2026-09-19 18:14:01.374] [info] ninfer-serve: KV capacity explicit resolved=8192 tokens pages=128/128 runtime=1.16 GiB free-after-weights=10.95 GiB free-after-startup=9.80 GiB headroom=0.00 MiB slack=9.79 GiB graphs=2.00 MiB/12.00 MiB media-workers=16 media-cache=1.00 GiB media-live=2.00 GiB
+[2026-09-19 18:14:01.511] [info] ninfer-serve: listening on http://0.0.0.0:8081 (model id: qwen38-huihui-ninfer-nvfp4-nospec-8k, auth: disabled)
+[2026-09-19 18:14:25.452] [info] ninfer-serve: [req 1] openai_chat_completions non-stream msgs=1 max_tokens=1024 (client) tools=0 tool_choice=auto tool_history=no thinking=off preserve_thinking=off preserve_change=no sampler=[greedy] prepare=0.03s acquire=0.00s media=0.03s/0.03s tokenize=0.00s media_cache=0/1/0 \u2192 submitted
+[2026-09-19 18:14:27.501] [info] ninfer-serve: [req 1] done finish=stop_token prompt=249 gen=127 cache=0 reuse=full_reset ttft=336ms prefill=945.8tok/s decode=72.2tok/s wall=2.08s speculative=off
+
+Binary SHA verified in the managed vision recipe entrypoint:
+3e348cef87a25b79afae483dc4966bcd52b4665f674380ce54fc36e6b1ce46c0  /opt/ninfer-cache/build/apps/ninfer-serve
+Initial unsupported control: chat_template_option_not_supported
+Initial multimodal request: vision_disabled

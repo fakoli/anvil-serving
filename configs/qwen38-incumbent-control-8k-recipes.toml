@@ -1,0 +1,72 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "unsloth/Qwen3.8-27B-UD-Q4_K_XL-Native-MTP3-Control-8K"
+status = "comparison-control"
+source = "2026-09-19 workload-matched 8K control derived from established 262K deployment; only context and served identity changed. Not promoted."
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+  [recipe.download]
+  repo = "unsloth/Qwen3.8-27B-GGUF"
+  revision = "4ca720788d1e01f1bff70c033e0d0028fd02e502"
+  volume = "vllm-hfcache"
+  require_complete_cache = true
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  vram_total_gb = 32
+  gpu_uuid = "0"
+
+  [recipe.serve]
+  engine = "llamacpp"
+  image = "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac"
+  entrypoint = ["/app/llama-server"]
+  model_flag = "-m"
+  model_path = "/root/.cache/huggingface/hub/models--unsloth--Qwen3.8-27B-GGUF/snapshots/4ca720788d1e01f1bff70c033e0d0028fd02e502/Qwen3.8-27B-UD-Q4_K_XL.gguf"
+  quantization = "Unsloth GGUF UD Q4_K_XL native MTP3; Q4_0 K/V cache; F16 vision projector"
+  context_tokens = 8192
+  port = 8080
+  served_model_name = "qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-control-8k"
+  env = [
+    "CUDA_VISIBLE_DEVICES=0",
+    "NVIDIA_DRIVER_CAPABILITIES=compute,utility",
+  ]
+  flags = [
+    "--mmproj /root/.cache/huggingface/hub/models--unsloth--Qwen3.8-27B-GGUF/snapshots/4ca720788d1e01f1bff70c033e0d0028fd02e502/mmproj-F16.gguf",
+    "--spec-type draft-mtp",
+    "--spec-draft-n-max 3",
+    "--spec-draft-ngl 99",
+    "--spec-draft-type-k q4_0",
+    "--spec-draft-type-v q4_0",
+    "--alias qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-control-8k",
+    "--ctx-size 8192",
+    "--parallel 1",
+    "--batch-size 2048",
+    "--ubatch-size 512",
+    "--n-gpu-layers 99",
+    "--flash-attn on",
+    "--cache-type-k q4_0",
+    "--cache-type-v q4_0",
+    "--jinja",
+    "--reasoning off",
+    "--reasoning-format deepseek",
+    "--temp 0.7",
+    "--top-p 0.8",
+    "--top-k 20",
+    "--min-p 0",
+    "--presence-penalty 1.5",
+    "--repeat-penalty 1.0",
+    "--metrics",
+    "--host 0.0.0.0",
+    "--port 8080",
+  ]
+
+    [recipe.serve.healthcheck]
+    mode = "http"
+    port = 8080
+    path = "/health"
+    interval_seconds = 15
+    timeout_seconds = 5
+    retries = 5

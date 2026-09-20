@@ -1,0 +1,43 @@
+{
+  "schema": "anvil-serving.run-plan/v1",
+  "purpose": "Extend the same pinned C1 profile to native Hermes minimum context.",
+  "order": [
+    "managed load",
+    "preflight",
+    "repeated quality",
+    "short capacity",
+    "long capacity",
+    "vision",
+    "router",
+    "client convergence"
+  ],
+  "preflight_correction": "Initial invocation omitted profile-specific needle/tool-batch overrides; retained default128K/C20 failures, then used60000 nominal needle and batch1.",
+  "capacity": {
+    "requests": [
+      12,
+      6
+    ],
+    "context_targets": [
+      2048,
+      64000
+    ],
+    "seeds": [
+      43,
+      44
+    ],
+    "concurrency": 1,
+    "response_words": 32,
+    "max_tokens": 512,
+    "cache": "unique",
+    "canaries": false,
+    "control_policy": "strict"
+  },
+  "quality": {
+    "repetitions": 3,
+    "context_target": 64000
+  },
+  "vision": {
+    "corpus": "tests/fixtures/eval-data/agents-a1-v1/image-corpus.json",
+    "repetitions": 2
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-19-qwen38-huihui-ninfer",
+  "updated_at": "2026-09-19T18:28:16.988215+00:00",
+  "status": "complete",
+  "current_stage": "rejected-and-restored",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.0.0",
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "complete",
+      "evidence": [
+        "research-notes.md",
+        "source-registry.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "complete",
+      "evidence": [
+        "feasibility-input.json",
+        "feasibility-result.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "scout",
+      "status": "complete",
+      "evidence": [
+        "summary.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "finalist",
+      "status": "blocked-by-correctness",
+      "evidence": [
+        "summary.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "quality",
+      "status": "complete",
+      "evidence": [
+        "summary.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "restoration",
+      "status": "complete",
+      "evidence": [
+        "summary.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "complete",
+      "evidence": [
+        "summary.json"
+      ],
+      "failures": []
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [
+    "multimodal-nospec-8k-vision.json",
+    "multimodal-nospec-8k.json",
+    "preflight-incumbent.json",
+    "preflight-nospec-protocol.json",
+    "preflight-nospec-server-control.json",
+    "preflight-nospec-smoke.json",
+    "quality-incumbent-control.json",
+    "quality-nospec-8k.json",
+    "quality-nospec-reasoning-low.json"
+  ],
+  "next_actions": [
+    "A corrected pinned profile must pass strict tools before reopening qualification."
+  ],
+  "promotion_authorized": false,
+  "full_qualification_completed": false
+}

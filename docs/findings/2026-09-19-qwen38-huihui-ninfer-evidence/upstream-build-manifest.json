@@ -1,0 +1,27 @@
+{
+  "repo_id": "lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4",
+  "created_utc": "2026-08-19",
+  "source": {
+    "repo": "huihui-ai/Huihui-Qwen3.8-27B-abliterated",
+    "revision": "d42ca8978c5a66e92c3446d46e8adfe03ef692ff"
+  },
+  "ninfer": {
+    "repo": "Neroued/ninfer",
+    "commit": "a99407c63fc5bbd25d9fb597cbb8ab352bdb01ef"
+  },
+  "artifact": {
+    "filename": "qwen3_8_27b_nvfp4.ninfer",
+    "bytes": 21492695040,
+    "sha256": "f21f308d3b23ccd627071cd015e413db08deee4356643900518e2b251750fdc2"
+  },
+  "mixed_source": {
+    "fp8_matrices": 233,
+    "nvfp4_matrices": 168,
+    "preflight": "passed"
+  },
+  "hardware": {
+    "gpu": "RTX 5090 32GB",
+    "cuda": "13.1",
+    "power_limit_w": 450
+  }
+}

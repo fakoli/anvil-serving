@@ -74,6 +74,9 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-09-19 | [Huihui Qwen3.8 promotion addendum](2026-09-19-qwen38-huihui-promotion-addendum.md) | Exact baked compatible-runtime profile promoted through the managed alias; router preflight, Workbench, and Grafana are live. Earlier no-promotion findings remain historical evidence. |
+| 2026-09-19 | [Huihui Qwen3.8 NInfer compatible-runtime follow-up](2026-09-19-qwen38-huihui-runtime-followup.md) | Compatible v2 runtime recovers smoke, core, protocol, and vision; matched NInfer MTP3/no-spec strict 32-word 8K/C1 cells pass 12/12 at 176.2/71.4 mean decode; workload-matched cross-profile GGUF is 107.7 tok/s and uses less GPU memory; 32K MTP is unpaired, managed restoration verified, no promotion |
+| 2026-09-19 | [Huihui Qwen3.8 27B NInfer NVFP4 RTX 5090 scout](2026-09-19-qwen38-huihui-ninfer.md) | Pinned no-spec 8K/C1 candidate passed direct protocol gates and corrected image-only 12/12, but strict tools failed 0/3 at default and low-effort diagnostics; incumbent control passed 3/3, no speed or footprint comparison, managed restoration verified, `rejected`/`no-promotion` |
 | 2026-09-19 | [VoiceChat Apple feasibility stop](2026-09-19-voicechat-feasibility.md) | Whole tool-capable replacement blocked before candidate acquisition; disk arithmetic passes but memory is unresolved; protected audio diagnostics are not candidate latency or quality |
 | 2026-09-19 | [GLM-5.3-Flash r10 APC promotion follow-up](2026-09-19-glm53-apc-promotion.md) | Explicit human approval and fresh bounded acceptance after the retained r9/r10 APC campaign; shared-prefix TTFT −67.84%, unique-prefix request throughput −2.39% within the frozen gate, and exact r9 rollback retained |
 | 2026-09-19 | [Swift / stock Qwen3.8 Apple artifact feasibility stop](2026-09-19-swift-qwen38-apple-feasibility.md) | Read-only Apple M4 Max storage-policy stop for uncached Swift/stock Qwen3.8 GGUF pairs; memory containment unresolved; no download, launch, benchmark, cleanup, or promotion |
@@ -226,3 +229,7 @@ path and public-artifact audit remains tracked by
 | 2026-06-28 | [2026-06-28-planning-capability-eval.md](2026-06-28-planning-capability-eval.md) | Historical Anvil PRD-to-tasks evaluation with complete bounded prompts, outputs, judge records, and reproducible offline aggregates |
 | 2026-06-28 | [2026-06-28-anvil-integration-audit.md](2026-06-28-anvil-integration-audit.md) | Pinned Anvil integration audit: one planning endpoint, no fleet or two-endpoint router |
 | (running) | [blackwell-sm120-lab-notebook.md](blackwell-sm120-lab-notebook.md) | Blackwell sm_120 lab notebook: which models serve (and how) on primary-node |
+
+## 2026-09-19: Huihui 64K C1 promotion
+
+The promoted Huihui NInfer MTP3 profile now uses 65,536 context tokens at C1. Direct preflight passed 7/7, routed preflight 6/6, vision 12/12, and native Hermes 9/9 with the exact local alias. Descriptive, canary-free C1 short-input capacity passed 12/12 at 182.1 mean decode tokens/s; the long-input cell passed 6/6 at 167.1, with 60,769-60,776 actual prompt tokens. Post-workload GPU use was 24,224 MiB. The three fleet hosts and Open WebUI converged with zero repeat changes. The 32K results remain historical evidence and a rollback profile. Endurance, interactive browser acceptance, and a matched 64K no-spec control remain unmeasured. See [the 64K finding](2026-09-19-qwen38-huihui-64k.md).

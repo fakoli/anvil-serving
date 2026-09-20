@@ -22,6 +22,8 @@ DEFAULT_HERMES_CONFIG = "~/.hermes/config.yaml"
 DEFAULT_HERMES_BIN = "~/.local/bin/hermes"
 DEFAULT_HERMES_HOME = "~/.hermes"
 DEFAULT_HERMES_MEDIA_SKILL = "~/.hermes/skills/anvil-media/SKILL.md"
+DEFAULT_PI_MEDIA_MCP = "~/.pi/agent/mcp.json"
+DEFAULT_PI_MEDIA_BACKUP_ROOT = "~/.anvil-serving/backups/pi-media"
 DEFAULT_HERMES_MEDIA_BACKUP_ROOT = "~/.anvil-serving/backups/hermes-media"
 DEFAULT_PI_MODELS = "~/.pi/agent/models.json"
 DEFAULT_PI_SETTINGS = "~/.pi/agent/settings.json"
@@ -565,23 +567,99 @@ def render_client_documents(
 
 
 def _read_json_file(path: Path, *, required: bool = True) -> dict:
+    payload, _, _ = _read_json_document(path, required=required)
+    return payload
+
+
+def _read_json_document(path: Path, *, required: bool = True) -> tuple[dict, bytes | None, int | None]:
+    """Read one regular JSON document and retain its exact source bytes."""
     if path.is_symlink():
         raise ClientCatalogError("refusing symbolic-link client config: %s" % path)
     if not path.exists():
         if required:
             raise ClientCatalogError("required client config does not exist: %s" % path)
-        return {}
+        return {}, None, None
     if not path.is_file():
         raise ClientCatalogError("client config is not a regular file: %s" % path)
     if path.stat().st_size > DEFAULT_MAX_RESPONSE_BYTES:
         raise ClientCatalogError("client config exceeds the size limit: %s" % path)
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        source = path.read_bytes()
+        payload = json.loads(source.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ClientCatalogError("client config is not valid UTF-8 JSON: %s" % path) from exc
     if not isinstance(payload, dict):
         raise ClientCatalogError("client config must contain a JSON object: %s" % path)
-    return payload
+    return payload, source, stat.S_IMODE(path.stat().st_mode)
+
+
+def sync_pi_media(
+    *,
+    mcp_config: str | None = None,
+    backup_root: str = DEFAULT_PI_MEDIA_BACKUP_ROOT,
+    withdraw: bool = False,
+    dry_run: bool = True,
+    confirm: bool = False,
+) -> dict:
+    """Withdraw only Pi's retired direct Anvil media MCP entry."""
+    if not withdraw:
+        raise ClientCatalogError("pi media sync requires --withdraw")
+    implicit_default = mcp_config is None
+    selected_path = DEFAULT_PI_MEDIA_MCP if implicit_default else mcp_config
+    path = Path(os.path.expanduser(selected_path))
+    payload, source, mode = _read_json_document(path, required=not implicit_default)
+    servers = payload.get("mcpServers", {})
+    if not isinstance(servers, Mapping):
+        raise ClientCatalogError("Pi MCP mcpServers must be an object")
+    key = "anvil-media-mcp"
+    if key in servers and not isinstance(servers[key], Mapping):
+        raise ClientCatalogError("Pi Anvil media MCP entry must be an object")
+    changed = key in servers
+    summary = {
+        "schema": "anvil-serving.pi-media-withdraw/v1",
+        "entry": key,
+        "changed": changed,
+        "backupCreated": False,
+        "dryRun": True,
+        "status": "not-configured" if source is None else "ready",
+    }
+    if dry_run or not confirm or not changed:
+        return summary
+    if source is None or mode is None:
+        raise ClientCatalogError("Pi MCP config disappeared before withdrawal")
+    desired = json.loads(json.dumps(payload))
+    del desired["mcpServers"][key]
+    desired_bytes = _json_bytes(desired)
+    _, observed_source, _ = _read_json_document(path)
+    if observed_source != source:
+        raise ClientCatalogError("Pi MCP config changed before withdrawal; retry")
+    backup = _backup([path], Path(os.path.expanduser(backup_root)), _sha256_bytes(desired_bytes))
+    _, observed_source, _ = _read_json_document(path)
+    if observed_source != source:
+        raise ClientCatalogError("Pi MCP config changed before withdrawal; retry")
+    try:
+        _atomic_write(path, desired_bytes, mode=0o600)
+        checked, checked_bytes, _ = _read_json_document(path)
+        if checked_bytes != desired_bytes or _sha256_bytes(checked_bytes) != _sha256_bytes(desired_bytes):
+            raise ClientCatalogError("Pi MCP config verification hash did not match")
+        if key in checked.get("mcpServers", {}):
+            raise ClientCatalogError("Pi media withdrawal did not remove owned entry")
+    except (ClientCatalogError, OSError) as exc:
+        try:
+            _, current_bytes, _ = _read_json_document(path)
+            if current_bytes == desired_bytes:
+                _atomic_write(path, source, mode=mode)
+            elif current_bytes != source:
+                raise ClientCatalogError(
+                    "Pi MCP config changed during withdrawal; preserving concurrent change"
+                ) from exc
+        except (ClientCatalogError, OSError) as rollback_exc:
+            raise ClientCatalogError(
+                "Pi media withdrawal verification failed and could not safely restore the config"
+            ) from rollback_exc
+        raise ClientCatalogError("Pi media withdrawal verification failed; original config restored") from exc
+    summary.update({"backupCreated": True, "backup": str(backup), "dryRun": False})
+    return summary
 
 
 def _read_text_file(path: Path) -> str:
@@ -2149,5 +2227,6 @@ __all__ = [
     "render_hermes_profile_plan",
     "plan_hermes_profiles",
     "sync_hermes_media",
+    "sync_pi_media",
     "sync_clients",
 ]

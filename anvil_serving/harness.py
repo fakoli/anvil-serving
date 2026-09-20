@@ -718,6 +718,31 @@ def cmd_sync_hermes_media(
     return 0
 
 
+def cmd_sync_pi_media(
+    *,
+    mcp_config=None,
+    backup_root="~/.anvil-serving/backups/pi-media",
+    withdraw=False,
+    dry_run=True,
+    confirm=False,
+):
+    from .client_catalog_sync import ClientCatalogError, sync_pi_media
+
+    try:
+        result = sync_pi_media(
+            mcp_config=mcp_config,
+            backup_root=backup_root,
+            withdraw=withdraw,
+            dry_run=dry_run,
+            confirm=confirm,
+        )
+    except (OSError, ClientCatalogError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
 def _build_parser():
     parser = argparse.ArgumentParser(prog="anvil-serving harness")
     actions = parser.add_subparsers(dest="action", required=True)
@@ -776,6 +801,11 @@ def _build_parser():
     hermes_media.add_argument("--restart-hermes-on-change", action="store_true")
     hermes_media.add_argument("--dry-run", action="store_true")
     hermes_media.add_argument("--timeout-seconds", type=int, default=15)
+    pi_media = sync_targets.add_parser("pi-media")
+    pi_media.add_argument("--mcp-config")
+    pi_media.add_argument("--backup-root", default="~/.anvil-serving/backups/pi-media")
+    pi_media.add_argument("--withdraw", action="store_true")
+    pi_media.add_argument("--dry-run", action="store_true")
     restart = actions.add_parser("restart").add_subparsers(dest="target", required=True).add_parser("openclaw")
     restart.add_argument("--gateway-host")
     restart.add_argument("--gateway-user")
@@ -788,6 +818,9 @@ def _build_parser():
 def main(argv=None):
     args = _build_parser().parse_args(argv)
     if args.action == "sync":
+        if args.target == "pi-media":
+            from . import guard
+            return cmd_sync_pi_media(mcp_config=args.mcp_config, backup_root=args.backup_root, withdraw=args.withdraw, dry_run=args.dry_run, confirm=guard.confirmation_authorized())
         if args.target == "hermes-media":
             from . import guard
 
