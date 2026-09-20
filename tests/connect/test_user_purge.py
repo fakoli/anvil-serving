@@ -120,6 +120,27 @@ def test_validate_only_and_completed_rerun_are_non_destructive(database):
     assert rerun["applied"] and rerun["opaque_identifiers"] == 0 and not rerun["expected_subject_found"]
 
 
+def test_require_zero_opaque_purges_username_only_records_and_allows_reuse(database):
+    with sqlite3.connect(database) as connection:
+        for table in _USERNAME_TABLES:
+            _insert(connection, table, {"username": "unsigned"})
+    result = user_purge.purge(database, "unsigned", require_zero_opaque=True)
+    assert result["applied"] and result["opaque_identifiers"] == 0
+    for table in _USERNAME_TABLES:
+        assert _count(database, table, "username", "unsigned") == 0
+    with sqlite3.connect(database) as connection:
+        _insert(connection, "authentication_logs", {"username": "unsigned"})
+    assert _count(database, "authentication_logs", "username", "unsigned") == 1
+
+
+@pytest.mark.parametrize("validate_only", (True, False))
+def test_require_zero_opaque_rejects_mapping_without_mutation(database, validate_only):
+    with pytest.raises(UsageError):
+        user_purge.purge(database, "alice", validate_only=validate_only, require_zero_opaque=True)
+    assert _count(database, "authentication_logs", "username", "alice") == 1
+    assert _count(database, "user_opaque_identifier", "username", "alice") == 1
+
+
 @pytest.mark.parametrize("damage", ("index", "corrupt", "oversize"))
 def test_unsupported_or_unsafe_database_never_mutates(database, damage):
     if damage == "index":

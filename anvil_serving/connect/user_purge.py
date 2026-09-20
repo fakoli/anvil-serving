@@ -157,7 +157,7 @@ def _marks(values: tuple[str, ...]) -> str:
 
 def purge(database_path: str | Path, username: str, *, expected_subject: str | None = None,
           validate_only: bool = False, uid: int | None = None,
-          gid: int | None = None) -> dict[str, int | bool]:
+          gid: int | None = None, require_zero_opaque: bool = False) -> dict[str, int | bool]:
     """Validate or erase one account from stopped Authelia SQLite schema 24.
 
     The caller must fork/drop to the IdP identity first so SQLite journals retain
@@ -167,6 +167,8 @@ def purge(database_path: str | Path, username: str, *, expected_subject: str | N
         raise _invalid("Authelia username is invalid.")
     if expected_subject is not None and (not isinstance(expected_subject, str) or not expected_subject or len(expected_subject) > 64):
         raise _invalid("Authelia subject is invalid.")
+    if type(require_zero_opaque) is not bool or (require_zero_opaque and expected_subject is not None):
+        raise _invalid("Authelia opaque-identifier requirement is invalid.")
     uid = os.geteuid() if uid is None else uid
     gid = os.getegid() if gid is None else gid
     if (type(uid) is not int or type(gid) is not int or uid <= 0 or gid <= 0
@@ -183,31 +185,47 @@ def purge(database_path: str | Path, username: str, *, expected_subject: str | N
             connection.execute("PRAGMA busy_timeout=5000")
             _schema(connection)
             _integrity(connection)
-            subjects = tuple(row[0] for row in connection.execute("SELECT identifier FROM user_opaque_identifier WHERE username = ? ORDER BY id", (username,)))
-            if len(subjects) > _MAX_IDENTIFIERS:
-                raise _invalid("Authelia account purge exceeds its identifier bound.")
-            if subjects and expected_subject is not None and expected_subject not in subjects:
-                raise _invalid("Authelia account does not match its prepared OpenID Connect subject.")
-            preconfiguration_ids = tuple(row[0] for row in connection.execute("SELECT id FROM oauth2_consent_preconfiguration WHERE subject IN (" + _marks(subjects) + ")", subjects)) if subjects else ()
-            if len(preconfiguration_ids) > _MAX_PRECONFIGURATIONS:
-                raise _invalid("Authelia account purge exceeds its consent-preconfiguration bound.")
-            challenges = tuple(row[0] for row in connection.execute("SELECT challenge_id FROM oauth2_consent_session WHERE subject IN (" + _marks(subjects) + ") OR preconfiguration IN (" + _marks(preconfiguration_ids) + ")", (*subjects, *preconfiguration_ids))) if subjects else ()
-            if len(challenges) > _MAX_CHALLENGES:
-                raise _invalid("Authelia account purge exceeds its consent-session bound.")
-            username_rows = {table: connection.execute(f"SELECT COUNT(*) FROM {table} WHERE username = ?", (username,)).fetchone()[0] for table in _USERNAME_TABLES}
-            session_rows = sum(connection.execute(f"SELECT COUNT(*) FROM {table} WHERE subject IN ({_marks(subjects)}) OR challenge_id IN ({_marks(challenges)})", (*subjects, *challenges)).fetchone()[0] for table in _SESSION_TABLES) if subjects or challenges else 0
-            changes = sum(username_rows.values()) + len(subjects) + len(challenges) + session_rows + len(preconfiguration_ids)
-            if changes > _MAX_CHANGES:
-                raise _invalid("Authelia account purge exceeds its change bound.")
-            result = {"schema_version": _SCHEMA_VERSION, "validated_only": validate_only, "applied": False,
-                      "username_records": sum(username_rows.values()), "opaque_identifiers": len(subjects),
-                      "oauth_sessions": session_rows, "consent_sessions": len(challenges),
-                      "consent_preconfigurations": len(preconfiguration_ids),
-                      "expected_subject_found": expected_subject in subjects if expected_subject is not None else False}
+            def plan() -> tuple[tuple[str, ...], tuple[int, ...], tuple[str, ...], dict[str, int], int]:
+                subjects = tuple(row[0] for row in connection.execute("SELECT identifier FROM user_opaque_identifier WHERE username = ? ORDER BY id", (username,)))
+                if len(subjects) > _MAX_IDENTIFIERS:
+                    raise _invalid("Authelia account purge exceeds its identifier bound.")
+                if require_zero_opaque and subjects:
+                    raise _invalid("Authelia account has an OpenID Connect mapping; zero opaque identifiers are required.")
+                if subjects and expected_subject is not None and expected_subject not in subjects:
+                    raise _invalid("Authelia account does not match its prepared OpenID Connect subject.")
+                preconfiguration_ids = tuple(row[0] for row in connection.execute("SELECT id FROM oauth2_consent_preconfiguration WHERE subject IN (" + _marks(subjects) + ")", subjects)) if subjects else ()
+                if len(preconfiguration_ids) > _MAX_PRECONFIGURATIONS:
+                    raise _invalid("Authelia account purge exceeds its consent-preconfiguration bound.")
+                challenges = tuple(row[0] for row in connection.execute("SELECT challenge_id FROM oauth2_consent_session WHERE subject IN (" + _marks(subjects) + ") OR preconfiguration IN (" + _marks(preconfiguration_ids) + ")", (*subjects, *preconfiguration_ids))) if subjects else ()
+                if len(challenges) > _MAX_CHALLENGES:
+                    raise _invalid("Authelia account purge exceeds its consent-session bound.")
+                username_rows = {table: connection.execute(f"SELECT COUNT(*) FROM {table} WHERE username = ?", (username,)).fetchone()[0] for table in _USERNAME_TABLES}
+                session_rows = sum(connection.execute(f"SELECT COUNT(*) FROM {table} WHERE subject IN ({_marks(subjects)}) OR challenge_id IN ({_marks(challenges)})", (*subjects, *challenges)).fetchone()[0] for table in _SESSION_TABLES) if subjects or challenges else 0
+                changes = sum(username_rows.values()) + len(subjects) + len(challenges) + session_rows + len(preconfiguration_ids)
+                if changes > _MAX_CHANGES:
+                    raise _invalid("Authelia account purge exceeds its change bound.")
+                return subjects, preconfiguration_ids, challenges, username_rows, session_rows
+
+            def result_for(subjects: tuple[str, ...], preconfiguration_ids: tuple[int, ...], challenges: tuple[str, ...],
+                           username_rows: dict[str, int], session_rows: int) -> dict[str, int | bool]:
+                return {"schema_version": _SCHEMA_VERSION, "validated_only": validate_only, "applied": False,
+                        "username_records": sum(username_rows.values()), "opaque_identifiers": len(subjects),
+                        "oauth_sessions": session_rows, "consent_sessions": len(challenges),
+                        "consent_preconfigurations": len(preconfiguration_ids),
+                        "expected_subject_found": expected_subject in subjects if expected_subject is not None else False}
             if validate_only:
-                return result
+                connection.execute("BEGIN")
+                try:
+                    result = result_for(*plan())
+                    connection.execute("ROLLBACK")
+                    return result
+                except BaseException:
+                    connection.execute("ROLLBACK")
+                    raise
             connection.execute("BEGIN IMMEDIATE")
             try:
+                subjects, preconfiguration_ids, challenges, username_rows, session_rows = plan()
+                result = result_for(subjects, preconfiguration_ids, challenges, username_rows, session_rows)
                 for table in _USERNAME_TABLES:
                     connection.execute(f"DELETE FROM {table} WHERE username = ?", (username,))
                 if subjects or challenges:
