@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -41,6 +42,17 @@ type connectorResourceState struct {
 	ID         string `json:"id"`
 	CSR        string `json:"csr"`
 	TLSPrivate string `json:"tls_private"`
+}
+
+// ConnectorPrior is the public identity that the managed owner retained before
+// it revoked a connector for a pure resource expansion. It contains no bearer
+// or private key material.
+type ConnectorPrior struct {
+	ID          string   `json:"id"`
+	Fingerprint string   `json:"fingerprint"`
+	Epoch       string   `json:"epoch"`
+	Generation  uint64   `json:"generation"`
+	Resources   []string `json:"resources"`
 }
 
 type connectorState struct {
@@ -124,6 +136,101 @@ func InitializeConnector(ctx context.Context, declaration ConnectorConfig, bundl
 		return ErrUnavailable
 	}
 	return nil
+}
+
+// ReenrollConnector stages one explicitly authorized connector replacement.
+// It never contacts the control plane: the caller must invoke the existing
+// immutable init command with the same invitation after this returns. Keeping
+// staging separate preserves init's established lost-response recovery.
+func ReenrollConnector(declaration ConnectorConfig, prior ConnectorPrior, bundle admin.Response) error {
+	if declaration.Validate() != nil || !validConnectorPrior(prior) || !validInviteBundle(declaration, bundle) {
+		return ErrConfiguration
+	}
+	directory, err := privatefiles.Open(declaration.StateDirectory)
+	if err != nil {
+		return ErrUnavailable
+	}
+	defer directory.Close()
+	state, exists, err := loadConnectorState(directory)
+	if err != nil || !exists {
+		return ErrUnavailable
+	}
+	previousName := retainedConnectorStateName(prior.Generation)
+	if stagedReplacement(state, declaration, prior, bundle, directory, previousName) {
+		return nil
+	}
+	if !matchesConnectorPrior(state, declaration, prior) || bundle.Epoch != state.Epoch || bundle.InnerCAPEM != state.InnerCAPEM || bundle.Generation <= state.Generation || !strictResourceSuperset(state.Resources, resourceIDs(declaration)) {
+		return ErrConfiguration
+	}
+	next, err := newConnectorState(declaration, bundle)
+	if err != nil {
+		return ErrUnavailable
+	}
+	previous, err := json.Marshal(state)
+	if err != nil || retainConnectorState(directory, previousName, previous) != nil {
+		return ErrUnavailable
+	}
+	nextData, err := json.Marshal(next)
+	if err != nil || directory.Replace("installation.json", nextData) != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+func validConnectorPrior(prior ConnectorPrior) bool {
+	if !config.ValidID(prior.ID) || !validEpoch(prior.Epoch) || prior.Generation == 0 || !canonicalResources(prior.Resources) {
+		return false
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(prior.Fingerprint)
+	return err == nil && len(raw) == 32 && base64.RawURLEncoding.EncodeToString(raw) == prior.Fingerprint
+}
+
+func matchesConnectorPrior(state connectorState, declaration ConnectorConfig, prior ConnectorPrior) bool {
+	return state.Status == "enrolled" && state.ID == prior.ID && state.ID == declaration.ID &&
+		state.ControlHost == declaration.ControlHost && state.TunnelHost == declaration.TunnelHost &&
+		state.Fingerprint == prior.Fingerprint && state.Epoch == prior.Epoch &&
+		state.Generation == prior.Generation && sameResources(state.Resources, prior.Resources)
+}
+
+func strictResourceSuperset(prior, next []string) bool {
+	if len(next) <= len(prior) {
+		return false
+	}
+	for _, resource := range prior {
+		if !contains(next, resource) {
+			return false
+		}
+	}
+	return true
+}
+
+func retainedConnectorStateName(generation uint64) string {
+	return "installation.previous-" + strconv.FormatUint(generation, 10) + ".json"
+}
+
+func retainConnectorState(directory *privatefiles.Directory, name string, data []byte) error {
+	if err := directory.Create(name, data); err == nil {
+		return nil
+	}
+	existing, err := directory.Read(name, 256*1024)
+	if err != nil || !bytes.Equal(existing, data) {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+func stagedReplacement(state connectorState, declaration ConnectorConfig, prior ConnectorPrior, bundle admin.Response, directory *privatefiles.Directory, previousName string) bool {
+	if (state.Status != "pending" && state.Status != "enrolled") || !sameConnectorBinding(state, declaration, bundle) || (state.Status == "pending" && state.Invitation != bundle.Invitation) {
+		return false
+	}
+	data, err := directory.Read(previousName, 256*1024)
+	if err != nil {
+		return false
+	}
+	var previous connectorState
+	return config.Decode(bytes.NewReader(data), &previous) == nil && validConnectorState(previous) && matchesConnectorPrior(previous, declaration, prior) &&
+		bundle.Epoch == previous.Epoch && bundle.InnerCAPEM == previous.InnerCAPEM && bundle.Generation > previous.Generation &&
+		strictResourceSuperset(previous.Resources, resourceIDs(declaration))
 }
 
 // ConnectorIdentity returns only the locally persisted public installation

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,5 +72,106 @@ func TestInitializeConnectorPersistsDistinctPendingKeysBeforeEnrollment(t *testi
 		if bytes.Equal(private[32:], tlsPrivate[32:]) {
 			t.Fatal("JOSE and TLS keys reused")
 		}
+	}
+}
+
+func TestReenrollConnectorStagesExactSupersetWithoutReplacingImmutableInit(t *testing.T) {
+	old, initial := connectorFixture(t)
+	state, err := newConnectorState(old, initial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state.Status, state.Invitation = "enrolled", ""
+	directory, err := privatefiles.Open(old.StateDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(state)
+	if err != nil || directory.Create("installation.json", encoded) != nil {
+		directory.Close()
+		t.Fatal("could not retain enrolled connector state")
+	}
+	directory.Close()
+	prior := ConnectorPrior{ID: state.ID, Fingerprint: state.Fingerprint, Epoch: state.Epoch, Generation: state.Generation, Resources: append([]string(nil), state.Resources...)}
+
+	next := old
+	next.Resources = append(next.Resources, ConnectorResource{Envelope: config.Envelope{Rule: config.Rule{ID: "metrics", Host: "metrics.example.test", PathPrefix: "/", Methods: []string{"GET"}, Access: "api", NativeAuth: "delegate-bearer", Limits: config.Limits{RequestBytes: 4096, Concurrent: 1, BufferBytes: 4096, IdleSeconds: 1, DurationSeconds: 1}}, Listen: "127.0.0.1:18081", OriginURL: "http://127.0.0.1:19081", TokenEnv: "ANVIL_CONNECT_METRICS_TOKEN"}, ReverseAddress: "127.0.0.1:18181"})
+	bundle := initial
+	bundle.Generation++
+	bundle.Resources = []string{"metrics", "router"}
+
+	before, err := os.ReadFile(filepath.Join(old.StateDirectory, "installation.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := InitializeConnector(context.Background(), next, bundle); err == nil {
+		t.Fatal("ordinary init accepted a valid expanded declaration over retained old state")
+	}
+	afterImmutableInit, err := os.ReadFile(filepath.Join(old.StateDirectory, "installation.json"))
+	if err != nil || !bytes.Equal(before, afterImmutableInit) {
+		t.Fatal("ordinary immutable init changed retained state")
+	}
+
+	for name, mutate := range map[string]func(*ConnectorPrior, *admin.Response, *ConnectorConfig){
+		"fingerprint": func(p *ConnectorPrior, _ *admin.Response, _ *ConnectorConfig) {
+			p.Fingerprint = strings.Repeat("A", 43)
+		},
+		"generation":   func(p *ConnectorPrior, _ *admin.Response, _ *ConnectorConfig) { p.Generation++ },
+		"resources":    func(p *ConnectorPrior, _ *admin.Response, _ *ConnectorConfig) { p.Resources = []string{"metrics"} },
+		"bundle epoch": func(_ *ConnectorPrior, b *admin.Response, _ *ConnectorConfig) { b.Epoch = strings.Repeat("f", 64) },
+		"bundle CA": func(_ *ConnectorPrior, b *admin.Response, _ *ConnectorConfig) {
+			b.InnerCAPEM = string(testpki.New(t).PEM())
+		},
+		"not superset": func(_ *ConnectorPrior, b *admin.Response, c *ConnectorConfig) {
+			b.Resources = []string{"router"}
+			c.Resources = c.Resources[:1]
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			gotPrior, gotBundle, gotConfig := prior, bundle, next
+			gotPrior.Resources = append([]string(nil), prior.Resources...)
+			gotBundle.Resources = append([]string(nil), bundle.Resources...)
+			gotConfig.Resources = append([]ConnectorResource(nil), next.Resources...)
+			mutate(&gotPrior, &gotBundle, &gotConfig)
+			if ReenrollConnector(gotConfig, gotPrior, gotBundle) == nil {
+				t.Fatal("drift accepted")
+			}
+			after, err := os.ReadFile(filepath.Join(old.StateDirectory, "installation.json"))
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatal("drift mutated retained state")
+			}
+		})
+	}
+
+	if err := ReenrollConnector(next, prior, bundle); err != nil {
+		t.Fatalf("stage replacement: %v", err)
+	}
+	directory, err = privatefiles.Open(next.StateDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer directory.Close()
+	staged, exists, err := loadConnectorState(directory)
+	if err != nil || !exists || staged.Status != "pending" || staged.Invitation != bundle.Invitation || staged.Generation != bundle.Generation || !sameResources(staged.Resources, bundle.Resources) || staged.Fingerprint == prior.Fingerprint {
+		t.Fatalf("staged replacement = %#v exists=%v err=%v", staged, exists, err)
+	}
+	backup, err := directory.Read(retainedConnectorStateName(prior.Generation), 256*1024)
+	if err != nil {
+		t.Fatal("old connector state was not retained")
+	}
+	var retained connectorState
+	if config.Decode(bytes.NewReader(backup), &retained) != nil || !matchesConnectorPrior(retained, old, prior) {
+		t.Fatal("retained connector state does not match prior binding")
+	}
+	stagedBytes, err := os.ReadFile(filepath.Join(next.StateDirectory, "installation.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ReenrollConnector(next, prior, bundle); err != nil {
+		t.Fatalf("exact staged retry: %v", err)
+	}
+	retried, err := os.ReadFile(filepath.Join(next.StateDirectory, "installation.json"))
+	if err != nil || !bytes.Equal(stagedBytes, retried) {
+		t.Fatal("staged retry changed pending replacement")
 	}
 }
