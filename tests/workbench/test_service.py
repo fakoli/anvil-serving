@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import http.client
 import json
+import os
 import time
 import uuid
 from types import SimpleNamespace
@@ -25,6 +26,9 @@ class Metrics:
 
 
 KEY = bytes(range(32))
+_SAFE_PROJECT_READS = os.name == "posix" and all(
+    hasattr(os, name) for name in ("O_DIRECTORY", "O_CLOEXEC", "O_NOFOLLOW", "O_NONBLOCK")
+)
 
 
 def b64(value):
@@ -174,6 +178,18 @@ def test_project_root_reads_authorize_before_open_and_keep_paths_server_side(sit
         {"id": "private", "label": "Private", "resource_id": "other", "roots": [root]},
     ]
     prefix = "projects/product/roots/primary"
+    assert call("POST", prefix + "/text", {"path": "guide.txt", "content": "changed"})[0] == 405
+    with monkeypatch.context() as scoped:
+        scoped.setattr(console.workbench.project_files, "_root_fd", lambda *_: pytest.fail("unauthorized root opened"))
+        assert call("GET", "projects/private/roots/primary/tree")[0] == 403
+        assert call("GET", "projects/unknown/roots/primary/tree")[0] == 404
+        assert call("GET", "projects/product/roots/unknown/tree")[0] == 404
+    if not _SAFE_PROJECT_READS:
+        for suffix in ("/tree", "/text?path=guide.txt"):
+            status, result = call("GET", prefix + suffix)
+            assert status == 503 and result["error"]["code"] == "project_root_unsupported"
+        return
+
     status, tree = call("GET", prefix + "/tree")
     assert status == 200 and tree["data"]["items"] == [{"name": "guide.txt", "kind": "file"}]
     status, text = call("GET", prefix + "/text?path=guide.txt")
@@ -181,12 +197,6 @@ def test_project_root_reads_authorize_before_open_and_keep_paths_server_side(sit
     assert str(checkout) not in json.dumps(tree) + json.dumps(text)
     for suffix in ("/text?path=..%252foutside", "/text?path=.env", "/tree?checkout=/tmp", "/text", "/worktree?path=x"):
         assert call("GET", prefix + suffix)[0] in {400, 409}
-    assert call("POST", prefix + "/text", {"path": "guide.txt", "content": "changed"})[0] == 405
-    with monkeypatch.context() as scoped:
-        scoped.setattr(console.workbench.project_files, "_root_fd", lambda *_: pytest.fail("unauthorized root opened"))
-        assert call("GET", "projects/private/roots/primary/tree")[0] == 403
-        assert call("GET", "projects/unknown/roots/primary/tree")[0] == 404
-        assert call("GET", "projects/product/roots/unknown/tree")[0] == 404
 
 
 def test_project_diff_route_passes_only_declared_identifiers_and_scope(site, monkeypatch):
