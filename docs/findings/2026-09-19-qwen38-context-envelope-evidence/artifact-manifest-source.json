@@ -1,0 +1,140 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-19-qwen38-context-envelope",
+    "capability": "local-context-envelope",
+    "repository_revision": "c577aae613e691d61acf92b70609423ebc9c3a12",
+    "dirty_state": "Qualification ran with uncommitted Direct-I/O runtime and verifier-test additions; benchmark generator unchanged from the base revision.",
+    "started_at": "2026-09-20T00:38:08Z",
+    "completed_at": "2026-09-20T02:15:17.824251+00:00",
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "qualified-reference"
+    ],
+    "subsequent_committed_source_revision": "1fe8a09b3b10f64f62c62063dfb277c12a43d22b",
+    "scope": "Published qualification and reference guidance; actual deployment state is private."
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "context-workload.json",
+        "campaign-state.json",
+        "coverage-and-gaps.md",
+        "dispatch-packet.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "recipe-160k-sanitized.toml",
+        "directio-build-receipt.json",
+        "build-final-receipt.json",
+        "rebuild160-preview.json",
+        "directio-control-summary.json",
+        "load128-host2g.telemetry.json",
+        "load128-directio.telemetry.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "gate128-directio.json",
+        "quality128-directio.json",
+        "capacity128-directio.json",
+        "vision128-directio.json",
+        "gate160-directio.json",
+        "preflight160-final.json",
+        "depths160-final.json",
+        "load160-final.telemetry.json",
+        "load160-final.stdout.log",
+        "quality160-final.json",
+        "vision160-final.json",
+        "capacity160-short.json",
+        "capacity160-long.json",
+        "capacity160-long.telemetry.json",
+        "feasibility-131072.json",
+        "feasibility-131072-result.json",
+        "feasibility-163840.json",
+        "feasibility-163840-result.json",
+        "feasibility-196608.json",
+        "feasibility-196608-result.json",
+        "feasibility-204800.json",
+        "feasibility-204800-result.json",
+        "client-compatibility.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": ""
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

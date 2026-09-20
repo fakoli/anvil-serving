@@ -13,9 +13,8 @@
       "capacity"
     ],
     "decision_labels": [
-      "current"
-    ],
-    "promotion_authorized": true
+      "qualified-reference"
+    ]
   },
   "native_evidence_schemas": [
     "anvil-serving.benchmark/v1",
@@ -30,8 +29,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "c6bbf42f7d078866060572cf6ae79f21ee0eac1bffcf92204f256cdee0965697",
-          "bytes": 468
+          "sha256": "4c150d69c9da69e6b5154d92afad6ac040c8cd6dd441b210b5135f878c3be82c",
+          "bytes": 555
         }
       ],
       "reason": ""
@@ -66,8 +65,8 @@
       "files": [
         {
           "path": "run-plan.json",
-          "sha256": "354c58f92f38a0be8d36edc254edd2f4fbc734d1a2824de99d6d35ab7db29671",
-          "bytes": 974
+          "sha256": "1c07e726e1d1db7438881576728ea6a1f8a7d8fb4372bd95825d8c66511e527d",
+          "bytes": 983
         }
       ],
       "reason": ""
@@ -78,13 +77,13 @@
       "files": [
         {
           "path": "recipe-64k-sanitized.toml",
-          "sha256": "fa0283c7b634a6f49d653950970bd6b22e724196b778a695addfdc0df42ce070",
-          "bytes": 2612
+          "sha256": "074f66b545e71a0b0d44816bc0e0157f99052fa8dd92833f75174a18ab202b56",
+          "bytes": 2627
         },
         {
           "path": "identity-receipt.json",
-          "sha256": "02d8dd8dd0e1eda407cd73c613691b2068f1703e03cd74a9cc7e0a8ae88833d7",
-          "bytes": 2644
+          "sha256": "1ff477a3e6ec373f82bdb6752759b6bd82f169a9cbd84849d0a8c95ae41546a9",
+          "bytes": 2390
         },
         {
           "path": "memory-post-workload.json",
@@ -147,8 +146,8 @@
       "files": [
         {
           "path": "friction-log.md",
-          "sha256": "a7a5f55f129b3116980262cce707e8ba019d1960a27ca956d045e48494f1ed03",
-          "bytes": 1201
+          "sha256": "cf9e4c54bb21e53eed5e6c559597ae7421857cbb569ef011522f630904e95d8b",
+          "bytes": 1066
         }
       ],
       "reason": ""
@@ -159,8 +158,8 @@
       "files": [
         {
           "path": "restoration.json",
-          "sha256": "491ab19a2196fc04bfc785dce964eb45b34154612d0ba7ee62591c6f5362ea69",
-          "bytes": 662
+          "sha256": "cc7d7bdb6f078ca0fef7ce582df4bcba4015b5a6d39cf07c505bc6cb6515e7c5",
+          "bytes": 327
         }
       ],
       "reason": ""
@@ -171,8 +170,8 @@
       "files": [
         {
           "path": "summary.json",
-          "sha256": "6b0ae0c9e5ffcf392545fd87dc4246a2a32a20e738b4f07b2b3dd4e263049e7e",
-          "bytes": 1097
+          "sha256": "4f4f9898f66221214a4227e07d4554f27a7ac7ffccb1705c1d1c0749effaf347",
+          "bytes": 1003
         }
       ],
       "reason": ""
@@ -183,8 +182,8 @@
       "files": [
         {
           "path": "publication-summary.md",
-          "sha256": "18a1bece58a81a0c8f17954919cfd4bd9ffc4c1a8a11cb5f83d853781cd29bcc",
-          "bytes": 2719
+          "sha256": "340ccbd85792c71a5710fbdba9be2213f6e98f55e8917c4ae392a4962212b12c",
+          "bytes": 2737
         }
       ],
       "reason": ""

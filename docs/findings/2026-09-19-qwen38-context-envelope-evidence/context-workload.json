@@ -1,0 +1,25 @@
+{
+  "generator": "anvil_serving/benchmarking/context.py at c577aae613e691d61acf92b70609423ebc9c3a12",
+  "seed": 73,
+  "filler_paragraphs": 7500,
+  "calibration_source": "calibration128-v2.json",
+  "observed_calibration": {
+    "64_lines_prompt_tokens": 1338,
+    "128_lines_prompt_tokens": 2618,
+    "tokens_per_line": 20
+  },
+  "expected_prompt_tokens": "about150058 plus per-case payload differences; actualresponseusage is authoritative",
+  "depths": [
+    0.1,
+    0.5,
+    0.9
+  ],
+  "types": [
+    "native-needle",
+    "native-identifiers",
+    "native-crosslink"
+  ],
+  "repetitions": 3,
+  "output_cap_tokens": 8192,
+  "scoring": "anchored exact expected string, no model judge"
+}

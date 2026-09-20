@@ -1,0 +1,265 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "huihui-context-196608",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 196608,
+    "max": 196608
+  },
+  "physical_available_bytes": {
+    "min": 34190917632,
+    "max": 34190917632
+  },
+  "policy_available_bytes": {
+    "min": 29456596992,
+    "max": 29456596992
+  },
+  "candidates": [
+    {
+      "id": "huihui-196608",
+      "classification": "policy-infeasible",
+      "reasons": [
+        "optimistic demand exceeds the declared policy VRAM envelope under encoded bounds"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "policy-fail",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 196608,
+        "max": 196608
+      },
+      "demand_bytes": {
+        "min": 30106714112,
+        "max": 30375149568
+      },
+      "physical_available_bytes": {
+        "min": 34190917632,
+        "max": 34190917632
+      },
+      "policy_available_bytes": {
+        "min": 29456596992,
+        "max": 29456596992
+      },
+      "physical_margin_bytes": {
+        "min": 3815768064,
+        "max": 4084203520
+      },
+      "policy_margin_bytes": {
+        "min": -918552576,
+        "max": -650117120
+      },
+      "estimated_max_tokens_physical": {
+        "min": 302884,
+        "max": 310361
+      },
+      "estimated_max_tokens_policy": {
+        "min": 171024,
+        "max": 178500
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.tokens.protocol",
+        "requirements.concurrency",
+        "requirements.vram_reserves.headroom.variable",
+        "candidates[0].runtime_context_limit_tokens",
+        "candidates[0].resident_components.observed_non_kv_plus_uncertainty"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "tracked_variables.peak_host_ram",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Will sample Windows available and Docker WSL memory around representative workloads."
+    },
+    {
+      "path": "tracked_variables.instantaneous_gpu_peak",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "500ms sampled extrema cannot establish instantaneous peaks."
+    },
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 187392,
+      "max": 187392,
+      "source": "Campaign useful prompt target including tokenization guard",
+      "observed_at": "2026-09-20",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "Campaign usable answer reserve",
+      "observed_at": "2026-09-20",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.protocol",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 1024,
+      "max": 1024,
+      "source": "Tokenization and protocol guard",
+      "observed_at": "2026-09-20",
+      "notes": null
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "requests",
+      "min": 1,
+      "max": 1,
+      "source": "One request on isolated GPU",
+      "observed_at": "2026-09-20",
+      "notes": null
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 34190917632,
+      "max": 34190917632,
+      "source": "gpu-start.csv",
+      "observed_at": "2026-09-20",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.headroom.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 4294967296,
+      "max": 4294967296,
+      "source": "Existing managed GPU reserve retained",
+      "observed_at": "2026-09-20",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.telemetry_residual.variable",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 439353344,
+      "max": 439353344,
+      "source": "GPU reported total-used-free arithmetic",
+      "observed_at": "2026-09-20",
+      "notes": "Accounting allowance, not an independently measured driver allocation. Require actual free>=4096MiB."
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 196608,
+      "max": 196608,
+      "source": "Explicit proposed managed recipe",
+      "observed_at": "2026-09-20",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.observed_non_kv_plus_uncertainty",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 23047700480,
+      "max": 23316135936,
+      "source": "64K post-workload24224MiB minus exact2244MiB KV; +256MiB planning allowance",
+      "observed_at": "2026-09-20",
+      "notes": "Whole-GPU baseline includes co-resident and fixed runtime terms once; provisional range, verify live."
+    },
+    {
+      "path": "candidates[0].per_token_components.text_and_mtp_int8_kv",
+      "status": "confirmed",
+      "unit": "bytes/token",
+      "min": 35904,
+      "max": 35904,
+      "source": "https://github.com/Neroued/ninfer/blob/70434721b1ae29d0616f3de9b376c8a4d91590b5/src/targets/qwen3_6/impl/state/decoder_state.cpp",
+      "observed_at": "2026-09-20",
+      "notes": "17 full-attention KV layers*(2*(4*256 INT8+4*4 FP16 scale))=35904 bytes/token;64tokenpages"
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "confirmed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "Explicit C1 KV capacity",
+      "observed_at": "2026-09-20",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "Every deterministic check must pass",
+      "observed_at": "2026-09-20",
+      "notes": null
+    }
+  ],
+  "unresolved_variables": [
+    "tracked_variables.peak_host_ram",
+    "tracked_variables.instantaneous_gpu_peak"
+  ],
+  "promotion_authority": false
+}

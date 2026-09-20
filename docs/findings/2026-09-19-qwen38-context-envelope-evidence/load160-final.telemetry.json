@@ -1,0 +1,802 @@
+{
+  "schema": "anvil-serving.sampled-resource-observation/v1",
+  "started_at": "2026-09-20T01:06:32.875021+00:00",
+  "finished_at": "2026-09-20T01:07:08.863859+00:00",
+  "command": [
+    "anvil-serving",
+    "models",
+    "recipes",
+    "load",
+    "lyf/Qwen3.8-27B-Huihui-NInfer-NVFP4-MTP3-160K-Baked",
+    "--registry",
+    "REDACTED_LOCAL_PATH/.anvil-serving/evidence/2026-09-19-qwen38-context-envelope/serve-recipes.160k.toml",
+    "--container",
+    "anvil-qwen-local",
+    "--confirm"
+  ],
+  "returncode": 0,
+  "interval_seconds": 0.5,
+  "caveat": "Sampled extrema, not guaranteed instantaneous peaks. Windows whole-system and whole-GPU observations.",
+  "samples": [
+    {
+      "observed_at": "2026-09-20T01:06:32.927590+00:00",
+      "windows_available_bytes": 14879023104,
+      "windows_commit_available_bytes": 59033260032,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 20.88,
+      "wsl": {
+        "MemAvailable": 19387236,
+        "Cached": 850796,
+        "SwapFree": 3982980,
+        "Shmem": 968,
+        "pswpin": 30123,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:33.570017+00:00",
+      "windows_available_bytes": 15724601344,
+      "windows_commit_available_bytes": 58941612032,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 18.23
+    },
+    {
+      "observed_at": "2026-09-20T01:06:34.132616+00:00",
+      "windows_available_bytes": 15726034944,
+      "windows_commit_available_bytes": 58943873024,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 18.23
+    },
+    {
+      "observed_at": "2026-09-20T01:06:34.692014+00:00",
+      "windows_available_bytes": 15726690304,
+      "windows_commit_available_bytes": 59156381696,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.86
+    },
+    {
+      "observed_at": "2026-09-20T01:06:35.255941+00:00",
+      "windows_available_bytes": 15718854656,
+      "windows_commit_available_bytes": 59182505984,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.86,
+      "wsl": {
+        "MemAvailable": 19376700,
+        "Cached": 858152,
+        "SwapFree": 3982980,
+        "Shmem": 1072,
+        "pswpin": 30123,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:35.909154+00:00",
+      "windows_available_bytes": 16614256640,
+      "windows_commit_available_bytes": 59034779648,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.97
+    },
+    {
+      "observed_at": "2026-09-20T01:06:36.472151+00:00",
+      "windows_available_bytes": 16614699008,
+      "windows_commit_available_bytes": 59033141248,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.97
+    },
+    {
+      "observed_at": "2026-09-20T01:06:37.032796+00:00",
+      "windows_available_bytes": 16615002112,
+      "windows_commit_available_bytes": 59035123712,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 18.12
+    },
+    {
+      "observed_at": "2026-09-20T01:06:37.596193+00:00",
+      "windows_available_bytes": 16614039552,
+      "windows_commit_available_bytes": 59033333760,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.9,
+      "wsl": {
+        "MemAvailable": 19363788,
+        "Cached": 858152,
+        "SwapFree": 3982980,
+        "Shmem": 1072,
+        "pswpin": 30123,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:38.242608+00:00",
+      "windows_available_bytes": 17104592896,
+      "windows_commit_available_bytes": 59225010176,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.9
+    },
+    {
+      "observed_at": "2026-09-20T01:06:38.799795+00:00",
+      "windows_available_bytes": 17104175104,
+      "windows_commit_available_bytes": 59224256512,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.9
+    },
+    {
+      "observed_at": "2026-09-20T01:06:39.361546+00:00",
+      "windows_available_bytes": 17127137280,
+      "windows_commit_available_bytes": 59282608128,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.9
+    },
+    {
+      "observed_at": "2026-09-20T01:06:39.924736+00:00",
+      "windows_available_bytes": 17135861760,
+      "windows_commit_available_bytes": 59329744896,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.93,
+      "wsl": {
+        "MemAvailable": 19364420,
+        "Cached": 858148,
+        "SwapFree": 3982980,
+        "Shmem": 1072,
+        "pswpin": 30123,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:40.565769+00:00",
+      "windows_available_bytes": 17245425664,
+      "windows_commit_available_bytes": 59639894016,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.66
+    },
+    {
+      "observed_at": "2026-09-20T01:06:41.127442+00:00",
+      "windows_available_bytes": 17262948352,
+      "windows_commit_available_bytes": 59731632128,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.66
+    },
+    {
+      "observed_at": "2026-09-20T01:06:41.687877+00:00",
+      "windows_available_bytes": 17272012800,
+      "windows_commit_available_bytes": 59744903168,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.82
+    },
+    {
+      "observed_at": "2026-09-20T01:06:42.248638+00:00",
+      "windows_available_bytes": 17298743296,
+      "windows_commit_available_bytes": 59798323200,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 17.82,
+      "wsl": {
+        "MemAvailable": 19364860,
+        "Cached": 858148,
+        "SwapFree": 3982980,
+        "Shmem": 1072,
+        "pswpin": 30123,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:42.890821+00:00",
+      "windows_available_bytes": 17320960000,
+      "windows_commit_available_bytes": 59872595968,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 18.0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:43.455756+00:00",
+      "windows_available_bytes": 17416454144,
+      "windows_commit_available_bytes": 60131885056,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 18.0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:44.011606+00:00",
+      "windows_available_bytes": 17464946688,
+      "windows_commit_available_bytes": 60339929088,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.68
+    },
+    {
+      "observed_at": "2026-09-20T01:06:44.575199+00:00",
+      "windows_available_bytes": 17492471808,
+      "windows_commit_available_bytes": 60412702720,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.73,
+      "wsl": {
+        "MemAvailable": 19368704,
+        "Cached": 858144,
+        "SwapFree": 3982980,
+        "Shmem": 1064,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:45.212565+00:00",
+      "windows_available_bytes": 17509384192,
+      "windows_commit_available_bytes": 60473327616,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.73
+    },
+    {
+      "observed_at": "2026-09-20T01:06:45.774055+00:00",
+      "windows_available_bytes": 17489354752,
+      "windows_commit_available_bytes": 60314275840,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.92
+    },
+    {
+      "observed_at": "2026-09-20T01:06:46.336985+00:00",
+      "windows_available_bytes": 17522577408,
+      "windows_commit_available_bytes": 60438921216,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.92
+    },
+    {
+      "observed_at": "2026-09-20T01:06:46.895581+00:00",
+      "windows_available_bytes": 17560174592,
+      "windows_commit_available_bytes": 60507594752,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.68,
+      "wsl": {
+        "MemAvailable": 19377404,
+        "Cached": 858136,
+        "SwapFree": 3982980,
+        "Shmem": 1064,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:47.532761+00:00",
+      "windows_available_bytes": 17568804864,
+      "windows_commit_available_bytes": 60536373248,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.69
+    },
+    {
+      "observed_at": "2026-09-20T01:06:48.094874+00:00",
+      "windows_available_bytes": 17666928640,
+      "windows_commit_available_bytes": 60854624256,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.69
+    },
+    {
+      "observed_at": "2026-09-20T01:06:48.657035+00:00",
+      "windows_available_bytes": 17694138368,
+      "windows_commit_available_bytes": 60934860800,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.97
+    },
+    {
+      "observed_at": "2026-09-20T01:06:49.221723+00:00",
+      "windows_available_bytes": 17725440000,
+      "windows_commit_available_bytes": 60984881152,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.97,
+      "wsl": {
+        "MemAvailable": 19376852,
+        "Cached": 858136,
+        "SwapFree": 3982980,
+        "Shmem": 1064,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:49.861846+00:00",
+      "windows_available_bytes": 17757122560,
+      "windows_commit_available_bytes": 61074833408,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.83
+    },
+    {
+      "observed_at": "2026-09-20T01:06:50.423755+00:00",
+      "windows_available_bytes": 17777266688,
+      "windows_commit_available_bytes": 61115936768,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.83
+    },
+    {
+      "observed_at": "2026-09-20T01:06:50.986270+00:00",
+      "windows_available_bytes": 17814614016,
+      "windows_commit_available_bytes": 61194293248,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.64
+    },
+    {
+      "observed_at": "2026-09-20T01:06:51.547744+00:00",
+      "windows_available_bytes": 17839878144,
+      "windows_commit_available_bytes": 61254090752,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.74,
+      "wsl": {
+        "MemAvailable": 19376032,
+        "Cached": 858796,
+        "SwapFree": 3982980,
+        "Shmem": 1064,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:52.186604+00:00",
+      "windows_available_bytes": 17869910016,
+      "windows_commit_available_bytes": 61362176000,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.74
+    },
+    {
+      "observed_at": "2026-09-20T01:06:52.751120+00:00",
+      "windows_available_bytes": 17925328896,
+      "windows_commit_available_bytes": 61469233152,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.74
+    },
+    {
+      "observed_at": "2026-09-20T01:06:53.311283+00:00",
+      "windows_available_bytes": 17943990272,
+      "windows_commit_available_bytes": 61521305600,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.74
+    },
+    {
+      "observed_at": "2026-09-20T01:06:53.870547+00:00",
+      "windows_available_bytes": 17985351680,
+      "windows_commit_available_bytes": 61629980672,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.67,
+      "wsl": {
+        "MemAvailable": 19375996,
+        "Cached": 858788,
+        "SwapFree": 3982980,
+        "Shmem": 1064,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:54.512353+00:00",
+      "windows_available_bytes": 17999077376,
+      "windows_commit_available_bytes": 61679439872,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 17.67
+    },
+    {
+      "observed_at": "2026-09-20T01:06:55.076123+00:00",
+      "windows_available_bytes": 18026442752,
+      "windows_commit_available_bytes": 61767581696,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 18.02
+    },
+    {
+      "observed_at": "2026-09-20T01:06:55.650524+00:00",
+      "windows_available_bytes": 18010443776,
+      "windows_commit_available_bytes": 61642145792,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 18.18
+    },
+    {
+      "observed_at": "2026-09-20T01:06:56.212892+00:00",
+      "windows_available_bytes": 18141196288,
+      "windows_commit_available_bytes": 61923856384,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 18.18,
+      "wsl": {
+        "MemAvailable": 19372072,
+        "Cached": 858788,
+        "SwapFree": 3982980,
+        "Shmem": 1064,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:56.849668+00:00",
+      "windows_available_bytes": 18179026944,
+      "windows_commit_available_bytes": 62033211392,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 36.0,
+      "gpu_power_w": 17.89
+    },
+    {
+      "observed_at": "2026-09-20T01:06:57.414736+00:00",
+      "windows_available_bytes": 18214498304,
+      "windows_commit_available_bytes": 62135439360,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 36.0,
+      "gpu_power_w": 17.89
+    },
+    {
+      "observed_at": "2026-09-20T01:06:57.973903+00:00",
+      "windows_available_bytes": 18272661504,
+      "windows_commit_available_bytes": 62389055488,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 36.0,
+      "gpu_power_w": 17.91
+    },
+    {
+      "observed_at": "2026-09-20T01:06:58.534606+00:00",
+      "windows_available_bytes": 18311647232,
+      "windows_commit_available_bytes": 62474194944,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 36.0,
+      "gpu_power_w": 17.71,
+      "wsl": {
+        "MemAvailable": 19371400,
+        "Cached": 858392,
+        "SwapFree": 3982980,
+        "Shmem": 1040,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:06:59.173931+00:00",
+      "windows_available_bytes": 18330243072,
+      "windows_commit_available_bytes": 62570827776,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 36.0,
+      "gpu_power_w": 17.71
+    },
+    {
+      "observed_at": "2026-09-20T01:06:59.732678+00:00",
+      "windows_available_bytes": 18372546560,
+      "windows_commit_available_bytes": 62658494464,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 36.0,
+      "gpu_power_w": 17.74
+    },
+    {
+      "observed_at": "2026-09-20T01:07:00.293389+00:00",
+      "windows_available_bytes": 18364854272,
+      "windows_commit_available_bytes": 62676369408,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 36.0,
+      "gpu_power_w": 17.74
+    },
+    {
+      "observed_at": "2026-09-20T01:07:00.853738+00:00",
+      "windows_available_bytes": 18370707456,
+      "windows_commit_available_bytes": 62704218112,
+      "gpu_used_mib": 187.0,
+      "gpu_free_mib": 32001.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 36.0,
+      "gpu_power_w": 18.13,
+      "wsl": {
+        "MemAvailable": 19372120,
+        "Cached": 858392,
+        "SwapFree": 3982980,
+        "Shmem": 1040,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:07:01.493928+00:00",
+      "windows_available_bytes": 18435100672,
+      "windows_commit_available_bytes": 62787067904,
+      "gpu_used_mib": 210.0,
+      "gpu_free_mib": 31978.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 36.0,
+      "gpu_power_w": 18.13
+    },
+    {
+      "observed_at": "2026-09-20T01:07:02.055397+00:00",
+      "windows_available_bytes": 18083508224,
+      "windows_commit_available_bytes": 40807550976,
+      "gpu_used_mib": 20828.0,
+      "gpu_free_mib": 11360.0,
+      "gpu_util_percent": 9.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 40.5
+    },
+    {
+      "observed_at": "2026-09-20T01:07:02.618441+00:00",
+      "windows_available_bytes": 18074853376,
+      "windows_commit_available_bytes": 40807276544,
+      "gpu_used_mib": 20828.0,
+      "gpu_free_mib": 11360.0,
+      "gpu_util_percent": 9.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 90.38
+    },
+    {
+      "observed_at": "2026-09-20T01:07:03.183095+00:00",
+      "windows_available_bytes": 18078588928,
+      "windows_commit_available_bytes": 40798670848,
+      "gpu_used_mib": 20828.0,
+      "gpu_free_mib": 11360.0,
+      "gpu_util_percent": 9.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 93.49,
+      "wsl": {
+        "MemAvailable": 18975248,
+        "Cached": 1200192,
+        "SwapFree": 3982980,
+        "Shmem": 338960,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:07:03.829085+00:00",
+      "windows_available_bytes": 18072473600,
+      "windows_commit_available_bytes": 40796553216,
+      "gpu_used_mib": 20828.0,
+      "gpu_free_mib": 11360.0,
+      "gpu_util_percent": 9.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 93.59
+    },
+    {
+      "observed_at": "2026-09-20T01:07:04.396332+00:00",
+      "windows_available_bytes": 18075766784,
+      "windows_commit_available_bytes": 40793591808,
+      "gpu_used_mib": 20828.0,
+      "gpu_free_mib": 11360.0,
+      "gpu_util_percent": 9.0,
+      "gpu_temperature_c": 38.0,
+      "gpu_power_w": 82.75
+    },
+    {
+      "observed_at": "2026-09-20T01:07:04.962213+00:00",
+      "windows_available_bytes": 18072023040,
+      "windows_commit_available_bytes": 40795422720,
+      "gpu_used_mib": 20828.0,
+      "gpu_free_mib": 11360.0,
+      "gpu_util_percent": 9.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 68.83
+    },
+    {
+      "observed_at": "2026-09-20T01:07:05.526968+00:00",
+      "windows_available_bytes": 18075660288,
+      "windows_commit_available_bytes": 40793300992,
+      "gpu_used_mib": 20828.0,
+      "gpu_free_mib": 11360.0,
+      "gpu_util_percent": 10.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 65.65,
+      "wsl": {
+        "MemAvailable": 18973780,
+        "Cached": 1200192,
+        "SwapFree": 3982980,
+        "Shmem": 338960,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:07:06.180588+00:00",
+      "windows_available_bytes": 18015051776,
+      "windows_commit_available_bytes": 40600936448,
+      "gpu_used_mib": 22172.0,
+      "gpu_free_mib": 10016.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 65.87
+    },
+    {
+      "observed_at": "2026-09-20T01:07:06.738608+00:00",
+      "windows_available_bytes": 17189572608,
+      "windows_commit_available_bytes": 32698580992,
+      "gpu_used_mib": 27582.0,
+      "gpu_free_mib": 4606.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 66.7
+    },
+    {
+      "observed_at": "2026-09-20T01:07:07.298139+00:00",
+      "windows_available_bytes": 16226906112,
+      "windows_commit_available_bytes": 31737200640,
+      "gpu_used_mib": 27582.0,
+      "gpu_free_mib": 4606.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 65.67
+    },
+    {
+      "observed_at": "2026-09-20T01:07:07.859784+00:00",
+      "windows_available_bytes": 15588106240,
+      "windows_commit_available_bytes": 31227809792,
+      "gpu_used_mib": 27582.0,
+      "gpu_free_mib": 4606.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 63.49,
+      "wsl": {
+        "MemAvailable": 16380016,
+        "Cached": 3338624,
+        "SwapFree": 3982980,
+        "Shmem": 2477072,
+        "pswpin": 30125,
+        "pswpout": 151948,
+        "oom_kill": 0
+      },
+      "wsl_sample_returncode": 0
+    },
+    {
+      "observed_at": "2026-09-20T01:07:08.517190+00:00",
+      "windows_available_bytes": 14853505024,
+      "windows_commit_available_bytes": 30498328576,
+      "gpu_used_mib": 27582.0,
+      "gpu_free_mib": 4606.0,
+      "gpu_util_percent": 0.0,
+      "gpu_temperature_c": 37.0,
+      "gpu_power_w": 63.82
+    }
+  ]
+}

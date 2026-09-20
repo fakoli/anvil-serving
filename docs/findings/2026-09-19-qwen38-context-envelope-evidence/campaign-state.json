@@ -1,0 +1,93 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-19-qwen38-context-envelope",
+  "updated_at": "2026-09-20T02:15:17.824251+00:00",
+  "status": "completed",
+  "current_stage": "completed",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.2.1",
+    "repository_revision": "c577aae613e691d61acf92b70609423ebc9c3a12",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true,
+    "dirty_state": "Uncommitted Direct-I/O runtime and verifier-test additions; benchmark module unchanged.",
+    "subsequent_committed_source_revision": "1fe8a09b3b10f64f62c62063dfb277c12a43d22b"
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "completed",
+      "evidence": [
+        "source-registry.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "completed",
+      "evidence": [
+        "feasibility-196608-result.json",
+        "feasibility-204800-result.json"
+      ],
+      "failures": [
+        "192K and 204800 policy-infeasible"
+      ]
+    },
+    {
+      "id": "scout",
+      "status": "completed",
+      "evidence": [
+        "gate128-directio.json"
+      ],
+      "failures": [
+        "host-cache pressure retained"
+      ]
+    },
+    {
+      "id": "finalist",
+      "status": "completed",
+      "evidence": [
+        "preflight160-final.json",
+        "depths160-final.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "quality",
+      "status": "completed",
+      "evidence": [
+        "quality160-final.json",
+        "vision160-final.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "restoration",
+      "status": "completed",
+      "evidence": [
+        "restoration.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "completed",
+      "evidence": [
+        "publication-summary.md",
+        "client-compatibility.json"
+      ],
+      "failures": []
+    }
+  ],
+  "completed_cells": [
+    "128K direct-I/O",
+    "160K preflight",
+    "160K quality",
+    "160K vision",
+    "160K short capacity",
+    "160K long capacity",
+    "160K repeated depth retrieval"
+  ],
+  "next_actions": [],
+  "scope": "Qualification campaign; private operational state omitted."
+}

@@ -11,11 +11,11 @@
     },
     {
       "path": "identity-configuration-receipt.json",
-      "sha256": "9160ba245dd08be9863369a38c765fa248064764c7b24fa6eddd454533991dd0"
+      "sha256": "f683c38dba92deb9f1c559f9d0f7724a7a257c32b042985a5bc8c09020f12b26"
     },
     {
       "path": "media-withdrawal-receipt.json",
-      "sha256": "198231346720906f11ed7d1e2a3243a2628649634e4b8bbea54f3d21449d2963"
+      "sha256": "38e08047e1072da9408e6c76f36e7135aec7f950d9de3a2a2312ba9eec6eeeda"
     },
     {
       "path": "quality-baked-summary.json",

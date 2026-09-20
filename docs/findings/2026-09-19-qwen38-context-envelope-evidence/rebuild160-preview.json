@@ -1,0 +1,20 @@
+{
+  "schema": "anvil-serving.sanitized-build-preview/v1",
+  "derivative_of": {
+    "private_source_sha256": "e182be9765c58621f992e614e4dafb89648b7e07400cb4876b32c7328cdccc7c",
+    "policy": "private source omitted; parsed command envelope and paths are not retained"
+  },
+  "configuration": {
+    "source_commit": "1fe8a09b3b10f64f62c62063dfb277c12a43d22b",
+    "source_path": "configs/runtime/ninfer-70434721-directio",
+    "dockerfile_sha256": "5786c08226ef470fb3aa97249df6bbd4f9b914805c4e79a69e30d9727dc93661",
+    "image": "anvil-ninfer:70434721-directio-20260919",
+    "cpus": 4,
+    "memory_mib": 8192,
+    "platform": "linux/amd64",
+    "timeout_seconds": 7200,
+    "dry_run": true,
+    "ok": true
+  },
+  "classification": "sanitized derivative, not native benchmark evidence"
+}

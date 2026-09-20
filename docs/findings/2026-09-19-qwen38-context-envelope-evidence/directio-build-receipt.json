@@ -1,0 +1,9 @@
+{
+  "image_id": "sha256:b9c5376ded5bd96d244594009c1e300b0e4c0c2cfa8dcd152ffdd7fd947fccac",
+  "source": "configs/runtime/ninfer-70434721-directio",
+  "original_build_log": "3ec2655190fc4b4d9fec4ac1a99ed3e7",
+  "binary_layers": "reused pinned build layers",
+  "failed_derived_from_digest": "8a7c5a90cfd149b1942c186c0e6ea58a: BuildKit attempted registry lookup for locally cached image digest and received insufficient_scope. The subsequent managed build reused original pinned build inputs and cached engine layers.",
+  "status": "intermediate-direct-io-build",
+  "note": "Intermediate b9c5376 image, retained for build history; not the final tested 22fa89d5 image."
+}

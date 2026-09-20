@@ -1,8 +1,6 @@
 {
   "schema": "anvil-serving.benchmark-summary/v1",
-  "decision": "current",
-  "promotion_authorized": true,
-  "promotion_authority": "User explicitly requested promotion and continued setting trials.",
+  "decision": "qualified-reference",
   "profile": "qwen38-huihui-ninfer-schemafix-mtp3-64k",
   "context_tokens": 65536,
   "max_output_tokens": 2048,
@@ -13,8 +11,7 @@
     "vision": "12/12",
     "capacity_short": "12/12",
     "capacity_long": "6/6",
-    "hermes_native": "9/9 local identity checks",
-    "fleet_repeat": "three hosts and WebUI unchanged"
+    "hermes_native": "9/9 local identity checks"
   },
   "gpu_used_mib": 24224,
   "limitations": [
@@ -24,5 +21,6 @@
     "No sustained endurance or transient peak measurement.",
     "Interactive authenticated browser acceptance unverified.",
     "Exact OCI digest cached locally; fresh-host identical rebuild not claimed."
-  ]
+  ],
+  "scope": "Bounded qualification; operator deployment state is private."
 }
