@@ -218,6 +218,10 @@ Every path below is illustrative and every model identity is explicit.
 }
 ```
 
+Local project file reads and isolated task preparation require safe POSIX
+descriptor operations for each declared project root. Unsupported hosts refuse
+these actions.
+
 The image digest must be exactly 64 lowercase hexadecimal digits. The provider endpoint must use HTTPS and match one declared egress origin. Its
 credential selector must name an entry for that provider and that entry must be
 a protected `file:` reference. The runner receives no provider secret: a

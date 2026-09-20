@@ -16,6 +16,15 @@ from anvil_serving.workbench_app.task_artifacts import TaskArtifacts, TaskArtifa
 from test_playground import identity
 
 
+_SAFE_TASK_ROOTS = os.name == "posix" and all(
+    hasattr(os, name) for name in ("O_DIRECTORY", "O_CLOEXEC", "O_NOFOLLOW", "O_NONBLOCK")
+)
+requires_safe_task_roots = pytest.mark.skipif(
+    not _SAFE_TASK_ROOTS,
+    reason="requires safe POSIX task-root descriptors",
+)
+
+
 @pytest.fixture
 def projects(tmp_path):
     config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": str(tmp_path / "anvil"), "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
@@ -47,6 +56,7 @@ def projects(tmp_path):
 
 
 @pytest.mark.parametrize("change", [{"prd_status": "draft"}, {"dependencies": ["feature:T000"]}, {"claims": [{"id": "other"}]}, {"status": "needs_review"}])
+@requires_safe_task_roots
 def test_task_gates_precede_any_claim_or_runner(projects, change):
     adapter, state, calls = projects
     state.update(change)
@@ -55,6 +65,22 @@ def test_task_gates_precede_any_claim_or_runner(projects, change):
         adapter.prepare(identity(actions=("project.execute",)), body)
     assert error.value.code == "task_not_ready"
     assert all(call[1] != "claim" for call in calls)
+
+
+def test_prepare_refuses_missing_descriptors_before_claim_or_runner(projects, monkeypatch):
+    adapter, _, calls = projects
+    monkeypatch.delattr(projects_module.os, "O_DIRECTORY", raising=False)
+    with pytest.raises(ObservatoryError) as error:
+        adapter.prepare(identity(actions=("project.execute",)), {
+            "project_id": "product", "task_id": "feature:T001", "request_id": "unsupported",
+            "provider_id": "cloud", "model_id": "specific", "thinking_level": "high",
+        })
+    assert error.value.code == "project_root_unsupported"
+    assert not calls
+    assert not (Path(adapter.config["projects"][0]["runner_root"]) / ".workbench-context").exists()
+    with pytest.raises(ObservatoryError) as missing:
+        adapter.store.get("task-binding", "alice", "unsupported")
+    assert missing.value.status == 404
 
 
 def test_browser_cannot_select_another_checkout(projects):
@@ -124,6 +150,7 @@ def test_root_binding_digest_mismatch_refuses_live_pi_authority(projects):
     assert error.value.code == "task_root_binding_lost"
 
 
+@requires_safe_task_roots
 def test_lost_claim_response_reconciles_and_releases_without_force(tmp_path):
     import hashlib
     config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": str(tmp_path / "anvil"), "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
@@ -207,6 +234,7 @@ def _multi_root_adapter(tmp_path, *, roots=None, primary_root_id="state"):
     return Projects(config, store, access, run=run, artifacts=TaskArtifacts(_Sandbox(), is_active=lambda _: False)), store, checkout, secondary, calls
 
 
+@requires_safe_task_roots
 def test_prepare_freezes_primary_and_private_read_only_context_snapshot(tmp_path):
     adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
     (secondary / "safe.py").write_text("value = 1\n", encoding="utf-8")
@@ -235,6 +263,7 @@ def test_prepare_freezes_primary_and_private_read_only_context_snapshot(tmp_path
         store.close()
 
 
+@requires_safe_task_roots
 def test_not_ready_task_does_not_create_a_context_destination(tmp_path):
     adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
     (secondary / "safe.py").write_text("value = 1\n", encoding="utf-8")
@@ -259,6 +288,7 @@ def test_not_ready_task_does_not_create_a_context_destination(tmp_path):
         store.close()
 
 
+@requires_safe_task_roots
 def test_snapshot_failure_is_retained_without_a_final_destination(tmp_path, monkeypatch):
     adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
     (secondary / "safe.py").write_text("value = 1\n", encoding="utf-8")
@@ -274,6 +304,8 @@ def test_snapshot_failure_is_retained_without_a_final_destination(tmp_path, monk
         store.close()
 
 
+@requires_safe_task_roots
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="requires FIFO support")
 def test_context_snapshot_refuses_raced_special_objects_and_growth(tmp_path, monkeypatch):
     adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
     (secondary / "safe.py").write_text("safe\n", encoding="utf-8")
@@ -313,6 +345,7 @@ def test_context_snapshot_refuses_raced_special_objects_and_growth(tmp_path, mon
     (lambda config, _checkout, secondary: config["projects"][0].update(primary_root_id="docs"), "primary_root_unsupported"),
     (lambda config, _checkout, secondary: config["projects"][0]["roots"][1].update(path=str(secondary / "missing")), "project_root_unavailable"),
 ])
+@requires_safe_task_roots
 def test_prepare_rejects_unsupported_root_sets_before_claim(tmp_path, change, code):
     adapter, store, checkout, secondary, calls = _multi_root_adapter(tmp_path)
     try:
@@ -326,6 +359,7 @@ def test_prepare_rejects_unsupported_root_sets_before_claim(tmp_path, change, co
         store.close()
 
 
+@requires_safe_task_roots
 def test_prepare_rejects_symlinked_or_aliased_secondary_before_claim(tmp_path):
     adapter, store, _checkout, secondary, calls = _multi_root_adapter(tmp_path)
     alias = tmp_path / "alias"
@@ -361,7 +395,20 @@ def test_task_evidence_uses_sandbox_and_submits_actual_cli_evidence(tmp_path):
     adapter = Projects(config, store, access, run=run, artifacts=TaskArtifacts(_Sandbox(), is_active=lambda _: False))
     try:
         body = {"project_id": "product", "task_id": "feature:T001", "request_id": "request-one", "provider_id": "cloud", "model_id": "specific", "thinking_level": "high"}
-        row = adapter.prepare(identity(actions=("project.execute",)), body)
+        if _SAFE_TASK_ROOTS:
+            row = adapter.prepare(identity(actions=("project.execute",)), body)
+        else:
+            runner_root = tmp_path / "runners"
+            row = {
+                "id": "request-one", "owner": "alice", "project_id": "product", "task_id": "feature:T001",
+                "actor": "workbench-test", "lease_id": "claim-one", "provider_id": "cloud", "status": "ready",
+                "runner_checkout": str(runner_root / "request-one"),
+                "verification_checkout": str(runner_root / "request-one-verify"),
+                "claim_worktree": str(claim), "artifact_root": str(runner_root / ".workbench-artifacts" / "request-one"),
+                "baseline_sha": "a" * 40, "packet_digest": "b" * 64,
+                "declared_paths": ["src/feature.py"], "verification_commands": ["python -m pytest"],
+            }
+            adapter.store.put("task-binding", "alice", row["id"], row)
         preview = adapter.review_evidence(identity(actions=("project.execute",)), row["id"])
         verified = adapter.verify_evidence(identity(actions=("project.execute",)), row["id"], preview["artifact_digest"])
         submitted = adapter.submit_evidence(identity(actions=("project.execute",)), row["id"], preview["artifact_digest"])
@@ -485,6 +532,7 @@ def test_plan_content_uses_supported_scoped_bounded_cli(projects):
     ("_MAX_CONTEXT_FILE_BYTES", 3),
     ("_MAX_CONTEXT_DEPTH", 1),
 ])
+@requires_safe_task_roots
 def test_snapshot_bound_skips_are_recorded_as_truncated(tmp_path, monkeypatch, limit, value):
     adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
     if limit == "_MAX_CONTEXT_FILES":
@@ -507,6 +555,7 @@ def test_snapshot_bound_skips_are_recorded_as_truncated(tmp_path, monkeypatch, l
         store.close()
 
 
+@requires_safe_task_roots
 def test_snapshot_cleanup_removes_completed_private_children_on_error(tmp_path, monkeypatch):
     adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
     completed = secondary / "a-completed"
