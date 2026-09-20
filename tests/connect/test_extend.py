@@ -768,6 +768,202 @@ def test_recovery_revokes_an_invitation_when_its_bearer_response_was_lost(
     assert calls == ["revoke"]
 
 
+def test_refresh_proves_the_original_local_identity_with_a_public_filtered_declaration(
+    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Refresh reads only the retained old connector shape, never the new declaration."""
+    data = json.loads(Path(environment["manifest_path"]).read_text())
+    prior = _installation_status("active", 7, ENROLLED, FINGERPRINT)
+    observed: dict[str, object] = {}
+
+    def native_identity(_runner, argv, _timeout, identity=None):
+        config = Path(argv[-1])
+        root = config.parent
+        declaration = json.loads(config.read_text(encoding="utf-8"))
+        observed.update(
+            argv=argv,
+            resources=tuple(
+                item["envelope"]["rule"]["id"] for item in declaration["resources"]
+            ),
+            root_mode=stat.S_IMODE(root.stat().st_mode),
+            config_mode=stat.S_IMODE(config.stat().st_mode),
+            identity=identity,
+        )
+        return extend_module.manage.RunResult(
+            0, stdout=json.dumps({**prior, "status": "enrolled"}).encode("utf-8"),
+        )
+
+    monkeypatch.setattr(extend_module.manage, "_run", native_identity)
+    assert extend_module._prior_connector_identity(data, "dashboard", prior, runner) == {
+        **prior, "status": "enrolled",
+    }
+    assert observed["argv"][1:3] == ("identity", "--config")
+    assert observed["resources"] == ENROLLED
+    assert observed["root_mode"] == 0o755
+    assert observed["config_mode"] == 0o644
+
+    def changed_identity(*_args, **_kwargs):
+        return extend_module.manage.RunResult(
+            0, stdout=json.dumps({
+                **prior, "status": "pending", "generation": 9, "resources": list(DECLARED),
+            }).encode("utf-8"),
+        )
+
+    monkeypatch.setattr(extend_module.manage, "_run", changed_identity)
+    with pytest.raises(extend_module.ExtendError, match="prior connector identity changed"):
+        extend_module._prior_connector_identity(data, "dashboard", prior, runner)
+
+
+def test_stale_unstaged_invitation_refreshes_once_after_a_lost_revoke_response(
+    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An old untouched invite retires once, preserves prior 7, then stages fresh 11."""
+    data = json.loads(Path(environment["manifest_path"]).read_text())
+    prior = _installation_status("active", 7, ENROLLED, FINGERPRINT)
+    directory, identity = extend_module._role_directory(data, "connector", "dashboard")
+    old_bundle = extend_module._write_handoff(
+        directory, "invitation-retained.json", b"{}", identity,
+    )
+    extend_module._write_recovery(
+        data, "dashboard", sorted(DECLARED), "refresh-revoke-pending", old_bundle.name,
+        prior, 9,
+    )
+    state = _installation_status("invited", 9, set(DECLARED), "")
+    local = {"status": "pending", "generation": 11, "resources": sorted(DECLARED)}
+    calls: list[str] = []
+
+    monkeypatch.setattr(extend_module, "_prior_connector_identity", lambda *_args: {**prior, "status": "enrolled"})
+    monkeypatch.setattr(extend_module, "_installation_status", lambda *_args: dict(state))
+
+    def revoke(*_args):
+        calls.append("revoke")
+        state.update(status="revoked", generation=10)
+        if len(calls) == 1:
+            raise extend_module.ManageError("revoke response lost", may_have_executed=True)
+
+    monkeypatch.setattr(extend_module, "_revoke", revoke)
+    with pytest.raises(extend_module.ManageError, match="response lost"):
+        extend_module._resolve_recovery_phase(
+            data, environment["manifest_path"], "dashboard", sorted(DECLARED), runner,
+        )
+    retained = extend_module._read_recovery(data, "dashboard", sorted(DECLARED))
+    assert retained is not None and retained["phase"] == "refresh-revoke-pending"
+    assert retained["prior"] == prior and old_bundle.exists()
+
+    # A retry sees the authoritative post-revoke generation and never repeats
+    # the revoke.  It then follows the normal revoked -> invite -> stage path.
+    resolved = extend_module._resolve_recovery_phase(
+        data, environment["manifest_path"], "dashboard", sorted(DECLARED), runner,
+    )
+    assert resolved["phase"] == "revoked" and resolved["generation"] == 10
+    assert resolved["prior"] == prior and calls == ["revoke"] and not old_bundle.exists()
+
+    def invite(*_args):
+        calls.append("invite")
+        state.update(status="invited", generation=11, fingerprint="", resources=sorted(DECLARED))
+        return extend_module._write_handoff(
+            directory, "invitation-fresh.json", b"{}", identity,
+        )
+
+    def native_reenroll(_manifest, _target, *, prior, bundle, **_kwargs):
+        calls.append("re-enroll")
+        assert json.loads(Path(prior).read_text(encoding="utf-8")) == {
+            "id": "dashboard", "fingerprint": FINGERPRINT, "epoch": "a" * 64,
+            "generation": 7, "resources": sorted(ENROLLED),
+        }
+        assert Path(bundle).name == "invitation-fresh.json"
+
+    def native_init(*_args, bundle, **_kwargs):
+        calls.append("init")
+        state.update(status="pending", fingerprint=FINGERPRINT)
+        Path(bundle).unlink()
+
+    monkeypatch.setattr(extend_module, "_invite", invite)
+    monkeypatch.setattr(extend_module.manage, "native_reenroll", native_reenroll)
+    monkeypatch.setattr(extend_module.manage, "native_init", native_init)
+    monkeypatch.setattr(extend_module, "_stop_connector", lambda *_args: None)
+    monkeypatch.setattr(extend_module, "_start_connector", lambda *_args: None)
+    monkeypatch.setattr(extend_module.manage, "_started_units", lambda *_args: None)
+    monkeypatch.setattr(
+        extend_module, "_connector_identity",
+        lambda *_args: {
+            "id": "dashboard", "status": local["status"], "fingerprint": FINGERPRINT,
+            "epoch": "a" * 64, "generation": local["generation"], "resources": local["resources"],
+        },
+    )
+    monkeypatch.setattr(extend_module, "_admin_exchange", lambda *_args, **_kwargs: calls.append("approve"))
+
+    assert extend_module._resume_enrollment(
+        data, environment["manifest_path"], environment["target"], "connector.service",
+        (False, "disabled"), sorted(DECLARED), runner, environment["tmp"] / "systemd",
+    ) == FINGERPRINT
+    assert calls == ["revoke", "invite", "re-enroll", "init", "approve"]
+    assert extend_module._read_recovery(data, "dashboard", sorted(DECLARED)) is None
+
+
+@pytest.mark.parametrize("age,refreshes", [(539, False), (540, True), (-1, True)])
+def test_invitation_refresh_uses_manager_recovery_age_not_bundle_mtime(
+    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch, age: int, refreshes: bool,
+) -> None:
+    """Connector-owned invitation timestamps cannot influence refresh eligibility."""
+    data = json.loads(Path(environment["manifest_path"]).read_text())
+    prior = _installation_status("active", 7, ENROLLED, FINGERPRINT)
+    directory, identity = extend_module._role_directory(data, "connector", "dashboard")
+    bundle = extend_module._write_handoff(directory, "invitation-age.json", b"{}", identity)
+    extend_module._write_recovery(
+        data, "dashboard", sorted(DECLARED), "re-enroll-pending", bundle.name, prior, 9,
+    )
+    recovery_path = extend_module._recovery_path(data, "dashboard")
+    now = 50_000.0
+    os.utime(recovery_path, (now - age, now - age))
+    # Make the consuming service's file look arbitrarily old or future-dated;
+    # only the manager-owned recovery file may decide the deadline.
+    os.utime(bundle, (now + 100_000, now + 100_000))
+    recovery = extend_module._read_recovery(data, "dashboard", sorted(DECLARED))
+    assert recovery is not None
+    monkeypatch.setattr(extend_module, "_resolve_recovery_phase", lambda *_args: recovery)
+    monkeypatch.setattr(extend_module, "_prior_connector_identity", lambda *_args: (_ for _ in ()).throw(
+        extend_module.ExtendError("refresh-proof"),
+    ))
+    monkeypatch.setattr(extend_module, "_reenrollment_prior", lambda *_args: bundle)
+    monkeypatch.setattr(extend_module, "_stop_connector", lambda *_args: None)
+    monkeypatch.setattr(
+        extend_module.manage, "native_reenroll",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(extend_module.ExtendError("stage")),
+    )
+    monkeypatch.setattr(extend_module.time, "time", lambda: now)
+
+    expected = "refresh-proof" if refreshes else "stage"
+    with pytest.raises(extend_module.ExtendError, match=expected):
+        extend_module._resume_enrollment(
+            data, environment["manifest_path"], environment["target"], "connector.service",
+            (False, "disabled"), sorted(DECLARED), runner, environment["tmp"] / "systemd",
+        )
+
+
+@pytest.mark.parametrize(
+    "bundle_name, prior_status, generation, fingerprint",
+    [
+        (None, "active", 9, ""),
+        ("invitation-retained.json", "active", 9, FINGERPRINT),
+        ("invitation-retained.json", "invited", 9, ""),
+        ("invitation-retained.json", "active", 7, ""),
+    ],
+)
+def test_refresh_recovery_phase_rejects_incomplete_or_changed_prior_binding(
+    environment, bundle_name: str | None, prior_status: str, generation: int, fingerprint: str,
+) -> None:
+    """Only an untouched active prior plus its retained invitation may refresh."""
+    data = json.loads(Path(environment["manifest_path"]).read_text())
+    prior = _installation_status(prior_status, 7, ENROLLED, FINGERPRINT if prior_status == "active" else "")
+    extend_module._write_recovery(
+        data, "dashboard", sorted(DECLARED), "refresh-revoke-pending", bundle_name,
+        prior, generation, fingerprint,
+    )
+    with pytest.raises(extend_module.ExtendError, match="refresh binding is invalid"):
+        extend_module._read_recovery(data, "dashboard", sorted(DECLARED))
+
+
 def test_recovery_does_not_reapprove_an_already_active_installation_after_a_lost_response(
     environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
