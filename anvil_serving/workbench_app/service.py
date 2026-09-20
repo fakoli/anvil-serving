@@ -705,7 +705,13 @@ class WorkbenchService:
                 try:
                     result = self.pi.command(item.session_id, item.binding, body["name"], body["payload"])
                 except Exception as error:
-                    from .pi_sessions import PiSessionAccessError, PiSessionError, PiStartUncertain
+                    from .pi_sessions import PiCommandNotDispatched, PiSessionAccessError, PiSessionError, PiStartUncertain
+                    if isinstance(error, PiCommandNotDispatched):
+                        # This type is raised only before a client write.  The
+                        # original request key is therefore safe to retry after
+                        # the caller resolves the explicit rejection.
+                        self.store.delete("pi-command", session.principal.identity, request_id)
+                        error = error.error
                     if isinstance(error, PiSessionAccessError):
                         raise ObservatoryError("pi_forbidden", "This Pi command is not allowed for the current task binding.", 403) from None
                     if isinstance(error, (PiSessionError, PiStartUncertain)):

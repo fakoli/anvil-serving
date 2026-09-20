@@ -9,7 +9,7 @@ import pytest
 
 from anvil_serving.workbench_app.pi_rpc import PiRpcClient
 from anvil_serving.workbench_app.pi_sessions import (
-    PiConversationService, PiSessionAccessError, PiSessionError, PiSessionStore, PiTaskBinding,
+    PiCommandNotDispatched, PiConversationService, PiSessionAccessError, PiSessionError, PiSessionStore, PiTaskBinding,
 )
 
 
@@ -140,8 +140,9 @@ def test_branch_uses_latest_live_history_and_new_native_identity(tmp_path):
 def test_successful_target_outcomes_persist_and_failures_do_not(tmp_path):
     svc, store, processes, _, _ = service(tmp_path)
     key = start(svc)["session_id"]
-    with pytest.raises(PiSessionAccessError, match="provider"):
+    with pytest.raises(PiCommandNotDispatched, match="provider") as rejected:
         svc.command(key, _binding(), "set_model", {"provider": "provider-b", "model_id": "model-c"})
+    assert isinstance(rejected.value.error, PiSessionAccessError)
     svc.command(key, _binding(), "set_model", {"provider": "provider-a", "model_id": "model-b"})
     assert store.get(key).model_id == "model-a"
     svc._collect(key)
@@ -184,8 +185,9 @@ def test_accepted_conversation_commands_retain_only_display_metadata(tmp_path, m
 
     before = store.get(key).next_cursor
     writes = len(client._process.writes)
-    with pytest.raises(ValueError, match="retained conversation limit"):
+    with pytest.raises(PiCommandNotDispatched, match="retained conversation limit") as rejected:
         svc.command(key, _binding(), "prompt", {"message": "🧪" * 4_001})
+    assert isinstance(rejected.value.error, ValueError)
     assert len(client._process.writes) == writes
     assert store.get(key).next_cursor == before
 
@@ -210,9 +212,26 @@ def test_command_payloads_are_closed_and_branch_commands_are_refused(tmp_path, n
     key = start(svc)["session_id"]
     before = store.get(key).next_cursor
     writes = len(processes[0].writes)
-    with pytest.raises(PiSessionAccessError):
+    with pytest.raises(PiCommandNotDispatched) as rejected:
         svc.command(key, _binding(), name, payload)
+    assert isinstance(rejected.value.error, PiSessionAccessError)
     assert store.get(key).next_cursor == before
+    assert len(processes[0].writes) == writes
+
+
+def test_command_preflight_rejections_are_explicit_and_never_write(tmp_path):
+    svc, store, processes, _, _ = service(tmp_path)
+    key = start(svc)["session_id"]
+    writes = len(processes[0].writes)
+
+    with pytest.raises(PiCommandNotDispatched) as rejected:
+        svc.command(key, _binding(), "set_model", {"provider": "provider-b", "model_id": "model-c"})
+    assert isinstance(rejected.value.error, PiSessionAccessError)
+    assert len(processes[0].writes) == writes
+
+    with pytest.raises(PiCommandNotDispatched) as malformed:
+        svc.command(key, _binding(), "extension_response", {"request_id": "request-1", "response": {"wrong": True}})
+    assert isinstance(malformed.value.error, ValueError)
     assert len(processes[0].writes) == writes
 
 

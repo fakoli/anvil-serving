@@ -411,3 +411,98 @@ def test_managed_pi_routes_require_authorized_task_context_before_private_reads(
         "project_id": "product", "task_id": "plan:T001", "request_id": "new-request",
         "provider_id": "provider-a", "model_id": "model-a", "thinking_level": "off",
     })[0] == 403
+
+
+def test_pi_command_receipts_retry_only_proven_pre_dispatch_rejections(site, monkeypatch):
+    from anvil_serving.observability.dashboard.contracts import ObservatoryError
+    from anvil_serving.workbench_app.pi_sessions import PiCommandNotDispatched, PiStartUncertain
+
+    console, _, _ = site
+    service = console.workbench
+    item = SimpleNamespace(session_id="managed-pi-session", binding=SimpleNamespace())
+    caller = SimpleNamespace(principal=SimpleNamespace(identity="alice"))
+    body = {"project_id": "product", "task_id": "plan:T001", "request_id": "command-once",
+            "name": "prompt", "payload": {"message": "one retained turn"}}
+    monkeypatch.setattr(service, "_pi_session", lambda *_args, **_kwargs: item)
+    monkeypatch.setattr(service.projects, "validate_pi_binding", lambda _binding: None)
+    monkeypatch.setattr(service.projects, "binding_for_pi", lambda _binding: {"id": "binding-a"})
+    monkeypatch.setattr(service.evidence_jobs, "ensure_idle", lambda _binding_id: None)
+
+    class PreDispatch:
+        writes = 0
+        ready = False
+
+        def command(self, *_args):
+            if not self.ready:
+                raise PiCommandNotDispatched(PiStartUncertain("runner is recovering"))
+            self.writes += 1
+            return {"accepted": True, "command_id": "native-once"}
+
+        def close(self):
+            pass
+
+    pre_dispatch = PreDispatch()
+    service.pi = pre_dispatch
+    with pytest.raises(ObservatoryError) as rejected:
+        service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller)
+    assert getattr(rejected.value, "code", None) == "pi_recovery_required"
+    assert pre_dispatch.writes == 0
+    with pytest.raises(ObservatoryError) as missing:
+        service.store.get("pi-command", "alice", body["request_id"])
+    assert getattr(missing.value, "status", None) == 404
+
+    pre_dispatch.ready = True
+    assert service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller) == {"accepted": True, "command_id": "native-once"}
+    assert service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller) == {"accepted": True, "command_id": "native-once"}
+    assert pre_dispatch.writes == 1
+
+    class AmbiguousWrite:
+        writes = 0
+
+        def command(self, *_args):
+            self.writes += 1
+            raise OSError("write acknowledgement lost")
+
+        def close(self):
+            pass
+
+    ambiguous = AmbiguousWrite()
+    service.pi = ambiguous
+    uncertain = body | {"request_id": "command-uncertain"}
+    with pytest.raises(OSError, match="acknowledgement lost"):
+        service._pi_mutate("pi/sessions/managed-pi-session/command", uncertain, caller)
+    assert service.store.get("pi-command", "alice", uncertain["request_id"])["result"] == {"accepted": False, "status": "outcome_unknown"}
+    assert service._pi_mutate("pi/sessions/managed-pi-session/command", uncertain, caller) == {"accepted": False, "status": "outcome_unknown"}
+    assert ambiguous.writes == 1
+
+
+def test_pre_dispatch_receipt_cleanup_failure_remains_non_replayable(site, monkeypatch):
+    from anvil_serving.workbench_app.pi_sessions import PiCommandNotDispatched, PiStartUncertain
+
+    console, _, _ = site
+    service = console.workbench
+    item = SimpleNamespace(session_id="managed-pi-session", binding=SimpleNamespace())
+    caller = SimpleNamespace(principal=SimpleNamespace(identity="alice"))
+    body = {"project_id": "product", "task_id": "plan:T001", "request_id": "command-cleanup-failed",
+            "name": "prompt", "payload": {"message": "one retained turn"}}
+    monkeypatch.setattr(service, "_pi_session", lambda *_args, **_kwargs: item)
+    monkeypatch.setattr(service.projects, "validate_pi_binding", lambda _binding: None)
+    monkeypatch.setattr(service.projects, "binding_for_pi", lambda _binding: {"id": "binding-a"})
+    monkeypatch.setattr(service.evidence_jobs, "ensure_idle", lambda _binding_id: None)
+
+    class PreDispatch:
+        writes = 0
+
+        def command(self, *_args):
+            raise PiCommandNotDispatched(PiStartUncertain("runner is recovering"))
+
+        def close(self):
+            pass
+
+    service.pi = PreDispatch()
+    monkeypatch.setattr(service.store, "delete", lambda *_args: (_ for _ in ()).throw(OSError("receipt cleanup failed")))
+    with pytest.raises(OSError, match="receipt cleanup failed"):
+        service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller)
+    assert service.store.get("pi-command", "alice", body["request_id"])["result"] == {"accepted": False, "status": "outcome_unknown"}
+    assert service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller) == {"accepted": False, "status": "outcome_unknown"}
+    assert service.pi.writes == 0
