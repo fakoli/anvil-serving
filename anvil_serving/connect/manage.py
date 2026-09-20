@@ -50,6 +50,7 @@ _MAX_BINARY = 512 * 1024 * 1024
 _SYSTEMD_TIMEOUT = 30.0
 _VALIDATE_TIMEOUT = 10.0
 _ID = re.compile(r"[a-z][a-z0-9-]{0,62}\Z")
+_USER = re.compile(r"[a-z][a-z0-9_.-]{0,63}\Z")
 _EVENT_REASONS = {
     "entry_bind_failed", "entry_tls_failed", "entry_stopped", "entry_listening", "entry_capacity_exhausted",
     "tunnel_established", "tunnel_establishment_failed", "tunnel_disconnected",
@@ -2273,7 +2274,7 @@ def _admin_preview(request: Path) -> dict[str, str]:
     if raw is None:
         raise ManageError("administrative request is unavailable")
     value = _strict_json(raw, "administrative request is invalid")
-    allowed = {"operation", "principal", "grants", "disabled", "key_id", "installation", "role", "resources", "application_roles", "lifetime_seconds", "fingerprint", "issuer", "subject"}
+    allowed = {"operation", "principal", "grants", "disabled", "key_id", "installation", "role", "resources", "application_roles", "lifetime_seconds", "fingerprint", "issuer", "subject", "username"}
     operation = value.get("operation")
     operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "human-revoke-sessions", "authority-reset"}
     if set(value) - allowed or not isinstance(operation, str) or operation not in operations:
@@ -2282,6 +2283,9 @@ def _admin_preview(request: Path) -> dict[str, str]:
     if fingerprint is not None and (not isinstance(fingerprint, str) or len(fingerprint) != 43 or any(char not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for char in fingerprint)):
         raise ManageError("administrative request is invalid")
     if operation == "approve" and fingerprint is None:
+        raise ManageError("administrative request is invalid")
+    if "username" in value and (operation != "human-set" or not isinstance(value["username"], str)
+                              or _USER.fullmatch(value["username"]) is None):
         raise ManageError("administrative request is invalid")
     scope = "authority" if operation == "authority-reset" else ("installation" if operation in {"invite", "approve", "installation-revoke", "installation-status"} else ("api-key" if operation.startswith("api-key") else "principal"))
     return {"operation": operation, "scope": scope}

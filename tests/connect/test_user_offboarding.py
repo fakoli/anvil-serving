@@ -55,7 +55,7 @@ def test_suspend_preserves_password_groups_and_factors_then_access_resumes(offbo
     run("suspend", apply=True)
     resumed = run("access", grants=["pi:member"], apply=True)
     assert not json.loads(db.read_text())["users"]["dev"]["disabled"]
-    assert requests[-1] == {"operation": "human-set", "subject": _SUBJECT,
+    assert requests[-1] == {"operation": "human-set", "username": "dev", "subject": _SUBJECT,
                             "resources": ["pi"], "application_roles": {"pi": "member"}}
     assert resumed["grants_changed"] and resumed["existing_connect_sessions_revoked"]
 

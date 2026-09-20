@@ -496,9 +496,9 @@ def _oidc_subject(data: dict, config: Path, username: str, runner, *, missing_ok
             pass
 
 
-def _human_set(data: dict, manifest: str, subject: str, grants: dict[str, str], runner) -> dict:
+def _human_set(data: dict, manifest: str, username: str, subject: str, grants: dict[str, str], runner) -> dict:
     """Use the pinned same-user native admin socket; never touch Connect storage."""
-    return _human_admin(data, manifest, {"operation": "human-set", "subject": subject,
+    return _human_admin(data, manifest, {"operation": "human-set", "username": username, "subject": subject,
                                        "resources": list(grants), "application_roles": grants}, runner)
 
 
@@ -624,7 +624,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             if manage._digest(Path(data["components"]["authelia"])) != manage._component_lock()["authelia"]:
                 raise _invalid("Authelia executable does not match the pinned component.")
             subject = _oidc_subject(data, config, username, runner)
-            _human_set(data, manifest, subject, grant_map, runner)
+            _human_set(data, manifest, username, subject, grant_map, runner)
         return {**result, "applied": True, "grants_changed": True, "existing_connect_sessions_revoked": True,
                 "principal": _principal(data["gateway"]["oidc"]["issuer"], subject)}
     with manage._deployment_lock(root):
@@ -699,7 +699,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 if subject is not None:
                     changed = True
                     if operation == "access":
-                        _human_set(data, manifest, subject, grant_map, runner)
+                        _human_set(data, manifest, username, subject, grant_map, runner)
                     else:
                         _human_admin(data, manifest, {"operation": "human-suspend", "subject": subject}, runner)
                     result["existing_connect_sessions_revoked"] = True
@@ -804,7 +804,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 raise _partial("Account operation completed, but backup retention did not finish.", result) from exc
         if operation == "create" and grant_map is not None:
             try:
-                _human_set(data, manifest, oidc_subject, grant_map, runner)
+                _human_set(data, manifest, username, oidc_subject, grant_map, runner)
             except BaseException as exc:
                 raise _partial("Account and OpenID Connect identity were created, but access provisioning may not have completed; inspect the account, then use users access with the intended grants to retry access provisioning.", result) from exc
             result.update({"grants_changed": True, "principal": _principal(data["gateway"]["oidc"]["issuer"], oidc_subject)})

@@ -117,7 +117,8 @@ def test_create_grant_preseeds_subject_and_keeps_service_home_in_handoff(tmp_pat
     identifiers = [argv for argv in state["calls"] if argv[1:5] == ("storage", "user", "identifiers", "add")]
     assert result["grants_changed"] and "Your services: https://dash.example.test/app/_anvil-connect/home" in handoff
     assert len(identifiers) == 1 and identifiers[0][identifiers[0].index("--sector") + 1] == ""
-    assert calls[-1][3] == {"dash": "member"}
+    assert calls[-1][2] == "dev"
+    assert calls[-1][4] == {"dash": "member"}
 
 
 def test_rendered_oidc_client_uses_the_blank_sector_subject_type():

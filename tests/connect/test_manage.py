@@ -849,6 +849,22 @@ def test_admin_preview_accepts_only_real_fingerprint_shape(tmp_path: Path, monke
         manage.admin(manifest, request_path=request, runner=runner)
 
 
+def test_admin_preview_allows_username_only_for_a_valid_human_set(tmp_path: Path) -> None:
+    request = tmp_path / "request.json"
+    request.write_text(json.dumps({"operation": "human-set", "username": "developer"}), encoding="utf-8")
+    assert manage._admin_preview(request)["scope"] == "principal"
+    for payload in (
+        {"operation": "human-set", "username": ""},
+        {"operation": "human-set", "username": "Developer"},
+        {"operation": "human-set", "username": None},
+        {"operation": "human-suspend", "username": "developer"},
+        {"operation": "human-suspend", "username": None},
+    ):
+        request.write_text(json.dumps(payload), encoding="utf-8")
+        with pytest.raises(manage.ManageError, match="administrative request"):
+            manage._admin_preview(request)
+
+
 def test_connector_validation_uses_only_its_declared_environment_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manifest, value, _ = deployment(tmp_path, monkeypatch)
     Path(value["environment_files"]["gateway"]).unlink()

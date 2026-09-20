@@ -244,6 +244,38 @@ def test_admin_role_is_explicit_and_resets_preserve_groups(environment):
         run("reset-password", role="member", apply=True)
 
 
+def test_create_and_access_send_the_authoritative_username_with_human_set(environment, monkeypatch):
+    run, _, _, _ = environment
+    data = users.read_manifest("unused")
+    data["gateway"] = {
+        "oidc": {"issuer": "https://auth.example.test"},
+        "gateway": {"resources": [{"rule": {"id": "workbench", "access": "browser"}}]},
+    }
+    data["authelia"]["smtp"] = {
+        "address": "smtp.example.test:465", "username": "smtp-user",
+        "password_file": "/private/smtp-password", "sender": "Connect <connect@example.test>",
+    }
+    subject = "00000000-0000-4000-8000-000000000001"
+    requests = []
+    monkeypatch.setattr(
+        users, "_oidc_subject",
+        lambda _data, _config, _username, _runner, *, missing_ok=False: None if missing_ok else subject,
+    )
+    monkeypatch.setattr(
+        users, "_human_admin",
+        lambda _data, _manifest, payload, _runner: requests.append(payload) or {"applied": True},
+    )
+    monkeypatch.setattr(users, "_start_password_setup", lambda *_args: None)
+
+    run("create", "developer", email="developer@example.test", grants=["workbench:member"], apply=True)
+    run("access", "developer", grants=["workbench:admin"], apply=True)
+
+    human_sets = [payload for payload in requests if payload["operation"] == "human-set"]
+    assert len(human_sets) == 2
+    assert all(payload["username"] == "developer" for payload in human_sets)
+    assert human_sets[1]["subject"] == subject
+
+
 def test_factor_reset_is_explicit_native_and_partial_failures_restart(environment):
     run, db, state, _ = environment
     before = db.read_bytes()

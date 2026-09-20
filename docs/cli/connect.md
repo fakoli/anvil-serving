@@ -48,7 +48,8 @@ sudo anvil-connect-ctl users access developer --grant workbench:member --grant p
 ```
 
 The command resolves the user's actual Authelia OpenID identifier; a username
-is not an OIDC subject. Resources omitted from this list are withdrawn. A
+is not an OIDC subject. Create and access send the validated command username
+only as account metadata alongside that authoritative subject. Resources omitted from this list are withdrawn. A
 successful access change enables the Connect account and invalidates existing browser and terminal
 credentials for the person. API principal grants remain separately declared.
 For a suspended account, it also re-enables the Authelia account, preserving its
