@@ -337,6 +337,8 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
         raise _invalid("Permanent deletion recovery state is unsafe.")
     if intent is not None:
         _phase_matches_intent(phase, intent)
+    elif phase["idp_delete"]:
+        raise _invalid("Permanent deletion phase is held until its native intent is available.")
     # A legacy Connect-only identity has no supported IdP mapping. It remains
     # disabled at native prepare and can be finalized without touching IdP data.
     if not phase["idp_delete"]:
@@ -359,11 +361,11 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
         try:
             raw, info = users._read_users(data)
             database = users._database(raw)
-        except UsageError as exc:
-            if "Users file is missing" not in str(exc):
-                raise
-            raw = info = database = None
-        prior_removed = raw is None or phase["username"] not in database["users"]
+        except UsageError:
+            # This workflow removes one account, never the whole file. A
+            # missing file is not a recoverable per-account completion proof.
+            raise _invalid("Authelia users file is unavailable; native intent remains held.") from None
+        prior_removed = phase["username"] not in database["users"]
         uid, gid = role_identity(data, "idp")
         preview = _purge_as_idp(Path(data["authelia"]["state_directory"]) / "authelia.sqlite3", phase["username"], phase["subject"],
                                 validate_only=True, uid=uid, gid=gid)
@@ -424,9 +426,8 @@ def delete(manifest: str, username: str, *, apply: bool = False, runner=None, un
             intent = pending.get(phase["request_id"])
             if intent is not None:
                 _phase_matches_intent(phase, intent)
-            # A missing native pending record follows a successful terminal
-            # receipt. Re-run the bounded IdP proof, then use native finalize's
-            # idempotent completed-receipt path to remove the orphan phase.
+            if intent is None:
+                raise _invalid("Permanent deletion phase is held until its native intent is available.")
             return _run_phase(data, manifest, path, phase, runner, Path(unit_root), intent=intent)
         config, active = _preflight(data, manifest, runner)
         raw, _info = users._read_users(data)
@@ -463,12 +464,10 @@ def process_pending(manifest: str, *, apply: bool = False, runner=None, unit_roo
         if not intents:
             if not phases:
                 return {"schema": _PHASE_SCHEMA, "operation": "process-pending", "applied": True, "processed": 0}
-            # Native lists only pending intents. A retained local phase absent
-            # from that authoritative list may be a lost terminal response;
-            # forward-reconcile exactly one after re-proving IdP erasure.
-            path, phase = next(iter(phases.values()))
-            result = _run_phase(data, manifest, path, phase, runner, Path(unit_root))
-            return {"schema": _PHASE_SCHEMA, "operation": "process-pending", "applied": True, "processed": 1, "result": result}
+            # A completed receipt is not exposed by the pending-list API. Do
+            # not infer terminal authority from absence: an epoch reset or
+            # drifted store could otherwise erase IdP data before finalization.
+            raise _invalid("Permanent deletion phase is held until its native intent is available.")
         intent = intents[0]
         found = phases.get(intent["request_id"])
         if found is None:

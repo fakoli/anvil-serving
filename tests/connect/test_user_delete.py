@@ -184,7 +184,7 @@ def test_native_read_request_omits_legacy_issuer(tmp_path, monkeypatch):
     assert users._human_admin_read(data, "manifest", {"operation": "human-deletions"}, None) == {"operation": "human-deletions"}
 
 
-def test_retained_phase_recovers_without_users_file_or_second_prepare(tmp_path, monkeypatch):
+def test_retained_phase_without_native_pending_intent_is_held_before_idp_mutation(tmp_path, monkeypatch):
     monkeypatch.setattr(users, "_require_root", lambda: None)
     monkeypatch.setattr(user_delete, "_path", lambda _: None)
     root = tmp_path / "current"
@@ -197,35 +197,36 @@ def test_retained_phase_recovers_without_users_file_or_second_prepare(tmp_path, 
     monkeypatch.setattr(user_delete, "read_manifest", lambda _: {"config_root": str(root)})
     monkeypatch.setattr(user_delete, "_phase_root", lambda _: phase_root)
     monkeypatch.setattr(user_delete, "_intents", lambda *_: [])
-    monkeypatch.setattr(users, "_read_users", lambda *_: pytest.fail("retained recovery must not require users file"))
-    called = {}
-    monkeypatch.setattr(user_delete, "_run_phase", lambda _data, _manifest, got_path, got_phase, *_args, intent=None: called.update({"path": got_path, "phase": got_phase, "intent": intent}) or {"finalized": True})
+    monkeypatch.setattr(users, "_read_users", lambda *_: pytest.fail("must not touch IdP before native authority proof"))
+    monkeypatch.setattr(user_delete, "_run_phase", lambda *_args, **_kwargs: pytest.fail("must not run phase without native intent"))
 
-    result = user_delete.delete(str(tmp_path / "deployment.json"), "owner", apply=True)
+    with pytest.raises(UsageError):
+        user_delete.delete(str(tmp_path / "deployment.json"), "owner", apply=True)
+    with pytest.raises(UsageError):
+        user_delete.process_pending(str(tmp_path / "deployment.json"), apply=True)
+    assert path.exists()
 
-    assert result == {"finalized": True} and called == {"path": path, "phase": phase, "intent": None}
 
-
-def test_orphan_phase_is_reconciled_once_after_native_completed_receipt(tmp_path, monkeypatch):
-    monkeypatch.setattr(users, "_require_root", lambda: None)
-    monkeypatch.setattr(user_delete, "_path", lambda _: None)
-    root = tmp_path / "current"
-    root.mkdir(mode=0o700)
+def test_missing_users_file_holds_native_intent_before_purge_or_finalize(tmp_path, monkeypatch):
+    request_id = _request()
     phase_root = tmp_path / "phases"
     phase_root.mkdir(mode=0o700)
-    request_id = _request()
-    phase = _phase(request_id)
-    path = user_delete._write_phase(phase_root, phase)
-    monkeypatch.setattr(user_delete, "read_manifest", lambda _: {"config_root": str(root)})
-    monkeypatch.setattr(user_delete, "_phase_root", lambda _: phase_root)
-    monkeypatch.setattr(user_delete, "_intents", lambda *_: [])
-    called = {}
-    monkeypatch.setattr(user_delete, "_run_phase", lambda _data, _manifest, got_path, got_phase, *_args, intent=None: called.update({"path": got_path, "phase": got_phase, "intent": intent}) or {"finalized": True})
+    path = user_delete._write_phase(phase_root, _phase(request_id))
+    data = {"config_root": str(tmp_path / "rendered"), "components": {"authelia": str(tmp_path / "authelia")},
+            "authelia": {"users_file": str(tmp_path / "missing.yml"), "state_directory": str(tmp_path / "idp")}}
+    monkeypatch.setattr(user_delete, "_preflight", lambda *_: (tmp_path / "config", False))
+    monkeypatch.setattr(manage, "_read_unit", lambda *_: b"unit")
+    monkeypatch.setattr(manage, "_unit_exec_path", lambda *_: Path(data["components"]["authelia"]))
+    monkeypatch.setattr(manage, "_verify_unit", lambda *_: None)
+    monkeypatch.setattr(manage, "_unit_metadata", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(manage, "_unit_state", lambda *_: (False, "enabled"))
+    monkeypatch.setattr(users, "_read_users", lambda *_: (_ for _ in ()).throw(UsageError("Users file is missing; provision the Authelia file backend first.")))
+    monkeypatch.setattr(user_delete, "_purge_as_idp", lambda *_args, **_kwargs: pytest.fail("must not purge"))
+    monkeypatch.setattr(user_delete, "_human_response", lambda *_args: pytest.fail("must not finalize"))
 
-    result = user_delete.process_pending(str(tmp_path / "deployment.json"), apply=True)
-
-    assert result["processed"] == 1 and result["result"] == {"finalized": True}
-    assert called == {"path": path, "phase": phase, "intent": None}
+    with pytest.raises(manage.ManageError):
+        user_delete._run_phase(data, "manifest", path, _phase(request_id), None, tmp_path, intent=_intent(request_id))
+    assert path.exists()
 
 
 def test_native_deletion_response_requires_zero_pending_timestamp():
