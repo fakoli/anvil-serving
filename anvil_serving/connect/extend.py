@@ -142,19 +142,87 @@ def _role_identity(data: dict[str, Any], role: str, identifier: str | None = Non
     return manage._role_service_identity(data, role, identifier)
 
 
+def _connector_handoff_needs_migration(
+    observed: tuple[int, int, int], target: tuple[int, int, int], manager: tuple[int, int], *, created: bool,
+) -> bool:
+    """Accept only the final or descriptor-recoverable connector sidecar states."""
+    if observed == target:
+        return False
+    manager_uid, manager_gid = manager
+    _, target_gid, _ = target
+    legacy = (manager_uid, target_gid, 0o730)
+    role_intermediate = (manager_uid, target_gid, 0o700)
+    fresh_intermediate = (manager_uid, manager_gid, 0o700)
+    if observed in {legacy, role_intermediate, fresh_intermediate}:
+        return True
+    # Freshly-created directories may still reflect umask before this
+    # descriptor has published their exact handoff mode.
+    if created and observed[0] == manager_uid:
+        return True
+    raise ExtendError("extension connector sidecar is unsafe")
+
+
 def _role_directory(data: dict[str, Any], role: str, identifier: str | None = None) -> tuple[Path, Any]:
-    """Create a manager-owned directory writable only by the exact role group."""
+    """Return the bounded handoff directory for an exact service role.
+
+    Gateway requests remain manager-owned: the native admin reader accepts a
+    root-owned declaration through the role group.  Connector bundle inputs
+    are read by the native private-file reader, which intentionally requires
+    an exact role-owned 0700 parent.  Migrate only the legacy connector
+    handoff directory (root:role 0730) in place, so a retained invitation is
+    still usable after a manager upgrade.
+    """
     identity = _role_identity(data, role, identifier)
     suffix = role if identifier is None else role + "-" + identifier
     directory = _sidecar_root(data, create=True) / suffix
-    directory.mkdir(mode=0o730, exist_ok=True)
-    info = directory.lstat()
-    if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_uid != os.geteuid():
-        raise ExtendError("extension role sidecar is unsafe")
-    if identity is not None:
-        os.chown(directory, os.geteuid(), identity.gid)
-    os.chmod(directory, 0o730)
-    return directory, identity
+    if role != "connector":
+        directory.mkdir(mode=0o730, exist_ok=True)
+        info = directory.lstat()
+        if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_uid != os.geteuid():
+            raise ExtendError("extension role sidecar is unsafe")
+        if identity is not None:
+            os.chown(directory, os.geteuid(), identity.gid)
+        os.chmod(directory, 0o730)
+        return directory, identity
+
+    created = False
+    try:
+        directory.mkdir(mode=0o700)
+        created = True
+    except FileExistsError:
+        pass
+    descriptor = None
+    try:
+        descriptor = os.open(directory, os.O_RDONLY | os.O_CLOEXEC | os.O_DIRECTORY | os.O_NOFOLLOW)
+        info = os.fstat(descriptor)
+        if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
+            raise ExtendError("extension connector sidecar is unsafe")
+        target_uid = identity.uid if identity is not None else os.geteuid()
+        target_gid = identity.gid if identity is not None else os.getegid()
+        target = (target_uid, target_gid, 0o700)
+        observed = (info.st_uid, info.st_gid, stat.S_IMODE(info.st_mode))
+        needs_migration = _connector_handoff_needs_migration(
+            observed, target, (os.geteuid(), os.getegid()), created=created,
+        )
+        if not needs_migration:
+            return directory, identity
+        # The descriptor keeps the selected directory pinned.  First close the
+        # manager-owned legacy directory to 0700, then hand it to the role.
+        # A failure between those steps leaves a closed manager-owned 0700
+        # intermediate, which a later managed retry can finish without losing
+        # its retained invitation.
+        if observed[2] != 0o700:
+            os.fchmod(descriptor, 0o700)
+        os.fchown(descriptor, target_uid, target_gid)
+        final = os.fstat(descriptor)
+        if (final.st_uid, final.st_gid, stat.S_IMODE(final.st_mode)) != target:
+            raise ExtendError("extension connector sidecar is unsafe")
+        return directory, identity
+    except OSError as exc:
+        raise ExtendError("extension connector sidecar is unsafe") from exc
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
 
 
 def _write_handoff(directory: Path, name: str, data: bytes, identity: Any) -> Path:

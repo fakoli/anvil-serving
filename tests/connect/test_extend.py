@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import stat
 from pathlib import Path
 import sys
 
@@ -410,7 +411,7 @@ def test_prior_status_failure_uses_the_published_candidate_binding_and_rolls_bac
     assert extend_module._read_recovery(data, "dashboard", sorted(DECLARED)) is None
 
 
-def test_bundle_lands_in_the_manager_owned_connector_sidecar(
+def test_bundle_lands_in_the_role_owned_connector_sidecar(
     environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
@@ -418,8 +419,91 @@ def test_bundle_lands_in_the_manager_owned_connector_sidecar(
     extend_module.extend(environment["manifest_path"], environment["target"],
                           confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
     init_entry = next(entry for entry in enrollment_log if "native_init" in entry)
-    assert str(environment["tmp"] / ".rendered.anvil-connect-extend" / "connector-dashboard") in str(init_entry["native_init"])
+    directory = environment["tmp"] / ".rendered.anvil-connect-extend" / "connector-dashboard"
+    info = directory.lstat()
+    assert str(directory) in str(init_entry["native_init"])
+    assert stat.S_IMODE(info.st_mode) == 0o700
     assert str(environment["tmp"] / "state-gateway") not in str(init_entry["native_init"])
+
+
+def test_legacy_connector_handoff_directory_migrates_without_losing_bundle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A retained legacy bundle remains readable after the exact mode migration."""
+    root = tmp_path / "rendered"
+    root.mkdir(mode=0o755)
+    data = {"config_root": str(root)}
+    identity = extend_module.manage.ServiceIdentity(os.geteuid(), os.getegid())
+    monkeypatch.setattr(extend_module.manage, "_role_service_identity", lambda *_args: identity)
+    sidecar = tmp_path / ".rendered.anvil-connect-extend"
+    sidecar.mkdir(mode=0o711)
+    sidecar.chmod(0o711)
+    legacy = sidecar / "connector-dashboard"
+    legacy.mkdir(mode=0o730)
+    legacy.chmod(0o730)
+    bundle = legacy / "invitation-retained.json"
+    bundle.write_bytes(b'{"opaque":"retained"}')
+    bundle.chmod(0o600)
+
+    retained = extend_module._retained_bundle(data, "dashboard", bundle.name)
+
+    assert retained == bundle
+    assert retained.read_bytes() == b'{"opaque":"retained"}'
+    info = legacy.lstat()
+    assert (info.st_uid, info.st_gid, stat.S_IMODE(info.st_mode)) == (
+        identity.uid, identity.gid, 0o700,
+    )
+
+
+def test_legacy_connector_handoff_retry_after_ownership_failure_keeps_bundle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The root-owned 0700 intermediate is retry-safe after a handoff fault."""
+    root = tmp_path / "rendered"
+    root.mkdir(mode=0o755)
+    data = {"config_root": str(root)}
+    identity = extend_module.manage.ServiceIdentity(os.geteuid(), os.getegid())
+    monkeypatch.setattr(extend_module.manage, "_role_service_identity", lambda *_args: identity)
+    sidecar = tmp_path / ".rendered.anvil-connect-extend"
+    sidecar.mkdir(mode=0o711)
+    sidecar.chmod(0o711)
+    legacy = sidecar / "connector-dashboard"
+    legacy.mkdir(mode=0o730)
+    legacy.chmod(0o730)
+    bundle = legacy / "invitation-retained.json"
+    bundle.write_bytes(b'{"opaque":"retained"}')
+    bundle.chmod(0o600)
+    original_fchown = extend_module.os.fchown
+    calls = 0
+
+    def interrupted_fchown(fd: int, uid: int, gid: int) -> None:
+        nonlocal calls
+        calls += 1
+        raise OSError("injected ownership handoff interruption")
+
+    monkeypatch.setattr(extend_module.os, "fchown", interrupted_fchown)
+    with pytest.raises(extend_module.ExtendError, match="connector sidecar is unsafe"):
+        extend_module._retained_bundle(data, "dashboard", bundle.name)
+    assert stat.S_IMODE(legacy.lstat().st_mode) == 0o700
+    assert bundle.read_bytes() == b'{"opaque":"retained"}'
+
+    monkeypatch.setattr(extend_module.os, "fchown", original_fchown)
+    assert extend_module._retained_bundle(data, "dashboard", bundle.name) == bundle
+    assert calls == 1
+    assert bundle.read_bytes() == b'{"opaque":"retained"}'
+
+
+def test_connector_handoff_accepts_only_the_final_and_recoverable_states() -> None:
+    """Fresh root-owned 0700 state remains resumable for a distinct role gid."""
+    manager = (1000, 1000)
+    target = (1001, 2000, 0o700)
+    assert extend_module._connector_handoff_needs_migration((1000, 2000, 0o730), target, manager, created=False)
+    assert extend_module._connector_handoff_needs_migration((1000, 2000, 0o700), target, manager, created=False)
+    assert extend_module._connector_handoff_needs_migration((1000, 1000, 0o700), target, manager, created=False)
+    assert not extend_module._connector_handoff_needs_migration(target, target, manager, created=False)
+    with pytest.raises(extend_module.ExtendError, match="connector sidecar is unsafe"):
+        extend_module._connector_handoff_needs_migration((1000, 999, 0o700), target, manager, created=False)
+
 
 # --- review-gate regressions (Greptile P1s) ---------------------------------
 
