@@ -213,6 +213,50 @@ Distinguish requested, delivered, bounced and unknown; a request receipt is not 
 delivery receipt. Provider recipient fields may contain display names, so compare
 parsed email addresses when correlating records.
 
+## Repeatable checks without a personal sign-in
+
+From a development checkout, run the existing synthetic identity-provider and
+browser-edge contracts:
+
+```sh
+go -C connect test ./internal/session ./internal/httpedge -count=1
+```
+
+These checks use temporary accounts, state and keys. They exercise OIDC callbacks,
+service-home destinations, grants, logout, expiry and protected-document caching
+without contacting a real provider or using a personal browser session. The native
+CI job already runs these packages. For CLI previews, email rendering and managed
+template upgrades, run:
+
+```sh
+python scripts/run_tests.py tests/connect/ -x -q
+```
+
+The existing Chromium fixtures add actual page interaction. After installing the
+[browser gate prerequisites](ANVIL-CONNECT-IMPLEMENTATION.md#reproduce-the-gates),
+the synthetic provider suite runs without a real account:
+
+```sh
+npm --prefix connect run test:browser -- test/browser.spec.mjs
+```
+
+The separate `browser_edge.spec.mjs` suite uses isolated pinned Authelia/Caddy
+processes and local notification capture. Root-login redirection runs in that
+suite; passkey registration/login uses a virtual WebAuthn authenticator and needs
+an explicit opt-in:
+
+```sh
+ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE=1 npm --prefix connect run test:browser -- test/browser_edge.spec.mjs
+```
+
+It does not need a personal password manager or inbox. Neither fixture establishes real email
+delivery, the original first-password field defect, mobile autofill behavior,
+1Password integration, or Open WebUI's question/location UI.
+
+Use automated checks for routine refactors. Repeat the live journey when deploying
+authentication behavior or changing the provider, mail delivery, public edge or
+password-manager integration; it is not a prerequisite for every local edit.
+
 ## Browser acceptance
 
 Validate through the normal Connect URL with a dedicated test account after
