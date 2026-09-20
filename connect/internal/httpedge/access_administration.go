@@ -293,7 +293,7 @@ func normalizeInventory(inventory administration.Inventory, requested string) ([
 			if !exactAccessObject(objects.Items[index], fields...) || !config.ValidHumanID(item.ID) || !accessDecimal.MatchString(item.Generation) || !accessInventoryResources(item.Resources) || (item.ApplicationRoles != nil && !accessApplicationRoles(item.Resources, item.ApplicationRoles)) {
 				return nil, nil, false
 			}
-			item.Resources = append([]string(nil), item.Resources...)
+			item.Resources = append([]string{}, item.Resources...)
 			sort.Strings(item.Resources)
 			item.ApplicationRoles = maps.Clone(item.ApplicationRoles)
 			result = append(result, item)

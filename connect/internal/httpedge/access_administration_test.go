@@ -111,7 +111,7 @@ func TestAccessInventoryAllowsAccountsAwaitingTheirFirstGrant(t *testing.T) {
 	user["resources"] = []string{}
 	user["application_roles"] = map[string]string{}
 	items, _, valid := normalizeInventory(inventory, "users")
-	if !valid || len(items[0].(accessUser).Resources) != 0 {
+	if !valid || len(items[0].(accessUser).Resources) != 0 || items[0].(accessUser).Resources == nil {
 		t.Fatal("account with no grants made the operator inventory unavailable")
 	}
 	if accessResources([]string{}) {
