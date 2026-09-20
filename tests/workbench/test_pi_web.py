@@ -282,6 +282,28 @@ def test_install_requires_linux(installer_env) -> None:
     assert run.calls == []
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
+def test_concurrent_install_cannot_touch_active_promotion(installer_env, monkeypatch: pytest.MonkeyPatch) -> None:
+    import fcntl
+
+    build, config, _ = installer_env
+    installer, run, _ = build()
+    root = Path(config.install_root)
+    root.mkdir(mode=0o755)
+    lock = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with pytest.raises(PiWebError, match="another Pi Web installation"):
+            installer.install(confirm=True)
+        assert run.calls == []
+    finally:
+        os.close(lock)
+    monkeypatch.setattr(fcntl, "flock", lambda *args: (_ for _ in ()).throw(OSError("lock unavailable")))
+    with pytest.raises(PiWebError, match="cannot lock"):
+        installer.install(confirm=True)
+    assert run.calls == []
+
+
 def test_install_rejects_missing_password_env_file(tmp_path: Path) -> None:
     if sys.platform == "win32":
         pytest.skip("the managed install runs Linux host commands")
@@ -601,11 +623,36 @@ def test_bridge_install_updates_origin_converges_and_preserves_old_artifact_on_b
         probe_opener=lambda url: 200, node_path=_fake_node(tmp_path), platform="linux",
         chown=lambda target, uid, gid: None,
     )
-    changed_result = changed_installer.install(confirm=True)
+    remove_tree = pi_web.shutil.rmtree
+
+    def blocked_cleanup(path, *args, **kwargs):
+        if ".previous-" in Path(path).name:
+            raise PermissionError("backup temporarily locked")
+        return remove_tree(path, *args, **kwargs)
+
+    with monkeypatch.context() as cleanup:
+        cleanup.setattr(pi_web.shutil, "rmtree", blocked_cleanup)
+        changed_result = changed_installer.install(confirm=True)
+    assert changed_result["installed"] is True and changed_result["probe"]["ready"] is True
+    assert changed_result["cleanup_pending"] is True
+    backup, = version_dir.parent.glob("*.previous-*")
+    assert backup.is_dir()
     assert changed_result["package_installed"] is True and changed_result["lifecycle"] == "restarted"
     assert calls[-1] == "https://renewed.example.test"
     assert "renewed" in (version_dir / "bin" / "pi-web.js").read_text(encoding="utf-8")
     assert json.loads(manifest_path.read_text(encoding="utf-8"))["bridge_install"]["parent_origin"] == "https://renewed.example.test"
+
+    with monkeypatch.context() as cleanup:
+        cleanup.setattr(Path, "glob", lambda *args: (_ for _ in ()).throw(OSError("listing unavailable")))
+        retry = changed_installer.install(confirm=True)
+        assert retry["installed"] is True and retry["probe"]["ready"] is True
+        assert retry["cleanup_pending"] is True
+    run.calls.clear()
+    retry = changed_installer.install(confirm=True)
+    assert retry["cleanup_pending"] is False and not backup.exists()
+    assert retry["package_installed"] is False and retry["lifecycle"] == "unchanged"
+    assert calls == ["https://workbench.example.test", "https://renewed.example.test"]
+    assert ["systemctl", "restart", pi_web.UNIT_NAME] not in run.calls
 
     old = (version_dir / "bin" / "pi-web.js").read_bytes()
     monkeypatch.setattr(pi_web, "_build_staged_bridge", lambda *args, **kwargs: (_ for _ in ()).throw(PiWebError("build failed")))
@@ -618,6 +665,24 @@ def test_bridge_install_updates_origin_converges_and_preserves_old_artifact_on_b
         ).install(confirm=True)
     assert (version_dir / "bin" / "pi-web.js").read_bytes() == old
     assert not list(Path(str(config.install_root)).glob("*.bridge-staging-*"))
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
+def test_bridge_cleanup_is_bounded_and_preserves_other_paths(tmp_path: Path) -> None:
+    version = tmp_path / "0.9.0"
+    malformed = tmp_path / "0.9.0.previous-not-an-install"
+    malformed.mkdir()
+    victim = tmp_path / "preserve"
+    victim.mkdir()
+    (victim / "keep").write_text("keep")
+    link = tmp_path / ("0.9.0.previous-" + "f" * 32)
+    link.symlink_to(victim, target_is_directory=True)
+    backups = [tmp_path / f"0.9.0.previous-{index:032x}" for index in range(33)]
+    for backup in backups:
+        backup.mkdir()
+    assert PiWebInstaller._cleanup_previous_bridges(version, uid=os.geteuid()) is True
+    assert any(backup.exists() for backup in backups)
+    assert malformed.is_dir() and link.is_symlink() and (victim / "keep").read_text() == "keep"
 
 
 def test_bridge_archive_uses_the_pinned_git_blob_not_a_mutated_checkout(tmp_path: Path) -> None:

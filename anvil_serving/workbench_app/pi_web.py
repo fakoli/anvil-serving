@@ -931,13 +931,31 @@ class PiWebInstaller:
             raise PiWebError("cannot restore the prior Pi Web bridge artifact") from exc
 
     @staticmethod
-    def _finalize_promoted_bridge(promotion: _BridgePromotion) -> None:
-        if promotion.backup is None:
-            return
+    def _cleanup_previous_bridges(version_dir: Path, *, uid: int) -> bool:
+        """Retry bounded backup cleanup only after the installed bridge is ready."""
+        pending = False
+        prefix = version_dir.name + ".previous-"
+        count = 0
         try:
-            shutil.rmtree(promotion.backup)
-        except OSError as exc:
-            raise PiWebError("the prior Pi Web bridge artifact could not be removed") from exc
+            for backup in version_dir.parent.glob(prefix + "*"):
+                if not re.fullmatch(re.escape(prefix) + r"[a-f0-9]{32}", backup.name):
+                    continue
+                if count == 32:
+                    return True
+                count += 1
+                try:
+                    details = backup.lstat()
+                    if not stat_module.S_ISDIR(details.st_mode) or details.st_uid not in {uid, os.geteuid()}:
+                        pending = True
+                        continue
+                    shutil.rmtree(backup)
+                except FileNotFoundError:
+                    continue
+                except OSError:
+                    pending = True
+        except OSError:
+            pending = True
+        return pending
 
     def _install_bridge(self, root: Path, version_dir: Path, *, node: str, uid: int, user_home: str) -> tuple[bool, dict[str, object], _BridgePromotion | None]:
         config = self.config
@@ -1038,6 +1056,24 @@ class PiWebInstaller:
             _password_file_proof(config.bridge_token_env_file)
         root = install_root_for(config)
         _safe_install_root(root)
+        import fcntl
+        try:
+            lock = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        except OSError as exc:
+            raise PiWebError("cannot lock the protected Pi Web install root") from exc
+        try:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise PiWebError("another Pi Web installation is in progress; retry after it completes") from exc
+            except OSError as exc:
+                raise PiWebError("cannot lock the protected Pi Web install root") from exc
+            return self._install_locked(root)
+        finally:
+            os.close(lock)
+
+    def _install_locked(self, root: Path) -> dict[str, object]:
+        config = self.config
         version_dir = root / config.version
         node, node_version = _node_details(self._node_path or config.node_path, run=self._run)
         uid, user_home = _service_identity(config.service_user)
@@ -1101,12 +1137,12 @@ class PiWebInstaller:
                 except PiWebError as rollback_error:
                     raise rollback_error from exc
             raise
-        if promotion is not None:
-            self._finalize_promoted_bridge(promotion)
+        cleanup_pending = self._cleanup_previous_bridges(version_dir, uid=uid) if bridge else False
         return {
             "installed": True, "version": config.version,
             "unit_path": str(self._systemd_root / UNIT_NAME), "unit_changed": unit_changed,
             "package_installed": artifact_changed, "lifecycle": lifecycle,
+            "cleanup_pending": cleanup_pending,
             "node": {"path": node, "version": ".".join(str(part) for part in node_version)}, "probe": proof,
         }
 
