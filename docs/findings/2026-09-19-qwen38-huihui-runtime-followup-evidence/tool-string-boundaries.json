@@ -1,0 +1,219 @@
+{
+  "suite": "tool-string-boundaries",
+  "date": "2026-09-19",
+  "work_class": "typed tool arguments",
+  "evidence_use": "diagnostic",
+  "validator_strength": "typed_structure",
+  "evals": [
+    {
+      "id": "numeric-string",
+      "prompt": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"98101\"",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "98101"
+        }
+      }
+    },
+    {
+      "id": "leading-zero",
+      "prompt": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"007\"",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "007"
+        }
+      }
+    },
+    {
+      "id": "boolean-string",
+      "prompt": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"true\"",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "true"
+        }
+      }
+    },
+    {
+      "id": "alphabetic",
+      "prompt": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"Oakland\"",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "Oakland"
+        }
+      }
+    },
+    {
+      "id": "json-string",
+      "prompt": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"{\\\"k\\\":1}\"",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "{\"k\":1}"
+        }
+      }
+    },
+    {
+      "id": "line-break",
+      "prompt": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"line1\\r\\nline2\"",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "line1\r\nline2"
+        }
+      }
+    },
+    {
+      "id": "xml-text",
+      "prompt": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"<tag>hello & goodbye</tag>\"",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "<tag>hello & goodbye</tag>"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "campaign": "2026-09-19-qwen38-huihui-runtime-followup",
+  "scope": "User-authorized continuation of exact model investigation, targeted corrections and settings. Original failed runs preserved.",
+  "model_revision": "181446902fc777c479749e98cf2abf2250263a8d",
+  "baseline_runtime": "a99407c63fc5bbd25d9fb597cbb8ab352bdb01ef",
+  "challenger_runtime": "70434721b1ae29d0616f3de9b376c8a4d91590b5",
+  "hypothesis": "Upstream Aug27 schema-aware parser fix preserves numeric-looking string tool arguments. Verify empirically; do not change assertions.",
+  "cells": [
+    "old runtime no-thinking built-in repeated tool gate with raw argument evidence",
+    "old runtime string boundary suite",
+    "compatible schema-fixed runtime smoke and protocol then identical quality and string boundaries",
+    "compatible schema-fixed runtime requested low reasoning then default if necessary",
+    "MTP matched comparison and context expansion only after corrected profile passes correctness and feasibility"
+  ],
+  "restoration": "Media worker and media MCP running HTTP200; original stopped incumbent preserved. No live alias changes.",
+  "source_urls": [
+    "https://github.com/Neroued/ninfer/commit/0e4cdf84f04d74abf6e28b6021b2bd83239d5a1b",
+    "https://github.com/Neroued/ninfer/commit/70434721b1ae29d0616f3de9b376c8a4d91590b5",
+    "https://github.com/Neroued/ninfer/tree/9e163eee4b8acec21ab0ac765107b6a3f287b217"
+  ],
+  "head_compatibility_note": "Sept18 HEAD9e163 requiresv3 artifacts; select Aug28 schema-fixed revision retaining original artifact format for first controlled comparison. No artifact conversion or weight substitution.",
+  "performance_plan": {
+    "context_tokens": 2048,
+    "concurrency": 1,
+    "requests": 12,
+    "warmup": 2,
+    "seed": 42,
+    "max_tokens": 2048,
+    "response_words": 128,
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "controlled_output_policy": "strict",
+    "reasoning_effort": "off via server default and omitted unsupported control; ordinary quality9/9 passes, so use off for matched no-spec/MTP",
+    "comparisons": "Otherwise matched no-spec vs MTP3; incumbent comparison only with matched context/workload, no historical unpaired speed claim.",
+    "p99_interpretation": "Descriptive only;12 requests cannot establish tail distribution.",
+    "warmup_method": "separate2-request artifact; capacity CLI has no warmup flag",
+    "adaptation": {
+      "observed": "128-word exact warmups fail in off and low modes; retained unchanged.32-word off warmup passes2/2.",
+      "matched_additional_cell": {
+        "response_words": 32,
+        "requests": 12,
+        "seed": 43,
+        "interpretation": "Short output diagnostic comparison only, not proof of long-output speed or promotion."
+      }
+    }
+  },
+  "context_expansion": {
+    "profile": "MTP3-32K",
+    "reason": "MTP3 core9/9, protocol7/7, vision12/12;32K feasibility survivor",
+    "checks": [
+      "smoke",
+      "JSON",
+      "needle nominal24K",
+      "C1 tools",
+      "quality tool intelligence session context at24K"
+    ],
+    "caveat": "Separate context qualification; no no-spec32K speedup claim"
+  },
+  "incumbent_comparison": {
+    "profile": "GGUF UD-Q4_K_XL nativeMTP3 adapted8K",
+    "reason": "Compare established checkpoint at same8K context allocation, C1 and strict32-word seed43 n12 workload. Different checkpoint and quant/runtime are complete-profile differences, not isolated precision effects.",
+    "gates": "Fresh preflight and repeated corequality before capacity; boundaryinstruction suite compares failures.",
+    "default_deployment_unchanged": true
+  }
+}

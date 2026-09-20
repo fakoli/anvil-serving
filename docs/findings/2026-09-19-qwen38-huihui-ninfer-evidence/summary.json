@@ -1,0 +1,94 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-19-qwen38-huihui-ninfer",
+  "complete": true,
+  "completion_scope": "Hard-gate rejection and restoration complete; full performance/long-context qualification was stopped, not passed.",
+  "identity": {
+    "configuration": "configuration.json"
+  },
+  "workload": {
+    "manifest": "workload-manifest.json"
+  },
+  "measurement": {
+    "path": "online direct",
+    "warm_cold_state": "mixed sequential functional probes",
+    "statistics": [
+      "Repeated correctness pass counts only"
+    ]
+  },
+  "gates": [
+    {
+      "name": "strict typed tool arguments",
+      "candidate_off": "0/3",
+      "candidate_reasoning_low": "0/3",
+      "incumbent": "3/3",
+      "status": "failed"
+    },
+    {
+      "name": "unified diff",
+      "candidate_off": "0/3",
+      "candidate_reasoning_low": "3/3",
+      "incumbent": "3/3",
+      "status": "fails off, passes requested low"
+    },
+    {
+      "name": "parallel triage",
+      "candidate_off": "3/3",
+      "candidate_reasoning_low": "3/3",
+      "incumbent": "3/3",
+      "status": "passed"
+    },
+    {
+      "name": "image suite with vision enabled",
+      "result": "12/12",
+      "status": "passed functional; companion identity only"
+    },
+    {
+      "name": "performance, MTP, long context, endurance, immutable recreation",
+      "status": "not run; blocked by correctness gate"
+    }
+  ],
+  "headline_results": [
+    "Reject exact tested no-spec 8K served profile; retain incumbent recommendation.",
+    "No demonstrated speed or footprint improvement.",
+    "Media services restored HTTP 200."
+  ],
+  "failures": [
+    "Required zip string tool argument failed every candidate attempt.",
+    "Initial chat_template_kwargs rejected HTTP 400.",
+    "Initial vision-disabled image run 0/12; corrected recipe run12/12."
+  ],
+  "limitations": [
+    "Malformed raw tool arguments were discarded by harness; parser/template/model cause unconfirmed.",
+    "Source-build apt/runtime dependencies are mutable; executable hash is local identity, not clean recreation proof.",
+    "Incumbent context and runtime differ; correctness control cannot establish comparative performance.",
+    "Other Huihui runtime/parser profiles and MTP remain unqualified."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion",
+      "rejected-exact-profile"
+    ],
+    "promotion_authorized": false,
+    "conditional_user_request": "Promotion requested only if better; conditions not met.",
+    "next_gate": "Correct tool argument behavior in an exact pinned profile, retain raw diagnosis, then rerun qualification."
+  },
+  "evidence": [
+    "multimodal-nospec-8k-vision.json",
+    "multimodal-nospec-8k.json",
+    "preflight-incumbent.json",
+    "preflight-nospec-protocol.json",
+    "preflight-nospec-server-control.json",
+    "preflight-nospec-smoke.json",
+    "quality-incumbent-control.json",
+    "quality-nospec-8k.json",
+    "quality-nospec-reasoning-low.json",
+    "restoration.json",
+    "independent-gate-review.md"
+  ]
+}

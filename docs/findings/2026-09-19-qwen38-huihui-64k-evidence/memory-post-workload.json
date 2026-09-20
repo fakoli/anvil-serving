@@ -1,0 +1,16 @@
+{
+  "observed_at": "2026-09-19T23:31:12.676983+00:00",
+  "phase": "after preflight,quality,capacity18,vision12",
+  "gpu_fields": [
+    "total_mib",
+    "used_mib",
+    "free_mib",
+    "utilization_percent"
+  ],
+  "values": [
+    32607,
+    24224,
+    7964,
+    0
+  ]
+}

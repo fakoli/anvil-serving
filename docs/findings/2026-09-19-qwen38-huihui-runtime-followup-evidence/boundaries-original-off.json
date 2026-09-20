@@ -1,0 +1,1269 @@
+{
+  "context": {
+    "cap_tokens": 6144,
+    "max_model_len": 8192,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 1024
+  },
+  "failures": [
+    {
+      "error": "missing required string argument: value",
+      "eval_id": "numeric-string",
+      "failure_classes": [
+        "tool_call_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "tool-string-boundaries"
+    },
+    {
+      "error": "missing required string argument: value",
+      "eval_id": "boolean-string",
+      "failure_classes": [
+        "tool_call_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "tool-string-boundaries"
+    },
+    {
+      "error": "missing required string argument: value",
+      "eval_id": "json-string",
+      "failure_classes": [
+        "tool_call_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "tool-string-boundaries"
+    },
+    {
+      "error": "wrong argument value: 'line1\\nline2'",
+      "eval_id": "line-break",
+      "failure_classes": [
+        "tool_call_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "tool-string-boundaries"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:8081/v1",
+    "candidate_id": "huihui-nvfp4",
+    "config_id": "original-runtime-string-boundaries",
+    "engine": "ninfer",
+    "gpu": "rtx5090",
+    "model": "qwen38-huihui-ninfer-nvfp4-nospec-8k",
+    "started_at": "2026-09-19T18:51:35Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260919T185135Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "unsupported",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "tool-string-boundaries": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "missing required string argument: value",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 490.6796999857761,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 15,
+                    "arguments_excerpt": "{\"value\":98101}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "missing required string argument: value"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 30,
+                "prompt_tokens": 301,
+                "total_tokens": 331
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "missing required string argument: value",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 423.44370001228526,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 15,
+                    "arguments_excerpt": "{\"value\":98101}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "missing required string argument: value"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 30,
+                "prompt_tokens": 301,
+                "total_tokens": 331
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "missing required string argument: value",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 424.4785000337288,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 15,
+                    "arguments_excerpt": "{\"value\":98101}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "missing required string argument: value"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 30,
+                "prompt_tokens": 301,
+                "total_tokens": 331
+              }
+            }
+          ],
+          "error": "missing required string argument: value",
+          "id": "numeric-string",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "tool_call"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 448.83050001226366,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "value": "007"
+                },
+                "observations": [
+                  {
+                    "arguments_chars": 15,
+                    "arguments_excerpt": "{\"value\":\"007\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 28,
+                "prompt_tokens": 299,
+                "total_tokens": 327
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 396.41370001481846,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "value": "007"
+                },
+                "observations": [
+                  {
+                    "arguments_chars": 15,
+                    "arguments_excerpt": "{\"value\":\"007\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 28,
+                "prompt_tokens": 299,
+                "total_tokens": 327
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 396.21159998932853,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "value": "007"
+                },
+                "observations": [
+                  {
+                    "arguments_chars": 15,
+                    "arguments_excerpt": "{\"value\":\"007\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 28,
+                "prompt_tokens": 299,
+                "total_tokens": 327
+              }
+            }
+          ],
+          "id": "leading-zero",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "tool_call"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "missing required string argument: value",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 420.2485999558121,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 14,
+                    "arguments_excerpt": "{\"value\":true}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "missing required string argument: value"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 26,
+                "prompt_tokens": 297,
+                "total_tokens": 323
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "missing required string argument: value",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 368.9802999724634,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 14,
+                    "arguments_excerpt": "{\"value\":true}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "missing required string argument: value"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 26,
+                "prompt_tokens": 297,
+                "total_tokens": 323
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "missing required string argument: value",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 372.18960002064705,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 14,
+                    "arguments_excerpt": "{\"value\":true}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "missing required string argument: value"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 26,
+                "prompt_tokens": 297,
+                "total_tokens": 323
+              }
+            }
+          ],
+          "error": "missing required string argument: value",
+          "id": "boolean-string",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "tool_call"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 465.63479996984825,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "value": "Oakland"
+                },
+                "observations": [
+                  {
+                    "arguments_chars": 19,
+                    "arguments_excerpt": "{\"value\":\"Oakland\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 29,
+                "prompt_tokens": 298,
+                "total_tokens": 327
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 410.7722999760881,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "value": "Oakland"
+                },
+                "observations": [
+                  {
+                    "arguments_chars": 19,
+                    "arguments_excerpt": "{\"value\":\"Oakland\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 29,
+                "prompt_tokens": 298,
+                "total_tokens": 327
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 410.35589994862676,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "value": "Oakland"
+                },
+                "observations": [
+                  {
+                    "arguments_chars": 19,
+                    "arguments_excerpt": "{\"value\":\"Oakland\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 29,
+                "prompt_tokens": 298,
+                "total_tokens": 327
+              }
+            }
+          ],
+          "id": "alphabetic",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "tool_call"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "missing required string argument: value",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 476.6500000259839,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 17,
+                    "arguments_excerpt": "{\"value\":{\"k\":1}}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "missing required string argument: value"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 30,
+                "prompt_tokens": 299,
+                "total_tokens": 329
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "missing required string argument: value",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 426.51189997559413,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 17,
+                    "arguments_excerpt": "{\"value\":{\"k\":1}}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "missing required string argument: value"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 30,
+                "prompt_tokens": 299,
+                "total_tokens": 329
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "missing required string argument: value",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 424.87779998918995,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 17,
+                    "arguments_excerpt": "{\"value\":{\"k\":1}}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "missing required string argument: value"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 30,
+                "prompt_tokens": 299,
+                "total_tokens": 329
+              }
+            }
+          ],
+          "error": "missing required string argument: value",
+          "id": "json-string",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "tool_call"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "wrong argument value: 'line1\\nline2'",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 477.40189998876303,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 24,
+                    "arguments_excerpt": "{\"value\":\"line1\\nline2\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "wrong argument value: 'line1\\nline2'"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 30,
+                "prompt_tokens": 302,
+                "total_tokens": 332
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "wrong argument value: 'line1\\nline2'",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 424.2454000050202,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 24,
+                    "arguments_excerpt": "{\"value\":\"line1\\nline2\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "wrong argument value: 'line1\\nline2'"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 30,
+                "prompt_tokens": 302,
+                "total_tokens": 332
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "error": "wrong argument value: 'line1\\nline2'",
+              "failure_class": "tool_call_failed",
+              "finish_reason": "tool_calls",
+              "latency_ms": 424.78609998943284,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": null,
+                "observations": [
+                  {
+                    "arguments_chars": 24,
+                    "arguments_excerpt": "{\"value\":\"line1\\nline2\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": false,
+                "validation_errors": [
+                  "wrong argument value: 'line1\\nline2'"
+                ]
+              },
+              "usage": {
+                "completion_tokens": 30,
+                "prompt_tokens": 302,
+                "total_tokens": 332
+              }
+            }
+          ],
+          "error": "wrong argument value: 'line1\\nline2'",
+          "id": "line-break",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "tool_call"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 519.811500038486,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "value": "<tag>hello & goodbye</tag>"
+                },
+                "observations": [
+                  {
+                    "arguments_chars": 38,
+                    "arguments_excerpt": "{\"value\":\"<tag>hello & goodbye</tag>\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 33,
+                "prompt_tokens": 303,
+                "total_tokens": 336
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 466.1295999540016,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "value": "<tag>hello & goodbye</tag>"
+                },
+                "observations": [
+                  {
+                    "arguments_chars": 38,
+                    "arguments_excerpt": "{\"value\":\"<tag>hello & goodbye</tag>\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 33,
+                "prompt_tokens": 303,
+                "total_tokens": 336
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 1024,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 1024
+              },
+              "content": "",
+              "content_chars": 0,
+              "content_excerpt": "",
+              "failure_class": null,
+              "finish_reason": "tool_calls",
+              "latency_ms": 466.0533999558538,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [],
+              "tool_call": {
+                "arguments": {
+                  "value": "<tag>hello & goodbye</tag>"
+                },
+                "observations": [
+                  {
+                    "arguments_chars": 38,
+                    "arguments_excerpt": "{\"value\":\"<tag>hello & goodbye</tag>\"}",
+                    "arguments_truncated": false,
+                    "arguments_wire_type": "str",
+                    "name": "record_text"
+                  }
+                ],
+                "valid": true,
+                "validation_errors": []
+              },
+              "usage": {
+                "completion_tokens": 33,
+                "prompt_tokens": 303,
+                "total_tokens": 336
+              }
+            }
+          ],
+          "id": "xml-text",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "tool_call"
+        }
+      ],
+      "date": "2026-09-19",
+      "evidence_use": "diagnostic",
+      "source": "docs/findings/2026-09-19-qwen38-huihui-runtime-followup-evidence/tool-string-boundaries.json",
+      "source_sha256": "c2be890596a8e10371c40ede2abdb7ec8d2c2a2f42ba6aff8cce822908a559c8",
+      "status": "failed",
+      "validator_strength": "typed_structure",
+      "work_class": "typed tool arguments"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "unsupported",
+    "control_requested": null,
+    "control_status": "unsupported",
+    "mode": "unsupported",
+    "reasoning_effort": null,
+    "unsupported": true
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": null,
+      "completion_tokens_mean": null,
+      "completion_tokens_mean_ci95_high": null,
+      "completion_tokens_mean_ci95_low": null,
+      "completion_tokens_min": null,
+      "completion_tokens_p25": null,
+      "completion_tokens_p50": null,
+      "completion_tokens_p75": null,
+      "completion_tokens_p90": null,
+      "completion_tokens_p95": null,
+      "completion_tokens_p99": null,
+      "completion_tokens_samples": 0,
+      "completion_tokens_stddev": null,
+      "content_chunks": 0,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": null,
+      "decode_tok_s_mean": null,
+      "decode_tok_s_mean_ci95_high": null,
+      "decode_tok_s_mean_ci95_low": null,
+      "decode_tok_s_min": null,
+      "decode_tok_s_p25": null,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p75": null,
+      "decode_tok_s_p90": null,
+      "decode_tok_s_p95": null,
+      "decode_tok_s_p99": null,
+      "decode_tok_s_samples": 0,
+      "decode_tok_s_stddev": null,
+      "e2e_max_ms": null,
+      "e2e_mean_ci95_high_ms": null,
+      "e2e_mean_ci95_low_ms": null,
+      "e2e_mean_ms": null,
+      "e2e_min_ms": null,
+      "e2e_p25_ms": null,
+      "e2e_p50_ms": null,
+      "e2e_p75_ms": null,
+      "e2e_p90_ms": null,
+      "e2e_p95_ms": null,
+      "e2e_p99_ms": null,
+      "e2e_samples": 0,
+      "e2e_stddev_ms": null,
+      "effective_prefill_tok_s_max": null,
+      "effective_prefill_tok_s_mean": null,
+      "effective_prefill_tok_s_mean_ci95_high": null,
+      "effective_prefill_tok_s_mean_ci95_low": null,
+      "effective_prefill_tok_s_min": null,
+      "effective_prefill_tok_s_p25": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p75": null,
+      "effective_prefill_tok_s_p90": null,
+      "effective_prefill_tok_s_p95": null,
+      "effective_prefill_tok_s_p99": null,
+      "effective_prefill_tok_s_samples": 0,
+      "effective_prefill_tok_s_stddev": null,
+      "generation_max_ms": null,
+      "generation_mean_ci95_high_ms": null,
+      "generation_mean_ci95_low_ms": null,
+      "generation_mean_ms": null,
+      "generation_min_ms": null,
+      "generation_p25_ms": null,
+      "generation_p50_ms": null,
+      "generation_p75_ms": null,
+      "generation_p90_ms": null,
+      "generation_p95_ms": null,
+      "generation_p99_ms": null,
+      "generation_samples": 0,
+      "generation_stddev_ms": null,
+      "mean_inter_token_latency_ms_max": null,
+      "mean_inter_token_latency_ms_mean": null,
+      "mean_inter_token_latency_ms_mean_ci95_high": null,
+      "mean_inter_token_latency_ms_mean_ci95_low": null,
+      "mean_inter_token_latency_ms_min": null,
+      "mean_inter_token_latency_ms_p25": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p75": null,
+      "mean_inter_token_latency_ms_p90": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "mean_inter_token_latency_ms_p99": null,
+      "mean_inter_token_latency_ms_samples": 0,
+      "mean_inter_token_latency_ms_stddev": null,
+      "mean_time_per_output_token_max_ms": null,
+      "mean_time_per_output_token_mean_ci95_high_ms": null,
+      "mean_time_per_output_token_mean_ci95_low_ms": null,
+      "mean_time_per_output_token_mean_ms": null,
+      "mean_time_per_output_token_min_ms": null,
+      "mean_time_per_output_token_p25_ms": null,
+      "mean_time_per_output_token_p50_ms": null,
+      "mean_time_per_output_token_p75_ms": null,
+      "mean_time_per_output_token_p90_ms": null,
+      "mean_time_per_output_token_p95_ms": null,
+      "mean_time_per_output_token_p99_ms": null,
+      "mean_time_per_output_token_samples": 0,
+      "mean_time_per_output_token_stddev_ms": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_max": null,
+      "prompt_tokens_mean": null,
+      "prompt_tokens_mean_ci95_high": null,
+      "prompt_tokens_mean_ci95_low": null,
+      "prompt_tokens_min": null,
+      "prompt_tokens_p25": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p75": null,
+      "prompt_tokens_p90": null,
+      "prompt_tokens_p95": null,
+      "prompt_tokens_p99": null,
+      "prompt_tokens_samples": 0,
+      "prompt_tokens_stddev": null,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": null,
+      "time_to_first_output_mean_ci95_high_ms": null,
+      "time_to_first_output_mean_ci95_low_ms": null,
+      "time_to_first_output_mean_ms": null,
+      "time_to_first_output_min_ms": null,
+      "time_to_first_output_p25_ms": null,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p75_ms": null,
+      "time_to_first_output_p90_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "time_to_first_output_p99_ms": null,
+      "time_to_first_output_samples": 0,
+      "time_to_first_output_stddev_ms": null,
+      "tpot_max_ms": null,
+      "tpot_mean_ci95_high_ms": null,
+      "tpot_mean_ci95_low_ms": null,
+      "tpot_mean_ms": null,
+      "tpot_min_ms": null,
+      "tpot_p25_ms": null,
+      "tpot_p50_ms": null,
+      "tpot_p75_ms": null,
+      "tpot_p90_ms": null,
+      "tpot_p95_ms": null,
+      "tpot_p99_ms": null,
+      "tpot_samples": 0,
+      "tpot_stddev_ms": null,
+      "ttft_max_ms": null,
+      "ttft_mean_ci95_high_ms": null,
+      "ttft_mean_ci95_low_ms": null,
+      "ttft_mean_ms": null,
+      "ttft_min_ms": null,
+      "ttft_p25_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p75_ms": null,
+      "ttft_p90_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_p99_ms": null,
+      "ttft_samples": 0,
+      "ttft_stddev_ms": null
+    },
+    "wall_ms": 9137.127300025895
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

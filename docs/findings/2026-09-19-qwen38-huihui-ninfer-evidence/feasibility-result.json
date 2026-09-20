@@ -1,0 +1,255 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "2026-09-19-qwen38-huihui-ninfer",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 8192,
+    "max": 8192
+  },
+  "physical_available_bytes": {
+    "min": 33015463936,
+    "max": 33015463936
+  },
+  "policy_available_bytes": {
+    "min": 29794238464,
+    "max": 29794238464
+  },
+  "candidates": [
+    {
+      "id": "huihui-8k-c1-scout",
+      "classification": "benchmark-survivor",
+      "reasons": [
+        "resource bounds pass; behavioral evidence remains incomplete"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "pass",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 8192,
+        "max": 8192
+      },
+      "demand_bytes": {
+        "min": 20468203520,
+        "max": 28051505152
+      },
+      "physical_available_bytes": {
+        "min": 33015463936,
+        "max": 33015463936
+      },
+      "policy_available_bytes": {
+        "min": 29794238464,
+        "max": 29794238464
+      },
+      "physical_margin_bytes": {
+        "min": 4963958784,
+        "max": 12547260416
+      },
+      "policy_margin_bytes": {
+        "min": 1742733312,
+        "max": 9326034944
+      },
+      "estimated_max_tokens_physical": {
+        "min": 311168,
+        "max": 1539840
+      },
+      "estimated_max_tokens_policy": {
+        "min": 114560,
+        "max": 1146624
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.tokens.protocol",
+        "requirements.concurrency",
+        "requirements.vram_reserves.headroom.variable",
+        "candidates[0].runtime_context_limit_tokens",
+        "candidates[0].resident_components.target",
+        "candidates[0].resident_components.runtime",
+        "candidates[0].per_token_components.kv",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 5888,
+      "max": 5888,
+      "source": "scout requirement",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 2048,
+      "max": 2048,
+      "source": "scout requirement",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    {
+      "path": "requirements.tokens.protocol",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 256,
+      "max": 256,
+      "source": "scout requirement",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "requests",
+      "min": 1,
+      "max": 1,
+      "source": "scout requirement",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 34190917632,
+      "max": 34190917632,
+      "source": "local nvidia-smi",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    {
+      "path": "requirements.vram_reserves.desktop.variable",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 1175453696,
+      "max": 1175453696,
+      "source": "total minus free VRAM before stop",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    {
+      "path": "requirements.vram_reserves.headroom.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 3221225472,
+      "max": 3221225472,
+      "source": "campaign default reserve",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "scout recipe",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    {
+      "path": "candidates[0].resident_components.target",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 19327352832,
+      "max": 22548578304,
+      "source": "producer GPU weights 18.98 GiB text / 19.25 GiB vision; conservative interval",
+      "observed_at": "2026-09-19",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.runtime",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 1073741824,
+      "max": 5368709120,
+      "source": "prior same-GPU NInfer total at much larger context; planning bound requires local confirmation",
+      "observed_at": "2026-09-19",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].per_token_components.kv",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 8192,
+      "max": 16384,
+      "source": "prior NInfer hybrid attention planning interval",
+      "observed_at": "2026-09-19",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "C1",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "hard gate",
+      "observed_at": "2026-09-19",
+      "notes": ""
+    }
+  ],
+  "unresolved_variables": [],
+  "promotion_authority": false
+}

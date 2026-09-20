@@ -1,0 +1,41 @@
+{
+  "client": "hermes",
+  "passed": true,
+  "checks": {
+    "process_succeeded": true,
+    "output_bounded": true,
+    "marker_exact": true,
+    "usage_valid": true,
+    "provider_exact": true,
+    "model_exact": true,
+    "completed": true,
+    "not_failed": true,
+    "api_call_recorded": true
+  },
+  "command": {
+    "provider_selector": "anvil",
+    "expected_observed_provider": "custom",
+    "model": "llm.secondary",
+    "reasoning": "none",
+    "tool_probe": "terminal/read-temporary-nonce"
+  },
+  "observed": {
+    "provider": "custom",
+    "model": "llm.secondary",
+    "api_calls": 2,
+    "input_tokens": 10169,
+    "output_tokens": 130,
+    "reasoning_tokens": 0,
+    "response_chars": 24,
+    "returncode": 0,
+    "latency_ms": 4551
+  },
+  "failure": null,
+  "schema": "anvil-serving.native-client-acceptance/v1",
+  "observed_at": "2026-09-19T23:47:53.371447+00:00",
+  "provenance": {
+    "private_evaluator_receipt_sha256": "b0e3d05c62bcb65d1d25dc3187aee0c8a968df03acf3bff3d199712b72073423",
+    "private_native_process_capture_sha256": "5a350fba773410b1bb48959fae9ece7ed485375b8fe907787e205c9c6be7f64c",
+    "derivation": "Original Anvil native-client evaluator receipt retained unchanged below these added provenance fields; private process output remains separately retained. No model self-grading."
+  }
+}

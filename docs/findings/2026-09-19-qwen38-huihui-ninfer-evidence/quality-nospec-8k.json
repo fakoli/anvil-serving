@@ -1,0 +1,652 @@
+{
+  "context": {
+    "cap_tokens": 6144,
+    "max_model_len": 8192,
+    "targets": [
+      {
+        "attempted_context_tokens": 4096,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 4096,
+        "content_chunks": 44,
+        "decode_tok_s": 71.53979490940506,
+        "e2e_ms": 1191.5698999655433,
+        "effective_prefill_tok_s": 6270.298247624919,
+        "estimated_prompt_tokens": 4096,
+        "generation_ms": 615.0422999635339,
+        "mean_inter_token_latency_ms": 13.978234090080315,
+        "output_token_source": "usage",
+        "output_tokens": 45,
+        "prompt_tokens": 3615,
+        "reasoning_chunks": 0,
+        "status": "passed",
+        "target_tokens": 4096,
+        "time_to_first_output_ms": 576.5276000020094,
+        "ttft_ms": 576.5282999491319,
+        "usage": {
+          "completion_tokens": 45,
+          "prompt_tokens": 3615,
+          "total_tokens": 3660
+        },
+        "visible_generation_ms": 615.0416000164114
+      }
+    ]
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 1024
+  },
+  "failures": [
+    {
+      "error": "missing required string argument: zip",
+      "failure_classes": [
+        "visible_answer_missing"
+      ],
+      "pass_rate": 0.0,
+      "suite": "tool"
+    },
+    {
+      "error": "pass rate below threshold",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "prompt_id": "unified_diff_timeout_edit",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:8081/v1",
+    "candidate_id": "huihui-nvfp4",
+    "config_id": "nospec-8k",
+    "engine": "ninfer",
+    "gpu": "rtx5090",
+    "model": "qwen38-huihui-ninfer-nvfp4-nospec-8k",
+    "started_at": "2026-09-19T18:08:52Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "---\ntimeout = 45\nretries = 2\n---",
+            "content_chars": 32,
+            "content_excerpt": "---\ntimeout = 45\nretries = 2\n---",
+            "failure_class": "deterministic_check_failed",
+            "finish_reason": "stop",
+            "latency_ms": 251.037499983795,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": false
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": false
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": false
+              }
+            ],
+            "usage": {
+              "completion_tokens": 16,
+              "prompt_tokens": 51,
+              "total_tokens": 67
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "---\ntimeout = 45\nretries = 2\n---",
+            "content_chars": 32,
+            "content_excerpt": "---\ntimeout = 45\nretries = 2\n---",
+            "failure_class": "deterministic_check_failed",
+            "finish_reason": "stop",
+            "latency_ms": 228.3506999956444,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": false
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": false
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": false
+              }
+            ],
+            "usage": {
+              "completion_tokens": 16,
+              "prompt_tokens": 51,
+              "total_tokens": 67
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "---\ntimeout = 45\nretries = 2\n---",
+            "content_chars": 32,
+            "content_excerpt": "---\ntimeout = 45\nretries = 2\n---",
+            "failure_class": "deterministic_check_failed",
+            "finish_reason": "stop",
+            "latency_ms": 227.49670001212507,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": false
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": false
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": false
+              }
+            ],
+            "usage": {
+              "completion_tokens": 16,
+              "prompt_tokens": 51,
+              "total_tokens": 67
+            }
+          }
+        ],
+        "error": "pass rate below threshold",
+        "id": "unified_diff_timeout_edit",
+        "pass_count": 0,
+        "pass_rate": 0.0,
+        "required_pass_rate": 1.0,
+        "status": "failed",
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "The total latency of 3000 ms exceeds the 2500 ms timeout because the LLM takes 1800 ms, so you should reduce the LLM response time by using a faster model, limiting output tokens, or implementing streaming.",
+            "content_chars": 206,
+            "content_excerpt": "The total latency of 3000 ms exceeds the 2500 ms timeout because the LLM takes 1800 ms, so you should reduce the LLM response time by using a faster model, limiting output tokens, or implementing stre",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 800.436899997294,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 55,
+              "prompt_tokens": 79,
+              "total_tokens": 134
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "The total latency of 3000 ms exceeds the 2500 ms timeout because the LLM takes 1800 ms, so you should reduce the LLM response time by using a faster model, limiting output tokens, or implementing streaming.",
+            "content_chars": 206,
+            "content_excerpt": "The total latency of 3000 ms exceeds the 2500 ms timeout because the LLM takes 1800 ms, so you should reduce the LLM response time by using a faster model, limiting output tokens, or implementing stre",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 769.5365999825299,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 55,
+              "prompt_tokens": 79,
+              "total_tokens": 134
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "The total latency of 3000 ms exceeds the 2500 ms timeout because the LLM takes 1800 ms, so you should reduce the LLM response time by using a faster model, limiting output tokens, or implementing streaming.",
+            "content_chars": 206,
+            "content_excerpt": "The total latency of 3000 ms exceeds the 2500 ms timeout because the LLM takes 1800 ms, so you should reduce the LLM response time by using a faster model, limiting output tokens, or implementing stre",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 768.8717999844812,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 55,
+              "prompt_tokens": 79,
+              "total_tokens": 134
+            }
+          }
+        ],
+        "id": "parallel_timeout_triage",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260919T180852Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 1191.5698999655433,
+    "intelligence_pass_rate": 0.5,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "unsupported",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 576.5282999491319,
+    "usable_context_tokens": 4096,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      4096
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "intelligence",
+      "tool"
+    ]
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "unsupported",
+    "control_requested": null,
+    "control_status": "unsupported",
+    "mode": "unsupported",
+    "reasoning_effort": null,
+    "unsupported": true
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": 45.0,
+      "completion_tokens_mean": 45.0,
+      "completion_tokens_mean_ci95_high": 45.0,
+      "completion_tokens_mean_ci95_low": 45.0,
+      "completion_tokens_min": 45.0,
+      "completion_tokens_p25": 45.0,
+      "completion_tokens_p50": 45.0,
+      "completion_tokens_p75": 45.0,
+      "completion_tokens_p90": 45.0,
+      "completion_tokens_p95": 45.0,
+      "completion_tokens_p99": 45.0,
+      "completion_tokens_samples": 1,
+      "completion_tokens_stddev": 0.0,
+      "content_chunks": 44,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": 71.53979490940506,
+      "decode_tok_s_mean": 71.53979490940506,
+      "decode_tok_s_mean_ci95_high": 71.53979490940506,
+      "decode_tok_s_mean_ci95_low": 71.53979490940506,
+      "decode_tok_s_min": 71.53979490940506,
+      "decode_tok_s_p25": 71.53979490940506,
+      "decode_tok_s_p50": 71.53979490940506,
+      "decode_tok_s_p75": 71.53979490940506,
+      "decode_tok_s_p90": 71.53979490940506,
+      "decode_tok_s_p95": 71.53979490940506,
+      "decode_tok_s_p99": 71.53979490940506,
+      "decode_tok_s_samples": 1,
+      "decode_tok_s_stddev": 0.0,
+      "e2e_max_ms": 1191.5698999655433,
+      "e2e_mean_ci95_high_ms": 1191.5698999655433,
+      "e2e_mean_ci95_low_ms": 1191.5698999655433,
+      "e2e_mean_ms": 1191.5698999655433,
+      "e2e_min_ms": 1191.5698999655433,
+      "e2e_p25_ms": 1191.5698999655433,
+      "e2e_p50_ms": 1191.5698999655433,
+      "e2e_p75_ms": 1191.5698999655433,
+      "e2e_p90_ms": 1191.5698999655433,
+      "e2e_p95_ms": 1191.5698999655433,
+      "e2e_p99_ms": 1191.5698999655433,
+      "e2e_samples": 1,
+      "e2e_stddev_ms": 0.0,
+      "effective_prefill_tok_s_max": 6270.298247624919,
+      "effective_prefill_tok_s_mean": 6270.298247624919,
+      "effective_prefill_tok_s_mean_ci95_high": 6270.298247624919,
+      "effective_prefill_tok_s_mean_ci95_low": 6270.298247624919,
+      "effective_prefill_tok_s_min": 6270.298247624919,
+      "effective_prefill_tok_s_p25": 6270.298247624919,
+      "effective_prefill_tok_s_p50": 6270.298247624919,
+      "effective_prefill_tok_s_p75": 6270.298247624919,
+      "effective_prefill_tok_s_p90": 6270.298247624919,
+      "effective_prefill_tok_s_p95": 6270.298247624919,
+      "effective_prefill_tok_s_p99": 6270.298247624919,
+      "effective_prefill_tok_s_samples": 1,
+      "effective_prefill_tok_s_stddev": 0.0,
+      "generation_max_ms": 615.0422999635339,
+      "generation_mean_ci95_high_ms": 615.0422999635339,
+      "generation_mean_ci95_low_ms": 615.0422999635339,
+      "generation_mean_ms": 615.0422999635339,
+      "generation_min_ms": 615.0422999635339,
+      "generation_p25_ms": 615.0422999635339,
+      "generation_p50_ms": 615.0422999635339,
+      "generation_p75_ms": 615.0422999635339,
+      "generation_p90_ms": 615.0422999635339,
+      "generation_p95_ms": 615.0422999635339,
+      "generation_p99_ms": 615.0422999635339,
+      "generation_samples": 1,
+      "generation_stddev_ms": 0.0,
+      "mean_inter_token_latency_ms_max": 13.978234090080315,
+      "mean_inter_token_latency_ms_mean": 13.978234090080315,
+      "mean_inter_token_latency_ms_mean_ci95_high": 13.978234090080315,
+      "mean_inter_token_latency_ms_mean_ci95_low": 13.978234090080315,
+      "mean_inter_token_latency_ms_min": 13.978234090080315,
+      "mean_inter_token_latency_ms_p25": 13.978234090080315,
+      "mean_inter_token_latency_ms_p50": 13.978234090080315,
+      "mean_inter_token_latency_ms_p75": 13.978234090080315,
+      "mean_inter_token_latency_ms_p90": 13.978234090080315,
+      "mean_inter_token_latency_ms_p95": 13.978234090080315,
+      "mean_inter_token_latency_ms_p99": 13.978234090080315,
+      "mean_inter_token_latency_ms_samples": 1,
+      "mean_inter_token_latency_ms_stddev": 0.0,
+      "mean_time_per_output_token_max_ms": 13.978234090080315,
+      "mean_time_per_output_token_mean_ci95_high_ms": 13.978234090080315,
+      "mean_time_per_output_token_mean_ci95_low_ms": 13.978234090080315,
+      "mean_time_per_output_token_mean_ms": 13.978234090080315,
+      "mean_time_per_output_token_min_ms": 13.978234090080315,
+      "mean_time_per_output_token_p25_ms": 13.978234090080315,
+      "mean_time_per_output_token_p50_ms": 13.978234090080315,
+      "mean_time_per_output_token_p75_ms": 13.978234090080315,
+      "mean_time_per_output_token_p90_ms": 13.978234090080315,
+      "mean_time_per_output_token_p95_ms": 13.978234090080315,
+      "mean_time_per_output_token_p99_ms": 13.978234090080315,
+      "mean_time_per_output_token_samples": 1,
+      "mean_time_per_output_token_stddev_ms": 0.0,
+      "output_tokens": 45,
+      "prompt_token_samples": 1,
+      "prompt_tokens": 3615,
+      "prompt_tokens_max": 3615.0,
+      "prompt_tokens_mean": 3615.0,
+      "prompt_tokens_mean_ci95_high": 3615.0,
+      "prompt_tokens_mean_ci95_low": 3615.0,
+      "prompt_tokens_min": 3615.0,
+      "prompt_tokens_p25": 3615.0,
+      "prompt_tokens_p50": 3615.0,
+      "prompt_tokens_p75": 3615.0,
+      "prompt_tokens_p90": 3615.0,
+      "prompt_tokens_p95": 3615.0,
+      "prompt_tokens_p99": 3615.0,
+      "prompt_tokens_samples": 1,
+      "prompt_tokens_stddev": 0.0,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": 576.5276000020094,
+      "time_to_first_output_mean_ci95_high_ms": 576.5276000020094,
+      "time_to_first_output_mean_ci95_low_ms": 576.5276000020094,
+      "time_to_first_output_mean_ms": 576.5276000020094,
+      "time_to_first_output_min_ms": 576.5276000020094,
+      "time_to_first_output_p25_ms": 576.5276000020094,
+      "time_to_first_output_p50_ms": 576.5276000020094,
+      "time_to_first_output_p75_ms": 576.5276000020094,
+      "time_to_first_output_p90_ms": 576.5276000020094,
+      "time_to_first_output_p95_ms": 576.5276000020094,
+      "time_to_first_output_p99_ms": 576.5276000020094,
+      "time_to_first_output_samples": 1,
+      "time_to_first_output_stddev_ms": 0.0,
+      "tpot_max_ms": 13.978234090080315,
+      "tpot_mean_ci95_high_ms": 13.978234090080315,
+      "tpot_mean_ci95_low_ms": 13.978234090080315,
+      "tpot_mean_ms": 13.978234090080315,
+      "tpot_min_ms": 13.978234090080315,
+      "tpot_p25_ms": 13.978234090080315,
+      "tpot_p50_ms": 13.978234090080315,
+      "tpot_p75_ms": 13.978234090080315,
+      "tpot_p90_ms": 13.978234090080315,
+      "tpot_p95_ms": 13.978234090080315,
+      "tpot_p99_ms": 13.978234090080315,
+      "tpot_samples": 1,
+      "tpot_stddev_ms": 0.0,
+      "ttft_max_ms": 576.5282999491319,
+      "ttft_mean_ci95_high_ms": 576.5282999491319,
+      "ttft_mean_ci95_low_ms": 576.5282999491319,
+      "ttft_mean_ms": 576.5282999491319,
+      "ttft_min_ms": 576.5282999491319,
+      "ttft_p25_ms": 576.5282999491319,
+      "ttft_p50_ms": 576.5282999491319,
+      "ttft_p75_ms": 576.5282999491319,
+      "ttft_p90_ms": 576.5282999491319,
+      "ttft_p95_ms": 576.5282999491319,
+      "ttft_p99_ms": 576.5282999491319,
+      "ttft_samples": 1,
+      "ttft_stddev_ms": 0.0
+    },
+    "wall_ms": 5641.837200033478
+  },
+  "tool": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "arguments": null,
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "error": "missing required string argument: zip",
+            "failure_class": "visible_answer_missing",
+            "finish_reason": "tool_calls",
+            "latency_ms": 501.97990000015125,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 292,
+              "total_tokens": 324
+            },
+            "valid_tool_call_count": 0,
+            "validation_errors": [
+              "missing required string argument: zip"
+            ]
+          },
+          {
+            "arguments": null,
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "error": "missing required string argument: zip",
+            "failure_class": "visible_answer_missing",
+            "finish_reason": "tool_calls",
+            "latency_ms": 450.8656999678351,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 292,
+              "total_tokens": 324
+            },
+            "valid_tool_call_count": 0,
+            "validation_errors": [
+              "missing required string argument: zip"
+            ]
+          },
+          {
+            "arguments": null,
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 1024,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 1024
+            },
+            "content": "",
+            "content_chars": 0,
+            "content_excerpt": "",
+            "error": "missing required string argument: zip",
+            "failure_class": "visible_answer_missing",
+            "finish_reason": "tool_calls",
+            "latency_ms": 450.4812000086531,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 32,
+              "prompt_tokens": 292,
+              "total_tokens": 324
+            },
+            "valid_tool_call_count": 0,
+            "validation_errors": [
+              "missing required string argument: zip"
+            ]
+          }
+        ],
+        "error": "missing required string argument: zip",
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "name": "openai_tool_call_smoke",
+        "pass_count": 0,
+        "pass_rate": 0.0,
+        "required_pass_rate": 1.0,
+        "status": "failed"
+      }
+    ],
+    "status": "failed"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

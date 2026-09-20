@@ -1,0 +1,38 @@
+{
+  "schema": "anvil-serving.verification/v1",
+  "observed_at": "2026-09-19T19:28:08.956126+00:00",
+  "focused_tests": {
+    "command": "python scripts/run_tests.py tests/test_quality_tool_observations.py tests/test_benchmark.py -q",
+    "passed": 173,
+    "seconds": 31.48
+  },
+  "full_suite": {
+    "command": "python scripts/run_tests.py tests/ -x -q",
+    "passed": 7933,
+    "skipped": 416,
+    "failed": 1,
+    "seconds": 384.01,
+    "failure": "tests/workbench/test_pi_official_smoke.py::test_official_pi_native_history_fork_resume_and_model_controls",
+    "error": "Pi runner exited with status134",
+    "disposition": "Existing Windows Node CSPRNG startup failure, separately tracked; not attributed to benchmark diagnostics. Full suite is not green."
+  },
+  "independent_review": "independent-review.md",
+  "privacy": {
+    "scanned_files": 65,
+    "operator_identity_or_token_pattern_hits": 0,
+    "manual_review": "synthetic prompts and output inspected; private source state retained outsideGit"
+  },
+  "artifact_hashes": "finalized with artifact-manifest.json",
+  "graph_render": {
+    "twice_identical": true,
+    "sha256": {
+      "benchmark-matrix.svg": "f450a7621d8d104c3c8dda2cf6ae910a80d75a902c2f01faed11e38aeccca413",
+      "benchmark-graph-data.json": "77ec9d556290459291b3999c59adeb222022fce991b6cfef314cc464147c0ca4"
+    }
+  },
+  "markdown_links": {
+    "checked": 684,
+    "ok": true
+  },
+  "independent_review_result": "Accepted bounded result; do_not_promote; no material correction outstanding"
+}

@@ -1,6 +1,7 @@
 """Request construction, transport, and response normalization."""
 
 import json
+from itertools import islice
 import re
 import time
 import urllib.request
@@ -235,6 +236,42 @@ def validate_function_tool_call(message, expected_name, required_args):
             }
 
     return {"valid": True, "error": None, "arguments": args}
+
+
+def tool_argument_observations(messages):
+    """Retain bounded model-output diagnostics without changing tool grading.
+
+    Like visible-answer evidence, these values can contain generated user data;
+    public evidence must be sanitized before publication. Headers and request
+    credentials are never included. Capture at most four calls and 2048 argument
+    characters per call, preserving wire strings even when JSON parsing fails.
+    Inspect at most four messages and sixteen calls per message, including
+    malformed entries. Non-string argument values retain only their wire type.
+    """
+    observations = []
+    for message in islice(messages, 4):
+        if not isinstance(message, dict):
+            continue
+        calls = message.get("tool_calls")
+        if not isinstance(calls, list):
+            continue
+        for call in islice(calls, 16):
+            function = call.get("function") if isinstance(call, dict) else None
+            if not isinstance(function, dict):
+                continue
+            raw = function.get("arguments")
+            is_string = isinstance(raw, str)
+            name = function.get("name")
+            observations.append({
+                "name": name[:128] if isinstance(name, str) else None,
+                "arguments_wire_type": type(raw).__name__,
+                "arguments_excerpt": raw[:2048] if is_string else None,
+                "arguments_chars": len(raw) if is_string else None,
+                "arguments_truncated": len(raw) > 2048 if is_string else False,
+            })
+            if len(observations) == 4:
+                return observations
+    return observations
 
 
 def post_chat(base, model, key, messages, max_tokens=128, timeout=120,

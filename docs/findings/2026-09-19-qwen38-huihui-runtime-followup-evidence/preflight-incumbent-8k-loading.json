@@ -1,0 +1,60 @@
+{
+  "base_url": "http://127.0.0.1:8080/v1",
+  "budget": {
+    "max_completion_tokens": 1024,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "needle",
+    "tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-control-8k",
+  "multimodal_input": null,
+  "observations": [],
+  "ocr_expect": [],
+  "passed": false,
+  "results": [
+    {
+      "detail": "error: HTTP 503: {\"error\":{\"message\":\"Loading model\",\"type\":\"unavailable_error\",\"code\":503}}",
+      "name": "smoke (short coding)",
+      "passed": false
+    },
+    {
+      "detail": "error: HTTP 503: {\"error\":{\"message\":\"Loading model\",\"type\":\"unavailable_error\",\"code\":503}}",
+      "name": "structured JSON",
+      "passed": false
+    },
+    {
+      "detail": "error: HTTP 503: {\"error\":{\"message\":\"Loading model\",\"type\":\"unavailable_error\",\"code\":503}}",
+      "name": "needle @ ~4096 ctx",
+      "passed": false
+    },
+    {
+      "detail": "0/1 clean (sample: error: HTTP 503: {\"error\":{\"message\":\"Loading model\",\"type\":\"unavailable_error\",\"code\":503}})",
+      "name": "shared-prefix tool batch x1",
+      "passed": false
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

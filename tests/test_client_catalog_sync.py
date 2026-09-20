@@ -5,15 +5,103 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import anvil_serving.client_catalog_sync as client_catalog_sync
 
 from anvil_serving.client_catalog_sync import (
     ClientCatalogError,
     sync_clients,
     sync_hermes_media,
+    sync_pi_media,
 )
 
 
 CONFIG_SHA = "a" * 64
+
+
+def test_pi_media_withdraw_preview_apply_and_idempotence(tmp_path, monkeypatch):
+    path = tmp_path / "mcp.json"
+    path.write_text(json.dumps({"mcpServers": {"anvil-media-mcp": {"url": "https://retired.example"}, "other": {"url": "https://keep.example"}}, "other": True}))
+    preview = sync_pi_media(mcp_config=str(path), backup_root=str(tmp_path / "backups"), withdraw=True)
+    assert preview["changed"] and preview["dryRun"]
+    assert "anvil-media-mcp" in json.loads(path.read_text())["mcpServers"]
+    atomic_write = client_catalog_sync._atomic_write
+    modes = []
+
+    def record_mode(candidate, value, *, mode=None):
+        modes.append(mode)
+        atomic_write(candidate, value, mode=mode)
+
+    monkeypatch.setattr(client_catalog_sync, "_atomic_write", record_mode)
+    applied = sync_pi_media(mcp_config=str(path), backup_root=str(tmp_path / "backups"), withdraw=True, dry_run=False, confirm=True)
+    data = json.loads(path.read_text())
+    assert applied["backupCreated"] and data["mcpServers"] == {"other": {"url": "https://keep.example"}} and data["other"] is True
+    assert modes[-1] == 0o600
+    assert not sync_pi_media(mcp_config=str(path), withdraw=True, dry_run=False, confirm=True)["changed"]
+
+
+def test_pi_media_withdraw_missing_default_is_not_configured_and_explicit_is_required(tmp_path, monkeypatch):
+    monkeypatch.setattr(client_catalog_sync, "DEFAULT_PI_MEDIA_MCP", str(tmp_path / "default.json"))
+    missing_default = sync_pi_media(withdraw=True)
+    assert missing_default["status"] == "not-configured"
+    assert missing_default["changed"] is False
+    with pytest.raises(ClientCatalogError, match="does not exist"):
+        sync_pi_media(mcp_config=client_catalog_sync.DEFAULT_PI_MEDIA_MCP, withdraw=True)
+
+
+def test_pi_media_withdraw_rejects_malformed_and_symlink(tmp_path):
+    malformed = tmp_path / "bad.json"
+    malformed.write_text("[]")
+    with pytest.raises(ClientCatalogError):
+        sync_pi_media(mcp_config=str(malformed), withdraw=True)
+    null_entry = tmp_path / "null.json"
+    null_entry.write_text(json.dumps({"mcpServers": {"anvil-media-mcp": None}}))
+    with pytest.raises(ClientCatalogError, match="must be an object"):
+        sync_pi_media(mcp_config=str(null_entry), withdraw=True)
+    target = tmp_path / "target.json"
+    target.write_text("{}")
+    link = tmp_path / "link.json"; link.symlink_to(target)
+    with pytest.raises(ClientCatalogError):
+        sync_pi_media(mcp_config=str(link), withdraw=True)
+
+
+def test_pi_media_withdraw_preserves_concurrent_sibling_addition(tmp_path, monkeypatch):
+    path = tmp_path / "mcp.json"
+    original = {"mcpServers": {"anvil-media-mcp": {"url": "https://retired.example"}}}
+    path.write_text(json.dumps(original))
+    backup = client_catalog_sync._backup
+
+    def concurrent_backup(paths, root, digest):
+        path.write_text(json.dumps({"mcpServers": {**original["mcpServers"], "other": {"url": "https://keep.example"}}}))
+        return backup(paths, root, digest)
+
+    monkeypatch.setattr(client_catalog_sync, "_backup", concurrent_backup)
+    with pytest.raises(ClientCatalogError, match="changed before withdrawal"):
+        sync_pi_media(mcp_config=str(path), backup_root=str(tmp_path / "backups"), withdraw=True, dry_run=False, confirm=True)
+    assert json.loads(path.read_text())["mcpServers"]["other"] == {"url": "https://keep.example"}
+
+
+def test_pi_media_withdraw_restores_original_after_failed_verification(tmp_path, monkeypatch):
+    path = tmp_path / "mcp.json"
+    original = {"mcpServers": {"anvil-media-mcp": {"url": "https://retired.example"}, "other": {}}}
+    path.write_text(json.dumps(original))
+    read_document = client_catalog_sync._read_json_document
+    calls = 0
+
+    def verification_mismatch(candidate, *, required=True):
+        nonlocal calls
+        payload, source, mode = read_document(candidate, required=required)
+        if candidate == path and source != path.read_bytes():
+            raise AssertionError("source byte invariant failed")
+        if candidate == path and "anvil-media-mcp" not in payload.get("mcpServers", {}):
+            calls += 1
+            if calls == 1:
+                return payload, b"verification-mismatch", mode
+        return payload, source, mode
+
+    monkeypatch.setattr(client_catalog_sync, "_read_json_document", verification_mismatch)
+    with pytest.raises(ClientCatalogError, match="original config restored"):
+        sync_pi_media(mcp_config=str(path), backup_root=str(tmp_path / "backups"), withdraw=True, dry_run=False, confirm=True)
+    assert json.loads(path.read_text()) == original
 
 
 class _Response:

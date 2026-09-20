@@ -1,0 +1,282 @@
+{
+  "suite": "tool-string-boundaries-instructions",
+  "date": "2026-09-19",
+  "work_class": "diagnostic instruction variant, same expectations",
+  "evidence_use": "diagnostic",
+  "validator_strength": "typed_structure",
+  "evals": [
+    {
+      "id": "numeric-string",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "98101"
+        }
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "Follow tool parameter schemas exactly. String arguments contain the requested characters, without extra wrapping quotation marks. When the user supplies a JSON-encoded string, decode its escapes exactly once before using the string value. Preserve embedded line endings."
+        },
+        {
+          "role": "user",
+          "content": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"98101\""
+        }
+      ]
+    },
+    {
+      "id": "leading-zero",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "007"
+        }
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "Follow tool parameter schemas exactly. String arguments contain the requested characters, without extra wrapping quotation marks. When the user supplies a JSON-encoded string, decode its escapes exactly once before using the string value. Preserve embedded line endings."
+        },
+        {
+          "role": "user",
+          "content": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"007\""
+        }
+      ]
+    },
+    {
+      "id": "boolean-string",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "true"
+        }
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "Follow tool parameter schemas exactly. String arguments contain the requested characters, without extra wrapping quotation marks. When the user supplies a JSON-encoded string, decode its escapes exactly once before using the string value. Preserve embedded line endings."
+        },
+        {
+          "role": "user",
+          "content": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"true\""
+        }
+      ]
+    },
+    {
+      "id": "alphabetic",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "Oakland"
+        }
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "Follow tool parameter schemas exactly. String arguments contain the requested characters, without extra wrapping quotation marks. When the user supplies a JSON-encoded string, decode its escapes exactly once before using the string value. Preserve embedded line endings."
+        },
+        {
+          "role": "user",
+          "content": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"Oakland\""
+        }
+      ]
+    },
+    {
+      "id": "json-string",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "{\"k\":1}"
+        }
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "Follow tool parameter schemas exactly. String arguments contain the requested characters, without extra wrapping quotation marks. When the user supplies a JSON-encoded string, decode its escapes exactly once before using the string value. Preserve embedded line endings."
+        },
+        {
+          "role": "user",
+          "content": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"{\\\"k\\\":1}\""
+        }
+      ]
+    },
+    {
+      "id": "line-break",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "line1\r\nline2"
+        }
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "Follow tool parameter schemas exactly. String arguments contain the requested characters, without extra wrapping quotation marks. When the user supplies a JSON-encoded string, decode its escapes exactly once before using the string value. Preserve embedded line endings."
+        },
+        {
+          "role": "user",
+          "content": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"line1\\r\\nline2\""
+        }
+      ]
+    },
+    {
+      "id": "xml-text",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_text",
+            "description": "Record the exact string provided by the user.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_text",
+        "required_args": {
+          "value": "<tag>hello & goodbye</tag>"
+        }
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "Follow tool parameter schemas exactly. String arguments contain the requested characters, without extra wrapping quotation marks. When the user supplies a JSON-encoded string, decode its escapes exactly once before using the string value. Preserve embedded line endings."
+        },
+        {
+          "role": "user",
+          "content": "Call record_text with value equal to this JSON-encoded string, preserving the decoded string exactly: \"<tag>hello & goodbye</tag>\""
+        }
+      ]
+    }
+  ]
+}

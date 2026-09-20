@@ -482,3 +482,16 @@ Exact excluded references are also removed from OpenClaw override allowlists,
 including per-agent policies. This controls the managed catalog, not manual
 override authorization: existing wildcard and unrestricted policies remain
 unchanged. A removal that would empty a restricted allowlist fails closed.
+
+## Withdraw Pi direct media MCP
+
+When exclusive-GPU policy retires Pi's direct media-worker connection, preview
+then remove only its owned `anvil-media-mcp` entry:
+
+```bash
+anvil-serving harness sync pi-media --withdraw --dry-run
+anvil-serving harness sync pi-media --withdraw --confirm
+```
+
+The command preserves all other Pi MCP entries, backs up the file before an
+atomic mode-0600 write, and is idempotent when the owned entry is absent.

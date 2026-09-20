@@ -9,8 +9,9 @@ injectable ``transport``/``stream_fn`` seams those stages use, and reports
 four numbers:
 
 * ``ttfa_ms`` -- wall-clock time from the start of turn processing to the
-  FIRST synthesized audio byte coming back from TTS (i.e. through STT text +
-  the first LLM output, all the way to the first TTS chunk).
+  first nonempty TTS chunk yielded by the configured stage. This is an
+  observation after any stage-side buffering, not a first-response-byte or
+  audible-playback measurement. It is ``null`` when TTS yields no audio.
 * ``turn_latency_ms`` -- wall-clock time from turn start through the LAST
   synthesized audio chunk.
 * ``stt_wer`` -- word-error-rate of the STT hypothesis against a reference
@@ -34,11 +35,15 @@ Stdlib-only: ``array``, ``json``, ``math``, ``time``.
 from __future__ import annotations
 
 import array
+import hashlib
 import json
 import math
+import os
 import re
+import stat
+import struct
 import time
-from dataclasses import fields
+from dataclasses import dataclass, fields
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 
 from .stages.llm import LLMStageConfig, LLMStreamToolCalls, SentenceBatcher, stream_chat_completion
@@ -48,11 +53,167 @@ from .stages.tts import TTSStageConfig, stream_speech
 DEFAULT_REFERENCE_TEXT = "the quick brown fox jumps over the lazy dog"
 EVIDENCE_SCHEMA_VERSION = "voice-benchmark-evidence/v1"
 MAX_TTS_TEXT_CHARS = 48
+MAX_INPUT_WAV_SECONDS = 30.0
+# A 30-second 16-kHz mono PCM16 payload needs 960,000 bytes.  The small
+# allowance permits ordinary RIFF metadata chunks while bounding the read.
+MAX_INPUT_WAV_BYTES = 1_048_576
+MEASUREMENT_SCOPE = {
+    "kind": "serialized-stage-replay",
+    "ttfa_clock_endpoint": "first-nonempty-yielded-TTS-chunk",
+    "realtime": False,
+    "acoustic_playback": False,
+}
 REFERENCE_MODEL_FREE_PROFILES = {"dark-audio", "mini-dark-audio-proxy"}
 MINI_LOCAL_AUDIO_PROFILES = {"mini-audio", "mini-validation"}
 MINI_LOCAL_AUDIO_PORTS = {30010, 30011}
 
 StreamFn = Callable[..., Iterator[Any]]
+
+
+class BenchmarkInputError(ValueError):
+    """Raised when a benchmark input cannot be safely replayed."""
+
+
+@dataclass(frozen=True)
+class BenchmarkInput:
+    """Validated PCM16 mono WAV content ready for one benchmark replay."""
+
+    pcm: bytes
+    sample_rate: int
+    identity: Dict[str, Any]
+
+
+def _input_identity(
+    pcm: bytes,
+    *,
+    sample_rate: int,
+    reference_text: str,
+    input_kind: str,
+    qualification: str,
+    audio_format: str,
+) -> Dict[str, Any]:
+    return {
+        "input_kind": input_kind,
+        "qualification": qualification,
+        "sample_sha256": hashlib.sha256(pcm).hexdigest(),
+        "sample_bytes": len(pcm),
+        "audio_format": audio_format,
+        "duration_seconds": round(len(pcm) / (2 * sample_rate), 6),
+        "reference_text_sha256": hashlib.sha256(reference_text.encode("utf-8")).hexdigest(),
+    }
+
+
+def load_benchmark_input_wav(path: str) -> BenchmarkInput:
+    """Read one bounded PCM16/16-kHz/mono RIFF WAV without following its final link.
+
+    The CLI calls this before contacting any configured endpoint. Parsing the
+    RIFF chunks ourselves keeps the accepted contract small and makes the
+    exact-on-disk byte count part of validation rather than delegating codec
+    support to a platform audio library.
+    """
+    try:
+        path_stat = os.lstat(path)
+    except OSError as exc:
+        raise BenchmarkInputError("input WAV cannot be inspected: %s" % path) from exc
+    if stat.S_ISLNK(path_stat.st_mode):
+        raise BenchmarkInputError("input WAV must not be a symbolic link: %s" % path)
+    if not stat.S_ISREG(path_stat.st_mode):
+        raise BenchmarkInputError("input WAV must be a regular file: %s" % path)
+    if path_stat.st_size > MAX_INPUT_WAV_BYTES:
+        raise BenchmarkInputError(
+            "input WAV exceeds %d-byte limit: %s" % (MAX_INPUT_WAV_BYTES, path)
+        )
+
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_NONBLOCK"):
+        flags |= os.O_NONBLOCK
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise BenchmarkInputError("input WAV cannot be opened safely: %s" % path) from exc
+    try:
+        opened_stat = os.fstat(descriptor)
+        if not stat.S_ISREG(opened_stat.st_mode) or not os.path.samestat(path_stat, opened_stat):
+            raise BenchmarkInputError("input WAV changed while opening: %s" % path)
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            raw = handle.read(MAX_INPUT_WAV_BYTES + 1)
+    finally:
+        if descriptor != -1:
+            os.close(descriptor)
+    if len(raw) > MAX_INPUT_WAV_BYTES:
+        raise BenchmarkInputError(
+            "input WAV exceeds %d-byte limit: %s" % (MAX_INPUT_WAV_BYTES, path)
+        )
+
+    if len(raw) < 12 or raw[:4] != b"RIFF" or raw[8:12] != b"WAVE":
+        raise BenchmarkInputError("input WAV must be a RIFF/WAVE file")
+    declared_size = struct.unpack_from("<I", raw, 4)[0]
+    if declared_size != len(raw) - 8:
+        raise BenchmarkInputError("input WAV RIFF size does not match file bytes")
+
+    offset = 12
+    format_chunk: Optional[bytes] = None
+    data_chunk: Optional[bytes] = None
+    while offset < len(raw):
+        if len(raw) - offset < 8:
+            raise BenchmarkInputError("input WAV has a truncated chunk header")
+        chunk_id = raw[offset:offset + 4]
+        chunk_size = struct.unpack_from("<I", raw, offset + 4)[0]
+        chunk_start = offset + 8
+        chunk_end = chunk_start + chunk_size
+        padded_end = chunk_end + (chunk_size % 2)
+        if chunk_end > len(raw) or padded_end > len(raw):
+            raise BenchmarkInputError("input WAV has a truncated chunk")
+        if chunk_id == b"fmt ":
+            if format_chunk is not None:
+                raise BenchmarkInputError("input WAV contains multiple format chunks")
+            format_chunk = raw[chunk_start:chunk_end]
+        elif chunk_id == b"data":
+            if data_chunk is not None:
+                raise BenchmarkInputError("input WAV contains multiple data chunks")
+            data_chunk = raw[chunk_start:chunk_end]
+        offset = padded_end
+    if offset != len(raw) or format_chunk is None or data_chunk is None:
+        raise BenchmarkInputError("input WAV is missing a complete format or data chunk")
+    if len(format_chunk) != 16:
+        raise BenchmarkInputError("input WAV must use the canonical 16-byte PCM format chunk")
+
+    audio_format, channels, sample_rate, byte_rate, block_align, bits_per_sample = struct.unpack(
+        "<HHIIHH", format_chunk
+    )
+    if audio_format != 1 or bits_per_sample != 16:
+        raise BenchmarkInputError("input WAV must be uncompressed PCM16")
+    if channels != 1:
+        raise BenchmarkInputError("input WAV must be mono")
+    if sample_rate != 16000:
+        raise BenchmarkInputError("input WAV must use a 16000-Hz sample rate")
+    if byte_rate != 32000 or block_align != 2 or len(data_chunk) % block_align:
+        raise BenchmarkInputError("input WAV PCM16 header does not match its audio data")
+    duration_seconds = len(data_chunk) / byte_rate
+    if duration_seconds <= 0 or duration_seconds > MAX_INPUT_WAV_SECONDS:
+        raise BenchmarkInputError(
+            "input WAV duration must be greater than zero and at most %d seconds"
+            % int(MAX_INPUT_WAV_SECONDS)
+        )
+
+    identity = _input_identity(
+        data_chunk,
+        sample_rate=sample_rate,
+        reference_text="",
+        input_kind="provided-wav",
+        qualification="supplied-content-unverified",
+        audio_format="wav-pcm-s16le-mono-16000hz",
+    )
+    identity["source_wav_sha256"] = hashlib.sha256(raw).hexdigest()
+    identity["source_wav_bytes"] = len(raw)
+    return BenchmarkInput(
+        pcm=data_chunk,
+        sample_rate=sample_rate,
+        identity=identity,
+    )
 
 
 def word_error_rate(reference: str, hypothesis: str) -> float:
@@ -304,7 +465,7 @@ def _evidence_identity(
 def _evidence_run(result: Mapping[str, Any], *, run_id: str) -> Dict[str, Any]:
     total_turn_latency_ms = result.get("total_turn_latency_ms", result.get("turn_latency_ms"))
     llm_stage_latency_ms = result.get("llm_stage_latency_ms", result.get("llm_ms"))
-    return {
+    evidence_run = {
         "id": run_id,
         "latency": {
             "ttfa_ms": result.get("ttfa_ms"),
@@ -333,6 +494,9 @@ def _evidence_run(result: Mapping[str, Any], *, run_id: str) -> Dict[str, Any]:
         },
         "tool": result.get("tool_call_outcome", _tool_call_outcome([])),
     }
+    if result.get("input") is not None:
+        evidence_run["input"] = result["input"]
+    return evidence_run
 
 
 def build_evidence_record(
@@ -355,7 +519,7 @@ def build_evidence_record(
             llm_config=llm_config,
             tts_config=tts_config,
         )
-    return {
+    evidence = {
         "schema_version": EVIDENCE_SCHEMA_VERSION,
         "identity": _evidence_identity(
             stt_config=stt_config,
@@ -368,6 +532,9 @@ def build_evidence_record(
         "topology": dict(topology),
         "runs": [_evidence_run(result, run_id=run_id)],
     }
+    if result.get("measurement_scope") is not None:
+        evidence["measurement_scope"] = dict(result["measurement_scope"])
+    return evidence
 
 
 def run_benchmark(
@@ -388,6 +555,7 @@ def run_benchmark(
     profile: Optional[str] = None,
     candidate: Optional[str] = None,
     route_identity: Optional[Mapping[str, Any]] = None,
+    input_identity: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Replay one turn through STT -> LLM -> TTS, returning the four metrics
     (plus the intermediate hypothesis/reply text, useful for debugging a run).
@@ -434,7 +602,7 @@ def run_benchmark(
             total_audio_bytes += len(chunk)
     t_end = clock()
 
-    ttfa_ms = ((first_audio_time if first_audio_time is not None else t_end) - t0) * 1000.0
+    ttfa_ms = (first_audio_time - t0) * 1000.0 if first_audio_time is not None else None
     turn_latency_ms = (t_end - t0) * 1000.0
     stt_ms = (t_stt_end - t0) * 1000.0
     llm_ms = (t_llm_end - t_llm_start) * 1000.0
@@ -446,9 +614,24 @@ def run_benchmark(
 
     reference = DEFAULT_REFERENCE_TEXT if reference_text is None else reference_text
     stt_wer = word_error_rate(reference, hypothesis) if reference else None
+    if input_identity is None:
+        input = _input_identity(
+            pcm,
+            sample_rate=sample_rate,
+            reference_text=reference,
+            input_kind="provided-pcm",
+            qualification="caller-supplied-pcm",
+            audio_format="raw-pcm-s16le-mono-%dhz" % sample_rate,
+        )
+    else:
+        input = dict(input_identity)
+        input["sample_sha256"] = hashlib.sha256(pcm).hexdigest()
+        input["sample_bytes"] = len(pcm)
+        input["duration_seconds"] = round(len(pcm) / (2 * sample_rate), 6)
+        input["reference_text_sha256"] = hashlib.sha256(reference.encode("utf-8")).hexdigest()
 
     result: Dict[str, Any] = {
-        "ttfa_ms": round(ttfa_ms, 2),
+        "ttfa_ms": round(ttfa_ms, 2) if ttfa_ms is not None else None,
         "turn_latency_ms": round(turn_latency_ms, 2),
         "total_turn_latency_ms": round(turn_latency_ms, 2),
         "stt_ms": round(stt_ms, 2),
@@ -465,6 +648,8 @@ def run_benchmark(
         "stt_hypothesis": hypothesis,
         "llm_reply": reply_text,
         "reference_text": reference,
+        "input": input,
+        "measurement_scope": dict(MEASUREMENT_SCOPE),
         "tool_call_outcome": _tool_call_outcome(tool_calls),
         "topology": _topology_evidence(
             profile=profile,
@@ -509,6 +694,7 @@ def run_benchmark_from_manifest(
     stt_stream_fn: Optional[StreamFn] = None,
     llm_stream_fn: Optional[StreamFn] = None,
     tts_stream_fn: Optional[StreamFn] = None,
+    input_identity: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build stage configs from a validated voice manifest (see
     ``anvil_serving/voice/config.py``) and run :func:`run_benchmark`.
@@ -524,6 +710,29 @@ def run_benchmark_from_manifest(
     llm_config = _stage_config_from_table(voice.get("llm", {}), LLMStageConfig)
     tts_config = _stage_config_from_table(voice.get("tts", {}), TTSStageConfig)
     sample = pcm if pcm is not None else synth_sample_pcm(sample_rate=sample_rate)
+    reference = DEFAULT_REFERENCE_TEXT if reference_text is None else reference_text
+    if input_identity is None:
+        if pcm is None:
+            input_identity = _input_identity(
+                sample,
+                sample_rate=sample_rate,
+                reference_text=reference,
+                input_kind="synthetic-tone-not-speech",
+                qualification="not-qualifying",
+                audio_format="raw-pcm-s16le-mono-%dhz" % sample_rate,
+            )
+            input_identity["note"] = (
+                "Synthetic tone is not speech and is not qualifying voice evidence."
+            )
+        else:
+            input_identity = _input_identity(
+                sample,
+                sample_rate=sample_rate,
+                reference_text=reference,
+                input_kind="provided-pcm",
+                qualification="caller-supplied-pcm",
+                audio_format="raw-pcm-s16le-mono-%dhz" % sample_rate,
+            )
     route_identity = _route_identity_from_manifest(data)
     return run_benchmark(
         stt_config=stt_config, llm_config=llm_config, tts_config=tts_config,
@@ -531,6 +740,7 @@ def run_benchmark_from_manifest(
         stt_transport=stt_transport, llm_transport=llm_transport, tts_transport=tts_transport,
         stt_stream_fn=stt_stream_fn, llm_stream_fn=llm_stream_fn, tts_stream_fn=tts_stream_fn,
         profile=profile, candidate=candidate, route_identity=route_identity,
+        input_identity=input_identity,
     )
 
 

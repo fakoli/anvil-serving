@@ -1,0 +1,40 @@
+{
+  "schema": "sanitized-voice-resource-observations/v1",
+  "observed_at": "2026-09-19T22:52:44.859536+00:00",
+  "hardware": "Apple M4 Max; 48 GiB unified memory",
+  "scope": "Numeric derivative of private managed host/cache observations; no candidate load",
+  "memory": {
+    "physical_bytes": 51539607552,
+    "available_gib": 15.9,
+    "swap_used_gib": 0
+  },
+  "disk": {
+    "available_bytes": 142389141504,
+    "artifact_total_bytes": 9184617014,
+    "artifact_weights_bytes": 9166869260,
+    "temporary_extra_copy_bytes": 9184617014,
+    "runtime_evidence_allowance_bytes": 5368709120,
+    "free_reserve_bytes": 21474836480,
+    "required_bytes": 45212779628,
+    "margin_bytes": 97176361876,
+    "download_admitted": false
+  },
+  "private_source_digests": {
+    "host-status-initial.json": "dffa10db8380be55f94d15ed4ad4cda40cd4b33188c75f8508d3bad8f7e946b7",
+    "cache-initial.json": "ef6677c86619b80f1bccb505b3064f165db24bbdeedbfe57a23833f4f7f92d3a",
+    "voicechat-identities.json": "b4c1f6e9120ecbca1e1ed5fc7f8d573c6207776f271371804bd5c7da83566a24"
+  },
+  "redactions": [
+    "host/account identity",
+    "paths",
+    "addresses",
+    "ports",
+    "service definitions",
+    "process identity"
+  ],
+  "limitations": [
+    "No resident/peak allocation measurement",
+    "Secondary dependency disk closure incomplete",
+    "No public candidate quality or latency result"
+  ]
+}

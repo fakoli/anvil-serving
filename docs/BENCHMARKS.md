@@ -18,6 +18,8 @@
 
 The current bounded reference is [GLM Flash EXL3 r10 APC](findings/2026-09-19-glm53-apc-promotion.md): 4-bpw EXL3 with FP8 MLA KV, no speculation, 327,680 configured tokens, and C4. The matched APC claim is limited to repeated-prefix latency and completed requests under its frozen finalist protocol. The September 14 [r7 text-only qualification](findings/2026-09-13-intelligence-context-scout.md) supplies retained quality lineage: 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. The later September 18 r9 vision8 configuration is the exact rollback and matched APC baseline; its bounded quality evidence is recorded in the APC campaign. Neither record names an exhaustive intelligence winner, proves concurrent full-window capacity, includes a full-window concurrency soak, or includes fresh boot/reboot testing.
 
+On the RTX 5090, the [baked Huihui Qwen3.8 NInfer MTP3 64K/C1 profile](findings/2026-09-19-qwen38-huihui-64k.md) is promoted after direct/routed preflight, repeated bounded quality, vision 12/12 and native Hermes 9/9 acceptance. The exact 32K recipe is retained as historical qualification and rollback. Pi/OpenClaw deliberately omit the secondary to preserve the primary 65,536-token reserve; Hermes and Open WebUI retain it. Capacity numbers in the 64K extension are descriptive, canary-free C1 observations.
+
 Other retained comparisons (their dated evidence remains unchanged):
 The original Qwen3.8 27B FP8 path was the September 14 rollback; it was not
 exercised after the 2026-09-14 promotion. RadixArk Qwen3.8 Flash Next NVFP4 is
@@ -54,7 +56,9 @@ preserve what was concluded at their dates.
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-17**.
+Current exclusive-GPU policy withdraws media workflows from this profile: all three report unavailable, A2A skills are empty, and generation is rejected with state `unavailable`. This supersedes earlier production-media availability statements without changing their historical qualification evidence. The promoted model's own vision gate passed 12/12.
+
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-19**.
 
 ## GLM mixed 3.5-bpw startup failure (2026-09-17)
 
@@ -375,7 +379,7 @@ gate. See the
 
 ## Hermes image-quality production enablement on RTX 5090 (2026-08-28)
 
-The exact FLUX.2 Klein 4B FP8 workflow is now production-enabled through the
+At the August 28 capture, the exact FLUX.2 Klein 4B FP8 workflow became available through the
 authenticated media gateway at three server-owned profiles: `draft` 512×512,
 `standard` 768×768, and `high` 1024×1024, all four steps and c1. Real Hermes
 completed one warm request at each profile plus one cold approval/build/resume
@@ -401,7 +405,7 @@ revision `5ea1edc` and skill `1.0.5` closed the generic profileless
 resume and five-input/seven-field client boundaries; the deployed router and
 cold submit/cancel smoke passed without changing the measured `b46f6ce` image
 sample. The exact image
-workflow is `available=true`, `promoted=false`; Wan2.2 remains unavailable with
+workflow was `available=true`, `promoted=false` at capture. The September 19 exclusive Qwen assignment withdraws that availability; the [media receipt](findings/2026-09-19-qwen38-huihui-promotion-evidence/media-withdrawal-receipt.json) records the current unavailable state. Wan2.2 remains unavailable with
 `quality_failed` and no fallback. See the
 [production-enablement finding](findings/2026-08-28-hermes-image-quality-production.md).
 
@@ -1385,3 +1389,7 @@ Publish every user-relevant model benchmark in the same change that records the 
 5. Do not change a router profile, a production serve, or cloud routing merely because the documentation was updated. Those changes retain their explicit human approval gates.
 
 For the command-level workflow and artifact expectations, see [Operator playbooks](OPERATOR-PLAYBOOKS.md#start-validate-and-benchmark-a-serve). Contributors and agents must follow this publication contract; the repository guidance in `CONTRIBUTING.md` and `AGENTS.md` makes it part of every model-benchmark change.
+
+## 2026-09-19: Huihui 64K C1 promotion
+
+The promoted Huihui NInfer MTP3 profile now uses 65,536 context tokens at C1. Direct preflight passed 7/7, routed preflight 6/6, vision 12/12, and native Hermes 9/9 with the exact local alias. Descriptive, canary-free C1 short-input capacity passed 12/12 at 182.1 mean decode tokens/s; the long-input cell passed 6/6 at 167.1, with 60,769-60,776 actual prompt tokens. Post-workload GPU use was 24,224 MiB. The three fleet hosts and Open WebUI converged with zero repeat changes. The 32K results remain historical evidence and a rollback profile. Endurance, interactive browser acceptance, and a matched 64K no-spec control remain unmeasured. See [the 64K finding](findings/2026-09-19-qwen38-huihui-64k.md).

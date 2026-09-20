@@ -1,0 +1,59 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-19-voicechat-feasibility",
+  "complete": false,
+  "investigation_status": "blocked",
+  "stage_reached": "feasibility",
+  "identity": {
+    "hardware": "Apple M4 Max; 48 GiB unified memory",
+    "candidate": "mlx-community/NemotronLabs-VoiceChat-11B-4bit@dffd203fef7a380081da89479c55848e50b98413",
+    "runtime": "Blaizzy/mlx-audio@77a6cfcaba9fcb246c9302f7196c05147501bd62"
+  },
+  "measurement": {
+    "path": "read-only artifact/runtime inspection and deterministic feasibility calculation",
+    "sample_count": 0,
+    "warm_cold_state": "not-applicable; candidate not loaded",
+    "statistics": []
+  },
+  "gates": [
+    {
+      "gate": "whole-tool-capable replacement",
+      "status": "blocked: no tool-result ingress"
+    },
+    {
+      "gate": "disk",
+      "status": "arithmetic pass only; 8.553 GiB artifact is not RAM"
+    },
+    {
+      "gate": "memory containment",
+      "status": "unresolved"
+    },
+    {
+      "gate": "candidate inference",
+      "status": "not-run"
+    }
+  ],
+  "headline_results": [],
+  "limitations": [
+    "No candidate LLM evidence",
+    "Audio diagnostics are private-only because sanitized native artifacts and workload provenance are absent",
+    "No public latency or corpus-quality claim"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "external-prior",
+      "feasibility"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "native acquisition, containment, and tool-result continuation"
+  },
+  "evidence": [
+    "feasibility-input-v1.json",
+    "feasibility-result-v1.json",
+    "resource-observations.json",
+    "source-registry.json"
+  ]
+}

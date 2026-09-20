@@ -1,0 +1,102 @@
+{
+  "schema": "anvil-serving.benchmark-configuration/v1",
+  "campaign_id": "2026-09-19-qwen38-huihui-runtime-followup",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.2.1",
+    "revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "dirty_state": "bounded tool-argument diagnostics, tests, campaign recipes and publication",
+    "source_sha256": {
+      "anvil_serving/benchmarking/requests.py": "58768eedd0b0e8d82ed4b46c0310368a009255c6dc0f60b80834b2ac6b64ef1b",
+      "anvil_serving/benchmarking/runner.py": "07476c6840e42a4f9cc491ee63288fd5c695f39b116483107622ad24a377c5ca"
+    },
+    "version_note": "Observed package metadata1.2.1; source HEAD unchanged from previous1.0.0 launcher observation. Module resolves in qualification worktree."
+  },
+  "hardware": {
+    "host": "Secondary Node",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "reported_vram_mib": 32607,
+    "driver": "616.92",
+    "os": "Windows Docker Desktop WSL2",
+    "host_ram_gib": 30.9,
+    "wsl_memory_limit_gib": 20,
+    "wsl_swap_gib": 4
+  },
+  "candidate": {
+    "repo": "lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4",
+    "revision": "181446902fc777c479749e98cf2abf2250263a8d",
+    "artifact": "qwen3_8_27b_nvfp4.ninfer",
+    "artifact_bytes": 21492695040,
+    "artifact_sha256": "f21f308d3b23ccd627071cd015e413db08deee4356643900518e2b251750fdc2",
+    "engine": "NInfer",
+    "engine_revision": "70434721b1ae29d0616f3de9b376c8a4d91590b5",
+    "binary_sha256": "666fd58c2217cc5ff92a91755623672e832c46d976abd711829315889399dc9c",
+    "base_image": "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca",
+    "context": 8192,
+    "concurrency": 1,
+    "kv_dtype": "int8",
+    "speculation": "NoSpec8K and MTP3 at8K/32K",
+    "served_model": "see native artifact model identity",
+    "base_url": "http://127.0.0.1:8081/v1",
+    "server_thinking": "--no-thinking",
+    "request_controls": [
+      "thinking-mode unsupported omits unsupported chat_template_kwargs",
+      "reasoning-effort low requested; owning logs show thinking=on; native artifact marks requested_unverified"
+    ],
+    "identity_caveat": "Source revision, artifact and local executable pinned; apt packages and linked runtime are not immutably baked. No clean-build reproduction proof."
+  },
+  "incumbent": {
+    "repo": "unsloth/Qwen3.8-27B-GGUF",
+    "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+    "image": "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",
+    "served_model": "qwen38-27b-unsloth-ud-q4_k_xl-native-mtp3-control-8k",
+    "context": 8192,
+    "concurrency": 1,
+    "quantization": "UD-Q4_K_XL target, Q4_0 KV, F16 mmproj",
+    "speculation": "native MTP3",
+    "reasoning": "off",
+    "base_url": "http://127.0.0.1:8080/v1",
+    "comparison_scope": "Fresh8K control derived from established262K recipe, workload-matched direct short-output comparison; different artifact/runtime/quant constitute complete-profile difference."
+  },
+  "memory_observations": {
+    "nospec_8k_after_workload_idle_used_mib": 21390,
+    "mtp3_8k_after_workload_idle_used_mib": 21852,
+    "scope": "whole GPU nvidia-smi used snapshots including desktop; not peak or exclusive process RSS",
+    "nospec_weights_gib": 19.25,
+    "mtp3_weights_gib": 19.67,
+    "nospec_runtime_mib": 994.8,
+    "mtp3_runtime_gib": 1.06,
+    "mtp3_32k_after_workload_idle_used_mib": 23106,
+    "mtp3_32k_runtime_gib": 2.29,
+    "incumbent_8k_after_workload_idle_used_mib": 19022
+  },
+  "public_normalization": "Public text uses LF line endings; private originals retained. Recipe snapshot hashes refer to public normalized bytes.",
+  "run_bindings": [
+    {
+      "profile": "original runtime retry",
+      "recipe": "../../../configs/qwen38-huihui-ninfer-rtx5090-recipes.toml",
+      "raw_prefixes": [
+        "preflight-original",
+        "quality-original",
+        "boundaries-original"
+      ]
+    },
+    {
+      "profile": "704 NoSpec8K cold build",
+      "recipe": "recipe-schemafix-cold-build.toml",
+      "binary_identity": "source built; exact observed SHA retained in managed startup logs"
+    },
+    {
+      "profile": "704 MTP3 8K",
+      "recipe": "recipe-schemafix-8k-sha-verified.toml",
+      "binary_identity": "entrypoint verifies same exact SHA before execution"
+    },
+    {
+      "profile": "704 MTP3 32K",
+      "recipe": "recipe-schemafix-final.toml",
+      "binary_identity": "entrypoint verifies same exact SHA before execution"
+    }
+  ],
+  "code_observation_note": "Final source hashes include the independently requested malformed-entry scan bound. This affects only diagnostic capture; validators and performance code unchanged across live runs.",
+  "public_metadata_correction": "The MTP3 8K recipe note was corrected from copied no-speculation wording to matched MTP3 comparison. Launch flags and executable unchanged; private original receipts preserve original source bytes."
+}

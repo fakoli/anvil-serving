@@ -1,0 +1,217 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "2026-09-19-voicechat-feasibility",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T22:52:44.859536+00:00",
+        "notes": "Text-side comparison contract; duplex state is separately unknown"
+      },
+      "output_reserve": {
+        "value": 512,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T22:52:44.859536+00:00",
+        "notes": ""
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "requests",
+      "status": "assumed",
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    },
+    "physical_vram_bytes": {
+      "value": 51539607552,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "resource-observations.json",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Unified memory, not a dedicated48GiB VRAM pool"
+    },
+    "vram_reserves": {
+      "protected_os_desktop_voice": {
+        "kind": "policy",
+        "variable": {
+          "value": 17179869184,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "run-plan.md",
+          "observed_at": "2026-09-19T22:52:44.859536+00:00",
+          "notes": "Includes current OS/desktop/voice; do not subtract again from available RAM"
+        }
+      },
+      "additional_unreclaimable": {
+        "kind": "physical",
+        "variable": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "Allocation beyond the protected envelope not isolated; current used RAM cannot distinguish reclaimable caches or double-counted reserve.",
+          "observed_at": "2026-09-19T22:52:44.859536+00:00"
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T22:52:44.859536+00:00",
+        "notes": ""
+      },
+      "max_relative_quality_loss": {
+        "value": 0.05,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T22:52:44.859536+00:00",
+        "notes": ""
+      },
+      "min_warm_e2e_gain": {
+        "value": 0.2,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T22:52:44.859536+00:00",
+        "notes": ""
+      }
+    }
+  },
+  "candidates": [
+    {
+      "id": "nemotronlabs-voicechat-11b-mlx-4bit-duplex-c1",
+      "runtime_context_limit_tokens": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "Effective duplex context andaudio/state growth not verified",
+        "observed_at": "2026-09-19T22:52:44.859536+00:00"
+      },
+      "measured_max_stable_context_tokens": {
+        "unit": "tokens",
+        "status": "unknown",
+        "notes": "No model loaded",
+        "observed_at": "2026-09-19T22:52:44.859536+00:00"
+      },
+      "resident_components": {
+        "target_and_speech": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "8.538GiB checkpoint payload is not resident/peak allocation",
+          "observed_at": "2026-09-19T22:52:44.859536+00:00"
+        },
+        "runtime_fixed": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "MLX loader materialization and allocator buffers unmeasured",
+          "observed_at": "2026-09-19T22:52:44.859536+00:00"
+        },
+        "compile_workspace": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "Metal graphs/kernel workspace peak unknown",
+          "observed_at": "2026-09-19T22:52:44.859536+00:00"
+        }
+      },
+      "per_sequence_components": {
+        "duplex_session": {
+          "unit": "bytes",
+          "status": "unknown",
+          "notes": "Speech encoder/decoder/recurrent/audio buffers unknown",
+          "observed_at": "2026-09-19T22:52:44.859536+00:00"
+        }
+      },
+      "per_token_components": {
+        "llm_state": {
+          "unit": "bytes/token",
+          "status": "unknown",
+          "notes": "Effective hybridMamba/attention state layout unknown",
+          "observed_at": "2026-09-19T22:52:44.859536+00:00"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "run-plan.md",
+        "observed_at": "2026-09-19T22:52:44.859536+00:00",
+        "notes": "One session; not a claim about internal audio expansion"
+      },
+      "metrics": {},
+      "hard_failures": []
+    }
+  ],
+  "additional_ledger": {
+    "available_unified_gib": {
+      "value": 15.9,
+      "unit": "GiB",
+      "status": "measured",
+      "source": "resource-observations.json",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Point-in-time available; not guaranteed allocatable or physical reserve"
+    },
+    "swap_gib": {
+      "value": 0,
+      "unit": "GiB",
+      "status": "measured",
+      "source": "resource-observations.json",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    },
+    "disk_available": {
+      "value": 142389141504,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "resource-observations.json",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    },
+    "artifact_total": {
+      "value": 9184617014,
+      "unit": "bytes",
+      "status": "confirmed",
+      "source": "resource-observations.json",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "All12listedMLXfiles; secondary tokenizer closure unresolved"
+    },
+    "artifact_weights": {
+      "value": 9166869260,
+      "unit": "bytes",
+      "status": "confirmed",
+      "source": "resource-observations.json",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    },
+    "temporary_copy_allowance": {
+      "value": 9184617014,
+      "unit": "bytes",
+      "status": "assumed",
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Conservativeoneadditionalcopy,notverifieddownloadimplementation"
+    },
+    "runtime_evidence_allowance": {
+      "value": 5368709120,
+      "unit": "bytes",
+      "status": "assumed",
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    },
+    "free_disk_reserve": {
+      "value": 21474836480,
+      "unit": "bytes",
+      "status": "assumed",
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    }
+  }
+}

@@ -6,7 +6,15 @@ statements are historical, with no current live-state or code-release claim.
 This page reports only the measured same-host Apple Silicon lane;
 it does not describe the RTX fleet or the reference Mini-to-Dark topology.
 
-## Local voice-lane evidence
+## VoiceChat feasibility stop
+
+On 2026-09-19, the VoiceChat MLX candidate was inspected but not acquired,
+loaded, or queried. Its 8.553 GiB package is a disk value only; memory fit is
+unresolved. The pinned session lacks supported tool-result ingress, blocking a
+whole tool-capable replacement. Protected audio diagnostics are private-only:
+no sanitized native artifacts or workload provenance are retained publicly, so
+they support no public candidate-latency or corpus-quality claim. See the
+[dated finding](../../findings/2026-09-19-voicechat-feasibility.md).
 
 ## Swift / stock Qwen3.8 artifact feasibility stop
 
@@ -31,6 +39,8 @@ This is a storage-policy and runtime-containment stop, not a claim that either
 model is impossible on Apple hardware or a cleanup authorization. See the
 [dated finding](../../findings/2026-09-19-swift-qwen38-apple-feasibility.md)
 and its [sanitized evidence bundle](../../findings/2026-09-19-swift-qwen38-apple-feasibility-evidence/README.md).
+
+## Local voice-lane evidence
 
 The 2026-09-08 refresh evaluated an existing Qwen3 4B baseline and MLX 4-bit
 Qwen candidates against functional, strict spoken, strict controlled-output,

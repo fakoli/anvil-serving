@@ -1,0 +1,63 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "lyf/Qwen3.8-27B-Huihui-NInfer-NVFP4-MTP3-64K-Baked"
+status = "candidate"
+source = "Separate 64K context candidate for native Hermes compatibility; fresh qualification pending"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+  [recipe.download]
+  repo = "lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4"
+  revision = "181446902fc777c479749e98cf2abf2250263a8d"
+  volume = "vllm-hfcache"
+  require_complete_cache = true
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120a"
+  vram_total_gb = 32
+  vram_note = "64K allocation candidate, C1, MTP3 and vision. Resource bounds and exact-context gates pending; retain 32K rollback."
+
+  [recipe.serve]
+  engine = "ninfer"
+  image = "anvil-ninfer@sha256:44377d56374ed4b832c2ca6e9265da492cf2ad79a297008bae92f442d27edfb6"
+  entrypoint = ["/opt/entrypoint.sh"]
+  model_path = "/root/.cache/huggingface/hub/models--lyf--Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4/snapshots/181446902fc777c479749e98cf2abf2250263a8d/qwen3_8_27b_nvfp4.ninfer"
+  quantization = "NInfer NVFP4/row-scaled-FP8 mixed target with INT8 group-64 KV"
+  context_tokens = 65536
+  port = 8080
+  health = "/health"
+  startup_timeout_seconds = 600
+  served_model_name = "qwen38-huihui-ninfer-schemafix-mtp3-64k"
+  flags = [
+    "--host 0.0.0.0",
+    "--port 8080",
+    "--model-id qwen38-huihui-ninfer-schemafix-mtp3-64k",
+    "--max-context 65536",
+    "--kv-capacity 65536",
+    "--max-concurrency 1",
+    "--kv-dtype int8",
+    "--default-max-tokens 2048",
+    "--max-request-mib 384",
+    "--spec mtp",
+    "--draft-tokens 3",
+    "--no-thinking",
+    "--vision",
+  ]
+  note = "Baked from exact NInfer70434721, CUDA base digest and Ubuntu snapshot20260919. No runtime package installation, Git access or compilation. Startup verifies executable and model hashes. Rebuild inputs in configs/runtime/ninfer-70434721. Image-specific validation required after rebuilding."
+
+  [recipe.fit]
+  suited = ["single-request-text-tools-vision"]
+  not_suited = [
+    "262k-context-replacement",
+    "large-scale-continuous-batching",
+  ]
+  rationale = "Operator-approved speed/footprint tradeoff. Preserve exact-string and long-output limitations in linked findings."
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4/tree/181446902fc777c479749e98cf2abf2250263a8d",
+    "https://github.com/Neroued/ninfer/tree/70434721b1ae29d0616f3de9b376c8a4d91590b5",
+    "https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated/tree/d42ca8978c5a66e92c3446d46e8adfe03ef692ff",
+  ]

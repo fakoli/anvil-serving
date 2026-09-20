@@ -698,7 +698,7 @@ def tool_serves_probe(args: dict) -> dict:
     public = {key: value for key, value in evidence.items() if key not in {"endpoint", "image"}}
     expected = None
     passed = True
-    if serve.get("engine") in {"vllm", "sglang", "q36"}:
+    if serve.get("engine") in {"vllm", "sglang", "q36", "ninfer"}:
         expected = "READY"
         observed = str(public.get("recognized_excerpt", "")).strip().strip(".!,:;").upper()
         passed = observed == expected and public.get("incomplete") is not True

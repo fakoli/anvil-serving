@@ -1,0 +1,174 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-19-qwen38-huihui-runtime-followup",
+  "complete": true,
+  "completion_scope": "Bounded runtime recovery and profile tradeoff investigation; not full production qualification",
+  "identity": {
+    "repo": "lyf/Qwen3.8-27B-Huihui-Abliterated-NInfer-NVFP4",
+    "revision": "181446902fc777c479749e98cf2abf2250263a8d",
+    "artifact": "qwen3_8_27b_nvfp4.ninfer",
+    "artifact_bytes": 21492695040,
+    "artifact_sha256": "f21f308d3b23ccd627071cd015e413db08deee4356643900518e2b251750fdc2",
+    "engine": "NInfer",
+    "engine_revision": "70434721b1ae29d0616f3de9b376c8a4d91590b5",
+    "binary_sha256": "666fd58c2217cc5ff92a91755623672e832c46d976abd711829315889399dc9c",
+    "base_image": "nvidia/cuda:13.1.2-devel-ubuntu24.04@sha256:b9f64abf7226fdb3463ca202bc99878ec847171e6c5f77bd34c8d1403fbf1eca",
+    "context": 8192,
+    "concurrency": 1,
+    "kv_dtype": "int8",
+    "speculation": "NoSpec8K and MTP3 at8K/32K",
+    "served_model": "see native artifact model identity",
+    "base_url": "http://127.0.0.1:8081/v1",
+    "server_thinking": "--no-thinking",
+    "request_controls": [
+      "thinking-mode unsupported omits unsupported chat_template_kwargs",
+      "reasoning-effort low requested; owning logs show thinking=on; native artifact marks requested_unverified"
+    ],
+    "identity_caveat": "Source revision, artifact and local executable pinned; apt packages and linked runtime are not immutably baked. No clean-build reproduction proof."
+  },
+  "workload": {
+    "context_allocation": 8192,
+    "estimated_prompt_tokens": 2048,
+    "concurrency": 1,
+    "strict_response_words": 32,
+    "requests_per_profile": 12,
+    "seed": 43,
+    "cache": "unique",
+    "canaries": true,
+    "reasoning": "off via server default for NInfer and disabled request for GGUF"
+  },
+  "measurement": {
+    "path": "online-direct-loopback",
+    "warm_cold_state": "loaded runtime,2 warmup requests; unique-prefix measured requests; no prefix cache hit metadata from NInfer",
+    "sample_count": 12,
+    "statistics": [
+      "mean",
+      "p50",
+      "p95; p99 descriptive only"
+    ]
+  },
+  "headline_results": [
+    {
+      "profile": "Huihui NInfer NoSpec8K",
+      "requests": 12,
+      "completed": 12,
+      "mean_decode_tok_s": 71.38765771219772,
+      "mean_e2e_ms": 908.4777416525563,
+      "ttft_p50_ms": 264.19609994627535,
+      "post_workload_gpu_used_mib": 21390
+    },
+    {
+      "profile": "Huihui NInfer MTP3 8K",
+      "requests": 12,
+      "completed": 12,
+      "mean_decode_tok_s": 176.1983312887445,
+      "mean_e2e_ms": 523.9915000080751,
+      "ttft_p50_ms": 268.71289999689907,
+      "post_workload_gpu_used_mib": 21852
+    },
+    {
+      "profile": "GGUF nativeMTP3 control8K",
+      "requests": 12,
+      "completed": 12,
+      "mean_decode_tok_s": 107.65218702787973,
+      "mean_e2e_ms": 2571.788158330795,
+      "ttft_p50_ms": 1607.1290000109002,
+      "post_workload_gpu_used_mib": 19022
+    }
+  ],
+  "comparisons": {
+    "mtp_mean_decode_ratio": 2.468190397828926,
+    "mtp_mean_e2e_reduction": 0.4232203212211735,
+    "candidate_vs_gguf_mean_decode_ratio": 1.6367371267906774,
+    "candidate_vs_gguf_mean_e2e_reduction": 0.7962540194802946,
+    "candidate_vs_gguf_gpu_used_increase_fraction": 0.14877510251287984,
+    "candidate_vs_gguf_gpu_used_increase_mib": 2830
+  },
+  "context_expansion": {
+    "configured_tokens": 32768,
+    "needle_nominal_tokens": 24576,
+    "capacity_requests": 6,
+    "capacity_passed": 6,
+    "actual_prompt_tokens_min": 22418.0,
+    "actual_prompt_tokens_max": 22427.0,
+    "mean_e2e_ms": 3594.8311833296125,
+    "memory_used_mib": 23106,
+    "interpretation": "Bounded24K input probes; not full32K exhaustion/endurance or262K replacement proof"
+  },
+  "gates": [
+    {
+      "name": "core tool and intelligence",
+      "result": "pass",
+      "attempts_per_profile": 9
+    },
+    {
+      "name": "vision NInfer profiles",
+      "result": "pass",
+      "attempts_per_8k_profile": 12
+    },
+    {
+      "name": "matched short output",
+      "result": "pass",
+      "attempts_per_profile": 12
+    },
+    {
+      "name": "footprint improvement vsGGUF",
+      "result": "fail",
+      "reason": "2830MiB more observed GPU use atsame8K allocation"
+    },
+    {
+      "name": "exact128word andCRLF",
+      "result": "fail",
+      "reason": "Bothcandidate andcontrol fail; originalfailuresretained"
+    },
+    {
+      "name": "immutable recreation,telemetry,clientqualification",
+      "result": "not_run"
+    }
+  ],
+  "failures": [
+    "Original runtime converts ZIP string to number; corrected704 passes.",
+    "704 rejects chat_template_kwargs with HTTP400; unsupported field omitted.",
+    "20-request tool burst at C1 returns3 HTTP429; declared C1 protocol passes.",
+    "Exact128-word warmups fail NoSpec off/low, MTP off and GGUF off.",
+    "Exact CRLF fails every generic-instruction profile, including GGUF.",
+    "Initial GGUF control preflight during loading returned503; after readiness it passes.",
+    "Full suite retains existing Windows Pi process134 startup failure."
+  ],
+  "limitations": [
+    "Highly repetitive32-word response favors speculation; not representative coding-agent throughput.",
+    "Only12 requests per comparison cell; no stable tail estimate.",
+    "GGUF comparison changes checkpoint, runtime and quantization: complete-profile comparison, not precision-only or speculation-only.",
+    "Whole GPU memory snapshots include desktop and are not peak allocations or process RSS.",
+    "Configured32K and bounded24K input probes do not establish full-window endurance or262K replacement.",
+    "Source and local binary are pinned, but package resolution and linked runtime are mutable; clean immutable build is not proven.",
+    "No router, client, Workbench or Grafana deployment changed."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "bounded-performance",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion",
+      "working-candidate",
+      "footprint-criterion-not-met"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Footprint improvement criterion is not met. A separate speed-focused role would require accepting that tradeoff, immutable runtime packaging, broader application/context/endurance qualification, telemetry, client integration and a concrete human promotion gate."
+  },
+  "evidence": [
+    "configuration.json",
+    "run-plan.json",
+    "capacity-nospec-32.json",
+    "capacity-mtp3-32.json",
+    "capacity-incumbent-32.json",
+    "quality-schemafix-mtp3-32k-off.json",
+    "independent-review.md",
+    "restoration.json"
+  ],
+  "qualification_complete": false,
+  "restored": true
+}
