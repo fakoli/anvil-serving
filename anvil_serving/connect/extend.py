@@ -345,7 +345,10 @@ def extend(
         report = plan(data, root)
         if report["state"] not in {"update", "current"}:
             raise ExtendError("rendered ownership is not safe to extend")
-        checked = manage._validate_data(data, target, runner)
+        # Gateway activation consumes its pinned native binary plus Caddy and
+        # Authelia before any connector enrollment changes. Validate that full
+        # closed role set up front, rather than accepting connector-only pins.
+        checked = manage._validate_data(data, (Target("gateway"), target), runner)
         prior_connector = manage._unit_state(runner, connector_unit)
         gateway_units = _target_units((Target("gateway"),))
         prior_gateway = {unit: manage._unit_state(runner, unit) for unit in gateway_units}

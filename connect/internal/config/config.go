@@ -58,11 +58,12 @@ type Rule struct {
 }
 
 type Resource struct {
-	Rule           Rule   `json:"rule"`
-	Connector      string `json:"connector"`
-	TunnelAddress  string `json:"tunnel_address"`
-	IdentityKeyEnv string `json:"identity_key_env,omitempty"`
-	IdentityKeyID  string `json:"identity_key_id,omitempty"`
+	Rule           Rule    `json:"rule"`
+	Connector      string  `json:"connector"`
+	TunnelAddress  string  `json:"tunnel_address"`
+	DisplayName    *string `json:"display_name,omitempty"`
+	IdentityKeyEnv string  `json:"identity_key_env,omitempty"`
+	IdentityKeyID  string  `json:"identity_key_id,omitempty"`
 }
 
 type Gateway struct {
@@ -253,6 +254,9 @@ func (g Gateway) Validate() error {
 		if !ValidID(resource.Connector) || !LoopbackAddress(resource.TunnelAddress) || ids[resource.Rule.ID] || hosts[resource.Rule.Host] || addresses[resource.TunnelAddress] || resource.Rule.Limits.Concurrent > g.MaxConcurrent {
 			return errors.New("duplicate or invalid gateway resource binding")
 		}
+		if resource.DisplayName != nil && (resource.Rule.Access != "browser" || !validDisplayName(*resource.DisplayName)) {
+			return errors.New("invalid gateway resource display name")
+		}
 		if resource.Rule.NativeAuth == "signed-identity" {
 			if !ValidEnv(resource.IdentityKeyEnv) || !ValidID(resource.IdentityKeyID) || identityEnvs[resource.IdentityKeyEnv] || identityIDs[resource.IdentityKeyID] {
 				return errors.New("signed identity requires an environment key reference and key id")
@@ -306,6 +310,10 @@ func (g Gateway) Validate() error {
 		browsers[device.BrowserResource], apis[device.APIResource] = true, true
 	}
 	return nil
+}
+
+func validDisplayName(value string) bool {
+	return value == strings.TrimSpace(value) && validDeviceLabel(value)
 }
 
 func validDeviceLabel(value string) bool {

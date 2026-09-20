@@ -409,6 +409,13 @@ def _device_label(value: Any, path: str) -> str:
     return text
 
 
+def _display_name(value: Any, path: str) -> str:
+    text = _device_label(value, path)
+    if not text or text != text.strip():
+        raise _error(path, "must be nonempty without surrounding whitespace")
+    return text
+
+
 def _device_methods(value: Any, path: str, allowed: set[str]) -> list[str]:
     methods = _list(value, path, 7)
     if any(not isinstance(method, str) or method not in _METHODS for method in methods):
@@ -659,15 +666,20 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     for index, resource_raw in enumerate(resource_raws):
         item_path = f"$.gateway.gateway.resources[{index}]"
         identity_fields = {"identity_key_env", "identity_key_id"}
-        optional_fields = identity_fields.intersection(resource_raw) if isinstance(resource_raw, dict) else set()
-        item = _mapping(resource_raw, item_path, {"connector", "tunnel_address", "rule"} | optional_fields)
+        identity_present = identity_fields.intersection(resource_raw) if isinstance(resource_raw, dict) else set()
+        display_present = {"display_name"} if isinstance(resource_raw, dict) and "display_name" in resource_raw else set()
+        item = _mapping(resource_raw, item_path, {"connector", "tunnel_address", "rule"} | identity_present | display_present)
         resource = {
             "connector": _ident(item["connector"], item_path + ".connector"),
             "tunnel_address": _loopback(item["tunnel_address"], item_path + ".tunnel_address"),
             "rule": _rule(item["rule"], item_path + ".rule"),
         }
+        if "display_name" in item:
+            if resource["rule"]["access"] != "browser":
+                raise _error(item_path + ".display_name", "requires browser access")
+            resource["display_name"] = _display_name(item["display_name"], item_path + ".display_name")
         if resource["rule"]["native_auth"] == "signed-identity":
-            if optional_fields != identity_fields:
+            if identity_present != identity_fields:
                 raise _error(item_path, "signed-identity requires identity_key_env and identity_key_id")
             key_env = _env(item["identity_key_env"], item_path + ".identity_key_env")
             if key_env in identity_envs:
@@ -678,7 +690,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
                 raise _error(item_path + ".identity_key_id", "must be distinct for each signed-identity resource")
             identity_ids.add(key_id)
             resource.update(identity_key_env=key_env, identity_key_id=key_id)
-        elif optional_fields:
+        elif identity_present:
             raise _error(item_path, "identity key references require signed-identity mode")
         resources.append(resource)
     if len({r["rule"]["id"] for r in resources}) != len(resources):

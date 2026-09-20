@@ -1028,3 +1028,30 @@ def test_native_entry_status_passes_closed_python_decoder(tmp_path):
     statuses = [_closed_gateway_status(json.dumps(value).encode()) for value in json.loads(output.read_text())]
     assert [value["entries"][1]["listening"] for value in statuses] == [True, False]
     assert all(len(value["entries"][1]["resources"]) == 2 for value in statuses)
+
+@pytest.mark.parametrize("display_name", ["", "   ", " leading", "trailing ", "bad\r\nname", "x" * 129])
+def test_resource_display_name_is_closed_and_bounded(display_name: str) -> None:
+    value = manifest()
+    resource = value["gateway"]["gateway"]["resources"][0]
+    resource["display_name"] = display_name
+    with pytest.raises(ManifestError, match="display_name"):
+        validate_manifest(value)
+
+    value = manifest()
+    api = next(item for item in value["gateway"]["gateway"]["resources"] if item["rule"]["access"] == "api")
+    api["display_name"] = "API"
+    with pytest.raises(ManifestError, match="requires browser access"):
+        validate_manifest(value)
+
+
+def test_resource_display_name_is_optional_and_rendered_only_in_gateway() -> None:
+    value = manifest()
+    resource = value["gateway"]["gateway"]["resources"][0]
+    assert "display_name" not in validate_manifest(value)["gateway"]["gateway"]["resources"][0]
+    resource["display_name"] = "Workbench"
+    normalized = validate_manifest(value)
+    assert normalized["gateway"]["gateway"]["resources"][0]["display_name"] == "Workbench"
+    files = render_for_inspection(normalized)["files"]
+    gateway = json.loads(files["gateway.json"])
+    assert gateway["gateway"]["resources"][0]["display_name"] == "Workbench"
+    assert "Workbench" not in files["connectors/dashboard.json"]

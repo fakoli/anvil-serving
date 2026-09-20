@@ -227,6 +227,26 @@ def test_rejection_carries_the_plan_in_the_error(environment) -> None:
 # --- full sequence ----------------------------------------------------------
 
 
+def test_extension_validates_gateway_and_connector_before_activation(
+    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected: list[tuple[Target, ...]] = []
+
+    def reject(_data, targets, _runner):
+        selected.append(tuple(targets))
+        raise extend_module.ManageError("gateway component pin unavailable")
+
+    monkeypatch.setattr(extend_module.manage, "_validate_data", reject)
+    with pytest.raises(extend_module.ManageError, match="gateway component pin unavailable"):
+        extend_module.extend(
+            environment["manifest_path"], environment["target"], confirm=True,
+            runner=runner, unit_root=environment["tmp"] / "systemd",
+        )
+    assert selected == [(Target("gateway"), environment["target"])]
+    assert runner.calls == []
+    assert not (environment["tmp"] / "state-gateway").exists()
+
+
 @pytest.fixture()
 def enrollment_log(monkeypatch: pytest.MonkeyPatch, environment):
     """Record admin/native calls; the invite writes its bundle as the IdP would."""

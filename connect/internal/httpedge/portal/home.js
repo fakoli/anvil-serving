@@ -14,6 +14,8 @@ async function request(path, options) {
   if (!response.ok) throw new Error(response.status === 401 ? "Your session has changed. Reload this page to sign in again." : response.status === 409 ? "This account changed. Refresh accounts before trying again." : "The request could not be completed (" + response.status + ").");
   return response.status === 204 ? null : response.json();
 }
+function serviceName(service) { return service.name || service.id.replaceAll("-", " "); }
+function choiceName(service) { const name = service.name || service.id; return name === service.id ? name : name + " · " + service.id; }
 function serviceTile(service) {
   const tile = element("a", undefined, "tile"); tile.href = service.url;
   const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -26,7 +28,7 @@ function serviceTile(service) {
   };
   path.setAttribute("d", icons[service.id] || "M3 3h7v7H3Z M14 3h7v7h-7Z M3 14h7v7H3Z M14 14h7v7h-7Z");
   icon.append(path);
-  tile.append(icon, element("h3", service.id.replaceAll("-", " ")));
+  tile.append(icon, element("h3", serviceName(service)));
   if (service.managed_role && service.role) tile.append(element("span", service.role, "role"));
   return tile;
 }
@@ -36,7 +38,7 @@ function accountEditor(user) {
   const fields = element("fieldset"); fields.append(element("legend", "Service entitlements"));
   const choices = new Map();
   for (const service of settings.choices) {
-    const label = element("label", service.id, "grant"), select = element("select");
+    const label = element("label", choiceName(service), "grant"), select = element("select");
     const current = (user.resources || []).includes(service.id) ? (user.application_roles?.[service.id] || "legacy") : "none";
     const roleOptions = service.managed_role ? [["member","Member"],["admin","Admin"]] : [["member","Access · app sets role"], ...(current === "admin" ? [["admin","Access · app sets role"]] : [])];
     for (const [value,text] of [["none","No access"],...roleOptions, ...(current === "legacy" ? [["legacy","App-managed role"]] : [])]) {

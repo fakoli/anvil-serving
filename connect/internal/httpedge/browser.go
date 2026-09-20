@@ -107,6 +107,10 @@ func newBrowser(declaration config.Gateway, authority BrowserAuthority, identiti
 		}
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
 		resource.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
+		if resource.DisplayName != nil {
+			name := *resource.DisplayName
+			resource.DisplayName = &name
+		}
 		if resource.Rule.NativeAuth == "signed-identity" {
 			signer := identities[resource.Rule.ID]
 			if signer == nil {

@@ -399,3 +399,38 @@ func TestBrowserAdministrationDecodeClosed(t *testing.T) {
 		}
 	}
 }
+
+func TestGatewayResourceDisplayNameIsOptionalAndBounded(t *testing.T) {
+	omitted := gateway(t)
+	if omitted.Resources[0].DisplayName != nil || omitted.Validate() != nil {
+		t.Fatal("omitted display name changed the gateway contract")
+	}
+	name := "Workbench"
+	omitted.Resources[0].DisplayName = &name
+	if omitted.Validate() == nil {
+		t.Fatal("API resource accepted an inert display name")
+	}
+
+	valid := deviceGateway(t, "admin")
+	valid.Resources[1].DisplayName = &name
+	data, err := json.Marshal(valid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := ReadGateway(bytes.NewReader(data))
+	if err != nil || decoded.Resources[1].DisplayName == nil || *decoded.Resources[1].DisplayName != name {
+		t.Fatalf("valid display name rejected: %#v %v", decoded.Resources[1].DisplayName, err)
+	}
+	for _, invalid := range []string{"", "   ", " leading", "trailing ", "bad\r\nname", strings.Repeat("x", 129)} {
+		candidate := valid
+		candidate.Resources = append([]Resource(nil), valid.Resources...)
+		candidate.Resources[1].DisplayName = &invalid
+		data, err := json.Marshal(candidate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ReadGateway(bytes.NewReader(data)); err == nil {
+			t.Fatalf("invalid display name accepted: %q", invalid)
+		}
+	}
+}

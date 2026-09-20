@@ -25,6 +25,7 @@ type portalAuthority interface {
 
 type portalService struct {
 	ID          string `json:"id"`
+	Name        string `json:"name,omitempty"`
 	URL         string `json:"url"`
 	Role        string `json:"role"`
 	ManagedRole bool   `json:"managed_role"`
@@ -98,11 +99,14 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 		for _, candidate := range b.resources {
 			rule := candidate.declaration.Rule
 			item := portalService{ID: rule.ID, URL: "https://" + rule.Host + rule.PathPrefix, Role: human.ApplicationRoles[rule.ID], ManagedRole: rule.NativeAuth == "signed-identity"}
+			if candidate.declaration.DisplayName != nil {
+				item.Name = *candidate.declaration.DisplayName
+			}
 			if granted[rule.ID] {
 				services = append(services, item)
 			}
 			if adminPath != "" {
-				choices = append(choices, portalService{ID: rule.ID, ManagedRole: item.ManagedRole})
+				choices = append(choices, portalService{ID: rule.ID, Name: item.Name, ManagedRole: item.ManagedRole})
 			}
 		}
 		sort.Slice(services, func(i, j int) bool { return services[i].ID < services[j].ID })

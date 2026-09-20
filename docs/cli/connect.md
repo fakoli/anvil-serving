@@ -206,7 +206,7 @@ identifiers. Use the username-based CLI when identifying a new person. To suspen
 the final service, disable the account; the authority retains a nonempty grant list.
 The last Connect operator cannot be removed. Application admins do not become
 Connect operators or inherit other services, and new services are never granted
-automatically.
+automatically. A browser gateway resource may also set an optional `display_name` for chooser tiles and access-editor labels. It does not change `rule.id`, which remains the authority key for grants, roles, sessions, enrollment, and transport.
 
 For Workbench/Observatory to enforce these roles inside the app, declare
 `native_auth: signed-identity` at the Connect browser resource and configure
