@@ -44,6 +44,7 @@ class FakeOwner:
         self.gate = threading.Event()
         self.gate.set()
         self.benchmark_rows = None
+        self.benchmark_states = {}
 
     def snapshot(self):
         return {"hosts": [{"id": "host-fixture-a", "controller": {"status": "complete"}}], "serves": []}
@@ -82,7 +83,7 @@ class FakeOwner:
         correct = self.observed == preview["private_values"].get("max_output", self.current)
         return {"status": "passed" if correct else "failed", "message": "Fixture owner checked independently."}
 
-    def list_benchmark_jobs(self, *, limit=100, cursor=None):
+    def list_benchmark_jobs(self, *, limit=100, cursor=None, refresh_refs=None):
         if self.fail_verification:
             raise TimeoutError("fixture benchmark owner unavailable")
         rows = self.benchmark_rows or [{
@@ -90,10 +91,18 @@ class FakeOwner:
             "profile": "fixture-profile", "model": "fixture-model", "submitted_at": "2026-09-19T00:00:00Z",
             "updated_at": "2026-09-19T00:01:00Z", "artifact": {"sha256": "a" * 64},
         }]
-        return {"schema": "anvil-serving.benchmark-job-list/v1", "items": rows[:limit], "next_cursor": None, "source": {
+        result = {"schema": "anvil-serving.benchmark-job-list/v1", "items": rows[:limit], "next_cursor": None, "source": {
             "id": "benchmark-owner", "status": "fresh", "observed_at": "2026-09-19T00:01:00Z",
             "deadline_seconds": 1.0,
         }}
+        if refresh_refs:
+            updates = []
+            for ref in refresh_refs:
+                state = self.benchmark_states.get((ref["suite"], ref["run_id"]))
+                if state is not None:
+                    updates.append({**ref, "native_state": state, "updated_at": "2026-09-19T00:02:00Z"})
+            result["refresh"] = {"items": updates, "partial": len(updates) != len(refresh_refs)}
+        return result
 
 
 @pytest.fixture
@@ -318,6 +327,31 @@ def test_benchmark_cache_is_authorized_before_stale_fallback(site):
     assert stale["items"][0]["freshness"] == "stale"
     with pytest.raises(ObservatoryError, match="does not grant"):
         console.read("runs/benchmark", {"limit": "1"}, denied)
+
+
+def test_benchmark_head_poll_carries_bounded_off_head_status_updates(site):
+    console, owner, _call = site
+    owner.benchmark_rows = [{
+        "native_id": "older-active", "native_state": "running", "suite": "context",
+        "profile": "fixture-profile", "model": "fixture-model",
+        "submitted_at": "2026-09-19T00:00:00Z", "updated_at": "2026-09-19T00:01:00Z",
+    }]
+    owner.benchmark_states[("context", "older-active")] = "completed"
+    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
+    result = console.read("runs/benchmark", {
+        "limit": "1", "refresh_refs": json.dumps([{"suite": "context", "run_id": "older-active"}]),
+    }, session)
+    assert result["items"][0]["native_state"] == "running"
+    assert result["updates"][0]["native_state"] == "completed"
+    assert result["sources"][0]["partial"] is False
+
+    denied = Session("denied", "csrf", Principal("denied", "denied", "viewer", frozenset(), frozenset()), time.time() + 60)
+    with pytest.raises(ObservatoryError) as exc:
+        console.read("runs/benchmark", {"refresh_refs": "not-json"}, denied)
+    assert exc.value.status == 403
+
+    with pytest.raises(ObservatoryError, match="distinct valid"):
+        console.read("runs/benchmark", {"refresh_refs": json.dumps([{"suite": "bad/path", "run_id": "older-active"}])}, session)
 
 
 def test_benchmark_cache_retains_a_projected_hundred_row_page(site):

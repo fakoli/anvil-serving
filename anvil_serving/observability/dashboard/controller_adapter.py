@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import copy
+from datetime import datetime
 import json
 import math
 import multiprocessing
@@ -22,8 +23,9 @@ from ...transports import (
     Operation,
     TransportError,
 )
+from ...benchmarking.jobs import JOB_STATES
 from .contracts import ObservatoryError, canonical, digest, identifier, strict_json, validate_values
-from .run_projection import validated_benchmark_job_ref
+from .run_projection import validated_benchmark_job_ref, validated_benchmark_refresh_refs
 from . import runtime_candidates
 
 
@@ -59,6 +61,38 @@ def _public_error(message: str = "The resource owner is unavailable.") -> Observ
     return ObservatoryError("owner_unavailable", message, 503)
 
 
+def _benchmark_refresh_row(payload: object, expected: Mapping[str, str]) -> dict[str, str] | None:
+    """Keep only an exact, public status identity from an owner response."""
+    if not isinstance(payload, Mapping) or not isinstance(payload.get("spec"), Mapping):
+        return None
+    spec = payload["spec"]
+    state, updated_at = payload.get("state"), payload.get("updated_at")
+    if (spec.get("suite") != expected["suite"] or spec.get("run_id") != expected["run_id"]
+            or state not in JOB_STATES
+            or type(updated_at) is not str):
+        return None
+    try:
+        datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    row = {"suite": expected["suite"], "run_id": expected["run_id"], "native_state": state, "updated_at": updated_at}
+    for field in ("started_at", "finished_at"):
+        value = payload.get(field)
+        if value is None:
+            continue
+        if type(value) is not str:
+            return None
+        try:
+            datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        row[field] = value
+    artifact = payload.get("artifact")
+    if isinstance(artifact, Mapping) and type(artifact.get("sha256")) is str and re.fullmatch(r"[a-f0-9]{64}", artifact["sha256"]):
+        row["artifact_sha256"] = artifact["sha256"]
+    return row
+
+
 def _benchmark_list_worker(sender, bundle: Mapping[str, Any], arguments: Mapping[str, Any]) -> None:
     """One disposable worker owns every blocking controller phase for a run read."""
     try:
@@ -76,11 +110,28 @@ def _benchmark_list_worker(sender, bundle: Mapping[str, Any], arguments: Mapping
         if (bundle["expected_catalog_digest"] is not None
                 and digest(relevant) != bundle["expected_catalog_digest"]):
             raise ValueError("controller catalog digest mismatch")
-        if "benchmark_job_list" not in {item["name"] for item in relevant}:
+        declared = {item["name"] for item in relevant}
+        refresh_refs = arguments.pop("refresh_refs", [])
+        if "benchmark_job_list" not in declared or (refresh_refs and "benchmark_job_status" not in declared):
             raise ValueError("benchmark list unavailable")
-        result = dict(transport.execute(
+        result = ControllerAdapter._payload(transport.execute(
             Operation("benchmark_job_list", arguments, tool_name="benchmark_job_list")
         ).data)
+        if refresh_refs:
+            updates, partial = [], False
+            for ref in refresh_refs:
+                try:
+                    payload = ControllerAdapter._payload(transport.execute(
+                        Operation("benchmark_job_status", ref, tool_name="benchmark_job_status")
+                    ).data)
+                    row = _benchmark_refresh_row(payload, ref)
+                    if row is None:
+                        partial = True
+                    else:
+                        updates.append(row)
+                except Exception:
+                    partial = True
+            result["refresh"] = {"items": updates, "partial": partial}
         message: object = {"ok": True, "data": result}
     except Exception:
         message = {"ok": False}
@@ -733,7 +784,8 @@ class ControllerAdapter:
                 "execution_outcome": "succeeded", "evidence": self._evidence(payload)}
 
     def list_benchmark_jobs(
-        self, *, limit: int = 100, cursor: str | None = None, deadline_seconds: float = 2.0,
+        self, *, limit: int = 100, cursor: str | None = None, refresh_refs: object = None,
+        deadline_seconds: float = 2.0,
     ) -> dict[str, Any]:
         """Read a benchmark list in one process that is killed at the source deadline."""
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
@@ -743,18 +795,36 @@ class ControllerAdapter:
         if (type(deadline_seconds) not in {int, float} or isinstance(deadline_seconds, bool)
                 or not 0 < deadline_seconds <= 2):
             raise ObservatoryError("invalid_run_list", "Select a bounded owner deadline.")
+        refs = [] if refresh_refs is None else validated_benchmark_refresh_refs(refresh_refs)
+        arguments = {"limit": limit, **({"cursor": cursor} if cursor is not None else {})}
+        if refs:
+            arguments["refresh_refs"] = refs
         isolated = self._isolated_benchmark_list(
-            {"limit": limit, **({"cursor": cursor} if cursor is not None else {})},
+            arguments,
             float(deadline_seconds),
         )
         if isolated is not None:
             return isolated
-        if "benchmark_job_list" not in self._tools():
+        tools = self._tools()
+        if "benchmark_job_list" not in tools or (refs and "benchmark_job_status" not in tools):
             raise _public_error("The benchmark owner does not expose a run list.")
-        return self._call("benchmark_job_list", {
+        result = self._call("benchmark_job_list", {
             "limit": limit,
             **({"cursor": cursor} if cursor is not None else {}),
         })
+        if refs:
+            updates, partial = [], False
+            for ref in refs:
+                try:
+                    row = _benchmark_refresh_row(self._call("benchmark_job_status", ref), ref)
+                    if row is None:
+                        partial = True
+                    else:
+                        updates.append(row)
+                except ObservatoryError:
+                    partial = True
+            result["refresh"] = {"items": updates, "partial": partial}
+        return result
 
     def _isolated_benchmark_list(
         self, arguments: Mapping[str, Any], deadline_seconds: float,

@@ -1,12 +1,13 @@
 import copy
 import http.server
+import json
 import multiprocessing
 import threading
 import time
 
 import pytest
 
-from anvil_serving.observability.dashboard.controller_adapter import ControllerAdapter
+from anvil_serving.observability.dashboard.controller_adapter import ControllerAdapter, _benchmark_refresh_row
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
 from anvil_serving.transports import TransportError, TransportResult, DEFAULT_MAX_RESPONSE_BYTES
 
@@ -24,7 +25,7 @@ class FakeTransport:
     def tool_catalog(self):
         names = {"serves_status", "serves_manage", "serves_probe", "serves_profile",
                  "router_transition",
-                 "benchmark_job_preflight", "benchmark_job_submit", "benchmark_job_list", "host_services_status",
+                 "benchmark_job_preflight", "benchmark_job_submit", "benchmark_job_list", "benchmark_job_status", "host_services_status",
                  "host_services_logs", "host_services_manage", "container_exec"}
         return tuple({"name": name, "inputSchema": {"type": "object"}} for name in names)
 
@@ -52,7 +53,7 @@ class FakeTransport:
         elif operation.name in {"benchmark_job_submit", "benchmark_job_status"}:
             data = {"ok": True, "data": {
                 "spec": {"run_id": "smoke", "suite": "context"}, "spec_sha256": "a" * 64,
-                "state": "completed", "revision": 3, "failure": None,
+                "state": "completed", "updated_at": "2026-09-19T00:01:00Z", "revision": 3, "failure": None,
                 "job_ref": {"schema": "anvil-serving.run-correlation/v1",
                             "issuer": "benchmark-owner", "namespace": "benchmark-job",
                             "native_id": "smoke"},
@@ -153,6 +154,27 @@ def test_benchmark_list_uses_only_the_declared_bounded_tool():
     assert kwargs == {}
 
 
+def test_benchmark_list_refreshes_only_exact_bounded_status_refs():
+    value = adapter()
+    result = value.list_benchmark_jobs(refresh_refs=[{"suite": "context", "run_id": "smoke"}])
+    assert result["refresh"] == {"items": [{
+        "suite": "context", "run_id": "smoke", "native_state": "completed", "updated_at": "2026-09-19T00:01:00Z",
+    }], "partial": False}
+    assert [call[0].name for call in FakeTransport.instances[-1].calls[-2:]] == [
+        "benchmark_job_list", "benchmark_job_status",
+    ]
+    with pytest.raises(ObservatoryError, match="up to 20"):
+        value.list_benchmark_jobs(refresh_refs=[])
+
+
+@pytest.mark.parametrize("state", ["completed", "cancelling"])
+def test_benchmark_refresh_accepts_declared_owner_states(state):
+    assert _benchmark_refresh_row({
+        "spec": {"suite": "context", "run_id": "smoke"}, "state": state,
+        "updated_at": "2026-09-19T00:01:00Z",
+    }, {"suite": "context", "run_id": "smoke"})["native_state"] == state
+
+
 def test_real_benchmark_owner_header_stall_is_killed_at_the_total_deadline():
     request_started = threading.Event()
 
@@ -223,7 +245,7 @@ def test_real_benchmark_owner_worker_returns_the_declared_list():
                 self.end_headers()
                 self.wfile.write(raw)
                 return
-            raw = b'{"tools":[{"name":"benchmark_job_list","inputSchema":{"type":"object"}}]}'
+            raw = b'{"tools":[{"name":"benchmark_job_list","inputSchema":{"type":"object"}},{"name":"benchmark_job_status","inputSchema":{"type":"object"}}]}'
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(raw)))
@@ -231,10 +253,11 @@ def test_real_benchmark_owner_worker_returns_the_declared_list():
             self.wfile.write(raw)
 
         def do_POST(self):
-            self.rfile.read(int(self.headers["Content-Length"]))
+            request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             raw = (b'{"ok":true,"data":{"schema":"anvil-serving.benchmark-job-list/v1",'
                    b'"items":[{"native_id":"job-native-1"}],"next_cursor":null,'
-                   b'"source":{"id":"owner-a","status":"fresh"}}}')
+                   b'"source":{"id":"owner-a","status":"fresh"}}}' if request["name"] == "benchmark_job_list" else
+                   b'{"ok":true,"data":{"spec":{"suite":"context","run_id":"job-native-1"},"state":"completed","updated_at":"2026-09-19T00:01:00Z"}}')
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(raw)))
@@ -253,13 +276,16 @@ def test_real_benchmark_owner_worker_returns_the_declared_list():
         "execution_runtime": "native",
     }, "resources": []}, {"FIXTURE_TOKEN": "fixture-token"})
     try:
-        result = value.list_benchmark_jobs(limit=1, deadline_seconds=1.0)
+        result = value.list_benchmark_jobs(limit=1, refresh_refs=[{"suite": "context", "run_id": "job-native-1"}], deadline_seconds=2.0)
     finally:
         server.shutdown()
         server.server_close()
         thread.join(timeout=1)
     assert result["source"]["id"] == "owner-a"
     assert result["items"] == [{"native_id": "job-native-1"}]
+    assert result["refresh"] == {"items": [{
+        "suite": "context", "run_id": "job-native-1", "native_state": "completed", "updated_at": "2026-09-19T00:01:00Z",
+    }], "partial": False}
     assert not [child for child in multiprocessing.active_children()
                 if child.name == "observatory-benchmark-list"]
 

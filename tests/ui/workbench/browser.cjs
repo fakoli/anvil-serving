@@ -423,6 +423,25 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByText("fixture-page-000", { exact: true }).waitFor({ timeout: 10000 });
     await page.getByRole("button", { name: "Load more", exact: true }).click();
     await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    const retainedActive = page.getByText("fixture-page-100", { exact: true }).locator("xpath=ancestor::tr");
+    await retainedActive.scrollIntoViewIfNeeded();
+    await page.waitForRequest(
+      (request) => request.url().includes("/api/observatory/v1/runs/benchmark") && request.url().includes("refresh_refs"),
+      { timeout: 5000 },
+    );
+    const retainedAt = Date.now();
+    await control("benchmark-retained-complete");
+    await retainedActive.getByText("completed", { exact: true }).waitFor({ timeout: 5000 });
+    receipts.retained_active_refresh = { completed_ms: Date.now() - retainedAt, visible_only: true };
+    assert.ok(receipts.retained_active_refresh.completed_ms <= 5000);
+    await retainedActive.getByRole("link", { name: "Open run →", exact: true }).click();
+    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor({ timeout: 5000 });
+    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    await page.reload();
+    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor({ timeout: 5000 });
+    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    receipts.retained_stable_link = true;
+    await page.getByRole("tab", { name: "All runs", exact: true }).click();
     await control("benchmark-pagination-new-head");
     await page.evaluate(() => {
       Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
@@ -431,6 +450,9 @@ fs.mkdirSync(output, { recursive: true });
       document.dispatchEvent(new Event("visibilitychange"));
     });
     await page.getByText("fixture-page-new", { exact: true }).waitFor({ timeout: 5000 });
+    await page.getByText("fixture-page-100", { exact: true }).waitFor({ timeout: 5000 });
+    await page.waitForFunction(() => [...document.querySelectorAll("tr small.mono")]
+      .filter((item) => item.textContent.startsWith("fixture-page-")).length === 102, null, { timeout: 5000 });
     const pageIds = await page.locator("tr small.mono").allTextContents();
     const retainedPageIds = pageIds.filter((item) => item.startsWith("fixture-page-"));
     assert.equal(retainedPageIds.length, 102);

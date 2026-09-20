@@ -141,6 +141,7 @@ Configured projects also expose the current user's retained task bindings and
 managed Pi sessions under their existing project read grants. Pi metadata
 reads are unavailable on platforms without the required safe filesystem
 descriptor operations; canonical session storage continues to work.
+These managed sessions are separate from native host Pi Web history.
 
 Each source requires its own read grant, distinct from controller resources and
 other run sources, for the optional benchmark and evidence declarations above.
@@ -155,6 +156,16 @@ Imported evidence preserves failures, incomplete measurements and external
 priors. Source cards report partial or truncated coverage explicitly. The
 local catalog requires descriptor-safe filesystem reads and refuses symlinks,
 special files and protected credential paths.
+
+Use **All runs** to filter by source or outcome and load older pages. The view
+keeps a current page and bounded retained history, with a maximum of 500 rows
+per source. Expired cursors keep the last successful rows and offer **Restart
+history**. A retained row's freshness is separate from its recorded outcome.
+
+Use **Compare** to select two through twenty retained evidence artifacts. The
+comparison reports compatible, different, unknown and invalid measurement
+dimensions. A changed artifact requires fresh references; the previous result
+is cleared. Compatibility does not rank models or authorize promotion.
 
 ## Private policy shape
 

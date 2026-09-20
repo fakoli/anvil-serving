@@ -47,7 +47,7 @@ class Owner(BASE["FakeOwner"]):
         super().__init__()
         self.benchmark_delay = 0
 
-    def list_benchmark_jobs(self, *, limit=100, cursor=None):
+    def list_benchmark_jobs(self, *, limit=100, cursor=None, refresh_refs=None):
         if self.benchmark_delay:
             time.sleep(self.benchmark_delay)
         result = super().list_benchmark_jobs(limit=100, cursor=None)
@@ -57,6 +57,12 @@ class Owner(BASE["FakeOwner"]):
         start = 100 if cursor else 0
         result["items"] = rows[start:start + limit]
         result["next_cursor"] = "fixture-page-100" if start + limit < len(rows) else None
+        if refresh_refs:
+            states = {(row["suite"], row["native_id"]): row["native_state"] for row in rows}
+            updates = [{**ref, "native_state": states[(ref["suite"], ref["run_id"])], "updated_at": next(
+                row["updated_at"] for row in rows if (row["suite"], row["native_id"]) == (ref["suite"], ref["run_id"]))}
+                       for ref in refresh_refs if (ref["suite"], ref["run_id"]) in states]
+            result["refresh"] = {"items": updates, "partial": len(updates) != len(refresh_refs)}
         return result
 
     def snapshot(self):
@@ -844,11 +850,17 @@ def main():
                     owner.benchmark_delay = 0
                     owner.benchmark_rows = [{
                         "native_id": f"fixture-page-{number:03d}", "suite": "context",
-                        "profile": "fixture-page", "model": "fixture-model", "native_state": "completed",
+                        "profile": "fixture-page", "model": "fixture-model", "native_state": "running" if number == 100 else "completed",
                         "submitted_at": "2026-09-19T00:04:00Z", "updated_at": "2026-09-19T00:04:00Z",
                         "started_at": None, "finished_at": "2026-09-19T00:04:00Z", "artifact": None,
                     } for number in range(101)]
                     print(json.dumps({"fixture": True, "pagination": 101}), flush=True)
+                    continue
+                if command == "benchmark-retained-complete":
+                    for row in owner.benchmark_rows:
+                        if row.get("native_id") == "fixture-page-100":
+                            row.update(native_state="completed", updated_at="2026-09-19T00:05:00Z", finished_at="2026-09-19T00:05:00Z")
+                    print(json.dumps({"fixture": True, "retained_completed": True}), flush=True)
                     continue
                 if command == "benchmark-pagination-new-head":
                     owner.benchmark_rows.insert(0, {

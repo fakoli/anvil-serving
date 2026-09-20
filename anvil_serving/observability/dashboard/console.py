@@ -22,7 +22,7 @@ from .contracts import (ObservatoryError, canonical, digest, fields, identifier,
                         preview_is_current, strict_json, timestamp, validate_values)
 from .intents import IntentStore
 from .run_projection import (BENCHMARK_SOURCE, benchmark_correlation_id,
-                             list_benchmark_runs, projected_run_id,
+                             list_benchmark_runs, projected_run_id, validated_benchmark_refresh_refs,
                              validated_benchmark_job_ref)
 
 PREVIEW_FIELDS = frozenset({"id", "host_id", "resource_id", "action_id", "label", "baseline_digest", "candidate_digest", "policy_digest", "expires_at_epoch_seconds", "effect", "diff", "affected_aliases", "workload_impact", "gpu_ids", "stop_semantics", "recovery", "planned_steps", "actor", "service_identity", "acknowledgement_required", "diagnostic"})
@@ -485,6 +485,8 @@ class Console:
             source["status"] = "stale"
         for row in cached.get("items", []):
             row["freshness"] = "stale"
+        for row in cached.get("updates", []):
+            row["freshness"] = "stale"
         return cached
 
     def _benchmark_runs(self, session, query):
@@ -494,17 +496,23 @@ class Console:
         resource_id = binding["resource_id"]
         # Permit before a cache key, cursor, count, or owner call can be used.
         self.access.permit(session, resource_id)
+        fields(query, optional=("limit", "cursor", "refresh_refs"))
         limit = self._run_limit(query)
         cursor = query.get("cursor")
         if cursor is not None and (type(cursor) is not str or len(cursor) > 128):
             raise ObservatoryError("invalid_run_list", "Select a valid run cursor.")
-        key = self._run_cache_key(session, resource_id, limit, cursor)
+        raw_refs = query.get("refresh_refs")
+        if raw_refs is not None and (type(raw_refs) is not str or len(raw_refs.encode("utf-8")) > 8192):
+            raise ObservatoryError("invalid_run_list", "Select up to 20 distinct benchmark runs.")
+        refresh_refs = None if raw_refs is None else validated_benchmark_refresh_refs(strict_json(raw_refs.encode("utf-8")))
+        cache_cursor = cursor if refresh_refs is None else (cursor or "") + ".refresh." + digest(refresh_refs)
+        key = self._run_cache_key(session, resource_id, limit, cache_cursor)
         if self.adapter is None or not self._benchmark_slot.acquire(blocking=False):
             return self._stale_runs(key, BENCHMARK_SOURCE)
         try:
             result = list_benchmark_runs(
                 self.adapter, can_read=session.principal.can_read, resource_id=resource_id,
-                limit=limit, cursor=cursor,
+                limit=limit, cursor=cursor, refresh_refs=refresh_refs,
             )
         except Exception:
             return self._stale_runs(key, BENCHMARK_SOURCE)
@@ -702,13 +710,13 @@ class Console:
             return self._evidence_detail(session, query)
         if route == "runs/evidence/compare":
             return self._evidence_compare(session, query)
+        if route == "runs/benchmark":
+            return self._benchmark_runs(session, query)
         if route.startswith("runs/"):
             fields(query, optional=("limit", "cursor"))
             source = identifier(route.split("/", 1)[1])
             if source == "operations":
                 return self._operation_runs(session, query)
-            if source == BENCHMARK_SOURCE:
-                return self._benchmark_runs(session, query)
             if source == "evidence":
                 return self._evidence_runs(session, query)
             if source in {"workspace-tasks", "workspace-pi"}:

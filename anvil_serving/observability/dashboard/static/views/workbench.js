@@ -10,6 +10,7 @@ const SOURCE_TIMEOUT = 2500, DISCOVERY_INTERVAL = 6500, ACTIVE_INTERVAL = 1500;
 const HISTORY_LIMIT = 400, PAGE_LIMIT = 100;
 const TERMINAL = new Set(["succeeded", "failed", "cancelled", "completed", "imported", "retained"]);
 const BENCHMARK_CORRELATION = /^benchmark-job-[a-f0-9]{64}$/;
+const BENCHMARK_REFRESH_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$/;
 export const workbenchRoute = (tab, id) => id ? route("workbench", id, tab) : route("workbench", tab);
 
 const activeRun = (run) => !TERMINAL.has(String(run.status || "").toLowerCase());
@@ -31,6 +32,32 @@ function validCorrelation(item) {
   return (item?.source === "operations" || item?.source === "benchmark")
     && typeof item.correlation_id === "string" && BENCHMARK_CORRELATION.test(item.correlation_id);
 }
+function benchmarkRepresentation(run) {
+  return run?.source === "benchmark" ? run : run?.representations?.find((item) => item?.source === "benchmark");
+}
+function visibleBenchmarkRefreshRefs(state) {
+  if (state.source.id !== "benchmark") return [];
+  const head = new Set(state.head.map((item) => item?.native_id));
+  const refs = [], seen = new Set();
+  for (const node of document.querySelectorAll("[data-benchmark-refresh]")) {
+    const { suite, runId } = node.dataset;
+    const rect = node.getBoundingClientRect(), key = `${suite}:${runId}`;
+    if (rect.bottom <= 0 || rect.top >= innerHeight || head.has(runId) || seen.has(key)
+        || !BENCHMARK_REFRESH_ID.test(suite || "") || !BENCHMARK_REFRESH_ID.test(runId || "")) continue;
+    seen.add(key); refs.push({ suite, run_id: runId });
+    if (refs.length === 20) break;
+  }
+  return refs;
+}
+function applyBenchmarkUpdates(rows, updates) {
+  if (!Array.isArray(updates) || !updates.length) return rows;
+  const mapped = new Map(updates.filter((item) => item?.source === "benchmark" && typeof item.native_id === "string")
+    .map((item) => [`${item.suite}:${item.native_id}`, item]));
+  return rows.map((item) => {
+    const update = item?.source === "benchmark" && mapped.get(`${item.suite}:${item.native_id}`);
+    return update ? { ...item, ...update } : item;
+  });
+}
 export function coalesceRuns(states) {
   const correlated = new Map(), rows = [];
   for (const state of states.values()) for (const item of state.items) {
@@ -51,17 +78,18 @@ export function coalesceRuns(states) {
   return rows.sort((left, right) => String(right.updated_at || "").localeCompare(String(left.updated_at || "")) || String(left.id).localeCompare(String(right.id)));
 }
 
-function createRunFeed(ctx, update) {
+function createRunFeed(ctx, update, selectedId) {
   const states = new Map(); let stopped = false, catalogTimer = null, catalogController = null, catalogGeneration = 0;
+  const selectedRun = typeof selectedId === "string" && selectedId ? selectedId : null;
+  const selectionMatches = (item) => item?.id === selectedRun || (item?.source === "operations" && item?.native_id === selectedRun);
+  const selectionMissing = () => selectedRun && ![...states.values()].some((candidate) => candidate.items.some(selectionMatches));
   const render = () => { if (!stopped) update(states, coalesceRuns(states)); };
   const clear = (state) => {
     clearTimeout(state.timer); state.timer = null; state.generation += 1;
     state.controller?.abort(); state.controller = null;
     state.moreController?.abort(); state.moreController = null;
   };
-  // Only the current owner head is actively polled. Older cursor pages are
-  // retained evidence and display their freshness rather than a false live claim.
-  const delayFor = (state) => state.source.kind === "imported" || !state.head.some(activeRun) ? DISCOVERY_INTERVAL : ACTIVE_INTERVAL;
+  const delayFor = (state) => state.source.kind === "imported" || (!state.head.some(activeRun) && !visibleBenchmarkRefreshRefs(state).length) ? DISCOVERY_INTERVAL : ACTIVE_INTERVAL;
   const schedule = (state, delay = delayFor(state)) => {
     clearTimeout(state.timer);
     if (!stopped && !document.hidden) state.timer = setTimeout(() => void readSource(state), delay);
@@ -71,11 +99,16 @@ function createRunFeed(ctx, update) {
     const generation = ++state.generation, controller = new AbortController();
     state.loading = true; state.controller = controller; render();
     try {
-      const value = await request(query(`runs/${encodeURIComponent(state.source.id)}`, { limit: PAGE_LIMIT }), { signal: controller.signal, timeout: SOURCE_TIMEOUT });
+      const refreshRefs = visibleBenchmarkRefreshRefs(state);
+      const parameters = { limit: PAGE_LIMIT };
+      if (refreshRefs.length) parameters.refresh_refs = JSON.stringify(refreshRefs);
+      const value = await request(query(`runs/${encodeURIComponent(state.source.id)}`, parameters), { signal: controller.signal, timeout: SOURCE_TIMEOUT });
       if (stopped || state.generation !== generation) return;
       state.head = Array.isArray(value?.items) ? value.items : [];
       const headIds = new Set(state.head.map((item) => item?.id));
       state.history = state.history.map((item) => !headIds.has(item?.id) && activeRun(item) ? { ...item, freshness: "retained" } : item);
+      state.head = applyBenchmarkUpdates(state.head, value?.updates);
+      state.history = applyBenchmarkUpdates(state.history, value?.updates);
       // Once history is loaded, keep paging its original owner snapshot. A
       // newer head may be polled without creating gaps behind that snapshot.
       if (!state.snapshotActive && !state.historyExpired)
@@ -83,6 +116,7 @@ function createRunFeed(ctx, update) {
       state.sources = Array.isArray(value?.sources) ? value.sources : [];
       state.status = state.sources.some((item) => item?.status === "stale") ? "stale" : state.sources.some((item) => item?.status === "unavailable") ? "unavailable" : "fresh";
       rebuild(state);
+      state.selectionBackfill = selectionMissing() && !!state.next_cursor && state.history.length < HISTORY_LIMIT;
     } catch (error) {
       if (error.name === "AbortError" || stopped || state.generation !== generation) return;
       if (error.status === 403) { state.head = []; state.history = []; rebuild(state); clear(state); states.delete(state.source.id); render(); return; }
@@ -90,6 +124,7 @@ function createRunFeed(ctx, update) {
     } finally {
       if (stopped || state.generation !== generation) return;
       state.loading = false; state.controller = null; render(); schedule(state);
+      if (state.selectionBackfill) { state.selectionBackfill = false; void loadMore(state); }
     }
   };
   const loadMore = async (state, restart = false) => {
@@ -113,6 +148,7 @@ function createRunFeed(ctx, update) {
       else { state.history = candidate; state.next_cursor = typeof value?.next_cursor === "string" && value.next_cursor ? value.next_cursor : null; }
       state.sources = Array.isArray(value?.sources) ? value.sources : state.sources;
       rebuild(state);
+      state.selectionBackfill = selectionMissing() && !!state.next_cursor && state.history.length < HISTORY_LIMIT;
     } catch (error) {
       if (error.name === "AbortError" || stopped || state.generation !== generation) return;
       if (error.status === 403) { state.head = []; state.history = []; rebuild(state); clear(state); states.delete(state.source.id); render(); return; }
@@ -122,6 +158,7 @@ function createRunFeed(ctx, update) {
     } finally {
       if (stopped || state.generation !== generation) return;
       state.moreLoading = false; state.moreController = null; render(); schedule(state);
+      if (state.selectionBackfill) { state.selectionBackfill = false; void loadMore(state); }
     }
   };
   const reconcileCatalog = async () => {
@@ -137,7 +174,7 @@ function createRunFeed(ctx, update) {
         available.add(source.id);
         const existing = states.get(source.id);
         if (existing) { existing.source = source; continue; }
-        const state = { source, head: [], history: [], items: [], status: "loading", sources: [], loading: false, moreLoading: false, controller: null, moreController: null, timer: null, next_cursor: null, snapshotActive: false, historyExpired: false, historyExhausted: false, generation: 0 };
+        const state = { source, head: [], history: [], items: [], status: "loading", sources: [], loading: false, moreLoading: false, controller: null, moreController: null, timer: null, next_cursor: null, snapshotActive: false, historyExpired: false, historyExhausted: false, refreshSignature: "", selectionBackfill: false, generation: 0 };
         states.set(source.id, state); void readSource(state);
       }
       for (const [sourceId, state] of states) if (!available.has(sourceId)) { clear(state); states.delete(sourceId); }
@@ -159,13 +196,26 @@ function createRunFeed(ctx, update) {
     void reconcileCatalog();
     for (const state of states.values()) void readSource(state);
   };
+  const refreshVisible = () => {
+    if (stopped || document.hidden) return;
+    for (const state of states.values()) {
+      if (state.source.id !== "benchmark" || state.controller || state.moreController) continue;
+      const signature = JSON.stringify(visibleBenchmarkRefreshRefs(state));
+      if (signature !== "[]" && signature !== state.refreshSignature) {
+        state.refreshSignature = signature;
+        void readSource(state);
+      }
+    }
+  };
   const stop = () => {
     if (stopped) return;
     stopped = true; clearTimeout(catalogTimer); catalogGeneration += 1; catalogController?.abort(); catalogController = null;
     for (const state of states.values()) clear(state);
     document.removeEventListener("visibilitychange", visibility);
+    window.removeEventListener("scroll", refreshVisible);
   };
   document.addEventListener("visibilitychange", visibility);
+  window.addEventListener("scroll", refreshVisible, { passive: true });
   ctx.signal.addEventListener("abort", stop, { once: true });
   const restartHistory = (state) => {
     if (stopped || document.hidden || state.controller || state.moreController) return;
@@ -177,7 +227,7 @@ function createRunFeed(ctx, update) {
 
 function runTable(runs, ctx) {
   return table(["Run", "Source", "Outcome", "Freshness", "Updated", ""], runs.map((run) => [
-    el("div", {}, el("strong", { text: run.title || run.label || run.action_id || run.native_id || run.id }), el("small", { class: "mono", text: run.native_id || run.id })),
+    (() => { const benchmark = benchmarkRepresentation(run); return el("div", {}, el("strong", { text: run.title || run.label || run.action_id || run.native_id || run.id }), el("small", { class: "mono", text: run.native_id || run.id, ...(benchmark && activeRun(benchmark) ? { "data-benchmark-refresh": "", "data-suite": benchmark.suite, "data-run-id": benchmark.native_id } : {}) })); })(),
     run.source_label || run.source || "Not reported", badge(run.native_state || run.execution_outcome || run.status), badge(run.freshness || "fresh"), timestamp(run.updated_at, ctx.zone),
     el("a", { class: "text-link", href: workbenchRoute("events", run.id), "data-focus-key": `run:${run.id}`, text: "Open run →" }),
   ]));
@@ -198,8 +248,9 @@ function sourceCoverage(states, ctx) {
 }
 function runDetails(current, ctx, selectedId) {
   const representations = current?.representations || (current ? [current] : []);
+  const benchmark = benchmarkRepresentation(current);
   if (!current) return empty(selectedId ? "The selected retained run is unavailable from the current authorized sources." : "No retained run is available from the configured sources.");
-  return el("section", { class: "focus-card stack", "aria-label": "Selected run" },
+  return el("section", { class: "focus-card stack", "aria-label": "Selected run", ...(benchmark && activeRun(benchmark) ? { "data-benchmark-refresh": "", "data-suite": benchmark.suite, "data-run-id": benchmark.native_id } : {}) },
     el("span", { class: "eyebrow", text: `RETAINED RUN / ${current.id.slice(0, 16)}` }),
     el("div", { class: "focus-top" }, el("div", {}, el("h2", { text: current.title || current.label || current.native_id || "Selected run" }), el("p", { text: `${current.source_label || current.source || "Owner source"} · ${current.native_id || current.id}` })), badge(current.status)),
     kv([["Freshness", badge(current.freshness || "fresh")], ["Updated", timestamp(current.updated_at, ctx.zone)], ["Native IDs", representations.map((row) => row.native_id || row.id).join(", ")], ["Correlation", validCorrelation(current) ? current.correlation_id : "No owner-declared benchmark correlation"]]),
@@ -256,7 +307,7 @@ function comparisonPanel(runs, ctx, comparison, rerender) {
       const key = `${ref.artifact_id}:${ref.sha256}`, checked = comparison.refs.has(key);
       return el("label", { class: "comparison-choice" }, el("input", { type: "checkbox", checked, disabled: comparison.loading || (!checked && comparison.refs.size >= 20), "data-focus-key": `compare:${key}`, onChange: () => choose(ref) }), el("span", {}, el("strong", { text: row.model || row.title || "Retained evidence" }), el("small", { class: "mono", text: ref.artifact_id })));
     })),
-    el("div", { class: "actions" }, button(comparison.loading ? "Comparing…" : `Compare ${comparison.refs.size} selected`, () => void compare(), "primary", comparison.loading || comparison.refs.size < 2)),
+    el("div", { class: "actions" }, button(comparison.loading ? "Comparing…" : `Compare ${comparison.refs.size} selected`, () => void compare(), "primary", comparison.loading || comparison.refs.size < 2), button("Clear selection", () => { comparison.refs.clear(); comparison.result = null; comparison.error = null; comparison.generation += 1; rerender(); }, "", comparison.loading || !comparison.refs.size)),
     comparison.error ? notice(comparison.error, "danger") : null,
     result ? el("section", { class: "comparison-result stack" }, kv([["Comparable", badge(result.comparable ? "compatible" : "incompatible")], ["Different dimensions", result.differences?.join(", ") || "None reported"], ["Unknown dimensions", result.unknown_fields?.join(", ") || "None reported"], ["Invalid artifacts", result.invalid_artifacts?.join(", ") || "None reported"]]), result.artifacts?.length ? runTable(result.artifacts, ctx) : null) : null,
   );
@@ -264,7 +315,7 @@ function comparisonPanel(runs, ctx, comparison, rerender) {
 function backfillControls(states, feed) {
   const pages = [...states.values()].filter((state) => state.next_cursor || state.historyExpired || state.historyExhausted || state.history.some(activeRun));
   if (!pages.length) return null;
-  return el("section", { class: "panel run-backfill stack" }, el("h2", { text: "Retained history" }), ...pages.map((state) => el("div", { class: "run-backfill-row" }, el("span", { text: `${sourceLabel(state.source)} · ${state.history.length} retained snapshot rows` }), state.historyExpired || state.historyExhausted ? button("Restart history", () => void feed.restartHistory(state)) : state.next_cursor ? button(state.moreLoading ? "Loading…" : "Load more", () => void feed.loadMore(state), "", state.moreLoading) : badge("retained history"))), pages.some((state) => state.historyExpired) ? notice("A source snapshot expired. Its last successful rows remain visible; restart history to continue from the current snapshot.", "warning") : null, pages.some((state) => state.historyExhausted) ? notice("History reached the 500-row display limit. Restart to browse from a current head; no loaded row was silently dropped.", "warning") : null, pages.some((state) => state.history.some(activeRun)) ? notice("Active rows outside the current owner head are retained history. Their current state is not actively polled until they return to the head.", "warning") : null);
+  return el("section", { class: "panel run-backfill stack" }, el("h2", { text: "Retained history" }), ...pages.map((state) => el("div", { class: "run-backfill-row" }, el("span", { text: `${sourceLabel(state.source)} · ${state.history.length} retained snapshot rows` }), state.historyExpired || state.historyExhausted ? button("Restart history", () => void feed.restartHistory(state)) : state.next_cursor ? button(state.moreLoading ? "Loading…" : "Load more", () => void feed.loadMore(state), "", state.moreLoading) : badge("retained history"))), pages.some((state) => state.historyExpired) ? notice("A source snapshot expired. Its last successful rows remain visible; restart history to continue from the current snapshot.", "warning") : null, pages.some((state) => state.historyExhausted) ? notice("History reached the 500-row display limit. Restart to browse from a current head; no loaded row was silently dropped.", "warning") : null, pages.some((state) => state.source.id === "benchmark" && state.history.some(activeRun)) ? notice("Visible retained benchmark rows are refreshed separately.", "warning") : null, pages.some((state) => state.source.id !== "benchmark" && state.history.some(activeRun)) ? notice("Retained active rows outside the owner head are not actively polled until they return to that head.", "warning") : null);
 }
 function syncSelect(control, options, value) {
   const signature = JSON.stringify(options);
@@ -343,7 +394,7 @@ export async function workbenchView(ctx, id, requestedTab = "overview") {
   panel.append(coverage);
   if (toolbar) panel.append(toolbar);
   panel.append(data);
-  feed = createRunFeed(ctx, render);
+  feed = createRunFeed(ctx, render, id);
   data.append(notice("Discovering authorized run sources…"));
   void feed.start();
   return root;

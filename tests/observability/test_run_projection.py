@@ -13,7 +13,7 @@ class BenchmarkOwner:
 
     def list_benchmark_jobs(self, **kwargs):
         self.calls.append(kwargs)
-        return {
+        result = {
             "schema": "anvil-serving.benchmark-job-list/v1",
             "items": [{
                 "native_id": "jobs/2026/7",
@@ -35,6 +35,11 @@ class BenchmarkOwner:
                 "deadline_seconds": 1.0,
             },
         }
+        if kwargs.get("refresh_refs"):
+            result["refresh"] = {"items": [{
+                "suite": "context", "run_id": "benchmark-fixture-1", "native_state": "completed", "updated_at": "2026-09-19T00:01:02Z",
+            }], "partial": False}
+        return result
 
 
 def test_benchmark_projection_authorizes_before_owner_rows_or_cursor():
@@ -137,3 +142,29 @@ def test_benchmark_projection_preserves_partial_source_coverage():
         "truncated": False,
         "partial": True,
     }]
+
+
+def test_benchmark_projection_projects_status_updates_without_changing_page_membership():
+    owner = BenchmarkOwner()
+    result = list_benchmark_runs(
+        owner, can_read=lambda _: True, resource_id="evaluation.runs", refresh_refs=[{
+            "suite": "context", "run_id": "benchmark-fixture-1",
+        }],
+    )
+    assert len(result["items"]) == 1
+    assert result["updates"] == [{
+        "id": projected_run_id("controller-a", "benchmark", "benchmark-fixture-1"),
+        "owner_id": "controller-a", "source": "benchmark", "native_id": "benchmark-fixture-1",
+        "kind": "benchmark", "resource_id": "evaluation.runs", "suite": "context",
+        "native_state": "completed", "status": "completed", "updated_at": "2026-09-19T00:01:02Z",
+        "observed_at": "2026-09-19T00:01:01Z", "freshness": "fresh",
+    }]
+    assert owner.calls[-1]["refresh_refs"] == [{"suite": "context", "run_id": "benchmark-fixture-1"}]
+
+
+def test_benchmark_refresh_refs_authorize_before_validation_or_owner_call():
+    owner = BenchmarkOwner()
+    with pytest.raises(ObservatoryError) as exc:
+        list_benchmark_runs(owner, can_read=lambda _: False, resource_id="evaluation.runs", refresh_refs=[])
+    assert exc.value.code == "forbidden"
+    assert owner.calls == []

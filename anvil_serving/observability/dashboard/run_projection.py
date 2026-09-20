@@ -6,13 +6,14 @@ from collections.abc import Callable, Mapping
 from datetime import datetime
 from typing import Any
 
-from ...benchmarking.jobs import BenchmarkJobError
+from ...benchmarking.jobs import BenchmarkJobError, JOB_STATES, validate_job_id
 from ...control_plane.controller.store import benchmark_job_ref
 from .contracts import ObservatoryError, digest, identifier
 
 
 BENCHMARK_SOURCE = "benchmark"
 MAX_NATIVE_ID_BYTES = 1024
+MAX_BENCHMARK_REFRESH_REFS = 20
 
 
 def validated_benchmark_job_ref(value: object) -> dict[str, str] | None:
@@ -59,6 +60,27 @@ def projected_run_id(owner_id: str, source: str, native_id: str) -> str:
     return "run-" + digest({"owner_id": owner_id, "source": source, "native_id": native_id})
 
 
+def validated_benchmark_refresh_refs(value: object) -> list[dict[str, str]]:
+    """Accept a small, exact set of owner status lookups from an authorized caller."""
+    if not isinstance(value, list) or not 1 <= len(value) <= MAX_BENCHMARK_REFRESH_REFS:
+        raise ObservatoryError("invalid_run_list", "Select up to 20 distinct benchmark runs.")
+    refs: list[dict[str, str]] = []
+    seen = set()
+    try:
+        for item in value:
+            if not isinstance(item, Mapping) or set(item) != {"suite", "run_id"}:
+                raise ValueError
+            suite = validate_job_id(item["suite"], field="suite")
+            run_id = validate_job_id(item["run_id"])
+            if (suite, run_id) in seen:
+                raise ValueError
+            seen.add((suite, run_id))
+            refs.append({"suite": suite, "run_id": run_id})
+    except (BenchmarkJobError, TypeError, ValueError):
+        raise ObservatoryError("invalid_run_list", "Select distinct valid benchmark runs.") from None
+    return refs
+
+
 def list_benchmark_runs(
     adapter: Any,
     *,
@@ -66,12 +88,17 @@ def list_benchmark_runs(
     resource_id: str,
     limit: int = 100,
     cursor: str | None = None,
+    refresh_refs: object = None,
 ) -> dict[str, Any]:
     """Authorize before asking the benchmark owner for rows, cursors, or counts."""
     resource_id = identifier(resource_id)
     if not callable(can_read) or can_read(resource_id) is not True:
         raise ObservatoryError("forbidden", "You are not authorized to read this run source.", 403)
-    response = adapter.list_benchmark_jobs(limit=limit, cursor=cursor)
+    refs = [] if refresh_refs is None else validated_benchmark_refresh_refs(refresh_refs)
+    request = {"limit": limit, "cursor": cursor}
+    if refs:
+        request["refresh_refs"] = refs
+    response = adapter.list_benchmark_jobs(**request)
     if not isinstance(response, Mapping) or response.get("schema") != "anvil-serving.benchmark-job-list/v1":
         raise ObservatoryError("owner_unavailable", "The benchmark owner returned no valid run list.", 503)
     items = response.get("items")
@@ -102,8 +129,13 @@ def list_benchmark_runs(
     next_cursor = response.get("next_cursor")
     if next_cursor is not None and (type(next_cursor) is not str or len(next_cursor) > 128):
         raise ObservatoryError("owner_unavailable", "The benchmark owner returned no valid run list.", 503)
+    updates, refresh_partial = _project_benchmark_refreshes(
+        response.get("refresh"), refs, owner_id=owner_id, resource_id=resource_id,
+        observed_at=observed_at,
+    )
     return {
         "items": projected,
+        "updates": updates,
         "next_cursor": next_cursor,
         "sources": [{
             "id": owner_id,
@@ -111,9 +143,72 @@ def list_benchmark_runs(
             "observed_at": observed_at,
             "deadline_seconds": deadline,
             "truncated": source.get("truncated") is True,
-            "partial": partial,
+            "partial": partial or refresh_partial,
         }],
     }
+
+
+def _project_benchmark_refreshes(
+    value: object, refs: list[dict[str, str]], *, owner_id: str, resource_id: str, observed_at: str,
+) -> tuple[list[dict[str, Any]], bool]:
+    """Project status deltas separately; a bad status never changes page membership."""
+    if not refs:
+        return [], False
+    if not isinstance(value, Mapping) or type(value.get("partial")) is not bool:
+        return [], True
+    rows = value.get("items")
+    if not isinstance(rows, list) or len(rows) > len(refs):
+        return [], True
+    expected = {(item["suite"], item["run_id"]) for item in refs}
+    updates = []
+    seen = set()
+    partial = value["partial"]
+    for row in rows:
+        if not isinstance(row, Mapping):
+            partial = True
+            continue
+        suite, native_id, state, updated_at = row.get("suite"), row.get("run_id"), row.get("native_state"), row.get("updated_at")
+        if (type(suite) is not str or type(native_id) is not str or type(state) is not str or state not in JOB_STATES
+                or type(updated_at) is not str or (suite, native_id) not in expected or (suite, native_id) in seen):
+            partial = True
+            continue
+        try:
+            datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+        except ValueError:
+            partial = True
+            continue
+        optional_timestamps = {field: row.get(field) for field in ("started_at", "finished_at") if field in row}
+        try:
+            if any(type(value) is not str for value in optional_timestamps.values()):
+                raise ValueError
+            for value in optional_timestamps.values():
+                datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            partial = True
+            continue
+        artifact_sha256 = row.get("artifact_sha256")
+        if artifact_sha256 is not None and (type(artifact_sha256) is not str or len(artifact_sha256) != 64 or any(char not in "0123456789abcdef" for char in artifact_sha256)):
+            partial = True
+            continue
+        seen.add((suite, native_id))
+        updates.append({
+            "id": projected_run_id(owner_id, BENCHMARK_SOURCE, native_id),
+            "owner_id": owner_id,
+            "source": BENCHMARK_SOURCE,
+            "native_id": native_id,
+            "kind": "benchmark",
+            "resource_id": resource_id,
+            "suite": suite,
+            "native_state": state,
+            "status": state,
+            "updated_at": updated_at,
+            "observed_at": observed_at,
+            "freshness": "fresh",
+            **optional_timestamps,
+            **({"evidence_refs": [{"owner_id": owner_id, "artifact_id": native_id, "sha256": artifact_sha256}]}
+               if artifact_sha256 is not None else {}),
+        })
+    return updates, partial or seen != expected
 
 
 def _project_benchmark_row(
