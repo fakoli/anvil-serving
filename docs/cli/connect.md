@@ -698,3 +698,9 @@ whole sequence runs inside the deployment lock with rollback of the rendered
 tree and gateway units. Without `--confirm` it prints the same plan and
 changes nothing. Existing principals keep their prior resource lists until
 `connect admin human-set` extends each one.
+
+After a revoke, the operation keeps a private recovery record rather than
+restoring the old enrollment. A later `connect extend` first verifies the
+exact native installation status and either completes the retained forward
+transition or stops without further authority changes when the status has
+drifted. Invitation material is never shown or recreated from that record.

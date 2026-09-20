@@ -82,6 +82,7 @@ def environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     manifest["service_limits"]["clients"] = {}
     manifest_path = tmp_path / "deployment.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    (tmp_path / "state-gateway").mkdir(mode=0o700)
 
     connector_tree = {"schema": "anvil-connect.connector/v1", "id": "dashboard",
                       "resources": _declared_resources(ENROLLED)}
@@ -105,6 +106,10 @@ def environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr("anvil_serving.connect.manage._validate_data", lambda *a, **k: {
         "digests": {"native": NATIVE, "caddy": CADDY, "authelia": AUTHELIA}})
+    # Most sequence tests isolate orchestration from host NSS; the dedicated
+    # binding test supplies real declared service identities and file handoff.
+    monkeypatch.setattr("anvil_serving.connect.manage._target_identity", lambda *a, **k: None)
+    monkeypatch.setattr("anvil_serving.connect.manage._role_service_identity", lambda *a, **k: None)
     return {
         "manifest_path": manifest_path, "target": Target("connector", "dashboard"),
         "root": root, "tmp": tmp_path,
@@ -244,33 +249,51 @@ def test_extension_validates_gateway_and_connector_before_activation(
         )
     assert selected == [(Target("gateway"), environment["target"])]
     assert runner.calls == []
-    assert not (environment["tmp"] / "state-gateway").exists()
+    assert not (environment["tmp"] / ".rendered.anvil-connect-extend").exists()
 
 
 @pytest.fixture()
 def enrollment_log(monkeypatch: pytest.MonkeyPatch, environment):
     """Record admin/native calls; the invite writes its bundle as the IdP would."""
     calls: list[dict[str, object]] = []
+    authority = {
+        "id": "dashboard", "status": "active", "fingerprint": FINGERPRINT,
+        "epoch": "a" * 64, "generation": 1, "resources": sorted(ENROLLED),
+    }
 
     def fake_admin(manifest_path, *, request_path, output_path=None, apply, runner=None):
         request = json.loads(Path(request_path).read_text(encoding="utf-8"))
         calls.append({"admin": request["operation"], "request": request})
+        if request["operation"] == "installation-status" and output_path is not None:
+            Path(output_path).write_text(json.dumps({"status": authority}), encoding="utf-8")
+            Path(output_path).chmod(0o600)
+        elif request["operation"] == "installation-revoke":
+            if authority["status"] != "revoked":
+                authority.update(status="revoked", generation=authority["generation"] + 1)
         if output_path is not None and request["operation"] == "invite":
+            authority.update(status="invited", generation=authority["generation"] + 1,
+                             resources=sorted(DECLARED), fingerprint="")
             Path(output_path).write_text(json.dumps({
                 "invitation": "aci1." + "1" * 16 + "." + "A" * 43,
                 "control_host": "connect-control.example.test",
                 "tunnel_host": "connect-tunnel.example.test",
                 "inner_ca_pem": "-----BEGIN CERTIFICATE-----",
             }), encoding="utf-8")
+            Path(output_path).chmod(0o600)
         return {}
 
     monkeypatch.setattr(extend_module.manage, "admin", fake_admin)
-    monkeypatch.setattr(extend_module.manage, "native_init",
-                        lambda manifest_path, target, *, bundle, apply, runner=None:
-                        calls.append({"native_init": str(bundle)}) or Path(bundle).unlink())
+    def fake_native_init(manifest_path, target, *, bundle, apply, runner=None):
+        calls.append({"native_init": str(bundle)})
+        authority.update(status="pending", fingerprint=FINGERPRINT)
+        Path(bundle).unlink()
+
+    monkeypatch.setattr(extend_module.manage, "native_init", fake_native_init)
     monkeypatch.setattr(extend_module.manage, "identity",
                         lambda manifest_path, target, runner=None:
-                        calls.append({"identity": True}) or {"fingerprint": FINGERPRINT})
+                        calls.append({"identity": True}) or {"identity": {
+                            "id": target.name, "resources": sorted(DECLARED), "fingerprint": FINGERPRINT,
+                        }})
     return calls
 
 
@@ -287,7 +310,9 @@ def test_extend_runs_the_full_sequence_and_converges(
         entry["admin"] if "admin" in entry else next(iter(entry))
         for entry in enrollment_log
     ]
-    assert operations == ["installation-revoke", "invite", "native_init", "identity", "approve"]
+    assert [operation for operation in operations if operation != "installation-status"] == [
+        "installation-revoke", "invite", "native_init", "identity", "identity", "approve",
+    ]
     # The new generation is live with the extended resource set.
     connector_tree = json.loads((environment["root"] / "connectors" / "dashboard.json").read_text())
     assert extend_module._resource_ids(connector_tree["resources"]) == set(DECLARED)
@@ -316,7 +341,7 @@ def test_extend_rolls_back_the_generation_when_the_gateway_fails_to_become_ready
     assert record["generation"] == GEN_OLD
 
 
-def test_bundle_lands_in_the_connector_state_directory(
+def test_bundle_lands_in_the_manager_owned_connector_sidecar(
     environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
@@ -324,7 +349,7 @@ def test_bundle_lands_in_the_connector_state_directory(
     extend_module.extend(environment["manifest_path"], environment["target"],
                           confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
     init_entry = next(entry for entry in enrollment_log if "native_init" in entry)
-    assert str(environment["tmp"] / "state-dashboard") in str(init_entry["native_init"])
+    assert str(environment["tmp"] / ".rendered.anvil-connect-extend" / "connector-dashboard") in str(init_entry["native_init"])
     assert str(environment["tmp"] / "state-gateway") not in str(init_entry["native_init"])
 
 # --- review-gate regressions (Greptile P1s) ---------------------------------
@@ -344,7 +369,7 @@ def test_gateway_side_invitation_response_is_removed_after_redemption(
     assert leftovers == []
 
 
-def test_post_redemption_failure_completes_forward_instead_of_rolling_back(
+def test_post_redemption_failure_retains_exact_approval_recovery(
     environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Once redeemed, the old resource set is unrecoverable: finish forward."""
@@ -360,26 +385,293 @@ def test_post_redemption_failure_completes_forward_instead_of_rolling_back(
                 "tunnel_host": "connect-tunnel.example.test",
                 "inner_ca_pem": "-----BEGIN CERTIFICATE-----",
             }), encoding="utf-8")
+            Path(output_path).chmod(0o600)
         if request["operation"] == "approve":
             attempts["approve"] += 1
             if attempts["approve"] == 1:
                 raise extend_module.ManageError("admin socket transiently unavailable")
+        if request["operation"] == "installation-status" and output_path is not None:
+            seen = [entry.get("admin") for entry in enrollment_log]
+            if "installation-revoke" not in seen[:-1]:
+                status, generation, resources, fingerprint = "active", 1, sorted(ENROLLED), FINGERPRINT
+            elif "invite" not in seen[:-1]:
+                status, generation, resources, fingerprint = "revoked", 2, sorted(ENROLLED), FINGERPRINT
+            else:
+                status, generation, resources, fingerprint = "pending", 3, sorted(DECLARED), FINGERPRINT
+            Path(output_path).write_text(json.dumps({
+                "status": {"id": "dashboard", "status": status, "fingerprint": fingerprint,
+                           "epoch": "a" * 64, "generation": generation, "resources": resources},
+            }), encoding="utf-8")
+            Path(output_path).chmod(0o600)
         return {}
 
     monkeypatch.setattr(extend_module.manage, "admin", flaky_admin)
     monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
     monkeypatch.setattr(extend_module.manage, "_started_units", lambda *a, **k: None)
-    result = extend_module.extend(
-        environment["manifest_path"], environment["target"],
-        confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
-    # The completion ran forward: the record was written, the fingerprint holds.
-    assert result["fingerprint"] == FINGERPRINT
-    assert "completed_after_error" in result
+    with pytest.raises(extend_module.ExtendError, match="authority changed"):
+        extend_module.extend(
+            environment["manifest_path"], environment["target"],
+            confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
+    recovery = extend_module._read_recovery(
+        json.loads(Path(environment["manifest_path"]).read_text()), "dashboard", sorted(DECLARED))
+    assert recovery is not None and recovery["phase"] == "approve-pending"
     record = json.loads((environment["root"].parent / ".rendered.anvil-connect-activation.json").read_text())
     assert record["generation"] != GEN_OLD
     # The rendered generation still carries the extended set (no rollback).
     connector_tree = json.loads((environment["root"] / "connectors" / "dashboard.json").read_text())
     assert extend_module._resource_ids(connector_tree["resources"]) == set(DECLARED)
+
+
+def test_native_init_ambiguity_retains_phase_then_rerun_finishes_forward(
+    environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A lost init response is never replayed with the one-time bundle."""
+    calls = {"init": 0}
+
+    original_init = extend_module.manage.native_init
+
+    def ambiguous_init(*args, **kwargs):
+        calls["init"] += 1
+        original_init(*args, **kwargs)
+        raise extend_module.ManageError("native init response lost", may_have_executed=True)
+
+    monkeypatch.setattr(extend_module.manage, "native_init", ambiguous_init)
+    monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
+    monkeypatch.setattr(extend_module.manage, "_started_units", lambda *a, **k: None)
+    with pytest.raises(extend_module.ExtendError, match="init-pending"):
+        extend_module.extend(
+            environment["manifest_path"], environment["target"],
+            confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
+    recovery = extend_module._read_recovery(
+        json.loads(Path(environment["manifest_path"]).read_text()), "dashboard", sorted(DECLARED))
+    assert recovery is not None and recovery["phase"] == "init-pending"
+    # Native identity is the exact owner proof on retry; init is not called a
+    # second time against the same retained invitation.
+    result = extend_module.extend(
+        environment["manifest_path"], environment["target"],
+        confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
+    assert result["recovered"] is True and calls["init"] == 1
+    assert extend_module._read_recovery(
+        json.loads(Path(environment["manifest_path"]).read_text()), "dashboard", sorted(DECLARED)) is None
+
+
+def test_init_pending_with_no_local_identity_revokes_then_reinvites(
+    environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An init failure before dispatch is resolved from exact invited status."""
+    original_init = extend_module.manage.native_init
+    original_identity = extend_module.manage.identity
+    calls = {"init": 0}
+
+    def interrupted_init(*args, **kwargs):
+        calls["init"] += 1
+        if calls["init"] == 1:
+            raise extend_module.ManageError("native init did not start", may_have_executed=True)
+        return original_init(*args, **kwargs)
+
+    def identity_after_real_init(*args, **kwargs):
+        if calls["init"] == 1:
+            raise extend_module.ManageError("connector has no local enrollment")
+        return original_identity(*args, **kwargs)
+
+    monkeypatch.setattr(extend_module.manage, "native_init", interrupted_init)
+    monkeypatch.setattr(extend_module.manage, "identity", identity_after_real_init)
+    monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
+    monkeypatch.setattr(extend_module.manage, "_started_units", lambda *a, **k: None)
+    with pytest.raises(extend_module.ExtendError, match="init-pending"):
+        extend_module.extend(
+            environment["manifest_path"], environment["target"],
+            confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
+
+    result = extend_module.extend(
+        environment["manifest_path"], environment["target"],
+        confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
+
+    assert result["recovered"] is True
+    assert calls["init"] == 2
+    assert [entry["admin"] for entry in enrollment_log if "admin" in entry].count("installation-revoke") == 2
+
+
+def test_invite_failure_after_revoke_keeps_new_generation_and_retained_recovery(
+    environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A successful revoke is the no-rollback boundary even if invite fails."""
+    original_admin = extend_module.manage.admin
+
+    def fail_invite(manifest_path, *, request_path, output_path=None, apply, runner=None):
+        request = json.loads(Path(request_path).read_text(encoding="utf-8"))
+        if request["operation"] == "invite":
+            raise extend_module.ManageError("gateway invite unavailable")
+        return original_admin(manifest_path, request_path=request_path, output_path=output_path, apply=apply, runner=runner)
+
+    monkeypatch.setattr(extend_module.manage, "admin", fail_invite)
+    monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
+    monkeypatch.setattr(extend_module.manage, "_started_units", lambda *a, **k: None)
+    with pytest.raises(extend_module.ExtendError, match="authority changed"):
+        extend_module.extend(
+            environment["manifest_path"], environment["target"],
+            confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
+    recovery = extend_module._read_recovery(
+        json.loads(Path(environment["manifest_path"]).read_text()), "dashboard", sorted(DECLARED))
+    assert recovery is not None and recovery["phase"] == "revoked"
+    record = json.loads((environment["root"].parent / ".rendered.anvil-connect-activation.json").read_text())
+    assert record["generation"] != GEN_OLD
+
+
+def _installation_status(status: str, generation: int, resources: set[str], fingerprint: str) -> dict[str, object]:
+    return {
+        "id": "dashboard", "status": status, "fingerprint": fingerprint,
+        "epoch": "a" * 64, "generation": generation, "resources": sorted(resources),
+    }
+
+
+def test_recovery_accepts_only_the_exact_post_revoke_status_after_a_lost_response(
+    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A revoke that wrote before its response was lost is not issued twice."""
+    data = json.loads(Path(environment["manifest_path"]).read_text())
+    prior = _installation_status("active", 1, ENROLLED, FINGERPRINT)
+    extend_module._write_recovery(
+        data, "dashboard", sorted(DECLARED), "revoke-pending", prior=prior,
+        generation=1, fingerprint=FINGERPRINT,
+    )
+    monkeypatch.setattr(
+        extend_module, "_installation_status",
+        lambda *_args: _installation_status("revoked", 2, ENROLLED, FINGERPRINT),
+    )
+    calls: list[str] = []
+    monkeypatch.setattr(extend_module, "_revoke", lambda *_args: calls.append("revoke"))
+
+    recovery = extend_module._resolve_recovery_phase(
+        data, environment["manifest_path"], "dashboard", sorted(DECLARED), runner,
+    )
+
+    assert recovery["phase"] == "revoked"
+    assert recovery["generation"] == 2
+    assert recovery["fingerprint"] == FINGERPRINT
+    assert calls == []
+
+
+def test_recovery_revokes_an_invitation_when_its_bearer_response_was_lost(
+    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A write-then-raise invite is retired before a new bearer can be issued."""
+    data = json.loads(Path(environment["manifest_path"]).read_text())
+    prior = _installation_status("active", 1, ENROLLED, FINGERPRINT)
+    extend_module._write_recovery(
+        data, "dashboard", sorted(DECLARED), "invite-pending", prior=prior,
+        generation=2, fingerprint=FINGERPRINT,
+    )
+    statuses = iter((
+        _installation_status("invited", 3, DECLARED, ""),
+        _installation_status("revoked", 4, DECLARED, ""),
+    ))
+    monkeypatch.setattr(extend_module, "_installation_status", lambda *_args: next(statuses))
+    calls: list[str] = []
+    monkeypatch.setattr(extend_module, "_revoke", lambda *_args: calls.append("revoke"))
+
+    recovery = extend_module._resolve_recovery_phase(
+        data, environment["manifest_path"], "dashboard", sorted(DECLARED), runner,
+    )
+
+    assert recovery["phase"] == "revoked"
+    assert recovery["generation"] == 4
+    assert recovery["fingerprint"] == ""
+    assert calls == ["revoke"]
+
+
+def test_recovery_does_not_reapprove_an_already_active_installation_after_a_lost_response(
+    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Approval is non-idempotent, so the exact active status completes it."""
+    data = json.loads(Path(environment["manifest_path"]).read_text())
+    prior = _installation_status("active", 1, ENROLLED, FINGERPRINT)
+    extend_module._write_recovery(
+        data, "dashboard", sorted(DECLARED), "approve-pending", prior=prior,
+        generation=3, fingerprint=FINGERPRINT,
+    )
+    monkeypatch.setattr(
+        extend_module, "_installation_status",
+        lambda *_args: _installation_status("active", 3, DECLARED, FINGERPRINT),
+    )
+
+    recovery = extend_module._resolve_recovery_phase(
+        data, environment["manifest_path"], "dashboard", sorted(DECLARED), runner,
+    )
+
+    assert recovery["phase"] == "approved"
+    assert recovery["generation"] == 3
+
+
+def test_recovery_holds_when_the_authority_status_does_not_match_the_retained_operation(
+    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Same resources are insufficient evidence when epoch or generation drifts."""
+    data = json.loads(Path(environment["manifest_path"]).read_text())
+    prior = _installation_status("active", 1, ENROLLED, FINGERPRINT)
+    extend_module._write_recovery(
+        data, "dashboard", sorted(DECLARED), "revoke-pending", prior=prior,
+        generation=1, fingerprint=FINGERPRINT,
+    )
+    drifted = _installation_status("revoked", 2, ENROLLED, FINGERPRINT)
+    drifted["epoch"] = "b" * 64
+    monkeypatch.setattr(extend_module, "_installation_status", lambda *_args: drifted)
+    monkeypatch.setattr(extend_module, "_revoke", lambda *_args: pytest.fail("must not mutate on drift"))
+
+    with pytest.raises(extend_module.ExtendError, match="cannot prove"):
+        extend_module._resolve_recovery_phase(
+            data, environment["manifest_path"], "dashboard", sorted(DECLARED), runner,
+        )
+
+
+def test_stale_revoked_recovery_cannot_invite_against_a_newer_installation(
+    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A retained revoked phase must not widen an unrelated newer authority."""
+    data = json.loads(Path(environment["manifest_path"]).read_text())
+    prior = _installation_status("active", 1, ENROLLED, FINGERPRINT)
+    extend_module._write_recovery(
+        data, "dashboard", sorted(DECLARED), "revoked", prior=prior,
+        generation=2, fingerprint=FINGERPRINT,
+    )
+    monkeypatch.setattr(
+        extend_module, "_installation_status",
+        lambda *_args: _installation_status("revoked", 3, ENROLLED, FINGERPRINT),
+    )
+    monkeypatch.setattr(extend_module, "_invite", lambda *_args: pytest.fail("must not invite on drift"))
+
+    with pytest.raises(extend_module.ExtendError, match="cannot prove"):
+        extend_module._resume_enrollment(
+            data, environment["manifest_path"], environment["target"], "connector.service",
+            (True, "enabled"), sorted(DECLARED), runner, environment["tmp"] / "systemd",
+        )
+    assert extend_module._read_recovery(data, "dashboard", sorted(DECLARED)) is not None
+
+
+def test_stale_approved_recovery_cannot_start_or_clear_after_gateway_drift(
+    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Completion needs current active authority, not only a local identity."""
+    data = json.loads(Path(environment["manifest_path"]).read_text())
+    prior = _installation_status("active", 1, ENROLLED, FINGERPRINT)
+    extend_module._write_recovery(
+        data, "dashboard", sorted(DECLARED), "approved", prior=prior,
+        generation=3, fingerprint=FINGERPRINT,
+    )
+    monkeypatch.setattr(
+        extend_module, "_installation_status",
+        lambda *_args: _installation_status("active", 4, DECLARED, FINGERPRINT),
+    )
+    monkeypatch.setattr(
+        extend_module, "_apply_unit_lifecycle", lambda *_args, **_kwargs: pytest.fail("must not start on drift"),
+    )
+
+    with pytest.raises(extend_module.ExtendError, match="cannot prove"):
+        extend_module._resume_enrollment(
+            data, environment["manifest_path"], environment["target"], "connector.service",
+            (True, "enabled"), sorted(DECLARED), runner, environment["tmp"] / "systemd",
+        )
+    assert extend_module._read_recovery(data, "dashboard", sorted(DECLARED)) is not None
 
 
 def test_rollback_restores_disabled_units_to_the_disabled_state(
