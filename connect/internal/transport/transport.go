@@ -240,6 +240,8 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 			// the handshake deadline for the queued tail.
 			MaxConnsPerHost: dispatchConnections, MaxResponseHeaderBytes: 65536,
 			ResponseHeaderTimeout: idle, TLSHandshakeTimeout: 5 * time.Second,
+			IdleConnTimeout: idle,
+			HTTP2:           &http.HTTP2Config{WriteByteTimeout: idle},
 			TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots.Clone(), Certificates: []tls.Certificate{certificate}, ServerName: ConnectorPeer(resource.Connector)},
 			DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 				if network != "tcp" || address != resource.TunnelAddress {
@@ -249,7 +251,9 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 				if err != nil {
 					return nil, err
 				}
-				tracked := &trackedConn{Conn: relay.WrapConn(conn, idle), registry: conns}
+				// HTTP/2 reads share a socket. A socket read deadline can expire
+				// during one cancelled upload and poison the next admitted stream.
+				tracked := &trackedConn{Conn: conn, registry: conns}
 				conns.add(tracked)
 				return tracked, nil
 			},
@@ -269,6 +273,14 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 		upgradeTransport := tr.Clone()
 		upgradeTransport.Protocols = new(http.Protocols)
 		upgradeTransport.Protocols.SetHTTP1(true)
+		upgradeTransport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+			conn, err := tr.DialContext(ctx, network, address)
+			if err == nil {
+				tracked := conn.(*trackedConn)
+				tracked.Conn = relay.WrapConn(tracked.Conn, idle)
+			}
+			return conn, err
+		}
 		// Clone copies the multiplexed budget; upgrades keep their own admission
 		// sizing and must never reuse a connection across negotiated streams.
 		upgradeTransport.DisableKeepAlives = true
@@ -292,6 +304,9 @@ func NewDispatcher(declaration config.Gateway, roots *x509.CertPool, certificate
 				request.Out.Header.Set(origin.ResourceHeader, resource.Rule.ID)
 			},
 			ModifyResponse: func(response *http.Response) error {
+				if response.ProtoMajor == 2 {
+					response.Body = relay.ResponseBody(response.Body, idle)
+				}
 				if resource.Rule.Access == "browser" {
 					return httpedge.ValidateBrowserResponse(response, resource.Rule)
 				}

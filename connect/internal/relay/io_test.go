@@ -3,16 +3,43 @@ package relay
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func TestResponseBodyIdleDeadlineClosesOnlyItsStream(t *testing.T) {
+	stalled, writer := io.Pipe()
+	defer writer.Close()
+	body := ResponseBody(stalled, 25*time.Millisecond)
+	defer body.Close()
+	done := make(chan error, 1)
+	go func() {
+		_, err := body.Read(make([]byte, 1))
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, os.ErrDeadlineExceeded) {
+			t.Fatalf("stalled body error = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("stalled response body survived its idle deadline")
+	}
+	other := ResponseBody(io.NopCloser(strings.NewReader("independent stream")), time.Second)
+	defer other.Close()
+	if got, err := io.ReadAll(other); err != nil || string(got) != "independent stream" {
+		t.Fatalf("independent body failed: %q, %v", got, err)
+	}
+}
 
 func TestCompletedBodyPreservesHTTP1Connection(t *testing.T) {
 	var connections atomic.Int32
