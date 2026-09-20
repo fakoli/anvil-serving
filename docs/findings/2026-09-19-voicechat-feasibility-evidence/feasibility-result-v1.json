@@ -1,0 +1,308 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "2026-09-19-voicechat-feasibility",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 8704,
+    "max": 8704
+  },
+  "physical_available_bytes": {
+    "min": null,
+    "max": null
+  },
+  "policy_available_bytes": {
+    "min": null,
+    "max": null
+  },
+  "candidates": [
+    {
+      "id": "nemotronlabs-voicechat-11b-mlx-4bit-duplex-c1",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "unknown",
+        "measured_context": "unknown",
+        "measured_context_evidence_status": "unknown",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 8704,
+        "max": 8704
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_available_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "requirements.vram_reserves.additional_unreclaimable.variable",
+        "candidates[0].runtime_context_limit_tokens",
+        "candidates[0].measured_max_stable_context_tokens",
+        "candidates[0].resident_components.target_and_speech",
+        "candidates[0].resident_components.runtime_fixed",
+        "candidates[0].resident_components.compile_workspace",
+        "candidates[0].per_sequence_components.duplex_session",
+        "candidates[0].per_token_components.llm_state"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.protected_os_desktop_voice.variable",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Text-side comparison contract; duplex state is separately unknown"
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 512,
+      "max": 512,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "requests",
+      "min": 1,
+      "max": 1,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 51539607552,
+      "max": 51539607552,
+      "source": "resource-observations.json",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Unified memory, not a dedicated48GiB VRAM pool"
+    },
+    {
+      "path": "requirements.vram_reserves.protected_os_desktop_voice.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 17179869184,
+      "max": 17179869184,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Includes current OS/desktop/voice; do not subtract again from available RAM"
+    },
+    {
+      "path": "requirements.vram_reserves.additional_unreclaimable.variable",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Allocation beyond the protected envelope not isolated; current used RAM cannot distinguish reclaimable caches or double-counted reserve."
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Effective duplex context andaudio/state growth not verified"
+    },
+    {
+      "path": "candidates[0].measured_max_stable_context_tokens",
+      "status": "unknown",
+      "unit": "tokens",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "No model loaded"
+    },
+    {
+      "path": "candidates[0].resident_components.target_and_speech",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "8.538GiB checkpoint payload is not resident/peak allocation"
+    },
+    {
+      "path": "candidates[0].resident_components.runtime_fixed",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "MLX loader materialization and allocator buffers unmeasured"
+    },
+    {
+      "path": "candidates[0].resident_components.compile_workspace",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Metal graphs/kernel workspace peak unknown"
+    },
+    {
+      "path": "candidates[0].per_sequence_components.duplex_session",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Speech encoder/decoder/recurrent/audio buffers unknown"
+    },
+    {
+      "path": "candidates[0].per_token_components.llm_state",
+      "status": "unknown",
+      "unit": "bytes/token",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "Effective hybridMamba/attention state layout unknown"
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": "One session; not a claim about internal audio expansion"
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    },
+    {
+      "path": "requirements.thresholds.max_relative_quality_loss",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.05,
+      "max": 0.05,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    },
+    {
+      "path": "requirements.thresholds.min_warm_e2e_gain",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.2,
+      "max": 0.2,
+      "source": "run-plan.md",
+      "observed_at": "2026-09-19T22:52:44.859536+00:00",
+      "notes": ""
+    }
+  ],
+  "unresolved_variables": [
+    "requirements.vram_reserves.additional_unreclaimable.variable",
+    "candidates[0].runtime_context_limit_tokens",
+    "candidates[0].measured_max_stable_context_tokens",
+    "candidates[0].resident_components.target_and_speech",
+    "candidates[0].resident_components.runtime_fixed",
+    "candidates[0].resident_components.compile_workspace",
+    "candidates[0].per_sequence_components.duplex_session",
+    "candidates[0].per_token_components.llm_state"
+  ],
+  "promotion_authority": false
+}
