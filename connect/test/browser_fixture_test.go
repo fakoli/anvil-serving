@@ -372,7 +372,7 @@ func TestBrowserFixture(t *testing.T) {
 		// must not inherit access to that owner's sessions or tool authority.
 		operatorGrants = []string{"operator-dashboard"}
 	}
-	operator, err := manager.SetHuman(issuerURL, "operator-subject", operatorGrants, false)
+	operator, err := manager.SetHuman(issuerURL, "operator-subject", operatorGrants, false, map[string]string{operatorGrants[0]: "admin"})
 	if err != nil {
 		t.Fatal(err)
 	}

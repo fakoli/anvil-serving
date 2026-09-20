@@ -158,6 +158,8 @@ test('operator service editor changes access and invalidates the member session'
   await page.goto(fixture.url+'/_anvil-connect/home');
   const form=page.locator('.user').filter({hasText:fixture.member_id});
   await expect(form).toBeVisible();
+  const operatorChoices = await page.locator('.user').filter({hasText:'Connect operator'}).locator('select option').allTextContents();
+  expect(new Set(operatorChoices).size).toBe(operatorChoices.length);
   await expect(form.locator('.user-title')).toHaveText('member.one');
   await expect(form.locator('.user-id')).toHaveText(fixture.member_id);
   await page.setViewportSize({width:390,height:844});
