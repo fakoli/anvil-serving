@@ -17,3 +17,9 @@ requests never leave loopback.
 The parent is a minimal integration fixture; this does not certify the shipped
 Workbench shell, production edge configuration, or managed-task capabilities.
 Screenshots and logs must stay outside the public repository.
+
+Set `PI_FIXTURE_WORKBENCH=1` to exercise the shipped Playground shell instead
+of the minimal parent. Its catalog/session responses are deterministic fixtures;
+the child still uses real Connect and pinned Pi Web. The real Workbench HTTP
+owner-subject/resource checks are separately covered by `test_host_pi.py`.
+This mode also checks retained Model test drafts and an unavailable host owner.

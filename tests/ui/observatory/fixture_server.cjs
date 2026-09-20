@@ -312,7 +312,7 @@ async function createFixture(base = BASE) {
             ? "text/css"
             : "text/html",
         "Content-Security-Policy":
-          "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+          "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" + (state.hostPi?.origin ? "; frame-src 'self' " + state.hostPi.origin : ""),
         "Cache-Control": "no-store",
       });
       res.end(fs.readFileSync(full));
@@ -389,6 +389,7 @@ async function createFixture(base = BASE) {
           ],
           presets: [{ id: "default", label: "Fixture preset" }],
           pi: { configured: true },
+          host_pi: state.hostPi || { available: false },
           projects: [{ id: "project-a", label: "Fixture project" }],
         });
         return;

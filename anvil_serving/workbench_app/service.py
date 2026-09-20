@@ -210,6 +210,14 @@ class WorkbenchService:
         config = self.config.get("pi", {})
         result["pi"] = {"configured": self.pi is not None, "models": config.get("models", {}), "thinking": config.get("thinking_levels", []),
                         "runner_id": config.get("id"), "network": config.get("network", "none")}
+        host = self.config.get("host_pi")
+        if (host and session.connect_binding is not None
+                and session.connect_binding.subject == host["owner_subject"]
+                and session.principal.can_read(host["resource_id"])):
+            result["host_pi"] = {"available": True, "id": host["id"], "origin": host["origin"], "version": host["version"],
+                                 "authority": "Owner host session — tools use operator account access"}
+        else:
+            result["host_pi"] = {"available": False, "reason": "Host Pi is available only to its configured Connect owner. Manage the connection in private operator configuration."}
         return result
 
     def read(self, route, query, session):

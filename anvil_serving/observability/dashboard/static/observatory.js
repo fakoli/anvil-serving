@@ -712,7 +712,7 @@ async function refresh({ quiet = false } = {}) {
         content = await workbenchView(ctx, target.id, target.tab);
         break;
       case "playground":
-        content = await playgroundView(ctx);
+        content = await playgroundView(ctx, target.id);
         break;
       case "models":
         content = await modelsView(ctx, target.id);

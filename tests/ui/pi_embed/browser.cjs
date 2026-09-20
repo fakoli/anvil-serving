@@ -6,6 +6,13 @@ const assert = require("node:assert/strict");
 const path = require("node:path");
 const root = process.env.PI_FIXTURE_OUTPUT;
 (async () => {
+  const shell = process.env.PI_FIXTURE_WORKBENCH === "1"
+    ? await require("../observatory/fixture_server.cjs").createFixture("/") : null;
+  if (shell) {
+    shell.state.authenticated = true;
+    shell.state.hostPi = { available: true, id: "fixture-pi", origin: "https://dash.example.test", version: "0.9.0", authority: "Owner host session — tools use operator account access" };
+  }
+  const parentURL = "https://console.example.test/" + (shell ? "#/playground" : "");
   const child = spawn(
     process.env.PI_FIXTURE_BINARY,
     ["-test.run", "^TestBrowserFixture$", "-test.v"],
@@ -14,6 +21,7 @@ const root = process.env.PI_FIXTURE_OUTPUT;
         PATH: process.env.PATH,
         ANVIL_CONNECT_BROWSER_FIXTURE: "1",
         ANVIL_CONNECT_PI_EMBED_ORIGIN: process.env.PI_FIXTURE_ORIGIN,
+        ANVIL_CONNECT_PI_PARENT_ORIGIN: shell ? shell.url.replace(/\/$/, "") : "",
       },
       stdio: ["pipe", "pipe", "pipe"],
     },
@@ -115,7 +123,7 @@ const root = process.env.PI_FIXTURE_OUTPUT;
       passed: true,
       id,
     });
-    await page.goto("https://console.example.test/");
+    await page.goto(parentURL);
     const frame = page.frameLocator("iframe");
     await frame
       .getByText("Embed fixture " + id, { exact: false })
@@ -144,7 +152,7 @@ const root = process.env.PI_FIXTURE_OUTPUT;
       .waitFor({ timeout: 15000 });
     await frame.getByText("Embed fixture " + id, { exact: false }).first().click();
     const second = await context.newPage();
-    await second.goto("https://console.example.test/");
+    await second.goto(parentURL);
     const secondFrame = second.frameLocator("iframe");
     await secondFrame.getByText("Embed fixture " + id, { exact: false }).first().click();
     await secondFrame.getByText("Synthetic Pi integration response.", { exact: false }).first().waitFor();
@@ -163,6 +171,25 @@ const root = process.env.PI_FIXTURE_OUTPUT;
       check: "active stream survives frame reload and second-tab attachment with one native writer",
       passed: true,
     });
+    if (shell) {
+      const modes = page.getByRole("navigation", { name: "Playground modes" });
+      await modes.getByRole("link", { name: "Model test", exact: true }).click();
+      await page.getByRole("heading", { name: "Model test", exact: true }).waitFor();
+      await page.getByLabel("Message", { exact: true }).fill("Retained model-test draft");
+      await modes.getByRole("link", { name: "Pi", exact: true }).click();
+      await frame.getByText("Embed fixture " + id, { exact: false }).first().waitFor();
+      await modes.getByRole("link", { name: "Model test", exact: true }).click();
+      assert.equal(await page.getByLabel("Message", { exact: true }).inputValue(), "Retained model-test draft");
+      shell.state.hostPi.available = false;
+      await page.goto(parentURL);
+      await page.getByText("The host Pi connection is unavailable.", { exact: true }).waitFor();
+      assert.equal(await page.locator("iframe").count(), 0);
+      shell.state.hostPi.available = true;
+      await page.reload();
+      await frame.getByText("Embed fixture " + id, { exact: false }).first().waitFor();
+      await page.screenshot({ path: path.join(root, "workbench-pi.png"), fullPage: true });
+      results.push({ check: "actual Playground shell mounts Pi, retains Model test draft, and hides unavailable owner", passed: true });
+    }
     await page.goto(ready.url);
     const after = await call("/api/sessions?force=1");
     assert.deepEqual(
@@ -332,6 +359,7 @@ const root = process.env.PI_FIXTURE_OUTPUT;
       });
     });
     lines.close();
+    await shell?.close();
   }
 })().catch((e) => {
   console.error(e);

@@ -105,7 +105,7 @@ def _normalize_project_roots(project):
 
 
 def validate_config(value):
-    fields(value, required=("state_path",), optional=("connectors", "presets", "projects", "pi", "pi_storage", "retention_days"))
+    fields(value, required=("state_path",), optional=("connectors", "presets", "projects", "pi", "pi_storage", "host_pi", "retention_days"))
     absolute_path(value["state_path"])
     integer(value.get("retention_days", 30), 1, 365)
     for group in ("connectors", "presets", "projects"):
@@ -154,6 +154,22 @@ def validate_config(value):
                 if "runner_root" in row:
                     absolute_path(row["runner_root"])
                 _normalize_project_roots(row)
+    if "host_pi" in value:
+        host_pi = value["host_pi"]
+        fields(host_pi, required=("id", "resource_id", "origin", "owner_subject", "version", "runtime_sha256"))
+        identifier(host_pi["id"])
+        identifier(host_pi["resource_id"])
+        origin = host_pi["origin"]
+        if type(origin) is not str or not re.fullmatch(r"https://[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[1-9][0-9]{0,4})?", origin):
+            raise ValueError("Host Pi requires an exact HTTPS origin")
+        url = urlsplit(origin)
+        if url.hostname == "localhost" or (url.port is not None and not 1 <= url.port <= 65535):
+            raise ValueError("Host Pi requires an exact HTTPS origin")
+        subject = host_pi["owner_subject"]
+        if type(subject) is not str or not 1 <= len(subject.encode("utf-8")) <= 192 or any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in subject):
+            raise ValueError("Host Pi requires one exact Connect owner subject")
+        if host_pi["version"] != "0.9.0" or type(host_pi["runtime_sha256"]) is not str or not re.fullmatch(r"[a-f0-9]{64}", host_pi["runtime_sha256"]):
+            raise ValueError("Host Pi requires the reviewed package version and runtime digest")
     if value.get("pi"):
         pi = value["pi"]
         fields(pi, required=("id", "state_root", "engine_binary", "image", "uid", "gid", "models", "thinking_levels"),

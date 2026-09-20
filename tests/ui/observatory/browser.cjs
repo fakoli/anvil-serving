@@ -554,7 +554,7 @@ const results = [];
     });
     await test("Desktop rail pins without blocking the workspace and Pi keeps its bookmarked route", async () => {
       await page.setViewportSize({ width: 1440, height: 900 });
-      await navigate("playground", "Playground");
+      await navigate("playground/model-test", "Model test");
       const toggle = page.getByRole("button", { name: "Expand navigation" });
       await toggle.click();
       await page.getByRole("button", { name: "Collapse navigation" }).waitFor();
@@ -588,7 +588,7 @@ const results = [];
             new URL(response.url()).pathname.endsWith("/fleet") &&
             response.status() === 503,
         );
-        await navigate("playground", "Playground");
+        await navigate("playground/model-test", "Model test");
         await failedFleet;
         const draft = page.getByLabel("Message", { exact: true });
         await draft.fill("Keep this draft while fleet telemetry fails.");

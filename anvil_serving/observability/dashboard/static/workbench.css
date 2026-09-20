@@ -104,6 +104,15 @@ h2 {
 h3 {
   font-size: 16px;
 }
+.host-pi-frame {
+  display: block;
+  width: 100%;
+  height: calc(100dvh - 250px);
+  min-height: 420px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
 .eyebrow,
 .nav-label {
   font-size: 10px;
@@ -421,9 +430,17 @@ main {
   font-size: 13px;
   border-bottom: 2px solid transparent;
 }
-.local-tabs a[aria-selected="true"] {
+.local-tabs a[aria-selected="true"],
+.local-tabs a[aria-current="page"] {
   color: var(--accent);
   border-bottom-color: var(--accent);
+  border-left: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.playground-modes a {
+  min-width: 44px;
+  text-align: center;
 }
 .local-tabs a:hover {
   background: transparent;

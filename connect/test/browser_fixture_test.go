@@ -124,6 +124,7 @@ type browserFixture struct {
 	nativeBypass  atomic.Bool
 	dispatcher    *transport.Dispatcher
 	resource      config.Resource
+	parent        http.Handler
 }
 
 func (f *browserFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -131,6 +132,10 @@ func (f *browserFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case idpHost:
 		f.idp.serveHTTP(w, r)
 	case "console.example.test":
+		if f.parent != nil {
+			f.parent.ServeHTTP(w, r)
+			return
+		}
 		if os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") == "" {
 			http.NotFound(w, r)
 			return
@@ -255,6 +260,13 @@ func TestBrowserFixture(t *testing.T) {
 	issuerURL := "https://" + idpHost
 	idp := &oidcFixture{issuer: issuerURL, key: key, subject: "allowed-subject"}
 	fixture := &browserFixture{idp: idp}
+	if raw := os.Getenv("ANVIL_CONNECT_PI_PARENT_ORIGIN"); raw != "" {
+		target, parseErr := url.Parse(raw)
+		if parseErr != nil || target.Scheme != "http" || target.Hostname() != "127.0.0.1" || target.User != nil || target.Path != "" || target.RawQuery != "" || target.Fragment != "" || os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN") == "" {
+			t.Fatal("Parent fixture origin must be a bare loopback HTTP origin in Pi mode")
+		}
+		fixture.parent = httputil.NewSingleHostReverseProxy(target)
+	}
 	var nativeHandler http.Handler = http.HandlerFunc(fixture.nativeDashboard)
 	if raw := os.Getenv("ANVIL_CONNECT_PI_EMBED_ORIGIN"); raw != "" {
 		target, parseErr := url.Parse(raw)
