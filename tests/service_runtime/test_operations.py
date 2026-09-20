@@ -239,8 +239,11 @@ def fleet(tmp_path):
                 dependencies=["events"] if name == "worker" else []) for name in ("events", "worker")}
     path = tmp_path / "services.toml"
     save_manifest(path, rows, expected_digest="")
+    # These scenarios assert dependency order, rollback, and conflict handling,
+    # not elapsed time. A slow Windows runner can consume the shared .1 s setup
+    # fixture budget during manifest and ownership checks before any command.
     return adapter, dict(manifest=path, topology=topo, _adapters={"launchd": adapter}, _run=adapter.run,
-                         _sleep=lambda _: None, timeout_seconds=.1, _host_os="macos", confirm=True, dry_run=False)
+                         _sleep=lambda _: None, timeout_seconds=5, _host_os="macos", confirm=True, dry_run=False)
 
 
 def test_dependencies_start_in_order_and_protect_running_dependents(tmp_path):
