@@ -124,12 +124,34 @@ class WorkspaceRuns:
             refresh = [{key: row[key] for key in ("id", "native_state", "status", "observed_at", "freshness")} for row in items]
             token, offset = secrets.token_hex(16), 0
             snapshot = {"items": items, "authority": authority["authority_key"], "expires": now + _CURSOR_TTL, "observed": observed}
-        page = snapshot["items"][offset:offset + limit]
-        next_cursor = f"{token}.{offset + limit}" if offset + limit < len(snapshot["items"]) else None
-        result = {"items": page, "next_cursor": next_cursor, "refresh": {"items": refresh},
-                  "sources": [{"id": _HOST_SOURCE, "owner_id": _OWNER_ID, "status": "fresh", "observed_at": snapshot["observed"],
-                               "deadline_seconds": 2, "partial": False, "truncated": next_cursor is not None}]}
-        if len(canonical(result)) > _MAX_PAGE_BYTES:
+        available = min(limit, len(snapshot["items"]) - offset)
+
+        def response(count):
+            next_offset = offset + count
+            next_cursor = f"{token}.{next_offset}" if next_offset < len(snapshot["items"]) else None
+            return {"items": snapshot["items"][offset:next_offset], "next_cursor": next_cursor,
+                    "refresh": {"items": refresh},
+                    "sources": [{"id": _HOST_SOURCE, "owner_id": _OWNER_ID, "status": "fresh",
+                                 "observed_at": snapshot["observed"], "deadline_seconds": 2,
+                                 "partial": False, "truncated": next_cursor is not None}]}
+
+        # The retained full refresh is authoritative even when this is only one
+        # page. Binary-search the largest item count that leaves its complete
+        # response within the wire bound.  ``available <= 100``, so the 102
+        # possible outcomes (-1 through 100) take at most seven encodes.
+        lower, upper, result = -1, available + 1, None
+        while upper - lower > 1:
+            count = (lower + upper) // 2
+            candidate = response(count)
+            if len(canonical(candidate)) <= _MAX_PAGE_BYTES:
+                lower, result = count, candidate
+            else:
+                upper = count
+        # A nonempty snapshot must advance.  Returning its otherwise fitting
+        # zero-item page would mint ``token.0``; that cursor is deliberately
+        # invalid and would strand the retained inventory.  An empty fresh
+        # inventory is the one valid zero-item result.
+        if result is None or (available and lower == 0):
             raise ObservatoryError("workspace_source_unavailable", "The native Pi inventory exceeds its bound.", 503)
         if cursor is None:
             with self._host_lock:
