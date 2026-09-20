@@ -50,6 +50,10 @@ fs.mkdirSync(output, { recursive: true });
     fixture.stdin.write('{"command":"status"}\n');
     return next();
   };
+  const control = (command) => {
+    fixture.stdin.write(JSON.stringify({ command }) + "\n");
+    return next();
+  };
   const { url } = await next();
   const browser = await chromium.launch({
     executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
@@ -61,6 +65,10 @@ fs.mkdirSync(output, { recursive: true });
   });
   const errors = [];
   const operationReads = [];
+  const runRequests = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/observatory/v1/runs/")) runRequests.push(request.url());
+  });
   page.on("response", async (response) => {
     if (response.url().includes("/api/observatory/v1/operations/")) {
       operationReads.push({ status: response.status(), body: await response.json().catch(() => null) });
@@ -208,6 +216,92 @@ fs.mkdirSync(output, { recursive: true });
     await page
       .getByRole("tabpanel", { name: "Overview", exact: true })
       .waitFor();
+    await page.getByText("context-001", { exact: true }).waitFor();
+    await page.getByText("fixture-active-benchmark", { exact: true }).first().waitFor();
+    await page.getByText("Deterministic response check", { exact: true }).first().waitFor();
+    await page.getByRole("tab", { name: "All runs", exact: true }).click();
+    const sourceFilter = page.getByRole("combobox", { name: "Run source", exact: true });
+    await sourceFilter.focus();
+    await page.waitForResponse(
+      (response) => response.url().includes("/api/observatory/v1/runs/benchmark") && response.status() === 200,
+      { timeout: 4000 },
+    );
+    assert.equal(await page.evaluate(() => document.activeElement.getAttribute("aria-label")), "Run source");
+    const contextRunLink = page
+      .getByText("context-001", { exact: true })
+      .locator("xpath=ancestor::tr")
+      .getByRole("link", { name: "Open run →", exact: true });
+    await contextRunLink.focus();
+    const contextHref = await contextRunLink.getAttribute("href");
+    await page.waitForResponse(
+      (response) => response.url().includes("/api/observatory/v1/runs/benchmark") && response.status() === 200,
+      { timeout: 4000 },
+    );
+    assert.equal(await page.evaluate(() => document.activeElement.getAttribute("href")), contextHref);
+    await contextRunLink.click();
+    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor();
+    await page.getByText("This source exposes native IDs and artifact references only; it has no declared run-detail route.", { exact: true }).waitFor();
+    const selectedRunUrl = page.url();
+    await page.setViewportSize({ width: 1440, height: 400 });
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const selectedScroll = await page.evaluate(() => window.scrollY);
+    assert.ok(selectedScroll > 0);
+    const delayedAt = Date.now();
+    await control("benchmark-hang");
+    const healthyObserved = page.waitForResponse(
+      (response) => response.url().includes("/api/observatory/v1/runs/operations") && response.status() === 200,
+      { timeout: 10000 },
+    ).then(() => Date.now());
+    const staleObserved = page.getByLabel("Run source coverage").getByText("stale", { exact: true }).waitFor({ timeout: 5000 }).then(() => Date.now());
+    const [healthyAt, staleAt] = await Promise.all([healthyObserved, staleObserved]);
+    const pollObservation = { stale_ms: staleAt - delayedAt, healthy_ms: healthyAt - delayedAt };
+    assert.ok(pollObservation.stale_ms <= 5000);
+    assert.ok(pollObservation.healthy_ms <= 10000);
+    receipts.run_polling = pollObservation;
+    assert.equal(page.url(), selectedRunUrl);
+    assert.equal(await page.evaluate(() => window.scrollY), selectedScroll);
+    const readsBeforeHide = runRequests.length;
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.waitForTimeout(300);
+    assert.equal(runRequests.length, readsBeforeHide);
+    const inFlightBenchmark = page.waitForRequest(
+      (request) => request.url().includes("/api/observatory/v1/runs/benchmark"),
+      { timeout: 3000 },
+    );
+    const resumedOperations = page.waitForResponse(
+      (response) => response.url().includes("/api/observatory/v1/runs/operations") && response.status() === 200,
+      { timeout: 3000 },
+    );
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await Promise.all([inFlightBenchmark, resumedOperations]);
+    assert.equal(page.url(), selectedRunUrl);
+    await control("revoke-benchmark");
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.getByText("The selected retained run is unavailable from the current authorized sources.", { exact: true }).waitFor({ timeout: 3000 });
+    assert.equal(await page.getByText("context-001", { exact: true }).count(), 0);
+    await page.waitForTimeout(6500);
+    assert.equal(await page.getByText("context-001", { exact: true }).count(), 0);
+    await control("restore-benchmark");
+    const legacyOperationId = new URL(operationUrl).hash.split("/").at(-1);
+    await page.goto(`${url}#/workbench/${encodeURIComponent(legacyOperationId)}/events`);
+    await page.getByRole("tabpanel", { name: "Events", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Open operation detail", exact: true }).waitFor();
+    assert.equal(new URL(page.url()).hash, `#/workbench/${encodeURIComponent(legacyOperationId)}/events`);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    receipts.journeys.push(
+      "CLI-created benchmark and UI-created operation appear in independently polled sources; a delayed benchmark turns stale within 5s while Operations refreshes within 10s, filter focus/selection/scroll persist, hide/resume pauses then refreshes, and an in-flight revoked source cannot restore stale rows",
+    );
     await capture("workbench-desktop");
     await page.getByRole("tab", { name: "Overview", exact: true }).focus();
     await page.keyboard.press("ArrowRight");

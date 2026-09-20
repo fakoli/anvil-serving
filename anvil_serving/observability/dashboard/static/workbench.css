@@ -474,6 +474,34 @@ main {
 .run-metric small {
   font-size: 11px;
 }
+.run-source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.run-source-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+}
+.run-source-card small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 11px;
+}
+.run-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.run-toolbar select {
+  min-width: 170px;
+}
 .empty-run {
   text-align: left;
   padding: 35px;
