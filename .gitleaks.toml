@@ -58,3 +58,39 @@ regexes = [
   '''5209fa0cdd415eae7300f507591894251e3ce131438701a65534fdfef032e333''',
   '''213a3fd28ca1ce71e1288ddb249021763a4a08149b05b6eea2ec447d6dfbdacb''',
 ]
+
+# SHA-256s of exact public upstream Authelia v4.39.20 schema objects.  These
+# are the fixture's schema-drift contract, restricted to this source path and
+# these exact declared fingerprints.
+[[allowlists]]
+description = "Pinned Authelia schema-object fingerprints"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "secret"
+paths = ['''(^|/)anvil_serving/connect/user_purge\.py$''']
+regexes = [
+  '''^72850792e2dbf17c56ea769239b7ce50c99ada5f8adaec5a9a5dbe9100966d23$''',
+  '''^2bcd18a53b828443ceacfa5ce2d88ab63057eecb740e3caab2a72ca2ba9121df$''',
+  '''^63b716e864abcc0fe4c85ee527e4ef02aefe283e4bb8fb25b612e0d8a4a8f3d5$''',
+  '''^09f0bde07d1f485131607a728a2fd4e6761e2255d99c56b8a91415d3ced09503$''',
+  '''^c1b46bbf16ac551113c7bc8df8ca14f176a16d26498027c7b2b5343eb1e7423e$''',
+  '''^410596112e58f4b50bc3ada3c0d0e0d32a602efaca15c66a2f3816f0109f6e0b$''',
+  '''^b98bf5ec89047b0f860878f1c4404fabfcc96359625b3e3cc9b3a0382d5f3de0$''',
+  '''^b0deebe26550f3a5e0aa8d69ddbf1a0b51f8c9766646630fe6359e3c45124197$''',
+  '''^b337d4811f0899c64d2c87d2069628306c77099d35adec4b392f3630d1a62b65$''',
+  '''^767ed2be4717fa855127cdaa613fc4ec4bf2e1f0a7bc3c3672bfe69baea7ac2f$''',
+  '''^1a67b45d4d0d402c2fa4d70b9ca9bceedd138e30f15180b23c20e09b792338cd$''',
+  '''^730baf1d0338b22be389b09eb15078371f80c01e1185a7dd5136fab74bc91cd4$''',
+  '''^cfe85995d6e6d2cc4c498bb56fb8a8c2725515416317c6c76dbfae87fefaf181$''',
+  '''^029ca233e346460a184c8f13a5deede0ad9296b311a2c7ee5cf5dcb956395953$''',
+  '''^a6215ef340fd125d0560c7b00a6f280c2edcbe35c4e926de45314edd854c65ae$''',
+  '''^ff55f597023e4519fefbc8259b26ce24237fa098b5b74051c6bf97a587390fb9$''',
+  '''^3a38a39ad89a6a772645609fb0e18ee4f426945c138dd92059d686bdceac75ca$''',
+  '''^b5836b0f59a3c3c3c3f9e9567f435bc184880d0292cae1612cf0f08f7c4821e3$''',
+  '''^d1b7b8467a86e3e31e218f4b919c2371e75ae2cb639bb4f930d962780c920404$''',
+  '''^6c9c34569c326faa6c7a3a852442c38bb0fa12c970be842b58a1f7d36c6d078f$''',
+  '''^235929f0aba45eda668c003eaf2b703eadcc81070d14d4c5e834870a3aa7a7b3$''',
+  '''^4f2117e50c45114f00db257d3487818d0857941d5f2f0709dca3848ba07fb638$''',
+  '''^65c6e7eaba7c681149fd0150c98cdc126120df2980bcaedafaa24e60adb93648$''',
+  '''^f2ceb712ed0de1dd723ebc54f93e22374f403512d405472b82ebd95f12ca2393$''',
+]
