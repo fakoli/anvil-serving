@@ -705,11 +705,12 @@ def test_bridge_archive_uses_the_pinned_git_blob_not_a_mutated_checkout(tmp_path
     destination = tmp_path / "destination"
     pi_web._archive_tracked_bridge_source(
         source, destination, manifest={"source_commit": commit}, run=subprocess.run,
-        chown=lambda target, uid, gid: None, uid=os.getuid(),
+        chown=lambda target, uid, gid: None, uid=1000,
     )
     assert (destination / "tracked.txt").read_text(encoding="utf-8") == "reviewed\n"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed install metadata")
 def test_manifest_write_rejects_a_symlink_without_touching_its_target(tmp_path: Path) -> None:
     root = tmp_path / "root"
     root.mkdir()
@@ -723,6 +724,7 @@ def test_manifest_write_rejects_a_symlink_without_touching_its_target(tmp_path: 
     assert victim.read_text(encoding="utf-8") == "preserve"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed install metadata")
 def test_manifest_write_is_atomic_when_promotion_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = tmp_path / "root"
     root.mkdir()
@@ -828,6 +830,7 @@ def test_bridge_snapshot_failure_prevents_promotion(
     assert not list(root.glob("*.previous-*"))
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only installer uses patch(1)")
 def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path) -> None:
     """The packaged patch, rather than a dirty source checkout, supplies bridge APIs."""
     patch = files("anvil_serving").joinpath("_pi_web_bridge", "0.9.0-host-bridge.patch")
