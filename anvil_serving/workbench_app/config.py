@@ -53,10 +53,14 @@ def _label(value):
 
 
 def _protected_credential_ref(value):
-    return (type(value) is str and (
-        re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", value)
-        or (value.startswith("file:/") and Path(value[5:]).is_absolute())
-    ))
+    if type(value) is not str:
+        return False
+    if re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", value):
+        return True
+    if not value.startswith("file:"):
+        return False
+    # This is deliberately the same native-path contract as resolve_secret.
+    return Path(value[5:]).is_absolute()
 
 
 def _exact_https_origin(value):
@@ -172,7 +176,7 @@ def validate_config(value):
                     raise ValueError("Use a protected environment secret reference")
                 if "token_ref" in row:
                     reference = row["token_ref"]
-                    if "token_env" in row or type(reference) is not str or not (re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", reference) or (reference.startswith("file:/") and Path(reference[5:]).is_absolute())):
+                    if "token_env" in row or not _protected_credential_ref(reference):
                         raise ValueError("Use one protected credential reference")
                 if type(row["models"]) is not list or not 1 <= len(row["models"]) <= 64:
                     raise ValueError("Declare the exact allowed model identities")
@@ -252,7 +256,7 @@ def validate_config(value):
         if type(pi["thinking_levels"]) is not list or not pi["thinking_levels"] or any(t not in {"off", "minimal", "low", "medium", "high", "xhigh"} for t in pi["thinking_levels"]):
             raise ValueError("Invalid Pi thinking policy")
         refs = pi.get("provider_secret_refs", {})
-        if type(refs) is not dict or set(refs) != set(pi["models"]) or any(type(provider) is not str or type(values) is not dict or not values or any(not re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", target) or type(reference) is not str or not (re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", reference) or (reference.startswith("file:/") and Path(reference[5:]).is_absolute())) for target, reference in values.items()) for provider, values in refs.items()):
+        if type(refs) is not dict or set(refs) != set(pi["models"]) or any(type(provider) is not str or type(values) is not dict or not values or any(not re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", target) or not _protected_credential_ref(reference) for target, reference in values.items()) for provider, values in refs.items()):
             raise ValueError("Use explicit Pi provider secret references")
         egress = pi.get("provider_egress", {})
         if type(egress) is not dict or not set(egress).issubset(pi["models"]):
@@ -270,7 +274,7 @@ def validate_config(value):
                 raise ValueError("Invalid explicit Pi provider endpoint")
             if endpoint["api"] not in {"openai-completions", "openai-responses", "anthropic-messages"} or endpoint["credential_env"] not in refs[provider]:
                 raise ValueError("Pi endpoint must use its declared dialect and selected credential reference")
-            if not refs[provider][endpoint["credential_env"]].startswith("file:/"):
+            if not refs[provider][endpoint["credential_env"]].startswith("file:"):
                 raise ValueError("Provider gateways require a protected credential file reference")
             origin = f"{url.scheme}://{url.netloc}"
             if origin not in egress.get(provider, []):

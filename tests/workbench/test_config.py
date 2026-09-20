@@ -143,8 +143,7 @@ def test_host_pi_optional_private_bridge_fields_are_all_or_nothing(tmp_path):
     config["host_pi"] = host_pi
     assert validate_config(config)["host_pi"] == host_pi  # legacy embedded host Pi
 
-    token_path = (tmp_path / "host-pi.token").as_posix()
-    token_ref = f"file:{token_path if token_path.startswith('/') else '/' + token_path}"
+    token_ref = f"file:{tmp_path / 'host-pi.token'}"
     configured = _config(tmp_path)
     configured["host_pi"] = host_pi | {
         "token_ref": token_ref, "parent_origin": "https://workbench.example.test",
@@ -155,6 +154,9 @@ def test_host_pi_optional_private_bridge_fields_are_all_or_nothing(tmp_path):
     for change in (
         {"token_ref": "HOST_PI_TOKEN"},
         {"token_ref": "bad ref", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://127.0.0.1:30123"},
+        {"token_ref": "file:relative.token", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://127.0.0.1:30123"},
+        {"token_ref": "file:C:relative.token", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://127.0.0.1:30123"},
+        {"token_ref": "file:", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://127.0.0.1:30123"},
         {"token_ref": "HOST_PI_TOKEN", "parent_origin": "https://workbench.example.test/path", "bridge_base_url": "http://127.0.0.1:30123"},
         {"token_ref": "HOST_PI_TOKEN", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://127.0.0.1:30123/path"},
         {"token_ref": "HOST_PI_TOKEN", "parent_origin": "https://workbench.example.test", "bridge_base_url": "http://localhost:30123"},
