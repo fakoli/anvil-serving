@@ -874,9 +874,11 @@ def test_admin_preview_accepts_only_real_fingerprint_shape(tmp_path: Path, monke
         manage.admin(manifest, request_path=request, runner=runner)
 
 
-def test_admin_preview_allows_username_only_for_a_valid_human_set(tmp_path: Path) -> None:
+def test_admin_preview_allows_username_only_for_the_closed_human_operations(tmp_path: Path) -> None:
     request = tmp_path / "request.json"
     request.write_text(json.dumps({"operation": "human-set", "username": "developer"}), encoding="utf-8")
+    assert manage._admin_preview(request)["scope"] == "principal"
+    request.write_text(json.dumps({"operation": "human-delete-prepare-absent", "username": "developer"}), encoding="utf-8")
     assert manage._admin_preview(request)["scope"] == "principal"
     for payload in (
         {"operation": "human-set", "username": ""},
@@ -884,6 +886,8 @@ def test_admin_preview_allows_username_only_for_a_valid_human_set(tmp_path: Path
         {"operation": "human-set", "username": None},
         {"operation": "human-suspend", "username": "developer"},
         {"operation": "human-suspend", "username": None},
+        {"operation": "human-delete-prepare-absent", "username": "Developer"},
+        {"operation": "human-delete-prepare-absent", "username": None},
     ):
         request.write_text(json.dumps(payload), encoding="utf-8")
         with pytest.raises(manage.ManageError, match="administrative request"):

@@ -920,9 +920,9 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(
     # Repeating the reset with missing factors is idempotent.
     run("reset-mfa", "dev", apply=True)
     check_passwords(second_password)
-    # Exercise suspension, explicit access restoration and deletion against the
-    # pinned provider. Only the gateway authority is replaced by a local stub;
-    # its real generation fences are covered by the native session/admin tests.
+    # Exercise suspension and explicit access restoration against the pinned
+    # provider. Permanent deletion is a native-authorized worker lifecycle and
+    # is covered with an isolated fake runner in test_user_delete.py.
     subject = "00000000-0000-4000-8000-000000000001"
     added = subprocess.run([binary, "storage", "user", "identifiers", "add", "dev", "--identifier", subject,
                             "--service", "openid", "--sector", "", "--config", str(root / "authelia/configuration.yml")],
@@ -941,9 +941,5 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(
     assert retained.returncode != 0
     run("access", "dev", grants=["pi:member"], apply=True)
     check_passwords(second_password)
-    assert run("delete", "dev", apply=True)["account_deleted"]
-    check_passwords(None, second_password)
-    assert [request["operation"] for request in requests] == ["human-suspend", "human-set", "human-suspend"]
-    generate_totp()  # Deletion removed the former factor.
-    with pytest.raises(UsageError, match="retained OpenID identifier"):
-        run("create", email="new@example.test", apply=True)
+    assert [request["operation"] for request in requests] == ["human-suspend", "human-set"]
+    generate_totp()  # Restored access does not recreate the removed factor.

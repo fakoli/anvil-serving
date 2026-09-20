@@ -2300,7 +2300,7 @@ def _admin_preview(request: Path) -> dict[str, str]:
     value = _strict_json(raw, "administrative request is invalid")
     allowed = {"operation", "principal", "grants", "disabled", "key_id", "installation", "role", "resources", "application_roles", "lifetime_seconds", "fingerprint", "issuer", "subject", "username", "request_id", "expected_generation"}
     operation = value.get("operation")
-    operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "human-revoke-sessions", "human-inspect", "human-deletions", "human-delete-prepare", "human-delete-finalize", "authority-reset"}
+    operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "human-revoke-sessions", "human-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset"}
     if set(value) - allowed or not isinstance(operation, str) or operation not in operations:
         raise ManageError("administrative request is invalid")
     fingerprint = value.get("fingerprint")
@@ -2308,7 +2308,7 @@ def _admin_preview(request: Path) -> dict[str, str]:
         raise ManageError("administrative request is invalid")
     if operation == "approve" and fingerprint is None:
         raise ManageError("administrative request is invalid")
-    if "username" in value and (operation != "human-set" or not isinstance(value["username"], str)
+    if "username" in value and (operation not in {"human-set", "human-delete-prepare-absent"} or not isinstance(value["username"], str)
                               or _USER.fullmatch(value["username"]) is None):
         raise ManageError("administrative request is invalid")
     scope = "authority" if operation == "authority-reset" else ("installation" if operation in {"invite", "approve", "installation-revoke", "installation-status"} else ("api-key" if operation.startswith("api-key") else "principal"))

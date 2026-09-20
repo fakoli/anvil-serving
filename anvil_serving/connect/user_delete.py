@@ -151,6 +151,39 @@ def _human(value: object) -> dict:
     return value
 
 
+def _inspection(response: dict) -> dict | None:
+    """Validate the native found/human union before choosing a prepare path."""
+    # admin.Response deliberately keeps its stable generic fields for every
+    # operation. Accept this exact zero-value envelope rather than a reduced
+    # test-only object, while keeping the inspect-specific union closed.
+    envelope = {
+        "operation", "epoch", "secret", "key_id", "principal", "grants", "invitation",
+        "installation", "role", "resources", "generation", "fingerprint", "status", "found",
+    }
+    expected_status = {"id", "status", "fingerprint", "epoch", "generation", "resources"}
+    if (not isinstance(response.get("operation"), str) or response["operation"] != "human-inspect"
+            or any(response.get(key) != "" for key in (
+                "epoch", "secret", "key_id", "principal", "invitation", "installation", "role", "fingerprint"))
+            or type(response.get("generation")) is not int or isinstance(response["generation"], bool)
+            or response["generation"] != 0 or type(response.get("grants")) is not list or response["grants"] != []
+            or type(response.get("resources")) is not list or response["resources"] != []
+            or type(response.get("status")) is not dict or set(response["status"]) != expected_status
+            or any(response["status"].get(key) != "" for key in ("id", "status", "fingerprint", "epoch"))
+            or type(response["status"].get("generation")) is not int or isinstance(response["status"]["generation"], bool)
+            or response["status"]["generation"] != 0 or response["status"].get("resources") != []):
+        raise _invalid("Native permanent deletion response is invalid.")
+    found = response.get("found")
+    if type(found) is not bool:
+        raise _invalid("Native permanent deletion response is invalid.")
+    if found:
+        if set(response) != envelope | {"human"}:
+            raise _invalid("Native permanent deletion response is invalid.")
+        return _human(response["human"])
+    if set(response) != envelope:
+        raise _invalid("Native permanent deletion response is invalid.")
+    return None
+
+
 def _deletion(value: object) -> dict:
     if type(value) is not dict or set(value) - {"request_id", "principal", "username", "generation", "epoch", "digest", "complete", "completed_at"}:
         raise _invalid("Native permanent deletion response is invalid.")
@@ -165,8 +198,9 @@ def _deletion(value: object) -> dict:
             or type(value.get("generation")) is not int or isinstance(value["generation"], bool) or value["generation"] < 1
             or not isinstance(value.get("epoch"), str) or not re.fullmatch(r"[0-9a-f]{64}", value["epoch"])
             or not isinstance(value.get("digest"), str) or not re.fullmatch(r"[0-9a-f]{64}", value["digest"])
-            or type(value.get("complete")) is not bool or parsed_completed_at is None
-            or (not value["complete"] and parsed_completed_at != datetime.min.replace(tzinfo=timezone.utc))):
+            or type(value.get("complete")) is not bool
+            or (value["complete"] and parsed_completed_at is None)
+            or (not value["complete"] and "completed_at" in value and parsed_completed_at != datetime.min.replace(tzinfo=timezone.utc))):
         raise _invalid("Native permanent deletion response is invalid.")
     return value
 
@@ -178,6 +212,19 @@ def _intent(data: dict, manifest: str, principal: str, generation: int, request_
     }, runner, "human-delete-prepare")
     intent = _deletion(response.get("deletion"))
     if (intent["request_id"] != request_id or intent["principal"] != principal or intent["complete"]):
+        raise _invalid("Native permanent deletion response is invalid.")
+    return intent
+
+
+def _absent_intent(data: dict, manifest: str, principal: str, username: str, request_id: str, runner) -> dict:
+    """Ask native authority to atomically fence an IdP-only principal."""
+    response = _human_response(data, manifest, {
+        "operation": "human-delete-prepare-absent", "principal": principal,
+        "username": username, "request_id": request_id,
+    }, runner, "human-delete-prepare-absent")
+    intent = _deletion(response.get("deletion"))
+    if (intent["request_id"] != request_id or intent["principal"] != principal
+            or intent["username"] != username or intent["generation"] != 2 or intent["complete"]):
         raise _invalid("Native permanent deletion response is invalid.")
     return intent
 
@@ -309,11 +356,6 @@ def _purge_as_idp(database: Path, username: str, subject: str, *, validate_only:
     return result
 
 
-def _phase_matches_intent(phase: dict, intent: dict) -> None:
-    if any(phase[key] != intent[key] for key in ("request_id", "principal", "username", "generation")) or intent["complete"]:
-        raise _invalid("Permanent deletion recovery state does not match the native intent.")
-
-
 def _finalize_phase(data: dict, manifest: str, path: Path, phase: dict, phase_info: os.stat_result, runner) -> dict:
     _human_response(data, manifest, {
         "operation": "human-delete-finalize", "principal": phase["principal"],
@@ -369,8 +411,10 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
         uid, gid = role_identity(data, "idp")
         preview = _purge_as_idp(Path(data["authelia"]["state_directory"]) / "authelia.sqlite3", phase["username"], phase["subject"],
                                 validate_only=True, uid=uid, gid=gid)
-        if not preview["expected_subject_found"] and not prior_removed:
-            raise _invalid("Authelia account no longer matches the prepared deletion; native intent remains held.")
+        if not preview["expected_subject_found"]:
+            if not prior_removed or any(preview[key] for key in (
+                    "username_records", "opaque_identifiers", "oauth_sessions", "consent_sessions", "consent_preconfigurations")):
+                raise _invalid("Authelia account no longer matches the prepared deletion; native intent remains held.")
         if raw is not None and phase["username"] in database["users"]:
             from .user_backup import snapshot
             snapshot(data, manifest, users_raw=raw)
@@ -427,7 +471,9 @@ def delete(manifest: str, username: str, *, apply: bool = False, runner=None, un
             if intent is not None:
                 _phase_matches_intent(phase, intent)
             if intent is None:
-                raise _invalid("Permanent deletion phase is held until its native intent is available.")
+                # Native finalization is idempotent only for the exact retained
+                # completed receipt. Prove it before any IdP/service operation.
+                return _finalize_phase(data, manifest, path, phase, path.lstat(), runner)
             return _run_phase(data, manifest, path, phase, runner, Path(unit_root), intent=intent)
         config, active = _preflight(data, manifest, runner)
         raw, _info = users._read_users(data)
@@ -437,10 +483,18 @@ def delete(manifest: str, username: str, *, apply: bool = False, runner=None, un
         if subject is None:
             raise _invalid("The account has no unambiguous OpenID Connect subject; permanent deletion requires the native authority.")
         principal = users._principal(data["gateway"]["oidc"]["issuer"], subject)
-        inspected = _human(_human_response(data, manifest, {"operation": "human-inspect", "principal": principal}, runner, "human-inspect").get("human"))
-        if inspected["username"] != username or inspected.get("deletion_request"):
-            raise _invalid("Native account does not permit permanent deletion.")
-        intent = _intent(data, manifest, principal, inspected["generation"], str(uuid.uuid4()), runner)
+        inspection = _inspection(_human_response(
+            data, manifest, {"operation": "human-inspect", "principal": principal}, runner, "human-inspect"))
+        request_id = str(uuid.uuid4())
+        if inspection is None:
+            # Native creates the disabled, zero-grant tombstone atomically. It
+            # fences a concurrent provisioning attempt before local IdP data is
+            # changed, then returns the ordinary pending intent.
+            intent = _absent_intent(data, manifest, principal, username, request_id, runner)
+        else:
+            if inspection["username"] != username or inspection.get("deletion_request"):
+                raise _invalid("Native account does not permit permanent deletion.")
+            intent = _intent(data, manifest, principal, inspection["generation"], request_id, runner)
         phase = {"schema": _PHASE_SCHEMA, "request_id": intent["request_id"], "principal": principal, "username": username,
                  "subject": subject, "generation": intent["generation"], "original_active": active, "idp_delete": True}
         path = _write_phase(root, phase)  # Before any Authelia data mutation.
@@ -464,10 +518,11 @@ def process_pending(manifest: str, *, apply: bool = False, runner=None, unit_roo
         if not intents:
             if not phases:
                 return {"schema": _PHASE_SCHEMA, "operation": "process-pending", "applied": True, "processed": 0}
-            # A completed receipt is not exposed by the pending-list API. Do
-            # not infer terminal authority from absence: an epoch reset or
-            # drifted store could otherwise erase IdP data before finalization.
-            raise _invalid("Permanent deletion phase is held until its native intent is available.")
+            # Finalize accepts only its exact retained completed receipt. A
+            # reset or stale authority record rejects before IdP/service work.
+            path, phase = next(iter(phases.values()))
+            result = _finalize_phase(data, manifest, path, phase, path.lstat(), runner)
+            return {"schema": _PHASE_SCHEMA, "operation": "process-pending", "applied": True, "processed": 1, "result": result}
         intent = intents[0]
         found = phases.get(intent["request_id"])
         if found is None:
