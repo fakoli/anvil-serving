@@ -1,12 +1,15 @@
 import json
+import os
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
 from anvil_serving.observability.dashboard.access import Access
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
 from anvil_serving.workbench_app.projects import BoundedCommandFailure, Projects, run_bounded
+from anvil_serving.workbench_app import projects as projects_module
 from anvil_serving.workbench_app.store import PrivateStore
 from anvil_serving.workbench_app.pi_sessions import PiTaskBinding
 from anvil_serving.workbench_app.task_artifacts import TaskArtifacts, TaskArtifactSandbox
@@ -108,6 +111,19 @@ def test_renewal_failure_does_not_create_a_second_claim(projects):
     assert [call[1] for call in calls].count("claim") == 0
 
 
+def test_root_binding_digest_mismatch_refuses_live_pi_authority(projects):
+    import hashlib
+    adapter, state, _calls = projects
+    actor = "workbench-" + hashlib.sha256(b"alice").hexdigest()[:16]
+    binding = PiTaskBinding("alice", "product", "feature:T001", "claim-one", "isolated", "cloud", "a" * 64)
+    state["claims"] = [{"id": "claim-one", "claimed_by": actor,
+                        "lease_expires_at": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()}]
+    adapter.store.put("task-binding", "alice", "roots", {"id": "roots", "owner": "alice", "project_id": "product", "task_id": "feature:T001", "lease_id": "claim-one", "provider_id": "cloud", "root_binding_digest": "b" * 64})
+    with pytest.raises(ObservatoryError) as error:
+        adapter.validate_pi_binding(binding)
+    assert error.value.code == "task_root_binding_lost"
+
+
 def test_lost_claim_response_reconciles_and_releases_without_force(tmp_path):
     import hashlib
     config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a", "checkout": str(tmp_path), "anvil_binary": "/usr/bin/anvil", "runner_root": str(tmp_path / "runners")}], "pi": {"id": "isolated"}}
@@ -161,6 +177,168 @@ class _Sandbox(TaskArtifactSandbox):
 
     def transfer_state(self, verification_base, target, baseline_sha, patch):
         return "pristine"
+
+
+def _multi_root_adapter(tmp_path, *, roots=None, primary_root_id="state"):
+    checkout, secondary, claim = tmp_path / "checkout", tmp_path / "secondary", tmp_path / "claim"
+    for path in (checkout, secondary, claim):
+        path.mkdir()
+    config = {"projects": [{"id": "product", "label": "Product", "resource_id": "serve-a",
+                             "checkout": str(checkout), "anvil_binary": "/usr/bin/anvil",
+                             "runner_root": str(tmp_path / "runners"), "primary_root_id": primary_root_id,
+                             "roots": roots or [
+                                 {"id": "state", "label": "State", "owner_id": "local-owner", "runtime_id": "local-runtime", "task_access": "read-write", "path": str(checkout)},
+                                 {"id": "docs", "label": "Docs", "owner_id": "local-owner", "runtime_id": "local-runtime", "task_access": "read-only", "path": str(secondary)},
+                             ]}], "pi": {"id": "isolated"}}
+    access = Access([], authenticate=lambda *_: False, origin="https://console.example.test", base_path="/", operate=True)
+    calls = []
+
+    def run(argv, **_kwargs):
+        calls.append(argv)
+        verb = argv[1]
+        if verb == "show": data = {"task": {"id": "feature:T001", "status": "ready"}, "active_claims": []}
+        elif verb == "prd": data = {"prds": [{"id": "feature", "status": "approved"}]}
+        elif verb == "packet": return b"packet\n" + json.dumps({"task_id": "feature:T001", "dependencies_open": [], "task": {"likely_files": ["src/feature.py"], "verification": {"commands": ["python -m pytest"]}}}).encode()
+        elif verb == "claim": data = {"claim": {"id": "claim-one", "lease_expires_at": "2099-01-01T00:00:00Z"}, "worktree": str(claim), "branch": "workbench/test"}
+        else: raise AssertionError(argv)
+        return json.dumps({"ok": True, "data": data}).encode()
+
+    store = PrivateStore(tmp_path / "private.sqlite")
+    return Projects(config, store, access, run=run, artifacts=TaskArtifacts(_Sandbox(), is_active=lambda _: False)), store, checkout, secondary, calls
+
+
+def test_prepare_freezes_primary_and_private_read_only_context_snapshot(tmp_path):
+    adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
+    (secondary / "safe.py").write_text("value = 1\n", encoding="utf-8")
+    (secondary / ".env").write_text("not mounted", encoding="utf-8")
+    (secondary / ".git").mkdir()
+    (secondary / ".git" / "config").write_text("not mounted", encoding="utf-8")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "leak.py").write_text("not mounted", encoding="utf-8")
+    (secondary / "escape").symlink_to(outside, target_is_directory=True)
+    try:
+        body = {"project_id": "product", "task_id": "feature:T001", "request_id": "bound", "provider_id": "cloud", "model_id": "specific", "thinking_level": "high"}
+        row = adapter.prepare(identity(actions=("project.execute",)), body)
+        frozen = row["root_binding"]
+        assert frozen["primary_root_id"] == frozen["cwd_root_id"] == frozen["claim_root_id"] == "state"
+        context = next(root for root in frozen["roots"] if root["id"] == "docs")["context_snapshot"]
+        snapshot = Path(context["path"])
+        assert (snapshot / "safe.py").read_text(encoding="utf-8") == "value = 1\n"
+        assert not (snapshot / ".env").exists() and not (snapshot / ".git").exists()
+        assert not (snapshot / "escape").exists() and not (snapshot / "leak.py").exists()
+        assert adapter.pi_binding(row).rootset_digest == row["root_binding_digest"]
+        # The idempotent request returns its frozen pre-change binding.
+        adapter.config["projects"][0]["roots"][1]["path"] = str(tmp_path / "other")
+        assert adapter.prepare(identity(actions=("project.execute",)), body)["root_binding_digest"] == row["root_binding_digest"]
+    finally:
+        store.close()
+
+
+def test_not_ready_task_does_not_create_a_context_destination(tmp_path):
+    adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
+    (secondary / "safe.py").write_text("value = 1\n", encoding="utf-8")
+
+    def not_ready(argv, **_kwargs):
+        verb = argv[1]
+        if verb == "show": data = {"task": {"id": "feature:T001", "status": "needs_review"}, "active_claims": []}
+        elif verb == "prd": data = {"prds": [{"id": "feature", "status": "approved"}]}
+        elif verb == "packet": return b"packet\n" + json.dumps({"task_id": "feature:T001", "dependencies_open": []}).encode()
+        else: raise AssertionError(argv)
+        return json.dumps({"ok": True, "data": data}).encode()
+
+    try:
+        adapter.run = not_ready
+        body = {"project_id": "product", "task_id": "feature:T001", "request_id": "not-ready", "provider_id": "cloud", "model_id": "specific", "thinking_level": "high"}
+        _error = pytest.raises(ObservatoryError)
+        with _error as caught:
+            adapter.prepare(identity(actions=("project.execute",)), body)
+        assert caught.value.code == "task_not_ready"
+        assert not (Path(adapter.config["projects"][0]["runner_root"]) / ".workbench-context").exists()
+    finally:
+        store.close()
+
+
+def test_snapshot_failure_is_retained_without_a_final_destination(tmp_path, monkeypatch):
+    adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
+    (secondary / "safe.py").write_text("value = 1\n", encoding="utf-8")
+    monkeypatch.setattr(adapter, "_copy_context_tree", lambda *_args: (_ for _ in ()).throw(OSError("fixture")))
+    try:
+        body = {"project_id": "product", "task_id": "feature:T001", "request_id": "snapshot-failure", "provider_id": "cloud", "model_id": "specific", "thinking_level": "high"}
+        with pytest.raises(ObservatoryError) as caught:
+            adapter.prepare(identity(actions=("project.execute",)), body)
+        assert caught.value.code == "preparation_failed"
+        assert store.get("task-binding", "alice", "snapshot-failure")["status"] == "released"
+        assert not (Path(adapter.config["projects"][0]["runner_root"]) / ".workbench-context" / "snapshot-failure").exists()
+    finally:
+        store.close()
+
+
+def test_context_snapshot_refuses_raced_special_objects_and_growth(tmp_path, monkeypatch):
+    adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
+    (secondary / "safe.py").write_text("safe\n", encoding="utf-8")
+    for name in ("fifo.txt", "directory.txt", "grown.txt"):
+        (secondary / name).write_text("small\n", encoding="utf-8")
+    original = projects_module.os.open
+    replaced = set()
+
+    def raced(path, flags, *args, **kwargs):
+        if path in {"fifo.txt", "directory.txt", "grown.txt"} and "dir_fd" in kwargs and flags & os.O_NONBLOCK and path not in replaced:
+            replaced.add(path)
+            target = secondary / path
+            target.unlink()
+            if path == "fifo.txt":
+                os.mkfifo(target)
+            elif path == "directory.txt":
+                target.mkdir()
+            else:
+                target.write_bytes(b"x" * (64 * 1024 + 1))
+        return original(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(projects_module.os, "open", raced)
+    try:
+        body = {"project_id": "product", "task_id": "feature:T001", "request_id": "raced", "provider_id": "cloud", "model_id": "specific", "thinking_level": "high"}
+        row = adapter.prepare(identity(actions=("project.execute",)), body)
+        snapshot = Path(next(root for root in row["root_binding"]["roots"] if root["id"] == "docs")["context_snapshot"]["path"])
+        assert (snapshot / "safe.py").is_file()
+        assert not any((snapshot / name).exists() for name in ("fifo.txt", "directory.txt", "grown.txt"))
+        assert replaced == {"fifo.txt", "directory.txt", "grown.txt"}
+    finally:
+        store.close()
+
+
+@pytest.mark.parametrize("change, code", [
+    (lambda config, _checkout, secondary: config["projects"][0]["roots"][1].update(owner_id="remote-owner"), "project_root_unsupported"),
+    (lambda config, _checkout, secondary: config["projects"][0]["roots"][1].update(task_access="read-write"), "secondary_write_unsupported"),
+    (lambda config, _checkout, secondary: config["projects"][0].update(primary_root_id="docs"), "primary_root_unsupported"),
+    (lambda config, _checkout, secondary: config["projects"][0]["roots"][1].update(path=str(secondary / "missing")), "project_root_unavailable"),
+])
+def test_prepare_rejects_unsupported_root_sets_before_claim(tmp_path, change, code):
+    adapter, store, checkout, secondary, calls = _multi_root_adapter(tmp_path)
+    try:
+        change(adapter.config, checkout, secondary)
+        body = {"project_id": "product", "task_id": "feature:T001", "request_id": "reject", "provider_id": "cloud", "model_id": "specific", "thinking_level": "high"}
+        with pytest.raises(ObservatoryError) as error:
+            adapter.prepare(identity(actions=("project.execute",)), body)
+        assert error.value.code == code
+        assert not any(call[1] == "claim" for call in calls)
+    finally:
+        store.close()
+
+
+def test_prepare_rejects_symlinked_or_aliased_secondary_before_claim(tmp_path):
+    adapter, store, _checkout, secondary, calls = _multi_root_adapter(tmp_path)
+    alias = tmp_path / "alias"
+    alias.symlink_to(secondary, target_is_directory=True)
+    try:
+        adapter.config["projects"][0]["roots"][1]["path"] = str(alias)
+        body = {"project_id": "product", "task_id": "feature:T001", "request_id": "symlink", "provider_id": "cloud", "model_id": "specific", "thinking_level": "high"}
+        with pytest.raises(ObservatoryError) as error:
+            adapter.prepare(identity(actions=("project.execute",)), body)
+        assert error.value.code == "project_root_unavailable"
+        assert not any(call[1] == "claim" for call in calls)
+    finally:
+        store.close()
 
 
 def test_task_evidence_uses_sandbox_and_submits_actual_cli_evidence(tmp_path):
@@ -301,3 +479,57 @@ def test_plan_content_uses_supported_scoped_bounded_cli(projects):
     assert result == {"content": "# Plan", "source_digest": "a" * 64, "prd_revision": 2}
     assert calls[0][-2:] == ["--cwd", adapter.config["projects"][0]["checkout"]]
     adapter.run = original
+
+@pytest.mark.parametrize("limit, value", [
+    ("_MAX_CONTEXT_FILES", 1),
+    ("_MAX_CONTEXT_FILE_BYTES", 3),
+    ("_MAX_CONTEXT_DEPTH", 1),
+])
+def test_snapshot_bound_skips_are_recorded_as_truncated(tmp_path, monkeypatch, limit, value):
+    adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
+    if limit == "_MAX_CONTEXT_FILES":
+        (secondary / "a.txt").write_text("a", encoding="utf-8")
+        (secondary / "b.txt").write_text("b", encoding="utf-8")
+    elif limit == "_MAX_CONTEXT_FILE_BYTES":
+        (secondary / "large.txt").write_text("four", encoding="utf-8")
+    else:
+        (secondary / "nested").mkdir()
+        (secondary / "nested" / "leaf.txt").write_text("leaf", encoding="utf-8")
+    monkeypatch.setattr(projects_module, limit, value)
+    try:
+        row = adapter.prepare(identity(actions=("project.execute",)), {
+            "project_id": "product", "task_id": "feature:T001", "request_id": f"truncated-{limit}",
+            "provider_id": "cloud", "model_id": "specific", "thinking_level": "high",
+        })
+        snapshot = next(root for root in row["root_binding"]["roots"] if root["id"] == "docs")["context_snapshot"]
+        assert snapshot["truncated"] is True
+    finally:
+        store.close()
+
+
+def test_snapshot_cleanup_removes_completed_private_children_on_error(tmp_path, monkeypatch):
+    adapter, store, _checkout, secondary, _calls = _multi_root_adapter(tmp_path)
+    completed = secondary / "a-completed"
+    completed.mkdir()
+    (completed / "safe.txt").write_text("safe", encoding="utf-8")
+    (secondary / "z-fail.txt").write_text("fail", encoding="utf-8")
+    original_owner = adapter._context_owner
+
+    def fail_after_completed_child(path):
+        original_owner(path)
+        if path.name == "z-fail.txt":
+            raise OSError("injected owner failure")
+
+    monkeypatch.setattr(adapter, "_context_owner", fail_after_completed_child)
+    try:
+        with pytest.raises(ObservatoryError) as caught:
+            adapter.prepare(identity(actions=("project.execute",)), {
+                "project_id": "product", "task_id": "feature:T001", "request_id": "cleanup-error",
+                "provider_id": "cloud", "model_id": "specific", "thinking_level": "high",
+            })
+        assert caught.value.code == "preparation_failed"
+        context_parent = Path(adapter.config["projects"][0]["runner_root"]) / ".workbench-context"
+        assert not (context_parent / "cleanup-error").exists()
+        assert not any(path.name.endswith(".staging") for path in context_parent.iterdir())
+    finally:
+        store.close()

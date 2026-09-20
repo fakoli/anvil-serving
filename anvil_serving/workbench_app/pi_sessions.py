@@ -41,15 +41,24 @@ class PiTaskBinding:
     lease_id: str
     runner_id: str
     provider_id: str
+    rootset_digest: str = ""
 
     def __post_init__(self) -> None:
-        for value in asdict(self).values():
+        for value in (self.principal_id, self.project_id, self.task_id, self.lease_id, self.runner_id, self.provider_id):
             if type(value) is not str or not 1 <= len(value.encode("utf-8")) <= 192 or any(ord(c) < 32 for c in value):
                 raise ValueError("Pi task binding identifiers must be bounded opaque identities")
+        if self.rootset_digest and (type(self.rootset_digest) is not str or not re.fullmatch(r"[0-9a-f]{64}", self.rootset_digest)):
+            raise ValueError("Pi task root binding digest must be a SHA-256 identity")
 
     @property
     def fingerprint(self) -> str:
-        encoded = json.dumps(asdict(self), sort_keys=True, separators=(",", ":")).encode()
+        # Retained single-root session records predate root bindings.  Keeping
+        # their exact serialized fields preserves resume/fingerprint behavior;
+        # new multi-root preparations bind the frozen root-set digest too.
+        value = asdict(self)
+        if not self.rootset_digest:
+            value.pop("rootset_digest")
+        encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(encoded).hexdigest()
 
 
@@ -68,6 +77,7 @@ class PiSession:
     resume_file_name: str | None = None
     container_name: str | None = None
     runtime_command: tuple[str, ...] = ()
+    launch_policy: dict[str, Any] | None = None
     status: str = "reserved"
     parent_session_id: str | None = None
     pending_target: dict[str, Any] | None = None
