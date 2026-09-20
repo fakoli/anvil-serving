@@ -54,12 +54,13 @@ type accessCSRF struct {
 // AccessAdministration owns the fixed, same-origin browser adapter. It has
 // neither local-admin-socket access nor credentials for an origin service.
 type AccessAdministration struct {
-	authority  AccessAdministrationAuthority
-	resourceID string
-	host       string
-	path       string
-	operators  map[string]bool
-	slots      chan struct{}
+	authority    AccessAdministrationAuthority
+	resourceID   string
+	host         string
+	path         string
+	operators    map[string]bool
+	userDeletion bool
+	slots        chan struct{}
 
 	mu   sync.Mutex
 	csrf map[string]accessCSRF
@@ -98,7 +99,7 @@ func NewAccessAdministration(declaration config.Gateway, authority AccessAdminis
 		}
 		operators[operator] = true
 	}
-	return &AccessAdministration{authority: authority, resourceID: browser.Rule.ID, host: browser.Rule.Host, path: path, operators: operators, slots: make(chan struct{}, capacity), csrf: map[string]accessCSRF{}}, nil
+	return &AccessAdministration{authority: authority, resourceID: browser.Rule.ID, host: browser.Rule.Host, path: path, operators: operators, userDeletion: settings.UserDeletion, slots: make(chan struct{}, capacity), csrf: map[string]accessCSRF{}}, nil
 }
 
 func (a *AccessAdministration) matches(resource browserResource, path string) bool {
@@ -186,6 +187,7 @@ type accessUser struct {
 	Resources        []string          `json:"resources"`
 	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
 	Administrator    bool              `json:"administrator"`
+	Deleting         bool              `json:"deleting,omitempty"`
 }
 
 type accessSession struct {
@@ -281,6 +283,9 @@ func normalizeInventory(inventory administration.Inventory, requested string) ([
 		result := make([]any, 0, len(decoded.Items))
 		for index, item := range decoded.Items {
 			fields := []string{"id", "generation", "disabled", "resources", "administrator"}
+			if item.Deleting {
+				fields = append(fields, "deleting")
+			}
 			if item.Username != "" {
 				if !session.ValidUsername(item.Username) {
 					return nil, nil, false
@@ -380,6 +385,11 @@ func decodeAccessMutation(w http.ResponseWriter, r *http.Request, admitted sessi
 	}
 	mutation := administration.Mutation{Action: input.Action, RequestID: input.RequestID, ExpectedGeneration: input.ExpectedGeneration}
 	switch input.Action {
+	case "human-delete":
+		if !exactMutationFields(body, "action", "request_id", "expected_generation", "csrf", "principal") || !config.ValidHumanID(input.Principal) || input.Principal == admitted.Principal {
+			return administration.Mutation{}, http.StatusBadRequest
+		}
+		mutation.Principal = input.Principal
 	case "human-update":
 		baseFields := []string{"action", "request_id", "expected_generation", "csrf", "principal", "disabled", "resources"}
 		withRoles := append(append([]string(nil), baseFields...), "application_roles")

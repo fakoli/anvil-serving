@@ -79,7 +79,7 @@ func (m *Manager) UpdateHumanTx(tx *store.Tx, id string, expected uint64, resour
 	if tx.Get("principals", id, &human) != nil || human.ID != id || human.Generation == 0 || (human.Username != "" && !ValidUsername(human.Username)) {
 		return ErrDenied
 	}
-	if human.Generation != expected {
+	if human.Generation != expected || human.DeletionRequest != "" {
 		return ErrConflict
 	}
 	if human.Generation == math.MaxUint64 {
@@ -120,6 +120,9 @@ func (m *Manager) RevokeHumanSessions(issuer, subject string) (Human, error) {
 		err := tx.Get("principals", id, &human)
 		if errors.Is(err, store.ErrMissing) {
 			return nil
+		}
+		if human.DeletionRequest != "" {
+			return ErrConflict
 		}
 		if err != nil || human.ID != id || human.Generation == 0 || human.Generation == math.MaxUint64 || (human.Username != "" && !ValidUsername(human.Username)) {
 			return ErrUnavailable

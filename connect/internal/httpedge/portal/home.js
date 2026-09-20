@@ -54,6 +54,24 @@ function accountEditor(user) {
   disabled.type = "checkbox"; disabled.checked = user.disabled; disabledLabel.prepend(disabled);
   const save = element("button", "Save access"); save.type = "submit";
   controls.append(disabledLabel, save); form.append(fields, controls);
+  if (user.deleting) {
+    fields.disabled = true; disabled.disabled = true; save.disabled = true;
+    form.append(element("p", "Deletion in progress. Sign-in is disabled. Refresh accounts to check completion."));
+  } else if (settings.user_deletion) {
+    const remove = element("button", "Delete user"); remove.type = "button";
+    remove.disabled = user.administrator || user.id === inventory.current_principal;
+    if (remove.disabled) remove.title = "Connect operators must be removed from the operator configuration before deletion.";
+    remove.addEventListener("click", async () => {
+      const label = user.username || user.id;
+      if (!window.confirm("Permanently delete " + label + "? This removes the account, identity and Connect sessions. The username can be reused. Application data and retained backups are not deleted.")) return;
+      remove.disabled = true;
+      try {
+        await request(settings.administration_path, {method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":inventory.csrf},body:JSON.stringify({action:"human-delete",request_id:crypto.randomUUID(),expected_generation:user.generation,csrf:inventory.csrf,principal:user.id})});
+        notice("Deletion requested. Sign-in is disabled while the account is removed."); await loadUsers("");
+      } catch (error) { notice(error.message); remove.disabled = false; }
+    });
+    controls.append(remove);
+  }
   form.addEventListener("submit", async event => {
     event.preventDefault(); save.disabled = true;
     // Preserve grants unknown to this browser's declaration. A displayed form

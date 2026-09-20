@@ -102,18 +102,21 @@ def _manifest(path: str) -> tuple[dict, Path, Path]:
     return data, root, backup
 
 
-def _service(manager: Path, writable: tuple[Path, ...]) -> bytes:
+def _service(manager: Path, writable: tuple[Path, ...], *, deletions: bool = False) -> bytes:
     paths = " ".join(_unit_argument(str(path)) for path in writable)
-    command = " ".join(_unit_argument(value) for value in (str(manager), "users", "backup", "--include-gateway", "--confirm"))
+    operation = ("process-deletions", "--confirm") if deletions else ("backup", "--include-gateway", "--confirm")
+    command = " ".join(_unit_argument(value) for value in (str(manager), "users", *operation))
     return ("\n".join((
-        "[Unit]", "Description=Anvil Connect daily authentication backup", "After=network-online.target", "Wants=network-online.target", "",
+        "[Unit]", "Description=Anvil Connect account deletion worker" if deletions else "Description=Anvil Connect daily authentication backup", "After=network-online.target", "Wants=network-online.target", "",
         "[Service]", "Type=oneshot", "User=root", "Group=root", "UMask=0077", "NoNewPrivileges=true",
         "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true", "ReadWritePaths=" + paths,
         "ExecStart=" + command, "TimeoutStartSec=120", "",
     ))).encode()
 
 
-def _timer() -> bytes:
+def _timer(*, deletions: bool = False) -> bytes:
+    if deletions:
+        return b"[Unit]\nDescription=Anvil Connect account deletion schedule\n\n[Timer]\nOnBootSec=10s\nOnUnitInactiveSec=10s\nAccuracySec=1s\nUnit=anvil-connect-user-delete.service\n\n[Install]\nWantedBy=timers.target\n"
     return ("\n".join((
         "[Unit]", "Description=Anvil Connect daily authentication backup schedule", "",
         "[Timer]", "OnCalendar=*-*-* 03:17:00 UTC", "Persistent=true", "Unit=" + _SERVICE, "",
@@ -131,7 +134,7 @@ def _prior_service(current: bytes, desired: bytes) -> bool:
     current_end = current.find(b"\n", start)
     if end < 0 or current_end < 0 or current[:start] != desired[:start] or current[current_end:] != desired[end:]:
         return False
-    arguments = (b" users backup --confirm", b" users backup --include-gateway --confirm")
+    arguments = (b" users backup --confirm", b" users backup --include-gateway --confirm", b" users process-deletions --confirm")
     matched = next((value for value in arguments if current[start:current_end].endswith(value)), None)
     if matched is None:
         return False
@@ -148,23 +151,23 @@ def _prior_service(current: bytes, desired: bytes) -> bool:
         return False
 
 
-def _verify(unit_root: Path, units: dict[str, bytes], runner) -> dict[str, bytes | None]:
+def _verify(unit_root: Path, units: dict[str, bytes], runner, service: str = _SERVICE) -> dict[str, bytes | None]:
     prior = {}
     for name, desired in units.items():
         current = manage._read_unit(unit_root / name)
-        if current is not None and current != desired and (name != _SERVICE or not _prior_service(current, desired)):
+        if current is not None and current != desired and (name != service or not _prior_service(current, desired)):
             raise _invalid("Authentication backup schedule is owned by another unit definition.")
         manage._unit_metadata(runner, unit_root, (name,), present=current is not None)
         prior[name] = current
     return prior
 
 
-def _rollback(unit_root: Path, prior: dict[str, bytes | None], units: dict[str, bytes], runner) -> None:
+def _rollback(unit_root: Path, prior: dict[str, bytes | None], units: dict[str, bytes], runner, timer: str = _TIMER) -> None:
     # A failed enable --now can have created timer symlinks and started the
     # timer even when systemctl reports failure.  Remove that state before
     # removing the freshly owned unit file.
-    if prior[_TIMER] is None:
-        manage._action(runner, (manage._SYSTEMCTL, "disable", "--now", _TIMER), manage._SYSTEMD_TIMEOUT,
+    if prior[timer] is None:
+        manage._action(runner, (manage._SYSTEMCTL, "disable", "--now", timer), manage._SYSTEMD_TIMEOUT,
                        "authentication backup timer rollback failed")
     for name, current in prior.items():
         if current is None:
@@ -177,26 +180,32 @@ def _rollback(unit_root: Path, prior: dict[str, bytes | None], units: dict[str, 
 
 
 def schedule(manifest: str = DEFAULT_MANIFEST, *, apply: bool = False, runner=None,
-             unit_root: str | Path = "/etc/systemd/system") -> dict:
+             unit_root: str | Path = "/etc/systemd/system", deletions: bool = False) -> dict:
     """Preview or install the fixed daily default-manifest backup schedule."""
     _require_root()
     manager = _manager()
     data, root, backup = _manifest(manifest)
     writable = tuple(sorted({root.parent, backup.parent, Path(data["gateway"]["state_directory"]).parent}, key=str))
-    units = {_SERVICE: _service(manager, writable), _TIMER: _timer()}
+    service = "anvil-connect-user-delete.service" if deletions else _SERVICE
+    timer = "anvil-connect-user-delete.timer" if deletions else _TIMER
+    units = {service: _service(manager, writable, deletions=deletions), timer: _timer(deletions=deletions)}
     result = {
         "schema": "anvil-connect.auth-backup-schedule/v1", "action": "schedule", "applied": bool(apply),
         "manifest": manifest, "manager": str(manager), "units": sorted(units), "calendar": "daily 03:17 UTC",
         "persistent": True, "retention_days": 14, "retention_recent_copies": 7,
         "impact": "Daily backup briefly restarts Authelia, then stops and restores the native gateway while Caddy remains running.",
     }
+    if deletions:
+        result.update(schema="anvil-connect.user-deletion-schedule/v1", action="deletion-schedule", calendar="every 10 seconds", persistent=False, impact="Processes one authorized permanent account deletion per run.")
+        result.pop("retention_days")
+        result.pop("retention_recent_copies")
     if not apply:
         return result
     destination = Path(unit_root)
     manage._safe_dir(destination)
     with manage._deployment_lock(root):
-        prior = _verify(destination, units, runner)
-        timer_state = manage._unit_state(runner, _TIMER) if prior[_TIMER] is not None else (False, "disabled")
+        prior = _verify(destination, units, runner, service)
+        timer_state = manage._unit_state(runner, timer) if prior[timer] is not None else (False, "disabled")
         try:
             for name, desired in units.items():
                 if prior[name] != desired:
@@ -206,16 +215,16 @@ def schedule(manifest: str = DEFAULT_MANIFEST, *, apply: bool = False, runner=No
             for name in units:
                 manage._unit_metadata(runner, destination, (name,), present=True)
             if not timer_state[0] or timer_state[1] == "disabled":
-                manage._action(runner, (manage._SYSTEMCTL, "enable", "--now", _TIMER), manage._SYSTEMD_TIMEOUT,
+                manage._action(runner, (manage._SYSTEMCTL, "enable", "--now", timer), manage._SYSTEMD_TIMEOUT,
                                "authentication backup timer failed to start")
-            active, enabled = manage._unit_state(runner, _TIMER)
+            active, enabled = manage._unit_state(runner, timer)
             if not active or enabled == "disabled":
                 raise manage.ManageError("authentication backup timer did not become active and enabled", may_have_executed=True)
         except BaseException as exc:
             try:
-                _rollback(destination, prior, units, runner)
-                if prior[_TIMER] is not None:
-                    manage._restore_running(runner, (_TIMER,), {_TIMER: timer_state})
+                _rollback(destination, prior, units, runner, timer)
+                if prior[timer] is not None:
+                    manage._restore_running(runner, (timer,), {timer: timer_state})
             except BaseException as rollback_error:
                 raise manage.ManageError("authentication backup schedule rollback failed", may_have_executed=True) from rollback_error
             raise manage.ManageError("authentication backup schedule installation failed", may_have_executed=True) from exc

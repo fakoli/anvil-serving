@@ -748,13 +748,20 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         device_authorizations.sort(key=lambda item: item["browser_resource"])
     browser_administration = None
     if "browser_administration" in embedded:
-        raw_admin = _mapping(embedded["browser_administration"], "$.gateway.gateway.browser_administration", {"browser_resource", "operators"})
+        admin_fields = {"browser_resource", "operators"}
+        if isinstance(embedded["browser_administration"], dict) and "user_deletion" in embedded["browser_administration"]:
+            admin_fields.add("user_deletion")
+        raw_admin = _mapping(embedded["browser_administration"], "$.gateway.gateway.browser_administration", admin_fields)
         browser_id = _ident(raw_admin["browser_resource"], "$.gateway.gateway.browser_administration.browser_resource")
         browser = gateway_resource_index.get(browser_id)
         operators = _list(raw_admin["operators"], "$.gateway.gateway.browser_administration.operators")
         if browser is None or browser["rule"]["access"] != "browser" or not {"GET", "POST"}.issubset(browser["rule"]["methods"]) or not 1 <= len(operators) <= _MAX_ITEMS or len(set(operators)) != len(operators) or any(not isinstance(item, str) or not _DEVICE_HUMAN.fullmatch(item) for item in operators):
             raise _error("$.gateway.gateway.browser_administration", "must name a GET/POST browser resource and unique opaque operators")
         browser_administration = {"browser_resource": browser_id, "operators": sorted(operators)}
+        if "user_deletion" in raw_admin:
+            if type(raw_admin["user_deletion"]) is not bool:
+                raise _error("$.gateway.gateway.browser_administration.user_deletion", "must be boolean")
+            browser_administration["user_deletion"] = raw_admin["user_deletion"]
     gateway_embedded = {"schema": embedded["schema"], "listen": gateway_listen, "max_concurrent": _positive(embedded["max_concurrent"], "$.gateway.gateway.max_concurrent", 512), "resources": sorted(resources, key=lambda r: r["rule"]["id"])}
     if "portal_host" in embedded:
         gateway_embedded["portal_host"] = _host(embedded["portal_host"], "$.gateway.gateway.portal_host")

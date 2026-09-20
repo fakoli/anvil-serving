@@ -22,6 +22,7 @@ type userItem struct {
 	Resources        []string          `json:"resources"`
 	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
 	Administrator    bool              `json:"administrator"`
+	Deleting         bool              `json:"deleting,omitempty"`
 }
 type sessionItem struct {
 	ID            string    `json:"id"`
@@ -120,7 +121,7 @@ func (a *Authority) List(ctx context.Context, admitted session.Admission, kind, 
 						administrator = true
 					}
 				}
-				result.Items = append(result.Items, userItem{human.ID, human.Username, strconv.FormatUint(human.Generation, 10), human.Disabled, append([]string{}, human.Resources...), roles, administrator})
+				result.Items = append(result.Items, userItem{human.ID, human.Username, strconv.FormatUint(human.Generation, 10), human.Disabled, append([]string{}, human.Resources...), roles, administrator, human.DeletionRequest != ""})
 			}
 			if more {
 				result.NextCursor = encodeCursor(kind, phase, records[len(records)-1].ID)

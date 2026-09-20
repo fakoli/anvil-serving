@@ -67,6 +67,7 @@ type Config struct {
 type Human struct {
 	ID                      string            `json:"id"`
 	Username                string            `json:"username,omitempty"`
+	DeletionRequest         string            `json:"deletion_request,omitempty"`
 	Generation              uint64            `json:"generation"`
 	Disabled                bool              `json:"disabled"`
 	Resources               []string          `json:"resources"`
@@ -375,6 +376,9 @@ func (m *Manager) setHuman(issuer, subject string, username *string, resources [
 		err := tx.Get("principals", id, &old)
 		if err != nil && !errors.Is(err, store.ErrMissing) {
 			return ErrUnavailable
+		}
+		if old.DeletionRequest != "" {
+			return ErrConflict
 		}
 		if old.Generation == math.MaxUint64 || (old.Username != "" && !ValidUsername(old.Username)) {
 			return ErrUnavailable

@@ -103,6 +103,7 @@ func (g *Gateway) UnmarshalJSON(data []byte) error {
 type BrowserAdministration struct {
 	BrowserResource string   `json:"browser_resource"`
 	Operators       []string `json:"operators"`
+	UserDeletion    bool     `json:"user_deletion,omitempty"`
 }
 
 // DeviceAuthorization is the one explicit browser-to-API authority bridge.

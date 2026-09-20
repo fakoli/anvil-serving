@@ -123,7 +123,8 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 			Passkeys       string          `json:"passkeys_url"`
 			Administration string          `json:"administration_path"`
 			Logout         string          `json:"logout_path"`
-		}{services, choices, account + "/security", account + "/two-factor-authentication", adminPath, BrowserLogoutPath})
+			UserDeletion   bool            `json:"user_deletion"`
+		}{services, choices, account + "/security", account + "/two-factor-authentication", adminPath, BrowserLogoutPath, adminPath != "" && b.administration.userDeletion})
 	default:
 		browserFailure(w, http.StatusNotFound)
 	}
