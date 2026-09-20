@@ -36,7 +36,7 @@ func (m *Manager) boundSessions(tx *store.Tx, principal string) error {
 		}
 		_, configured := m.configuredTarget(session.Resource, session.Host)
 		portal := m.portalTarget(session.Resource, session.Host)
-		stale := session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || errors.Is(err, store.ErrMissing) || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || (!portal && !hasResource(human.Resources, session.Resource)) || !configured
+		stale := session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || errors.Is(err, store.ErrMissing) || human.ID != session.Principal || (human.Username != "" && !ValidUsername(human.Username)) || human.Disabled || human.Generation != session.PrincipalGeneration || (!portal && !hasResource(human.Resources, session.Resource)) || !configured
 		if stale {
 			if tx.Delete("sessions", item.ID) != nil {
 				return ErrUnavailable

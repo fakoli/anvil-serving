@@ -4,6 +4,7 @@
 package admin
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/hex"
@@ -52,6 +53,31 @@ type Request struct {
 	Fingerprint      string            `json:"fingerprint"`
 	Issuer           string            `json:"issuer"`
 	Subject          string            `json:"subject"`
+	Username         string            `json:"username,omitempty"`
+	usernamePresent  bool
+}
+
+// UnmarshalJSON distinguishes an omitted username (retain legacy metadata)
+// from malformed explicit empty or null input without widening this native
+// command's closed request grammar.
+func (r *Request) UnmarshalJSON(data []byte) error {
+	type request Request
+	var raw map[string]json.RawMessage
+	var decoded request
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*r = Request(decoded)
+	if value, present := raw["username"]; present {
+		r.usernamePresent = true
+		if bytes.Equal(bytes.TrimSpace(value), []byte("null")) || r.Username == "" {
+			return ErrAdmin
+		}
+	}
+	return nil
 }
 
 // InstallationStatus intentionally excludes public-key bodies and all prior
@@ -82,6 +108,7 @@ type Response struct {
 	ApplicationRoles map[string]string  `json:"application_roles,omitempty"`
 	Generation       uint64             `json:"generation"`
 	Fingerprint      string             `json:"fingerprint"`
+	Username         string             `json:"username,omitempty"`
 	ControlHost      string             `json:"control_host,omitempty"`
 	TunnelHost       string             `json:"tunnel_host,omitempty"`
 	InnerCAPEM       string             `json:"inner_ca_pem,omitempty"`
@@ -214,6 +241,9 @@ func (h *Handler) apply(input Request) (Response, error) {
 		return Response{}, ErrAdmin
 	}
 	response := Response{Operation: input.Operation, Grants: []access.Grant{}, Resources: []string{}, Status: InstallationStatus{Resources: []string{}}}
+	if input.Operation != "human-set" && (input.Username != "" || input.usernamePresent) {
+		return Response{}, ErrAdmin
+	}
 	var err error
 	switch input.Operation {
 	case "status":
@@ -278,13 +308,17 @@ func (h *Handler) apply(input Request) (Response, error) {
 			response.Status = status
 		}
 	case "human-set":
-		if h.sessions == nil || input.Issuer == "" || input.Subject == "" {
+		if h.sessions == nil || input.Issuer == "" || input.Subject == "" || (input.Username != "" && !session.ValidUsername(input.Username)) {
 			return Response{}, ErrAdmin
 		}
+		var username *string
+		if input.Username != "" {
+			username = &input.Username
+		}
 		var human session.Human
-		human, err = h.sessions.SetHuman(input.Issuer, input.Subject, input.Resources, input.Disabled, input.ApplicationRoles)
+		human, err = h.sessions.SetHumanWithUsername(input.Issuer, input.Subject, username, input.Resources, input.Disabled, input.ApplicationRoles)
 		if err == nil {
-			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
+			response.Principal, response.Username, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Username, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
 	case "human-suspend":
 		if h.sessions == nil || input.Issuer == "" || input.Subject == "" || input.Principal != "" || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
@@ -293,7 +327,7 @@ func (h *Handler) apply(input Request) (Response, error) {
 		var human session.Human
 		human, err = h.sessions.SuspendHuman(input.Issuer, input.Subject)
 		if err == nil {
-			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string{}, human.Resources...), maps.Clone(human.ApplicationRoles)
+			response.Principal, response.Username, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Username, human.Generation, append([]string{}, human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
 	case "human-revoke-sessions":
 		if h.sessions == nil || input.Issuer == "" || input.Subject == "" || input.Principal != "" || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
@@ -302,7 +336,7 @@ func (h *Handler) apply(input Request) (Response, error) {
 		var human session.Human
 		human, err = h.sessions.RevokeHumanSessions(input.Issuer, input.Subject)
 		if err == nil {
-			response.Principal, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Generation, append([]string{}, human.Resources...), maps.Clone(human.ApplicationRoles)
+			response.Principal, response.Username, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Username, human.Generation, append([]string{}, human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
 	case "authority-reset":
 		err = h.state.ResetAuthority()

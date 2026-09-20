@@ -14,6 +14,7 @@ import (
 	"maps"
 	"math"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -65,12 +66,19 @@ type Config struct {
 // A generation change invalidates every previously issued Connect session.
 type Human struct {
 	ID                      string            `json:"id"`
+	Username                string            `json:"username,omitempty"`
 	Generation              uint64            `json:"generation"`
 	Disabled                bool              `json:"disabled"`
 	Resources               []string          `json:"resources"`
 	ApplicationRoles        map[string]string `json:"application_roles,omitempty"`
 	BrowserTransactionFloor uint64            `json:"browser_transaction_floor"`
 }
+
+var username = regexp.MustCompile(`^[a-z][a-z0-9_.-]{0,63}$`)
+
+// ValidUsername matches the canonical local account name accepted by the
+// supported users bridge. It is display metadata, never an OIDC assertion.
+func ValidUsername(value string) bool { return username.MatchString(value) }
 
 // Session is the persisted server-side half of a host-only opaque cookie.
 // Digest is a hash of the full cookie value. No IdP assertion appears here.
@@ -327,6 +335,19 @@ func (m *Manager) ApplicationRoles(human Human) (map[string]string, bool) {
 // SetHuman provisions an exact issuer+subject identity. Valid OIDC assertions
 // for identities absent here are denied; there is no implicit administrator.
 func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled bool, roleInput ...map[string]string) (Human, error) {
+	return m.setHuman(issuer, subject, nil, resources, disabled, roleInput...)
+}
+
+// SetHumanWithUsername accepts a trusted local users-bridge name. A nil name
+// preserves a retained value; the OIDC subject is never interpreted as a name.
+func (m *Manager) SetHumanWithUsername(issuer, subject string, username *string, resources []string, disabled bool, roleInput ...map[string]string) (Human, error) {
+	if username != nil && !ValidUsername(*username) {
+		return Human{}, ErrDenied
+	}
+	return m.setHuman(issuer, subject, username, resources, disabled, roleInput...)
+}
+
+func (m *Manager) setHuman(issuer, subject string, username *string, resources []string, disabled bool, roleInput ...map[string]string) (Human, error) {
 	if len(roleInput) > 1 {
 		return Human{}, ErrDenied
 	}
@@ -355,7 +376,7 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 		if err != nil && !errors.Is(err, store.ErrMissing) {
 			return ErrUnavailable
 		}
-		if old.Generation == math.MaxUint64 {
+		if old.Generation == math.MaxUint64 || (old.Username != "" && !ValidUsername(old.Username)) {
 			return ErrUnavailable
 		}
 		if old.ApplicationRoles != nil {
@@ -366,7 +387,11 @@ func (m *Manager) SetHuman(issuer, subject string, resources []string, disabled 
 		if applicationRoles == nil {
 			applicationRoles = retainApplicationRoles(old.ApplicationRoles, resources)
 		}
-		result = Human{ID: id, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles, BrowserTransactionFloor: old.BrowserTransactionFloor}
+		name := old.Username
+		if username != nil {
+			name = *username
+		}
+		result = Human{ID: id, Username: name, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles, BrowserTransactionFloor: old.BrowserTransactionFloor}
 		if err := m.preserveAdministrators(tx, result); err != nil {
 			return err
 		}
@@ -396,17 +421,17 @@ func (m *Manager) SuspendHuman(issuer, subject string) (Human, error) {
 		if errors.Is(err, store.ErrMissing) {
 			return nil
 		}
-		if err != nil || human.ID != id || human.Generation == 0 {
+		if err != nil || human.ID != id || human.Generation == 0 || (human.Username != "" && !ValidUsername(human.Username)) {
 			return ErrUnavailable
 		}
 		if human.Disabled {
-			result = Human{ID: human.ID, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
+			result = Human{ID: human.ID, Username: human.Username, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
 			return nil
 		}
 		if err := m.UpdateHumanTx(tx, id, human.Generation, human.Resources, true); err != nil {
 			return err
 		}
-		result = Human{ID: human.ID, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
+		result = Human{ID: human.ID, Username: human.Username, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
 		return nil
 	})
 	if err != nil {
@@ -424,7 +449,7 @@ func (m *Manager) CurrentHuman(admitted Admission) (Human, error) {
 		if m.CheckTx(tx, admitted) != nil {
 			return ErrDenied
 		}
-		if tx.Get("principals", admitted.Principal, &result) != nil || result.ID != admitted.Principal {
+		if tx.Get("principals", admitted.Principal, &result) != nil || result.ID != admitted.Principal || (result.Username != "" && !ValidUsername(result.Username)) {
 			return ErrDenied
 		}
 		result.Resources = append([]string(nil), result.Resources...)
@@ -587,7 +612,7 @@ func (m *Manager) authorize(tx *store.Tx, raw, host string, requireResource bool
 		return Session{}, Human{}, ErrDenied
 	}
 	_, configured := m.configuredTarget(session.Resource, host)
-	if !configured || session.ID != id || session.Host != host || session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || subtle.ConstantTimeCompare(session.Digest[:], digest[:]) != 1 || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || (requireResource && !hasResource(human.Resources, session.Resource)) {
+	if !configured || session.ID != id || session.Host != host || session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || subtle.ConstantTimeCompare(session.Digest[:], digest[:]) != 1 || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || (human.Username != "" && !ValidUsername(human.Username)) || human.Disabled || human.Generation != session.PrincipalGeneration || (requireResource && !hasResource(human.Resources, session.Resource)) {
 		return Session{}, Human{}, ErrDenied
 	}
 	if _, valid := m.validateApplicationRoles(human.Resources, human.ApplicationRoles); !valid {
@@ -640,7 +665,7 @@ func (m *Manager) CheckTx(tx *store.Tx, admitted Admission) error {
 		return ErrDenied
 	}
 	var human Human
-	if session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || !hasResource(human.Resources, session.Resource) {
+	if session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || (human.Username != "" && !ValidUsername(human.Username)) || human.Disabled || human.Generation != session.PrincipalGeneration || !hasResource(human.Resources, session.Resource) {
 		return ErrDenied
 	}
 	if _, valid := m.validateApplicationRoles(human.Resources, human.ApplicationRoles); !valid || human.ApplicationRoles[session.Resource] != admitted.ApplicationRole {

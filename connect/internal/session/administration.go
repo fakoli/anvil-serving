@@ -76,7 +76,7 @@ func (m *Manager) UpdateHumanTx(tx *store.Tx, id string, expected uint64, resour
 		return ErrDenied
 	}
 	var human Human
-	if tx.Get("principals", id, &human) != nil || human.ID != id || human.Generation == 0 {
+	if tx.Get("principals", id, &human) != nil || human.ID != id || human.Generation == 0 || (human.Username != "" && !ValidUsername(human.Username)) {
 		return ErrDenied
 	}
 	if human.Generation != expected {
@@ -121,7 +121,7 @@ func (m *Manager) RevokeHumanSessions(issuer, subject string) (Human, error) {
 		if errors.Is(err, store.ErrMissing) {
 			return nil
 		}
-		if err != nil || human.ID != id || human.Generation == 0 || human.Generation == math.MaxUint64 {
+		if err != nil || human.ID != id || human.Generation == 0 || human.Generation == math.MaxUint64 || (human.Username != "" && !ValidUsername(human.Username)) {
 			return ErrUnavailable
 		}
 		resources, valid := m.validateResources(human.Resources)

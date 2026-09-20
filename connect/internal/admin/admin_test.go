@@ -2,6 +2,7 @@ package admin
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"encoding/pem"
@@ -174,6 +175,30 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 	created, err := sessions.SetHuman(issuer.URL, "unprovisioned", []string{"dashboard"}, false)
 	if err != nil || created.Generation != 1 {
 		t.Fatalf("rejected request provisioned a grant: %#v, %v", created, err)
+	}
+	name := "target.user"
+	set, err := handler.apply(Request{Operation: "human-set", Issuer: issuer.URL, Subject: "target", Username: name, Resources: []string{"dashboard"}})
+	if err != nil || set.Username != name || set.Principal != human.ID {
+		t.Fatalf("human-set username response = %#v, %v", set, err)
+	}
+	retained, err := handler.apply(Request{Operation: "human-set", Issuer: issuer.URL, Subject: "target", Resources: []string{"dashboard"}})
+	if err != nil || retained.Username != name {
+		t.Fatalf("omitted username did not retain metadata: %#v, %v", retained, err)
+	}
+	if _, err := handler.apply(Request{Operation: "human-set", Issuer: issuer.URL, Subject: "target", Username: "Target", Resources: []string{"dashboard"}}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("invalid native username accepted: %v", err)
+	}
+	if _, err := handler.apply(Request{Operation: "human-suspend", Issuer: issuer.URL, Subject: "target", Username: name}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("username was accepted outside human-set: %v", err)
+	}
+	for _, raw := range [][]byte{
+		[]byte(`{"operation":"human-set","username":""}`),
+		[]byte(`{"operation":"human-set","username":null}`),
+	} {
+		var request Request
+		if err := config.Decode(bytes.NewReader(raw), &request); err == nil {
+			t.Fatalf("explicit malformed username accepted: %s", raw)
+		}
 	}
 }
 

@@ -715,6 +715,33 @@ func TestDedicatedPortalSessionIsHostBoundAndGrantlessOnlyAtPortalSurface(t *tes
 	}
 }
 
+func TestTrustedUsernameMetadataIsCanonicalAndPreserved(t *testing.T) {
+	manager, _, idp, _, _ := sessionFixture(t, 8, 2)
+	name := "alice.ops"
+	created, err := manager.SetHumanWithUsername(idp.issuer(), "named", &name, []string{"dash"}, false)
+	if err != nil || created.Username != name {
+		t.Fatalf("named human = %#v, %v", created, err)
+	}
+	updated, err := manager.SetHuman(idp.issuer(), "named", []string{"other"}, false)
+	if err != nil || updated.Username != name {
+		t.Fatalf("ordinary grant update lost username: %#v, %v", updated, err)
+	}
+	suspended, err := manager.SuspendHuman(idp.issuer(), "named")
+	if err != nil || suspended.Username != name {
+		t.Fatalf("suspend lost username: %#v, %v", suspended, err)
+	}
+	revoked, err := manager.RevokeHumanSessions(idp.issuer(), "named")
+	if err != nil || revoked.Username != name {
+		t.Fatalf("revoke lost username: %#v, %v", revoked, err)
+	}
+	for _, candidate := range []string{"", "Alice", "1alice", "alice space", strings.Repeat("a", 65)} {
+		candidate := candidate
+		if _, err := manager.SetHumanWithUsername(idp.issuer(), "invalid-"+strings.Repeat("x", len(candidate)%5), &candidate, []string{"dash"}, false); err == nil {
+			t.Fatalf("invalid username accepted: %q", candidate)
+		}
+	}
+}
+
 func TestOwnedOIDCClientBoundsAndOrigin(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
