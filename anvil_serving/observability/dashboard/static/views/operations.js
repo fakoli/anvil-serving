@@ -29,6 +29,9 @@ dialog.addEventListener("cancel", () => {
   clearTimeout(pollTimer);
 });
 dialog.addEventListener("close", () => {
+  // A queued close event from the previous view can arrive after this dialog
+  // has reopened. It must not abort the new operation's read and poll timer.
+  if (dialog.open) return;
   dialogAbort?.abort();
   clearTimeout(pollTimer);
   if (returnFocus?.isConnected) returnFocus.focus();

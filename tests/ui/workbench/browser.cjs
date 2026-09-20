@@ -15,7 +15,12 @@ fs.mkdirSync(output, { recursive: true });
   const fixture = spawn(
     process.env.OBSERVATORY_TEST_PYTHON || "python3",
     [path.join(__dirname, "real_fixture.py"), output],
-    { stdio: ["pipe", "pipe", "pipe"] },
+    {
+      stdio: ["pipe", "pipe", "pipe"],
+      // The selected Python may be editable-installed from another worktree.
+      // Serve the source beside this fixture, including its packaged assets.
+      env: { ...process.env, PYTHONPATH: path.resolve(__dirname, "../../..") },
+    },
   );
   const lines = readline.createInterface({ input: fixture.stdout });
   const pending = [],
@@ -55,6 +60,12 @@ fs.mkdirSync(output, { recursive: true });
     viewport: { width: 1440, height: 900 },
   });
   const errors = [];
+  const operationReads = [];
+  page.on("response", async (response) => {
+    if (response.url().includes("/api/observatory/v1/operations/")) {
+      operationReads.push({ status: response.status(), body: await response.json().catch(() => null) });
+    }
+  });
   page.on("pageerror", (error) => errors.push(error.message));
   const receipts = { fixture: true, journeys: [] };
   const capture = async (name) => {
@@ -105,6 +116,11 @@ fs.mkdirSync(output, { recursive: true });
     await page
       .getByRole("button", { name: "Apply change", exact: true })
       .click();
+    await page.waitForURL(/#\/operations\//);
+    await page.getByRole("dialog").waitFor();
+    // Native close events are queued: an old close must not stop this view's
+    // in-flight read or polling after the shared dialog opens again.
+    await page.getByRole("dialog").evaluate((dialog) => dialog.dispatchEvent(new Event("close")));
     await page
       .getByRole("dialog")
       .getByText("Independent deterministic fixture check passed.", {
@@ -265,6 +281,18 @@ fs.mkdirSync(output, { recursive: true });
       JSON.stringify(receipts, null, 2),
     );
     console.log(JSON.stringify(receipts));
+  } catch (error) {
+    await capture("failure");
+    fs.writeFileSync(path.join(output, "failure.json"), JSON.stringify({
+      error: error.message, url: page.url(), errors,
+      text: await page.locator("body").innerText(), status: await status(),
+      operationReads,
+      latestOperation: await page.evaluate(async () => {
+        const id = location.hash.match(/^#\/operations\/(.+)$/)?.[1];
+        return id ? (await fetch(location.pathname + "api/observatory/v1/operations/" + id)).json() : null;
+      }),
+    }, null, 2));
+    throw error;
   } finally {
     await browser.close();
     fixture.stdin.end('{"command":"stop"}\n');
