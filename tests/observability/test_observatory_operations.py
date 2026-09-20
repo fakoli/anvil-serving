@@ -149,9 +149,35 @@ def test_host_pi_frame_source_is_narrow_and_keeps_ancestors_denied(site):
     status, _body, headers = call("GET", "operations", include_headers=True)
     assert status == 200
     csp = headers["Content-Security-Policy"]
-    assert "frame-src 'self' https://pi.example.test" in csp
+    assert "frame-src https://pi.example.test" in csp
+    assert "frame-src 'self'" not in csp
     assert "frame-ancestors 'none'" in csp
     assert "connect-src 'self'" in csp
+
+
+def test_console_frame_source_is_none_without_host_pi(tmp_path):
+    config = {"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
+              "authentication": {"grafana_url": "http://127.0.0.1:3000"},
+              "state_path": str(tmp_path / "journal.sqlite"), "prometheus_url": "http://127.0.0.1:9090",
+              "inventory": {}, "workbench": {"state_path": str(tmp_path / "workbench.sqlite")}}
+    console = Console(config, metrics=FakeMetrics())
+    server = create_dashboard_server(TelemetryRegistry(), port=0)
+    attach_console(server, console)
+    thread = run_server_in_thread(server)
+    try:
+        connection = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=5)
+        connection.request("GET", "/observatory/", headers={"Host": "console.example.test"})
+        response = connection.getresponse()
+        response.read()
+        csp = response.getheader("Content-Security-Policy")
+        connection.close()
+        assert response.status == 200
+        assert "frame-src 'none'" in csp
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+        console.close()
 
 
 def test_host_pi_rejects_console_or_fallback_same_origin(tmp_path):

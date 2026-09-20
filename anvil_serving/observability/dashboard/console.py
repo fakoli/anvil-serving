@@ -489,7 +489,7 @@ def attach_console(server, console: Console):
     root = files("anvil_serving.observability.dashboard.static")
     assets = {}
     host_pi = console.workbench.config.get("host_pi", {})
-    frame_source = "frame-src 'self'" + (" " + host_pi["origin"] if host_pi else "")
+    frame_source = "frame-src " + (host_pi["origin"] if host_pi else "'none'")
     # Only packaged assets, never a user-supplied path or general file reader.
     def collect(directory, prefix=""):
         for path in directory.iterdir():
