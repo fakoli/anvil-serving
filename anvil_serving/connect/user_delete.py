@@ -64,12 +64,12 @@ def _phase(value: object) -> dict:
         raise _invalid("Permanent deletion recovery state is invalid.")
     _request_id(value["request_id"])
     if (not isinstance(value["principal"], str) or not re.fullmatch(r"human:[0-9a-f]{64}", value["principal"])
-            or not users._USER.fullmatch(value["username"])
+            or (value["username"] != "" and not users._USER.fullmatch(value["username"]))
             or (value["subject"] != "" and not _subject(value["subject"]))
             or type(value["generation"]) is not int or isinstance(value["generation"], bool) or value["generation"] < 1
             or type(value["original_active"]) is not bool or type(value["idp_delete"]) is not bool):
         raise _invalid("Permanent deletion recovery state is invalid.")
-    if value["idp_delete"] != bool(value["subject"]):
+    if value["idp_delete"] != bool(value["subject"]) or (value["username"] == "" and value["idp_delete"]):
         raise _invalid("Permanent deletion recovery state is invalid.")
     return value
 
@@ -161,7 +161,7 @@ def _deletion(value: object) -> dict:
         parsed_completed_at = None
     if (_request_id(value.get("request_id")) != value["request_id"]
             or not isinstance(value.get("principal"), str) or not re.fullmatch(r"human:[0-9a-f]{64}", value["principal"])
-            or not users._USER.fullmatch(value.get("username", ""))
+            or (value.get("username", "") != "" and not users._USER.fullmatch(value["username"]))
             or type(value.get("generation")) is not int or isinstance(value["generation"], bool) or value["generation"] < 1
             or not isinstance(value.get("epoch"), str) or not re.fullmatch(r"[0-9a-f]{64}", value["epoch"])
             or not isinstance(value.get("digest"), str) or not re.fullmatch(r"[0-9a-f]{64}", value["digest"])
@@ -199,6 +199,10 @@ def _mapped_subject(data: dict, config: Path, principal: str, username: str, run
     matches = [row for row in records if row["service"] == "openid" and row["sector_id"] == ""
                and users._principal(issuer, row["identifier"]) == principal]
     same_username = [row for row in records if row["service"] == "openid" and row["sector_id"] == "" and row["username"] == username]
+    if username == "":
+        if matches:
+            raise _invalid("Native deletion metadata is incomplete for an IdP-linked account.")
+        return ""
     if len(matches) > 1 or (matches and matches[0]["username"] != username) or any(
             users._principal(issuer, row["identifier"]) != principal for row in same_username):
         raise _invalid("Authelia identifier does not match the native deletion intent.")

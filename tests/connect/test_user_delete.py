@@ -261,3 +261,18 @@ def test_delete_allows_previously_disabled_native_human(tmp_path, monkeypatch):
 
     assert user_delete.delete(str(tmp_path / "deployment.json"), "owner", apply=True) == {"finalized": True}
     assert captured["phase"]["generation"] == 8 and captured["intent"] == intent
+
+
+def test_blank_native_username_is_connect_only_only_after_full_identifier_absence(monkeypatch):
+    issuer = "https://auth.example.test"
+    principal = users._principal(issuer, _SUBJECT)
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_args, **_kwargs: [])
+    assert user_delete._mapped_subject({"gateway": {"oidc": {"issuer": issuer}}}, Path("/unused"), principal, "", None) == ""
+    phase = _phase(_request(), idp_delete=False)
+    phase["username"] = ""
+    assert user_delete._phase(phase)["username"] == ""
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_args, **_kwargs: [
+        {"service": "openid", "sector_id": "", "username": "owner", "identifier": _SUBJECT},
+    ])
+    with pytest.raises(UsageError):
+        user_delete._mapped_subject({"gateway": {"oidc": {"issuer": issuer}}}, Path("/unused"), principal, "", None)
