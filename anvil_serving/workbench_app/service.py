@@ -34,7 +34,7 @@ class WorkbenchService:
         self.config = validate_config(config)
         self.access, self.environment, self.adapter = access, environment, adapter
         from .advisories import Advisories
-        self.advisories = Advisories(access, environment)
+        self.advisories = Advisories(environment)
         self.store = store or PrivateStore(config["state_path"], retention_days=config.get("retention_days", 30))
         self.pi = None
         self.pi_store = None
@@ -443,9 +443,10 @@ class WorkbenchService:
             return self._pi_read(route, query, session)
         raise ObservatoryError("not_found", "This Workbench route is unavailable.", 404)
 
-    def mutate(self, route, body, session):
+    def mutate(self, route, body, session, *, access=None):
         if route.startswith("advisories/") and len(route.split("/")) == 2:
-            return self.advisories.request(route.split("/")[1], body, session)
+            return self.advisories.request(route.split("/")[1], body, session,
+                access=self.access if access is None else access)
         if route.startswith("host-pi/"):
             return self._host_pi_route(route, body, session, mutate=True)
         if route == "messages":

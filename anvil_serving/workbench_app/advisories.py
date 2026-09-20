@@ -9,24 +9,25 @@ from ..observability.dashboard.contracts import ObservatoryError, fields, identi
 
 
 class Advisories:
-    def __init__(self, access, environment):
-        self.access, self.environment = access, environment
+    def __init__(self, environment):
+        self.environment = environment
         self.slots = threading.BoundedSemaphore(2)
         self.lock = threading.Lock()
         self.generations = OrderedDict()
 
-    def _authorize(self, session, resource):
+    @staticmethod
+    def _authorize(session, resource, access):
         headers = Message()
-        headers["Cookie"] = self.access.COOKIE + "=" + session.key
-        fresh = self.access.session(headers)
+        headers["Cookie"] = access.COOKIE + "=" + session.key
+        fresh = access.session(headers)
         if fresh != session:
             raise ObservatoryError("advisory_stale", "The advisory belongs to an earlier session. Request it again.", 409)
-        self.access.permit(fresh, resource)
+        access.permit(fresh, resource)
 
-    def request(self, capability, body, session):
+    def request(self, capability, body, session, *, access):
         fields(body, required=("resource_id", "generation", "allow_export", "input"), optional=("disabled",))
         resource = identifier(body["resource_id"])
-        self._authorize(session, resource)
+        self._authorize(session, resource, access)
         if capability not in jev.CAPABILITIES[:3]:
             raise ObservatoryError("not_found", "This advisory capability is unavailable.", 404)
         generation = identifier(body["generation"])
@@ -43,7 +44,7 @@ class Advisories:
             value = jev.validate_input(capability, body["input"])
         except (ValueError, TypeError):
             raise ObservatoryError("invalid_advisory", "Select bounded snippets with distinct opaque IDs.") from None
-        key = (session.key, resource, capability)
+        key = (access.origin, session.key, resource, capability)
         if not self.slots.acquire(blocking=False):
             return {"annotation": jev.report(capability, "unavailable", "busy"), "generation": generation}
         try:
@@ -53,7 +54,7 @@ class Advisories:
                 while len(self.generations) > 256:
                     self.generations.popitem(last=False)
             def current_policy():
-                self._authorize(session, resource)
+                self._authorize(session, resource, access)
                 current = jev.load_policy()
                 with self.lock:
                     stale = self.generations.get(key) != generation
@@ -63,14 +64,14 @@ class Advisories:
                 return current
             annotation = jev.advise(capability, value, allow_export=True, environment=self.environment,
                 policy_reader=current_policy)
-            self._authorize(session, resource)
+            self._authorize(session, resource, access)
             if current_policy() != policy:
                 annotation = jev.report(capability, "blocked", "policy_changed", started=annotation["request_started"])
             with self.lock:
                 if self.generations.get(key) != generation:
                     annotation = jev.report(capability, "blocked", "generation_changed", started=annotation["request_started"])
             result = jev.advice_view(annotation, value)
-            result.update(generation=generation, binding_digest=jev.digest({"session": session.key,
+            result.update(generation=generation, binding_digest=jev.digest({"origin": access.origin, "session": session.key,
                 "principal": session.principal.identity, "resource": resource, "generation": generation,
                 "selected_input": value}), source_digests={row["id"]: jev.digest(row) for row in value.get("candidates", [])})
             return result

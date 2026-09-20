@@ -196,6 +196,7 @@ def validate_input(capability, value):
             if (type(row) is not dict or set(row) != {"id", detail} or type(row["id"]) is not str
                     or not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_-]{0,47}", row["id"])
                     or row["id"].lower() == "none" or row["id"] in seen
+                    or redact(row["id"]) != row["id"]
                     or type(row[detail]) is not str or not row[detail].strip() or len(row[detail].encode()) > 4096):
                 raise ValueError("Invalid selected candidate")
             seen.add(row["id"])

@@ -157,6 +157,24 @@ def test_duplicate_json_and_invalid_context_candidates_are_rejected():
         assert not result["used"] and not result["request_started"]
 
 
+@pytest.mark.parametrize("capability,detail", [
+    ("context_ranking", "text"), ("skill_suggestion", "description"),
+])
+def test_secret_shaped_candidate_ids_are_rejected_without_export_or_identity_loss(capability, detail):
+    identifiers = ["AKIA" + "A" * 16, "sk-" + "a" * 16]
+    value = {"intent": "read", "candidates": [
+        {"id": key, detail: "selected public summary"} for key in identifiers
+    ]}
+    result = jev.advise(capability, value, allow_export=True, policy_reader=policy, environment={},
+        bridge=lambda *_: pytest.fail("secret-shaped candidate IDs dispatched"))
+    assert result["status"] == "blocked" and not result["request_started"]
+    assert not result["used"] and result["answers"] == {}
+    assert [row["id"] for row in value["candidates"]] == identifiers
+    view = jev.advice_view(result, value)
+    if capability == "context_ranking":
+        assert view["order"] == view["baseline"] == identifiers
+
+
 @pytest.mark.parametrize("failure,started", [(FileNotFoundError("private path"), False),
                                             (subprocess.TimeoutExpired("private argv", 2), True)])
 def test_optional_binary_failures_are_sanitized_and_nonfatal(failure, started):

@@ -1,4 +1,5 @@
 import queue
+import sys
 import threading
 import time
 
@@ -8,13 +9,15 @@ from anvil_serving import jev
 from anvil_serving.voice.cancel_scope import CancelScope
 from anvil_serving.voice.jev_intent import IntentAdvisor
 from anvil_serving.voice.messages import Transcription
+from anvil_serving.voice.pipeline import VoicePipeline
+from anvil_serving.voice.realtime.pool import SessionPool
 from anvil_serving.voice.realtime.service import RealtimeService
 from types import SimpleNamespace
 
 
 def policy():
     return jev.validate_policy({"enabled": True, "capabilities": ["voice_intent"], "allow_api": True,
-                                "allow_export": True, "anvil_binary": "/usr/bin/anvil"})
+                                "allow_export": True, "anvil_binary": sys.executable})
 
 
 def text(scope, turn="one", final=True):
@@ -136,11 +139,11 @@ def test_revocation_at_dispatch_boundary_prevents_bridge_call(revoke):
 
 
 def test_core_voice_stops_before_advisor_cleanup_even_without_join_wait():
-    from anvil_serving.voice.pipeline import VoicePipeline
     actions = []
     pipeline = VoicePipeline.__new__(VoicePipeline)
     pipeline.manager = SimpleNamespace(stop_all=lambda **kwargs: actions.append(("core_stop", kwargs)))
-    def close():
+    def close(*, join_timeout):
+        assert join_timeout == 0
         assert actions[-1] == ("core_stop", {"join_timeout": 0})
         actions.append("advisory_cleanup")
     pipeline.jev_advisor = SimpleNamespace(configure=lambda enabled: actions.append(("consent", enabled)), close=close)
@@ -167,3 +170,111 @@ def test_operator_disable_reenable_discards_queued_voice_advice(tmp_path, monkey
         assert advisor.drain() is None
     finally:
         advisor.close()
+
+
+@pytest.fixture
+def blocked_advisor():
+    scope = CancelScope()
+    entered, release = threading.Event(), threading.Event()
+    calls = []
+
+    def blocked(*args, **kwargs):
+        calls.append(args)
+        entered.set()
+        release.wait(1)
+        return jev.report("voice_intent", "unavailable", "offline", started=True)
+
+    advisor = IntentAdvisor(scope, policy_reader=policy, advise=blocked)
+    advisor.configure(True)
+    advisor.submit(text(scope))
+    assert entered.wait(1)
+    try:
+        yield advisor, release, calls
+    finally:
+        release.set()
+        advisor.close()
+
+
+@pytest.mark.parametrize("method", ["stop", "shutdown_gracefully"])
+@pytest.mark.parametrize("budget", [0, .05])
+def test_shutdown_bounds_blocked_advisor_and_discards_late_results(blocked_advisor, method, budget):
+    advisor, release, calls = blocked_advisor
+    pipeline = VoicePipeline(cancel_scope=advisor.scope)
+    pipeline.jev_advisor = advisor
+    advisor.submit(text(advisor.scope, "queued"))
+    start = time.monotonic()
+    getattr(pipeline, method)(join_timeout=budget)
+    elapsed = time.monotonic() - start
+    assert elapsed < budget + .1
+    assert advisor.thread.is_alive(), "shutdown should return before the blocked call finishes"
+    assert advisor.stop.is_set() and advisor.pending.empty()
+    advisor.configure(True)
+    advisor.submit(text(advisor.scope, "after-close"))
+    release.set()
+    advisor.thread.join(timeout=1)
+    assert not advisor.thread.is_alive() and len(calls) == 1
+    assert advisor.drain() is None
+
+
+@pytest.mark.parametrize("method,remaining", [("stop", .20), ("shutdown_gracefully", .10)])
+def test_shutdown_does_not_restart_advisor_budget(monkeypatch, method, remaining):
+    from anvil_serving.voice import pipeline as pipeline_module
+    clock = [10.0]
+    joins = []
+    pipeline = VoicePipeline()
+
+    def drain(*, timeout):
+        assert timeout == .25
+        clock[0] += .10
+
+    def core_stop(*, join_timeout):
+        clock[0] += .05
+
+    pipeline._wait_for_last_stage_to_drain = drain
+    pipeline.manager.stop_all = core_stop
+    pipeline.jev_advisor = SimpleNamespace(configure=lambda enabled: None,
+        close=lambda **kwargs: joins.append(kwargs["join_timeout"]))
+    monkeypatch.setattr(pipeline_module.time, "monotonic", lambda: clock[0])
+    getattr(pipeline, method)(join_timeout=.25)
+    assert joins == [pytest.approx(remaining)]
+
+
+def test_explicit_unbounded_shutdown_waits_for_advisor(blocked_advisor):
+    advisor, release, calls = blocked_advisor
+    pipeline = VoicePipeline(cancel_scope=advisor.scope)
+    pipeline.jev_advisor = advisor
+    closer = threading.Thread(target=lambda: pipeline.stop(join_timeout=None))
+    closer.start()
+    try:
+        assert advisor.stop.wait(1)
+        assert closer.is_alive()
+        release.set()
+        closer.join(timeout=1)
+        assert not closer.is_alive() and not advisor.thread.is_alive()
+        assert len(calls) == 1 and advisor.drain() is None
+    finally:
+        release.set()
+        closer.join(timeout=2)
+
+
+def test_pool_release_does_not_wait_for_blocked_advisor(blocked_advisor):
+    advisor, release, calls = blocked_advisor
+    pool = SessionPool(1)
+    unit = pool.claim("old-session")
+    old_pipeline = unit.pipeline
+    old_pipeline.jev_advisor = advisor
+    try:
+        start = time.monotonic()
+        pool.release(unit, drain_timeout=0)
+        assert time.monotonic() - start < .1
+        assert advisor.thread.is_alive() and advisor.stop.is_set()
+        reclaimed = pool.claim("new-session")
+        assert reclaimed is unit and reclaimed.pipeline is not old_pipeline
+        release.set()
+        advisor.thread.join(timeout=1)
+        assert not advisor.thread.is_alive() and len(calls) == 1
+        assert advisor.drain() is None
+    finally:
+        release.set()
+        old_pipeline.stop()
+        pool.release(unit)

@@ -68,6 +68,8 @@ Candidate lists contain 1–24 distinct opaque IDs (at most 48 characters) with
 bounded descriptions or snippets. Selected text is at most 4,096 characters;
 additional byte and request-overhead bounds apply. The caller determines
 eligibility and authorization before selection.
+IDs matching known credential patterns are rejected before dispatch; use a
+non-secret local ID. They are never exported or silently rewritten by redaction.
 Skill output selects one supplied ID or `none`; it never installs or invokes
 anything. Context scores only produce stable optional ordering, with the
 baseline retained. Pinned instructions and active packets remain outside this
@@ -136,13 +138,19 @@ approved source classes need operator review before live enablement.
 
 ### Implementation review receipt (2026-09-20)
 
-Two independent adversarial reviewers cleared the final code after repairs.
+Two independent adversarial reviewers cleared the initial implementation after repairs.
 The security/privacy review passed 104 focused tests; the separate lifecycle
 and output-correctness review passed 52. The author's wider regression gate
 passed 461 with one skip. Findings repaired before delivery included consent
 revocation at dispatch, queued result generation, core shutdown ordering,
 matching rather than merely well-formed input digests, concurrent policy
 writers, and disable/re-enable to identical policy values.
+Subsequent PR review found fallback-origin access binding, advisory shutdown
+budgeting, and secret-shaped candidate identity issues. Follow-up corrections
+passed 708 focused checks with one skip; a separate final security/privacy
+review passed 130 checks. Native Windows CI is required after replacing a
+Linux-only test executable path. Current-head full-suite and CI results are
+recorded in the PR before merge.
 
 Chrome testing against isolated loopback fixtures verified default-off policy,
 unchecked consent, refusal before consent, attributed ranking, exact baseline

@@ -222,8 +222,9 @@ class Console:
         self.fallback_access.check_host(headers)
         # Do not initialize another Console or Workbench: their stores, workers,
         # locks, and Pi state are process-local shared runtime state. The shared
-        # Workbench only uses Access for permit/operate, which depends on this
-        # session's immutable principal and the identical operate policy.
+        # Workbench permit/operate checks use the immutable principal and the
+        # identical operate policy. Session-store rechecks receive the selected
+        # Access explicitly when dispatching mutations below.
         view = copy.copy(self)
         view.access = self.fallback_access
         return view
@@ -971,7 +972,8 @@ def attach_console(server, console: Console):
                 selected._require_readable(session)
                 if method != "POST":
                     raise ObservatoryError("method_denied", "This Workbench route does not accept this method.", 405)
-                data = selected.workbench.mutate(self._workbench_route(route), self._body(), session)
+                data = selected.workbench.mutate(self._workbench_route(route), self._body(), session,
+                    access=selected.access)
                 self._respond(200, {"ok": True, "data": data})
                 return True
             if method != "POST" or route not in {"drafts", "previews", "operations"}:

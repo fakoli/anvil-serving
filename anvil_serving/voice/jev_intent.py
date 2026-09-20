@@ -102,10 +102,14 @@ class IntentAdvisor:
         return {"type": "anvil.voice.intent", "turn_id": identity[0], "turn_revision": identity[1],
                 "generation": identity[2], "annotation": annotation}
 
-    def close(self):
+    def close(self, *, join_timeout=2.0):
+        """Revoke immediately, then wait only within the owner's join budget.
+
+        A timed-out worker finishes its already-bounded bridge cleanup in the
+        background. The stop flag prevents further dispatch and late events.
+        Explicit ``None`` retains the voice owner's indefinite-wait contract.
+        """
         self.configure(False)
         self.stop.set()
         if self.thread:
-            # Include the existing process-tree cleanup bound on Windows.
-            # Cancellation never calls or waits on this teardown join.
-            self.thread.join(timeout=20)
+            self.thread.join(timeout=join_timeout)
