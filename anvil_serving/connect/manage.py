@@ -26,7 +26,7 @@ from typing import Any, Callable, Iterator, Literal
 from contextlib import contextmanager
 
 from .config import ManifestError, read_manifest, require_isolated, role_identity
-from .render import plan, plan_for_inspection, render as render_config, stage
+from .render import MAX_OWNED_FILES, plan, plan_for_inspection, render as render_config, stage
 
 # The package and command help remain portable.  The actual ownership model
 # below deliberately depends on Linux uid/gid, openat-style flags, flock and
@@ -372,6 +372,8 @@ def _files(target: Target) -> set[str]:
     if target.kind == "gateway":
         return {
             "gateway.json", "caddy.json", "authelia/configuration.yml",
+            "authelia/notification-templates/IdentityVerificationJWT.html",
+            "authelia/notification-templates/IdentityVerificationJWT.txt",
             "systemd/anvil-connect-gateway.service", "systemd/anvil-connect-caddy.service",
             "systemd/anvil-connect-authelia.service",
         }
@@ -905,7 +907,7 @@ def _owned_marker(root: Path) -> tuple[str, dict[str, str]]:
     generation, files = value.get("generation"), value.get("files")
     if not isinstance(generation, str) or len(generation) != 64 or any(char not in "0123456789abcdef" for char in generation):
         raise ManageError("active ownership marker is invalid")
-    if not isinstance(files, dict) or len(files) > 128:
+    if not isinstance(files, dict) or len(files) > MAX_OWNED_FILES:
         raise ManageError("active ownership marker is invalid")
     checked: dict[str, str] = {}
     for name, digest in files.items():
@@ -1666,7 +1668,13 @@ def _unit_required_files(unit: str, targets: tuple[Target, ...]) -> set[str]:
     if unit in _units(Target("gateway")):
         config = {"anvil-connect-gateway.service": "gateway.json", "anvil-connect-caddy.service": "caddy.json",
                   "anvil-connect-authelia.service": "authelia/configuration.yml"}[unit]
-        return {config, "systemd/" + unit}
+        files = {config, "systemd/" + unit}
+        if unit == "anvil-connect-authelia.service":
+            files.update({
+                "authelia/notification-templates/IdentityVerificationJWT.html",
+                "authelia/notification-templates/IdentityVerificationJWT.txt",
+            })
+        return files
     return next(_files(target) for target in targets if unit in _units(target))
 
 

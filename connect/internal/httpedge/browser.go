@@ -7,6 +7,7 @@ import (
 	"errors"
 	"html"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"strings"
@@ -316,6 +317,35 @@ func browserRedirect(w http.ResponseWriter, r *http.Request, location string, st
 	http.Redirect(w, r, location, status)
 }
 
+type noStoreResponseWriter struct{ http.ResponseWriter }
+
+func (w noStoreResponseWriter) preventHTMLCaching() {
+	contentTypes := w.Header().Values("Content-Type")
+	if len(contentTypes) == 0 {
+		w.Header().Set("Cache-Control", "no-store")
+		return
+	}
+	for _, value := range contentTypes {
+		mediaType, _, err := mime.ParseMediaType(value)
+		if err != nil || strings.EqualFold(mediaType, "text/html") {
+			w.Header().Set("Cache-Control", "no-store")
+			return
+		}
+	}
+}
+
+func (w noStoreResponseWriter) WriteHeader(status int) {
+	w.preventHTMLCaching()
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w noStoreResponseWriter) Write(value []byte) (int, error) {
+	w.preventHTMLCaching()
+	return w.ResponseWriter.Write(value)
+}
+
+func (w noStoreResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
 func (b *Browser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if ValidateHead(r) != nil {
 		browserFailure(w, http.StatusBadRequest)
@@ -457,6 +487,12 @@ func (b *Browser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		clean = clean.WithContext(browseridentity.WithAssertion(clean.Context(), assertion))
+	}
+	// The actual response determines cacheability: authenticated HTML can
+	// contain application state and must not survive an expired Connect session.
+	// Assets and API responses retain their native cache policy.
+	if !browserUpgrade(r) {
+		w = noStoreResponseWriter{w}
 	}
 	b.dispatch(w, clean, declaration, admitted)
 }

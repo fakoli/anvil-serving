@@ -5,16 +5,18 @@ from __future__ import annotations
 import argparse
 import sqlite3
 import subprocess
+import sys
 
 from ..operator_output import CommandResult, OperatorError, PartialResultError, UsageError
 from .config import ManifestError
+from .command_specs import USER_OPERATIONS
 
 
 class _Parser(argparse.ArgumentParser):
     def error(self, _message: str) -> None:
         # argparse normally echoes operands; paths or malformed input can carry
         # private data, so this boundary returns a fixed classified error.
-        raise UsageError("Invalid Connect command arguments.", code="connect_arguments_invalid")
+        raise UsageError(f"Invalid Connect command arguments. Run {self.prog} --help for usage.", code="connect_arguments_invalid")
 
 
 class _Once(argparse.Action):
@@ -24,32 +26,75 @@ class _Once(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
+def _users_parser(actions) -> None:
+    users = actions.add_parser(
+        "users", allow_abbrev=False, help="Inspect accounts, invite users and manage access.",
+        description="Local account administration. Start with resources to find exact grant IDs.",
+        epilog="Use users COMMAND --help for examples and relevant options. Mutations preview unless --confirm is supplied.",
+    )
+    operations = users.add_subparsers(dest="operation", required=True, parser_class=_Parser)
+    options = {
+        "email": {"help": "Creation email for password setup and identity verification.", "required": True},
+        "role": {"choices": ("member", "admin"), "help": "Authelia group only; defaults to member. Does not grant Connect operator access."},
+        "grant": {"action": "append", "metavar": "RESOURCE:ROLE", "help": "Exact browser resource:member or resource:admin; repeat for each service. Discover IDs with resources."},
+        "output": {"help": "Exclusive private handoff file (filesystem delivery only)."},
+        "input": {"help": "Private authentication archive.", "required": True},
+        "sha256": {"help": "Independently retained archive checksum.", "required": True},
+        "destination": {"help": "Fresh private recovery directory; never activates accounts.", "required": True},
+        "include-gateway": {"action": "store_true", "help": "Also retain gateway authority after the authentication snapshot."},
+    }
+    for operation, (summary, names) in USER_OPERATIONS.items():
+        leaf = operations.add_parser(operation, allow_abbrev=False, help=summary, description=summary)
+        leaf.set_defaults(username=None, manifest=None, email=None, role=None, grant=None,
+                          output=None, input=None, sha256=None, destination=None, include_gateway=False)
+        if operation not in {"list", "backup", "schedule", "deletion-schedule", "process-deletions", "restore"}:
+            leaf.add_argument("username", help="Exact local username.")
+        if operation != "restore":
+            leaf.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
+        for name in names:
+            kwargs = {"action": _Once, **options[name]}
+            if name == "grant" and operation == "access":
+                kwargs["required"] = True
+            leaf.add_argument("--" + name, **kwargs)
+        if operation not in {"list", "show"}:
+            leaf.add_argument("--dry-run", action="store_true", help="Preview only, even with --confirm.")
+            leaf.add_argument("--confirm", action="store_true", help="Apply; omission previews the operation.")
+        if operation in {"create", "access"}:
+            example = "developer --email developer@example.test" if operation == "create" else "developer"
+            leaf.epilog = f"Example (preview): {leaf.prog} {example} --grant SERVICE:member. Replace SERVICE with an ID from resources; add --confirm to apply."
+        elif operation == "show":
+            leaf.epilog = "Account enabled status does not prove Connect access. Inspect current grants through Manage access on the service home."
+
+
 def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
-    parser = _Parser(prog=prog, allow_abbrev=False)
+    parser = _Parser(
+        prog=prog, allow_abbrev=False,
+        description="Anvil Connect: inspect services, invite users and manage the local access gateway.",
+        epilog=f"Start here: {prog} resources | {prog} users list | {prog} users create --help. Changes preview unless --confirm is supplied.",
+    )
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
-    qualification = actions.add_parser("qualify", allow_abbrev=False)
+    qualification = actions.add_parser("qualify", allow_abbrev=False, help="Run an isolated qualification lane.")
     qualify_mode = qualification.add_mutually_exclusive_group()
     qualify_mode.add_argument("--lane", choices=("baseline", "container-baseline", "device", "revocation", "isolation"), action=_Once)
     qualify_mode.add_argument("--prepare-container", action="store_true")
     qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
-    users = actions.add_parser("users", allow_abbrev=False)
-    users.add_argument("operation", choices=("create", "access", "suspend", "delete", "reset-password", "reset-mfa", "code", "backup", "schedule", "deletion-schedule", "process-deletions", "restore"),
-                       help="create adds an account and, with SMTP, requests Authelia's password-setup email.")
-    users.add_argument("username", nargs="?")
-    users.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
-    users.add_argument("--email", action=_Once, help="Creation email; SMTP requests an Authelia password-setup email.")
-    users.add_argument("--role", choices=("member", "admin"), action=_Once, help="Creation role; defaults to member. Resets preserve existing groups.")
-    users.add_argument("--grant", action="append", help="Exact service:member or service:admin entitlement; repeat for each service. Create/access only.")
-    users.add_argument("--output", action=_Once, help="Exclusive private handoff file; defaults beside the deployment manifest.")
-    users.add_argument("--input", action=_Once, help="Private authentication archive for recovery.")
-    users.add_argument("--sha256", action=_Once, help="Independently retained authentication archive checksum for recovery.")
-    users.add_argument("--destination", action=_Once, help="Fresh private recovery directory; never activates restored accounts.")
-    users.add_argument("--include-gateway", action="store_true", help="With users backup, also retain gateway authorities after the authentication snapshot.")
-    users.add_argument("--dry-run", action="store_true")
-    users.add_argument("--confirm", action="store_true")
+    _users_parser(actions)
+    resources = actions.add_parser("resources", allow_abbrev=False,
+                                   help="List declared browser services and copyable grant values.")
+    resources.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
     for action in ("validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "extend"):
-        leaf = actions.add_parser(action, allow_abbrev=False)
+        leaf = actions.add_parser(action, allow_abbrev=False, help={
+            "validate": "Validate the deployment declaration.", "render": "Preview or stage configuration.",
+            "up": "Preview or start selected services.", "down": "Preview or stop a selected service.",
+            "status": "Inspect service state.", "doctor": "Check paths, ownership and components.",
+            "logs": "Read bounded service events.", "init": "Initialize or enroll explicitly.",
+            "identity": "Inspect a connector fingerprint.", "admin": "Send a local authority request.",
+            "keygen": "Create a private local SDK key.", "backup": "Back up stopped gateway authority.",
+            "restore": "Restore gateway authority into a fresh directory.", "migration": "Preview Observatory migration.",
+            "edge-status": "Compare declared resources with the Cloudflare edge.",
+            "edge-apply": "Apply declared Cloudflare edge changes.", "extend": "Extend an enrolled connector.",
+        }[action])
         leaf.add_argument("--manifest", required=True, action=_Once)
         if action == "up":
             selected = leaf.add_mutually_exclusive_group(required=True)
@@ -162,9 +207,33 @@ def _qualify(args: argparse.Namespace) -> CommandResult:
     return CommandResult(data=result)
 
 
+def _legacy_user_options(argv: list[str]) -> list[str]:
+    """Keep the former flat parser's options-before-operation spelling working."""
+    if len(argv) < 2 or argv[0] != "users" or not argv[1].startswith("-"):
+        return argv
+    value_options = {"--manifest", "--email", "--role", "--grant", "--output", "--input", "--sha256", "--destination"}
+    switches = {"--confirm", "--dry-run", "--include-gateway"}
+    index = 1
+    while index < len(argv) and argv[index].startswith("-"):
+        flag, inline, _ = argv[index].partition("=")
+        if flag in value_options:
+            index += 1 if inline else 2
+        elif flag in switches and not inline:
+            index += 1
+        else:
+            return argv  # Help and malformed arguments stay with the closed parser.
+    if index < len(argv) and argv[index] in USER_OPERATIONS:
+        return ["users", argv[index], *argv[1:index], *argv[index + 1:]]
+    return argv
+
+
 def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connect") -> CommandResult:
     try:
-        args = _parser(prog).parse_args(argv)
+        argv = _legacy_user_options(list(sys.argv[1:] if argv is None else argv))
+        parser = _parser(prog)
+        if not argv or argv == ["users"]:
+            parser.parse_args([*argv, "--help"])
+        args = parser.parse_args(argv)
         if args.action == "qualify":
             return _qualify(args)
         from . import manage  # help/importing the registry never starts discovery
@@ -177,9 +246,16 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         target = manage.Target.parse(args.service) if getattr(args, "service", None) else None
         apply = bool(getattr(args, "confirm", False) and not getattr(args, "dry_run", False))
         action = args.action
-        if action == "users":
+        if action == "resources":
+            from .inventory import resources
+            from .users import DEFAULT_MANIFEST
+            result = resources(args.manifest or DEFAULT_MANIFEST)
+        elif action == "users":
             from .users import DEFAULT_MANIFEST, operate
-            if args.operation in {"schedule", "deletion-schedule", "process-deletions"}:
+            if args.operation in {"list", "show"}:
+                from .inventory import accounts
+                result = accounts(args.manifest or DEFAULT_MANIFEST, args.username)
+            elif args.operation in {"schedule", "deletion-schedule", "process-deletions"}:
                 if args.include_gateway or any((args.username, args.email, args.role, args.output, args.input, args.sha256, args.destination, args.grant)):
                     raise UsageError("Use users schedule --confirm to install the daily authentication backup timer.", code="connect_users_invalid")
                 if args.operation == "process-deletions":

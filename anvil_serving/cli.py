@@ -103,6 +103,7 @@ _WORKLOAD_FILTER_OPTIONS = {
 _HANDLER_PROGS = {
     "anvil_serving.benchmark": "anvil-serving eval benchmark run",
     "anvil_serving.benchmark_evidence": "anvil-serving eval benchmark evidence",
+    "anvil_serving.connect.cli": "anvil-serving connect",
     "anvil_serving.controller": "anvil-serving controller",
     "anvil_serving.controller_diagnostics": "anvil-serving controller",
     "anvil_serving.collectors": "anvil-serving collectors",
@@ -451,8 +452,12 @@ def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
 def _unknown_command(
     token: str, path: Sequence[CommandNode], siblings: Sequence[CommandNode]
 ) -> int:
-    attempted = " ".join([*(node.name for node in path), token])
-    print("unknown command: %s" % attempted, file=sys.stderr)
+    if path and path[0].name == "connect":
+        # Account operands may contain private data; only echo declared paths.
+        print("unknown action for: %s" % _command_name(path), file=sys.stderr)
+    else:
+        attempted = " ".join([*(node.name for node in path), token])
+        print("unknown command: %s" % attempted, file=sys.stderr)
     names = [node.name for node in siblings]
     matches = difflib.get_close_matches(token, names, n=1)
     if matches:
@@ -1682,8 +1687,10 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
     workload_leaf = canonical in _WORKLOAD_LEAVES
     protected_family = protected_family or protected_leaf
     unresolved_sensitive = protected_family and (
-        unknown is not None or bool(path[-1].children)
+        unknown is not None or (bool(path[-1].children) and "data" not in execution_meta)
     )
+    # A handler-backed group can execute a legacy option-first call. Its typed
+    # result is already sanitized; preserve partial-operation recovery evidence.
     command = canonical if protected_family else " ".join(argv)
     context = execution_meta.get("plan")
     warnings = list(execution_meta.get("warnings", ()))

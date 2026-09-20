@@ -1095,7 +1095,7 @@ def test_schema_render_consumes_local_fields_without_starting_services(tmp_path:
     assert seen == {"gateway": expected["files"]["gateway.json"], "connector": expected["files"]["connectors/dashboard.json"],
                     "client": expected["files"]["clients/dashboard-api.json"]}
     staged = Path(result["stage"]["path"])
-    assert {name: (staged / name).read_text() for name in expected["files"]} == expected["files"]
+    assert {name: (staged / name).read_bytes().decode("utf-8") for name in expected["files"]} == expected["files"]
     again = manage.render(manifest_path, apply=True, runner=inspect)
     assert again["stage"] == result["stage"]
     assert not Path(value["config_root"]).exists()
@@ -1158,6 +1158,58 @@ def test_gateway_only_change_preserves_healthy_edge_and_idp(tmp_path, monkeypatc
     assert result["restarted_units"] == ["anvil-connect-gateway.service"]
     assert not any(call[1] in {"restart", "enable"} and call[-1] in {"anvil-connect-caddy.service", "anvil-connect-authelia.service"}
                    for call in runner.calls)
+
+
+def test_notification_template_change_is_gateway_owned_and_restarts_authelia(tmp_path, monkeypatch):
+    import importlib
+
+    connect_render = importlib.import_module("anvil_serving.connect.render")
+
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(mode=0o755)
+    runner = SyntheticRunner(active=True)
+    runner.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    original = connect_render._password_setup_templates
+
+    def updated(data):
+        templates = original(data)
+        name = "authelia/notification-templates/IdentityVerificationJWT.html"
+        templates[name] += "<!-- updated -->\r\n"
+        return templates
+
+    monkeypatch.setattr(connect_render, "_password_setup_templates", updated)
+    runner.calls.clear()
+    preview = manage.up(manifest, manage.Target("gateway"), runner=runner, unit_root=units)
+    assert preview["configuration_restarts"] == ["anvil-connect-authelia.service"]
+    result = manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    assert result["restarted_units"] == ["anvil-connect-authelia.service"]
+
+
+def test_gateway_upgrade_adopts_notification_templates_from_a_prior_generation(tmp_path, monkeypatch):
+    import importlib
+
+    connect_render = importlib.import_module("anvil_serving.connect.render")
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(mode=0o755)
+    runner = SyntheticRunner(active=True)
+    runner.unit_root = units
+    original = connect_render._password_setup_templates
+    monkeypatch.setattr(connect_render, "_password_setup_templates", lambda _: {})
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    monkeypatch.setattr(connect_render, "_password_setup_templates", original)
+    runner.calls.clear()
+    preview = manage.up(manifest, manage.Target("gateway"), runner=runner, unit_root=units)
+    assert preview["plan"]["state"] == "update"
+    assert set(preview["plan"]["changes"]) >= {
+        "authelia/notification-templates/IdentityVerificationJWT.html",
+        "authelia/notification-templates/IdentityVerificationJWT.txt",
+    }
+    assert preview["configuration_restarts"] == ["anvil-connect-authelia.service"]
+    result = manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    assert result["restarted_units"] == ["anvil-connect-authelia.service"]
 
 
 def test_unhealthy_unchanged_gateway_is_restarted(tmp_path, monkeypatch):

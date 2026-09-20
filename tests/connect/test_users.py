@@ -102,6 +102,7 @@ def test_create_reset_preserve_other_accounts_and_secrets(environment):
     original = json.loads(db.read_text())["users"]["owner"]
     preview = run("create", email="dev@example.test")
     assert not preview["applied"] and not Path(preview["handoff_file"]).exists()
+    assert preview["preview"] == "Preview only. No account was created and no password setup email was sent. Run again with --confirm to apply."
     assert not state["calls"]
     created = run("create", email="dev@example.test", apply=True)
     handoff = Path(created["handoff_file"])
@@ -122,6 +123,14 @@ def test_create_reset_preserve_other_accounts_and_secrets(environment):
     with pytest.raises(UsageError):
         run("create", email="dev@example.test", apply=True)
     assert db.read_bytes() == before
+
+
+def test_reset_password_preview_states_that_no_email_was_sent(environment):
+    run, db, state, _ = environment
+    before = db.read_bytes()
+    preview = run("reset-password", "owner")
+    assert preview["preview"] == "Preview only. No password changed or email was sent. Run again with --confirm to apply."
+    assert db.read_bytes() == before and not state["calls"]
 
 
 @pytest.mark.parametrize("passkey_uv_two_factors", (False, True))
@@ -165,6 +174,7 @@ def test_smtp_password_setup_requests_email_without_a_handoff(environment, monke
     assert "handoff_file" not in preview and "without confirming email delivery" in preview["impact"]
     created = run("create", email="dev@example.test", apply=True)
     assert created["password_setup_email_requested"] and "handoff_file" not in created
+    assert created["delivery_status"] == "Email requested; inbox delivery not verified."
     handoffs = db.parent.parent / "handoffs"
     handoffs.mkdir(mode=0o700)
     legacy = handoffs / "dev-create-0001.txt"
@@ -459,7 +469,7 @@ def test_cli_default_manifest_and_conditional_apply(monkeypatch):
 def test_users_cli_help_describes_smtp_invitation():
     from anvil_serving.connect import cli
     users_parser = next(action.choices["users"] for action in cli._parser()._actions if getattr(action, "choices", None))
-    assert "create adds an account" in users_parser.format_help()
+    assert "Create an account" in users_parser.format_help()
     assert "password-setup email" in users_parser.format_help()
 
 

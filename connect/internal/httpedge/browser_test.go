@@ -282,6 +282,67 @@ func TestBrowserLoginCallbackAndNativeHeaders(t *testing.T) {
 	}
 }
 
+func TestBrowserDoesNotCacheAuthenticatedDocuments(t *testing.T) {
+	browser, _ := browserFixture(t, "none", func(w http.ResponseWriter, r *http.Request, _ config.Resource, _ session.Admission) {
+		switch r.URL.Path {
+		case "/app.js":
+			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		case "/report":
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		case "/invalid":
+			w.Header().Set("Content-Type", "text/html; charset")
+		}
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		_, _ = w.Write([]byte("<!doctype html>"))
+	})
+	for name, request := range map[string]*http.Request{
+		"html-accept": browserRequest(http.MethodGet, "/report", nil),
+		"wildcard":    browserRequest(http.MethodGet, "/report", nil),
+		"absent":      browserRequest(http.MethodGet, "/report", nil),
+		"missing":     browserRequest(http.MethodGet, "/missing", nil),
+		"invalid":     browserRequest(http.MethodGet, "/invalid", nil),
+		"asset":       browserRequest(http.MethodGet, "/app.js", nil),
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := request
+			r.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")
+			switch name {
+			case "html-accept":
+				r.Header.Set("Accept", "text/html,application/xhtml+xml")
+			case "wildcard":
+				r.Header.Set("Accept", "*/*")
+			case "asset":
+				r.Header.Set("Accept", "text/javascript,*/*;q=0.8")
+			}
+			w := httptest.NewRecorder()
+			browser.ServeHTTP(w, r)
+			if w.Code != http.StatusOK {
+				t.Fatalf("status = %d", w.Code)
+			}
+			if name != "asset" && w.Header().Get("Cache-Control") != "no-store" {
+				t.Fatalf("HTML cache policy = %q", w.Header().Get("Cache-Control"))
+			}
+			if name == "asset" && w.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
+				t.Fatalf("asset cache policy = %q", w.Header().Get("Cache-Control"))
+			}
+		})
+	}
+}
+
+type flushingResponseRecorder struct {
+	*httptest.ResponseRecorder
+	flushed bool
+}
+
+func (w *flushingResponseRecorder) Flush() { w.flushed = true }
+
+func TestNoStoreResponseWriterPreservesStreamingFlush(t *testing.T) {
+	recorder := &flushingResponseRecorder{ResponseRecorder: httptest.NewRecorder()}
+	if err := http.NewResponseController(noStoreResponseWriter{recorder}).Flush(); err != nil || !recorder.flushed {
+		t.Fatalf("streaming flush = %v, flushed = %t", err, recorder.flushed)
+	}
+}
+
 func TestBrowserRejectsOriginCookieAndCallbackAmbiguity(t *testing.T) {
 	var dispatched atomic.Int32
 	browser, authority := browserFixture(t, "none", func(http.ResponseWriter, *http.Request, config.Resource, session.Admission) { dispatched.Add(1) })

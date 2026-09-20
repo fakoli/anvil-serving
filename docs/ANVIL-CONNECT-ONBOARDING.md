@@ -11,6 +11,15 @@ not enabled. Installations without SMTP retain private operator handoffs.
 On the authentication host, after installing the updated standalone manager:
 
 ```sh
+sudo anvil-connect-ctl resources
+```
+
+Copy the exact browser resource IDs from this list; application names and resource
+IDs can differ. For example, a Workbench installation might use `dashboard`
+instead of `workbench`. The list includes URLs and `resource:member` / `resource:admin`
+grant values. It describes configuration, not live health or existing access.
+
+```sh
 sudo anvil-connect-ctl users create developer --email developer@example.test --grant workbench:member --confirm
 ```
 
@@ -27,6 +36,17 @@ minutes and can be used once. Credentials are not printed in command output.
 Authelia must be running
 so it can issue the setup link; the command refuses an inactive provider before
 changing the account.
+Without `--confirm`, this command only previews the operation: no account is
+created and no email is sent. An applied SMTP operation reports **Email requested;
+inbox delivery not verified**. Check the provider's delivery record when the
+developer has not received the message; do not repeat account creation.
+
+Managed HTML email presents a **Set up your password** button, a replacement-link
+action, and a service-home link when a landing destination is declared. Plain-text
+email retains the complete link. Authelia uses the same notification for initial
+setup and later recovery, so the message explicitly covers both. Its upstream
+subject and password page still use reset terminology; the template does not
+pretend to distinguish an invitation from an ordinary password reset.
 With passkey login enabled, a new account still must complete this setup because
 it has no registered passkey yet.
 If creation reports that the account exists but access provisioning failed,
@@ -50,13 +70,29 @@ If password setup failed after creation, finish the intended grants with
    sudo anvil-connect-ctl users code developer --confirm
    ```
 
-4. After authentication, the service home shows square tiles for their assigned
+4. Registering a passkey does not necessarily complete the current authentication
+   challenge. Finish sign-in with the registered passkey or the required second
+   factor. With `gateway.gateway.portal_host` or `authelia.landing_resource`
+   declared, the managed default destination leads to the service home when
+   there is no explicit service destination. An existing application sign-in
+   destination takes precedence.
+5. After authentication, the service home shows square tiles for their assigned
    browser services, account/passkey settings, installation, and terminal help.
 
 If the setup link expires, the developer requests a new password reset on the
 Authelia page. SMTP sends the fresh link directly. With filesystem delivery,
 the operator runs `users code` to export it; that command recognizes both
 password-reset links and passkey verification codes.
+
+The pinned Authelia flow consumes the link while validating the password page,
+before the new password is submitted. A refresh or second tab can therefore show
+an already-used-link error. Request a replacement instead of reopening the same
+link. The email provides that recovery action; it does not change the upstream
+token lifecycle or fix an unavailable password field.
+
+Password recovery proves access to the account's email address. Password hints
+and security questions are not prerequisites. Changing a known password in account
+settings is a different flow from recovering a forgotten password.
 
 Links and codes must have been requested within five minutes. The filesystem notifier
 retains only the newest message, so handle manual invitations one at a time. Password
@@ -82,6 +118,19 @@ remote machine where the SDK runs. See the [terminal flow](ANVIL-CONNECT-DEVICE-
 for client configuration and API-principal provisioning.
 
 ## Change access or recover an account
+
+Inspect local sign-in accounts without restarting services:
+
+```sh
+sudo anvil-connect-ctl users list
+sudo anvil-connect-ctl users show developer
+```
+
+These commands show usernames, emails, groups and disabled status, excluding
+password hashes and factors. They do not report Connect grants; use **Manage
+access** on the service home to inspect current grants. Account groups do not
+establish service access. Use `users access --help` for the replacement semantics
+and `users create --help` for invitation options.
 
 ```sh
 sudo anvil-connect-ctl users access developer --grant workbench:member --confirm
@@ -160,6 +209,74 @@ SMTP delivery does not create local code or setup-link handoff files.
 The reset endpoint conceals delivery failures to prevent account enumeration;
 a successful request alone does not prove receipt. Check provider delivery status
 if the message does not arrive.
+Distinguish requested, delivered, bounced and unknown; a request receipt is not a
+delivery receipt. Provider recipient fields may contain display names, so compare
+parsed email addresses when correlating records.
+
+## Repeatable checks without a personal sign-in
+
+From a development checkout, run the existing synthetic identity-provider and
+browser-edge contracts:
+
+```sh
+go -C connect test ./internal/session ./internal/httpedge -count=1
+```
+
+These checks use temporary accounts, state and keys. They exercise OIDC callbacks,
+service-home destinations, grants, logout, expiry and protected-document caching
+without contacting a real provider or using a personal browser session. The native
+CI job already runs these packages. For CLI previews, email rendering and managed
+template upgrades, run:
+
+```sh
+python scripts/run_tests.py tests/connect/ -x -q
+```
+
+The existing Chromium fixtures add actual page interaction. After installing the
+[browser gate prerequisites](ANVIL-CONNECT-IMPLEMENTATION.md#reproduce-the-gates),
+the synthetic provider suite runs without a real account:
+
+```sh
+npm --prefix connect run test:browser -- test/browser.spec.mjs
+```
+
+The separate `browser_edge.spec.mjs` suite uses isolated pinned Authelia/Caddy
+processes and local notification capture. Root-login redirection runs in that
+suite; passkey registration/login uses a virtual WebAuthn authenticator and needs
+an explicit opt-in:
+
+```sh
+ANVIL_CONNECT_BROWSER_PASSKEY_FIXTURE=1 npm --prefix connect run test:browser -- test/browser_edge.spec.mjs
+```
+
+It does not need a personal password manager or inbox. Neither fixture establishes real email
+delivery, the original first-password field defect, mobile autofill behavior,
+1Password integration, or Open WebUI's question/location UI.
+
+Use automated checks for routine refactors. Repeat the live journey when deploying
+authentication behavior or changing the provider, mail delivery, public edge or
+password-manager integration; it is not a prerequisite for every local edit.
+
+## Browser acceptance
+
+Validate through the normal Connect URL with a dedicated test account after
+deployment. Cover first setup, expired/consumed-link recovery, the actual mobile
+username field, password-manager enrollment, completion of authentication, service
+selection and a return visit after session expiry. Do not treat a legacy
+Observatory input test as proof about Authelia's hosted input.
+
+Authenticated browser documents must not survive session expiry in the browser
+cache. Connect marks those responses `no-store`; native asset caching remains
+available. A previously cached application shell can otherwise display a generic
+error while protected API requests correctly return 401. Existing cached copies
+are not erased by a server update, so include a fresh navigation in acceptance.
+
+For Open WebUI, separately exercise its native question card, answer/cancel, and
+location permission denial. A missing prompt can result from the selected tool
+integration, chat state, browser transport or permissions. Inspect the concrete
+request before changing proxy settings. The repository's
+`.tickets/2026-09-20-connect-onboarding-ux.md` records version-specific evidence
+and unresolved acceptance gates.
 
 ## Keep recovery copies
 
