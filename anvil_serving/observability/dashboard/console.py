@@ -32,22 +32,36 @@ _RUN_CACHE_BYTES = _RUN_CACHE_ENTRIES * _RUN_PAGE_BYTES
 
 def _run_bindings(config):
     raw = config.get("runs", {})
-    fields(raw, optional=("benchmark",))
-    binding = raw.get("benchmark")
-    if binding is None:
-        return {}
-    fields(binding, required=("resource_id",))
-    resource_id = identifier(binding["resource_id"])
+    fields(raw, optional=("benchmark", "evidence"))
     # A logical run grant is configured independently. It cannot quietly reuse
-    # a controller experiment resource as browser read authority.
+    # a controller resource as browser read authority.
     controller = config.get("controller", {})
     resources = controller.get("resources", []) if isinstance(controller, dict) else []
     if isinstance(resources, dict):
         resources = [dict(value, id=key) for key, value in resources.items() if isinstance(value, dict)]
-    if any(isinstance(item, dict) and item.get("id") == resource_id and item.get("kind") == "experiment"
-           for item in resources):
-        raise ValueError("benchmark runs require a dedicated read grant")
-    return {BENCHMARK_SOURCE: {"resource_id": resource_id}}
+    bindings = {}
+    grants = set()
+    for source, binding in raw.items():
+        required = ("resource_id", "owner_id", "root") if source == "evidence" else ("resource_id",)
+        fields(binding, required=required)
+        resource_id = identifier(binding["resource_id"])
+        if resource_id in grants or any(
+            isinstance(item, dict) and item.get("id") == resource_id
+            for item in resources
+        ):
+            raise ValueError("run sources require distinct dedicated read grants")
+        grants.add(resource_id)
+        value = {"resource_id": resource_id}
+        if source == "evidence":
+            root = binding["root"]
+            if (type(root) is not str or len(root.encode("utf-8")) > 4096
+                    or any(ord(char) < 32 or ord(char) == 127 for char in root)
+                    or not Path(root).is_absolute() or Path(root) == Path(Path(root).anchor)
+                    or ".." in Path(root).parts):
+                raise ValueError("evidence runs require a bounded declared catalog root")
+            value.update(owner_id=identifier(binding["owner_id"]), root=str(Path(root)))
+        bindings[source] = value
+    return bindings
 
 
 def _origin_identity(value):
@@ -182,8 +196,14 @@ class Console:
         self._run_cache_bytes = 0
         self._run_cache_lock = threading.Lock()
         self._benchmark_slot = threading.BoundedSemaphore(1)
+        self.evidence_runs = None
+        if "evidence" in self.run_bindings:
+            from .evidence_runs import EvidenceRuns
+            self.evidence_runs = EvidenceRuns(self.run_bindings["evidence"])
 
     def close(self):
+        if self.evidence_runs is not None:
+            self.evidence_runs.close()
         self.workbench.close()
         self._workers.shutdown(wait=True)
         self.store.close()
@@ -443,11 +463,11 @@ class Console:
                 self._run_cache[key] = (len(raw), json.loads(raw))
                 self._run_cache_bytes += len(raw)
 
-    def _stale_benchmark_runs(self, key):
+    def _stale_runs(self, key, source_id):
         cached = self._cached_runs(key)
         if cached is None:
             return {"items": [], "next_cursor": None, "sources": [{
-                "id": BENCHMARK_SOURCE, "status": "unavailable", "deadline_seconds": 2.0,
+                "id": source_id, "status": "unavailable", "deadline_seconds": 2.0,
                 "truncated": False, "partial": False,
             }]}
         for source in cached.get("sources", []):
@@ -469,16 +489,39 @@ class Console:
             raise ObservatoryError("invalid_run_list", "Select a valid run cursor.")
         key = self._run_cache_key(session, resource_id, limit, cursor)
         if self.adapter is None or not self._benchmark_slot.acquire(blocking=False):
-            return self._stale_benchmark_runs(key)
+            return self._stale_runs(key, BENCHMARK_SOURCE)
         try:
             result = list_benchmark_runs(
                 self.adapter, can_read=session.principal.can_read, resource_id=resource_id,
                 limit=limit, cursor=cursor,
             )
         except Exception:
-            return self._stale_benchmark_runs(key)
+            return self._stale_runs(key, BENCHMARK_SOURCE)
         finally:
             self._benchmark_slot.release()
+        self._cache_runs(key, result)
+        return result
+
+    def _evidence_runs(self, session, query):
+        binding = self.run_bindings.get("evidence")
+        if binding is None:
+            raise ObservatoryError("not_found", "This run source is unavailable.", 404)
+        resource_id = binding["resource_id"]
+        self.access.permit(session, resource_id)
+        limit, cursor = self._run_limit(query), query.get("cursor")
+        if cursor is not None and (type(cursor) is not str or len(cursor) > 128):
+            raise ObservatoryError("invalid_run_list", "Select a valid run cursor.")
+        key = self._run_cache_key(session, resource_id, limit, cursor)
+        authority = digest({"principal": session.principal.identity, "resource": resource_id,
+                            "policy": self.policy_digest})
+        try:
+            result = self.evidence_runs.page(limit=limit, cursor=cursor, authority_key=authority)
+        except ObservatoryError as error:
+            if error.status < 500:
+                raise
+            return self._stale_runs(key, binding["owner_id"])
+        except Exception:
+            return self._stale_runs(key, binding["owner_id"])
         self._cache_runs(key, result)
         return result
 
@@ -518,6 +561,10 @@ class Console:
         if benchmark and session.principal.can_read(benchmark["resource_id"]):
             items.append({"id": BENCHMARK_SOURCE, "kind": "benchmark",
                           "resource_id": benchmark["resource_id"], "status": "available"})
+        evidence = self.run_bindings.get("evidence")
+        if evidence and session.principal.can_read(evidence["resource_id"]):
+            items.append({"id": "evidence", "kind": "imported", "label": "Retained evidence",
+                          "resource_id": evidence["resource_id"], "status": "available"})
         return {"items": items}
 
     def _reconcile(self, item):
@@ -589,6 +636,8 @@ class Console:
                 return self._operation_runs(session, query)
             if source == BENCHMARK_SOURCE:
                 return self._benchmark_runs(session, query)
+            if source == "evidence":
+                return self._evidence_runs(session, query)
             raise ObservatoryError("not_found", "This run source is unavailable.", 404)
         if route == "operations":
             fields(query)
