@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -534,6 +535,15 @@ func shape(d *json.Decoder, kind reflect.Type, depth int) error {
 	}
 	for kind.Kind() == reflect.Pointer {
 		kind = kind.Elem()
+	}
+	// time.Time marshals as an RFC 3339 JSON string, despite being a Go struct.
+	// Keep config.Decode's duplicate-key and Unicode checks while allowing that
+	// exact standard-library wire representation for closed response types.
+	if kind == reflect.TypeOf(time.Time{}) {
+		if _, ok := token.(string); !ok {
+			return errors.New("RFC 3339 string required")
+		}
+		return nil
 	}
 	switch kind.Kind() {
 	case reflect.Struct:

@@ -11,9 +11,9 @@ import (
 	"os"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
+	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"golang.org/x/sys/unix"
 )
 
@@ -73,31 +73,11 @@ func Call(ctx context.Context, socketPath string, input Request) (Response, erro
 	if response.StatusCode != http.StatusOK || len(response.Header.Values("Content-Type")) != 1 || response.Header.Get("Content-Type") != "application/json" {
 		return Response{}, ErrAdmin
 	}
-	output, err := decodeResponse(io.LimitReader(response.Body, maxBody+1))
-	if err != nil || output.Operation != input.Operation {
+	var output Response
+	if config.Decode(io.LimitReader(response.Body, maxBody+1), &output) != nil || output.Operation != input.Operation {
 		return Response{}, ErrAdmin
 	}
 	return output, nil
-}
-
-// decodeResponse keeps the native response boundary closed while accepting
-// Deletion.CompletedAt's RFC 3339 JSON string. config.Decode cannot represent
-// time.Time's wire shape because it validates against Go's struct fields.
-func decodeResponse(reader io.Reader) (Response, error) {
-	raw, err := io.ReadAll(io.LimitReader(reader, maxBody+1))
-	if err != nil || len(raw) > maxBody || !utf8.Valid(raw) {
-		return Response{}, ErrAdmin
-	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	var response Response
-	if err := decoder.Decode(&response); err != nil {
-		return Response{}, ErrAdmin
-	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return Response{}, ErrAdmin
-	}
-	return response, nil
 }
 
 func validSocket(path string) bool {

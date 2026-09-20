@@ -215,6 +215,19 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 	if err != nil || !bytes.Contains(wirePrepared, []byte(`"completed_at":"0001-01-01T00:00:00Z"`)) {
 		t.Fatalf("pending native-absent deletion wire timestamp = %s, %v", wirePrepared, err)
 	}
+	var decodedPrepared Response
+	if err := config.Decode(bytes.NewReader(wirePrepared), &decodedPrepared); err != nil || decodedPrepared.Deletion == nil || !decodedPrepared.Deletion.CompletedAt.IsZero() {
+		t.Fatalf("pending native-absent deletion response decoder = %#v, %v", decodedPrepared, err)
+	}
+	for _, raw := range [][]byte{
+		[]byte(`{"operation":"human-inspect","operation":"human-inspect"}`),
+		[]byte(`{"operation":"\ud800"}`),
+	} {
+		var output Response
+		if err := config.Decode(bytes.NewReader(raw), &output); err == nil {
+			t.Fatalf("closed native response decoder accepted %s", raw)
+		}
+	}
 	retry, err := Call(context.Background(), pinned.Path(), Request{Operation: "human-delete-prepare-absent", Principal: fenced.ID, Username: "idp-only", RequestID: requestID})
 	if err != nil || retry.Deletion == nil || retry.Deletion.RequestID != requestID || retry.Deletion.Generation != 2 {
 		t.Fatalf("native-absent deletion retry = %#v, %v", retry, err)
