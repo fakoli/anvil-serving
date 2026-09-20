@@ -12,6 +12,19 @@ from anvil_serving.workbench_app import project_files
 from anvil_serving.workbench_app.project_files import MAX_GIT_BYTES, MAX_TEXT_BYTES, ProjectFiles
 
 
+_SAFE_DESCRIPTOR_ROOTS = os.name == "posix" and all(
+    hasattr(os, name) for name in ("O_DIRECTORY", "O_CLOEXEC", "O_NOFOLLOW", "O_NONBLOCK")
+)
+requires_safe_project_roots = pytest.mark.skipif(
+    not _SAFE_DESCRIPTOR_ROOTS,
+    reason="requires safe POSIX project-root descriptors",
+)
+requires_safe_fifo = pytest.mark.skipif(
+    not (_SAFE_DESCRIPTOR_ROOTS and hasattr(os, "mkfifo")),
+    reason="requires safe POSIX project-root descriptors and FIFO support",
+)
+
+
 class Projects:
     def __init__(self, project):
         self.project_row = project
@@ -51,6 +64,7 @@ def _error(call, code):
     assert caught.value.code == code
 
 
+@requires_safe_project_roots
 def test_tree_and_text_are_authorized_bounded_and_never_return_absolute_paths(tmp_path):
     reader, projects, root = _reader(tmp_path)
     (root / "docs").mkdir()
@@ -69,12 +83,14 @@ def test_tree_and_text_are_authorized_bounded_and_never_return_absolute_paths(tm
     assert projects.calls == [("session", "product"), ("session", "product")]
 
 
+@requires_safe_project_roots
 @pytest.mark.parametrize("path", ["/etc/passwd", "../escape", "%252e%252e/escape", "docs%2f..%2fescape", "docs//guide", "docs/./guide", "docs/line\r\n", ".env"])
 def test_paths_reject_absolute_encoded_and_secret_input(tmp_path, path):
     reader, _, _ = _reader(tmp_path)
     _error(lambda: reader.text("session", "product", "primary", path), "unsafe_project_path" if path != ".env" else "project_file_unavailable")
 
 
+@requires_safe_fifo
 def test_regular_open_rejects_symlink_special_binary_and_oversized_files(tmp_path):
     reader, _, root = _reader(tmp_path)
     outside = tmp_path / "outside.txt"
@@ -83,12 +99,18 @@ def test_regular_open_rejects_symlink_special_binary_and_oversized_files(tmp_pat
     (root / "binary.bin").write_bytes(b"a\0b")
     (root / "large.txt").write_bytes(b"x" * (MAX_TEXT_BYTES + 1))
     os.mkfifo(root / "fifo")
+    cases = [
+        ("link.txt", "project_file_unavailable"),
+        ("fifo", "project_file_unavailable"),
+        ("binary.bin", "project_text_unavailable"),
+        ("large.txt", "project_file_too_large"),
+    ]
 
-    for path, code in (("link.txt", "project_file_unavailable"), ("fifo", "project_file_unavailable"),
-                       ("binary.bin", "project_text_unavailable"), ("large.txt", "project_file_too_large")):
+    for path, code in cases:
         _error(lambda path=path: reader.text("session", "product", "primary", path), code)
 
 
+@requires_safe_project_roots
 def test_openat_keeps_the_original_root_when_configured_path_is_replaced(tmp_path, monkeypatch):
     reader, _, root = _reader(tmp_path)
     (root / "safe.txt").write_text("safe", encoding="utf-8")
@@ -113,6 +135,7 @@ def test_openat_keeps_the_original_root_when_configured_path_is_replaced(tmp_pat
     assert replaced
 
 
+@requires_safe_project_roots
 def test_root_open_refuses_a_symlinked_ancestor(tmp_path):
     real_parent = tmp_path / "real"
     root = real_parent / "checkout"
@@ -133,10 +156,18 @@ def test_unresolved_owner_and_cross_project_never_open_a_root(tmp_path):
     assert projects.calls == [("session", "product"), ("session", "other-project")]
 
 
+def test_missing_safe_descriptor_flags_fail_closed(tmp_path, monkeypatch):
+    reader, _, root = _reader(tmp_path)
+    (root / "safe.txt").write_text("safe", encoding="utf-8")
+    monkeypatch.delattr(project_files.os, "O_DIRECTORY", raising=False)
+    _error(lambda: reader.text("session", "product", "primary", "safe.txt"), "project_root_unsupported")
+
+
 def _git(root, *args):
     return subprocess.run(("git", *args), cwd=root, check=True, capture_output=True)
 
 
+@requires_safe_project_roots
 def test_diff_and_worktree_use_the_declared_checkout_and_literal_path_arguments(tmp_path):
     reader, _, root = _reader(tmp_path)
     _git(root, "init", "-q")
@@ -154,6 +185,7 @@ def test_diff_and_worktree_use_the_declared_checkout_and_literal_path_arguments(
     assert len(worktree["head"]) == 40 and str(root) not in repr(worktree)
 
 
+@requires_safe_project_roots
 def test_diff_uses_literal_safe_regular_files_and_disables_hostile_filters(tmp_path):
     reader, _, root = _reader(tmp_path)
     _git(root, "init", "-q")
@@ -188,6 +220,7 @@ def test_diff_uses_literal_safe_regular_files_and_disables_hostile_filters(tmp_p
     _error(lambda: reader.diff("session", "product", "primary", "normal.txt", kind="all"), "invalid_project_diff")
 
 
+@requires_safe_project_roots
 def test_diff_does_not_follow_a_deleted_or_nonregular_target(tmp_path):
     reader, _, root = _reader(tmp_path)
     _git(root, "init", "-q")
@@ -201,6 +234,7 @@ def test_diff_does_not_follow_a_deleted_or_nonregular_target(tmp_path):
     _error(lambda: reader.diff("session", "product", "primary", "deleted.txt"), "project_file_unavailable")
 
 
+@requires_safe_project_roots
 def test_staged_empty_file_remains_a_staged_deletion(tmp_path):
     reader, _, root = _reader(tmp_path)
     _git(root, "init", "-q")
@@ -216,6 +250,7 @@ def test_staged_empty_file_remains_a_staged_deletion(tmp_path):
     assert "-old" in staged["diff"] and "+old" not in staged["diff"]
 
 
+@requires_safe_project_roots
 def test_diff_refuses_binary_bytes_and_bounded_renderer_failures(tmp_path):
     reader, projects, root = _reader(tmp_path)
     _git(root, "init", "-q")
@@ -244,6 +279,7 @@ def test_diff_refuses_binary_bytes_and_bounded_renderer_failures(tmp_path):
     _error(lambda: slow_reader.diff("session", "product", "primary", "text.txt"), "project_read_timeout")
 
 
+@requires_safe_project_roots
 def test_diff_keeps_descriptor_pinned_working_bytes_after_parent_replacement(tmp_path, monkeypatch):
     reader, _, root = _reader(tmp_path)
     _git(root, "init", "-q")
@@ -274,6 +310,7 @@ def test_diff_keeps_descriptor_pinned_working_bytes_after_parent_replacement(tmp
     assert replaced and "pinned" in result["diff"] and "escaped" not in result["diff"]
 
 
+@requires_safe_project_roots
 def test_owner_deadline_refuses_a_slow_text_read(tmp_path):
     reader, _, root = _reader(tmp_path, clock=iter((0.0, 0.0, 3.0)).__next__, deadline_seconds=1)
     (root / "slow.txt").write_text("content", encoding="utf-8")
