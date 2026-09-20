@@ -59,6 +59,8 @@ class WorkbenchService:
                 max_wall_seconds=pi_config.get("max_wall_seconds", 4 * 3600), max_per_principal=pi_config.get("max_per_principal", 2), max_per_task=pi_config.get("max_per_task", 1), reconcile=self._reconcile, attach_factory=self._attach, stop_runner=self._stop_runner)
             self.timer = threading.Thread(target=self._tick, daemon=True, name="workbench-pi-events")
             self.timer.start()
+        from .workspace_runs import WorkspaceRuns
+        self.workspace_runs = WorkspaceRuns(self.store, self.projects, self.pi_store)
 
     def _runner(self, session, session_dir):
         from .pi_rpc import PiRpcClient
@@ -291,6 +293,14 @@ class WorkbenchService:
         else:
             result["host_pi"] = {"available": False, "reason": "Host Pi is available only to its configured Connect owner. Manage the connection in private operator configuration."}
         return result
+
+    def workspace_run_page(self, session, source, *, limit=100, cursor=None):
+        """List one authorized Workbench-owned run source for the dashboard."""
+        return self.workspace_runs.page(session, identifier(source), limit=limit, cursor=cursor)
+
+    def workspace_run_sources(self, session):
+        """Discover only configured run sources with current project grants."""
+        return self.workspace_runs.sources(session)
 
     def read(self, route, query, session):
         if route.startswith("workloads/") and route.endswith("/logs") and len(route.split("/")) == 3:
