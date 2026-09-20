@@ -8,12 +8,17 @@ window.addEventListener("observatory-session-changed", () => { draft = { connect
 const active = data => ["running", "cancel_requested"].includes(data?.status);
 export async function playgroundView(ctx, tab = "pi") {
   const modelTest = tab === "model-test";
+  const hostPiAllowed = ctx.session?.host_pi_available === true;
   const root = el("div", { class: "workbench-page playground-page stack", "data-story": "US-PLAY-01" },
     el("nav", { class: "local-tabs playground-modes", "aria-label": "Playground modes" },
-      el("a", { href: "#/playground", "aria-current": !modelTest ? "page" : null, text: "Pi" }),
+      ...(hostPiAllowed ? [el("a", { href: "#/playground", "aria-current": !modelTest ? "page" : null, text: "Pi" })] : []),
       el("a", { href: "#/playground/model-test", "aria-current": modelTest ? "page" : null, text: "Model test" })));
   if (modelTest) {
     root.append(await modelTestView(ctx));
+    return root;
+  }
+  if (!hostPiAllowed) {
+    root.append(notice("Pi is available only to Workbench administrators.", "warning"));
     return root;
   }
   const locationParams = new URL(location.href).searchParams;

@@ -100,13 +100,13 @@ Connect admission for it.
 
 To show that native UI in Playground, add the following `host_pi` fragment to
 the Observatory policy's `workbench` section. It names the dedicated Connect resource, its HTTPS origin,
-the exact owner subject, and the inspected runtime pin:
+the required Connect administrator role, explicit resource grant, and inspected runtime pin:
 
 ```json
 {
   "host_pi": {
     "id": "host-pi", "resource_id": "host-pi",
-    "origin": "https://pi.example.test", "owner_subject": "example-owner-subject",
+    "origin": "https://pi.example.test",
     "version": "0.9.0",
     "runtime_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   }
@@ -114,7 +114,7 @@ the exact owner subject, and the inspected runtime pin:
 ```
 
 Replace the illustrative digest with the inspected installed runtime digest.
-The signed Connect subject must match the owner and have the explicit resource
+The signed Connect application role must be `admin` and have the explicit resource
 grant. A wildcard grant alone is insufficient. Host Pi retains its native
 history and filesystem authority; this declaration does not make it a confined
 task runner. Its origin must differ from the dashboard origin.
@@ -194,7 +194,7 @@ managed Pi sessions under their existing project read grants. Pi metadata
 reads are unavailable on platforms without the required safe filesystem
 descriptor operations; canonical session storage continues to work.
 The optional native bridge adds a separate **Native Pi sessions** source for
-the exact Connect owner with explicit host and project grants. It projects
+a Connect administrator with explicit host and project grants. It projects
 metadata from the native owner once, without copying transcripts. Its complete
 inventory is bounded to 512 sessions and 128 KiB; larger or malformed inventories
 report unavailable rather than silently dropping sessions. Pages retain one

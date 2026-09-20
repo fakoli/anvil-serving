@@ -1,4 +1,4 @@
-"""The host UI is an exact Connect-owner entry, separate from task authority."""
+"""The host UI is a Connect-admin entry, separate from task authority."""
 
 import json
 from dataclasses import replace
@@ -11,7 +11,7 @@ from test_service import site  # noqa: F401
 
 def host_config():
     return {"id": "host-pi", "resource_id": "serve-a", "origin": "https://pi.example.test",
-            "owner_subject": "alice", "version": "0.9.0", "runtime_sha256": "a" * 64}
+            "version": "0.9.0", "runtime_sha256": "a" * 64}
 
 
 def host_owner_config(*names):
@@ -25,14 +25,14 @@ def host_owner_config(*names):
     {"origin": "https://user:password@pi.example.test"}, {"origin": "https://pi.example.test;*"},
     {"origin": "https://pi.example.test\r\nInjected:value"}, {"origin": "https://localhost"},
     {"origin": "https://pi.example.test:99999"}, {"version": "latest"},
-    {"runtime_sha256": "unverified"}, {"owner_subject": ""}, {"owner_subject": "a\nb"},
+    {"runtime_sha256": "unverified"}, {"owner_subject": "obsolete-owner"},
 ])
 def test_host_pin_rejects_unsafe_or_unqualified_configuration(tmp_path, change):
     with pytest.raises(ValueError):
         validate_config({"state_path": str(tmp_path / "state"), "host_pi": host_config() | change})
 
 
-def test_host_catalog_requires_connect_subject_and_resource(site):  # noqa: F811
+def test_host_catalog_requires_connect_admin_role_and_resource(site):  # noqa: F811
     console, call, mode = site
     host = host_config()
     validate_config({"state_path": console.workbench.config["state_path"], "host_pi": host})
@@ -40,13 +40,13 @@ def test_host_catalog_requires_connect_subject_and_resource(site):  # noqa: F811
     public = call("GET", "catalog")[1]["data"]["host_pi"]
     assert public["available"] is (mode == "connect")
     assert ("origin" in public) is (mode == "connect")
-    assert "owner_subject" not in public and "runtime_sha256" not in public
-
-    # A shared native role/profile must not confer another Connect subject's host.
-    host["owner_subject"] = "another-subject"
-    denied = call("GET", "catalog")[1]["data"]["host_pi"]
-    assert denied["available"] is False and host["origin"] not in json.dumps(denied)
-    host["owner_subject"] = "alice"
+    assert "runtime_sha256" not in public
+    if mode != "connect":
+        return
+    assert call("GET", "session", namespace="observatory", role="member")[0] == 200
+    member = call("GET", "catalog", role="member")[1]["data"]["host_pi"]
+    assert member["available"] is False and host["origin"] not in json.dumps(member)
+    assert call("GET", "session", namespace="observatory", role="admin")[0] == 200
     host["resource_id"] = "ungranted-host"
     denied = call("GET", "catalog")[1]["data"]["host_pi"]
     assert denied["available"] is False and "origin" not in denied
@@ -55,7 +55,7 @@ def test_host_catalog_requires_connect_subject_and_resource(site):  # noqa: F811
 def test_host_catalog_requires_an_explicit_grant_even_for_wildcard_owner(site):  # noqa: F811
     console, _, mode = site
     if mode != "connect":
-        pytest.skip("Connect owner grant boundary")
+        pytest.skip("Connect administrator grant boundary")
     console.workbench.config["host_pi"] = host_config()
     session = next(iter(console.access._sessions.values()))
     for grants, available in (({"*"}, False), ({"unrelated"}, False), ({"*", "serve-a"}, True)):
@@ -110,7 +110,7 @@ def test_host_owner_retries_the_same_native_request_and_keeps_only_safe_metadata
         def __init__(self): self.calls = []
         def ensure(self, **body): self.calls.append(body); return "native-thread"
     session = Session("key", "csrf", Principal("alice", "alice", "operator", frozenset({"serve-a", "project-a"}), frozenset()), 0,
-                      ConnectBinding("alice", "resource", "issuer", "subject", "proof", "operator"))
+                      ConnectBinding("alice", "resource", "issuer", "subject", "proof", "admin"))
     client = Client()
     owner = HostPi(host_owner_config(), PrivateStore(tmp_path / "private.sqlite"), Projects(), Access(), client)
     first = owner.create(session, "product", "retry-1", "Safe title")
@@ -143,7 +143,7 @@ def test_host_owner_persists_the_trusted_root_before_a_lost_response_and_rejects
             return "native-thread"
     def session(resources):
         return Session("key", "csrf", Principal("alice", "alice", "operator", frozenset(resources), frozenset()), 0,
-                       ConnectBinding("alice", "resource", "issuer", "subject", "proof", "operator"))
+                       ConnectBinding("alice", "resource", "issuer", "subject", "proof", "admin"))
 
     client, projects = Client(), Projects()
     owner = HostPi(host_owner_config(), PrivateStore(tmp_path / "private.sqlite"), projects, Access(), client)
@@ -178,7 +178,7 @@ def test_host_owner_association_verifies_before_persisting_and_lists_safe_native
             return [{"native_id": "native-owned", "title": "Native title", "running": True},
                     {"native_id": "native-free", "title": "Unassigned", "running": False}]
     session = Session("key", "csrf", Principal("alice", "alice", "operator", frozenset({"serve-a"}), frozenset()), 0,
-                      ConnectBinding("alice", "resource", "issuer", "subject", "proof", "operator"))
+                      ConnectBinding("alice", "resource", "issuer", "subject", "proof", "admin"))
     client = Client()
     owner = HostPi(host_owner_config(), PrivateStore(tmp_path / "private.sqlite"), Projects(), Access(), client)
     associated = owner.associate(session, "product", "adopt-1", "native-owned", "Preferred title")
@@ -213,7 +213,7 @@ def test_host_owner_allows_context_only_roots_without_task_runner_authority(tmp_
     class Client:
         def ensure(self, **body): return "native-context"
     session = Session("key", "csrf", Principal("alice", "alice", "operator", frozenset({"serve-a"}), frozenset()), 0,
-                      ConnectBinding("alice", "resource", "issuer", "subject", "proof", "operator"))
+                      ConnectBinding("alice", "resource", "issuer", "subject", "proof", "admin"))
     owner = HostPi(host_owner_config(), PrivateStore(tmp_path / "private.sqlite"), Projects(), Access(), Client())
     assert owner.create(session, "product", "new-thread")["native_id"] == "native-context"
 
@@ -235,7 +235,7 @@ def test_host_owner_hides_threads_bound_to_other_projects_and_freezes_operation_
         def list_native(self):
             return [{"native_id": "bound-other", "title": "Other project", "running": False}, {"native_id": "free", "title": "Free", "running": False}]
     session = Session("key", "csrf", Principal("alice", "alice", "operator", frozenset({"serve-a"}), frozenset()), 0,
-                      ConnectBinding("alice", "resource", "issuer", "subject", "proof", "operator"))
+                      ConnectBinding("alice", "resource", "issuer", "subject", "proof", "admin"))
     owner = HostPi(host_owner_config("other", "current"), PrivateStore(tmp_path / "private.sqlite"), Projects(), Access(), Client())
     owner.create(session, "other", "same-request")
     assert owner.list(session, "current") == [{"native_id": "free", "title": "Free", "running": False, "archived": False, "source": "native", "provenance": "unassigned"}]
@@ -247,7 +247,7 @@ def test_host_inventory_authority_binds_connect_and_configuration(site):  # noqa
     from anvil_serving.workbench_app.host_pi import HostPi
     console, _, mode = site
     if mode != "connect":
-        pytest.skip("Connect owner grant boundary")
+        pytest.skip("Connect administrator grant boundary")
     config = console.workbench.config
     config["host_pi"] = host_config() | {"token_ref": "BRIDGE_TOKEN"}
     config["projects"] = [{"id": "product", "resource_id": "serve-a"}]
@@ -287,7 +287,7 @@ def test_host_association_corruption_cannot_redirect_reads_retries_or_edits(tmp_
     owner = HostPi(host_owner_config(), store,
                    SimpleNamespace(project=lambda *_: project), SimpleNamespace(permit=lambda *_: None),
                    SimpleNamespace(ensure=lambda **_: pytest.fail("corruption reached native owner")))
-    session = SimpleNamespace(principal=SimpleNamespace(identity="alice", resources={"serve-a"}), connect_binding=SimpleNamespace(subject="alice"))
+    session = SimpleNamespace(principal=SimpleNamespace(identity="alice", resources={"serve-a"}), connect_binding=SimpleNamespace(subject="alice", role="admin"))
     key = owner._request_key("alice", "product", "request")
     poisoned = owner._new_row(project | {"id": "foreign"}, "other-request", "Foreign title", None, "create")
     store.put("host-pi-thread", "alice", key, poisoned)

@@ -203,16 +203,13 @@ def validate_config(value):
                 _normalize_project_roots(row)
     if "host_pi" in value:
         host_pi = value["host_pi"]
-        fields(host_pi, required=("id", "resource_id", "origin", "owner_subject", "version", "runtime_sha256"),
+        fields(host_pi, required=("id", "resource_id", "origin", "version", "runtime_sha256"),
                optional=("token_ref", "parent_origin", "bridge_base_url"))
         identifier(host_pi["id"])
         identifier(host_pi["resource_id"])
         origin = host_pi["origin"]
         if not _exact_https_origin(origin):
             raise ValueError("Host Pi requires an exact HTTPS origin")
-        subject = host_pi["owner_subject"]
-        if type(subject) is not str or not 1 <= len(subject.encode("utf-8")) <= 192 or any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in subject):
-            raise ValueError("Host Pi requires one exact Connect owner subject")
         if host_pi["version"] != "0.9.0" or type(host_pi["runtime_sha256"]) is not str or not re.fullmatch(r"[a-f0-9]{64}", host_pi["runtime_sha256"]):
             raise ValueError("Host Pi requires the reviewed package version and runtime digest")
         bridge_fields = {"token_ref", "parent_origin", "bridge_base_url"}

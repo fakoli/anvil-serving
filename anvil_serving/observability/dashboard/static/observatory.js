@@ -273,6 +273,8 @@ function sessionChrome(session) {
   document.getElementById("account-button").textContent = session?.authenticated
     ? "Sign out"
     : "Sign in";
+  const playground = navigation.querySelector('a[data-page="playground"]');
+  if (playground) playground.hidden = session?.host_pi_available !== true;
 }
 document
   .getElementById("account-button")
