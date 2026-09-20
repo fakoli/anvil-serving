@@ -38,6 +38,12 @@ const (
 	MaximumSessionLifetime     = 24 * time.Hour
 )
 
+// PortalResource is deliberately not a public Resource ID. It cannot enter
+// grants, connector declarations, tunnels, or native credentials.
+const PortalResource = "_connect-home"
+
+const portalReturnPath = "/_anvil-connect/home"
+
 // Config identifies the one managed OIDC issuer. ClientSecret must come from
 // a secret reference at the lifecycle layer; it is never written to Store.
 // CallbackPath is mounted independently on every browser resource hostname.
@@ -51,6 +57,7 @@ type Config struct {
 	MaxTransactions     int
 	MaxPerBrowser       int
 	HTTPClient          *http.Client
+	PortalHost          string
 }
 
 // Human is a locally provisioned browser principal. ID is a one-way digest of
@@ -156,6 +163,7 @@ type Manager struct {
 	provider               *oidc.Provider
 	endpoint               oauth2.Endpoint
 	client                 *http.Client
+	portalHost             string
 }
 
 // New discovers the issuer and constructs a strict verifier. It deliberately
@@ -177,7 +185,7 @@ func New(ctx context.Context, state *store.Store, rules []config.Rule, settings 
 		clientID: settings.ClientID, clientSecret: settings.ClientSecret,
 		callbackPath: settings.CallbackPath, transactionLifetime: settings.TransactionLifetime,
 		sessionLifetime: settings.SessionLifetime, maxTransactions: settings.MaxTransactions,
-		maxPerBrowser: settings.MaxPerBrowser, client: client,
+		maxPerBrowser: settings.MaxPerBrowser, client: client, portalHost: settings.PortalHost,
 	}
 	hosts := map[string]bool{}
 	for _, rule := range rules {
@@ -193,6 +201,10 @@ func New(ctx context.Context, state *store.Store, rules []config.Rule, settings 
 		rule.ExternalRedirects = append([]string(nil), rule.ExternalRedirects...)
 		m.rules[rule.ID] = rule
 		hosts[rule.Host] = true
+	}
+	if settings.PortalHost != "" && (hosts[settings.PortalHost] || !config.ValidHost(settings.PortalHost)) {
+		m.Close()
+		return nil, ErrConfiguration
 	}
 	ctx = oidc.ClientContext(ctx, m.client)
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, m.client)
@@ -235,7 +247,8 @@ func validSettings(settings Config) bool {
 	if !config.CanonicalPath(settings.CallbackPath) || settings.CallbackPath == "/" || strings.HasSuffix(settings.CallbackPath, "/") {
 		return false
 	}
-	return settings.TransactionLifetime >= time.Minute && settings.TransactionLifetime <= 10*time.Minute &&
+	return (settings.PortalHost == "" || config.ValidHost(settings.PortalHost)) &&
+		settings.TransactionLifetime >= time.Minute && settings.TransactionLifetime <= 10*time.Minute &&
 		settings.SessionLifetime >= time.Minute && settings.SessionLifetime <= MaximumSessionLifetime &&
 		settings.MaxTransactions >= 1 && settings.MaxTransactions <= 128 && settings.MaxPerBrowser >= 1 && settings.MaxPerBrowser <= 8
 }
@@ -249,7 +262,7 @@ func humanID(issuer, subject string) (string, bool) {
 }
 
 func (m *Manager) validateResources(resources []string) ([]string, bool) {
-	if len(resources) < 1 || len(resources) > len(m.rules) {
+	if len(resources) > len(m.rules) || (len(resources) == 0 && m.portalHost == "") {
 		return nil, false
 	}
 	seen := map[string]bool{}
@@ -489,6 +502,19 @@ func (m *Manager) Begin(resource, returnPath, binding string) (Challenge, error)
 	if !exists || !validBinding(binding) || !config.CanonicalPath(returnPath) || !underPrefix(rule.PathPrefix, returnPath) {
 		return Challenge{}, ErrDenied
 	}
+	return m.begin(resource, rule.Host, returnPath, binding)
+}
+
+// BeginPortal creates an OIDC transaction tied to the separately declared
+// home host. It has no public resource grant and can never select an app host.
+func (m *Manager) BeginPortal(binding string) (Challenge, error) {
+	if m.portalHost == "" || !validBinding(binding) {
+		return Challenge{}, ErrDenied
+	}
+	return m.begin(PortalResource, m.portalHost, portalReturnPath, binding)
+}
+
+func (m *Manager) begin(resource, host, returnPath, binding string) (Challenge, error) {
 	state, err := randomURLValue(32)
 	if err != nil {
 		return Challenge{}, err
@@ -503,7 +529,7 @@ func (m *Manager) Begin(resource, returnPath, binding string) (Challenge, error)
 	}
 	txRecord := transaction{
 		State: hashValue(state), Binding: hashValue(binding), Nonce: hashValue(nonce), PKCEVerifier: verifier,
-		Resource: resource, Host: rule.Host, RedirectURL: callbackURL(rule.Host, m.callbackPath), ReturnPath: returnPath,
+		Resource: resource, Host: host, RedirectURL: callbackURL(host, m.callbackPath), ReturnPath: returnPath,
 	}
 	// Transaction admission is finalized in oidc.go so it can centrally purge
 	// expired records while enforcing both configured transaction caps.
@@ -516,6 +542,18 @@ func (m *Manager) Begin(resource, returnPath, binding string) (Challenge, error)
 
 func (m *Manager) oauthConfig(redirectURL string) oauth2.Config {
 	return oauth2.Config{ClientID: m.clientID, ClientSecret: m.clientSecret, Endpoint: m.endpoint, RedirectURL: redirectURL, Scopes: []string{oidc.ScopeOpenID}}
+}
+
+func (m *Manager) portalTarget(resource, host string) bool {
+	return resource == PortalResource && m.portalHost != "" && host == m.portalHost
+}
+
+func (m *Manager) configuredTarget(resource, host string) (config.Rule, bool) {
+	if m.portalTarget(resource, host) {
+		return config.Rule{}, true
+	}
+	rule, ok := m.rules[resource]
+	return rule, ok && rule.Host == host
 }
 
 func sessionID(raw string) (string, bool) {
@@ -548,8 +586,8 @@ func (m *Manager) authorize(tx *store.Tx, raw, host string, requireResource bool
 	if tx.Get("sessions", sessionRecord(id), &session) != nil {
 		return Session{}, Human{}, ErrDenied
 	}
-	rule, configured := m.rules[session.Resource]
-	if !configured || rule.Host != host || session.ID != id || session.Host != host || session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || subtle.ConstantTimeCompare(session.Digest[:], digest[:]) != 1 || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || (requireResource && !hasResource(human.Resources, session.Resource)) {
+	_, configured := m.configuredTarget(session.Resource, host)
+	if !configured || session.ID != id || session.Host != host || session.Revoked || session.Generation == 0 || session.Epoch != tx.Epoch() || !tx.Now().Before(session.ExpiresAt) || tx.Now().Before(session.IssuedAt) || subtle.ConstantTimeCompare(session.Digest[:], digest[:]) != 1 || tx.Get("principals", session.Principal, &human) != nil || human.ID != session.Principal || human.Disabled || human.Generation != session.PrincipalGeneration || (requireResource && !hasResource(human.Resources, session.Resource)) {
 		return Session{}, Human{}, ErrDenied
 	}
 	if _, valid := m.validateApplicationRoles(human.Resources, human.ApplicationRoles); !valid {
@@ -597,8 +635,8 @@ func (m *Manager) CheckTx(tx *store.Tx, admitted Admission) error {
 	}
 
 	var session Session
-	rule, configured := m.rules[admitted.Resource]
-	if tx.Get("sessions", sessionRecord(admitted.SessionID), &session) != nil || session.ID != admitted.SessionID || !configured || rule.Host != admitted.Host || session.Generation != admitted.SessionGeneration || session.Principal != admitted.Principal || session.PrincipalGeneration != admitted.PrincipalGeneration || session.Resource != admitted.Resource || session.Host != admitted.Host || session.Epoch != admitted.Epoch || !session.ExpiresAt.Equal(admitted.ExpiresAt) {
+	_, configured := m.configuredTarget(admitted.Resource, admitted.Host)
+	if tx.Get("sessions", sessionRecord(admitted.SessionID), &session) != nil || session.ID != admitted.SessionID || !configured || session.Generation != admitted.SessionGeneration || session.Principal != admitted.Principal || session.PrincipalGeneration != admitted.PrincipalGeneration || session.Resource != admitted.Resource || session.Host != admitted.Host || session.Epoch != admitted.Epoch || !session.ExpiresAt.Equal(admitted.ExpiresAt) {
 		return ErrDenied
 	}
 	var human Human

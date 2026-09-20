@@ -434,3 +434,42 @@ func TestGatewayResourceDisplayNameIsOptionalAndBounded(t *testing.T) {
 		}
 	}
 }
+
+func TestGatewayPortalHostIsOptionalButClosedWhenPresent(t *testing.T) {
+	g := gateway(t)
+	data, err := json.Marshal(g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadGateway(bytes.NewReader(data)); err != nil {
+		t.Fatalf("omitted portal host rejected: %v", err)
+	}
+	g.PortalHost = "home.example.test"
+	data, err = json.Marshal(g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := ReadGateway(bytes.NewReader(data))
+	if err != nil || decoded.PortalHost != g.PortalHost {
+		t.Fatalf("valid portal host rejected: %#v %v", decoded.PortalHost, err)
+	}
+	for _, replacement := range [][]byte{
+		[]byte(`"portal_host":""`),
+		[]byte(`"portal_host":null`),
+		[]byte(`"portal_host":"` + g.Resources[0].Rule.Host + `"`),
+		[]byte(`"portal_host":"Home.example.test"`),
+	} {
+		corrupt := bytes.Replace(data, []byte(`"portal_host":"home.example.test"`), replacement, 1)
+		if _, err := ReadGateway(bytes.NewReader(corrupt)); err == nil {
+			t.Fatalf("invalid portal host accepted: %s", replacement)
+		}
+	}
+	for _, corrupt := range [][]byte{
+		bytes.Replace(data, []byte(`"portal_host":`), []byte(`"unknown":1,"portal_host":`), 1),
+		bytes.Replace(data, []byte(`"portal_host":`), []byte(`"":1,"portal_host":`), 1),
+	} {
+		if _, err := ReadGateway(bytes.NewReader(corrupt)); err == nil {
+			t.Fatal("closed gateway reader accepted an unknown portal field")
+		}
+	}
+}

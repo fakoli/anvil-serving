@@ -124,11 +124,18 @@ func (c GatewayConfig) Validate() error {
 	if c.Schema != "anvil-connect.gateway-runtime/v1" || c.Gateway.Validate() != nil || !config.ValidHost(c.ControlHost) || !config.ValidHost(c.TunnelHost) || c.ControlHost == c.TunnelHost || !absolutePath(c.StateDirectory) || !absolutePath(c.TunnelBinary) || !config.LoopbackAddress(c.TunnelListen) || c.TunnelListen == c.Gateway.Listen || (c.BrowserSessionLifetimeSeconds != nil && (*c.BrowserSessionLifetimeSeconds < 60 || *c.BrowserSessionLifetimeSeconds > int(session.MaximumSessionLifetime/time.Second))) {
 		return ErrConfiguration
 	}
+	portal := c.Gateway.PortalHost
+	if portal != "" && (portal == c.ControlHost || portal == c.TunnelHost) {
+		return ErrConfiguration
+	}
 	if l := c.LocalTunnel; l != nil {
 		if err := validateLocalTunnel(l.Listen, l.ServerName, l.HTTPHost, c.StateDirectory, l.CertificateFile, l.PrivateKeyFile, l.TrustFile); err != nil {
 			return err
 		}
 		hosts := []string{c.ControlHost, c.TunnelHost, strings.TrimPrefix(c.OIDC.Issuer, "https://")}
+		if portal != "" {
+			hosts = append(hosts, portal)
+		}
 		for _, r := range c.Gateway.Resources {
 			hosts = append(hosts, r.Rule.Host, transport.ConnectorPeer(r.Connector))
 			if l.Listen == r.TunnelAddress {
@@ -150,7 +157,7 @@ func (c GatewayConfig) Validate() error {
 		browser = browser || r.Rule.Access == "browser"
 	}
 	if !browser {
-		if c.OIDC != (OIDC{}) || c.BrowserSessionLifetimeSeconds != nil {
+		if c.OIDC != (OIDC{}) || c.BrowserSessionLifetimeSeconds != nil || portal != "" {
 			return ErrConfiguration
 		}
 		return nil
@@ -159,7 +166,7 @@ func (c GatewayConfig) Validate() error {
 	if err != nil || u.Scheme != "https" || !config.ValidHost(u.Host) || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" || strings.ContainsAny(c.OIDC.Issuer, "?#\\ ") || len(c.OIDC.ClientID) < 1 || len(c.OIDC.ClientID) > 128 || strings.ContainsAny(c.OIDC.ClientID, "\r\n\t ") || !config.ValidEnv(c.OIDC.ClientSecretEnv) {
 		return ErrConfiguration
 	}
-	if u.Host == c.ControlHost || u.Host == c.TunnelHost {
+	if u.Host == c.ControlHost || u.Host == c.TunnelHost || u.Host == portal {
 		return ErrConfiguration
 	}
 	for _, r := range c.Gateway.Resources {

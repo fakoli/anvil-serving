@@ -243,7 +243,7 @@ func composeGateway(parent context.Context, declaration GatewayConfig, secrets S
 		if !ok || len(secret) < 1 || len(secret) > 4096 {
 			return nil, ErrUnavailable
 		}
-		sessions, err = session.New(ctx, state, browserRules, session.Config{Issuer: declaration.OIDC.Issuer, ClientID: declaration.OIDC.ClientID, ClientSecret: secret, CallbackPath: httpedge.BrowserCallbackPath, TransactionLifetime: session.DefaultTransactionLifetime, SessionLifetime: declaration.BrowserSessionLifetime(), MaxTransactions: 128, MaxPerBrowser: 8})
+		sessions, err = session.New(ctx, state, browserRules, session.Config{Issuer: declaration.OIDC.Issuer, ClientID: declaration.OIDC.ClientID, ClientSecret: secret, CallbackPath: httpedge.BrowserCallbackPath, TransactionLifetime: session.DefaultTransactionLifetime, SessionLifetime: declaration.BrowserSessionLifetime(), MaxTransactions: 128, MaxPerBrowser: 8, PortalHost: declaration.Gateway.PortalHost})
 		if err != nil {
 			return nil, ErrUnavailable
 		}
@@ -275,6 +275,16 @@ func composeGateway(parent context.Context, declaration GatewayConfig, secrets S
 			}
 		}
 		g.cleanup = append(g.cleanup, browserHandler.Close)
+	}
+	var homeHandler *httpedge.Home
+	if declaration.Gateway.PortalHost != "" {
+		if sessions == nil {
+			return nil, ErrUnavailable
+		}
+		homeHandler, err = httpedge.NewHome(declaration.Gateway, sessions)
+		if err != nil {
+			return nil, ErrUnavailable
+		}
 	}
 	pathToken, err := randomHex()
 	if err != nil {
@@ -338,6 +348,10 @@ func composeGateway(parent context.Context, declaration GatewayConfig, secrets S
 	}
 	g.serve(nativeServer(ctx, adminHandler), adminListener)
 	ingress := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if homeHandler != nil && r.Host == declaration.Gateway.PortalHost {
+			homeHandler.ServeHTTP(w, r)
+			return
+		}
 		switch r.Host {
 		case declaration.ControlHost:
 			controlHandler.ServeHTTP(w, r)

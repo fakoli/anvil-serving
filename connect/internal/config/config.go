@@ -73,7 +73,33 @@ type Gateway struct {
 	Resources             []Resource             `json:"resources"`
 	DeviceAuthorizations  []DeviceAuthorization  `json:"device_authorizations,omitempty"`
 	BrowserAdministration *BrowserAdministration `json:"browser_administration,omitempty"`
+	PortalHost            string                 `json:"portal_host,omitempty"`
+	portalHostPresent     bool
 }
+
+// UnmarshalJSON retains the distinction between an omitted optional portal
+// host and a supplied empty or null value. The latter is a malformed policy,
+// never an instruction to silently disable a configured home host.
+func (g *Gateway) UnmarshalJSON(data []byte) error {
+	type gateway Gateway
+	var raw map[string]json.RawMessage
+	var decoded gateway
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*g = Gateway(decoded)
+	if value, present := raw["portal_host"]; present {
+		g.portalHostPresent = true
+		if bytes.Equal(value, []byte("null")) || g.PortalHost == "" {
+			return errors.New("portal host must be a nonempty hostname")
+		}
+	}
+	return nil
+}
+
 type BrowserAdministration struct {
 	BrowserResource string   `json:"browser_resource"`
 	Operators       []string `json:"operators"`
@@ -267,6 +293,9 @@ func (g Gateway) Validate() error {
 		}
 		ids[resource.Rule.ID], hosts[resource.Rule.Host], addresses[resource.TunnelAddress] = true, true, true
 		resources[resource.Rule.ID] = resource
+	}
+	if (g.portalHostPresent && g.PortalHost == "") || (g.PortalHost != "" && (!ValidHost(g.PortalHost) || hosts[g.PortalHost])) {
+		return errors.New("invalid or conflicting portal host")
 	}
 	if g.DeviceAuthorizations != nil && (len(g.DeviceAuthorizations) < 1 || len(g.DeviceAuthorizations) > 64) {
 		return errors.New("too many device authorizations")
@@ -513,7 +542,11 @@ func shape(d *json.Decoder, kind reflect.Type, depth int) error {
 		fields := map[string]reflect.Type{}
 		for i := 0; i < kind.NumField(); i++ {
 			field := kind.Field(i)
-			fields[strings.Split(field.Tag.Get("json"), ",")[0]] = field.Type
+			name := strings.Split(field.Tag.Get("json"), ",")[0]
+			if field.PkgPath != "" || name == "" || name == "-" {
+				continue
+			}
+			fields[name] = field.Type
 		}
 		seen := map[string]bool{}
 		for d.More() {
