@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from anvil_serving.observability.dashboard.contracts import ObservatoryError
+from anvil_serving.observability.dashboard.contracts import ObservatoryError, canonical
 from anvil_serving.workbench_app.pi_sessions import PiConversationService, PiSessionError, PiSessionStore, PiTaskBinding
 from anvil_serving.workbench_app.store import PrivateStore
 from anvil_serving.workbench_app.workspace_runs import WorkspaceRuns
@@ -232,9 +232,29 @@ def test_native_pi_pages_are_stable_bounded_and_reauthorize_before_cursor_read()
     assert error.value.status == 403 and len(calls) == 2
 
 
+def test_native_pi_projection_rejects_a_512_row_payload_that_exceeds_128_kib():
+    rows = [{"native_id": f"native-{index}", "title": "x" * 192, "running": False} for index in range(512)]
+    runs = WorkspaceRuns(None, _Projects(), None,
+                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
+                         host_inventory=lambda _: rows)
+    with pytest.raises(ObservatoryError, match="exceeds") as error:
+        runs.host_page(_session())
+    assert error.value.status == 503
+
+
+def test_native_pi_projection_pages_348_compact_native_metadata_rows():
+    rows = [{"native_id": f"session-{index:03d}", "title": f"Session {index}", "running": False} for index in range(348)]
+    runs = WorkspaceRuns(None, _Projects(), None,
+                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
+                         host_inventory=lambda _: rows)
+    page = runs.host_page(_session())
+    assert len(page["items"]) == 100 and page["next_cursor"]
+    assert len(page["refresh"]["items"]) == 348 and len(canonical(page)) <= 128 * 1024
+
+
 @pytest.mark.parametrize("bad_rows", [
     [{"native_id": "a", "title": "Title", "running": False}] * 2,
-    [{"native_id": f"id-{i}", "title": "Title", "running": False} for i in range(257)],
+    [{"native_id": f"id-{i}", "title": "Title", "running": False} for i in range(513)],
     [{"native_id": "a", "title": "Title", "running": False, "project_id": "revoked"}],
     [{"native_id": "a", "title": "Title", "running": "false"}],
 ], ids=["duplicate", "overflow", "revoked", "invalid-state"])

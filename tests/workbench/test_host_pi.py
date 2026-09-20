@@ -64,6 +64,36 @@ def test_host_catalog_requires_an_explicit_grant_even_for_wildcard_owner(site): 
         assert host["available"] is available and ("origin" in host) is available
 
 
+def test_host_client_accepts_512_native_rows_and_rejects_513():
+    from anvil_serving.observability.dashboard.contracts import ObservatoryError
+    from anvil_serving.workbench_app.host_pi import HostPiClient
+
+    rows = [{"native_id": f"native-{index}", "title": "Pi", "running": False} for index in range(512)]
+    response = [json.dumps({"v": 1, "items": rows}).encode()]
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def read(self, limit): return response[0][:limit]
+
+    def open_url(_request, *, timeout):
+        assert timeout == 1.5
+        return Response()
+
+    client = HostPiClient("https://pi.example.test", "private", open_url=open_url)
+    assert len(client.list_native()) == 512
+    response[0] = json.dumps({"v": 1, "items": rows + [rows[0] | {"native_id": "native-513"}]}).encode()
+    with pytest.raises(ObservatoryError, match="unavailable"):
+        client.list_native()
+    response[0] = json.dumps({"v": 1, "items": [
+        {"native_id": f"native-{index:03d}-" + "x" * 180, "title": "x" * 192, "running": False}
+        for index in range(512)
+    ]}).encode()
+    assert len(response[0]) > 128 * 1024
+    with pytest.raises(ObservatoryError, match="unavailable"):
+        client.list_native()
+
+
 def test_host_owner_retries_the_same_native_request_and_keeps_only_safe_metadata(tmp_path):
     from anvil_serving.observability.dashboard.access import ConnectBinding, Principal, Session
     from anvil_serving.workbench_app.host_pi import HostPi
