@@ -15,7 +15,7 @@ async function request(path, options) {
   return response.status === 204 ? null : response.json();
 }
 function serviceName(service) { return service.name || service.id.replaceAll("-", " "); }
-function choiceName(service) { const name = service.name || service.id; return name === service.id ? name : name + " · " + service.id; }
+function choiceName(service) { return service.name || service.id; }
 function serviceTile(service) {
   const tile = element("a", undefined, "tile"); tile.href = service.url;
   const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -37,7 +37,8 @@ function serviceTile(service) {
 }
 function accountEditor(user) {
   const form = element("form", undefined, "user");
-  form.append(element("h3", user.id + (user.administrator ? " · Connect operator" : ""), "user-title"));
+  form.append(element("h3", (user.username || "Username unavailable") + (user.administrator ? " · Connect operator" : ""), "user-title"));
+  form.append(element("code", user.id, "user-id"));
   const fields = element("fieldset"); fields.append(element("legend", "Service entitlements"));
   const choices = new Map();
   for (const service of settings.choices) {
@@ -83,7 +84,7 @@ byID("logout").addEventListener("click", async () => {
   try {
     const response = await fetch(settings.logout_path, {method:"POST",credentials:"same-origin",redirect:"manual"});
     if (!response.ok && response.type !== "opaqueredirect") throw new Error("Sign-out failed. Try again.");
-    byID("services").replaceChildren(); byID("administration").hidden=true; byID("manage-access-link").hidden=true; notice("Signed out of Connect. Your account provider may still have an active sign-in.");
+    byID("services").replaceChildren(); byID("service-count").textContent="0 enabled"; byID("administration").hidden=true; byID("manage-access-link").hidden=true; byID("logout").disabled=true; notice("Signed out of Connect. Your account provider may still have an active sign-in.");
   } catch(error) { notice(error.message); }
 });
 (async () => {

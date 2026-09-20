@@ -143,6 +143,7 @@ test('service home renders current grants and signs out in Chromium', async () =
   await page.screenshot({path:test.info().outputPath('connect-home-mobile.png'),fullPage:true});
   await page.locator('#logout').click();
   await expect(page.locator('#notice')).toContainText('Signed out of Connect');
+  await expect(page.locator('#service-count')).toHaveText('0 enabled');
   expect(await page.evaluate(()=>fetch('/_anvil-connect/home/data').then(r=>r.status))).toBe(401);
   expect(errors).toEqual([]);
   await context.close();
@@ -157,6 +158,12 @@ test('operator service editor changes access and invalidates the member session'
   await page.goto(fixture.url+'/_anvil-connect/home');
   const form=page.locator('.user').filter({hasText:fixture.member_id});
   await expect(form).toBeVisible();
+  await expect(form.locator('.user-title')).toHaveText('member.one');
+  await expect(form.locator('.user-id')).toHaveText(fixture.member_id);
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  const selectWidth = await form.locator('select').evaluate(node=>node.getBoundingClientRect().width);
+  expect(selectWidth).toBeGreaterThan(220);
   await form.locator('select').selectOption('member');
   await form.getByRole('button',{name:'Save access'}).click();
   await expect(page.locator('#notice')).toContainText('Access saved');

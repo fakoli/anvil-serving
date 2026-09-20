@@ -361,7 +361,8 @@ func TestBrowserFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer manager.Close()
-	member, err := manager.SetHuman(issuerURL, "allowed-subject", []string{"dash"}, false)
+	memberUsername := "member.one"
+	member, err := manager.SetHumanWithUsername(issuerURL, "allowed-subject", &memberUsername, []string{"dash"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

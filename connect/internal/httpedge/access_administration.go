@@ -180,6 +180,7 @@ func (a *AccessAdministration) validCSRF(token string, admitted session.Admissio
 
 type accessUser struct {
 	ID               string            `json:"id"`
+	Username         string            `json:"username,omitempty"`
 	Generation       string            `json:"generation"`
 	Disabled         bool              `json:"disabled"`
 	Resources        []string          `json:"resources"`
@@ -200,7 +201,11 @@ type accessSession struct {
 }
 
 func accessResources(resources []string) bool {
-	if len(resources) < 1 || len(resources) > 64 {
+	return len(resources) > 0 && accessInventoryResources(resources)
+}
+
+func accessInventoryResources(resources []string) bool {
+	if resources == nil || len(resources) > 64 {
 		return false
 	}
 	seen := map[string]bool{}
@@ -276,10 +281,16 @@ func normalizeInventory(inventory administration.Inventory, requested string) ([
 		result := make([]any, 0, len(decoded.Items))
 		for index, item := range decoded.Items {
 			fields := []string{"id", "generation", "disabled", "resources", "administrator"}
+			if item.Username != "" {
+				if !session.ValidUsername(item.Username) {
+					return nil, nil, false
+				}
+				fields = append(fields, "username")
+			}
 			if item.ApplicationRoles != nil {
 				fields = append(fields, "application_roles")
 			}
-			if !exactAccessObject(objects.Items[index], fields...) || !config.ValidHumanID(item.ID) || !accessDecimal.MatchString(item.Generation) || !accessResources(item.Resources) || (item.ApplicationRoles != nil && !accessApplicationRoles(item.Resources, item.ApplicationRoles)) {
+			if !exactAccessObject(objects.Items[index], fields...) || !config.ValidHumanID(item.ID) || !accessDecimal.MatchString(item.Generation) || !accessInventoryResources(item.Resources) || (item.ApplicationRoles != nil && !accessApplicationRoles(item.Resources, item.ApplicationRoles)) {
 				return nil, nil, false
 			}
 			item.Resources = append([]string(nil), item.Resources...)
