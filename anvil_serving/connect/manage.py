@@ -822,7 +822,8 @@ def _validate_data(data: dict[str, Any], target: Target | tuple[Target, ...] | N
             # The rendered runtime configuration intentionally names the active
             # root.  Rebase only this disposable validation copy so a first
             # upgrade validates templates before that root exists.
-            _rebase_validation_authelia_template_path(data, root)
+            if "authelia/configuration.yml" in generated["files"]:
+                _rebase_validation_authelia_template_path(data, root)
             caddy = _run(runner, (data["components"]["caddy"], "validate", "--config", str(root / "caddy.json")), _VALIDATE_TIMEOUT, _role_service_identity(data, "edge"))
             _fail(caddy, "Caddy configuration validation failed")
             authelia = _run(runner, (data["components"]["authelia"], "--config", str(root / "authelia" / "configuration.yml"), "--config.experimental.filters", "template", "config", "validate"), _VALIDATE_TIMEOUT, _role_service_identity(data, "idp"))
