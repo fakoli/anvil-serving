@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.connect import manage
-from anvil_serving.connect.render import render as render_config
+from anvil_serving.connect.render import notification_template_path, render as render_config
 
 if sys.platform == "linux":
     import grp
@@ -239,6 +239,28 @@ def test_validate_and_render_preview_never_stage_or_start(tmp_path: Path, monkey
     assert preview["plan"]["state"] == "absent"
     assert not Path(value["config_root"]).exists()
     assert not any(call[0] == "/usr/bin/systemctl" and call[1] != "show" for call in runner.calls)
+
+
+def test_gateway_validation_rebases_materialized_authelia_templates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    inspected: list[Path] = []
+
+    class InspectingRunner(SyntheticRunner):
+        def __call__(self, argv, timeout, identity):  # type: ignore[no-untyped-def]
+            if argv[0] == value["components"]["authelia"] and argv[-2:] == ("config", "validate"):
+                configuration = Path(argv[argv.index("--config") + 1])
+                content = configuration.read_text(encoding="utf-8")
+                template_root = configuration.parent / "notification-templates"
+                assert f"template_path: '{notification_template_path(configuration.parents[1])}'" in content
+                assert notification_template_path(value["config_root"]) not in content
+                assert (template_root / "IdentityVerificationJWT.html").is_file()
+                assert (template_root / "IdentityVerificationJWT.txt").is_file()
+                inspected.append(configuration)
+            return super().__call__(argv, timeout, identity)
+
+    assert manage.validate(manifest, manage.Target("gateway"), runner=InspectingRunner())["targets"] == ["gateway"]
+    assert len(inspected) == 1
+    assert not Path(value["config_root"]).exists()
 
 
 def test_render_apply_only_stages_after_validation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1197,9 +1219,17 @@ def test_gateway_upgrade_adopts_notification_templates_from_a_prior_generation(t
     runner = SyntheticRunner(active=True)
     runner.unit_root = units
     original = connect_render._password_setup_templates
+    original_authelia = connect_render._authelia
     monkeypatch.setattr(connect_render, "_password_setup_templates", lambda _: {})
+    monkeypatch.setattr(
+        connect_render, "_authelia",
+        lambda data: original_authelia(data).replace(
+            "  template_path: '" + notification_template_path(data["config_root"]).replace("'", "''") + "'\n", "",
+        ),
+    )
     manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
     monkeypatch.setattr(connect_render, "_password_setup_templates", original)
+    monkeypatch.setattr(connect_render, "_authelia", original_authelia)
     runner.calls.clear()
     preview = manage.up(manifest, manage.Target("gateway"), runner=runner, unit_root=units)
     assert preview["plan"]["state"] == "update"
