@@ -20,7 +20,7 @@ _OWNERSHIP = "anvil-connect.ownership/v1"
 _CADDY_GRACE_PERIOD_SECONDS = 15
 _CADDY_GRACE_PERIOD = f"{_CADDY_GRACE_PERIOD_SECONDS}s"
 _SERVICE_STOP_TIMEOUT_SECONDS = 20
-_NOTIFICATION_TEMPLATE_DIRECTORY = "authelia/notification-templates"
+NOTIFICATION_TEMPLATE_DIRECTORY = "authelia/notification-templates"
 # gateway/caddy/Authelia configs and units plus two Authelia templates (8),
 # then one config and unit for each schema-permitted connector and client.
 MAX_OWNED_FILES = 8 + 4 * MAX_DEPLOYMENT_ITEMS
@@ -184,6 +184,11 @@ def _template_quote(value: str) -> str:
     return json.dumps(value, ensure_ascii=True)
 
 
+def notification_template_path(config_root: str | Path) -> str:
+    """Return the rendered Authelia template directory for one config root."""
+    return str(config_root).rstrip("/") + "/" + NOTIFICATION_TEMPLATE_DIRECTORY
+
+
 def _password_setup_templates(manifest: dict[str, Any]) -> dict[str, str]:
     """Return the pinned Authelia 4.39 notification override in CRLF form.
 
@@ -237,8 +242,8 @@ If you did not expect this email, do not use the link. Revoke it here:
 """.replace("{home_text}", home_text).replace("{recovery_url}", recovery_url).replace("{home_url}", home_url)
     # Authelia requires CRLF template files; retain it through staged output.
     return {
-        _NOTIFICATION_TEMPLATE_DIRECTORY + "/IdentityVerificationJWT.html": html.replace("\n", "\r\n"),
-        _NOTIFICATION_TEMPLATE_DIRECTORY + "/IdentityVerificationJWT.txt": text.replace("\n", "\r\n"),
+        NOTIFICATION_TEMPLATE_DIRECTORY + "/IdentityVerificationJWT.html": html.replace("\n", "\r\n"),
+        NOTIFICATION_TEMPLATE_DIRECTORY + "/IdentityVerificationJWT.txt": text.replace("\n", "\r\n"),
     }
 
 
@@ -256,7 +261,7 @@ def _authelia(manifest: dict[str, Any]) -> str:
     if "theme" in auth:
         lines.append(f"theme: {_quote(auth['theme'])}")
     notifier = [
-        "notifier:", f"  template_path: {_quote(manifest['config_root'] + '/' + _NOTIFICATION_TEMPLATE_DIRECTORY)}",
+        "notifier:", f"  template_path: {_quote(notification_template_path(manifest['config_root']))}",
     ] + ([
         "  smtp:", f"    address: {_quote(auth['smtp']['address'])}",
         f"    username: {_quote(auth['smtp']['username'])}", "    password: |-",

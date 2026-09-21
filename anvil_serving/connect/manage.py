@@ -26,7 +26,9 @@ from typing import Any, Callable, Iterator, Literal
 from contextlib import contextmanager
 
 from .config import ManifestError, read_manifest, require_isolated, role_identity
-from .render import MAX_OWNED_FILES, plan, plan_for_inspection, render as render_config, stage
+from .render import (MAX_OWNED_FILES, NOTIFICATION_TEMPLATE_DIRECTORY,
+                     notification_template_path, plan, plan_for_inspection,
+                     render as render_config, stage)
 
 # The package and command help remain portable.  The actual ownership model
 # below deliberately depends on Linux uid/gid, openat-style flags, flock and
@@ -724,6 +726,31 @@ def _materialize(files: dict[str, str], root: Path) -> None:
         os.chmod(target, 0o644)
 
 
+def _rebase_validation_authelia_template_path(data: dict[str, Any], root: Path) -> None:
+    """Point an ephemeral validator config at its materialized templates only."""
+    configuration = root / "authelia" / "configuration.yml"
+    source = notification_template_path(data["config_root"])
+    destination = notification_template_path(root)
+    original = "  template_path: '" + source.replace("'", "''") + "'"
+    replacement = "  template_path: '" + destination.replace("'", "''") + "'"
+    try:
+        content = configuration.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ManageError("rendered Authelia configuration is unavailable") from exc
+    templates = root / NOTIFICATION_TEMPLATE_DIRECTORY
+    if original not in content:
+        # A pre-template generation has neither this setting nor its managed
+        # files. Its validation copy needs no rebase during an upgrade.
+        if any((templates / name).exists() for name in ("IdentityVerificationJWT.html", "IdentityVerificationJWT.txt")):
+            raise ManageError("rendered Authelia template path is invalid")
+        return
+    if content.count(original) != 1:
+        raise ManageError("rendered Authelia template path is invalid")
+    if not all((templates / name).is_file() for name in ("IdentityVerificationJWT.html", "IdentityVerificationJWT.txt")):
+        raise ManageError("rendered Authelia templates are unavailable")
+    configuration.write_text(content.replace(original, replacement), encoding="utf-8")
+
+
 def _validate_environment_files(data: dict[str, Any], target: Target | tuple[Target, ...] | None) -> None:
     """Verify only metadata; credentials are never opened by lifecycle code."""
     selected = _selected_targets(data, target)
@@ -792,6 +819,10 @@ def _validate_data(data: dict[str, Any], target: Target | tuple[Target, ...] | N
         _make_public(root)
         _native_preflight(data, selected, root, runner, initializing=initializing)
         if any(item.kind == "gateway" for item in selected):
+            # The rendered runtime configuration intentionally names the active
+            # root.  Rebase only this disposable validation copy so a first
+            # upgrade validates templates before that root exists.
+            _rebase_validation_authelia_template_path(data, root)
             caddy = _run(runner, (data["components"]["caddy"], "validate", "--config", str(root / "caddy.json")), _VALIDATE_TIMEOUT, _role_service_identity(data, "edge"))
             _fail(caddy, "Caddy configuration validation failed")
             authelia = _run(runner, (data["components"]["authelia"], "--config", str(root / "authelia" / "configuration.yml"), "--config.experimental.filters", "template", "config", "validate"), _VALIDATE_TIMEOUT, _role_service_identity(data, "idp"))
