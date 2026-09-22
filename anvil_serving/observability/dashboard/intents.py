@@ -232,6 +232,54 @@ class IntentStore:
             self.db.execute("UPDATE intents SET body=?, updated=? WHERE id=?", (canonical(item).decode(), self.clock(), operation_id))
             return item
 
+    def publish_verified_recovery(self, original_id: str, recovery_id: str, *, native_state, verification: dict,
+                                  evidence_id: str | None, recovery: dict | None = None) -> tuple[dict, dict]:
+        """Publish one verified recovery and its retained failed operation together."""
+        with self._lock:
+            self.db.execute("BEGIN IMMEDIATE")
+            try:
+                rows = {}
+                for operation_id in (original_id, recovery_id):
+                    row = self.db.execute("SELECT id,resource,body FROM intents WHERE id=?", (operation_id,)).fetchone()
+                    if row is None:
+                        raise ObservatoryError("invalid_recovery", "The linked recovery operation is unavailable.", 409)
+                    item = json.loads(row["body"])
+                    if item.get("id") != operation_id or item.get("resource_id") != row["resource"]:
+                        raise ObservatoryError("invalid_recovery", "The linked recovery operation is unavailable.", 409)
+                    rows[operation_id] = item
+                original, recovered = rows[original_id], rows[recovery_id]
+                preview = recovered.get("private_preview")
+                if (original.get("action_id") != "experiment.start"
+                        or original.get("status") not in {"manual_recovery_required", "outcome_unknown"}
+                        or type(original.get("intent_key")) is not str
+                        or recovered.get("action_id") != "operation.recover" or recovered.get("status") != "verifying"
+                        or original.get("resource_id") != recovered.get("resource_id")
+                        or original.get("host_id") != recovered.get("host_id")
+                        or type(preview) is not dict or preview.get("private_recovery_of") != original_id
+                        or preview.get("private_parameters") != {"run_id": original.get("intent_key")}):
+                    raise ObservatoryError("invalid_recovery", "The linked recovery operation is unavailable.", 409)
+
+                original["updated_at"] = timestamp()
+                original.update(status="failed", recovery={"status": "succeeded", "message": "Previous state restored and verified by the linked recovery operation.", "operation_id": recovery_id})
+                original["events"] = (original["events"] + [{"at": original["updated_at"], "source": "owner", "phase": "recovered", "message": "Recovery verified; the original failed or interrupted test is retained."}])[-100:]
+                recovered["updated_at"] = timestamp()
+                recovered.update(status="succeeded", native_state=native_state, verification=verification, evidence_id=evidence_id)
+                if recovery is not None:
+                    recovered["recovery"] = recovery
+                recovered["events"] = (recovered["events"] + [{"at": recovered["updated_at"], "source": "facade", "phase": "succeeded", "message": "Resulting state verified."}])[-100:]
+
+                original_write = self.db.execute("UPDATE intents SET body=?, updated=? WHERE id=?", (canonical(original).decode(), self.clock(), original_id))
+                if original_write.rowcount != 1:
+                    raise RuntimeError("recovery publication original row changed")
+                recovery_write = self.db.execute("UPDATE intents SET body=?, updated=? WHERE id=?", (canonical(recovered).decode(), self.clock(), recovery_id))
+                if recovery_write.rowcount != 1:
+                    raise RuntimeError("recovery publication terminal row changed")
+                self.db.execute("COMMIT")
+                return original, recovered
+            except BaseException:
+                self.db.execute("ROLLBACK")
+                raise
+
     def list_private(self) -> list[dict]:
         with self._lock:
             return [json.loads(row[0]) for row in self.db.execute("SELECT body FROM intents ORDER BY created DESC LIMIT 10016")]
