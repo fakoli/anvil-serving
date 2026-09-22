@@ -2,7 +2,6 @@ import { createServer } from "node:http";
 
 const BODY_LIMIT = 64 * 1024;
 const BODY_TIMEOUT_MS = 1_000;
-const RESPONSE = "fixture vision response";
 
 function readBody(request) {
   return new Promise((resolve, reject) => {
@@ -54,9 +53,16 @@ export async function startFakeVision() {
       const body = await readBody(request);
       const parsed = JSON.parse(body);
       record({ body, parsed, associations: associations(parsed.messages) });
-      if (parsed.fixture_delay) return;
+      if (parsed.fixture_mode === "hang") return;
+      let inspection = structuredClone(parsed.fixture_inspection);
+      if (parsed.fixture_mode === "extra_field") inspection.extra = true;
+      if (parsed.fixture_mode === "malformed_fact") inspection.facts = [{ ...inspection.facts[0], region_ref: "forbidden" }];
+      if (parsed.fixture_mode === "truncated") inspection.truncated = true;
+      if (parsed.fixture_mode === "inconclusive") inspection = { ...inspection, status: "inconclusive", facts: [], reason: "fixture could not determine the result" };
+      if (parsed.fixture_mode === "unsupported") inspection = { ...inspection, status: "unsupported", facts: [], reason: "fixture profile does not support this inspection" };
+      if (parsed.fixture_mode === "media") inspection.facts = [{ ...inspection.facts[0], text: "data:image/png;base64,forbidden" }];
       response.writeHead(200, { "content-type": "application/json" });
-      response.end(JSON.stringify({ id: "fixture-vision", object: "chat.completion", choices: [{ index: 0, message: { role: "assistant", content: RESPONSE }, finish_reason: "stop" }] }));
+      response.end(JSON.stringify(inspection));
     } catch (error) {
       response.writeHead(error.status || 400, { "content-type": "application/json" });
       response.end(JSON.stringify({ error: { message: error.message } }));
@@ -69,7 +75,7 @@ export async function startFakeVision() {
   await new Promise((resolve, reject) => server.once("error", reject).listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
   return {
-    baseUrl: `http://127.0.0.1:${port}/v1`, captures, response: RESPONSE,
+    baseUrl: `http://127.0.0.1:${port}/v1`, captures,
     waitForCaptures: (count) => captures.length >= count ? Promise.resolve() : new Promise((resolve) => captureWaiters.push({ count, resolve })),
     waitForRequests: (count) => requests >= count ? Promise.resolve() : new Promise((resolve) => requestWaiters.push({ count, resolve })),
     close: async () => {
