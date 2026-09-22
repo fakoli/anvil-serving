@@ -2,6 +2,7 @@
   "name": "anvil-serving-browser-owner",
   "private": true,
   "type": "module",
+  "scripts": { "test": "node --test owner.test.mjs" },
   "devDependencies": { "playwright": "1.63.0" },
   "engines": { "node": ">=20" }
 }

@@ -190,6 +190,21 @@ test("invalid owner limits reject before launch and lower bounds remain enforced
     );
     assert.equal(launched, false);
   }
+  for (const malformed of [undefined, null, "http://127.0.0.1:1", 42, {}, new Map()]) {
+    for (const field of ["documentOrigins", "subresourceOrigins"]) {
+      if (field === "subresourceOrigins" && malformed === undefined) continue;
+      let launched = false;
+      await assert.rejects(
+        createBrowserOwner({
+          launch: async () => { launched = true; throw new Error("must_not_launch"); },
+          documentOrigins: field === "documentOrigins" ? malformed : ["http://127.0.0.1:1"],
+          subresourceOrigins: field === "subresourceOrigins" ? malformed : ["http://127.0.0.1:1"],
+        }),
+        error("invalid_origin_policy"),
+      );
+      assert.equal(launched, false);
+    }
+  }
   const site = await fixture(); const core = await owner(site.origin, { maxEntities: 1 }); const session = core.session(); t.after(async () => { await core.close(); await site.close(); });
   await session.navigate(`${site.origin}/?mode=many`);
   const partial = await session.capture(captureRequest());
