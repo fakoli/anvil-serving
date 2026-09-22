@@ -158,7 +158,7 @@ def test_phase_precedes_idp_user_replacement_and_retry_survives_completed_purge(
 
     def purge(_database, _username, _subject, *, validate_only, uid, gid):
         state["purges"].append(validate_only)
-        return {"schema_version": 24, "validated_only": validate_only, "applied": not validate_only,
+        return {"schema_version": 29, "validated_only": validate_only, "applied": not validate_only,
                 "username_records": 0, "opaque_identifiers": 1 if validate_only else 0,
                 "oauth_sessions": 0, "consent_sessions": 0, "consent_preconfigurations": 0,
                 "expected_subject_found": True if validate_only else False}
@@ -442,7 +442,7 @@ def test_never_signed_in_phase_rechecks_zero_identity_state_then_purges_without_
 
     def purge(_database, _username, _subject, *, validate_only, require_zero_opaque, uid, gid):
         native.append((validate_only, require_zero_opaque, uid, gid))
-        return {"schema_version": 24, "validated_only": validate_only, "applied": not validate_only,
+        return {"schema_version": 29, "validated_only": validate_only, "applied": not validate_only,
                 "username_records": 1, "opaque_identifiers": 0, "oauth_sessions": 0,
                 "consent_sessions": 0, "consent_preconfigurations": 0, "expected_subject_found": False}
 
@@ -569,7 +569,7 @@ def test_local_phase_retry_after_yaml_removal_requires_clean_adapter_then_unlink
 
     def purge(_database, _username, _subject, *, validate_only, require_zero_opaque, uid, gid):
         calls.append((validate_only, require_zero_opaque))
-        return {"schema_version": 24, "validated_only": validate_only, "applied": not validate_only,
+        return {"schema_version": 29, "validated_only": validate_only, "applied": not validate_only,
                 "username_records": 0, "opaque_identifiers": 0, "oauth_sessions": 0,
                 "consent_sessions": 0, "consent_preconfigurations": 0, "expected_subject_found": False}
 
@@ -599,3 +599,19 @@ def test_process_pending_dispatches_a_retained_local_phase(tmp_path, monkeypatch
 
     result = user_delete.process_pending(str(tmp_path / "deployment.json"), apply=True)
     assert result["processed"] == 1 and result["result"]["finalized"] and calls == [phase]
+
+
+def test_pending_authelia_upgrade_blocks_delete_worker_before_phase_or_native_actions(tmp_path, monkeypatch):
+    root = tmp_path / "rendered"
+    root.mkdir(mode=0o700)
+    manage._authelia_upgrade_marker(root).write_text("pending\n")
+    monkeypatch.setattr(users, "_require_root", lambda: None)
+    monkeypatch.setattr(user_delete, "_path", lambda *_: None)
+    monkeypatch.setattr(user_delete, "read_manifest", lambda *_: {"config_root": str(root)})
+    monkeypatch.setattr(user_delete, "_phase_root", lambda *_: pytest.fail("must not inspect deletion phases"))
+    monkeypatch.setattr(user_delete, "_intents", lambda *_: pytest.fail("must not contact native authority"))
+
+    with pytest.raises(manage.ManageError, match="Authelia migration recovery is pending"):
+        user_delete.delete(str(tmp_path / "deployment.json"), "owner", apply=True)
+    with pytest.raises(manage.ManageError, match="Authelia migration recovery is pending"):
+        user_delete.process_pending(str(tmp_path / "deployment.json"), apply=True)

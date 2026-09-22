@@ -10,7 +10,13 @@ import threading
 
 import pytest
 
-from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
+from anvil_serving.benchmarking.jobs import (
+    BenchmarkJobError,
+    JOB_SPEC_SCHEMA,
+    job_spec_sha256,
+    new_job_record,
+    validate_job_spec,
+)
 from anvil_serving.control_plane.controller import store as store_module
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore, OperationStore
 from anvil_serving.observability.workloads import (
@@ -142,8 +148,31 @@ def test_run_list_skips_oversized_raw_record_before_decoding(tmp_path, monkeypat
 
 def test_run_list_does_not_decode_one_thousand_oversized_records(tmp_path, monkeypatch):
     store = _store(tmp_path)
+    records = []
     for index in range(1001):
-        store.submit(_spec(f"run-{index:04d}"))
+        spec = validate_job_spec(_spec(f"run-{index:04d}"))
+        record = new_job_record(spec)
+        records.append(
+            (
+                spec["run_id"],
+                job_spec_sha256(spec),
+                record["state"],
+                record["revision"],
+                store_module._json_dumps(record),
+            )
+        )
+    assert len({record[0] for record in records}) == 1001
+    assert len({record[1] for record in records}) == 1001
+    with store._connection() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        connection.executemany(
+            """
+            INSERT INTO benchmark_jobs (run_id, spec_sha256, state, revision, record)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            records,
+        )
+        connection.commit()
     monkeypatch.setattr(store_module, "_BENCHMARK_LIST_RECORD_MAX_BYTES", 1)
     monkeypatch.setattr(store, "_decode_record", lambda _raw: pytest.fail("decode"))
 

@@ -226,6 +226,27 @@ def test_execution_failures_are_redacted_and_distinguish_partial_results(fake_ma
     assert result["error"]["details"]["may_have_executed"] is partial
 
 
+def test_cli_emits_pending_authelia_upgrade_recovery(fake_manager, monkeypatch, capsys):
+    package = importlib.import_module("anvil_serving.connect")
+    def pending(*args, **kwargs):
+        error = RuntimeError("pending")
+        error.may_have_executed = True
+        error.recovery = {
+            "recovery_required": True, "backup_retained": True,
+            "recovery_hint": "Authelia migration recovery is pending; rerun the identical connect up command with --upgrade --confirm",
+        }
+        raise error
+    monkeypatch.setattr(package.manage, "up", pending)
+    assert cli.main(["connect", "up", "--manifest", "/a", "--service", "gateway", "--confirm", "--json"]) == 5
+    result = json.loads(capsys.readouterr().out)
+    assert result["data"] == {
+        "recovery_required": True, "backup_retained": True,
+        "recovery_hint": "Authelia migration recovery is pending; rerun the identical connect up command with --upgrade --confirm",
+    }
+    assert cli.main(["connect", "up", "--manifest", "/a", "--service", "gateway", "--confirm"]) == 5
+    assert "rerun the identical connect up command with --upgrade --confirm" in capsys.readouterr().err
+
+
 def test_existing_edge_manifest_records_remain_unchanged():
     # Golden canonical digest captured before Connect registration. No Git
     # history or live Tailscale inspection is required by this regression.

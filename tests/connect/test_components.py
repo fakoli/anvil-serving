@@ -21,7 +21,7 @@ def test_edge_tools_lock_has_pinned_primary_provenance_and_oss_licenses() -> Non
     components = {item["name"]: item for item in value["components"]}
     assert set(components) == {"caddy", "authelia"}
     assert components["caddy"]["version"] == "2.11.3"
-    assert components["authelia"]["version"] == "4.39.20"
+    assert components["authelia"]["version"] == "4.39.28"
     for name, component in components.items():
         assert component["url"].startswith(f"https://github.com/{'caddyserver/caddy' if name == 'caddy' else 'authelia/authelia'}/releases/download/")
         assert component["checksum"]["provenance_url"].startswith("https://github.com/")
@@ -39,4 +39,4 @@ def test_pinned_upstream_validators_accept_render_and_reject_negative_controls()
     result = subprocess.run(
         [str(harness)], cwd=ROOT, check=True, capture_output=True, text=True, timeout=420,
     )
-    assert "validated Caddy 2.11.3 and Authelia 4.39.20" in result.stdout
+    assert "validated Caddy 2.11.3 and Authelia 4.39.28" in result.stdout

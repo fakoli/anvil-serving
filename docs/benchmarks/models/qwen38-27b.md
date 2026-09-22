@@ -362,6 +362,16 @@ without speculation and 25,408 MiB with MTP.
 
 **Evidence:** [promotion addendum](../../findings/2026-09-19-qwen38-huihui-promotion-addendum.md).
 
+#### Secondary native vision diagnostic (2026-09-22)
+
+**Status:** `compatibility-only`, `not-qualified`, `no-promotion`.
+
+**Measured:** direct C1, one-image, 1,024-token native diagnostic: 11/12 exact whole-answer assertions passed. `adversarial-2` retained an extra `Invoice` label; all 12 requests ended `stop`, with no reasoning output or transport error.
+
+**Limits:** the three native preflights remain distinct: explicit thinking-control parameter request denied before inference, 512-token native-policy case reached `length`, and 1,024-token native-policy preflight passed. Sequential n=12 full-request latency is descriptive only; cold/warm status is unknown. No quality, capacity, performance, action, or selection conclusion follows.
+
+**Evidence:** [dated finding](../../findings/2026-09-22-secondary-native-vision-diagnostic.md).
+
 #### Huihui NInfer NVFP4 8K scout (2026-09-19)
 
 **Status:** `rejected`, `no-promotion`.

@@ -11,8 +11,8 @@ Status: In progress. Keep implementation, fixture validation and live acceptance
 | Readable setup/recovery email | Managed HTML/text templates implemented; pinned Authelia accepts the configuration; synthetic HTML rendered and inspected in a real browser. Shared reset subject/page terminology remains upstream. |
 | Expired-session cached document | Reproduced in a browser; gateway cache prevention implemented with native tests. Live deployment and fresh-navigation acceptance remain pending. |
 | Legacy username input | Native attributes added and tested. This is not the hosted Authelia field. |
-| Hosted username capitalization | Confirmed missing native-input attributes in the deployed browser. Requires an upstream native-input fix/rebuilt provider; not resolved by notification templates. |
-| Password-page focus and token recovery | Replacement-link guidance added to email. Original field issue and upstream consumed-token page behavior remain unresolved. |
+| Hosted username capitalization | Official Authelia 4.39.28 forwards `autocapitalize="none"` to the native input; confirmed in a disposable Chrome fixture. Production acceptance remains pending. Correction and spellcheck attributes remain absent. |
+| Password-page focus and token recovery | Fresh 4.39.28 password fields accept click focus in a disposable Chrome fixture. Refresh still consumes the link and disables the form; replacement-link recovery remains required. |
 | Post-enrollment service home | Existing declared destination retained; guidance distinguishes enrollment from authentication. Full password-manager journey remains to be validated. |
 | Open WebUI interactive requests | Pinned implementation researched. Authenticated question/location reproduction remains open; no blanket proxy or permission workaround applied. |
 
@@ -67,6 +67,36 @@ Open WebUI question and location prompts.
 - Open WebUI v0.11.3 opened its frontend error page when a cached app shell loaded
   with an expired Connect session. Subsequent protected configuration/asset requests
   returned 401. This is separate from the reported interactive-prompt symptom.
+
+## Provider qualification, 2026-09-22
+
+- The candidate pins the official [Authelia 4.39.28 release](https://github.com/authelia/authelia/releases/tag/v4.39.28),
+  with independently checked archive and executable digests. Both generated
+  configuration variants and their negative controls passed upstream validation.
+- Its [native input component](https://github.com/authelia/authelia/blob/v4.39.28/web/src/components/UI/FloatingInput.tsx)
+  forwards username capitalization attributes to the input. Chrome inspection
+  confirmed `autocapitalize="none"` and `autocomplete="username"` on that element.
+- A fresh reset form enabled both password fields and accepted click focus.
+  Refresh before submission still produced the provider error `the token has
+  already been consumed` and disabled both fields. This is an open upstream
+  recovery problem, not a completed fix.
+- That browser probe used the actual provider/assets with a disposable synthetic
+  account, a loopback proxy retaining one synthetic session, and a rewritten base
+  URL. It did not enter a password or qualify production TLS, cookie domains,
+  mailbox delivery, mobile autofill, or a real password manager.
+- The real-provider API suite passed 43 checks, including setup/recovery under
+  all three passkey configurations and an actual schema 24-to-29 migration.
+  The migration preserves a populated authentication-log row; it does not prove
+  migration of populated encrypted OAuth sessions. Deterministic schema tests
+  cover refresh-token binding and target-scoped erasure of resource columns.
+- [Storage migrations](https://github.com/authelia/authelia/blob/v4.39.28/docs/content/configuration/storage/migrations.md)
+  advance schema 24 to 29. The old binary cannot read the migrated database.
+  Automatic file-only rollback is unsafe across that boundary. Managed upgrades
+  retain a validated snapshot and a durable marker before activation, then recover
+  forward. Interruption tests cover the saved marker, old-root move and partial
+  unit writes; account mutations are blocked while recovery is pending.
+- No provider deployment or package release was performed. The full passkey
+  enrollment-to-service-home journey remains an owner acceptance gate.
 
 ## Open WebUI research
 

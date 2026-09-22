@@ -25,7 +25,7 @@ import time
 from typing import Any, Callable, Iterator, Literal
 from contextlib import contextmanager
 
-from .config import ManifestError, read_manifest, require_isolated, role_identity
+from .config import ManifestError, canonical_manifest, read_manifest, require_isolated, role_identity
 from .render import (MAX_OWNED_FILES, NOTIFICATION_TEMPLATE_DIRECTORY,
                      notification_template_path, plan, plan_for_inspection,
                      render as render_config, stage)
@@ -1234,6 +1234,173 @@ def _write_activation_record(root: Path, record: dict[str, Any]) -> None:
     _write_atomic(_activation_record(root), (json.dumps(record, sort_keys=True) + "\n").encode("utf-8"))
 
 
+def _authelia_upgrade_marker(root: Path) -> Path:
+    return root.parent / ("." + root.name + ".anvil-connect-authelia-upgrade.json")
+
+
+def _require_no_authelia_upgrade(root: Path) -> None:
+    """Block account mutations while a durable migration recovery is pending."""
+    if os.path.lexists(_authelia_upgrade_marker(root)):
+        raise _authelia_upgrade_pending(False)
+
+
+def _authelia_upgrade_pending(executed: bool) -> ManageError:
+    hint = "Authelia migration recovery is pending; rerun the identical connect up command with --upgrade --confirm"
+    error = ManageError(hint, may_have_executed=executed)
+    error.recovery = {"recovery_required": True, "recovery_hint": hint}
+    if executed:
+        error.recovery["backup_retained"] = True
+    return error
+
+
+def _manifest_digest(path: Path) -> str:
+    # Recovery binds the complete validated declaration, not incidental JSON
+    # whitespace or key order. Re-read through the normal manifest validator;
+    # no raw declaration or secret-bearing value is retained in the marker.
+    try:
+        canonical = canonical_manifest(read_manifest(path))
+    except (OSError, TypeError, ValueError, ManifestError) as exc:
+        raise ManageError("deployment manifest is unavailable for upgrade recovery") from exc
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _changed_authelia_upgrade(data: dict[str, Any], targets: tuple[Target, ...], digests: dict[str, str]) -> tuple[str, dict[str, Any]] | None:
+    """Return the active generation/record only for a DB-migrating gateway upgrade."""
+    if not any(target.kind == "gateway" for target in targets):
+        return None
+    root = Path(data["config_root"])
+    if not root.exists():
+        return None
+    generation, _ = _verify_owned_tree(root)
+    raw = _read_regular(_activation_record(root), _MAX_OUTPUT)
+    _valid_prior_record(raw, generation)
+    if raw is None:
+        raise ManageError("current generation has no owned activation record")
+    record = _strict_json(raw, "activation record is not owned")
+    if record["components"] != {} and record["components"]["authelia"] == digests["authelia"]:
+        return None
+    # A SQLite migration may not be combined with a declaration change. The
+    # byte-for-byte owned config check binds the current state path, secrets,
+    # users file, host and policy to the candidate before it is snapshotted.
+    active_config = _read_regular(root / "authelia" / "configuration.yml", _MAX_OUTPUT)
+    candidate_config = render_config(data)["files"].get("authelia/configuration.yml")
+    if active_config is None or not isinstance(candidate_config, str) or active_config != candidate_config.encode("utf-8"):
+        raise ManageError("initialized Authelia database upgrade requires an unchanged Authelia configuration")
+    database = Path(data["authelia"]["state_directory"]) / "authelia.sqlite3"
+    if not os.path.lexists(database):
+        return None
+    if record["components"] == {}:
+        raise ManageError("initialized Authelia database requires an adopted component activation before upgrade")
+    identity = _role_service_identity(data, "idp")
+    if identity is None:
+        raise ManageError("Authelia migration recovery requires isolated service identities")
+    _safe_private_runtime_directory(database.parent, identity.uid, identity.gid)
+    return generation, record
+
+
+def _write_authelia_upgrade_marker(root: Path, *, old_generation: str, new_generation: str,
+                                   old_record: dict[str, Any], digests: dict[str, str],
+                                   backup: Path, auth_backup: dict[str, Any], manifest: Path,
+                                   targets: tuple[Target, ...]) -> None:
+    if (backup.parent != root.parent or not backup.name.startswith("." + root.name + ".anvil-connect-rollback-")
+            or backup.exists()):
+        raise ManageError("Authelia migration rollback root is unavailable")
+    from .user_backup import read_snapshot
+    archive = Path(auth_backup.get("file", ""))
+    checksum = auth_backup.get("sha256")
+    if archive.parent != manifest.parent / "backups" or not isinstance(checksum, str) or len(checksum) != 64:
+        raise ManageError("Authelia migration authentication backup is invalid")
+    read_snapshot(archive, sha256=checksum)
+    value = {
+        "schema": "anvil-connect.authelia-upgrade/v1", "phase": "prepared",
+        "old_generation": old_generation, "new_generation": new_generation,
+        "old_digests": {"native": old_record["native_sha256"], **old_record["components"]},
+        "old_authelia_sha256": old_record["components"]["authelia"],
+        "new_digests": {name: digests[name] for name in ("native", "caddy", "authelia")}, "old_root": str(backup),
+        "auth_backup": {"file": str(archive), "sha256": checksum},
+        "manifest_sha256": _manifest_digest(manifest), "targets": [target.text() for target in targets],
+    }
+    _write_atomic(_authelia_upgrade_marker(root), (json.dumps(value, sort_keys=True) + "\n").encode(), mode=0o600)
+
+
+def _read_authelia_upgrade_marker(root: Path, *, data: dict[str, Any], digests: dict[str, str],
+                                  manifest: Path, targets: tuple[Target, ...], unit_root: Path) -> tuple[Path, str] | None:
+    marker = _authelia_upgrade_marker(root)
+    try:
+        info = marker.lstat()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise ManageError("Authelia migration recovery marker is invalid") from exc
+    if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid not in {0, os.geteuid()}
+            or stat.S_IMODE(info.st_mode) != 0o600):
+        raise ManageError("Authelia migration recovery marker is invalid")
+    raw = _read_regular(marker, _MAX_OUTPUT)
+    if raw is None:
+        raise ManageError("Authelia migration recovery marker is invalid")
+    value = _strict_json(raw, "Authelia migration recovery marker is invalid")
+    required = {"schema", "phase", "old_generation", "new_generation", "old_authelia_sha256", "old_digests",
+                "new_digests", "old_root", "auth_backup", "manifest_sha256", "targets"}
+    hexes = ("old_generation", "new_generation", "old_authelia_sha256", "manifest_sha256")
+    if (set(value) != required or value.get("schema") != "anvil-connect.authelia-upgrade/v1" or value.get("phase") != "prepared"
+            or any(not isinstance(value.get(key), str) or re.fullmatch(r"[0-9a-f]{64}", value[key]) is None for key in hexes)
+            or not isinstance(value.get("old_root"), str) or not isinstance(value.get("targets"), list)
+            or value["targets"] != [target.text() for target in targets]
+            or not isinstance(value.get("old_digests"), dict) or set(value["old_digests"]) != {"native", "caddy", "authelia"}
+            or any(not isinstance(item, str) or re.fullmatch(r"[0-9a-f]{64}", item) is None for item in value["old_digests"].values())
+            or not isinstance(value.get("new_digests"), dict) or value["new_digests"] != {name: digests.get(name) for name in ("native", "caddy", "authelia")}):
+        raise ManageError("Authelia migration recovery marker is invalid")
+    if value.get("manifest_sha256") != _manifest_digest(manifest):
+        raise ManageError("Authelia migration recovery marker does not match this upgrade")
+    old_root = Path(value["old_root"])
+    if old_root.parent != root.parent or not old_root.name.startswith("." + root.name + ".anvil-connect-rollback-"):
+        raise ManageError("Authelia migration recovery marker is invalid")
+    backup = value.get("auth_backup")
+    if not isinstance(backup, dict) or set(backup) != {"file", "sha256"}:
+        raise ManageError("Authelia migration authentication backup is invalid")
+    from .user_backup import read_snapshot
+    if not isinstance(backup.get("file"), str) or not isinstance(backup.get("sha256"), str) or re.fullmatch(r"[0-9a-f]{64}", backup["sha256"]) is None:
+        raise ManageError("Authelia migration authentication backup is invalid")
+    archive = Path(backup["file"])
+    if archive.parent != manifest.parent / "backups":
+        raise ManageError("Authelia migration authentication backup is invalid")
+    read_snapshot(archive, sha256=backup["sha256"])
+    if root.exists():
+        generation, _ = _verify_owned_tree(root)
+        if generation == value["old_generation"] and not old_root.exists():
+            layout = "old"
+            prior_root = root
+        elif generation != value["new_generation"] or not old_root.exists():
+            raise ManageError("Authelia migration recovery layout is invalid")
+        else:
+            layout = "new"
+            prior_root = old_root
+    else:
+        if not old_root.exists():
+            raise ManageError("Authelia migration recovery layout is invalid")
+        layout = "published-missing-units"
+        prior_root = old_root
+    old_generation, _ = _verify_owned_tree(prior_root)
+    if old_generation != value["old_generation"]:
+        raise ManageError("Authelia migration recovery root is invalid")
+    old_source = _unit_sources(prior_root).get("anvil-connect-authelia.service")
+    if old_source is None or _digest(_unit_exec_path(old_source)) != value["old_authelia_sha256"]:
+        raise ManageError("Authelia migration prior executable is unavailable")
+    old_sources = _unit_sources(prior_root)
+    for name, unit in (("native", "anvil-connect-gateway.service"), ("caddy", "anvil-connect-caddy.service"), ("authelia", "anvil-connect-authelia.service")):
+        source = old_sources.get(unit)
+        if source is None or _digest(_unit_exec_path(source)) != value["old_digests"][name]:
+            raise ManageError("Authelia migration prior executable is unavailable")
+    if layout == "new":
+        for unit, source in _unit_sources(root).items():
+            if unit in _target_units(targets):
+                actual = _read_unit(unit_root / unit)
+                prior = _unit_sources(old_root).get(unit)
+                if actual not in {source, prior}:
+                    raise ManageError("Authelia migration recovery unit is invalid")
+    return old_root, layout
+
+
 @dataclass
 class _Activation:
     root: Path
@@ -1297,7 +1464,7 @@ class _Activation:
                 self.cleanup_retained = True
 
 
-def _activate(data: dict[str, Any], targets: tuple[Target, ...], stage_path: Path, report: dict[str, Any], digests: dict[str, str], runner: Runner | None, unit_root: Path, *, upgrade: bool = False) -> _Activation:
+def _activate(data: dict[str, Any], targets: tuple[Target, ...], stage_path: Path, report: dict[str, Any], digests: dict[str, str], runner: Runner | None, unit_root: Path, *, upgrade: bool = False, rollback_root: Path | None = None) -> _Activation:
     root = Path(data["config_root"])
     _safe_dir(root.parent)
     _safe_dir(unit_root)
@@ -1317,6 +1484,9 @@ def _activate(data: dict[str, Any], targets: tuple[Target, ...], stage_path: Pat
             _bound_active(data, Target("gateway") if selected_gateway else targets[0], digests, allow_unpinned_gateway=selected_gateway)
         old_generation, _ = _verify_owned_tree(root)
         old_sources = _unit_sources(root)
+    elif rollback_root is not None and rollback_root.exists():
+        old_generation, _ = _verify_owned_tree(rollback_root)
+        old_sources = _unit_sources(rollback_root)
     _verify_owned_tree(stage_path, strict=False)
     desired_sources = _unit_sources(stage_path)
     copy_units = tuple(unit for unit in _target_units(targets) if unit in desired_sources and (state == "absent" or "systemd/" + unit in changed or not (unit_root / unit).exists()))
@@ -1332,10 +1502,21 @@ def _activate(data: dict[str, Any], targets: tuple[Target, ...], stage_path: Pat
     transaction = _Activation(root, unit_root, prior_units, prior_record, None, False)
     try:
         if root_exists:
-            backup = Path(tempfile.mkdtemp(prefix="." + root.name + ".anvil-connect-rollback-", dir=root.parent))
-            os.rmdir(backup)
+            backup = rollback_root
+            if backup is None:
+                backup = Path(tempfile.mkdtemp(prefix="." + root.name + ".anvil-connect-rollback-", dir=root.parent))
+                os.rmdir(backup)
+            elif (backup.parent != root.parent or backup.exists()
+                  or not backup.name.startswith("." + root.name + ".anvil-connect-rollback-")):
+                raise ManageError("activation rollback artifact is unavailable")
             transaction.backup = backup
             os.replace(root, backup)
+            transaction.root_moved = True
+        elif rollback_root is not None:
+            if (rollback_root.parent != root.parent or not rollback_root.exists()
+                    or not rollback_root.name.startswith("." + root.name + ".anvil-connect-rollback-")):
+                raise ManageError("activation rollback artifact is unavailable")
+            transaction.backup = rollback_root
             transaction.root_moved = True
         _make_public(stage_path)
         os.replace(stage_path, root)
@@ -1826,7 +2007,7 @@ def _reverse_released(data: dict[str, Any], connectors: tuple[dict[str, Any], ..
     raise ManageError("stale or foreign reverse listener; replacement refused")
 
 
-def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bool, upgrade: bool, runner: Runner | None, unit_root: str | Path, action: str) -> dict[str, Any]:
+def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bool, upgrade: bool, runner: Runner | None, unit_root: str | Path, action: str, manifest: Path) -> dict[str, Any]:
     """Activate one closed role set in a single reversible transaction."""
     _require_supported_platform()
     require_isolated(data)
@@ -1846,9 +2027,15 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
     }
     if not apply:
         result["runtime_actions"] = _preview_runtime_actions(data, targets, report, runner, Path(unit_root))
+        if os.path.lexists(_authelia_upgrade_marker(Path(data["config_root"]))):
+            result["activation_blockers"].append("Authelia migration recovery is pending; rerun the identical connect up command with --upgrade --confirm.")
         return result
+    if not upgrade:
+        _require_no_authelia_upgrade(Path(data["config_root"]))
     root, system_root = Path(data["config_root"]), Path(unit_root)
     with _deployment_lock(root):
+        if not upgrade:
+            _require_no_authelia_upgrade(root)
         # Re-plan under the lock; a concurrent render must not change what this
         # request decided was target-scoped.
         report = plan(data, data["config_root"])
@@ -1862,6 +2049,10 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                                  if "local_tunnel" in c or "local_tunnel" in prior_connectors.get(c["id"], {}))
         guarded = tuple(c for c in local_connectors if Target("connector", c["id"]) in targets)
         transaction: _Activation | None = None
+        migration: tuple[str, dict[str, Any]] | None = None
+        migration_backup: dict[str, Any] | None = None
+        migration_stopped: dict[str, tuple[bool, str]] = {}
+        fix_forward = False
         active_record: dict[str, Any] | None = None
         prior: dict[str, tuple[bool, str]] = {}
         touched: dict[str, tuple[bool, str]] = {}
@@ -1872,9 +2063,85 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
         if selected_gateway and local_transaction:
             readiness_connectors = [c for c in data["connectors"] if Target("connector", c["id"]) in targets]
         try:
-            if report["state"] != "current":
+            recovery = _read_authelia_upgrade_marker(
+                root, data=data, digests=checked["digests"], manifest=manifest,
+                targets=targets, unit_root=system_root,
+            ) if upgrade else None
+            if recovery is not None:
+                # A prior new Authelia process may already have migrated its
+                # database. Its marker makes this a new-generation-only retry.
+                fix_forward = True
+                retained_old_root, layout = recovery
+                source_root = root if root.exists() else retained_old_root
+                prior_root = root if layout == "old" else retained_old_root
+                for unit in ("anvil-connect-caddy.service", "anvil-connect-authelia.service"):
+                    source = _unit_sources(source_root).get(unit)
+                    if source is None:
+                        raise ManageError("Authelia migration recovery unit is invalid")
+                    actual = _read_unit(system_root / unit)
+                    old_unit = _unit_sources(prior_root).get(unit)
+                    if actual not in {source, old_unit}:
+                        raise ManageError("Authelia migration recovery unit is invalid")
+                    migration_stopped[unit] = _unit_state(runner, unit)
+                    if migration_stopped[unit][0]:
+                        _action(runner, (_SYSTEMCTL, "stop", unit), _SYSTEMD_TIMEOUT, "Authelia migration recovery provider stop failed")
+                if layout != "new":
+                    staged = stage(data, data["config_root"])
+                    transaction = _activate(data, targets, Path(staged["path"]), report, checked["digests"], runner, system_root, upgrade=True, rollback_root=retained_old_root)
+                else:
+                    changed_units = []
+                    prior_sources = _unit_sources(retained_old_root)
+                    for unit, source in _unit_sources(root).items():
+                        if unit not in units:
+                            continue
+                        actual = _read_unit(system_root / unit)
+                        if actual == source:
+                            continue
+                        if actual != prior_sources.get(unit):
+                            raise ManageError("Authelia migration recovery unit is invalid")
+                        _write_atomic(system_root / unit, source)
+                        changed_units.append(unit)
+                    if changed_units:
+                        _fail(_run(runner, (_SYSTEMCTL, "daemon-reload"), _SYSTEMD_TIMEOUT), "systemd did not accept Authelia migration recovery units")
+                    transaction = _Activation(root, system_root, {}, None, retained_old_root, False)
+                transaction.pending_record = {
+                    "schema": "anvil-connect.activation/v1",
+                    "generation": _verify_owned_tree(root)[0],
+                    "native_sha256": checked["digests"]["native"],
+                    "components": {key: checked["digests"][key] for key in ("caddy", "authelia")},
+                }
+            elif report["state"] != "current":
+                if upgrade:
+                    migration = _changed_authelia_upgrade(data, targets, checked["digests"])
+                    if migration is not None:
+                        _verify_upgrade_prior(data, targets, checked["digests"])
+                        # Stop the public edge before the account writer, then
+                        # capture and independently validate the auth state.
+                        for unit in ("anvil-connect-caddy.service", "anvil-connect-authelia.service"):
+                            source = _unit_sources(root).get(unit)
+                            if source is None:
+                                raise ManageError("Authelia migration prior unit is unavailable")
+                            _verify_unit(system_root, unit, source)
+                            migration_stopped[unit] = _unit_state(runner, unit)
+                            if migration_stopped[unit][0]:
+                                _action(runner, (_SYSTEMCTL, "stop", unit), _SYSTEMD_TIMEOUT, "Authelia migration provider stop failed")
+                        users = _safe_authelia_users_file(data)
+                        users_raw = _read_regular(users, _MAX_OUTPUT)
+                        if users_raw is None:
+                            raise ManageError("Authelia users file is unavailable for migration recovery")
+                        from .user_backup import snapshot, read_snapshot
+                        migration_backup = snapshot(data, str(manifest), users_raw=users_raw)
+                        read_snapshot(Path(migration_backup["file"]), sha256=migration_backup["sha256"])
+                        rollback_root = Path(tempfile.mkdtemp(prefix="." + root.name + ".anvil-connect-rollback-", dir=root.parent))
+                        os.rmdir(rollback_root)
+                        _write_authelia_upgrade_marker(
+                            root, old_generation=migration[0], new_generation=render_config(data)["generation"],
+                            old_record=migration[1], digests=checked["digests"], backup=rollback_root,
+                            auth_backup=migration_backup, manifest=manifest, targets=targets,
+                        )
+                        fix_forward = True
                 staged = stage(data, data["config_root"])
-                transaction = _activate(data, targets, Path(staged["path"]), report, checked["digests"], runner, system_root, upgrade=upgrade)
+                transaction = _activate(data, targets, Path(staged["path"]), report, checked["digests"], runner, system_root, upgrade=upgrade, rollback_root=rollback_root if migration is not None else None)
             else:
                 if upgrade:
                     _verify_upgrade_prior(data, targets, checked["digests"])
@@ -1910,6 +2177,10 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                     stopped.add(unit)
                     _reverse_released(prior_data, (prior_connectors[connector["id"]],), runner)
             for unit in gateway_units:
+                if fix_forward and unit == "anvil-connect-caddy.service":
+                    # A schema-migrating IdP must prove stable before its
+                    # public edge can begin accepting new authentication flow.
+                    _started_units(runner, system_root, ("anvil-connect-authelia.service",))
                 active, enabled = prior[unit]
                 changed = bool(_unit_required_files(unit, targets).intersection(report["changes"]))
                 if active and not changed and _runtime_healthy(data, targets, unit, runner, system_root):
@@ -1949,7 +2220,7 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
             _started_units(runner, system_root, units)
             if readiness_connectors:
                 _gateway_ready(data, runner, connectors=tuple(readiness_connectors))
-            if transaction.pending_record is not None:
+            if transaction.pending_record is not None and not fix_forward:
                 # Do not bless newly supplied artifact bytes until the complete
                 # selected start/restart sequence has succeeded.
                 _write_activation_record(root, transaction.pending_record)
@@ -1957,10 +2228,35 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                 active_record = dict(active_record)
                 active_record["components"] = {name: checked["digests"][name] for name in ("caddy", "authelia")}
                 _write_activation_record(root, active_record)
-            transaction.commit()
+            if fix_forward:
+                # Runtime health is established above. Record that fact before
+                # removing the recovery marker; a marker never outlives the
+                # rollback root to which it is bound.
+                _write_activation_record(root, transaction.pending_record or {})
+                try:
+                    os.unlink(_authelia_upgrade_marker(root))
+                except FileNotFoundError as exc:
+                    raise ManageError("Authelia migration recovery marker is unavailable") from exc
+                descriptor = os.open(root.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC | os.O_NOFOLLOW)
+                try:
+                    os.fsync(descriptor)
+                finally:
+                    os.close(descriptor)
+                transaction.commit()
+                result["authelia_upgrade_recovery_completed"] = True
+            else:
+                transaction.commit()
         except Exception as exc:
             if transaction is None:
+                if migration_stopped and not fix_forward:
+                    _restore_running(runner, tuple(reversed(migration_stopped)), migration_stopped)
+                if fix_forward:
+                    raise _authelia_upgrade_pending(True) from exc
                 raise
+            if fix_forward:
+                # After the marker exists never revive an old Authelia binary:
+                # the new process may have migrated a one-way database schema.
+                raise _authelia_upgrade_pending(True) from exc
             if not transaction.committed:
                 cleanup_error: ManageError | None = None
                 for connector in guarded:
@@ -1981,6 +2277,10 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                     transaction.rollback(runner)
                 except ManageError as rollback_error:
                     raise rollback_error from exc
+                if migration_stopped:
+                    # `_activate` has restored the old root and unit files;
+                    # only now may the stopped prior provider be restarted.
+                    _restore_running(runner, tuple(reversed(migration_stopped)), migration_stopped)
                 if cleanup_error is not None:
                     _restore_running(runner, units, {unit: state for unit, state in touched.items() if not state[0]})
                     raise ManageError("recovery failed; recovery artifacts retained", may_have_executed=True) from cleanup_error
@@ -2017,7 +2317,7 @@ def up(manifest_path: str | Path, target: Target, *, apply: bool = False, runner
     _require_supported_platform()
     data = read_manifest(manifest_path)
     targets = _selected_targets(data, target)
-    result = _up_selected(data, targets, apply=apply, upgrade=False, runner=runner, unit_root=unit_root, action="up")
+    result = _up_selected(data, targets, apply=apply, upgrade=False, runner=runner, unit_root=unit_root, action="up", manifest=Path(manifest_path))
     result["target"] = target.text()
     return result
 
@@ -2032,7 +2332,7 @@ def up_many(manifest_path: str | Path, targets: tuple[Target, ...], *, upgrade: 
     _require_supported_platform()
     data = read_manifest(manifest_path)
     selected = _selected_targets(data, targets)
-    return _up_selected(data, selected, apply=apply, upgrade=upgrade, runner=runner, unit_root=unit_root, action="up-many")
+    return _up_selected(data, selected, apply=apply, upgrade=upgrade, runner=runner, unit_root=unit_root, action="up-many", manifest=Path(manifest_path))
 
 
 def down(manifest_path: str | Path, target: Target, *, apply: bool = False, runner: Runner | None = None, unit_root: str | Path = "/etc/systemd/system") -> dict[str, Any]:
