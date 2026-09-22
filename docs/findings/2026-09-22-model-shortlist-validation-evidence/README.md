@@ -3,10 +3,18 @@
 This public-safe bundle records a bounded replacement screen and the initial
 Qwen3.8 Flash Next TP2/C4 trial. It preserves native schemas after replacing
 operator paths, host/container identifiers, network values, GPU UUIDs, and a
-synthetic fixture secret with stable redaction tokens. GPU-A-REDACTED and
-GPU-B-REDACTED preserve distinct-card references, and public relative
-configuration names preserve the four restoration hash-parity entries. No
-credential material is retained.
+synthetic fixture secret with stable redaction tokens. All retained
+`container_id` values, including nested status payloads, use
+`REDACTED_CONTAINER_ID`. GPU-A-REDACTED and GPU-B-REDACTED preserve
+distinct-card references, and public relative configuration names preserve the
+four restoration hash-parity entries. No credential material is retained.
+
+The two `router-final-status.json` snapshots retain their envelope shape but
+replace active tier-to-model assignments and readiness state with
+`REDACTED_ACTIVE_ROUTER_STATE`. The Qwen startup capture replaces its historical
+loopback bind literal with `<redacted-loopback-bind>`; it does not assert a
+different bind argument. Independent direct and routed probes retain the
+bounded pass/fail outcomes used by the campaign decision.
 
 The Qwen native agentic artifacts report 16/18 and 15/18 with their internal
 0.75 pass-rate floor and `passed: true`. The campaign's predeclared

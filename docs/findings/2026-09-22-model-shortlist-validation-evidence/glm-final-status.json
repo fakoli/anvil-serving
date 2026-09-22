@@ -1,6 +1,6 @@
 {
   "container": "intelligence-glm-exl3-327k-r10-vision8-apc-nospec",
-  "container_id": "a785e504dc1f26bd1bbdfffc979c7682532721742a2dc8ef9d696f69849bb634",
+  "container_id": "REDACTED_CONTAINER_ID",
   "health": null,
   "host_memory": {
     "current_bytes": 45777793024,

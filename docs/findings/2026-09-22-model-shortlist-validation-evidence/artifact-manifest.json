@@ -31,8 +31,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "a9ad06d077ca20f566a72da70da98112ebce0cd1ebab35688c2ddd1cc476b7e2",
-          "bytes": 2473
+          "sha256": "3291359098d2b99af84b44adaa303ea91da1175d5133e899bc670dbf37423dd1",
+          "bytes": 3004
         }
       ],
       "reason": ""
@@ -114,13 +114,13 @@
         },
         {
           "path": "glm-final-status.json",
-          "sha256": "2f8af0409fc82abde407068b3a2267ab67884efa7f09c175d4ad113e8cdfb985",
-          "bytes": 1043
+          "sha256": "dad1dd01db1e8b78b5afb8564c07c1648d642ecc5b9cd507684d67d0aa28387f",
+          "bytes": 1000
         },
         {
           "path": "router-final-status.json",
-          "sha256": "68b2c8befb9cd581d44cb6a8409b11f6f9e7b273153be8cbd43a6326c9f3e0d3",
-          "bytes": 1392
+          "sha256": "f9c22c10950404941717bc4e78ab353f28040999c1e54edb2311130166a87a12",
+          "bytes": 652
         },
         {
           "path": "gpus-restored.json",
@@ -146,18 +146,18 @@
       "files": [
         {
           "path": "qwen-startup-complete.txt",
-          "sha256": "d60dc05eda420d357f31b3d5b6ee37fb1eabd60d3fd2dfa6de08250892c83202",
-          "bytes": 54458
+          "sha256": "f8530366208837fa4ed6fbe9f1ef48802a5e30d78c1d33d800c0f690406f0f7f",
+          "bytes": 54473
         },
         {
           "path": "qwen-ready-status.json",
-          "sha256": "ec7a5928c3d27d52566791e792d784c9a221a67c6c01a620c5fe049b99d739e9",
-          "bytes": 946
+          "sha256": "d0f77e45aac41cc48e8c98a2773fc78e5e003efedcf37011133ae5a9868fac4c",
+          "bytes": 903
         },
         {
           "path": "qwen-after-scout-status.json",
-          "sha256": "054c59a8ba2fefeb59e4bd8b914389b56fc73a8fb29d1ba4931ba69c4d16956d",
-          "bytes": 946
+          "sha256": "2669795386a43381b579fc249219a1aadc11627a03ca891a7a47c0b8bccd1587",
+          "bytes": 903
         },
         {
           "path": "qwen-preflight-basic.json",
@@ -245,13 +245,13 @@
         },
         {
           "path": "router-final-status.json",
-          "sha256": "68b2c8befb9cd581d44cb6a8409b11f6f9e7b273153be8cbd43a6326c9f3e0d3",
-          "bytes": 1392
+          "sha256": "f9c22c10950404941717bc4e78ab353f28040999c1e54edb2311130166a87a12",
+          "bytes": 652
         },
         {
           "path": "glm-final-status.json",
-          "sha256": "2f8af0409fc82abde407068b3a2267ab67884efa7f09c175d4ad113e8cdfb985",
-          "bytes": 1043
+          "sha256": "dad1dd01db1e8b78b5afb8564c07c1648d642ecc5b9cd507684d67d0aa28387f",
+          "bytes": 1000
         },
         {
           "path": "gpus-restored.json",

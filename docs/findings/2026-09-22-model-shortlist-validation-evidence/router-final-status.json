@@ -1,1 +1,27 @@
-{"command":"router transition-status","context":{"command":null,"command_host":null,"command_runtime":null,"controller_endpoint":null,"controller_endpoint_kind":null,"execution_host":null,"execution_runtime":null,"gpu_role":null,"gpu_uuid":null,"overlay":null,"resource":null,"resource_endpoint":null,"resource_endpoint_kind":null,"resource_host":null,"resource_runtime":null,"target":null,"topology":null,"transport":null},"data":"{\"tiers\": [{\"active_requests\": 0, \"draining\": false, \"expected_model\": \"glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec\", \"metadata_source\": \"configured\", \"observed_context_limit\": null, \"observed_model\": \"glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec\", \"readiness_reason\": \"identity_passed\", \"readiness_state\": \"ready\", \"ready\": true, \"reason\": \"admitting\", \"state\": \"admitting\", \"tier_id\": \"primary-local\"}, {\"active_requests\": 0, \"draining\": false, \"expected_model\": \"qwen38-huihui-ninfer-schemafix-mtp3-160k\", \"metadata_source\": \"configured\", \"observed_context_limit\": null, \"observed_model\": \"qwen38-huihui-ninfer-schemafix-mtp3-160k\", \"readiness_reason\": \"identity_passed\", \"readiness_state\": \"ready\", \"ready\": true, \"reason\": \"admitting\", \"state\": \"admitting\", \"tier_id\": \"secondary-midmod\"}]}\n","error":null,"ok":true,"warnings":[]}
+{
+  "command": "router transition-status",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "{\"tiers\":\"REDACTED_ACTIVE_ROUTER_STATE\"}",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

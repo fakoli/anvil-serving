@@ -1,6 +1,6 @@
 {
   "container": "qwen38-sglang-tp2-c4-256k-v1",
-  "container_id": "e13aab081757a28a54787b0f5c30ac3f5d4cca983718948d02196062d22a719f",
+  "container_id": "REDACTED_CONTAINER_ID",
   "health": null,
   "host_memory": {
     "current_bytes": 39087308800,

@@ -39,8 +39,8 @@
         },
         {
           "path": "redaction-provenance.md",
-          "sha256": "c4613e952e83a98884db024e6982f7c4e6115bf279a8d1852a425c1f9ad8c74e",
-          "bytes": 1785
+          "sha256": "ed856be9aa92ac475509990fefeba1e706e4565262c93e1d7e76b8b4d1ccbf86",
+          "bytes": 2138
         }
       ],
       "reason": ""
@@ -127,8 +127,8 @@
         },
         {
           "path": "router-final-status.json",
-          "sha256": "163c4b8fb7ac53ec347662064da6a41fb42cd127b8b2991d405c478b190ee3af",
-          "bytes": 537
+          "sha256": "1d31945d9ff94f9ba4f269443a55b8d7c50e40a05d3aa57f7592a6bc9d014635",
+          "bytes": 46
         },
         {
           "path": "router-final-readmit.json",
@@ -348,8 +348,8 @@
         },
         {
           "path": "router-final-status.json",
-          "sha256": "163c4b8fb7ac53ec347662064da6a41fb42cd127b8b2991d405c478b190ee3af",
-          "bytes": 537
+          "sha256": "1d31945d9ff94f9ba4f269443a55b8d7c50e40a05d3aa57f7592a6bc9d014635",
+          "bytes": 46
         },
         {
           "path": "gpus-final.json",
