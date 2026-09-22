@@ -1,0 +1,375 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-21-mimo-v26-qualification",
+    "capability": "llm",
+    "repository_revision": "974d38c4ad2c19f776f4d3c35f427d28be77567a",
+    "dirty_state": "Clean isolated base at launch; final documentation and evidence edits remain uncommitted. Original checkout preserved.",
+    "started_at": "2026-09-22T01:50:40Z",
+    "completed_at": "2026-09-22T03:11:09.442048+00:00",
+    "evidence_labels": [
+      "measured-baseline",
+      "candidate-load-passed",
+      "candidate-correctness-failed"
+    ],
+    "decision_labels": [
+      "retain-baseline",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "recipe-container-status/v1",
+    "anvil-serving.campaign-workload-manifest/v1",
+    "anvil-serving.tool-log-recovery/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.swe-run/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "f7904110c2dcd30fae351f4d12537c89a503959adfb31e8a148117793af95cb4",
+          "bytes": 5169
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "45cab7ef4e5e43b3725aa43a310954056a969933e299932878fc04a468520c0f",
+          "bytes": 5998
+        },
+        {
+          "path": "research-synthesis.md",
+          "sha256": "8f1c61a0ceb428c56939f00ba599c99c9b30dc503dee0135aaba3a9e9f687f0d",
+          "bytes": 1040
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "3969566d06cbccbb0bd87f5b28013ef226a4ea0714c82cbc980ada7d7defed0d",
+          "bytes": 2191
+        },
+        {
+          "path": "mimo-sampling-smoke-suite.json",
+          "sha256": "af24e5ceaa0b21d1cc409ffd2744ceb2714242fbf1d9cb1a17b1ae3a1dd19bde",
+          "bytes": 540
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.md",
+          "sha256": "46fd483f4e4d29569287e19ea3a9136e2f53c42357e75c556635cc7181054ce3",
+          "bytes": 4271
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "mimo-v26-sglang-tp2-c1-327k.public.toml",
+          "sha256": "80a4f1323c94131eae1894520efa47cc7ded55f1194d2c44eb13f07e1b6a516d",
+          "bytes": 1582
+        },
+        {
+          "path": "image-identity.json",
+          "sha256": "9ac8bece40618704c75bd2824c33b52c722f43722a21c77fa4cf867ec3c6bf2b",
+          "bytes": 646
+        },
+        {
+          "path": "launcher.json",
+          "sha256": "818885159df2c60912e4a2026dfb41d88f357c62024bc26637efc62c9969d953",
+          "bytes": 137
+        },
+        {
+          "path": "glm-status-before.json",
+          "sha256": "31da14bb44e836a8c2616e5bd748e4806a4045a53f714a5dfc54ce8e95cfd025",
+          "bytes": 1717
+        },
+        {
+          "path": "glm-final-status.json",
+          "sha256": "0945b7673f4e7fbff96b76538877a5ab265503481b96048d8c46a6029e5ff9a7",
+          "bytes": 1000
+        },
+        {
+          "path": "router-final-status.json",
+          "sha256": "163c4b8fb7ac53ec347662064da6a41fb42cd127b8b2991d405c478b190ee3af",
+          "bytes": 537
+        },
+        {
+          "path": "router-final-readmit.json",
+          "sha256": "453806c184dd63615784068972c7119fc71d5a2e17ca6f6a27e774ef73b8e71a",
+          "bytes": 741
+        },
+        {
+          "path": "gpus-final.json",
+          "sha256": "2716ae146c38ee0242469b501831e0622259a1fc4b83f76e8466f0f95231215c",
+          "bytes": 208
+        },
+        {
+          "path": "mimo-config.json",
+          "sha256": "3fcf78bf84e3dd963af5dc37e1fe183cbf65c40002645a9bd5cdb71a01bed5a7",
+          "bytes": 8071
+        },
+        {
+          "path": "mimo-generation_config.json",
+          "sha256": "e76106ccf18a63c9ef11fb8f4777deac4669e6d25d0c867761fb6f77270415d2",
+          "bytes": 212
+        }
+      ],
+      "reason": "MiMo identity and final GLM restoration identity retained."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "glm-preflight.json",
+          "sha256": "f7c47786ad78aec3ef7c1970dca450760863ca16ddd278411349646b7f3a74be",
+          "bytes": 22850
+        },
+        {
+          "path": "glm-preflight-enabled.json",
+          "sha256": "93307ae7b02bc5f3933d07850f9befd51b1b6306dc21c36d1a73452a397671ba",
+          "bytes": 20357
+        },
+        {
+          "path": "glm-quality.json",
+          "sha256": "3c9c3fbf9951a41fafadcb858c6f109c610dfa3d68f95f5ee16506302033a1e3",
+          "bytes": 31370
+        },
+        {
+          "path": "glm-capacity-c1-scout.json",
+          "sha256": "8850542012eddfd285c706a1ad31b688e59ccaec090751b4d7091a4b4d114dfd",
+          "bytes": 30996
+        },
+        {
+          "path": "glm-capacity-16word-probe.json",
+          "sha256": "36fb705b25a08d7115005841e58d2da17e5ea7ef5f9f0760c2f79cd6b273a1b6",
+          "bytes": 12675
+        },
+        {
+          "path": "glm-capacity-c4-16word-scout.json",
+          "sha256": "ed9b3462865640979e94f788f02975f92dc4422231a3761c1883cc4232a5b612",
+          "bytes": 21546
+        },
+        {
+          "path": "glm-capacity-c4-16word-final.json",
+          "sha256": "0907911ac3ba92b87093fef17fa8985719d92a35412f5e24771f5f7d551f81fe",
+          "bytes": 134561
+        },
+        {
+          "path": "glm-capacity-c4-16word-final-summary.json",
+          "sha256": "be0a6c14633c6c09bf03a127cec0631bb9e847c1b5eaf2351e2f02a90f0105e5",
+          "bytes": 3401
+        },
+        {
+          "path": "mimo-c1-logs.log",
+          "sha256": "e9af281c530e5e9350f6975da9082fd81319471d8b0ff4a268017799520c423b",
+          "bytes": 34871
+        },
+        {
+          "path": "mimo-c1-status.log",
+          "sha256": "a77a99f75fbed60f40b857c72c96e43ff7a6c601665ec193f07dabc1162bc86a",
+          "bytes": 805
+        },
+        {
+          "path": "mimo-v2-logs.log",
+          "sha256": "e050a76ce9835afe41b90105fd648b12de64b4dcff86206e443b40e2cc4e8d0c",
+          "bytes": 19
+        },
+        {
+          "path": "mimo-v2-status.json",
+          "sha256": "54c83729d4dcd2c579ee4362172b206d6f9f519704fc3ad07dd964bd84658edc",
+          "bytes": 762
+        },
+        {
+          "path": "mimo-v2-tool-transcript.txt",
+          "sha256": "0fe3597075f5d9db567b046f5bfc1d580e437f28920de6da30db7f1a2f3ceaaf",
+          "bytes": 2539
+        },
+        {
+          "path": "mimo-v2-capture-provenance.json",
+          "sha256": "392dcc9e6a3a8c07ff783e5dbb2d2a6f63ce389e7de077ab04f16b5932c159fe",
+          "bytes": 494
+        },
+        {
+          "path": "mimo-v3-startup.log",
+          "sha256": "d4998543c25d7aa25c13b6ff9e8c9d283724f56af8b14fadf84ba2b94847227e",
+          "bytes": 60412
+        },
+        {
+          "path": "mimo-v3-status.json",
+          "sha256": "ab66fde01902d924f787aa5a6764c56476363d71581ea8922672ec451c8cf321",
+          "bytes": 938
+        },
+        {
+          "path": "mimo-v3-models.json",
+          "sha256": "620d70cb1eb62d11991fd319e8dab62f73116ef5f610b31244dd51140312eae4",
+          "bytes": 304
+        },
+        {
+          "path": "mimo-v3-preflight.log",
+          "sha256": "a916d43113849fbd5c3e04327e27439dc068b5f748a17860f4ef3a6cded53613",
+          "bytes": 3916
+        },
+        {
+          "path": "mimo-v3-sampling-smoke.json",
+          "sha256": "a8d6ff5514881779eae9aa24b3e1957113d3cf6f8710875b495157474726de7f",
+          "bytes": 12457
+        },
+        {
+          "path": "mimo-v3-final-logs.log",
+          "sha256": "7e8275a52dd5c4d17105a4a5322ea1ab9b650cd32f3edb67296ad5083c0289ef",
+          "bytes": 188530
+        },
+        {
+          "path": "mimo-v3-final-status.log",
+          "sha256": "00dcd415acc63e926c9fb86a6119b1a59d5e6942854e5856d0894cb8dcaf3742",
+          "bytes": 938
+        },
+        {
+          "path": "glm-swe-artifact.json",
+          "sha256": "3a16193c4884d35e86ecb86e6f3fe58d7b58c6fc0a7837cdd41e144cc371adb4",
+          "bytes": 5015
+        },
+        {
+          "path": "glm-swe-native.json",
+          "sha256": "dfcf8786e5559ef85575e3e1b5bc6112b6c68e3d243aa3c76bff188909383895",
+          "bytes": 14525
+        },
+        {
+          "path": "glm-swe-official-report.json",
+          "sha256": "5b6c06f9b15ecb1b2fb59d07c9c85a34bee43fd47a7db7f7730297d12162bf5d",
+          "bytes": 11395
+        },
+        {
+          "path": "glm-swe-grade-summary.json",
+          "sha256": "86bb32f1c7432296cd1cb4ab7bd08e4f70b49c37446f8252029cac0761c62a56",
+          "bytes": 460
+        },
+        {
+          "path": "glm-swe-test-output.txt",
+          "sha256": "96f231d67ff3b42665fd5c2403a7e7be72b788693fdf524c8795119e2d8130cb",
+          "bytes": 55319
+        }
+      ],
+      "reason": "Native GLM results, MiMo startup/correctness failures, and bounded confounded SWE evidence retained; no MiMo capacity result exists."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "59af48c01dfc22235dbd9ebe84a888c99f083439dd74caaccb12875f28bce036",
+          "bytes": 3763
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "111e1a6015f2d393a1de2c221a55b8d9893c7f1d4d475e105f5d761ca9310928",
+          "bytes": 1428
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "0fd5da8084b03c614ecd5bccea447dcb94dd3035b049c51a1fbe9e5f1711633e",
+          "bytes": 2396
+        },
+        {
+          "path": "glm-final-restore-preflight.json",
+          "sha256": "3832fe80cfff99b8eaea3237f887b0da04d42f37fd2ba671a6fdffc87c04e3b7",
+          "bytes": 20357
+        },
+        {
+          "path": "glm-final-router-smoke.json",
+          "sha256": "a7be5d64b19133a7fe332aba4d20278f00041b95b76edd4938230f2891c7093c",
+          "bytes": 2097
+        },
+        {
+          "path": "glm-final-status.json",
+          "sha256": "0945b7673f4e7fbff96b76538877a5ab265503481b96048d8c46a6029e5ff9a7",
+          "bytes": 1000
+        },
+        {
+          "path": "router-final-readmit.json",
+          "sha256": "453806c184dd63615784068972c7119fc71d5a2e17ca6f6a27e774ef73b8e71a",
+          "bytes": 741
+        },
+        {
+          "path": "router-final-status.json",
+          "sha256": "163c4b8fb7ac53ec347662064da6a41fb42cd127b8b2991d405c478b190ee3af",
+          "bytes": 537
+        },
+        {
+          "path": "gpus-final.json",
+          "sha256": "2716ae146c38ee0242469b501831e0622259a1fc4b83f76e8466f0f95231215c",
+          "bytes": 208
+        }
+      ],
+      "reason": "Exact final GLM restoration, direct preflight, and authenticated routed smoke retained."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "68357489f7b57f1d4bf6732e634bc2f855698d63bb32f9a16297eaa5d3cec2af",
+          "bytes": 4518
+        },
+        {
+          "path": "independent-review.md",
+          "sha256": "f61f64e9f10191fd43ea9022b2cc46c46837e88673b3aa601eb3b52e3ba5ce18",
+          "bytes": 7823
+        }
+      ],
+      "reason": "Final no-promotion decision and independent review retained."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "6aadeddb58b7834e55609cd726fb784ecf35199280d563a09a059bbe02ff1524",
+          "bytes": 2520
+        }
+      ],
+      "reason": "Final derivative copy; no external social post was sent."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

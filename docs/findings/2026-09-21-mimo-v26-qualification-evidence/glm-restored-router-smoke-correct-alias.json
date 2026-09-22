@@ -1,0 +1,62 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "llm.primary",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nThat's it — Python's built-in `sum()` does exactly this. If you want it as a function:\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nOr, if you're avoiding built-ins for some reason (e.g., an exercise):\n\n```python\ntotal = lambda xs: 0 if not xs else xs[0] + total(xs[1:])\n```\n\nBut `sum(xs)` is the idiomatic choice.",
+      "content_chars": 335,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nThat's it — Python's built-in `sum()` does exactly this. If you want it as a function:\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nOr, if you're avoiding built-ins for some reaso",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 828,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most obvious answer is:\n\n```python\nsum(xs)\n```\n\nThat's the idiomatic Python way. But maybe the",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 4.373,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 307,
+        "prompt_tokens": 28,
+        "total_tokens": 335
+      },
+      "validation_detail": "contains sum("
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "4.4s got=\"```python\\nsum(xs)\\n```\\n\\nThat's it — Python's built-\" finish='stop' visible=335 reasoning_chars=828 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

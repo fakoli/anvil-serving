@@ -1,0 +1,107 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-21-mimo-v26",
+  "observed_at": "2026-09-22T02:01:31.853443+00:00",
+  "sources": [
+    {
+      "id": "recipe-source-1",
+      "url": "https://github.com/sgl-project/sglang/releases/tag/v0.5.20",
+      "published_or_observed": "2026-09-21",
+      "observed_at": "2026-09-22T02:01:31.853443+00:00",
+      "age_class": "current-release",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "SGLang/vLLM MiMo source and official checkpoint; no matched local v2.6 measurement",
+      "decision_impact": "Select immutable SGLang TP2 no-spec load candidate; retain vLLM successor lead"
+    },
+    {
+      "id": "recipe-source-2",
+      "url": "https://github.com/sgl-project/sglang/blob/v0.5.20/python/sglang/srt/models/mimo_v2.py",
+      "published_or_observed": "2026-09-21",
+      "observed_at": "2026-09-22T02:01:31.853443+00:00",
+      "age_class": "current-release",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "SGLang/vLLM MiMo source and official checkpoint; no matched local v2.6 measurement",
+      "decision_impact": "Select immutable SGLang TP2 no-spec load candidate; retain vLLM successor lead"
+    },
+    {
+      "id": "recipe-source-3",
+      "url": "https://github.com/sgl-project/sglang/blob/v0.5.20/python/sglang/srt/layers/quantization/mxfp4.py",
+      "published_or_observed": "2026-09-21",
+      "observed_at": "2026-09-22T02:01:31.853443+00:00",
+      "age_class": "current-release",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "SGLang/vLLM MiMo source and official checkpoint; no matched local v2.6 measurement",
+      "decision_impact": "Select immutable SGLang TP2 no-spec load candidate; retain vLLM successor lead"
+    },
+    {
+      "id": "recipe-source-4",
+      "url": "https://recipes.vllm.ai/XiaomiMiMo/MiMo-V2.6-Flash-RL",
+      "published_or_observed": "2026-09-21",
+      "observed_at": "2026-09-22T02:01:31.853443+00:00",
+      "age_class": "current-release",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "SGLang/vLLM MiMo source and official checkpoint; no matched local v2.6 measurement",
+      "decision_impact": "Select immutable SGLang TP2 no-spec load candidate; retain vLLM successor lead"
+    },
+    {
+      "id": "recipe-source-5",
+      "url": "https://github.com/local-inference-lab/rtx6kpro/tree/master/models",
+      "published_or_observed": "2026-09-21",
+      "observed_at": "2026-09-22T02:01:31.853443+00:00",
+      "age_class": "current-index-historical-recipes",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "SGLang/vLLM MiMo source and official checkpoint; no matched local v2.6 measurement",
+      "decision_impact": "Select immutable SGLang TP2 no-spec load candidate; retain vLLM successor lead"
+    },
+    {
+      "id": "recipe-source-6",
+      "url": "https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL/tree/3b38d063180c3e4aed9691fdc735f3d10b266ee4",
+      "published_or_observed": "2026-09-21",
+      "observed_at": "2026-09-22T02:01:31.853443+00:00",
+      "age_class": "current-release",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "SGLang/vLLM MiMo source and official checkpoint; no matched local v2.6 measurement",
+      "decision_impact": "Select immutable SGLang TP2 no-spec load candidate; retain vLLM successor lead"
+    },
+    {
+      "id": "sglang-fp4-scale-allocation",
+      "url": "https://github.com/sgl-project/sglang/blob/v0.5.20/python/sglang/srt/layers/quantization/fp8.py",
+      "published_or_observed": "observed 2026-09-22 UTC",
+      "observed_at": "2026-09-22T03:03:25.141448+00:00",
+      "age_class": "current-release",
+      "evidence_type": "pinned-upstream-source",
+      "hardware_runtime_relevance": "SM120 TP2 mixed MXFP4/FP8 serving; source inspection, not benchmark",
+      "decision_impact": "Default FP32 expert-scale allocation explains avoidable memory overhead; exact 47-MoE-layer calculation retained in independent review."
+    },
+    {
+      "id": "sglang-sm120-native-scales",
+      "url": "https://github.com/sgl-project/sglang/blob/v0.5.20/python/sglang/srt/layers/quantization/mxfp4_flashinfer_cutlass_moe.py",
+      "published_or_observed": "observed 2026-09-22 UTC",
+      "observed_at": "2026-09-22T03:03:25.141448+00:00",
+      "age_class": "current-release",
+      "evidence_type": "pinned-upstream-source",
+      "hardware_runtime_relevance": "SM120 TP2 mixed MXFP4/FP8 serving; source inspection, not benchmark",
+      "decision_impact": "Source-supported flashinfer_mxfp4 successor reached health locally, but correctness failed; source support is not qualification."
+    },
+    {
+      "id": "sglang-mimo-overrides",
+      "url": "https://github.com/sgl-project/sglang/blob/v0.5.20/python/sglang/srt/arg_groups/model_overrides/mimo_v2.py",
+      "published_or_observed": "observed 2026-09-22 UTC",
+      "observed_at": "2026-09-22T03:03:25.141448+00:00",
+      "age_class": "current-release",
+      "evidence_type": "pinned-upstream-source",
+      "hardware_runtime_relevance": "SM120 TP2 mixed MXFP4/FP8 serving; source inspection, not benchmark",
+      "decision_impact": "Default SM120 backend selection did not choose compact expert scales."
+    },
+    {
+      "id": "vllm-pinned-mimo-source",
+      "url": "https://github.com/vllm-project/vllm/blob/eb87980585c10f7e5ee8f498fd3830898101d208/vllm/model_executor/models/mimo_v2.py",
+      "published_or_observed": "observed 2026-09-22 UTC",
+      "observed_at": "2026-09-22T03:03:25.141448+00:00",
+      "age_class": "current-release",
+      "evidence_type": "pinned-upstream-source",
+      "hardware_runtime_relevance": "SM120 TP2 mixed MXFP4/FP8 serving; source inspection, not benchmark",
+      "decision_impact": "TP2 checkpoint resharding is present; inspected native implementation lacks vision/audio path, so no replacement trial selected."
+    }
+  ]
+}

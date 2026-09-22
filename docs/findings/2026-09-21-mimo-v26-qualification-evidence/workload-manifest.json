@@ -1,0 +1,65 @@
+{
+  "schema": "anvil-serving.campaign-workload-manifest/v1",
+  "campaign_id": "2026-09-21-mimo-v26",
+  "launcher_revision": "974d38c4ad2c19f776f4d3c35f427d28be77567a",
+  "generator_sources": [
+    {
+      "path": "anvil_serving/benchmarking/requests.py",
+      "sha256": "6de56fe18a7a046b3cacfa95058d4174e056068b484cc0e798c118aba17a957e"
+    },
+    {
+      "path": "anvil_serving/benchmarking/cli.py",
+      "sha256": "9730892176675c01adc37574f43e0fbdaf12451b3a4841abe17bc078367a8154"
+    },
+    {
+      "path": "anvil_serving/_benchmark_profiles/smoke.json",
+      "sha256": "b43f6a199164c2cbb92bde24672beebd781f58851d2d1bb944fc3d4d24a8e360"
+    }
+  ],
+  "controlled_capacity": {
+    "seed": 0,
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "response_words": 16,
+    "max_tokens": 2048,
+    "thinking_mode": "enabled",
+    "temperature": 0.0,
+    "nominal_context_tokens": 32768,
+    "concurrency": 4,
+    "scout_requests": 8,
+    "finalist_requests": 100,
+    "sequence": "eight-request scout followed by100-request final; first8prefixes may remain cached; unique describes within-cell requests",
+    "performance_metrics": "service visibleTTFT,E2E,requests/s; short output does not measure sustained long-answer decode"
+  },
+  "diagnostic_capacity": {
+    "requests": 8,
+    "concurrency": 1,
+    "nominal_context_tokens": 8192,
+    "response_words": 128,
+    "max_tokens": 10240,
+    "outcome": "all8completed by length limit; exact output and complete capture failed; excluded from performance"
+  },
+  "coding": {
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "instance_ids": [
+      "psf__requests-2317"
+    ],
+    "selection": "preselected before either model attempt; bounded single-repository smoke only",
+    "grader": "official pinned SWE-bench tests; independently executable oracle"
+  },
+  "quality": {
+    "suites_requested": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ],
+    "repetitions": 3,
+    "evidence_use": "diagnostic",
+    "visible_answer_tokens": 1024,
+    "reasoning_headroom_tokens": 8192,
+    "thinking_mode": "enabled"
+  }
+}

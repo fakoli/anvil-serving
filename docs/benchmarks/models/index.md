@@ -9,6 +9,7 @@ evidence by measured hardware.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
+| MiMo v2.6 Flash RL SGLang TP2 | V3 healthy load, then two probes with zero visible content | `compatibility-only` plus bounded negative correctness; no capacity/throughput or text/vision qualification; `no-promotion` | 2026-09-21 | [MiMo v2.6 Flash](mimo-v26-flash.md) |
 | GLM-5.3-Flash mixed 3.5-bpw EXL3 | Startup failed from host RAM exhaustion; no inference requests | Rejected unbounded configuration; selected 4-bpw baseline restored; retry requires containment | 2026-09-17 | [GLM-5.3-Flash](glm53-flash.md) |
 | GLM-5.3-Flash mixed 3.5-bpw EXL3, R7 loader fix-forward | C1/C4 functional, repeated C4 quality, 216K actual-token needle; one C4 4/4 cell 98.17 tok/s | Strict capacity inconsistent; no overall win or promotion | 2026-09-17 | [GLM-5.3-Flash](glm53-flash.md) |
 | GLM-5.3-Flash EXL3 r7 no-spec | 327,680 configured tokens; C4 strict120 120/120; separate long-context 9/9; MMLU-Pro 90/100, agentic 30/30, SWE 4/5 | `current` text-only lane; no concurrent full-window soak or fresh-boot proof | 2026-09-14 | [GLM-5.3-Flash](glm53-flash.md) |

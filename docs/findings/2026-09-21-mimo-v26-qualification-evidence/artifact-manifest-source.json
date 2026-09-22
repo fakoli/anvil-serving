@@ -1,0 +1,159 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "campaign": {
+    "id": "2026-09-21-mimo-v26-qualification",
+    "capability": "llm",
+    "repository_revision": "974d38c4ad2c19f776f4d3c35f427d28be77567a",
+    "dirty_state": "Clean isolated base at launch; final documentation and evidence edits remain uncommitted. Original checkout preserved.",
+    "started_at": "2026-09-22T01:50:40Z",
+    "completed_at": "2026-09-22T03:11:09.442048+00:00",
+    "evidence_labels": [
+      "measured-baseline",
+      "candidate-load-passed",
+      "candidate-correctness-failed"
+    ],
+    "decision_labels": [
+      "retain-baseline",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "recipe-container-status/v1",
+    "anvil-serving.campaign-workload-manifest/v1",
+    "anvil-serving.tool-log-recovery/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.swe-run/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "research-synthesis.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json",
+        "mimo-sampling-smoke-suite.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "mimo-v26-sglang-tp2-c1-327k.public.toml",
+        "image-identity.json",
+        "launcher.json",
+        "glm-status-before.json",
+        "glm-final-status.json",
+        "router-final-status.json",
+        "router-final-readmit.json",
+        "gpus-final.json",
+        "mimo-config.json",
+        "mimo-generation_config.json"
+      ],
+      "reason": "MiMo identity and final GLM restoration identity retained."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "glm-preflight.json",
+        "glm-preflight-enabled.json",
+        "glm-quality.json",
+        "glm-capacity-c1-scout.json",
+        "glm-capacity-16word-probe.json",
+        "glm-capacity-c4-16word-scout.json",
+        "glm-capacity-c4-16word-final.json",
+        "glm-capacity-c4-16word-final-summary.json",
+        "mimo-c1-logs.log",
+        "mimo-c1-status.log",
+        "mimo-v2-logs.log",
+        "mimo-v2-status.json",
+        "mimo-v2-tool-transcript.txt",
+        "mimo-v2-capture-provenance.json",
+        "mimo-v3-startup.log",
+        "mimo-v3-status.json",
+        "mimo-v3-models.json",
+        "mimo-v3-preflight.log",
+        "mimo-v3-sampling-smoke.json",
+        "mimo-v3-final-logs.log",
+        "mimo-v3-final-status.log",
+        "glm-swe-artifact.json",
+        "glm-swe-native.json",
+        "glm-swe-official-report.json",
+        "glm-swe-grade-summary.json",
+        "glm-swe-test-output.txt"
+      ],
+      "reason": "Native GLM results, MiMo startup/correctness failures, and bounded confounded SWE evidence retained; no MiMo capacity result exists."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "glm-final-restore-preflight.json",
+        "glm-final-router-smoke.json",
+        "glm-final-status.json",
+        "router-final-readmit.json",
+        "router-final-status.json",
+        "gpus-final.json"
+      ],
+      "reason": "Exact final GLM restoration, direct preflight, and authenticated routed smoke retained."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "independent-review.md"
+      ],
+      "reason": "Final no-promotion decision and independent review retained."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Final derivative copy; no external social post was sent."
+    }
+  ]
+}

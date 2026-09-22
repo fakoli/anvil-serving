@@ -1,0 +1,63 @@
+PRE-FLIGHT  http://127.0.0.1:<redacted-port>/v1  model=mimo-v26-flash-rl-mxfp4-sglang-tp2-c1-327k  thinking=enabled visible=1024 reasoning_headroom=8192 max_tokens=9216
+------------------------------------------------------------
+[FAIL] smoke (short coding)                   74.1s got='' finish='length' visible=0 reasoning_chars=27195 reasoning_tokens=None
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "operator-home/.codex/worktrees/mimo-v26-benchmark/anvil-serving/anvil_serving/cli.py", line 1840, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "operator-home/.codex/worktrees/mimo-v26-benchmark/anvil-serving/anvil_serving/cli.py", line 1836, in main
+    return _main(forwarded, output_options=options)
+  File "operator-home/.codex/worktrees/mimo-v26-benchmark/anvil-serving/anvil_serving/cli.py", line 1648, in _main
+    return _dispatch(
+        path,
+    ...<2 lines>...
+        execution_meta=execution_meta,
+    )
+  File "operator-home/.codex/worktrees/mimo-v26-benchmark/anvil-serving/anvil_serving/cli.py", line 1572, in _dispatch
+    result = handler([*prefix, *rest])
+  File "operator-home/.codex/worktrees/mimo-v26-benchmark/anvil-serving/anvil_serving/preflight.py", line 961, in main
+    ok, detail = fn()
+                 ~~^^
+  File "operator-home/.codex/worktrees/mimo-v26-benchmark/anvil-serving/anvil_serving/preflight.py", line 919, in <lambda>
+    "json": ("structured JSON", lambda: t_json(a.base_url, a.model, api_key, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
+                                        ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "operator-home/.codex/worktrees/mimo-v26-benchmark/anvil-serving/anvil_serving/preflight.py", line 623, in t_json
+    resp, dt = chat(base, model, msgs, key, max_tokens=max_tokens,
+               ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    timeout=timeout)
+                    ^^^^^^^^^^^^^^^^
+  File "operator-home/.codex/worktrees/mimo-v26-benchmark/anvil-serving/anvil_serving/preflight.py", line 61, in chat
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 187, in urlopen
+    return opener.open(url, data, timeout)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 487, in open
+    response = self._open(req, data)
+  File "/usr/lib/python3.14/urllib/request.py", line 504, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+                              '_open', req)
+  File "/usr/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/usr/lib/python3.14/urllib/request.py", line 1350, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 1325, in do_open
+    r = h.getresponse()
+  File "/usr/lib/python3.14/http/client.py", line 1459, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 336, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 297, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 725, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+KeyboardInterrupt

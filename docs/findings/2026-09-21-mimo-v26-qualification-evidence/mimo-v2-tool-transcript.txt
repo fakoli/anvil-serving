@@ -1,0 +1,32 @@
+Verified 40 original paths
+  File "/sgl-workspace/sglang/python/sglang/srt/model_executor/model_runner.py", line 1203, in load_model
+    loaded = load_model_with_memory_saver(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/sgl-workspace/sglang/python/sglang/srt/model_executor/model_runner_components/load_model_utils.py", line 339, in load_model_with_memory_saver
+    model = loader.load_model(
+            ^^^^^^^^^^^^^^^^^^
+  File "/sgl-workspace/sglang/python/sglang/srt/model_loader/loader.py", line 982, in load_model
+    model = _initialize_model(
+            ^^^^^^^^^^^^^^^^^^
+  File "/sgl-workspace/sglang/python/sglang/srt/model_loader/loader.py", line 304, in _initialize_model
+    return model_class(**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/sgl-workspace/sglang/python/sglang/srt/models/mimo_v2.py", line 1246, in __init__
+    self.build_audio_encoder(MiMoAudioEncoderConfig(**audio_config))
+  File "/sgl-workspace/sglang/python/sglang/srt/models/mimo_audio.py", line 1252, in build_audio_encoder
+    self.projection = AudioProjection(
+                      ^^^^^^^^^^^^^^^^
+  File "/sgl-workspace/sglang/python/sglang/srt/models/mimo_audio.py", line 947, in __init__
+    nn.Linear(self.input_size, self.hidden_size, bias=False),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/sglang/lib/python3.12/site-packages/torch/nn/modules/linear.py", line 109, in __init__
+    torch.empty((out_features, in_features), **factory_kwargs)
+  File "/opt/sglang/lib/python3.12/site-packages/torch/utils/_device.py", line 122, in __torch_function__
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 128.00 MiB. GPU 1 has a total capacity of 94.97 GiB of which 126.75 MiB is free. Including non-PyTorch memory, this process has 94.84 GiB memory in use. Of the allocated memory 93.84 GiB is allocated by PyTorch, and 49.13 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+
+[2026-09-22 02:42:10] Received sigquit from a child process. It usually means the child failed.
+[2026-09-22 02:42:10] kill_process_tree called: parent_pid=1, include_parent=True, pid=1
+[2026-09-22 02:42:10] kill_process_tree called: parent_pid=1, include_parent=False, pid=1
+
