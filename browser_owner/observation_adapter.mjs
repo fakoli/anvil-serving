@@ -40,13 +40,13 @@ export async function createFixtureObservationAdapter({ piSessionId = "fixture-s
     await session.navigate(fixture.url);
     let sequence = 0, closed = false;
     let binding;
-    const execute = async (request) => {
+    const execute = async (request, { signal } = {}) => {
       if (closed) return refusal("owner_closed");
       if (!plain(request) || !["capture", "resolve", "release"].includes(request.operation)) return refusal("invalid_request");
       try {
         if (request.operation === "capture") {
           if (Object.keys(request).length !== 1) return refusal("invalid_request");
-          const result = await session.capture({ schema: "widget-resolution/v1", request_id: `fixture-${++sequence}`, target: { description: "synthetic report", qualifiers: [] }, predicates: ["exists", "in_viewport", "occluded", "enabled"], scope: { kind: "document", root: "document" }, require_unique: true });
+          const result = await session.capture({ schema: "widget-resolution/v1", request_id: `fixture-${++sequence}`, target: { description: "synthetic report", qualifiers: [] }, predicates: ["exists", "in_viewport", "occluded", "enabled"], scope: { kind: "document", root: "document" }, require_unique: true }, { signal });
           binding = { pi_session_id: piSessionId, owner_session_id: result.session_id };
           return bounded("capture", result, binding);
         }

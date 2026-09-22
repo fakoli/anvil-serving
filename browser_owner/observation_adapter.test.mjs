@@ -29,3 +29,10 @@ test("adapter closure refuses retained observation IDs", { timeout: 15_000 }, as
   await adapter.close();
   assert.equal((await adapter.execute({ operation: "resolve", args: { observation_id: capture.result.observation_id, entity_id: "e-1" } })).code, "owner_closed");
 });
+
+test("adapter forwards an already-aborted capture", { timeout: 15_000 }, async (t) => {
+  const adapter = await createFixtureObservationAdapter();
+  t.after(() => adapter.close());
+  const controller = new AbortController(); controller.abort();
+  assert.equal((await adapter.execute({ operation: "capture" }, { signal: controller.signal })).code, "cancelled");
+});

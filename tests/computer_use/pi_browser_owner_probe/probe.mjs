@@ -1,30 +1,84 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
+import { createServer } from "node:http";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createFixtureObservationAdapter } from "../../../browser_owner/observation_adapter.mjs";
 
 const pi = process.env.PI_BINARY || "pi";
+const version = spawnSync(pi, ["--version"], { encoding: "utf8" });
+assert.equal(version.status, 0, version.stderr);
+assert.match(version.stdout, /^0\.85\.1\b/);
 const home = await mkdtemp(join(tmpdir(), "pi-browser-owner-"));
-const child = spawn(pi, ["--mode", "rpc", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--extension", "./tests/computer_use/pi_browser_owner_probe/extension.ts", "--session-dir", join(home, "sessions")], { cwd: process.cwd(), env: { PATH: process.env.PATH || "", HOME: home, PI_CODING_AGENT_DIR: join(home, "agent"), PI_CODING_AGENT_SESSION_DIR: join(home, "sessions"), PI_OFFLINE: "1", CHROMIUM_EXECUTABLE: process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome" }, stdio: ["pipe", "pipe", "pipe"] });
+const provider = createServer((_request, response) => { response.writeHead(200, { "content-type": "text/event-stream" }); response.end(`data: ${JSON.stringify({ id: "fixture", object: "chat.completion.chunk", choices: [{ index: 0, delta: { role: "assistant", content: "fixture" }, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`); });
+await new Promise((resolve, reject) => provider.once("error", reject).listen(0, "127.0.0.1", resolve));
+const child = spawn(pi, ["--mode", "rpc", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--extension", "./tests/computer_use/pi_browser_owner_probe/extension.ts", "--provider", "fixture-browser", "--model", "fixture-browser", "--session-dir", join(home, "sessions")], { cwd: process.cwd(), env: { PATH: process.env.PATH || "", HOME: home, PI_CODING_AGENT_DIR: join(home, "agent"), PI_CODING_AGENT_SESSION_DIR: join(home, "sessions"), PI_OFFLINE: "1", PI_BROWSER_FIXTURE_PROVIDER_URL: `http://127.0.0.1:${provider.address().port}/v1`, CHROMIUM_EXECUTABLE: process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome" }, stdio: ["pipe", "pipe", "pipe"] });
 let stdout = "", stderr = "";
 child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8"); child.stdout.on("data", (part) => { stdout += part; }); child.stderr.on("data", (part) => { stderr += part; });
 const wait = async (match) => { const end = Date.now() + 12_000; while (!match()) { if (Date.now() > end) throw new Error(`timeout: ${stderr}`); await new Promise((resolve) => setTimeout(resolve, 20)); } };
+const records = () => stdout.split("\n").filter(Boolean).map(JSON.parse);
+const rpc = async (id, type, extra = {}) => { child.stdin.write(`${JSON.stringify({ id, type, ...extra })}\n`); await wait(() => records().some((event) => event.id === id && event.type === "response")); const response = records().find((event) => event.id === id && event.type === "response"); assert.equal(response.success, true, JSON.stringify(response)); return response; };
+const logged = (name) => [...stderr.matchAll(new RegExp(`${name}:(\\{.*\\})`, "g"))].map((match) => JSON.parse(match[1]));
 try {
   await once(child, "spawn");
   await wait(() => stderr.includes("PI_BROWSER_OWNER_READY:"));
-  const ready = JSON.parse(stderr.match(/PI_BROWSER_OWNER_READY:(\{.*\})/)?.[1] || "null");
+  const ready = logged("PI_BROWSER_OWNER_READY")[0];
   assert.deepEqual(ready.active, ["browser_capture", "browser_release", "browser_resolve"]);
-  child.stdin.write('{"id":"state","type":"get_state"}\n');
-  await wait(() => stdout.includes('"id":"state"'));
+  const state = await rpc("state", "get_state");
+  assert.equal(state?.data?.sessionId, ready.session_id);
+  await rpc("proof", "prompt", { message: "/browser_fixture_proof" });
+  await wait(() => stderr.includes("PI_BROWSER_OWNER_CALLBACKS:"));
+  const callbacks = logged("PI_BROWSER_OWNER_CALLBACKS")[0];
+  assert.equal(callbacks.capture.status, "ok");
+  assert.equal(callbacks.capture.binding.pi_session_id, ready.session_id);
+  assert.equal(callbacks.capture.hasImage, false);
+  assert.deepEqual(callbacks.resolve, { status: "ok", enabled: false });
+  assert.equal(callbacks.release, "ok");
+  assert.equal(callbacks.stale, "unknown_observation");
+  assert.equal(callbacks.cancelled, "cancelled");
+  assert.equal(callbacks.widened, "invalid_request");
+  const neutral = await createFixtureObservationAdapter({ piSessionId: "neutral-session" });
+  try {
+    const neutralCapture = await neutral.execute({ operation: "capture" }), neutralDisabled = neutralCapture.result.entities.find((entity) => entity.text === "Disabled capture");
+    const neutralResolve = await neutral.execute({ operation: "resolve", args: { observation_id: neutralCapture.result.observation_id, entity_id: neutralDisabled.id } });
+    const neutralRelease = await neutral.execute({ operation: "release", args: { observation_id: neutralCapture.result.observation_id } });
+    const neutralStale = await neutral.execute({ operation: "resolve", args: { observation_id: neutralCapture.result.observation_id, entity_id: neutralDisabled.id } });
+    const cancelledController = new AbortController(); cancelledController.abort(); const neutralCancelled = await neutral.execute({ operation: "capture" }, { signal: cancelledController.signal });
+    assert.deepEqual(callbacks.capture.entities, neutralCapture.result.entities.map((entity) => ({ role: entity.role, text: entity.text, enabled: entity.enabled })));
+    assert.equal(neutralResolve.result.enabled, callbacks.resolve.enabled); assert.equal(neutralRelease.status, callbacks.release); assert.equal(neutralStale.code, callbacks.stale); assert.equal(neutralCancelled.code, callbacks.cancelled);
+  } finally { await neutral.close(); }
+  await rpc("new", "new_session");
+  await wait(() => logged("PI_BROWSER_OWNER_READY").length === 2 && logged("PI_BROWSER_OWNER_CLOSED").some((entry) => entry.reason === "new"));
+  const newReady = logged("PI_BROWSER_OWNER_READY")[1], newState = await rpc("state-new", "get_state");
+  assert.equal(newReady.reason, "new"); assert.notEqual(newReady.session_id, ready.session_id); assert.equal(newState.data.sessionId, newReady.session_id);
+  await rpc("proof-new", "prompt", { message: `/browser_fixture_proof ${callbacks.capture.observation_id}` });
+  await wait(() => logged("PI_BROWSER_OWNER_CALLBACKS").length === 2);
+  assert.equal(logged("PI_BROWSER_OWNER_CALLBACKS")[1].prior, "unknown_observation");
+  await rpc("seed", "prompt", { message: "synthetic fork seed" });
+  await wait(() => records().some((event) => event.type === "agent_end"));
+  await rpc("clone", "clone");
+  await wait(() => logged("PI_BROWSER_OWNER_READY").length === 3 && logged("PI_BROWSER_OWNER_CLOSED").some((entry) => entry.reason === "fork"));
+  const forkReady = logged("PI_BROWSER_OWNER_READY")[2], forkState = await rpc("state-fork", "get_state");
+  assert.equal(forkReady.reason, "fork"); assert.notEqual(forkReady.session_id, newReady.session_id); assert.equal(forkState.data.sessionId, forkReady.session_id);
+  await rpc("reload", "prompt", { message: "/browser_fixture_reload" });
+  await wait(() => logged("PI_BROWSER_OWNER_READY").length === 4 && logged("PI_BROWSER_OWNER_CLOSED").some((entry) => entry.reason === "reload"));
+  const reloadReady = logged("PI_BROWSER_OWNER_READY")[3]; assert.equal(reloadReady.reason, "reload"); assert.equal(reloadReady.session_id, forkReady.session_id);
+  const lifecycle = [...stderr.matchAll(/PI_BROWSER_OWNER_(CLOSED|READY):(\{[^\n]+\})/g)].map((match) => ({ kind: match[1], data: JSON.parse(match[2]), index: match.index }));
+  for (const reason of ["new", "fork", "reload"]) {
+    const closed = lifecycle.find((event) => event.kind === "CLOSED" && event.data.reason === reason), started = lifecycle.find((event) => event.kind === "READY" && event.data.reason === reason);
+    assert.ok(closed && started && closed.index < started.index, `${reason} closed after start`);
+  }
   child.stdin.end();
   await once(child, "close");
   assert.equal(child.exitCode, 0, stderr);
   assert.match(stderr, /PI_BROWSER_OWNER_CLOSED/);
+  assert.match(state.data.sessionFile, /\.jsonl$/);
   assert.doesNotMatch(stdout + stderr, /iVBOR|data:image\//);
-  console.log(JSON.stringify({ status: "passed", ready, closed: true, limitation: "Pi tool rendering and provider ordering are not exercised by this lifecycle probe." }));
+  console.log(JSON.stringify({ status: "passed", version: version.stdout.trim(), ready, callbacks, lifecycle: { new: newReady.session_id, fork: forkReady.session_id, reload: reloadReady.session_id }, closed: true, limitation: "The extension command invokes the exact registered callbacks. A loopback synthetic provider persists one seed only for the fork lifecycle; Pi agent dispatch, rendering, and provider ordering remain unproven." }));
 } finally {
   if (child.exitCode === null && !child.signalCode) { child.kill("SIGTERM"); await once(child, "close").catch(() => {}); }
+  await new Promise((resolve) => provider.close(resolve));
   await rm(home, { recursive: true, force: true });
 }
