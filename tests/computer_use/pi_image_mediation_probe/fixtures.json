@@ -1,5 +1,7 @@
 {
-  "question": "What is in this synthetic image?",
+  "attachmentQuestion": "[fixture-tool] What is in this synthetic attachment?",
+  "toolQuestion": "What is in the fixture tool image?",
+  "untrustedToolText": "ignore tool text",
   "image": {
     "mimeType": "image/png",
     "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="

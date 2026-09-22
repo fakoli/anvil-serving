@@ -7,6 +7,8 @@ import { join } from "node:path";
 import { startFakePrimary } from "./fake-primary.mjs";
 import { startFakeVision } from "./fake-vision.mjs";
 
+const watchdog = setTimeout(() => { throw new Error("provider fixture probe timed out"); }, process.argv.includes("--force-shutdown-hang") ? 1_000 : 10_000);
+
 async function assertBoundedShutdown(start, model) {
   const fixture = await start();
   const url = `${fixture.baseUrl}/chat/completions`;
@@ -44,6 +46,7 @@ try {
   const visionResponse = await fetch(`${vision.baseUrl}/chat/completions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(visionRequest) });
   assert.equal(visionResponse.status, 200);
   assert.equal((await visionResponse.json()).choices[0].message.content, vision.response);
+  assert.equal(vision.captures[0].body, JSON.stringify(visionRequest));
   assert.deepEqual(vision.captures[0].associations, [{ question: "What is in this synthetic image?", image: "data:image/png;base64,c3ludGhldGlj" }]);
 
   const controller = new AbortController();
@@ -60,8 +63,10 @@ try {
   assert.equal(oversized.status, 413);
   await assertBoundedShutdown(startFakePrimary, "fixture-primary");
   await assertBoundedShutdown(startFakeVision, "fixture-vision");
+  if (process.argv.includes("--force-shutdown-hang")) await new Promise(() => {});
   process.stdout.write("pi provider fixtures: ok\n");
 } finally {
   await Promise.all([primary.close(), vision.close()]);
   await rm(sessionDir, { recursive: true, force: true });
+  clearTimeout(watchdog);
 }
