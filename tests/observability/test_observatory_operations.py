@@ -822,32 +822,124 @@ def test_runtime_recovery_is_bound_to_original_intent_and_keeps_failure(tmp_path
         console.close()
 
 
-def test_recovery_terminal_publication_follows_original_correction(tmp_path):
-    console = Console({"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
-                       "authentication": {}, "state_path": str(tmp_path / "journal.sqlite")},
-                      adapter=FakeOwner(), metrics=FakeMetrics(), authenticate=lambda *_: False)
+class _SecondIntentUpdateFault:
+    def __init__(self, connection):
+        self.connection = connection
+        self.intent_updates = 0
+
+    def execute(self, statement, parameters=()):
+        if statement.startswith("UPDATE intents"):
+            self.intent_updates += 1
+            if self.intent_updates == 2:
+                raise sqlite3.OperationalError("fixture second intent update fault")
+        return self.connection.execute(statement, parameters)
+
+    def __getattr__(self, name):
+        return getattr(self.connection, name)
+
+
+def _recovery_pair(store):
     original_preview = {"id": "original-preview", "resource_id": "runtime-a", "host_id": "host-fixture-a",
                         "action_id": "experiment.start", "label": "Start fixture", "candidate_digest": digest({}),
                         "baseline_digest": digest({}), "private_parameters": {}, "private_values": {}}
+    original, _ = store.accept(original_preview, "operator", "original-intent")
+    evidence_id = store.save_evidence("runtime-a", {"kind": "failed_candidate"})
+    store.update(original["id"], status="manual_recovery_required", execution_outcome="failed", evidence_id=evidence_id)
+    recovery_preview = {**original_preview, "id": "recovery-preview", "action_id": "operation.recover",
+                        "private_recovery_of": original["id"], "private_parameters": {"run_id": "original-intent"}}
+    recovery, _ = store.accept(recovery_preview, "operator", "recovery-intent")
+    store.update(recovery["id"], status="verifying", execution_outcome="succeeded")
+    return original, recovery, evidence_id
+
+
+def _intent_body(store, operation_id):
+    return store.db.execute("SELECT body FROM intents WHERE id=?", (operation_id,)).fetchone()[0]
+
+
+def test_verified_recovery_publication_is_atomic(tmp_path):
+    console = Console({"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
+                       "authentication": {}, "state_path": str(tmp_path / "journal.sqlite")},
+                      adapter=FakeOwner(), metrics=FakeMetrics(), authenticate=lambda *_: False)
     try:
-        original, _ = console.store.accept(original_preview, "operator", "original-intent")
-        evidence_id = console.store.save_evidence("runtime-a", {"kind": "failed_candidate"})
-        console.store.update(original["id"], status="manual_recovery_required", execution_outcome="failed",
-                             evidence_id=evidence_id)
-        recovery_preview = {**original_preview, "id": "recovery-preview", "action_id": "operation.recover",
-                            "private_recovery_of": original["id"], "private_parameters": {"run_id": "original-intent"}}
-        recovery, _ = console.store.accept(recovery_preview, "operator", "recovery-intent")
-        update = console.store.update
-
-        def observe_terminal(operation_id, **changes):
-            if operation_id == recovery["id"] and changes.get("status") == "succeeded":
-                prior = console.store.get(original["id"])
-                assert prior["status"] == "failed"
-                assert prior["execution_outcome"] == "failed" and prior["evidence_id"] == evidence_id
-                assert prior["recovery"]["operation_id"] == recovery["id"]
-            return update(operation_id, **changes)
-
-        console.store.update = observe_terminal
+        original, recovery, evidence_id = _recovery_pair(console.store)
         console._finish(recovery, {"ok": True, "execution_outcome": "succeeded"})
+        prior, published = console.store.get(original["id"]), console.store.get(recovery["id"])
+        assert prior["status"] == "failed"
+        assert prior["execution_outcome"] == "failed" and prior["evidence_id"] == evidence_id
+        assert prior["recovery"]["operation_id"] == recovery["id"]
+        assert published["status"] == "succeeded"
     finally:
         console.close()
+
+
+def test_verified_recovery_second_sql_write_rolls_back_before_restart(tmp_path):
+    path = tmp_path / "journal.sqlite"
+    store = IntentStore(path)
+    original, recovery, _evidence_id = _recovery_pair(store)
+    original_before, recovery_before = _intent_body(store, original["id"]), _intent_body(store, recovery["id"])
+    store.db = _SecondIntentUpdateFault(store.db)
+    with pytest.raises(sqlite3.OperationalError, match="second intent update"):
+        store.publish_verified_recovery(original["id"], recovery["id"], native_state="succeeded",
+                                        verification={"status": "passed"}, evidence_id=None)
+    assert _intent_body(store, original["id"]) == original_before
+    assert _intent_body(store, recovery["id"]) == recovery_before
+    store.close()
+
+    restored = IntentStore(path)
+    try:
+        assert _intent_body(restored, original["id"]) == original_before
+        assert restored.get(original["id"])["recovery"]["status"] == "not_attempted"
+        assert restored.get(recovery["id"])["status"] == "outcome_unknown"
+    finally:
+        restored.close()
+
+
+@pytest.mark.parametrize("caller", ("_execute", "_reconcile"))
+def test_recovery_publication_survives_post_commit_prune_failure(tmp_path, caller):
+    console = Console({"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
+                       "authentication": {}, "state_path": str(tmp_path / "journal.sqlite")},
+                      adapter=FakeOwner(), metrics=FakeMetrics(), authenticate=lambda *_: False)
+    try:
+        original, recovery, evidence_id = _recovery_pair(console.store)
+        if caller == "_reconcile":
+            console.adapter.reconciled = True
+            console.adapter.completed[recovery["intent_key"]] = {"ok": True, "native_state": "succeeded", "execution_outcome": "succeeded"}
+
+        def fail_prune():
+            raise sqlite3.OperationalError("fixture prune failure")
+
+        console.store.prune = fail_prune
+        getattr(console, caller)(recovery)
+        prior, published = console.store.get(original["id"]), console.store.get(recovery["id"])
+        assert prior["status"] == "failed"
+        assert prior["execution_outcome"] == "failed" and prior["evidence_id"] == evidence_id
+        assert prior["recovery"]["status"] == "succeeded" and prior["recovery"]["operation_id"] == recovery["id"]
+        assert published["status"] == "succeeded" and published["execution_outcome"] == "succeeded"
+        assert published["verification"]["status"] == "passed"
+    finally:
+        console.close()
+
+
+@pytest.mark.parametrize("case", ("missing_original", "missing_recovery", "mismatched_link"))
+def test_verified_recovery_rejects_invalid_pair_without_writing_other_row(tmp_path, case):
+    store = IntentStore(tmp_path / "journal.sqlite")
+    try:
+        original, recovery, _evidence_id = _recovery_pair(store)
+        if case == "missing_original":
+            preserved_id = recovery["id"]
+            store.db.execute("DELETE FROM intents WHERE id=?", (original["id"],))
+        elif case == "missing_recovery":
+            preserved_id = original["id"]
+            store.db.execute("DELETE FROM intents WHERE id=?", (recovery["id"],))
+        else:
+            preserved_id = original["id"]
+            broken = store.get(recovery["id"])
+            broken["private_preview"] = {**broken["private_preview"], "private_recovery_of": "other-operation"}
+            store.update(recovery["id"], private_preview=broken["private_preview"])
+        preserved_before = _intent_body(store, preserved_id)
+        with pytest.raises(ObservatoryError, match="linked recovery operation"):
+            store.publish_verified_recovery(original["id"], recovery["id"], native_state="succeeded",
+                                            verification={"status": "passed"}, evidence_id=None)
+        assert _intent_body(store, preserved_id) == preserved_before
+    finally:
+        store.close()

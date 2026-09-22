@@ -418,16 +418,22 @@ class Console:
         verification = self.adapter.verify(item["private_preview"], result)
         passed = verification.get("status") == "passed"
         original_id = item["private_preview"].get("private_recovery_of")
+        recovery_change = result.get("recovery") if isinstance(result.get("recovery"), dict) else None
         if passed and item["action_id"] == "operation.recover" and original_id:
-            self.store.update(original_id, status="failed",
-                recovery={"status": "succeeded", "message": "Previous state restored and verified by the linked recovery operation.", "operation_id": item["id"]},
-                event=("owner", "recovered", "Recovery verified; the original failed or interrupted test is retained."))
-        self.store.update(item["id"], status="succeeded" if passed else "failed", native_state=result.get("native_state"),
-            verification=verification, evidence_id=evidence_id,
-            **({"recovery": result["recovery"]} if isinstance(result.get("recovery"), dict) else {}),
-            **job_ref_change,
-            event=("facade", "succeeded" if passed else "verification_failed", "Resulting state verified." if passed else "Execution returned, but resulting state could not be verified."))
-        self.store.prune()
+            self.store.publish_verified_recovery(original_id, item["id"], native_state=result.get("native_state"),
+                verification=verification, evidence_id=evidence_id, recovery=recovery_change)
+        else:
+            self.store.update(item["id"], status="succeeded" if passed else "failed", native_state=result.get("native_state"),
+                verification=verification, evidence_id=evidence_id,
+                **({"recovery": recovery_change} if recovery_change is not None else {}),
+                **job_ref_change,
+                event=("facade", "succeeded" if passed else "verification_failed", "Resulting state verified." if passed else "Execution returned, but resulting state could not be verified."))
+        # Retention cleanup runs after terminal publication. A cleanup failure
+        # must not recast a committed owner result as outcome-unknown.
+        try:
+            self.store.prune()
+        except Exception:
+            pass
 
     def operation(self, session, operation_id):
         item = self.store.get(identifier(operation_id))
