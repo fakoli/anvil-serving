@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import fs, { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -63,6 +64,52 @@ function trustedLeaseFrom(error) {
 function hasNoTrustedLease(error) {
   assert.equal(Object.hasOwn(error, "trustedLeaseIdentity"), false);
   assert.equal(Object.keys(error).includes("trustedLeaseIdentity"), false);
+}
+
+function withFailingNextDirectorySync(action) {
+  const originalFsync = fs.fsyncSync;
+  let failed = false;
+  let directorySyncCount = 0;
+  fs.fsyncSync = (descriptor) => {
+    if (fs.fstatSync(descriptor).isDirectory()) {
+      directorySyncCount += 1;
+    }
+    if (!failed && directorySyncCount === 2) {
+      failed = true;
+      throw new Error("directory_sync_failure");
+    }
+    return originalFsync(descriptor);
+  };
+  syncBuiltinESMExports();
+  try {
+    const result = action();
+    assert.equal(failed, true);
+    return result;
+  } finally {
+    fs.fsyncSync = originalFsync;
+    syncBuiltinESMExports();
+  }
+}
+
+function withLinkRace(recordPath, priorBytes, action) {
+  const originalLink = fs.linkSync;
+  let raced = false;
+  fs.linkSync = (source, target) => {
+    if (target === recordPath) {
+      raced = true;
+      writeFileSync(recordPath, priorBytes, { mode: 0o600 });
+    }
+    return originalLink(source, target);
+  };
+  syncBuiltinESMExports();
+  try {
+    const result = action();
+    assert.equal(raced, true);
+    return result;
+  } finally {
+    fs.linkSync = originalLink;
+    syncBuiltinESMExports();
+  }
 }
 
 test("reserves exact bounded attempt and time budgets before dispatch", (t) => {
@@ -242,6 +289,21 @@ test("existing initial record is authoritative and has no acquisition recovery c
   assert.equal(existing.status().attempts_used, 0);
 });
 
+test("initial link race preserves the prior record without recovery capability", (t) => {
+  const seed = fixture();
+  const setup = fixture();
+  t.after(seed.cleanup);
+  t.after(setup.cleanup);
+  seed.create().close();
+  const priorBytes = readFileSync(path.join(seed.stateDirectory, "mediation-inspection-ledger.json"), "utf8");
+  const recordPath = path.join(setup.stateDirectory, "mediation-inspection-ledger.json");
+  const error = withLinkRace(recordPath, priorBytes, () => captureError(setup.create));
+  assert.equal(code("ledger_unavailable")(error), true);
+  hasNoTrustedLease(error);
+  assert.equal(readFileSync(recordPath, "utf8"), priorBytes);
+  assert.equal(reopenMediationLedger(setup.options).status().in_flight, false);
+});
+
 test("failed reopen and recovery publications preserve authoritative leases", (t) => {
   const reopenHooks = {};
   const reopenedSetup = fixture({ hooks: reopenHooks });
@@ -356,6 +418,61 @@ test("unmarked replace failures remain acquisition failures for create, reopen, 
   trustedLeaseFrom(recoveryError);
   assert.equal(readFileSync(recoveryPath, "utf8"), priorBytes);
   assert.equal(supervisor.recover({ ...recoverySetup.options, previousLease }).status().in_flight, false);
+});
+
+test("persisted reopen and recovery replacements require the attempted lease after directory-sync failure", (t) => {
+  const reopenSetup = fixture();
+  t.after(reopenSetup.cleanup);
+  const released = reopenSetup.create();
+  const releasedLease = released.trustedLeaseIdentity();
+  released.close();
+  const reopenError = withFailingNextDirectorySync(
+    () => captureError(() => reopenMediationLedger(reopenSetup.options)),
+  );
+  assert.equal(code("durability_failed")(reopenError), true);
+  const reopenAttemptedLease = trustedLeaseFrom(reopenError);
+  const reopenSupervisor = createTrustedLedgerSupervisor(() => true);
+  assert.throws(
+    () => reopenSupervisor.recover({ ...reopenSetup.options, previousLease: releasedLease }),
+    code("ledger_unavailable"),
+  );
+  const reopened = reopenSupervisor.recover({
+    ...reopenSetup.options,
+    previousLease: reopenAttemptedLease,
+  });
+  assert.deepEqual(reopened.status(), {
+    attempts_used: 0,
+    charged_ms: 0,
+    in_flight: false,
+    identity_count: 0,
+  });
+  assert.throws(() => released.status(), code("stale_lease"));
+
+  const recoverySetup = fixture({ limits: { maxAttempts: 3, cumulativeMs: 100, perCallMs: 50 } });
+  t.after(recoverySetup.cleanup);
+  const first = recoverySetup.create();
+  const reservation = first.begin(identity("d"));
+  const previousLease = first.trustedLeaseIdentity();
+  const supervisor = createTrustedLedgerSupervisor(() => true);
+  const recoveryError = withFailingNextDirectorySync(() => captureError(() => supervisor.recover({
+    ...recoverySetup.options,
+    previousLease,
+  })));
+  assert.equal(code("durability_failed")(recoveryError), true);
+  const attemptedLease = trustedLeaseFrom(recoveryError);
+  assert.throws(
+    () => supervisor.recover({ ...recoverySetup.options, previousLease }),
+    code("ledger_unavailable"),
+  );
+  assert.throws(() => first.finish(reservation.operation, { outcome: "success" }), code("stale_lease"));
+  const recovered = supervisor.recover({ ...recoverySetup.options, previousLease: attemptedLease });
+  assert.deepEqual(recovered.status(), {
+    attempts_used: 1,
+    charged_ms: reservation.deadline_ms,
+    in_flight: false,
+    identity_count: 1,
+  });
+  assert.equal(recovered.begin(identity("d")).status, "followup_required");
 });
 
 test("ordinary inspection errors do not expose trusted lease recovery", (t) => {
