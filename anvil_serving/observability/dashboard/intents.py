@@ -233,7 +233,7 @@ class IntentStore:
             return item
 
     def publish_verified_recovery(self, original_id: str, recovery_id: str, *, native_state, verification: dict,
-                                  evidence_id: str | None, recovery: dict | None = None) -> tuple[dict, dict]:
+                                  evidence_id: str | None, recovery: dict | None = None) -> dict[str, dict]:
         """Publish one verified recovery and its retained failed operation together."""
         with self._lock:
             self.db.execute("BEGIN IMMEDIATE")
@@ -275,7 +275,7 @@ class IntentStore:
                 if recovery_write.rowcount != 1:
                     raise RuntimeError("recovery publication terminal row changed")
                 self.db.execute("COMMIT")
-                return original, recovered
+                return {"original": original, "recovery": recovered}
             except BaseException:
                 self.db.execute("ROLLBACK")
                 raise

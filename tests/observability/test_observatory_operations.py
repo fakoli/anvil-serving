@@ -862,8 +862,13 @@ def test_verified_recovery_publication_is_atomic(tmp_path):
                       adapter=FakeOwner(), metrics=FakeMetrics(), authenticate=lambda *_: False)
     try:
         original, recovery, evidence_id = _recovery_pair(console.store)
-        console._finish(recovery, {"ok": True, "execution_outcome": "succeeded"})
+        publication = console.store.publish_verified_recovery(
+            original["id"], recovery["id"], native_state="succeeded",
+            verification={"status": "passed"}, evidence_id=None,
+        )
+        assert set(publication) == {"original", "recovery"}
         prior, published = console.store.get(original["id"]), console.store.get(recovery["id"])
+        assert publication == {"original": prior, "recovery": published}
         assert prior["status"] == "failed"
         assert prior["execution_outcome"] == "failed" and prior["evidence_id"] == evidence_id
         assert prior["recovery"]["operation_id"] == recovery["id"]
@@ -909,7 +914,9 @@ def test_recovery_publication_survives_post_commit_prune_failure(tmp_path, calle
             raise sqlite3.OperationalError("fixture prune failure")
 
         console.store.prune = fail_prune
-        getattr(console, caller)(recovery)
+        with pytest.warns(RuntimeWarning) as caught:
+            getattr(console, caller)(recovery)
+        assert str(caught[0].message) == "Observatory retention cleanup failed after terminal publication."
         prior, published = console.store.get(original["id"]), console.store.get(recovery["id"])
         assert prior["status"] == "failed"
         assert prior["execution_outcome"] == "failed" and prior["evidence_id"] == evidence_id
