@@ -417,16 +417,16 @@ class Console:
                           **job_ref_change)
         verification = self.adapter.verify(item["private_preview"], result)
         passed = verification.get("status") == "passed"
-        self.store.update(item["id"], status="succeeded" if passed else "failed", native_state=result.get("native_state"),
-            verification=verification, evidence_id=evidence_id,
-            **({"recovery": result["recovery"]} if isinstance(result.get("recovery"), dict) else {}),
-            **job_ref_change,
-            event=("facade", "succeeded" if passed else "verification_failed", "Resulting state verified." if passed else "Execution returned, but resulting state could not be verified."))
         original_id = item["private_preview"].get("private_recovery_of")
         if passed and item["action_id"] == "operation.recover" and original_id:
             self.store.update(original_id, status="failed",
                 recovery={"status": "succeeded", "message": "Previous state restored and verified by the linked recovery operation.", "operation_id": item["id"]},
                 event=("owner", "recovered", "Recovery verified; the original failed or interrupted test is retained."))
+        self.store.update(item["id"], status="succeeded" if passed else "failed", native_state=result.get("native_state"),
+            verification=verification, evidence_id=evidence_id,
+            **({"recovery": result["recovery"]} if isinstance(result.get("recovery"), dict) else {}),
+            **job_ref_change,
+            event=("facade", "succeeded" if passed else "verification_failed", "Resulting state verified." if passed else "Execution returned, but resulting state could not be verified."))
         self.store.prune()
 
     def operation(self, session, operation_id):
