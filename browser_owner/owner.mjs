@@ -52,7 +52,8 @@ export async function createBrowserOwner({ launch, documentOrigins, subresourceO
   page.on("framenavigated", (frame) => { if (frame === page.mainFrame()) { state.navigation += 1; state.invalidate(); } });
   page.on("popup", (popup) => { void popup.close().catch(() => {}); });
   page.on("download", (download) => { void download.cancel().catch(() => {}); });
-  if (context.routeWebSocket) await context.routeWebSocket("**/*", (route) => route.close());
+  if (typeof context.routeWebSocket !== "function") fail("owner_failed");
+  await context.routeWebSocket("**/*", (route) => route.close());
   page.on("close", () => { state.generation += 1; state.invalidate(); });
   return new Owner(state);
   } catch (error) {
@@ -229,7 +230,7 @@ function inventoryFor(root, maxEntities) {
       node = walker.nextNode();
       continue;
     }
-    if (new TextEncoder().encode(role).byteLength > 128) { omitted += 1; untraversed.add("role_too_large"); node = walker.nextNode(); continue; }
+    if (role.length > 128 || new TextEncoder().encode(role).byteLength > 128) { omitted += 1; untraversed.add("role_too_large"); node = walker.nextNode(); continue; }
     const label = text(node);
     if (label.oversized || new TextEncoder().encode(label.value).byteLength > textLimit || entities.length >= maxEntities) {
       omitted += 1;
@@ -282,7 +283,7 @@ async function retainedHandles(state, root, indexes) {
 
 async function snapshot(state) {
   const contextId = await isolatedWorld(state);
-  const result = await state.cdp.send("Runtime.evaluate", { contextId, expression: `(() => { const epoch=globalThis.__anvilOwnerEpoch && globalThis.__anvilOwnerEpoch(); const out=[]; let count=0,visited=0,overflow=false,node=document.documentElement; const walker=document.createTreeWalker(document.documentElement,NodeFilter.SHOW_ELEMENT); while(node && visited<2048){ if(/^(input|textarea|select)$/i.test(node.tagName)){ if(count>=256){overflow=true;break;} const value=String(node.value); if(new TextEncoder().encode(value).byteLength>256){overflow=true;break;} out.push(value);count+=1; } node=walker.nextNode();visited+=1; } if(node) overflow=true; return {epoch,width:innerWidth,height:innerHeight,scroll_x:scrollX,scroll_y:scrollY,values:out,overflow}; })()`, returnByValue: true });
+  const result = await state.cdp.send("Runtime.evaluate", { contextId, expression: `(() => { const epoch=globalThis.__anvilOwnerEpoch && globalThis.__anvilOwnerEpoch(); const out=[]; let count=0,visited=0,overflow=false,node=document.documentElement; const walker=document.createTreeWalker(document.documentElement,NodeFilter.SHOW_ELEMENT); while(node && visited<2048){ if(/^(input|textarea|select)$/i.test(node.tagName)){ if(count>=256){overflow=true;break;} const value=String(node.value); if(value.length>256 || new TextEncoder().encode(value).byteLength>256){overflow=true;break;} out.push(value);count+=1; } node=walker.nextNode();visited+=1; } if(node) overflow=true; return {epoch,width:innerWidth,height:innerHeight,scroll_x:scrollX,scroll_y:scrollY,values:out,overflow}; })()`, returnByValue: true });
   const values = result.result.value || {}, [dom, viewport] = values.epoch || []; if (!Number.isInteger(dom) || !Number.isInteger(viewport)) fail("incoherent_capture");
   if (values.overflow) fail("incoherent_capture");
   return { navigation: state.navigation, dom, viewport, width: values.width, height: values.height, scroll_x: values.scroll_x, scroll_y: values.scroll_y, values: values.values, overflow: values.overflow };
