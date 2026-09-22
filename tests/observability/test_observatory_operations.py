@@ -894,6 +894,32 @@ def test_verified_recovery_second_sql_write_rolls_back_before_restart(tmp_path):
         restored.close()
 
 
+@pytest.mark.parametrize("caller", ("_execute", "_reconcile"))
+def test_recovery_publication_survives_post_commit_prune_failure(tmp_path, caller):
+    console = Console({"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
+                       "authentication": {}, "state_path": str(tmp_path / "journal.sqlite")},
+                      adapter=FakeOwner(), metrics=FakeMetrics(), authenticate=lambda *_: False)
+    try:
+        original, recovery, evidence_id = _recovery_pair(console.store)
+        if caller == "_reconcile":
+            console.adapter.reconciled = True
+            console.adapter.completed[recovery["intent_key"]] = {"ok": True, "native_state": "succeeded", "execution_outcome": "succeeded"}
+
+        def fail_prune():
+            raise sqlite3.OperationalError("fixture prune failure")
+
+        console.store.prune = fail_prune
+        getattr(console, caller)(recovery)
+        prior, published = console.store.get(original["id"]), console.store.get(recovery["id"])
+        assert prior["status"] == "failed"
+        assert prior["execution_outcome"] == "failed" and prior["evidence_id"] == evidence_id
+        assert prior["recovery"]["status"] == "succeeded" and prior["recovery"]["operation_id"] == recovery["id"]
+        assert published["status"] == "succeeded" and published["execution_outcome"] == "succeeded"
+        assert published["verification"]["status"] == "passed"
+    finally:
+        console.close()
+
+
 @pytest.mark.parametrize("case", ("missing_original", "missing_recovery", "mismatched_link"))
 def test_verified_recovery_rejects_invalid_pair_without_writing_other_row(tmp_path, case):
     store = IntentStore(tmp_path / "journal.sqlite")

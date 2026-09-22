@@ -14,3 +14,6 @@ Failed recovery verification leaves the original intent unchanged. Focused
 regressions retain the failed original execution outcome and evidence, inject a
 fault at the terminal row write, reopen the journal, and reject missing or
 mismatched linked rows without changing their counterpart.
+
+Retention pruning runs only after publication and cannot recast an atomically
+committed recovery as an unknown outcome when cleanup fails.

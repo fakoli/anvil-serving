@@ -428,7 +428,12 @@ class Console:
                 **({"recovery": recovery_change} if recovery_change is not None else {}),
                 **job_ref_change,
                 event=("facade", "succeeded" if passed else "verification_failed", "Resulting state verified." if passed else "Execution returned, but resulting state could not be verified."))
-        self.store.prune()
+        # Retention cleanup runs after terminal publication. A cleanup failure
+        # must not recast a committed owner result as outcome-unknown.
+        try:
+            self.store.prune()
+        except Exception:
+            pass
 
     def operation(self, session, operation_id):
         item = self.store.get(identifier(operation_id))
