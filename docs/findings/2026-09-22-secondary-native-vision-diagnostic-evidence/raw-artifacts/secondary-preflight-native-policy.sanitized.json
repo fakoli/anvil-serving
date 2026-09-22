@@ -1,0 +1,137 @@
+{
+  "base_url": "[REDACTED_URL]",
+  "budget": {
+    "max_completion_tokens": 512,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "smoke",
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "errors": [
+      "disallowed finish_reason: [\"'length'\"]"
+    ],
+    "reasoning": "forbidden"
+  },
+  "image_expect": [
+    "inventory"
+  ],
+  "model": "qwen38-huihui-ninfer-schemafix-mtp3-160k",
+  "multimodal_input": {
+    "bytes": 14994,
+    "mime": "image/png",
+    "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46"
+  },
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```",
+      "content_chars": 21,
+      "content_excerpt": "```python\nsum(xs)\n```",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.385,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 9,
+        "prompt_tokens": 28,
+        "total_tokens": 37
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "This image displays an **Inventory Detail** report, likely from a business or e-commerce system. It provides a breakdown of items in an order, their quantities, unit prices, and totals \u2014 along with the overall order status and shipping deadline.\n\n---\n\n### \ud83d\udccb Key Labels & Values:\n\n#### **Table: Inventory Items**\n| Item     | Units | Unit price | Total  |\n|----------|-------|------------|--------|\n| Cable    | 2     | 14.75      | 29.50  |\n| Adapter  | 1     | 43.75      | 43.75  |\n\n- **Cable**: 2 units at $14.75 each \u2192 subtotal = $29.50  \n- **Adapter**: 1 unit at $43.75 \u2192 subtotal = $43.75  \n\n> *Note: The total for \u201cCable\u201d is shown as \u201c29,50\u201d (comma decimal), which suggests European formatting.*\n\n---\n\n#### **Order Summary Row**\n| Order   | 4817       | Status   | READY    |\n|---------|------------|----------|----------|\n\n- **Order ID**: 4817  \n- **Status**: `READY` \u2014 indicates the order is prepared for fulfillment/shipping.\n\n---\n\n#### **Financial & Shipping Info**\n- **Total due**: **73.25**  \n  *(Matches sum: 29.50 + 43.75 = 73.25)*\n- **Ship by**: **2026-09-30**  \n  *(Future date \u2014 possibly a placeholder or long-term commitment)*\n\n---\n\n### \u2705 Most Important Information:\n\n1. **Order Status: READY** \u2014 Critical for logistics; means no further processing needed before shipment.\n2. **Total Due: 73.25** \u2014 Final amount to be charged or paid.\n3. **Items Ordered**: \n   - 2x Cable ($14.75/unit)\n   - 1x Adapter ($43.75/unit)\n4. **Shipping Deadline**: September 30, 2026 \u2014 unusually far out; may indicate pre-order, bulk delivery, or data entry error.\n\n---\n\n### \ud83d\udca1 Observations / Potential Issues:\n\n- **",
+      "content_chars": 1611,
+      "content_excerpt": "This image displays an **Inventory Detail** report, likely from a business or e-commerce system. It provides a breakdown of items in an order, their quantities, unit prices, and totals \u2014 along with th",
+      "expected": [
+        "inventory"
+      ],
+      "finish_reason": "length",
+      "image": {
+        "bytes": 14994,
+        "mime": "image/png",
+        "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 3.409,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 512,
+        "prompt_tokens": 254,
+        "total_tokens": 766
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "Inventory detail\nItem Units Unit price Total\nCable 2 14.75 29,50\nAdapter 1 43.75 43.75\nOrder 4817 Status READY\nTotal due: 73.25\nShip by 2026-09-30",
+      "content_chars": 146,
+      "content_excerpt": "Inventory detail\nItem Units Unit price Total\nCable 2 14.75 29,50\nAdapter 1 43.75 43.75\nOrder 4817 Status READY\nTotal due: 73.25\nShip by 2026-09-30",
+      "expected": [
+        "4817",
+        "READY"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 14994,
+        "mime": "image/png",
+        "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46"
+      },
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "seconds": 0.579,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 75,
+        "prompt_tokens": 255,
+        "total_tokens": 330
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "4817",
+    "READY"
+  ],
+  "passed": false,
+  "results": [
+    {
+      "detail": "0.4s got='```python\\nsum(xs)\\n```' finish='stop' visible=21 reasoning_chars=0 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "3.4s all expected text present finish='length' visible=1611 reasoning_chars=0 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "0.6s all expected text present finish='stop' visible=146 reasoning_chars=0 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "unsupported",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

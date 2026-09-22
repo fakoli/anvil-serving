@@ -1,0 +1,290 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "capability": "multimodal",
+    "completed_at": "2026-09-22T11:32:42Z",
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "dirty_state": "not-recorded",
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "id": "2026-09-22-secondary-native-vision-diagnostic",
+    "promotion_authorized": false,
+    "repository_revision": "not-recorded",
+    "started_at": "2026-09-22T11:32:39Z"
+  },
+  "native_evidence_schemas": [
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "588cb7e9b99fa7afad969ade3ddbe78cabea2d3a64403a95203dc3e3bf2e4d64",
+          "bytes": 1106
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "c6878e3d05665780c859bd93af2fca9cd4de9a2615fe54e0e320b5a1958cd48a",
+          "bytes": 185
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "5f733a3a72c7255fa2e678514a045d309def435950f603eebebdba5b508187bc",
+          "bytes": 2707
+        },
+        {
+          "path": "raw-artifacts/corpus.json",
+          "sha256": "3c0058231115aae6b148c144a96392dc89441017c799c512f190d767078164b3",
+          "bytes": 7930
+        },
+        {
+          "path": "raw-artifacts/assets/adversarial-1.png",
+          "sha256": "8bc9828c10119880c81254cb89efa443472a67e297e78ca55b8b1ee30e3101a6",
+          "bytes": 12964
+        },
+        {
+          "path": "raw-artifacts/assets/adversarial-2.png",
+          "sha256": "115aec6e1ed95486d99117b9f28e4cc6f1ab8474fd141df6b661f7822ea40d89",
+          "bytes": 13007
+        },
+        {
+          "path": "raw-artifacts/assets/charts-1.png",
+          "sha256": "ba8e9385cabd0c7f81199269a7749bf2606d30b89e77b6218000f5505d6e9af0",
+          "bytes": 7566
+        },
+        {
+          "path": "raw-artifacts/assets/charts-2.png",
+          "sha256": "64ea8ac74528c592d0559544da1e1c36aba060038666f74c8179326e95bd939f",
+          "bytes": 11112
+        },
+        {
+          "path": "raw-artifacts/assets/disabled-1.png",
+          "sha256": "88074cf22a436ae58cb03e5de06a4327a90b27c5d045d82d8f60b41c06ed75eb",
+          "bytes": 9423
+        },
+        {
+          "path": "raw-artifacts/assets/disabled-2.png",
+          "sha256": "ecccce58ae90e44df9e65b67de853b41e1917c49fd9d07b27f0cfb1f288c9330",
+          "bytes": 9465
+        },
+        {
+          "path": "raw-artifacts/assets/icons-1.png",
+          "sha256": "1ce9fd46bc06be3ca49ee43416ab8e4150dd1604f20f505af59a31ecb457ed73",
+          "bytes": 5354
+        },
+        {
+          "path": "raw-artifacts/assets/icons-2.png",
+          "sha256": "7d3bc901f6d6dec1cfc43e620ea13a4de2f95f840e8656ecb24db4c6279f910e",
+          "bytes": 7082
+        },
+        {
+          "path": "raw-artifacts/assets/missing-1.png",
+          "sha256": "65f5d3479cf5b6d52b2fe93a25cfcbb6aec66ddd72ffce55d4ed79b15fcdf5c4",
+          "bytes": 12184
+        },
+        {
+          "path": "raw-artifacts/assets/missing-2.png",
+          "sha256": "866e2b019204b7620f7153636819ee4d9cc45c84c1a9c29239f68f00c14fd0e8",
+          "bytes": 9384
+        },
+        {
+          "path": "raw-artifacts/assets/small-text-1.png",
+          "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46",
+          "bytes": 14994
+        },
+        {
+          "path": "raw-artifacts/assets/small-text-2.png",
+          "sha256": "612bf61b73ff58329bd13582cc1369058c80a906439199e7eec07fdada825971",
+          "bytes": 13592
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.md",
+          "sha256": "457d9a32349b45d4a0f04470a6129600c9e714b94dd0610670c5a5a02b3c0de8",
+          "bytes": 865
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration-identity.json",
+          "sha256": "80be116ab0a73afe473fadb4145ef631c8d184bae6d8c31007573c16265a0185",
+          "bytes": 1145
+        },
+        {
+          "path": "redaction-notes.md",
+          "sha256": "ece00f0e172120a2b485b865ba84305fa3ca4643406a7b5ad666bc3409385f9e",
+          "bytes": 741
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw-artifacts/secondary-diagnostic-native-1024.sanitized.json",
+          "sha256": "33d0a45a1d4c4e4a6d36d3a38561df288ca37da21db979ac3106f40780237a08",
+          "bytes": 25547
+        },
+        {
+          "path": "raw-artifacts/secondary-preflight.sanitized.json",
+          "sha256": "a3070fcc00a4186de3caf01e05ce80a4cd1cb5c1e3eb630c018242aa57773717",
+          "bytes": 1858
+        },
+        {
+          "path": "raw-artifacts/secondary-preflight-native-policy.sanitized.json",
+          "sha256": "8e6ae85f85e52693c9bd4b4295d6fe2d3d69dba030e65f1cf8149bd8a5a6ca14",
+          "bytes": 5703
+        },
+        {
+          "path": "raw-artifacts/secondary-preflight-native-1024.sanitized.json",
+          "sha256": "5a26881b331b2178c3635ced1a2f5c695608697ce26ff5b6fced10e48a9abd18",
+          "bytes": 6459
+        },
+        {
+          "path": "raw-artifacts/secondary-live-recipe.sanitized.json",
+          "sha256": "0616fa99f7dca67ff8877bc2a8f3bcbf897488ba50a75adf4a5db5bdfa8b30bc",
+          "bytes": 1559
+        },
+        {
+          "path": "raw-artifacts/secondary-live-gpus.sanitized.json",
+          "sha256": "2be5d88e0eb59555e209875e67892b92fe1c1f85104e818cfb90ce932be54447",
+          "bytes": 694
+        },
+        {
+          "path": "raw-artifacts/secondary-live-memory.sanitized.json",
+          "sha256": "049a1c87f68b1f6cf0f17e89f7a34c2ced634fd6f53cbdf21500bb6c97c1761e",
+          "bytes": 741
+        },
+        {
+          "path": "raw-artifacts/secondary-live-logs.sanitized.json",
+          "sha256": "d1be35347a4443ff9f9175034cd732f304aa791a4ac1d73597fce0d5b544a697",
+          "bytes": 1662
+        },
+        {
+          "path": "raw-artifacts/secondary-live-endpoint.sanitized.json",
+          "sha256": "189bc9f6f022ad468bd38073dd02ce0b3ae9681cc90e35feb978da0bd9378333",
+          "bytes": 349
+        },
+        {
+          "path": "raw-artifacts/secondary-post-recipe.sanitized.json",
+          "sha256": "0616fa99f7dca67ff8877bc2a8f3bcbf897488ba50a75adf4a5db5bdfa8b30bc",
+          "bytes": 1559
+        },
+        {
+          "path": "raw-artifacts/secondary-post-gpus.sanitized.json",
+          "sha256": "2be5d88e0eb59555e209875e67892b92fe1c1f85104e818cfb90ce932be54447",
+          "bytes": 694
+        },
+        {
+          "path": "raw-artifacts/secondary-post-memory.sanitized.json",
+          "sha256": "049a1c87f68b1f6cf0f17e89f7a34c2ced634fd6f53cbdf21500bb6c97c1761e",
+          "bytes": 741
+        },
+        {
+          "path": "raw-artifacts/secondary-post-timestamp.sanitized.json",
+          "sha256": "16183cf12744344cb5a20fb0a1b8a06a7dc28b92b7eda70ed7c456bd96b16e2c",
+          "bytes": 56
+        },
+        {
+          "path": "raw-artifacts/secondary-restoration-check.sanitized.json",
+          "sha256": "f49bb888d7718962aaccd742cc701d8e4c1ae46e5aaaf60c755b008d49743bec",
+          "bytes": 893
+        },
+        {
+          "path": "raw-artifacts/secondary-diagnostic-sol-review.sanitized.md",
+          "sha256": "e2f6f806d466f1515a41a9dd5929d4ef8c1061a3a8b5ed8c9675d1017f50c91d",
+          "bytes": 3768
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "7cd986c60699c9c453667112b99d4e2207e201ed5457e8d32334ed090c2030f8",
+          "bytes": 1372
+        },
+        {
+          "path": "raw-artifacts/secondary-diagnostic-sol-review.sanitized.md",
+          "sha256": "e2f6f806d466f1515a41a9dd5929d4ef8c1061a3a8b5ed8c9675d1017f50c91d",
+          "bytes": 3768
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "8b9c781862ed967db5922c7d38d3120226a0d3997acb854ecb668f0917948739",
+          "bytes": 734
+        },
+        {
+          "path": "raw-artifacts/secondary-restoration-check.sanitized.json",
+          "sha256": "f49bb888d7718962aaccd742cc701d8e4c1ae46e5aaaf60c755b008d49743bec",
+          "bytes": 893
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "7f95c01ced03dba8bdd1efc5d2b6f7265d3fae997f905c38f7e65bbe03eebc51",
+          "bytes": 2293
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Compatibility-only diagnostic draft; publication view remains to be prepared."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

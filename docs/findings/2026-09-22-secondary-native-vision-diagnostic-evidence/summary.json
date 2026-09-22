@@ -1,0 +1,77 @@
+{
+  "campaign_id": "2026-09-22-secondary-native-vision-diagnostic",
+  "complete": false,
+  "decision": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "next_gate": "independent qualification plan with repeated correctness and integration evidence",
+    "promotion_authorized": false
+  },
+  "evidence": [
+    "raw-artifacts/secondary-diagnostic-native-1024.sanitized.json",
+    "raw-artifacts/secondary-diagnostic-sol-review.sanitized.md"
+  ],
+  "failures": [
+    "adversarial-2 emitted an extra Invoice label and remains failed."
+  ],
+  "gates": [
+    {
+      "detail": "11 of 12 whole-answer assertions passed",
+      "name": "native diagnostic",
+      "status": "failed"
+    },
+    {
+      "detail": "separate retained preflight",
+      "name": "1024-token native preflight",
+      "status": "passed"
+    },
+    {
+      "detail": "no repeated reliability, capacity, or integration gate",
+      "name": "qualification",
+      "status": "not met"
+    }
+  ],
+  "headline_results": [
+    {
+      "condition": "frozen synthetic corpus",
+      "metric": "diagnostic assertions",
+      "value": "11/12"
+    },
+    {
+      "condition": "extra Invoice label in whole answer",
+      "metric": "failed case",
+      "value": "adversarial-2"
+    }
+  ],
+  "identity": {
+    "path": "configuration-identity.json"
+  },
+  "limitations": [
+    "No qualification, promotion, exclusivity, capacity, or stable latency claim is supported.",
+    "Cold/warm state, TTFT, decode rate, and concurrent behavior are unknown."
+  ],
+  "measurement": {
+    "diagnostic_window": {
+      "finished_at": "2026-09-22T11:32:42Z",
+      "started_at": "2026-09-22T11:32:39Z"
+    },
+    "path": "native direct endpoint diagnostic",
+    "sample_count": 12,
+    "statistics": [
+      "client-observed full-request latency: median 0.190012 seconds",
+      "client-observed full-request latency: nearest-rank p95 0.422884 seconds",
+      "one sequential repetition per synthetic case; descriptive only"
+    ],
+    "preflight_time_range": "not recorded in retained preflight artifacts",
+    "warm_cold_state": "unknown"
+  },
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "workload": {
+    "case_count": 12,
+    "path": "workload-manifest.json"
+  }
+}
