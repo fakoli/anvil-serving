@@ -129,6 +129,29 @@ def _validate_assertions(case_id: str, assertions: Any) -> list[dict[str, Any]]:
             if not isinstance(value, str) or not value:
                 raise ValueError("%s contains assertion requires value" % case_id)
             normalized.append({"type": kind, "value": value})
+        elif kind == "equals_normalized_casefold":
+            if set(assertion) != {"type", "value"}:
+                raise ValueError(
+                    "%s normalized equality assertion requires exactly type and value"
+                    % case_id
+                )
+            value = assertion["value"]
+            if not isinstance(value, str):
+                raise ValueError(
+                    "%s normalized equality assertion requires UTF-8 value" % case_id
+                )
+            try:
+                folded_value = " ".join(value.casefold().split())
+                value.encode("utf-8")
+            except UnicodeEncodeError:
+                raise ValueError(
+                    "%s normalized equality assertion requires UTF-8 value" % case_id
+                ) from None
+            if not folded_value:
+                raise ValueError(
+                    "%s normalized equality assertion requires non-empty value" % case_id
+                )
+            normalized.append({"type": kind, "value": value})
         elif kind == "ordered_casefold":
             values = assertion.get("values")
             if (
@@ -262,21 +285,26 @@ def load_corpus(
 
 
 def evaluate_assertions(text: str, assertions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Evaluate deterministic casefold containment/order assertions."""
+    """Evaluate deterministic casefold containment, order, and equality assertions."""
     folded = text.casefold()
     results = []
     for assertion in assertions:
         if assertion["type"] == "contains_casefold":
             passed = assertion["value"].casefold() in folded
+        elif assertion["type"] == "equals_normalized_casefold":
+            passed = " ".join(text.casefold().split()) == " ".join(
+                assertion["value"].casefold().split()
+            )
         else:
             cursor = 0
             passed = True
             for value in assertion["values"]:
-                position = folded.find(value.casefold(), cursor)
+                folded_value = value.casefold()
+                position = folded.find(folded_value, cursor)
                 if position < 0:
                     passed = False
                     break
-                cursor = position + len(value)
+                cursor = position + len(folded_value)
         results.append({**assertion, "passed": passed})
     return results
 
