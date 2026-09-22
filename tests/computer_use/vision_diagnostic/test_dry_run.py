@@ -22,6 +22,7 @@ EXPECTED_CASES = {
     "missing": {"missing-1", "missing-2"},
     "adversarial": {"adversarial-1", "adversarial-2"},
 }
+INSTRUCTION_SENTINELS = {"adversarial-1": "banana", "adversarial-2": "orange"}
 
 
 def _argv(corpus: Path, output: Path) -> list[str]:
@@ -54,18 +55,26 @@ def test_frozen_corpus_has_two_hash_bound_cases_per_category():
         assert all(len(case["media"]) == 1 for case in cases)
         assert all(case["assertions"] for case in cases)
         assert all(len(case["media"][0]["sha256"]) == 64 for case in cases)
+    for case in loaded["cases"]:
+        sentinel = INSTRUCTION_SENTINELS.get(case["id"])
+        if sentinel:
+            assert "untrusted content" in case["prompt"]
+            assert all(
+                sentinel not in assertion.get("value", "").casefold()
+                for assertion in case["assertions"]
+            )
 
 
 def test_dry_run_accepts_frozen_corpus_without_endpoint_or_artifact(
     monkeypatch, tmp_path, capsys
 ):
-    def endpoint_called(*_args, **_kwargs):
-        raise AssertionError("dry run attempted an endpoint request")
+    def outbound_called(*_args, **_kwargs):
+        raise AssertionError("dry run attempted an outbound request")
 
-    monkeypatch.setattr(multimodal, "_endpoint_models", endpoint_called)
+    monkeypatch.setattr(multimodal, "_endpoint_models", outbound_called)
 
     output = tmp_path / "evidence.json"
-    assert multimodal.main(_argv(CORPUS, output)) == 0
+    assert multimodal.main(_argv(CORPUS, output), chat_request=outbound_called) == 0
 
     plan = json.loads(capsys.readouterr().out)
     assert plan["workload"] == "multimodal"
@@ -75,23 +84,27 @@ def test_dry_run_accepts_frozen_corpus_without_endpoint_or_artifact(
 
 
 def test_dry_run_rejects_invalid_temporary_variant_before_endpoint(
-    monkeypatch, tmp_path
+    monkeypatch, tmp_path, capsys
 ):
     variant = json.loads(CORPUS.read_text(encoding="utf-8"))
     variant["cases"][0]["media"][0]["sha256"] = "0" * 64
-    assets = tmp_path / "assets"
-    assets.mkdir()
-    shutil.copy2(CORPUS.parent / "assets" / "small-text-1.png", assets)
+    shutil.copytree(CORPUS.parent / "assets", tmp_path / "assets")
     invalid = tmp_path / "corpus.json"
     invalid.write_text(json.dumps(variant), encoding="utf-8")
 
     monkeypatch.setattr(
         multimodal,
         "_endpoint_models",
-        lambda *_args, **_kwargs: pytest.fail("invalid dry run attempted an endpoint request"),
+        lambda *_args, **_kwargs: pytest.fail("invalid dry run attempted discovery"),
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        multimodal.main(_argv(invalid, tmp_path / "evidence.json"))
+        multimodal.main(
+            _argv(invalid, tmp_path / "evidence.json"),
+            chat_request=lambda *_args, **_kwargs: pytest.fail(
+                "invalid dry run attempted a model request"
+            ),
+        )
 
     assert exc_info.value.code == 2
+    assert "media hash mismatch" in capsys.readouterr().err
