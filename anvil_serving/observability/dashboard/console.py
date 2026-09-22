@@ -13,6 +13,7 @@ import re
 import threading
 import time
 import urllib.parse
+import warnings
 from email.message import Message
 from importlib.resources import files
 from pathlib import Path
@@ -433,7 +434,10 @@ class Console:
         try:
             self.store.prune()
         except Exception:
-            pass
+            try:
+                warnings.warn("Observatory retention cleanup failed after terminal publication.", RuntimeWarning, stacklevel=2)
+            except Exception:
+                pass
 
     def operation(self, session, operation_id):
         item = self.store.get(identifier(operation_id))
