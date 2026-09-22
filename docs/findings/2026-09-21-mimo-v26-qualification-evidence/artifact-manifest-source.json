@@ -44,7 +44,8 @@
       "status": "retained",
       "files": [
         "source-registry.json",
-        "research-synthesis.md"
+        "research-synthesis.md",
+        "runtime-alternatives.md"
       ],
       "reason": ""
     },
@@ -108,6 +109,7 @@
         "mimo-v3-final-logs.log",
         "mimo-v3-final-status.log",
         "glm-swe-artifact.json",
+        "swe-preflight-declared.json",
         "glm-swe-native.json",
         "glm-swe-official-report.json",
         "glm-swe-grade-summary.json",

@@ -2,7 +2,7 @@
 
 The public JSON files retain their native schemas, metrics, failures, completion fields, model identifiers, source URLs, revisions, and image digests.
 
-The transformation replaces operator host labels with `Primary Node`, absolute operator and checkout paths with public/private role labels, the baseline loopback port with `<redacted-port>`, GPU UUIDs with `GPU-REDACTED`, and container IDs with `REDACTED_CONTAINER_ID`. It removes no metric, failure, or request result. The retained startup logs are sanitized raw failure output; option names are preserved, but no credential values, environment files, private endpoint identities, cache paths, or active listener details were copied.
+The transformation replaces operator host labels with `Primary Node`, absolute operator and checkout paths with public/private role labels, the baseline loopback port with `<redacted-port>`, GPU UUIDs with `GPU-REDACTED`, and every container ID, including IDs inside status-log or nested-string payloads, with `REDACTED_CONTAINER_ID`. It removes no metric, failure, or request result. The retained startup logs are sanitized raw failure output; option names are preserved, but no credential values, environment files, private endpoint identities, cache paths, or active listener details were copied.
 
 The public recipe is a reconstruction, rather than a transformed operator recipe, because the private source contains an operator cache snapshot path and listener/containment implementation. Values absent from the reconstruction are intentionally not recorded here.
 

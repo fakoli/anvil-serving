@@ -53,6 +53,11 @@
           "path": "research-synthesis.md",
           "sha256": "8f1c61a0ceb428c56939f00ba599c99c9b30dc503dee0135aaba3a9e9f687f0d",
           "bytes": 1040
+        },
+        {
+          "path": "runtime-alternatives.md",
+          "sha256": "6993961fe886a6d0c3dfdb23492d7fd97495f01f10eea25228853974f9c1a7a6",
+          "bytes": 1780
         }
       ],
       "reason": ""
@@ -194,8 +199,8 @@
         },
         {
           "path": "mimo-c1-status.log",
-          "sha256": "a77a99f75fbed60f40b857c72c96e43ff7a6c601665ec193f07dabc1162bc86a",
-          "bytes": 805
+          "sha256": "412e935a750a7229281a6910b889df4ba4778e3849b4c3ecebdfb1ef9a269691",
+          "bytes": 762
         },
         {
           "path": "mimo-v2-logs.log",
@@ -219,13 +224,13 @@
         },
         {
           "path": "mimo-v3-startup.log",
-          "sha256": "d4998543c25d7aa25c13b6ff9e8c9d283724f56af8b14fadf84ba2b94847227e",
-          "bytes": 60412
+          "sha256": "c59fc4f87fb580f67f463fea7c7b3e9e7b3c2bcac70e1c0403ba37deaa2ade29",
+          "bytes": 60468
         },
         {
           "path": "mimo-v3-status.json",
-          "sha256": "ab66fde01902d924f787aa5a6764c56476363d71581ea8922672ec451c8cf321",
-          "bytes": 938
+          "sha256": "b797afa727a44eb67aece6511ccd98bc04df90902789d58ee6bdcfd77fc61024",
+          "bytes": 895
         },
         {
           "path": "mimo-v3-models.json",
@@ -244,18 +249,23 @@
         },
         {
           "path": "mimo-v3-final-logs.log",
-          "sha256": "7e8275a52dd5c4d17105a4a5322ea1ab9b650cd32f3edb67296ad5083c0289ef",
-          "bytes": 188530
+          "sha256": "4c1f25288d30846dd8d66cf70c2c73a5311d84d3ffa9d80afcb3610d21c41aad",
+          "bytes": 188642
         },
         {
           "path": "mimo-v3-final-status.log",
-          "sha256": "00dcd415acc63e926c9fb86a6119b1a59d5e6942854e5856d0894cb8dcaf3742",
-          "bytes": 938
+          "sha256": "1f61382224671aadce1817cd4cde44e904fe46ecc6563bfd632ede6a4cccade0",
+          "bytes": 895
         },
         {
           "path": "glm-swe-artifact.json",
           "sha256": "3a16193c4884d35e86ecb86e6f3fe58d7b58c6fc0a7837cdd41e144cc371adb4",
           "bytes": 5015
+        },
+        {
+          "path": "swe-preflight-declared.json",
+          "sha256": "8306f3cd8fe0c11e67abf30041e3e737b133049fda68c0c803ca0b9f3bd509ca",
+          "bytes": 1650
         },
         {
           "path": "glm-swe-native.json",
@@ -286,13 +296,13 @@
       "files": [
         {
           "path": "friction-log.md",
-          "sha256": "59af48c01dfc22235dbd9ebe84a888c99f083439dd74caaccb12875f28bce036",
-          "bytes": 3763
+          "sha256": "2b5491c5dfd8a3200ae7c681d46c8b8838ad0d45e63c92cd556f13a0be2f0171",
+          "bytes": 3789
         },
         {
           "path": "coverage-and-gaps.md",
-          "sha256": "111e1a6015f2d393a1de2c221a55b8d9893c7f1d4d475e105f5d761ca9310928",
-          "bytes": 1428
+          "sha256": "7073400ceba5e1f0896d1a37e06f584661bb2a55f4c971202693541f40875320",
+          "bytes": 1515
         }
       ],
       "reason": ""

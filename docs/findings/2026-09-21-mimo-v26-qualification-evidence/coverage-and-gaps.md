@@ -2,7 +2,7 @@
 
 | Request | Evidence | Outcome |
 |---|---|---|
-| Research recipes in the usual places | source-registry.json, research-synthesis.md, runtime-alternatives.md, independent-review.md | Completed bounded official/HF/runtime/community search. No external matched v2.6 TP2/SM120 quality result found. |
+| Research recipes in the usual places | [source registry](source-registry.json), [research synthesis](research-synthesis.md), [runtime alternatives](runtime-alternatives.md), [independent review](independent-review.md) | Completed bounded official/HF/runtime/community search. No external matched v2.6 TP2/SM120 quality result found. |
 | Test MiMo | Three versioned managed recipes, startup logs, partial greedy preflight, native official-sampling diagnostic | Final recipe loaded and answered requests, but both completed correctness probes failed. |
 | Benchmark as a GLM replacement | GLM strict C4 final 100/100; MiMo correctness evidence | Comparison blocked by MiMo correctness. No valid MiMo capacity, speed, long-context, vision or repository-task result. |
 | Coding evidence | GLM SWE native and official reports | Official 0/1 unresolved; bug-specific test passed, two HTTP 502 failures and legacy pytest API error confound attribution. Single task is not a coding ranking. |
