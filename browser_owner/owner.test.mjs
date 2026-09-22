@@ -144,6 +144,19 @@ test("owner refreshes successful TTL reads only and does not revive expired obse
   await session.revoke(); await assert.rejects(session.capture(captureRequest()), error("owner_closed"));
 });
 
+test("owner evicts the oldest capture even after it is read", { timeout: 15_000 }, async (t) => {
+  const site = await fixture(); const core = await owner(site.origin, { maxObservations: 2 }); const session = core.session(); t.after(async () => { await core.close(); await site.close(); });
+  await session.navigate(`${site.origin}/`);
+  const first = await session.capture(captureRequest({ request_id: "evict-a" }));
+  const second = await session.capture(captureRequest({ request_id: "evict-b" }));
+  const firstButton = first.entities.find((entity) => entity.text === "Capture");
+  const secondButton = second.entities.find((entity) => entity.text === "Capture");
+  await session.resolve(first.observation_id, firstButton.id);
+  await session.capture(captureRequest({ request_id: "evict-c" }));
+  await assert.rejects(session.resolve(first.observation_id, firstButton.id), error("unknown_observation"));
+  await session.resolve(second.observation_id, secondButton.id);
+});
+
 test("capture accepts only the closed widget-resolution request contract", { timeout: 15_000 }, async (t) => {
   const site = await fixture(); const core = await owner(site.origin); const session = core.session(); t.after(async () => { await core.close(); await site.close(); });
   await session.navigate(`${site.origin}/`);
