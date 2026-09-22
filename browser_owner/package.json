@@ -1,0 +1,7 @@
+{
+  "name": "anvil-serving-browser-owner",
+  "private": true,
+  "type": "module",
+  "devDependencies": { "playwright": "1.63.0" },
+  "engines": { "node": ">=20" }
+}
