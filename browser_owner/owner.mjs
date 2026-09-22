@@ -26,11 +26,16 @@ export async function createBrowserOwner({ launch, documentOrigins, subresourceO
     if (!Number.isInteger(value) || value <= 0 || value > maximum) fail("invalid_limits");
     return value;
   };
+  const originSet = (origins) => {
+    if (!Array.isArray(origins) && !(origins instanceof Set)) return null;
+    return new Set(origins);
+  };
+  const documents = originSet(documentOrigins), subresources = originSet(subresourceOrigins);
   const policy = {
-    documents: new Set(documentOrigins || []), subresources: new Set(subresourceOrigins || []),
+    documents, subresources,
     maxObservations: limit("maxObservations", 64, 64), maxEntities: limit("maxEntities", 64, 64), maxMetadata: limit("maxMetadata", 8192, 8192), maxBytes: limit("maxBytes", 256 * 1024 * 1024, 256 * 1024 * 1024), maxPng: limit("maxPng", 8 * 1024 * 1024, 8 * 1024 * 1024), maxPixels: limit("maxPixels", 8_000_000, 8_000_000), ttl: limit("ttl", 60 * 60_000, 60 * 60_000), timeout: limit("timeout", 10_000, 10_000),
   };
-  const validOrigins = (origins) => origins.size > 0 && [...origins].every((origin) => { try { const url = new URL(origin); return url.origin === origin && /^https?:$/.test(url.protocol); } catch { return false; } });
+  const validOrigins = (origins) => origins instanceof Set && origins.size > 0 && [...origins].every((origin) => { try { const url = new URL(origin); return url.origin === origin && /^https?:$/.test(url.protocol); } catch { return false; } });
   if (!validOrigins(policy.documents) || !validOrigins(policy.subresources)) fail("invalid_origin_policy");
   let browser, context;
   try {
