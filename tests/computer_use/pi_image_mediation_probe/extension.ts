@@ -31,6 +31,7 @@ export default function (pi: any) {
     console.error(`PI_FIXTURE_TOOLS:${JSON.stringify({ all, active: pi.getActiveTools().sort() })}`);
   });
   const inspected = new Map<string, string>();
+  let bindings = 0;
   const fail = (ctx: any, code: string) => {
     console.error(`PI_IMAGE_MEDIATION_ERROR:${code}`);
     ctx.abort();
@@ -57,6 +58,8 @@ export default function (pi: any) {
         if (part.mimeType !== "image/png" || typeof part.data !== "string") fail(ctx, "unsupported_image");
         const key = `${part.mimeType}:${part.data}:${question}`;
         let answer = inspected.get(key);
+        bindings += 1;
+        console.error(`PI_IMAGE_MEDIATION_BINDING:${bindings}`);
         if (!answer) {
           const response = await fetch(`${process.env.PI_FIXTURE_VISION_URL}/chat/completions`, {
             method: "POST",
