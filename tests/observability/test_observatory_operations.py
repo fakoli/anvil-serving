@@ -820,3 +820,34 @@ def test_runtime_recovery_is_bound_to_original_intent_and_keeps_failure(tmp_path
         assert owner.mutations == 2
     finally:
         console.close()
+
+
+def test_recovery_terminal_publication_follows_original_correction(tmp_path):
+    console = Console({"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
+                       "authentication": {}, "state_path": str(tmp_path / "journal.sqlite")},
+                      adapter=FakeOwner(), metrics=FakeMetrics(), authenticate=lambda *_: False)
+    original_preview = {"id": "original-preview", "resource_id": "runtime-a", "host_id": "host-fixture-a",
+                        "action_id": "experiment.start", "label": "Start fixture", "candidate_digest": digest({}),
+                        "baseline_digest": digest({}), "private_parameters": {}, "private_values": {}}
+    try:
+        original, _ = console.store.accept(original_preview, "operator", "original-intent")
+        evidence_id = console.store.save_evidence("runtime-a", {"kind": "failed_candidate"})
+        console.store.update(original["id"], status="manual_recovery_required", execution_outcome="failed",
+                             evidence_id=evidence_id)
+        recovery_preview = {**original_preview, "id": "recovery-preview", "action_id": "operation.recover",
+                            "private_recovery_of": original["id"], "private_parameters": {"run_id": "original-intent"}}
+        recovery, _ = console.store.accept(recovery_preview, "operator", "recovery-intent")
+        update = console.store.update
+
+        def observe_terminal(operation_id, **changes):
+            if operation_id == recovery["id"] and changes.get("status") == "succeeded":
+                prior = console.store.get(original["id"])
+                assert prior["status"] == "failed"
+                assert prior["execution_outcome"] == "failed" and prior["evidence_id"] == evidence_id
+                assert prior["recovery"]["operation_id"] == recovery["id"]
+            return update(operation_id, **changes)
+
+        console.store.update = observe_terminal
+        console._finish(recovery, {"ok": True, "execution_outcome": "succeeded"})
+    finally:
+        console.close()
