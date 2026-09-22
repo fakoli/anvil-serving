@@ -52,6 +52,11 @@ Use the included `campaign-state.json`, `dispatch-packet.md`, and
 and every requested outcome compact and explicit. They are not evidence unless
 the final role ledger deliberately retains them.
 
+During an active scout, retain sanitized identity, configuration, raw run evidence, failures, and
+restoration evidence needed for review. Defer the narrative finding and full
+publication matrix until campaign closure. At closure, finalize the full matrix
+and do not leave a pending role.
+
 Keep the applicable native evidence schema. Do not convert capacity,
 multimodal, voice, STT, media, kernel, context, agentic, or SWE artifacts into
 one lossy result shape. Instead, map their retained files to all ten semantic
@@ -76,6 +81,13 @@ python skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py PATH
 Run the finalizer twice and require byte-identical output. The source is a
 reproducibility input, not a substitute for the canonical
 `artifact-manifest.json`.
+
+The finalizer uses a closed inventory: every retained regular file must be
+declared exactly once, and paths, symlinks, duplicate JSON keys, and duplicate
+keys in valid serialized JSON fail closed. A historical plaintext file
+with a `.json` suffix needs a per-file `{path, reason}` compatibility
+declaration in `legacy_plaintext_files`; malformed JSON is never silently
+accepted.
 
 ### Capacity-cell repeatability
 
@@ -322,19 +334,25 @@ For a local `functional`, `capacity`, or `quality` result, add both:
 - a `benchmark-result-card/v1` near the top of the finding using
   `templates/finding.md`; and
 - a companion `benchmark-publication-summary/v1` publication summary using
-  `templates/publication-summary.md`.
+  `templates/publication-summary.md` when public copy is requested.
 
 Follow `docs/benchmarks/finding-format.md` and the exact rules in the
 publication contract. Put the local hardware/configuration, context,
 concurrency, managed recipe, measurement path (online/routed, offline, or
 kernel-level), warm/cold state, important negative result, and evidence link
-close to every headline number. Include copy-ready short-post and Reddit
-variants, accessible screenshot alt text, and a claim ledger that maps each
-public claim to the finding or raw artifact.
+close to every headline number. When a compact public communication is
+requested, include copy-ready short-post and Reddit variants, accessible
+screenshot alt text, and a claim ledger that maps each public claim to the
+finding or raw artifact.
 
 Link both the common `artifact-manifest.json` and the human `README.md` evidence
 index from the result card. The manifest inventories native evidence; it is not
 a replacement for raw artifacts.
+
+Derive repeated displayed metrics from one authoritative `summary.json` or
+the existing generated benchmark report with declared metric paths. Mark
+configured values separately from measured values. Reuse `eval benchmark
+report`; do not introduce a second reporting framework.
 
 When a campaign has two or more comparable performance cells, create a
 machine-derived chart pack. Put a graph manifest beside the native artifacts

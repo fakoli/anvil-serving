@@ -78,12 +78,14 @@ decision label `rejected` or `no-promotion`.
 
 ## Publication-ready finding v1
 
-Every local `functional`, `capacity`, or `quality` finding has two compact,
-derivative views in addition to its complete narrative and raw evidence:
+Every local `functional`, `capacity`, or `quality` finding has a compact
+result card in addition to its complete narrative and raw evidence. A
+publication summary is an optional second derivative when a compact public
+communication is requested:
 
 1. A result card near the top of the finding, marked with
    `<!-- benchmark-result-card/v1 -->` and based on `templates/finding.md`.
-2. A companion publication summary, marked with
+2. When requested, a companion publication summary, marked with
    `<!-- benchmark-publication-summary/v1 -->` and based on
    `templates/publication-summary.md`.
 
@@ -96,10 +98,11 @@ microbenchmark, plus warm/cold state when relevant. The detailed narrative
 follows it; the card does not replace any required identity, method, failure,
 or decision detail.
 
-The publication summary contains canonical facts, managed recipe, measurement path,
-copy-ready X/short-post text, a Reddit title and body, screenshot alt text, and
-a claim ledger. Every metric or capability claim in the copy maps to a finding
-section or raw artifact. State that results are local. Do not use `best`,
+The requested publication summary contains canonical facts, managed recipe,
+measurement path, copy-ready X/short-post text, a Reddit title and body,
+screenshot alt text, and a claim ledger. Every metric or capability claim in
+the copy maps to a finding section or raw artifact. State that results are
+local. Do not use `best`,
 `fastest`, `strongest`, or equivalent comparison language without naming and
 supporting the exact comparison set and calculation.
 
@@ -111,7 +114,7 @@ short-post character count. Platform copy and screenshots never become evidence,
 qualification, or promotion authority.
 
 Research-only, release/readiness-only, and failed-load findings may use the
-card, but their publication summary is optional unless a compact public
+card. A publication summary remains optional unless a compact public
 communication is required.
 
 ### Repository-only format migration
@@ -128,8 +131,8 @@ artifacts already provide:
   and
 - the decision, promotion boundary, and raw artifact links.
 
-Generate the card and publication summary from those artifacts and add a consistency
-test for the published headline values. If a required value is absent or only
+Generate the card and, if requested, publication summary from those artifacts
+and add a consistency test for the published headline values. If a required value is absent or only
 exists as an unsupported prose claim, disclose the gap instead of inferring it
 or running a live benchmark without separate authorization.
 

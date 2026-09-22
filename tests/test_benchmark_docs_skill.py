@@ -1,6 +1,10 @@
 import csv
+import importlib.util
 import json
+import os
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,6 +70,156 @@ RETAINED_128_EVIDENCE = (
     / "findings"
     / "2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k-evidence"
 )
+FINALIZER_PATH = (
+    ROOT / "skills" / "anvil-serving-benchmark-docs" / "scripts" / "finalize_artifact_set.py"
+)
+
+
+def _finalizer_module():
+    spec = importlib.util.spec_from_file_location("benchmark_finalizer", FINALIZER_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _manifest_source(*, files: list[str], **extra: object) -> dict:
+    roles = [
+        {
+            "role": role,
+            "status": "retained" if index == 0 else "missing",
+            "files": files if index == 0 else [],
+            "reason": "" if index == 0 else "not retained for focused fixture",
+        }
+        for index, role in enumerate(
+            (
+                "evidence-index",
+                "source-registry",
+                "workload-manifest",
+                "run-plan",
+                "configuration-and-identity",
+                "raw-run-evidence",
+                "failures-and-friction",
+                "restoration",
+                "decision-summary",
+                "publication-summary",
+            )
+        )
+    ]
+    return {
+        "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+        "output": "artifact-manifest.json",
+        "campaign": {"promotion_authorized": False},
+        "native_evidence_schemas": [],
+        "artifact_roles": roles,
+        **extra,
+    }
+
+
+def _write_finalizer_source(tmp_path: Path, source: dict) -> Path:
+    path = tmp_path / "artifact-manifest-source.json"
+    path.write_text(json.dumps(source), encoding="utf-8")
+    return path
+
+
+def test_finalizer_rejects_undeclared_nested_artifact(tmp_path: Path):
+    (tmp_path / "evidence.txt").write_text("retained", encoding="utf-8")
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (nested / "undeclared.txt").write_text("rogue", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="undeclared artifact: nested/undeclared.txt"):
+        _finalizer_module().finalize(
+            _write_finalizer_source(tmp_path, _manifest_source(files=["evidence.txt"]))
+        )
+
+
+def test_finalizer_rejects_symlink_and_duplicate_serialized_json_keys(tmp_path: Path):
+    target = tmp_path / "target.txt"
+    target.write_text("retained", encoding="utf-8")
+    os.symlink(target, tmp_path / "evidence.txt")
+    with pytest.raises(ValueError, match="symlink"):
+        _finalizer_module().finalize(
+            _write_finalizer_source(tmp_path, _manifest_source(files=["evidence.txt"]))
+        )
+
+    (tmp_path / "evidence.txt").unlink()
+    (tmp_path / "evidence.json").write_text(
+        '{"content": "{\\"metric\\": 1, \\"metric\\": 2}"}', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="duplicate JSON keys"):
+        _finalizer_module().finalize(
+            _write_finalizer_source(tmp_path, _manifest_source(files=["evidence.json"]))
+        )
+
+
+def test_finalizer_requires_explicit_plaintext_json_compatibility(tmp_path: Path):
+    (tmp_path / "legacy.json").write_text("legacy host command output\\n", encoding="utf-8")
+    source = _manifest_source(
+        files=["legacy.json"],
+        legacy_plaintext_files=[
+            {"path": "legacy.json", "reason": "Historical command output"}
+        ],
+    )
+    output, manifest = _finalizer_module().finalize(
+        _write_finalizer_source(tmp_path, source)
+    )
+    assert output.exists()
+    assert manifest["artifact_roles"][0]["files"][0]["path"] == "legacy.json"
+    first_bytes = output.read_bytes()
+    _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))
+    assert output.read_bytes() == first_bytes
+
+
+def test_finalizer_requires_per_file_plaintext_compatibility_reason(tmp_path: Path):
+    (tmp_path / "gpus-final.json").write_text(
+        "legacy GPU command output\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="legacy plaintext compatibility exception"):
+        _finalizer_module().finalize(
+            _write_finalizer_source(tmp_path, _manifest_source(files=["gpus-final.json"]))
+        )
+
+    source = _manifest_source(
+        files=["gpus-final.json"],
+        legacy_plaintext_files=[
+            {"path": "gpus-final.json", "reason": "Historical public command output"}
+        ],
+    )
+    output, manifest = _finalizer_module().finalize(
+        _write_finalizer_source(tmp_path, source)
+    )
+    assert output.exists()
+    assert manifest["artifact_roles"][0]["files"][0]["path"] == "gpus-final.json"
+
+
+def test_finalizer_rejects_duplicate_source_keys_and_allows_cross_role_references(tmp_path: Path):
+    (tmp_path / "evidence.txt").write_text("retained", encoding="utf-8")
+    source_path = tmp_path / "artifact-manifest-source.json"
+    source_path.write_text(
+        '{"schema":"anvil-serving.benchmark-artifact-set-source/v1",'
+        '"schema":"anvil-serving.benchmark-artifact-set-source/v1"}',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="duplicate JSON keys: schema"):
+        _finalizer_module().finalize(source_path)
+
+    source = _manifest_source(files=["evidence.txt"])
+    source["artifact_roles"][1].update(
+        {"status": "retained", "files": ["evidence.txt"], "reason": ""}
+    )
+    output, manifest = _finalizer_module().finalize(
+        _write_finalizer_source(tmp_path, source)
+    )
+    assert output.exists()
+    assert [role["files"][0]["path"] for role in manifest["artifact_roles"][:2]] == [
+        "evidence.txt",
+        "evidence.txt",
+    ]
+
+    source["artifact_roles"][0]["files"].append("evidence.txt")
+    with pytest.raises(ValueError, match="more than once in role evidence-index"):
+        _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))
 
 
 def _section(text: str, heading: str) -> str:

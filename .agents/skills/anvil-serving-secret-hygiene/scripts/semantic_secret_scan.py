@@ -6,10 +6,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import ipaddress
+import io
 import json
 import re
 import subprocess
 import sys
+import tarfile
 import tempfile
 from collections import Counter
 from pathlib import Path
@@ -559,6 +561,31 @@ def self_test() -> int:
     return 0 if passed else 1
 
 
+def scan_signature_snapshot(root: Path) -> dict[str, object]:
+    """Scan exactly HEAD, excluding ignored test/build output from the candidate."""
+    if run_git(root, "status", "--porcelain", "--untracked-files=no").strip():
+        raise ValueError("commit tracked changes before scanning the HEAD snapshot")
+    head = run_git(root, "rev-parse", "HEAD").decode().strip()
+    workflow = run_git(root, "show", f"{head}:.github/workflows/secret-scan.yml").decode()
+    pins = set(re.findall(r"ghcr\.io/gitleaks/gitleaks@sha256:[a-f0-9]{64}", workflow))
+    if len(pins) != 1:
+        raise ValueError("expected one immutable Gitleaks image in the committed workflow")
+    with tempfile.TemporaryDirectory(prefix="anvil-public-snapshot-") as temporary:
+        snapshot = Path(temporary) / "candidate"
+        snapshot.mkdir()
+        archive = run_git(root, "archive", "--format=tar", head)
+        with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
+            bundle.extractall(snapshot, filter="data")
+        completed = subprocess.run([
+            "docker", "run", "--rm", "--network", "none",
+            "--volume", f"{snapshot}:/repo:ro", next(iter(pins)),
+            "dir", "--no-banner", "--redact=100", "--config", "/repo/.gitleaks.toml", "/repo",
+        ], capture_output=True, timeout=300)
+    # Signature output can contain sensitive context even when redacted.
+    return {"ok": completed.returncode == 0, "scope": "signature-head-snapshot",
+            "head": head, "exit_code": completed.returncode}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -568,12 +595,23 @@ def main() -> int:
         default="current",
     )
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--signature-snapshot", action="store_true",
+                        help="scan committed HEAD with the workflow-pinned Gitleaks image")
     args = parser.parse_args()
 
     if args.self_test:
         return self_test()
 
     root = args.root.resolve()
+    if args.signature_snapshot:
+        try:
+            result = scan_signature_snapshot(root)
+        except (OSError, ValueError, tarfile.TarError, subprocess.CalledProcessError,
+                subprocess.TimeoutExpired) as error:
+            print(json.dumps({"ok": False, "error": type(error).__name__}))
+            return 2
+        print(json.dumps(result, sort_keys=True))
+        return 0 if result["ok"] else 1
     try:
         entries = git_paths(root, args.scope)
         scanned, findings = scan_files(root, entries)

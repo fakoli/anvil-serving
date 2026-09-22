@@ -36,6 +36,41 @@ publish the absolute path. Use `python -m anvil_serving.cli` for campaign
 commands so a stale executable on `PATH` cannot silently select another
 checkout.
 
+## Validate the harness before loading candidates
+
+```text
+python scripts/run_tests.py tests/test_agentic_benchmark.py tests/test_benchmark_suite_runner.py -q
+```
+
+The wrapper checks directory trust, interpreter/dependency availability and
+source resolution first, and puts the selected interpreter on subprocess PATH.
+`--preflight` performs only those cheap checks. It records a fresh run ID,
+interpreter, source revision, tracked diff digest, command, completion state and
+exit code in `.pytest_cache/run-tests-receipt.json`; use `--receipt PATH` for
+private durable campaign evidence. `--timeout SECONDS` records a timeout and
+stops the test process. A running, missing or interrupted receipt is never a
+pass. A dirty-tree receipt describes a development run, not final acceptance.
+Keep receipts private because commands and paths can contain operator identity.
+
+After the final change, freeze a clean source revision and run the full suite
+once. Repeat only for changed code, failures or a named unresolved concern.
+Keep strict tool protocol, deterministic fixture state, answer formatting and
+independently executed coding tasks distinct. The agentic debug loop uses
+synthetic tool results; a pass does not prove a repository patch was executed.
+Bind claims to the recorded oracle revision and preserve older scores.
+For final signature scanning, use
+`python .agents/skills/anvil-serving-secret-hygiene/scripts/semantic_secret_scan.py --signature-snapshot`.
+It scans a fresh export of committed HEAD and excludes generated test/build
+output; semantic and intended-untracked-file gates remain separate.
+
+## Research once, expand only a specific gap
+
+The lead maintains one dated source registry for the initial pass. Record URL
+or artifact identity, revision, applicability, claim and decision impact.
+Delegate additional independent research only after naming the unresolved
+material choice and distinguishing evidence needed. Repeated URLs quoting one
+result are one source. Use local artifacts alone for local-only questions.
+
 ## Advance through explicit gates
 
 | Stage | Purpose | Advance gate |

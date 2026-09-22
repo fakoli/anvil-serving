@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from typing import Any, Mapping
 
 from .jobs import BenchmarkJobError
@@ -12,6 +13,7 @@ from .jobs import BenchmarkJobError
 
 AGENTIC_SCENARIO_SCHEMA = "anvil-serving.agentic-scenario/v1"
 AGENTIC_OBSERVATION_SCHEMA = "anvil-serving.agentic-observation/v1"
+AGENTIC_ORACLE_REVISION = "2"
 SCENARIO_TYPES = frozenset({
     "planning",
     "reasoning",
@@ -301,12 +303,18 @@ def score_agentic_trace(
         final_passed = bool(terms) and all(term in normalized_final for term in terms)
     elif expected.get("final_kind") == "ordered_terms":
         terms = expected.get("final_terms", [])
-        positions = [normalized_final.find(term) for term in terms]
-        final_passed = (
-            bool(terms)
-            and all(position >= 0 for position in positions)
-            and positions == sorted(positions)
-        )
+        if terms:
+            labels = "|".join(re.escape(term) for term in terms)
+            # Prefer step headings over incidental words inside their descriptions.
+            headings = re.findall(
+                rf"(?im)^\s*(?:(?:\d+[.)]|[-*+]|\#{{1,6}})\s*)?"
+                rf"(?:\*\*|__|`)?({labels})\b",
+                final if isinstance(final, str) else "",
+            )
+            observed = headings if len(headings) > 1 else re.findall(
+                rf"\b({labels})\b", normalized_final
+            )
+            final_passed = [item.casefold() for item in observed] == terms
     elif isinstance(final, str) and isinstance(expected.get("final"), str):
         final_passed = _normalize(final) == _normalize(expected["final"])
     result_passed = isinstance(final, str) and all(marker in final for marker in markers)
@@ -380,6 +388,7 @@ def score_agentic_trace(
     }
     return {
         "schema": AGENTIC_OBSERVATION_SCHEMA,
+        "oracle_revision": AGENTIC_ORACLE_REVISION,
         "scenario_id": scenario["scenario_id"],
         "passed": classification is None and all(item["passed"] for item in stages.values()),
         "failure_class": classification,

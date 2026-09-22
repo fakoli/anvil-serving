@@ -78,7 +78,8 @@ promotion boundary. Do not force the full report into the screenshot.
 
 ### Publication summary
 
-Put `<!-- benchmark-publication-summary/v1 -->` in a companion Markdown file
+When public communication is requested, put
+`<!-- benchmark-publication-summary/v1 -->` in a companion Markdown file
 beside the raw artifacts. Include:
 
 - canonical facts that posting copy must not contradict;
@@ -98,6 +99,13 @@ The artifact must still provide the immutable model/runtime identity, recipe,
 hardware, configuration, measurement path, workload, sample statistics,
 failures, decision, and raw links. A missing field remains a visible evidence
 gap.
+
+For active scouts, retain public-safe identity, configuration, raw run evidence, failures, and
+restoration evidence first. Defer the narrative finding, publication matrix,
+and platform variants until campaign closure. At closure, finalize all ten
+artifact roles and derive repeated metrics from one authoritative
+`summary.json` or the existing benchmark report. Label configured values as
+configured and do not present them as measured.
 
 ## Patterns adopted from peer repositories
 

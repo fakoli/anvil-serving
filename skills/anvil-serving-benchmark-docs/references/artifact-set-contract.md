@@ -158,9 +158,12 @@ The repository helper
 `scripts/finalize_artifact_set.py` accepts an
 `anvil-serving.benchmark-artifact-set-source/v1` file with the ten roles in the
 order above and relative string paths. It fails closed on missing files, path
-escapes, invalid roles/statuses, and self-hashing, then writes the canonical
-hashed manifest. Keep the source file beside the bundle when repeatable
-finalization is useful.
+escapes, symlinks, duplicate paths or JSON keys, invalid roles/statuses, and
+self-hashing, then writes the canonical hashed manifest. A retained legacy
+plaintext file with a `.json` suffix requires a source declaration such as
+`{"path": "gpus-final.json", "reason": "Historical command output"}` in
+`legacy_plaintext_files`; this exception never applies implicitly. Keep the
+source file beside the bundle when repeatable finalization is useful.
 
 ## Capacity comparison and replica aggregation
 

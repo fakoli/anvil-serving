@@ -67,6 +67,20 @@ gate must never silently skip them.
 
 ### 2. Run independent signature scans
 
+After committing the candidate, run the existing scanner's snapshot mode:
+
+```text
+python .agents/skills/anvil-serving-secret-hygiene/scripts/semantic_secret_scan.py --signature-snapshot
+```
+
+It exports the exact committed HEAD to a fresh temporary directory and uses the
+Gitleaks image pinned in that revision's workflow. It refuses tracked edits
+and reports the scanned commit and actual exit code. Untracked candidate files
+still require the separate semantic/untracked review before staging; this mode
+claims only committed snapshot coverage. Test output, `site/`, caches and logs
+from a used test checkout cannot enter this signature scan. A clean snapshot
+is not a full-history result.
+
 Use the repository's pinned Gitleaks container digest and `.gitleaks.toml`. Keep reports in an ignored scratch directory and do not display raw reports because they may contain secret material.
 
 Scan these surfaces separately:

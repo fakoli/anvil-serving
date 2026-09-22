@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import math
 import re
 
@@ -9,6 +10,65 @@ import pytest
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking.suite_runner import run_agentic_suite, run_context_suite
+
+
+@pytest.mark.parametrize("extra", [None, "read", "wrong-edit"])
+def test_debug_fixture_rejects_extra_calls_without_advancing_state(extra):
+    calls = [
+        ("run_tests", {"scope": "unit"}),
+        ("read_file", {"path": "calc.py"}),
+        ("apply_edit", {"path": "calc.py", "edit": "return a + b"}),
+        ("run_tests", {"scope": "unit"}),
+    ]
+    if extra:
+        calls.insert(2, ("read_file", {"path": "calc.py"}) if extra == "read" else
+                     ("apply_edit", {"path": "calc.py", "edit": "return a - b"}))
+    replies = []
+
+    def caller(base, model, key, messages, **_kwargs):
+        index = len(replies)
+        replies.append(copy.deepcopy(messages))
+        message = {"content": "tests pass"}
+        if index < len(calls):
+            name, arguments = calls[index]
+            message = {"content": "", "tool_calls": [{
+                "id": f"call-{index}", "type": "function",
+                "function": {"name": name, "arguments": json.dumps(arguments)},
+            }]}
+        return {"latency_s": 0.01, "response": {
+            "choices": [{"message": message, "finish_reason": "stop"}],
+        }}
+
+    profile = copy.deepcopy(load_profile("deep"))
+    profile["suites"]["agentic"]["repetitions"] = 1
+    result = run_agentic_suite(
+        profile, spec("agentic", case_ids=["debug-loop"]),
+        caller=caller,
+    )
+    tool_results = [json.loads(item["content"]) for item in replies[-1] if item["role"] == "tool"]
+    expected_results = [
+        {"status": "failed", "file": "calc.py"},
+        {"path": "calc.py", "content": "return a - b"},
+        {"status": "edited"},
+        {"status": "passed", "marker": "TESTS-PASS"},
+    ]
+    if extra:
+        expected_results.insert(2, {"error": "unexpected deterministic tool call"})
+    assert tool_results == expected_results
+    assert result["observations"][0]["passed"] is (extra is None)
+
+
+def test_parallel_fixture_matches_arguments_and_rejects_duplicate_consumption():
+    from anvil_serving.benchmarking.agentic import build_agentic_scenario
+    from anvil_serving.benchmarking.suite_runner import _fixture_result
+
+    scenario, expected = build_agentic_scenario("parallel-tools")
+    consumed = set()
+    b = {"name": "read_file", "arguments": {"path": "b.py"}}
+    a = {"name": "read_file", "arguments": {"path": "a.py"}}
+    assert _fixture_result(scenario, expected, consumed, b) == {"path": "b.py", "marker": "B-OK"}
+    assert _fixture_result(scenario, expected, consumed, b) == {"error": "unexpected deterministic tool call"}
+    assert _fixture_result(scenario, expected, consumed, a) == {"path": "a.py", "marker": "A-OK"}
 
 
 def spec(suite, **parameters):
