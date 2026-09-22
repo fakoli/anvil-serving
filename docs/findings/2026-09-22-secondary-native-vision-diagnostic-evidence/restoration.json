@@ -1,0 +1,25 @@
+{
+  "campaign_id": "2026-09-22-secondary-native-vision-diagnostic",
+  "differences": [],
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "raw-artifacts/secondary-post-recipe.sanitized.json"
+    ]
+  },
+  "limitation": "Same existing container/image remained running; transient pressure and exclusive GPU use were not established.",
+  "mutation_required": false,
+  "not_applicable_reason": null,
+  "post_run_checks": [
+    "raw-artifacts/secondary-restoration-check.sanitized.json"
+  ],
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "raw-artifacts/secondary-live-recipe.sanitized.json"
+    ]
+  },
+  "status": "verified",
+  "verified": true
+}

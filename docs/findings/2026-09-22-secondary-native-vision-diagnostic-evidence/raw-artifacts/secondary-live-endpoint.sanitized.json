@@ -1,0 +1,13 @@
+{
+  "/health": {
+    "body": "{\"status\":\"ok\"}",
+    "status": 200
+  },
+  "/metrics": {
+    "error": "HTTP Error 404: Not Found"
+  },
+  "/v1/models": {
+    "body": "{\"data\":[{\"created\":1790076373,\"id\":\"qwen38-huihui-ninfer-schemafix-mtp3-160k\",\"object\":\"model\",\"owned_by\":\"ninfer\"}],\"object\":\"list\"}",
+    "status": 200
+  }
+}
