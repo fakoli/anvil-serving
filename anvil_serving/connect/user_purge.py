@@ -13,7 +13,7 @@ from . import manage
 
 
 _LIMIT = 64 * 1024 * 1024
-_SCHEMA_VERSION = 24
+_SCHEMA_VERSION = 29
 _TIMEOUT = 10.0
 _MAX_IDENTIFIERS = 64
 _MAX_CHALLENGES = 512
@@ -30,7 +30,7 @@ _SESSION_TABLES = (
     "oauth2_openid_connect_session", "oauth2_device_code_session",
 )
 # SHA-256 of every non-internal sqlite_master SQL definition after Authelia
-# v4.39.20 (commit 1b524f7f4bbf7b5637f4c6b98f4f66fd4b4aed91) migrations V0001-V0024.
+# v4.39.28 migrations V0001-V0029.
 # Matching the complete closure rejects added triggers, views, or indexes too.
 _PINNED_OBJECTS = frozenset("""
 table:authentication_logs:72850792e2dbf17c56ea769239b7ce50c99ada5f8adaec5a9a5dbe9100966d23
@@ -41,16 +41,16 @@ table:duo_devices:26331f747ac77d75c990a77d9706af9c703f1ea8c1ab4f9522d322382f9ec5
 table:encryption:a88a31862dc40711312adff23c78831ac8533352d29b92dd803fea8d6c6ceb02
 table:identity_verification:a30abb0fc3a943dac6b88ff30a8c2890e39a2251fc600ca4910b2eb3133b8772
 table:migrations:beca21214a050a3f28135d7852e9207ad2d2305664252b99057b535440f1a465
-table:oauth2_access_token_session:2bcd18a53b828443ceacfa5ce2d88ab63057eecb740e3caab2a72ca2ba9121df
-table:oauth2_authorization_code_session:8a0df2cfe2df42a5251489185495672d03b8beb00d4722326fe53a5610c89101
+table:oauth2_access_token_session:d4acab13cdee3ce3e0768a76666dd8c4328c2dac50cb64e2afb98c7f970bf472
+table:oauth2_authorization_code_session:4aedf6317432e7ad7a745e062a549c4b12703aa632b359a1e468645bed49d60f
 table:oauth2_blacklisted_jti:63b716e864abcc0fe4c85ee527e4ef02aefe283e4bb8fb25b612e0d8a4a8f3d5
-table:oauth2_consent_preconfiguration:31d511cba79dbf745d411d489c1fd4b8f64c2b2d3490afff3a17a46b2ffa891a
-table:oauth2_consent_session:09f0bde07d1f485131607a728a2fd4e6761e2255d99c56b8a91415d3ced09503
-table:oauth2_device_code_session:358295bfd476bc411228e45a71e382297b519dccb7ca34083802819a64a09857
-table:oauth2_openid_connect_session:f48626b160454a728af29960df96442f832612bf93fc9ef3872e75385bd381b8
-table:oauth2_par_context:c1b46bbf16ac551113c7bc8df8ca14f176a16d26498027c7b2b5343eb1e7423e
-table:oauth2_pkce_request_session:b2471c31db920ceb9a3a1496e9b36ffbe2150984304b5e7aa936f4f039ad7b93
-table:oauth2_refresh_token_session:410596112e58f4b50bc3ada3c0d0e0d32a602efaca15c66a2f3816f0109f6e0b
+table:oauth2_consent_preconfiguration:22d73ff40a679b8d99a316f43f21c0b7ff3421f2d7a37880ce3b22462a796d8f
+table:oauth2_consent_session:dddd9b98d8c5a05ee800707f370dbd2e3e0df862aa5dd30aedd47e030ae3507b
+table:oauth2_device_code_session:89cc86d3176c4cd84feadd102c7b16ed6d8819484e31f87a6be9922edf57f885
+table:oauth2_openid_connect_session:601b81d0968a064727490f0ed261720ae8f701d7a049e9930ae7c47edbf255e7
+table:oauth2_par_context:6f7e9dfd155e8eb2e4740b0f2ab4390d1b5dead3337d6c8bdef0bd866044de0e
+table:oauth2_pkce_request_session:6625e21d8d164e2d8762031bdcc76711e99ae1084e3e03dc4cf2fb94132d52af
+table:oauth2_refresh_token_session:4f746222777b10439f5127613a86da464962e522467f0db65fbe32c82455db63
 table:one_time_code:6ded68c6da90b2a029bf8a879e70d004964701a52ad528da044626993af0aecc
 table:totp_configurations:2898d8076c1948fa0d2cc2758709cee52ab7feaf02a69242abe3bd8cbb9d52cc
 table:totp_history:aceada09fcd75441e555e0d0f07ce85ab4436f6b4ae8b48c43270fbea26227c0
@@ -140,10 +140,10 @@ def _schema(connection: sqlite3.Connection) -> None:
         )
     )
     if observed != _PINNED_OBJECTS:
-        raise _invalid("Authelia database is not the pinned schema 24.")
+        raise _invalid("Authelia database is not the pinned schema 29.")
     version = connection.execute("SELECT version_after FROM migrations ORDER BY id DESC LIMIT 1").fetchone()
     if version != (_SCHEMA_VERSION,):
-        raise _invalid("Authelia database is not the pinned schema 24.")
+        raise _invalid("Authelia database is not the pinned schema 29.")
 
 
 def _integrity(connection: sqlite3.Connection) -> None:
@@ -158,7 +158,7 @@ def _marks(values: tuple[str, ...]) -> str:
 def purge(database_path: str | Path, username: str, *, expected_subject: str | None = None,
           validate_only: bool = False, uid: int | None = None,
           gid: int | None = None, require_zero_opaque: bool = False) -> dict[str, int | bool]:
-    """Validate or erase one account from stopped Authelia SQLite schema 24.
+    """Validate or erase one account from stopped Authelia SQLite schema 29.
 
     The caller must fork/drop to the IdP identity first so SQLite journals retain
     the owner Authelia expects.

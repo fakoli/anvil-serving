@@ -43,6 +43,60 @@ def _create_schema(path: Path) -> None:
     connection.close()
 
 
+# Exact upstream SQLite migrations V0027 and V0029 from Authelia v4.39.28.
+# V0025, V0026, and V0028 intentionally contain no SQLite statements.
+_SCHEMA29_MIGRATIONS = """
+ALTER TABLE oauth2_refresh_token_session ADD COLUMN access_signature VARCHAR(768) NOT NULL DEFAULT '';
+
+UPDATE oauth2_refresh_token_session
+SET access_signature = COALESCE((
+        SELECT a.signature
+        FROM oauth2_access_token_session a
+        WHERE a.request_id = oauth2_refresh_token_session.request_id
+          AND a.revoked = FALSE), '')
+WHERE revoked = FALSE
+  AND access_signature = ''
+  AND (SELECT COUNT(*)
+       FROM oauth2_access_token_session a
+       WHERE a.request_id = oauth2_refresh_token_session.request_id
+         AND a.revoked = FALSE) = 1;
+
+ALTER TABLE oauth2_access_token_session ADD COLUMN requested_resource TEXT NULL DEFAULT '';
+ALTER TABLE oauth2_access_token_session ADD COLUMN granted_resource TEXT NULL DEFAULT '';
+
+ALTER TABLE oauth2_authorization_code_session ADD COLUMN requested_resource TEXT NULL DEFAULT '';
+ALTER TABLE oauth2_authorization_code_session ADD COLUMN granted_resource TEXT NULL DEFAULT '';
+
+ALTER TABLE oauth2_openid_connect_session ADD COLUMN requested_resource TEXT NULL DEFAULT '';
+ALTER TABLE oauth2_openid_connect_session ADD COLUMN granted_resource TEXT NULL DEFAULT '';
+
+ALTER TABLE oauth2_pkce_request_session ADD COLUMN requested_resource TEXT NULL DEFAULT '';
+ALTER TABLE oauth2_pkce_request_session ADD COLUMN granted_resource TEXT NULL DEFAULT '';
+
+ALTER TABLE oauth2_refresh_token_session ADD COLUMN requested_resource TEXT NULL DEFAULT '';
+ALTER TABLE oauth2_refresh_token_session ADD COLUMN granted_resource TEXT NULL DEFAULT '';
+
+ALTER TABLE oauth2_device_code_session ADD COLUMN requested_resource TEXT NULL DEFAULT '';
+ALTER TABLE oauth2_device_code_session ADD COLUMN granted_resource TEXT NULL DEFAULT '';
+
+ALTER TABLE oauth2_consent_session ADD COLUMN requested_resource TEXT NULL DEFAULT '';
+ALTER TABLE oauth2_consent_session ADD COLUMN granted_resource TEXT NULL DEFAULT '';
+
+ALTER TABLE oauth2_par_context ADD COLUMN resource TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE oauth2_consent_preconfiguration ADD COLUMN resource TEXT NULL;
+"""
+
+
+def _migrate_schema29(connection: sqlite3.Connection) -> None:
+    connection.executescript(_SCHEMA29_MIGRATIONS)
+    for version in range(25, 30):
+        connection.execute(
+            "INSERT INTO migrations (version_after, application_version) VALUES (?, '4.39.28')",
+            (version,),
+        )
+
+
 def _insert(connection: sqlite3.Connection, table: str, values: dict[str, object]) -> None:
     identity = str(values.get("username", values.get("subject", values.get("challenge_id", "row"))))
     for _, column, kind, required, default, primary in connection.execute(f"PRAGMA table_info({table})"):
@@ -61,6 +115,7 @@ def database(tmp_path, monkeypatch):
     _create_schema(database)
     database.chmod(0o600)
     connection = sqlite3.connect(database)
+    _migrate_schema29(connection)
     connection.execute("PRAGMA foreign_keys=ON")
     for username in ("alice", "bob"):
         for table in _USERNAME_TABLES:
@@ -83,6 +138,24 @@ def database(tmp_path, monkeypatch):
     return database
 
 
+def test_schema29_migration_preserves_refresh_binding_and_rejects_unknown_schema(tmp_path):
+    database = tmp_path / "authelia.sqlite3"
+    _create_schema(database)
+    with sqlite3.connect(database) as connection:
+        _insert(connection, "oauth2_access_token_session", {"request_id": "request", "signature": "access"})
+        _insert(connection, "oauth2_refresh_token_session", {"request_id": "request", "signature": "refresh"})
+        with pytest.raises(UsageError):
+            user_purge._schema(connection)
+        _migrate_schema29(connection)
+        user_purge._schema(connection)
+        assert connection.execute(
+            "SELECT access_signature FROM oauth2_refresh_token_session WHERE request_id = 'request'"
+        ).fetchone() == ("access",)
+        connection.execute("CREATE INDEX unexpected_schema29_index ON authentication_logs (username)")
+        with pytest.raises(UsageError):
+            user_purge._schema(connection)
+
+
 def _count(database: Path, table: str, column: str, value: str) -> int:
     with sqlite3.connect(database) as connection:
         return connection.execute(f"SELECT COUNT(*) FROM {table} WHERE {column} = ?", (value,)).fetchone()[0]
@@ -91,7 +164,7 @@ def _count(database: Path, table: str, column: str, value: str) -> int:
 def test_purge_erases_only_target_and_allows_username_reuse(database):
     result = user_purge.purge(database, "alice", expected_subject=_ALICE)
 
-    assert result == {"schema_version": 24, "validated_only": False, "applied": True,
+    assert result == {"schema_version": 29, "validated_only": False, "applied": True,
                       "username_records": len(_USERNAME_TABLES), "opaque_identifiers": 1,
                       "oauth_sessions": len(_SESSION_TABLES) * 2, "consent_sessions": 2,
                       "consent_preconfigurations": 1, "expected_subject_found": True}
@@ -109,6 +182,57 @@ def test_purge_erases_only_target_and_allows_username_reuse(database):
     assert _count(database, "oauth2_blacklisted_jti", "signature", "unrelated") == 1
     with sqlite3.connect(database) as connection:
         _insert(connection, "user_opaque_identifier", {"service": "openid", "sector_id": "", "username": "alice", "identifier": "33333333-3333-4333-8333-333333333333"})
+
+
+def test_purge_schema29_resource_fields_and_access_signature_are_scoped_to_target(database):
+    with sqlite3.connect(database) as connection:
+        for subject, prefix in ((_ALICE, "alice"), (_BOB, "bob")):
+            requested, granted = (f"urn:{prefix}:requested", f"urn:{prefix}:granted")
+            connection.execute(
+                "UPDATE oauth2_access_token_session SET requested_resource = ?, granted_resource = ? WHERE subject = ?",
+                (requested, granted, subject),
+            )
+            connection.execute(
+                "UPDATE oauth2_refresh_token_session "
+                "SET access_signature = ?, requested_resource = ?, granted_resource = ? WHERE subject = ?",
+                (f"{prefix}-access-signature", requested, granted, subject),
+            )
+            connection.execute(
+                "UPDATE oauth2_consent_session SET requested_resource = ?, granted_resource = ? WHERE subject = ?",
+                (requested, granted, subject),
+            )
+            connection.execute(
+                "UPDATE oauth2_consent_preconfiguration SET resource = ? WHERE subject = ?",
+                (requested, subject),
+            )
+        connection.execute("UPDATE oauth2_par_context SET resource = ? WHERE signature = 'unrelated'", ("urn:unrelated",))
+
+    user_purge.purge(database, "alice", expected_subject=_ALICE)
+
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT access_signature, requested_resource, granted_resource "
+            "FROM oauth2_refresh_token_session WHERE subject = ?", (_ALICE,)
+        ).fetchone() is None
+        assert connection.execute(
+            "SELECT requested_resource, granted_resource FROM oauth2_access_token_session WHERE subject = ?", (_ALICE,)
+        ).fetchone() is None
+        assert connection.execute(
+            "SELECT access_signature, requested_resource, granted_resource "
+            "FROM oauth2_refresh_token_session WHERE subject = ?", (_BOB,)
+        ).fetchone() == ("bob-access-signature", "urn:bob:requested", "urn:bob:granted")
+        assert connection.execute(
+            "SELECT requested_resource, granted_resource FROM oauth2_access_token_session WHERE subject = ?", (_BOB,)
+        ).fetchone() == ("urn:bob:requested", "urn:bob:granted")
+        assert connection.execute(
+            "SELECT requested_resource, granted_resource FROM oauth2_consent_session WHERE subject = ?", (_BOB,)
+        ).fetchone() == ("urn:bob:requested", "urn:bob:granted")
+        assert connection.execute(
+            "SELECT resource FROM oauth2_consent_preconfiguration WHERE subject = ?", (_BOB,)
+        ).fetchone() == ("urn:bob:requested",)
+        assert connection.execute(
+            "SELECT resource FROM oauth2_par_context WHERE signature = 'unrelated'"
+        ).fetchone() == ("urn:unrelated",)
 
 
 def test_validate_only_and_completed_rerun_are_non_destructive(database):
