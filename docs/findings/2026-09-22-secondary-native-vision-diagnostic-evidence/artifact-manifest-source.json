@@ -103,10 +103,12 @@
       "status": "retained"
     },
     {
-      "files": [],
-      "reason": "Compatibility-only diagnostic draft; publication view remains to be prepared.",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "",
       "role": "publication-summary",
-      "status": "not-applicable"
+      "status": "retained"
     }
   ],
   "campaign": {

@@ -25,8 +25,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "588cb7e9b99fa7afad969ade3ddbe78cabea2d3a64403a95203dc3e3bf2e4d64",
-          "bytes": 1106
+          "sha256": "3ff44aa43e5f88b14b75d457ef3ab968e7c01c72d49bf389e48099a1962a0550",
+          "bytes": 1210
         }
       ],
       "reason": ""
@@ -279,9 +279,15 @@
     },
     {
       "role": "publication-summary",
-      "status": "not-applicable",
-      "files": [],
-      "reason": "Compatibility-only diagnostic draft; publication view remains to be prepared."
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "3be104f42cef3473587e54b30abfb6d62657efbddbf61967ae77e8593ce38c54",
+          "bytes": 2812
+        }
+      ],
+      "reason": ""
     }
   ],
   "bundle_size_policy_verified": false,

@@ -1,6 +1,6 @@
-# Secondary native vision diagnostic evidence draft
+# Secondary native vision diagnostic evidence
 
-This private, sanitized draft maps retained native evidence into the benchmark artifact-set contract. It does not publish a finding, qualify a model, authorize promotion, or claim exclusive hardware use.
+This retained, sanitized evidence bundle supports the published [dated finding](../2026-09-22-secondary-native-vision-diagnostic.md). It does not qualify a model, authorize promotion, or claim exclusive hardware use.
 
 ## Result boundary
 
@@ -13,5 +13,6 @@ The frozen synthetic diagnostic recorded 11 passing whole-answer assertions out 
 - `workload-manifest.json` binds the copied frozen corpus and synthetic PNG assets.
 - `redaction-notes.md` records the sanitized identity categories.
 - `summary.json`, `friction-log.md`, and `restoration.json` state the decision, gaps, and post-run boundary.
+- `publication-summary.md` is the retained derivative summary of the dated finding.
 
-The private original source hashes are retained outside this draft.
+Private original source hashes are retained outside this public evidence bundle.
