@@ -8,7 +8,7 @@ import { OwnerError, createBrowserOwner } from "./owner.mjs";
 const watchdog = setTimeout(() => { process.stderr.write("browser owner test watchdog expired\n"); process.exit(1); }, 60_000);
 test.after(() => clearTimeout(watchdog));
 const executablePath = () => process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome";
-const page = (kind = "") => `<!doctype html><main aria-label="Synthetic fixture"><h1>Read-only report</h1><button aria-label="Capture">Capture</button><button disabled>Disabled</button>${kind === "input" || kind === "input-long" ? `<input aria-label="Value" value="${kind === "input-long" ? "x".repeat(257) : "before"}">` : ""}<section role="status">Status</section><img alt="Chart">${kind === "many" ? Array.from({ length: 70 }, (_, index) => `<button aria-label="extra-${index}">extra</button>`).join("") : ""}${kind === "canvas" ? "<canvas></canvas>" : ""}${kind === "shadow" ? "<x-private></x-private>" : ""}${kind === "network" ? '<img src="/asset"><script>window.open("/popup"); new WebSocket(location.origin.replace("http", "ws") + "/socket");</script>' : ""}</main>${kind === "frame" ? '<iframe src="/"></iframe>' : ""}<script>${kind === "shadow" ? 'customElements.define("x-private", class extends HTMLElement { constructor() { super(); this.attachShadow({mode:"open"}).innerHTML="<button>private</button>"; } })' : ""}${kind === "spoof" ? 'Element.prototype.matches=()=>true; Element.prototype.getBoundingClientRect=()=>({width:1,height:1,top:0,right:1,bottom:1,left:0}); document.elementFromPoint=()=>document.body' : ""}</script>`;
+const page = (kind = "") => `<!doctype html><main aria-label="Synthetic fixture"><h1>Read-only report</h1><button aria-label="Capture">Capture</button><button disabled>Disabled</button>${kind === "input" || kind === "input-long" ? `<input aria-label="Value" value="${kind === "input-long" ? "x".repeat(257) : "before"}">` : ""}<section role="status">Status</section><img alt="Chart">${kind === "many" ? Array.from({ length: 70 }, (_, index) => `<button aria-label="extra-${index}">extra</button>`).join("") : ""}${kind === "oversized" ? `<div role="${"r".repeat(129)}"></div><button aria-label="${"x".repeat(257)}"></button>` : ""}${kind === "tall" ? '<div style="height: 200vh"></div>' : ""}${kind === "canvas" ? "<canvas></canvas>" : ""}${kind === "shadow" ? "<x-private></x-private>" : ""}${kind === "network" ? '<img src="/asset"><script>window.open("/popup"); new WebSocket(location.origin.replace("http", "ws") + "/socket");</script>' : ""}</main>${kind === "frame" ? '<iframe src="/"></iframe>' : ""}<script>${kind === "shadow" ? 'customElements.define("x-private", class extends HTMLElement { constructor() { super(); this.attachShadow({mode:"open"}).innerHTML="<button>private</button>"; } })' : ""}${kind === "spoof" ? 'Element.prototype.matches=()=>true; Element.prototype.getBoundingClientRect=()=>({width:1,height:1,top:0,right:1,bottom:1,left:0}); document.elementFromPoint=()=>document.body' : ""}</script>`;
 const error = (code) => (value) => value instanceof OwnerError && value.code === code;
 const typed = (value) => value instanceof OwnerError;
 const captureRequest = (changes = {}) => ({
@@ -86,7 +86,7 @@ test("owner creates one restricted session and captures fixture facts", { timeou
   assert.deepEqual(observation.target, captureRequest().target);
   assert.deepEqual(observation.predicates, captureRequest().predicates);
   assert.equal(observation.require_unique, true);
-  assert.equal(typeof observation.coverage.complete, "boolean");
+  assert.equal(observation.coverage.complete, true);
   for (const entity of observation.entities) {
     assert.equal("interactive" in entity || "index" in entity || "scopeId" in entity || "scope_id" in entity, false);
     for (const key of ["exists", "in_viewport", "occluded", "enabled", "predicate_reasons"]) assert.ok(key in entity);
@@ -130,11 +130,17 @@ test("capture rejects direct and mutate-restore races, then stale replacement an
   assert.equal(partial.coverage.complete, false); assert.ok(partial.coverage.unsupported_regions.includes("frame"));
 });
 
-test("owner expires, evicts and revokes observations without late retention", { timeout: 15_000 }, async (t) => {
-  const site = await fixture(); let tick = 0; const core = await owner(site.origin, { maxObservations: 1, ttl: 5 }, () => tick); const session = core.session(); t.after(async () => { await core.close(); await site.close(); });
-  await session.navigate(`${site.origin}/`); const first = await session.capture(captureRequest()); const second = await session.capture(captureRequest());
-  await assert.rejects(session.resolve(first.observation_id, "e-1"), error("unknown_observation"));
-  tick = 6; await assert.rejects(session.resolve(second.observation_id, "e-1"), error("expired_observation"));
+test("owner refreshes successful TTL reads only and does not revive expired observations", { timeout: 15_000 }, async (t) => {
+  const site = await fixture(); let tick = 0; const core = await owner(site.origin, { ttl: 5 }, () => tick); const session = core.session(); t.after(async () => { await core.close(); await site.close(); });
+  await session.navigate(`${site.origin}/`);
+  const first = await session.capture(captureRequest()); const button = first.entities.find((entity) => entity.text === "Capture");
+  tick = 4; await assert.rejects(session.resolve(first.observation_id, "foreign"), error("unknown_entity"));
+  tick = 6; await assert.rejects(session.resolve(first.observation_id, button.id), error("expired_observation"));
+  await assert.rejects(session.resolve(first.observation_id, button.id), error("unknown_observation"));
+  const second = await session.capture(captureRequest({ request_id: "ttl-refresh" })); const refreshed = second.entities.find((entity) => entity.text === "Capture");
+  tick = 10; await session.resolve(second.observation_id, refreshed.id);
+  tick = 14; await session.resolve(second.observation_id, refreshed.id);
+  tick = 20; await assert.rejects(session.resolve(second.observation_id, refreshed.id), error("expired_observation"));
   await session.revoke(); await assert.rejects(session.capture(captureRequest()), error("owner_closed"));
 });
 
@@ -209,6 +215,31 @@ test("isolated DOM facts resist page getter spoofing and report unsupported regi
   assert.ok((await session.capture(captureRequest())).coverage.unsupported_regions.includes("canvas"));
   await session.navigate(`${site.origin}/?mode=shadow`);
   assert.ok((await session.capture(captureRequest())).coverage.unsupported_regions.includes("shadow"));
+});
+
+test("coverage reports oversized DOM fields and prior observations die on scroll, navigation, and page close", { timeout: 15_000 }, async (t) => {
+  const site = await fixture(); const trusted = trustedPageHook(); const core = await owner(site.origin, {}, undefined, trusted.prepare); const page = await trusted.page; const session = core.session(); t.after(async () => { await core.close(); await site.close(); });
+  await session.navigate(`${site.origin}/?mode=oversized`);
+  const partial = await session.capture(captureRequest());
+  assert.equal(partial.coverage.complete, false);
+  assert.ok(partial.coverage.omitted_count > 0);
+  assert.ok(partial.coverage.untraversed_regions.includes("role_too_large"));
+  assert.ok(partial.coverage.untraversed_regions.includes("text_too_large"));
+  await session.navigate(`${site.origin}/?mode=tall`);
+  const scrolled = await session.capture(captureRequest({ request_id: "scroll-stale" })); const button = scrolled.entities.find((entity) => entity.text === "Capture");
+  await page.evaluate(() => scrollTo(0, 100));
+  await assert.rejects(session.resolve(scrolled.observation_id, button.id), error("stale_observation"));
+  await session.navigate(`${site.origin}/?mode=input`);
+  const navigated = await session.capture(captureRequest({ request_id: "navigation-stale" }));
+  await session.navigate(`${site.origin}/`);
+  await assert.rejects(session.resolve(navigated.observation_id, "e-1"), error("unknown_observation"));
+});
+
+test("closed owner page returns a typed failure", { timeout: 15_000 }, async (t) => {
+  const site = await fixture(); const trusted = trustedPageHook(); const core = await owner(site.origin, {}, undefined, trusted.prepare); const page = await trusted.page; const session = core.session(); t.after(async () => { await core.close(); await site.close(); });
+  await session.navigate(`${site.origin}/`);
+  await page.close();
+  await assert.rejects(session.capture(captureRequest({ request_id: "closed-page" })), typed);
 });
 
 test("subresource, popup, frame, and websocket policy stays inside the owner", { timeout: 15_000 }, async (t) => {
