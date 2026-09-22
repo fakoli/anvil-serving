@@ -300,7 +300,7 @@ Pi deployment without a Connect identity adapter, still manage their own roles;
 their editor says that explicitly and their tiles omit the role badge. Merely storing a role label does not
 grant or restrict an action inside such an application.
 
-Authelia 4.39.20's file backend has no forced-first-login-change or annual-expiry
+Authelia 4.39.28's file backend has no forced-first-login-change or annual-expiry
 flag. Connect requires initial password setup by withholding the discarded
 bootstrap password and using Authelia's supported reset flow. When passkey login
 is enabled, reset preserves registered factors; with the experimental
@@ -569,6 +569,16 @@ Artifact upgrades additionally require `--upgrade`: install the new artifact at
 a versioned path and retain the previous verified executable for rollback.
 Replacing an executable in place is refused. The preview includes the proposed
 artifact digests; ordinary identity/admin commands still refuse binary drift.
+
+For an initialized Authelia database, an Authelia artifact upgrade takes a
+validated authentication snapshot and briefly stops Caddy and Authelia. Its
+Authelia configuration must be unchanged. A normal configuration upgrade keeps
+its existing rollback behavior. If the provider upgrade is interrupted, recovery
+continues forward from its durable marker: rerun the identical `connect up`
+command with `--upgrade --confirm`. The marker is recovery state, not a health
+proof: after a failure or host restart, verified new services may already be
+running, and retry stops and reconciles the provider and edge. Never manually
+restore the old Authelia binary or database.
 
 ```sh
 anvil-serving connect up --manifest /etc/anvil-connect/deployment.json --service gateway --dry-run

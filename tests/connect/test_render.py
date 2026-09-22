@@ -692,7 +692,7 @@ def test_systemd_units_have_real_argv_and_reject_unsafe_paths() -> None:
     assert "--adapter json" not in files["systemd/anvil-connect-caddy.service"]
     assert "--config.experimental.filters template" in files["systemd/anvil-connect-authelia.service"]
     assert "ExecStart=/opt/anvil-connect/components/caddy/2.11.3/caddy" in files["systemd/anvil-connect-caddy.service"]
-    assert "ExecStart=/opt/anvil-connect/components/authelia/4.39.20/authelia" in files["systemd/anvil-connect-authelia.service"]
+    assert "ExecStart=/opt/anvil-connect/components/authelia/4.39.28/authelia" in files["systemd/anvil-connect-authelia.service"]
     assert "EnvironmentFile=/etc/anvil-connect/secrets/gateway.env" in files["systemd/anvil-connect-gateway.service"]
     assert "EnvironmentFile=/etc/anvil-connect/secrets/connectors/dashboard.env" in files["systemd/anvil-connect-connector-dashboard.service"]
     assert "EnvironmentFile=/etc/anvil-connect/secrets/clients/dashboard-api.env" in files["systemd/anvil-connect-client-dashboard-api.service"]
@@ -879,6 +879,9 @@ def test_local_tunnel_omission_preserves_pre_slice_bytes() -> None:
         "managed.json": "1cba584f7cdde232b86423a6e9c76af5879f6ea8c1800af9c4af8b13463b7c89",
     }
     value = isolated_manifest()
+    # This is a pre-upgrade compatibility fixture. Keep the old executable
+    # location explicit so its captured bytes remain a regression baseline.
+    value["components"]["authelia"] = "/opt/anvil-connect/components/authelia/4.39.20/authelia"
     normalized = connect_config.canonical_manifest(value)
     generation = "e9b86d9f9ad8acb44d686138a714f43ad610bb0be372fa80e268a4882d817b81"
     assert hashlib.sha256(normalized).hexdigest() == generation
