@@ -171,6 +171,7 @@ def test_normalized_casefold_equality_is_exact_except_case_and_whitespace():
     {"type": "equals_normalized_casefold", "value": "   \u2003\t"},
     {"type": "equals_normalized_casefold", "value": "ready", "values": ["ready"]},
     {"type": "equals_normalized_casefold", "value": 1},
+    {"type": "equals_normalized_casefold", "value": "\ud800"},
 ])
 def test_normalized_casefold_assertion_rejects_malformed_inputs(tmp_path, assertion):
     image = _media(tmp_path, "scene.png", b"\x89PNG\r\n\x1a\nscene")
@@ -185,10 +186,16 @@ def test_normalized_casefold_assertion_rejects_malformed_inputs(tmp_path, assert
 def test_ordered_casefold_uses_folded_token_length_without_overlap():
     results = multimodal.evaluate_assertions(
         "ß",
-        [{"type": "ordered_casefold", "values": ["ss", "s"]}],
+        [{"type": "ordered_casefold", "values": ["ß", "s"]}],
     )
 
     assert results[0]["passed"] is False
+
+    positive = multimodal.evaluate_assertions(
+        "ß S",
+        [{"type": "ordered_casefold", "values": ["ß", "s"]}],
+    )
+    assert positive[0]["passed"] is True
 
 
 def test_endpoint_identity_accepts_llama_cpp_aliases(monkeypatch):
