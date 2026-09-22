@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Browser owner fixture</title>
+    <script>
+      window.__fixtureEpoch = 0;
+      new MutationObserver(() => { window.__fixtureEpoch += 1; }).observe(
+        document.documentElement,
+        { childList: true, subtree: true, attributes: true, characterData: true },
+      );
+    </script>
+  </head>
+  <body>
+    <main aria-label="Synthetic browser owner fixture">
+      <button id="capture" data-owner-entity aria-label="Capture report">Capture report</button>
+      <button id="disabled" data-owner-entity disabled>Disabled capture</button>
+      <section id="status" data-owner-entity role="status" aria-label="Read-only status region">
+        Capture is read-only.
+      </section>
+    </main>
+  </body>
+</html>
