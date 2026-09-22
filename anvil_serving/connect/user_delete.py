@@ -374,7 +374,7 @@ def _purge_as_idp(database: Path, username: str, subject: str | None, *, validat
         raise _invalid("Authelia permanent deletion could not safely complete.") from exc
     result = value.get("result")
     if (set(value) != {"ok", "result"} or value.get("ok") is not True or type(result) is not dict
-            or set(result) != _PURGE_RESULT_KEYS or result.get("schema_version") != 24
+            or set(result) != _PURGE_RESULT_KEYS or result.get("schema_version") != 29
             or result.get("validated_only") is not validate_only or result.get("applied") is not (not validate_only)
             or any(type(result.get(key)) is not int or result[key] < 0 for key in _PURGE_RESULT_KEYS - {"schema_version", "validated_only", "applied", "expected_subject_found"})
             or type(result.get("expected_subject_found")) is not bool):
@@ -558,6 +558,7 @@ def delete(manifest: str, username: str, *, apply: bool = False, runner=None, un
     # mutation and finalization.  A render/activation cannot change operator
     # policy between the disabled intent and its irreversible IdP purge.
     with manage._deployment_lock(Path(data["config_root"])):
+        manage._require_no_authelia_upgrade(Path(data["config_root"]))
         root = _phase_root(manifest)
         retained = [(path, phase) for path, phase in _phases(root).values() if phase["username"] == username]
         if len(retained) > 1:
@@ -617,6 +618,7 @@ def process_pending(manifest: str, *, apply: bool = False, runner=None, unit_roo
     # and terminal native write.  This makes the durable phase an authority
     # fence, not merely a local retry record.
     with manage._deployment_lock(Path(data["config_root"])):
+        manage._require_no_authelia_upgrade(Path(data["config_root"]))
         root = _phase_root(manifest)
         intents = _intents(data, manifest, runner)
         phases = _phases(root)

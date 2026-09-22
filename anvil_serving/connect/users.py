@@ -480,8 +480,8 @@ def _oidc_identifiers(data: dict, config: Path, runner, *, missing_ok: bool = Fa
     export = directory / "identifiers.yml"
     try:
         result = manage._run(runner, (data["components"]["authelia"], "storage", "user", "identifiers", "export", "--file", str(export), "--config", str(config), "--config.experimental.filters", "template"), 15, manage._role_service_identity(data, "idp"))
-        if (missing_ok and result.returncode == 1
-                and result.stdout == b"" and result.stderr == b"Error: no data to export\n"):
+        if (missing_ok and result.returncode == 1 and result.stdout == b""
+                and result.stderr.splitlines()[:1] == [b"Error: no data to export"]):
             return []
         manage._fail(result, "Authelia opaque-identifier export failed")
         info = export.lstat()
@@ -681,6 +681,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         return result
     if operation == "access" and not users[username].get("disabled", False):
         with manage._deployment_lock(root):
+            manage._require_no_authelia_upgrade(root)
             # Do not re-enable a human after a concurrent suspension/deletion.
             latest, _ = _read_users(data)
             if latest != raw:
@@ -696,6 +697,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         return {**result, "applied": True, "grants_changed": True, "existing_connect_sessions_revoked": True,
                 "principal": _principal(data["gateway"]["oidc"]["issuer"], subject)}
     with manage._deployment_lock(root):
+        manage._require_no_authelia_upgrade(root)
         manage._verify_owned_tree(root)
         config = root / "authelia/configuration.yml"
         if manage._read_regular(config, _MAX_FILE) != _authelia(data).encode():
@@ -887,6 +889,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             gateway_uid, _ = role_identity(data, "gateway")
             from .user_backup import prune as prune_auth
             with manage._deployment_lock(Path(data["config_root"])):
+                manage._require_no_authelia_upgrade(Path(data["config_root"]))
                 completed["gateway_backup"].update(prune(Path(completed["backup"]["file"]).parent, gateway_root, gateway_uid))
                 completed["backup"].update(prune_auth(Path(completed["backup"]["file"]).parent))
         except BaseException as exc:
