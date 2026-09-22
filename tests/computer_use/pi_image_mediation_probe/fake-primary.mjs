@@ -4,6 +4,14 @@ const BODY_LIMIT = 64 * 1024;
 const BODY_TIMEOUT_MS = 1_000;
 const RESPONSE = "fixture primary response";
 
+function rawMedia(value) {
+  if (Array.isArray(value)) return value.some(rawMedia);
+  if (!value || typeof value !== "object") return false;
+  if (value.type === "image" || value.type === "image_url") return true;
+  if (typeof value.url === "string" && value.url.startsWith("data:image/")) return true;
+  return Object.values(value).some(rawMedia);
+}
+
 function readBody(request) {
   return new Promise((resolve, reject) => {
     let size = 0;
@@ -46,11 +54,18 @@ export async function startFakePrimary() {
       const body = await readBody(request);
       const parsed = JSON.parse(body);
       let closed;
-      const capture = { body, parsed, cancelled: false, closed: new Promise((resolve) => { closed = resolve; }) };
+      const capture = { body, parsed, rawMedia: rawMedia(parsed), cancelled: false, closed: new Promise((resolve) => { closed = resolve; }) };
       response.on("close", () => { capture.cancelled = !response.writableEnded; closed(); });
       record(capture);
       if (parsed.fixture_delay) return;
       response.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
+      const wantsTool = JSON.stringify(parsed.messages).includes("[fixture-tool]") && !parsed.messages.some((message) => message.role === "tool");
+      if (wantsTool) {
+        response.write(`data: ${JSON.stringify({ id: "fixture-primary", object: "chat.completion.chunk", choices: [{ index: 0, delta: { role: "assistant", tool_calls: [{ index: 0, id: "fixture-image-call", type: "function", function: { name: "fixture_image", arguments: "{}" } }] }, finish_reason: null }] })}\n\n`);
+        response.write(`data: ${JSON.stringify({ id: "fixture-primary", object: "chat.completion.chunk", choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }] })}\n\n`);
+        response.end("data: [DONE]\n\n");
+        return;
+      }
       response.write(`data: ${JSON.stringify({ id: "fixture-primary", object: "chat.completion.chunk", choices: [{ index: 0, delta: { role: "assistant", content: RESPONSE }, finish_reason: null }] })}\n\n`);
       response.write(`data: ${JSON.stringify({ id: "fixture-primary", object: "chat.completion.chunk", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n`);
       response.end("data: [DONE]\n\n");
