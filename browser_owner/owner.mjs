@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { createJevConsumer, evaluateJev } from "./jev_consumer.mjs";
+import { JevConsumerError, createJevConsumer, evaluateJev } from "./jev_consumer.mjs";
 
 export class OwnerError extends Error { constructor(code) { super(code); this.code = code; } }
 const fail = (code) => { throw new OwnerError(code); };
@@ -38,11 +38,13 @@ export async function createBrowserOwner({ launch, documentOrigins, subresourceO
   };
   const validOrigins = (origins) => origins instanceof Set && origins.size > 0 && [...origins].every((origin) => { try { const url = new URL(origin); return url.origin === origin && /^https?:$/.test(url.protocol); } catch { return false; } });
   if (!validOrigins(policy.documents) || !validOrigins(policy.subresources)) fail("invalid_origin_policy");
+  let consumer;
+  try { consumer = createJevConsumer(jev, documents); } catch (error) { if (error instanceof JevConsumerError) fail(error.code); throw error; }
   let browser, context;
   try {
   browser = await launch();
   context = await browser.newContext({ serviceWorkers: "block", acceptDownloads: false });
-  const state = { browser, context, page: null, cdp: null, policy, jev: createJevConsumer(jev, documents), clock, closed: false, browserClosed: false, session: null, sessionId: randomUUID(), generation: 1, queue: [], running: false, records: new Map(), bytes: 0, navigation: 0 };
+  const state = { browser, context, page: null, cdp: null, policy, jev: consumer, clock, closed: false, browserClosed: false, session: null, sessionId: randomUUID(), generation: 1, queue: [], running: false, records: new Map(), bytes: 0, navigation: 0 };
   state.invalidate = () => { const records = [...state.records.values()]; state.records.clear(); state.bytes = 0; for (const record of records) void dispose(record); };
   await context.route("**/*", async (route) => {
     let url; try { url = new URL(route.request().url()); } catch { return route.abort(); }
@@ -265,7 +267,8 @@ function inventoryFor(root, maxEntities) {
         value += part.data.slice(0, textLimit - value.length);
       }
     }
-    return { value: (label || value).trim().slice(0, textLimit), restricted, capped: seen >= 256, oversized: oversized || (!label && seen >= 256) };
+    const capped = seen === 256 && walker.nextNode() !== null;
+    return { value: (label || value).trim().slice(0, textLimit), restricted, capped, oversized: oversized || (!label && capped) };
   };
   const facts = (node) => { const rect = node.getBoundingClientRect(), visible = Boolean(rect.width && rect.height && rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth), point = rect.width && rect.height ? document.elementFromPoint(rect.left + Math.min(1, rect.width / 2), rect.top + Math.min(1, rect.height / 2)) : null, interactive = /^(button|input|select|textarea|a)$/i.test(node.tagName) || ["button", "link", "checkbox", "combobox", "textbox"].includes(node.getAttribute("role")), disabled = node.matches(":disabled") || node.getAttribute("aria-disabled") === "true"; return { exists: true, in_viewport: visible, occluded: point ? !(node === point || node.contains(point)) : null, enabled: interactive ? !disabled : null, predicate_reasons: { exists: null, in_viewport: null, occluded: point ? null : "unknown", enabled: interactive ? null : "not_applicable" } }; };
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import test from "node:test";
@@ -9,7 +10,12 @@ import { createJevConsumer, evaluateJev, JevConsumerError } from "./jev_consumer
 const origin = "http://127.0.0.1:9000";
 const fields = ["schema", "request_id", "observation_id", "source", "target", "scope", "coverage", "entities"];
 const projection = { schema: "browser-element-resolution-projection/v1", request_id: "request", observation_id: "observation", source: "dom", target: { description: "capture", qualifiers: [] }, scope: { kind: "document", root: "document" }, coverage: { state: "complete", reason: null }, entities: [{ id: "e-1", role: "button", text: "Capture", nearby: "", state: { exists: true, in_viewport: true, occluded: false, enabled: true }, predicate_reasons: { exists: null, in_viewport: null, occluded: null, enabled: null } }] };
-const envelope = (choice, extra = {}) => JSON.stringify({ ok: true, command: "jev evaluate", data: { schema: "anvil.jev.annotation.v1", provider: "typesafe", model: "jev-1.13.0", capability: "browser_element_resolution", status: "completed", reason: "validated", requested: true, used: true, request_started: true, elapsed_ms: 1, rubric_digest: "a", input_digest: "b", answers: { selection: { type: "choice", probabilities: { "e-1": choice === "e-1" ? 1 : 0, NO_MATCH_IN_CANDIDATES: choice === "NO_MATCH_IN_CANDIDATES" ? 1 : 0, AMBIGUOUS: choice === "AMBIGUOUS" ? 1 : 0, NEEDS_VISUAL_EVIDENCE: choice === "NEEDS_VISUAL_EVIDENCE" ? 1 : 0 }, confidence: 1, choice, ...extra } }, usage: { input_tokens: 1, output_tokens: 1 } } });
+const encode = (value) => value === null || typeof value === "boolean" ? String(value) : typeof value === "string" || typeof value === "number" ? JSON.stringify(value) : Array.isArray(value) ? `[${value.map(encode).join(",")}]` : `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${encode(value[key])}`).join(",")}}`;
+const digest = (value) => createHash("sha256").update(encode(value), "utf8").digest("hex");
+const envelope = (choice, extra = {}, inputDigest = digest(projection), offered = ["e-1"]) => {
+  const choices = [...offered, "NO_MATCH_IN_CANDIDATES", "AMBIGUOUS", "NEEDS_VISUAL_EVIDENCE"];
+  return JSON.stringify({ ok: true, command: "jev evaluate", data: { schema: "anvil.jev.annotation.v1", provider: "typesafe", model: "jev-1.13.0", capability: "browser_element_resolution", status: "completed", reason: "validated", requested: true, used: true, request_started: true, elapsed_ms: 1, rubric_digest: "a", input_digest: inputDigest, answers: { selection: { type: "choice", probabilities: Object.fromEntries(choices.map((item) => [item, item === choice ? 1 : 0])), confidence: 1, choice, ...extra } }, usage: { input_tokens: 1, output_tokens: 1 } } });
+};
 
 test("consumer requires a trusted immutable origin and exact field list", () => {
   assert.deepEqual(createJevConsumer({ enabled: false }, new Set([origin])), { enabled: false });
@@ -27,7 +33,26 @@ test("consumer accepts only the completed used selection envelope", async () => 
   }
 });
 
-test("consumer waits for SIGTERM-resistant children before cleanup", { timeout: 10_000 }, async (t) => {
+test("consumer binds Anvil's non-ASCII canonical state digest", async () => {
+  const vector = { schema: "browser-element-resolution-projection/v1", request_id: "réquest", observation_id: "observation", source: "dom", target: { description: "capture", qualifiers: [] }, scope: { kind: "document", root: "document" }, coverage: { state: "complete", reason: null }, entities: [] };
+  const vectorDigest = "8d470df9c0aa266634f4520bf32aedb7233363d2ae69c53c545c978cfbc926b1";
+  const policy = createJevConsumer({ enabled: true, origin, fields, runner: async () => ({ code: 0, stdout: envelope("NO_MATCH_IN_CANDIDATES", {}, vectorDigest, []) }) }, new Set([origin]));
+  assert.deepEqual(await evaluateJev(policy, vector), { outcome: "selection", selection: "NO_MATCH_IN_CANDIDATES" });
+  const stale = { ...vector, request_id: "other" };
+  assert.deepEqual(await evaluateJev(policy, stale), { outcome: "malformed_response" });
+});
+
+test("consumer refuses real subprocesses on Windows but retains disabled and injected runners", () => {
+  const descriptor = Object.getOwnPropertyDescriptor(process, "platform");
+  Object.defineProperty(process, "platform", { ...descriptor, value: "win32" });
+  try {
+    assert.deepEqual(createJevConsumer({ enabled: false }, new Set([origin])), { enabled: false });
+    assert.doesNotThrow(() => createJevConsumer({ enabled: true, origin, fields, runner: async () => ({}) }, new Set([origin])));
+    assert.throws(() => createJevConsumer({ enabled: true, origin, fields }, new Set([origin])), (error) => error instanceof JevConsumerError && error.code === "jev_subprocess_unsupported");
+  } finally { Object.defineProperty(process, "platform", descriptor); }
+});
+
+test("consumer waits for SIGTERM-resistant children before cleanup", { timeout: 10_000, skip: process.platform === "win32" }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "anvil-jev-consumer-")); t.after(() => rm(directory, { recursive: true, force: true }));
   const executable = join(directory, "anvil-child");
   await writeFile(executable, `#!${process.execPath}\nconst fs=require('node:fs');const input=process.argv[6];fs.writeFileSync('child.json',JSON.stringify({pid:process.pid,input,exists:fs.existsSync(input)}));process.on('SIGTERM',()=>fs.writeFileSync('term','seen'));if(process.argv.includes('overflow'))process.stdout.write('x'.repeat(70000));setInterval(()=>{},1000);`); await chmod(executable, 0o700);
@@ -39,7 +64,7 @@ test("consumer waits for SIGTERM-resistant children before cleanup", { timeout: 
   await rm(join(directory, "child.json")); await rm(join(directory, "term")); assert.deepEqual(await evaluateJev(direct(1_000, overflow), projection), { outcome: "provider_unavailable" }); await inspect();
 });
 
-test("consumer waits for an exited leader's SIGTERM-resistant descendant", { timeout: 10_000 }, async (t) => {
+test("consumer waits for an exited leader's SIGTERM-resistant descendant", { timeout: 10_000, skip: process.platform === "win32" }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "anvil-jev-group-")); t.after(() => rm(directory, { recursive: true, force: true }));
   const executable = join(directory, "anvil-parent"), child = join(directory, "child.json"), late = join(directory, "late");
   const descendant = `const fs=require('node:fs');const input=process.argv[1];fs.writeFileSync(${JSON.stringify(child)},JSON.stringify({pid:process.pid,input,exists:fs.existsSync(input)}));process.on('SIGTERM',()=>fs.writeFileSync(${JSON.stringify(join(directory, "term"))},'seen'));setTimeout(()=>fs.writeFileSync(${JSON.stringify(late)},'late'),250);setInterval(()=>{},1000);`;
