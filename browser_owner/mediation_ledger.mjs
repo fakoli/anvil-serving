@@ -46,7 +46,7 @@ export function createMediationLedger(options) {
 
   const lease = newLease(1);
   const record = emptyRecord(launcher.binding, launcher.limits, lease);
-  publishInitial(launcher, record);
+  publishAcquisition(lease, () => publishInitial(launcher, record));
   return new MediationLedger(launcher, lease);
 }
 
@@ -64,7 +64,7 @@ export function reopenMediationLedger(options) {
   const lease = newLease(record.lease_generation + 1);
   record.lease_generation = lease.generation;
   record.lease = lease;
-  publish(launcher, record);
+  publishAcquisition(lease, () => publish(launcher, record));
   return new MediationLedger(launcher, lease);
 }
 
@@ -91,7 +91,7 @@ export function createTrustedLedgerSupervisor(confirmFormerProcessExit) {
       record.lease_generation = lease.generation;
       record.lease = lease;
       if (record.in_flight !== null) interruptReservation(record);
-      publish(launcher, record);
+      publishAcquisition(lease, () => publish(launcher, record));
       return new MediationLedger(launcher, lease);
     },
   });
@@ -263,7 +263,10 @@ function validateIdentity(value) {
     if (field !== "question_digest" && !opaqueIdentifier(value[field])) fail("invalid_inspection");
   }
   if (typeof value.question_digest !== "string" || !/^[a-f0-9]{64}$/i.test(value.question_digest)) fail("invalid_inspection");
-  return Object.fromEntries(fields.map((field) => [field, value[field]]));
+  return Object.fromEntries(fields.map((field) => [
+    field,
+    field === "question_digest" ? value[field].toLowerCase() : value[field],
+  ]));
 }
 
 function normalizeLimits(value) {
@@ -352,16 +355,22 @@ function preflightDirectory(stateDirectory) {
 function publishInitial(launcher, record) {
   const target = ledgerPath(launcher.stateDirectory);
   const temporary = temporaryPath(launcher.stateDirectory);
+  let linkAttempted = false;
   try {
     writeTemporary(launcher, temporary, record);
     failAt(launcher, "before_replace");
+    linkAttempted = true;
     failAt(launcher, "replace");
     fs.linkSync(temporary, target);
     failAt(launcher, "after_replace");
     syncDirectory(launcher);
   } catch (error) {
     if (error.code === "EEXIST") fail("ledger_unavailable");
-    throw publicationError(error, error?.phase === "replace" || error?.phase === "after_replace" || error?.phase === "directory_sync");
+    const uncertain = linkAttempted
+      || error?.phase === "replace"
+      || error?.phase === "after_replace"
+      || error?.phase === "directory_sync";
+    throw publicationError(error, uncertain);
   } finally { removeTemporary(temporary); }
 }
 
@@ -423,6 +432,25 @@ function publicationError(error, uncertain) {
   const wrapped = new LedgerError("durability_failed");
   wrapped.uncertain = uncertain;
   return wrapped;
+}
+
+function publishAcquisition(lease, publishRecord) {
+  try {
+    publishRecord();
+  } catch (error) {
+    if (error instanceof LedgerError && error.code === "durability_failed") {
+      attachTrustedLeaseIdentity(error, lease);
+    }
+    throw error;
+  }
+}
+
+function attachTrustedLeaseIdentity(error, lease) {
+  const attemptedLease = clone(lease);
+  Object.defineProperty(error, "trustedLeaseIdentity", {
+    enumerable: false,
+    value: () => clone(attemptedLease),
+  });
 }
 
 function interruptReservation(record) {

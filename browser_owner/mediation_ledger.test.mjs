@@ -35,6 +35,36 @@ function fixture({ limits, hooks } = {}) {
   };
 }
 
+function captureError(action) {
+  try {
+    action();
+  } catch (error) {
+    return error;
+  }
+  assert.fail("expected an error");
+}
+
+function trustedLeaseFrom(error) {
+  assert.equal(error instanceof LedgerError, true);
+  const descriptor = Object.getOwnPropertyDescriptor(error, "trustedLeaseIdentity");
+  assert.equal(descriptor?.enumerable, false);
+  assert.equal(typeof descriptor?.value, "function");
+  const first = descriptor.value();
+  const second = descriptor.value();
+  assert.notEqual(first, second);
+  assert.deepEqual(first, second);
+  assert.equal(Object.keys(error).includes("trustedLeaseIdentity"), false);
+  assert.equal(JSON.stringify(error).includes(first.nonce), false);
+  assert.equal(String(error).includes(first.nonce), false);
+  assert.equal(error.stack.includes(first.nonce), false);
+  return first;
+}
+
+function hasNoTrustedLease(error) {
+  assert.equal(Object.hasOwn(error, "trustedLeaseIdentity"), false);
+  assert.equal(Object.keys(error).includes("trustedLeaseIdentity"), false);
+}
+
 test("reserves exact bounded attempt and time budgets before dispatch", (t) => {
   const setup = fixture({ limits: { maxAttempts: 2, cumulativeMs: 100, perCallMs: 50 } }); t.after(setup.cleanup);
   const ledger = setup.create();
@@ -167,4 +197,188 @@ test("inspection identities reject raw text and URL-shaped fields before persist
   assert.throws(() => ledger.begin({ ...identity("a"), question_digest: digest }), code("invalid_inspection"));
   digest.push("later raw answer");
   assert.equal(ledger.status().attempts_used, 0);
+});
+
+test("question digests canonicalize before completed-identity lookup and persistence", (t) => {
+  const setup = fixture();
+  t.after(setup.cleanup);
+  const ledger = setup.create();
+  const lower = identity("a");
+  const upper = { ...lower, question_digest: lower.question_digest.toUpperCase() };
+  const operation = ledger.begin(lower);
+  const completed = ledger.finish(operation.operation, { outcome: "success" });
+  assert.deepEqual(ledger.begin(upper), { status: "completed", reference: completed.reference });
+  assert.equal(ledger.status().attempts_used, 1);
+  const persisted = readFileSync(path.join(setup.stateDirectory, "mediation-inspection-ledger.json"), "utf8");
+  assert.equal(persisted.includes(upper.question_digest), false);
+  assert.equal(persisted.includes(lower.question_digest), true);
+});
+
+test("failed initial publication exposes only a private attempted lease and does not recover a missing record", (t) => {
+  const hooks = { failPhase: "file_write" };
+  const setup = fixture({ hooks });
+  t.after(setup.cleanup);
+  const error = captureError(setup.create);
+  assert.equal(code("durability_failed")(error), true);
+  const attemptedLease = trustedLeaseFrom(error);
+  const supervisor = createTrustedLedgerSupervisor(() => true);
+  assert.throws(
+    () => supervisor.recover({ ...setup.options, previousLease: attemptedLease }),
+    code("ledger_unavailable"),
+  );
+  assert.equal(setup.create().status().attempts_used, 0);
+});
+
+test("existing initial record is authoritative and has no acquisition recovery capability", (t) => {
+  const setup = fixture();
+  t.after(setup.cleanup);
+  const existing = setup.create();
+  const recordPath = path.join(setup.stateDirectory, "mediation-inspection-ledger.json");
+  const priorBytes = readFileSync(recordPath, "utf8");
+  const error = captureError(setup.create);
+  assert.equal(code("ledger_unavailable")(error), true);
+  hasNoTrustedLease(error);
+  assert.equal(readFileSync(recordPath, "utf8"), priorBytes);
+  assert.equal(existing.status().attempts_used, 0);
+});
+
+test("failed reopen and recovery publications preserve authoritative leases", (t) => {
+  const reopenHooks = {};
+  const reopenedSetup = fixture({ hooks: reopenHooks });
+  t.after(reopenedSetup.cleanup);
+  reopenedSetup.create().close();
+  const reopenPath = path.join(reopenedSetup.stateDirectory, "mediation-inspection-ledger.json");
+  const releasedBytes = readFileSync(reopenPath, "utf8");
+  reopenHooks.failPhase = "file_write";
+  const reopenError = captureError(() => reopenMediationLedger(reopenedSetup.options));
+  assert.equal(code("durability_failed")(reopenError), true);
+  trustedLeaseFrom(reopenError);
+  assert.equal(readFileSync(reopenPath, "utf8"), releasedBytes);
+  assert.equal(reopenMediationLedger(reopenedSetup.options).status().in_flight, false);
+
+  const recoveryHooks = {};
+  const recoveredSetup = fixture({ hooks: recoveryHooks });
+  t.after(recoveredSetup.cleanup);
+  const first = recoveredSetup.create();
+  const reservation = first.begin(identity("r"));
+  const previousLease = first.trustedLeaseIdentity();
+  const recordPath = path.join(recoveredSetup.stateDirectory, "mediation-inspection-ledger.json");
+  const priorBytes = readFileSync(recordPath, "utf8");
+  recoveryHooks.failPhase = "file_write";
+  const supervisor = createTrustedLedgerSupervisor(() => true);
+  const recoverError = captureError(() => supervisor.recover({
+    ...recoveredSetup.options,
+    previousLease,
+  }));
+  assert.equal(code("durability_failed")(recoverError), true);
+  trustedLeaseFrom(recoverError);
+  assert.equal(readFileSync(recordPath, "utf8"), priorBytes);
+  const recovered = supervisor.recover({ ...recoveredSetup.options, previousLease });
+  assert.deepEqual(recovered.status(), {
+    attempts_used: 1,
+    charged_ms: reservation.deadline_ms,
+    in_flight: false,
+    identity_count: 1,
+  });
+});
+
+test("uncertain acquisition recovery needs the surviving exact lease", (t) => {
+  const hooks = { failPhase: "after_replace" };
+  const setup = fixture({ hooks });
+  t.after(setup.cleanup);
+  const error = captureError(setup.create);
+  assert.equal(code("durability_failed")(error), true);
+  const attemptedLease = trustedLeaseFrom(error);
+  const supervisor = createTrustedLedgerSupervisor(() => true);
+  assert.throws(
+    () => supervisor.recover({
+      ...setup.options,
+      previousLease: { ...attemptedLease, nonce: "0".repeat(48) },
+    }),
+    code("ledger_unavailable"),
+  );
+  assert.throws(
+    () => createTrustedLedgerSupervisor(() => false).recover({
+      ...setup.options,
+      previousLease: attemptedLease,
+    }),
+    code("ledger_unavailable"),
+  );
+  assert.throws(
+    () => supervisor.recover({
+      ...setup.options,
+      binding: { ...binding, logical_turn_id: "other" },
+      previousLease: attemptedLease,
+    }),
+    code("ledger_unavailable"),
+  );
+  assert.throws(() => reopenMediationLedger(setup.options), code("ledger_unavailable"));
+  assert.equal(supervisor.recover({ ...setup.options, previousLease: attemptedLease }).status().attempts_used, 0);
+});
+
+test("unmarked replace failures remain acquisition failures for create, reopen, and recovery", (t) => {
+  const initialHooks = { unmarkedFailurePhase: "replace" };
+  const initialSetup = fixture({ hooks: initialHooks });
+  t.after(initialSetup.cleanup);
+  const initialError = captureError(initialSetup.create);
+  assert.equal(code("durability_failed")(initialError), true);
+  trustedLeaseFrom(initialError);
+  assert.equal(initialSetup.create().status().attempts_used, 0);
+
+  const reopenHooks = {};
+  const reopenSetup = fixture({ hooks: reopenHooks });
+  t.after(reopenSetup.cleanup);
+  reopenSetup.create().close();
+  const reopenPath = path.join(reopenSetup.stateDirectory, "mediation-inspection-ledger.json");
+  const releasedBytes = readFileSync(reopenPath, "utf8");
+  reopenHooks.unmarkedFailurePhase = "replace";
+  const reopenError = captureError(() => reopenMediationLedger(reopenSetup.options));
+  assert.equal(code("durability_failed")(reopenError), true);
+  trustedLeaseFrom(reopenError);
+  assert.equal(readFileSync(reopenPath, "utf8"), releasedBytes);
+  assert.equal(reopenMediationLedger(reopenSetup.options).status().in_flight, false);
+
+  const recoveryHooks = {};
+  const recoverySetup = fixture({ hooks: recoveryHooks });
+  t.after(recoverySetup.cleanup);
+  const first = recoverySetup.create();
+  first.begin(identity("u"));
+  const previousLease = first.trustedLeaseIdentity();
+  const recoveryPath = path.join(recoverySetup.stateDirectory, "mediation-inspection-ledger.json");
+  const priorBytes = readFileSync(recoveryPath, "utf8");
+  recoveryHooks.unmarkedFailurePhase = "replace";
+  const supervisor = createTrustedLedgerSupervisor(() => true);
+  const recoveryError = captureError(() => supervisor.recover({
+    ...recoverySetup.options,
+    previousLease,
+  }));
+  assert.equal(code("durability_failed")(recoveryError), true);
+  trustedLeaseFrom(recoveryError);
+  assert.equal(readFileSync(recoveryPath, "utf8"), priorBytes);
+  assert.equal(supervisor.recover({ ...recoverySetup.options, previousLease }).status().in_flight, false);
+});
+
+test("ordinary inspection errors do not expose trusted lease recovery", (t) => {
+  const setup = fixture();
+  t.after(setup.cleanup);
+  const invalidLauncher = captureError(() => createMediationLedger({ ...setup.options, binding: {} }));
+  assert.equal(code("invalid_binding")(invalidLauncher), true);
+  hasNoTrustedLease(invalidLauncher);
+  const ledger = setup.create();
+  const invalid = captureError(() => ledger.begin({}));
+  assert.equal(code("invalid_inspection")(invalid), true);
+  hasNoTrustedLease(invalid);
+  const operation = ledger.begin(identity("a"));
+  const close = captureError(() => ledger.close());
+  assert.equal(code("inspection_in_flight")(close), true);
+  hasNoTrustedLease(close);
+  const mismatch = captureError(() => ledger.finish({}, { outcome: "success" }));
+  assert.equal(code("operation_mismatch")(mismatch), true);
+  hasNoTrustedLease(mismatch);
+  assert.equal(ledger.finish(operation.operation, { outcome: "success" }).status, "completed");
+
+  writeFileSync(path.join(setup.stateDirectory, "mediation-inspection-ledger.json"), "corrupt");
+  const status = captureError(() => ledger.status());
+  assert.equal(code("ledger_unavailable")(status), true);
+  hasNoTrustedLease(status);
 });
