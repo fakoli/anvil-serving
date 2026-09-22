@@ -74,6 +74,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-09-22 | [Secondary native vision diagnostic](2026-09-22-secondary-native-vision-diagnostic.md) | One RTX 5090, C1, one-image, 1,024-token compatibility-only diagnostic: exact format passed 11/12; `adversarial-2` retained an extra `Invoice` label. Three native preflights remain separate; `not-qualified`, `no-promotion`. |
 | 2026-09-19 | [Qwen3.8 context-envelope investigation](2026-09-19-qwen38-context-envelope.md) | 128K direct-I/O gates passed; final 160K baked profile has startup, direct preflight 8/8, and repeated 150K retrieval 9/9. The 64K results remain a separate comparison; bounded native client compatibility passed. |
 | 2026-09-19 | [Huihui Qwen3.8 promotion addendum](2026-09-19-qwen38-huihui-promotion-addendum.md) | Baked compatible-runtime qualification and bounded router preflight passed. Earlier rejected findings remain historical evidence. |
 | 2026-09-19 | [Huihui Qwen3.8 NInfer compatible-runtime follow-up](2026-09-19-qwen38-huihui-runtime-followup.md) | Compatible v2 runtime recovers smoke, core, protocol, and vision; matched NInfer MTP3/no-spec strict 32-word 8K/C1 cells pass 12/12 at 176.2/71.4 mean decode; workload-matched cross-profile GGUF is 107.7 tok/s and uses less GPU memory; 32K MTP is unpaired, managed restoration verified, no promotion |
