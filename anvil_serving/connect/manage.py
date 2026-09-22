@@ -25,7 +25,7 @@ import time
 from typing import Any, Callable, Iterator, Literal
 from contextlib import contextmanager
 
-from .config import ManifestError, read_manifest, require_isolated, role_identity
+from .config import ManifestError, canonical_manifest, read_manifest, require_isolated, role_identity
 from .render import (MAX_OWNED_FILES, NOTIFICATION_TEMPLATE_DIRECTORY,
                      notification_template_path, plan, plan_for_inspection,
                      render as render_config, stage)
@@ -1254,10 +1254,14 @@ def _authelia_upgrade_pending(executed: bool) -> ManageError:
 
 
 def _manifest_digest(path: Path) -> str:
-    raw = _read_regular(path, _MAX_OUTPUT)
-    if raw is None:
-        raise ManageError("deployment manifest is unavailable for upgrade recovery")
-    return hashlib.sha256(raw).hexdigest()
+    # Recovery binds the complete validated declaration, not incidental JSON
+    # whitespace or key order. Re-read through the normal manifest validator;
+    # no raw declaration or secret-bearing value is retained in the marker.
+    try:
+        canonical = canonical_manifest(read_manifest(path))
+    except (OSError, TypeError, ValueError, ManifestError) as exc:
+        raise ManageError("deployment manifest is unavailable for upgrade recovery") from exc
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _changed_authelia_upgrade(data: dict[str, Any], targets: tuple[Target, ...], digests: dict[str, str]) -> tuple[str, dict[str, Any]] | None:

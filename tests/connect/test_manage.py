@@ -419,6 +419,9 @@ def test_authelia_schema_upgrade_failure_retries_only_new_generation(tmp_path: P
     with pytest.raises(manage.ManageError, match="missing archive"):
         manage.up_many(manifest, targets, upgrade=True, apply=True, runner=SyntheticRunner(), unit_root=units)
     archive.write_bytes(b"fixture")
+    # The pending marker binds the validated declaration, not insignificant
+    # JSON serialization details written by an operator's formatter.
+    manifest.write_text(json.dumps(changed, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     recovered = SyntheticRunner(); recovered.unit_root = units
     result = manage.up_many(manifest, targets, upgrade=True, apply=True, runner=recovered, unit_root=units)
