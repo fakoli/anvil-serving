@@ -11,6 +11,8 @@ from ..operator_output import CommandResult, OperatorError, PartialResultError, 
 from .config import ManifestError
 from .command_specs import USER_OPERATIONS
 
+_AUTHELIA_UPGRADE_HINT = "Authelia migration recovery is pending; rerun the identical connect up command with --upgrade --confirm"
+
 
 class _Parser(argparse.ArgumentParser):
     def error(self, _message: str) -> None:
@@ -347,7 +349,12 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
     except (OSError, ValueError, RuntimeError, sqlite3.Error, subprocess.SubprocessError) as exc:
         partial = getattr(exc, "may_have_executed", False) is True
         error_type = PartialResultError if partial else OperatorError
-        return CommandResult(data=getattr(exc, "recovery", None), error=error_type(
+        recovery = getattr(exc, "recovery", None)
+        warning = ()
+        if (isinstance(recovery, dict) and recovery.get("recovery_required") is True
+                and recovery.get("recovery_hint") == _AUTHELIA_UPGRADE_HINT):
+            warning = (_AUTHELIA_UPGRADE_HINT,)
+        return CommandResult(data=recovery, warnings=warning, error=error_type(
             "Connect operation failed; inspect declared ownership and component status.",
             code="connect_operation_partial" if partial else "connect_operation_failed",
             details={"may_have_executed": partial},

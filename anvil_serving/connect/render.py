@@ -363,7 +363,7 @@ def _render(data: dict[str, Any]) -> dict[str, Any]:
         caddy_state = data["caddy"]["state_directory"]
         authelia_writable = [data["authelia"]["state_directory"]]
         if Path(data["authelia"]["users_file"]).parent != Path(data["authelia"]["state_directory"]):
-            # Authelia v4.39.20 updates this backend with os.WriteFile, so an
+            # Authelia v4.39.28 updates this backend with os.WriteFile, so an
             # exact-file mount permits its in-place write without its parent.
             authelia_writable.append(data["authelia"]["users_file"])
         files = {

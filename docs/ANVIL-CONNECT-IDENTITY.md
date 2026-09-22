@@ -85,7 +85,7 @@ The optional managed `authelia.webauthn` declaration supports:
 }
 ```
 
-Authelia 4.39.20 accepts this configuration with its existing `two_factor`
+Authelia 4.39.28 accepts this configuration with its existing `two_factor`
 policy. The verified-passkey-as-two-factors option is experimental and
 unsupported upstream; pin and validate upgrades before activation. See
 [Authelia's WebAuthn reference](https://www.authelia.com/configuration/second-factor/webauthn/).

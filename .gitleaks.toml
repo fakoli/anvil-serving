@@ -59,7 +59,7 @@ regexes = [
   '''213a3fd28ca1ce71e1288ddb249021763a4a08149b05b6eea2ec447d6dfbdacb''',
 ]
 
-# SHA-256s of exact public upstream Authelia v4.39.20 schema objects.  These
+# SHA-256s of exact public upstream Authelia v4.39.28 schema objects.  These
 # are the fixture's schema-drift contract, restricted to this source path and
 # these exact declared fingerprints.
 [[allowlists]]
@@ -70,11 +70,11 @@ regexTarget = "secret"
 paths = ['''(^|/)anvil_serving/connect/user_purge\.py$''']
 regexes = [
   '''^72850792e2dbf17c56ea769239b7ce50c99ada5f8adaec5a9a5dbe9100966d23$''',
-  '''^2bcd18a53b828443ceacfa5ce2d88ab63057eecb740e3caab2a72ca2ba9121df$''',
+  '''^d4acab13cdee3ce3e0768a76666dd8c4328c2dac50cb64e2afb98c7f970bf472$''',
   '''^63b716e864abcc0fe4c85ee527e4ef02aefe283e4bb8fb25b612e0d8a4a8f3d5$''',
-  '''^09f0bde07d1f485131607a728a2fd4e6761e2255d99c56b8a91415d3ced09503$''',
-  '''^c1b46bbf16ac551113c7bc8df8ca14f176a16d26498027c7b2b5343eb1e7423e$''',
-  '''^410596112e58f4b50bc3ada3c0d0e0d32a602efaca15c66a2f3816f0109f6e0b$''',
+  '''^dddd9b98d8c5a05ee800707f370dbd2e3e0df862aa5dd30aedd47e030ae3507b$''',
+  '''^6f7e9dfd155e8eb2e4740b0f2ab4390d1b5dead3337d6c8bdef0bd866044de0e$''',
+  '''^4f746222777b10439f5127613a86da464962e522467f0db65fbe32c82455db63$''',
   '''^b98bf5ec89047b0f860878f1c4404fabfcc96359625b3e3cc9b3a0382d5f3de0$''',
   '''^b0deebe26550f3a5e0aa8d69ddbf1a0b51f8c9766646630fe6359e3c45124197$''',
   '''^b337d4811f0899c64d2c87d2069628306c77099d35adec4b392f3630d1a62b65$''',

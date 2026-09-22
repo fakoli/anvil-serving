@@ -564,6 +564,10 @@ test(defaultFixtureTest, async () => {
 
 test('native Authelia root login lands on the chooser and retains direct resource paths', async () => {
   let page = await freshPage();
+  await page.goto(`https://${authHost}/`, { waitUntil: 'domcontentloaded' });
+  const username = page.getByLabel(/username/i);
+  await expect(username).toHaveAttribute('autocapitalize', 'none');
+  await expect(username).toHaveAttribute('autocomplete', 'username');
   // Authelia creates the opaque file-user identifier only after its first
   // successful login, so provision Connect access after its real denied
   // callback, then repeat a fresh native root login after access is provisioned.
