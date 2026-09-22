@@ -1,0 +1,30 @@
+{
+  "container": "qwen38-sglang-tp2-c4-256k-v1",
+  "container_id": "e13aab081757a28a54787b0f5c30ac3f5d4cca983718948d02196062d22a719f",
+  "health": null,
+  "host_memory": {
+    "current_bytes": 39087308800,
+    "effective_limit_bytes": 55834574848,
+    "effective_swap_limit_bytes": 0,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 2735,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "exit_code": 0,
+    "limit_bytes": 55834574848,
+    "oom_killed": false,
+    "peak_bytes": 55834574848,
+    "ram_plus_swap_limit_bytes": 55834574848
+  },
+  "image": "sha256:8ac9dedd8c3c98bec7b91f4c2c7b697e4f429e336428dd8167140075e295bae7",
+  "image_id": "sha256:8ac9dedd8c3c98bec7b91f4c2c7b697e4f429e336428dd8167140075e295bae7",
+  "model": "RadixArk/Qwen3.8-Flash-Next-NVFP4",
+  "revision": "7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+  "running": true,
+  "schema": "recipe-container-status/v1",
+  "state": "running"
+}

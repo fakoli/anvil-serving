@@ -2,6 +2,12 @@
 
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
+## 2026-09-22 model shortlist validation
+
+| Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
+|---|---|---|---|---|---|---|
+| 2026-09-22 | Qwen3.8 Flash Next replacement scout | RadixArk NVFP4 `7b719225`, SGLang `4ccff141`, TP2 with C4 configured admission, 262,144 tokens, no MTP, GPU-resident FP8 PLE, automatic BF16 KV | 2x RTX PRO 6000 Blackwell Max-Q | cold load and six serial C1 direct preflight groups passed; Qwen 16/18 greedy and 15/18 native-sampling results, plus paired GLM 16/18, cannot rank broad coding because fixture/scorer defects invalidate planning comparisons; no capacity or performance cell | retain GLM; interesting but unqualified candidate; heavy qualification blocked by harness validity, `no-promotion` | [Qwen dossier](models/qwen38-flash-next.md) · [finding](../findings/2026-09-22-model-shortlist-validation.md) |
+
 
 ## 2026-09-21 MiMo replacement qualification
 

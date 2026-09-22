@@ -1,0 +1,24 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-22-model-shortlist-validation",
+  "complete": true,
+  "identity": {
+    "candidate_repository": "RadixArk/Qwen3.8-Flash-Next-NVFP4",
+    "candidate_revision": "7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+    "runtime_revision": "4ccff141dbe992794f9da6c3aa23535b4f72000d",
+    "runtime_image": "sha256:8ac9dedd8c3c98bec7b91f4c2c7b697e4f429e336428dd8167140075e295bae7",
+    "hardware": "2x RTX PRO 6000 Blackwell Max-Q"
+  },
+  "gates": [
+    {"gate": "direct preflight groups", "status": "passed", "evidence": ["qwen-preflight-basic.json", "qwen-preflight-tools.json"]},
+    {"gate": "deterministic agentic scout", "status": "blocked", "reason": "Qwen recorded 16/18 greedy and 15/18 native sampling; paired GLM recorded 16/18 with planning-scorer false negatives. Campaign requirement is 18/18 despite the native suite 0.75 floor.", "evidence": ["qwen-agentic-scout-native.json", "qwen-agentic-native-sampling-native.json", "glm-agentic-scout-native.json"]},
+    {"gate": "capacity, performance, vision, deep coding, and large context", "status": "not-run", "reason": "strict agentic gate did not pass"},
+    {"gate": "paired GLM and final restoration", "status": "passed", "evidence": ["glm-agentic-scout-native.json", "restoration.json", "glm-restored-direct-preflight.json", "glm-restored-router-preflight.json"]}
+  ],
+  "decision": {
+    "evidence_labels": ["functional", "compatibility-only", "external-prior"],
+    "decision_labels": ["retain-baseline", "no-promotion"],
+    "promotion_authorized": false,
+    "candidate_state": "interesting-unqualified; heavy qualification blocked by harness validity"
+  }
+}

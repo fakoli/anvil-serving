@@ -1,0 +1,132 @@
+{
+  "created_at": "2026-09-22T07:18:42.108679Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "base_url": "http://127.0.0.1:39126/v1",
+      "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+    },
+    "finished_at": "2026-09-22T07:18:42.108627Z",
+    "started_at": "2026-09-22T07:16:50.538974Z",
+    "submitted_at": "2026-09-22T07:16:50.384926+00:00",
+    "worker": {
+      "id": "local-benchmark"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-09-22T07:18:42.099598Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": 327680
+        },
+        "dataset": {
+          "name": "deterministic-native",
+          "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+        },
+        "hardware": {
+          "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+          "vram_mib_per_gpu": 97887
+        },
+        "harnesses": {
+          "native": {
+            "schema": "anvil-serving.agentic/v1"
+          }
+        },
+        "image": {
+          "status": "not-applicable"
+        },
+        "model": {
+          "repository": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+          "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+          "served_name": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+        },
+        "runtime": {
+          "engine_revision": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+          "image_id": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692"
+        },
+        "served_model": {
+          "configured_context": 327680,
+          "id": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "local-benchmark"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "shortlist-20260922",
+        "profile": "scout",
+        "run_id": "shortlist-glm-agentic-scout",
+        "spec_sha256": "0a80c88849dea4c5f5561f0f7ce89076a93890a4b850a9f33a8539bbda3044a2",
+        "suite": "agentic"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 549,
+              "path": "evidence/0-assets.json",
+              "sha256": "ad563f3d6d40e7a79f2c7ed6933a861248fb22fe2354d881148f620c7b931466"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2064,
+              "path": "evidence/0-preflight.json",
+              "sha256": "a7f0971bee9f004e1a6f2f0ea5c8a38fd447e629c9c5f4d2d9bbb1420103fd40"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 37722,
+              "path": "evidence/0-agentic.json",
+              "sha256": "3826bac8b5a74e247b36f2d4b6d9df260f7df898cad5fd217a4157f271215305"
+            }
+          ],
+          "name": "agentic",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "attempted": 18,
+        "pass_rate": 0.8888888888888888,
+        "passed": 16,
+        "required_pass_rate": 0.75
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "shortlist-20260922",
+    "profile": "scout",
+    "run_id": "shortlist-glm-agentic-scout",
+    "spec_sha256": "0a80c88849dea4c5f5561f0f7ce89076a93890a4b850a9f33a8539bbda3044a2",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

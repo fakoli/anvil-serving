@@ -74,6 +74,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-09-22 | [Model shortlist validation](2026-09-22-model-shortlist-validation.md) | Qwen3.8 Flash Next NVFP4 used TP2 with C4 configured admission; all checks were serial C1. It passed six direct preflight groups, but native agentic scouts were 16/18 and 15/18 against the campaign's 18/18 deterministic gate; paired GLM scorer defects block broad ranking; retain GLM, `no-promotion` |
 | 2026-09-21 | [MiMo v2.6 Flash replacement qualification](2026-09-21-mimo-v26-qualification.md) | GLM retained after its eligible 100-request C4 baseline cell; MiMo V3 loaded but both correctness probes returned zero visible content; exact GLM restoration verified; SWE official 0/1 is infrastructure-confounded; `no-promotion` |
 | 2026-09-19 | [Qwen3.8 context-envelope investigation](2026-09-19-qwen38-context-envelope.md) | 128K direct-I/O gates passed; final 160K baked profile has startup, direct preflight 8/8, and repeated 150K retrieval 9/9. The 64K results remain a separate comparison; bounded native client compatibility passed. |
 | 2026-09-19 | [Huihui Qwen3.8 promotion addendum](2026-09-19-qwen38-huihui-promotion-addendum.md) | Baked compatible-runtime qualification and bounded router preflight passed. Earlier rejected findings remain historical evidence. |

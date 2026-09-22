@@ -1,0 +1,28 @@
+{
+  "schema": "benchmark-restoration/v1",
+  "restored_at": "2026-09-22T07:23:26.967392+00:00",
+  "restored": true,
+  "promoted": false,
+  "baseline_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+  "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "runtime_image_id": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "configuration_hashes_unchanged": {
+    "router.toml": true,
+    "serves.toml": true,
+    "operator-topology.toml": true,
+    "baseline-recipe.toml": true
+  },
+  "mode_snapshot_equal": true,
+  "mode_state_evidence": "mode-restored.json",
+  "direct_preflight_passed": true,
+  "routed_preflight_passed": true,
+  "router_state": "admitting",
+  "router_identity_passed": true,
+  "gpu_evidence": "gpus-restored.json",
+  "host_memory_evidence": "glm-final-status.json",
+  "shared_memory_evidence": "shared-memory-restored.txt",
+  "candidate_unload_evidence": "qwen-unload.txt",
+  "client_metadata_changed": false,
+  "client_convergence": "not-applicable; no alias/backing identity/metadata changes",
+  "cache_retained": true
+}

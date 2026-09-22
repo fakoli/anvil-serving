@@ -1,0 +1,14 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "qwen38-flash-next-nvfp4-sglang-tp2-c4-256k-v1",
+      "object": "model",
+      "created": 1790060715,
+      "owned_by": "sglang",
+      "root": "qwen38-flash-next-nvfp4-sglang-tp2-c4-256k-v1",
+      "parent": null,
+      "max_model_len": 262144
+    }
+  ]
+}

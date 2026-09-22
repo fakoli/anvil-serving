@@ -1,0 +1,190 @@
+{
+  "base_url": "http://127.0.0.1:39132/v1",
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "needle"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "qwen38-flash-next-nvfp4-sglang-tp2-c4-256k-v1",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "\n\n",
+      "content_chars": 2,
+      "content_excerpt": "\n\n",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 118,
+      "reasoning_excerpt": "We need answer user: What's weather in Oakland? Use tool. Need call get_weather city Oakland. Then final with result.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 2.465,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 56,
+        "prompt_tokens": 5528,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 28,
+        "total_tokens": 5584
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "\n\n",
+      "content_chars": 2,
+      "content_excerpt": "\n\n",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 165,
+      "reasoning_excerpt": "We need to respond to user: \"What's the weather in Oakland? Use the tool.\" Need call get_weather city Oakland. Then final answer after tool result. Ensure no extra.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 2.565,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 67,
+        "prompt_tokens": 5528,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 39,
+        "total_tokens": 5595
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "event_count": 37,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 123,
+      "reasoning_excerpt": "We need answer user: \"What's the weather in Oakland? Use the tool.\" Need call get_weather city Oakland. Then final answer.\n",
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "seconds": 0.787,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 58,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 30,
+        "total_tokens": 386
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "\n\n",
+      "content_chars": 2,
+      "content_excerpt": "\n\n",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 160,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool available. This is a single, straightforward call with no dependencies, so I'll make one call.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.892,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 64,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 36,
+        "total_tokens": 392
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "\n\nOAKLAND 72F",
+      "content_chars": 13,
+      "content_excerpt": "\n\nOAKLAND 72F",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 131,
+      "reasoning_excerpt": "We need answer user's request: \"Reply exactly OAKLAND 72F using the tool result.\" Need final exactly OAKLAND 72F. Ensure no extra.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.579,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 48,
+        "prompt_tokens": 143,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 39,
+        "total_tokens": 191
+      },
+      "validation_detail": "tool result retained"
+    },
+    {
+      "content": "\n\nZEBRA-42917-QUARTZ",
+      "content_chars": 20,
+      "content_excerpt": "\n\nZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 224,
+      "reasoning_excerpt": "We need answer user's request. User provided huge repeated text and says IMPORTANT: The launch code is ZEBRA-42917-QUARTZ. Question: What is the launch code? Reply with ONLY the code.\n\nNeed final only",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 1.26,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 75,
+        "prompt_tokens": 6846,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 60,
+        "total_tokens": 6921
+      },
+      "validation_detail": "needle present"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "2/2 clean (sample: 2.5s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=2 reasoning_chars=118 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x2",
+      "passed": true
+    },
+    {
+      "detail": "0.8s done=True events=37 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "1.5s tool result retained finish='stop' visible=13 reasoning_chars=131 reasoning_tokens=None",
+      "name": "tool-result continuation",
+      "passed": true
+    },
+    {
+      "detail": "1.3s ctx~8192 got='ZEBRA-42917-QUARTZ' finish='stop' visible=20 reasoning_chars=224 reasoning_tokens=None",
+      "name": "needle @ ~8192 ctx",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

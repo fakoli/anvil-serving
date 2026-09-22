@@ -1,0 +1,27 @@
+# Model shortlist validation, 2026-09-22 UTC
+
+User objective: narrow choices using external results before spending on local trials; validate plausible replacements for GLM-5.3-Flash. Authorized: pinned downloads, managed temporary model trials, validation, exact GLM restoration. No promotion or route changes.
+
+Priority: coding and tool correctness; useful context and C4 service; latency and resource stability. Baseline is r10 GLM EXL3 4bpw, exact recipe/router hashes in baseline-hashes.json. Retain previous native preflight, quality and C4 capacity results as prior local evidence, but label historical r7 agentic results separately. Do not compare model-family leaderboard scores as measurements of these local quants.
+
+## External screen
+
+Current Artificial Analysis Intelligence Index v4.3.2: GLM-5.3-Flash 42, Qwen3.8-Flash-Next 40, DeepSeek V4.1 Flash max 39, Ling3.0Flash 25, MiniMax M3 30. A few index points are a prioritization signal, not a statistical proof of inferiority. AA GDPval v2.1: GLM1641 +/-23, Qwen1612 +/-24, DeepSeek1600 reference anchor. Code Arena: Qwen1635 +/-13 preliminary, DeepSeek1614 +/-17, GLM1607 +/-12. Arena coding preferences are not repository-task correctness. MiMoV2.6Pro46 is a different model; no independent AA score verified for Flash.
+
+Qwen: first local trial, close independent quality and possible coding/efficiency upside. Stock RadixArk NVFP4 plus updated SGLang is distinct from earlier EXL3 tests. DeepSeek: defer expensive two-bit/offload experiment; current results do not justify it ahead of Qwen. Ling/MiniMax: deprioritize for this primary coding role; not universal rejection. MiMoFlash: retain cached candidate, but only try a new configuration when a specific supported remedy addresses prior incoherent reasoning. Pro too large for practical local use. Qwen4 has no verified released artifact in this scan; watch only. Bonsai2 efficiency lead lacks comparable coding evidence. No automated monitoring requested.
+
+## Stages and stop rules
+
+Reuse Anvil Serving native evaluation, profiles and deterministic validators. No new harness. Stage 1: smoke/json then tools/streaming-tools/tool-result/needle; all deterministic assertions must pass with visible answer and allowed finish reason. Thinking enabled; initial 1024 visible tokens +8192 reasoning headroom, bounded 180-second requests, tool batch2. Record actual reasoning, finish and budget stops separately from wrong answers. Qwen generation config recommends temperature1/top_p.95/top_k20; a default-greedy harness probe is an explicitly labelled control. If that fails and sampling is implicated, replay exact failure with native sampling through existing quality suite-file. No unchanged reruns to hide failure.
+
+Stage2: paired native agentic smoke (tool-sequence/tool-recovery), then scout/deep only on pass. Independent executable checks, no model self-grading. Three repetitions for final coding/quality comparison, 100% deterministic gates; any budget or environmental failure remains separate from coding defects. Fresh-session requests for both.
+
+Stage3: context8K/32K, then128K and250K input plus8192 output reserve if capacity allows; image gate before replacement eligibility. Distinguish native262144 Qwen from configured262144, measured workload and simultaneous capacity. Baseline configured327680/output65536 remains a separate larger contract; passing Qwen at250K/8192 does not demonstrate full baseline context/output parity. Stage4: strict16-word response workload with unique canaries, thinking enabled,2048 cap. One scout then8 requests atC1/C4; only finalist earns100 requests32K/C4. Compare against retained GLM r10 exact workload or run paired fresh GLM cells if identities/workload differ. Short outputs support TTFT/E2E, not sustained decode speed. SWE long external graders deferred unless native coding results justify it; prior 0/1 was infrastructure-confounded.
+
+Configuration search budget: Qwen initial plus one source-supported successor; MiMo at most one new trial with a supported remedy. Stop downstream stages on correctness, startup or stability failure; inspect owning logs and preserve each run. Finish with exact GLM restoration and authenticated routed acceptance. No model promotion.
+
+## Qwen initial recipe
+
+RadixArk/Qwen3.8-Flash-Next-NVFP4 at7b719225242aacd3dbd3f9407468c2ee9a9d2594. SGLang4ccff141dbe992794f9da6c3aa23535b4f72000d, official dev-qwen38-next-local linux/amd64 digest9d278f74612e692c90a7ebbb6eb820eed95e2ffd321e62c75fd94a6141ceef74. TP2, no MTP, FP8 PLE GPU resident using --no-ple-offload-embedding. Source and config explicitly preserve FP8 table storage. This TP2/SM120 combination is an experiment; official cookbook local measurements are TP1 with host offload. Do not inherit TP1 speeds as predictions. Initial context262144, C4, memoryfraction.90, chunk2048, graph4, auto KV, stock float32 recurrent state, flashinfer_cutlass NVFP4 GEMM, parsers auto.
+
+Host two97887MiB GPUs; RAM89.74GiB, available around60GiB with GLM loaded, swap nearly full. Unknown loader host peak bounded by52GiB memory and zero swap; require12GiB host reserve. No co-resident GPU models. Preserve running GLM during download and image preparation; drain/readmit router around managed unload/restore. No host/kernel/network changes. Default CLI installed1.2.1 lacks managed image build; use clean existing1.3.0 campaign checkout dd7b5532 explicitly, do not silently upgrade deployed packages. No Anvil Serving MCP wrapper is present in this session; documented CLI is used.
