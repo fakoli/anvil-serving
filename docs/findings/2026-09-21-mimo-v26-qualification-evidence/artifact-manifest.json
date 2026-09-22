@@ -34,8 +34,13 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "f7904110c2dcd30fae351f4d12537c89a503959adfb31e8a148117793af95cb4",
-          "bytes": 5169
+          "sha256": "626069a131879209a387c76e6891781d98c2d4ec8842dcb3c3a3855cc88e6e78",
+          "bytes": 5317
+        },
+        {
+          "path": "redaction-provenance.md",
+          "sha256": "c4613e952e83a98884db024e6982f7c4e6115bf279a8d1852a425c1f9ad8c74e",
+          "bytes": 1785
         }
       ],
       "reason": ""
@@ -286,6 +291,11 @@
           "path": "glm-swe-test-output.txt",
           "sha256": "96f231d67ff3b42665fd5c2403a7e7be72b788693fdf524c8795119e2d8130cb",
           "bytes": 55319
+        },
+        {
+          "path": "glm-restored-router-smoke.json",
+          "sha256": "1b7d53a01b4b6192e28dca0b56948d2f215bb9c784f9ca01502f9d571f02fbaa",
+          "bytes": 914
         }
       ],
       "reason": "Native GLM results, MiMo startup/correctness failures, and bounded confounded SWE evidence retained; no MiMo capacity result exists."
@@ -345,6 +355,31 @@
           "path": "gpus-final.json",
           "sha256": "2716ae146c38ee0242469b501831e0622259a1fc4b83f76e8466f0f95231215c",
           "bytes": 208
+        },
+        {
+          "path": "glm-restore-preflight.json",
+          "sha256": "f1e2f08701e99a99c5c5d47c30d7c0f16a61cd7211198dff8d6079c90973a65d",
+          "bytes": 20501
+        },
+        {
+          "path": "glm-restored-router-smoke-correct-alias.json",
+          "sha256": "cc1f00010b73e90a250ebcdce477638e60516e83f7ce1475205821a76e637a0d",
+          "bytes": 2216
+        },
+        {
+          "path": "glm-restored-status.json",
+          "sha256": "16c641a4780749f0230fa5fe227ea1a139d4f94457add738c73b6b4898a0699d",
+          "bytes": 1000
+        },
+        {
+          "path": "router-readmit.json",
+          "sha256": "453806c184dd63615784068972c7119fc71d5a2e17ca6f6a27e774ef73b8e71a",
+          "bytes": 741
+        },
+        {
+          "path": "router-restored-status.json",
+          "sha256": "163c4b8fb7ac53ec347662064da6a41fb42cd127b8b2991d405c478b190ee3af",
+          "bytes": 537
         }
       ],
       "reason": "Exact final GLM restoration, direct preflight, and authenticated routed smoke retained."

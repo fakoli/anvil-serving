@@ -3,6 +3,12 @@
   "output": "artifact-manifest.json",
   "bundle_size_policy_verified": true,
   "size_policy": "each retained public artifact is under 1 MiB",
+  "legacy_plaintext_files": [
+    {
+      "path": "gpus-final.json",
+      "reason": "Historical public GPU command output retained as plaintext with a .json suffix."
+    }
+  ],
   "campaign": {
     "id": "2026-09-21-mimo-v26-qualification",
     "capability": "llm",
@@ -35,7 +41,8 @@
       "role": "evidence-index",
       "status": "retained",
       "files": [
-        "README.md"
+        "README.md",
+        "redaction-provenance.md"
       ],
       "reason": ""
     },
@@ -113,7 +120,8 @@
         "glm-swe-native.json",
         "glm-swe-official-report.json",
         "glm-swe-grade-summary.json",
-        "glm-swe-test-output.txt"
+        "glm-swe-test-output.txt",
+        "glm-restored-router-smoke.json"
       ],
       "reason": "Native GLM results, MiMo startup/correctness failures, and bounded confounded SWE evidence retained; no MiMo capacity result exists."
     },
@@ -136,7 +144,12 @@
         "glm-final-status.json",
         "router-final-readmit.json",
         "router-final-status.json",
-        "gpus-final.json"
+        "gpus-final.json",
+        "glm-restore-preflight.json",
+        "glm-restored-router-smoke-correct-alias.json",
+        "glm-restored-status.json",
+        "router-readmit.json",
+        "router-restored-status.json"
       ],
       "reason": "Exact final GLM restoration, direct preflight, and authenticated routed smoke retained."
     },

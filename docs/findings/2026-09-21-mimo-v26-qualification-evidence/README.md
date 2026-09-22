@@ -40,6 +40,6 @@ The official native summary is 0/1 resolved. This is not attributed solely to GL
 
 ## Publication boundary
 
-The [final artifact manifest](artifact-manifest.json) hashes the retained evidence. Final [GLM restoration](restoration.json) after V3 is verified: exact image/checkpoint/model and three configuration hashes match, all six direct checks passed, and an authenticated `llm.primary` smoke passed. The initial wrong-alias 404 remains historical failed-probe evidence. No MiMo capacity or speed comparison is supported. The SWE official 0/1 result remains recorded with its infrastructure confounds.
+The [final artifact manifest](artifact-manifest.json) hashes the retained evidence. Its source records `gpus-final.json` as a historical plaintext command capture with a `.json` suffix and gives its compatibility reason explicitly. Final [GLM restoration](restoration.json) after V3 is verified: exact image/checkpoint/model and three configuration hashes match, all six direct checks passed, and an authenticated `llm.primary` smoke passed. The initial wrong-alias 404 remains historical failed-probe evidence. No MiMo capacity or speed comparison is supported. The SWE official 0/1 result remains recorded with its infrastructure confounds.
 
 See [redaction provenance](redaction-provenance.md) for the deterministic public transformation.
