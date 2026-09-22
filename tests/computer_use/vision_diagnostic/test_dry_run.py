@@ -25,7 +25,7 @@ EXPECTED_CASES = {
 INSTRUCTION_SENTINELS = {"adversarial-1": "banana", "adversarial-2": "orange"}
 EXPECTED_ANSWERS = {
     "small-text-1": "4817 | 73.25 | Ready",
-    "small-text-2": "12.4 V | Channel B | Calibrated",
+    "small-text-2": "12.4 V | B | Calibrated",
     "icons-1": "Save | Copy | Delete",
     "icons-2": "Save As | Copy | Delete",
     "disabled-1": "Submit | Complete profile first",
