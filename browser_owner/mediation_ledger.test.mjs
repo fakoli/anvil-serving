@@ -72,6 +72,9 @@ test("crash recovery consumes an outstanding reservation and fences old handles"
   const operation = first.begin(identity("a"));
   const supervisor = createTrustedLedgerSupervisor(() => true);
   assert.throws(() => createTrustedLedgerSupervisor(() => false).recover({ ...setup.options, previousLease: first.trustedLeaseIdentity() }), code("ledger_unavailable"));
+  for (const evidence of [{}, 1, "true", Promise.resolve(false)]) {
+    assert.throws(() => createTrustedLedgerSupervisor(() => evidence).recover({ ...setup.options, previousLease: first.trustedLeaseIdentity() }), code("ledger_unavailable"));
+  }
   assert.throws(() => supervisor.recover({ ...setup.options, previousLease: { ...first.trustedLeaseIdentity(), nonce: "0".repeat(48) } }), code("ledger_unavailable"));
   const recovered = supervisor.recover({ ...setup.options, previousLease: first.trustedLeaseIdentity() });
   assert.deepEqual(recovered.status(), { attempts_used: 1, charged_ms: 50, in_flight: false, identity_count: 1 });
@@ -124,6 +127,24 @@ test("identity records are bounded opaque bindings and operation tokens cannot b
   assert.equal(raw.includes("https://"), false);
 });
 
+test("unmarked rename and directory-sync failures poison before a refund can publish", (t) => {
+  for (const phase of ["replace", "directory_sync"]) {
+    const hooks = {};
+    const setup = fixture({ hooks }); t.after(setup.cleanup);
+    const ledger = setup.create();
+    const reservation = ledger.begin(identity(phase === "replace" ? "r" : "d"));
+    setup.time = 1;
+    hooks.unmarkedFailurePhase = phase;
+    assert.throws(() => ledger.finish(reservation.operation, { outcome: "success" }), code("durability_failed"));
+    for (const action of [
+      () => ledger.status(),
+      () => ledger.begin(identity("z")),
+      () => ledger.finish(reservation.operation, { outcome: "success" }),
+      () => ledger.close(),
+    ]) assert.throws(action, code("ledger_poisoned"), phase);
+  }
+});
+
 test("constructor rejects expanded limits, malformed trusted state, and unsupported platform assumptions", (t) => {
   const setup = fixture(); t.after(setup.cleanup);
   for (const limits of [{ maxAttempts: 33 }, { cumulativeMs: 120_001 }, { perCallMs: 30_001 }, { maxIdentities: 65 }, { perCallMs: 1.5 }, { unknown: 1 }, null, []]) {
@@ -142,5 +163,8 @@ test("inspection identities reject raw text and URL-shaped fields before persist
   const ledger = setup.create();
   assert.throws(() => ledger.begin({ ...identity("a"), source_entry_id: "https://example.test/image" }), code("invalid_inspection"));
   assert.throws(() => ledger.begin({ ...identity("a"), question_digest: "what does this image show?" }), code("invalid_inspection"));
+  const digest = ["a".repeat(64)];
+  assert.throws(() => ledger.begin({ ...identity("a"), question_digest: digest }), code("invalid_inspection"));
+  digest.push("later raw answer");
   assert.equal(ledger.status().attempts_used, 0);
 });

@@ -79,7 +79,8 @@ export function createTrustedLedgerSupervisor(confirmFormerProcessExit) {
       if (!plainObject(options)) fail("invalid_launcher");
       const { previousLease, ...launcherOptions } = options;
       const launcher = validateLauncher(launcherOptions);
-      if (!confirmFormerProcessExit({ binding: clone(launcher.binding), previousLease: clone(previousLease) })) fail("ledger_unavailable");
+      const evidence = confirmFormerProcessExit({ binding: clone(launcher.binding), previousLease: clone(previousLease) });
+      if (evidence !== true) fail("ledger_unavailable");
       preflightDirectory(launcher.stateDirectory);
       const record = readRecord(launcher.stateDirectory);
       assertBinding(record, launcher.binding);
@@ -237,8 +238,9 @@ function validateLauncher(value) {
   if (value.limits === null) fail("invalid_limits");
   const limits = normalizeLimits(value.limits === undefined ? {} : value.limits);
   if (value.clock !== undefined && typeof value.clock !== "function") fail("invalid_launcher");
-  if (value.trustedTestHooks !== undefined && !plainObject(value.trustedTestHooks)) fail("invalid_launcher");
+  if (value.trustedTestHooks !== undefined && (!plainObject(value.trustedTestHooks) || !hasOnlyOptionalKeys(value.trustedTestHooks, new Set(["failPhase", "unmarkedFailurePhase"])))) fail("invalid_launcher");
   if (value.trustedTestHooks?.failPhase !== undefined && !WRITE_PHASES.has(value.trustedTestHooks.failPhase)) fail("invalid_launcher");
+  if (value.trustedTestHooks?.unmarkedFailurePhase !== undefined && !WRITE_PHASES.has(value.trustedTestHooks.unmarkedFailurePhase)) fail("invalid_launcher");
   return {
     stateDirectory: value.stateDirectory,
     binding,
@@ -260,7 +262,7 @@ function validateIdentity(value) {
   for (const field of fields) {
     if (field !== "question_digest" && !opaqueIdentifier(value[field])) fail("invalid_inspection");
   }
-  if (!/^[a-f0-9]{64}$/i.test(value.question_digest)) fail("invalid_inspection");
+  if (typeof value.question_digest !== "string" || !/^[a-f0-9]{64}$/i.test(value.question_digest)) fail("invalid_inspection");
   return Object.fromEntries(fields.map((field) => [field, value[field]]));
 }
 
@@ -360,27 +362,25 @@ function publishInitial(launcher, record) {
   } catch (error) {
     if (error.code === "EEXIST") fail("ledger_unavailable");
     throw publicationError(error, error?.phase === "replace" || error?.phase === "after_replace" || error?.phase === "directory_sync");
-  } finally {
-    try { fs.unlinkSync(temporary); } catch (error) { if (error.code !== "ENOENT") throw error; }
-  }
+  } finally { removeTemporary(temporary); }
 }
 
 function publish(launcher, record) {
   const target = ledgerPath(launcher.stateDirectory);
   const temporary = temporaryPath(launcher.stateDirectory);
+  let replaceAttempted = false;
   try {
     writeTemporary(launcher, temporary, record);
     failAt(launcher, "before_replace");
+    replaceAttempted = true;
     failAt(launcher, "replace");
     fs.renameSync(temporary, target);
     failAt(launcher, "after_replace");
     syncDirectory(launcher);
   } catch (error) {
-    const uncertain = error?.phase === "replace" || error?.phase === "after_replace" || error?.phase === "directory_sync";
+    const uncertain = replaceAttempted || error?.phase === "replace" || error?.phase === "after_replace" || error?.phase === "directory_sync";
     throw publicationError(error, uncertain);
-  } finally {
-    try { fs.unlinkSync(temporary); } catch (error) { if (error.code !== "ENOENT") throw error; }
-  }
+  } finally { removeTemporary(temporary); }
 }
 
 function writeTemporary(launcher, temporary, record) {
@@ -403,11 +403,19 @@ function syncDirectory(launcher) {
 }
 
 function failAt(launcher, phase) {
-  if (launcher.trustedTestHooks?.failPhase !== phase) return;
-  delete launcher.trustedTestHooks.failPhase;
+  const hooks = launcher.trustedTestHooks;
+  const marked = hooks?.failPhase === phase;
+  const unmarked = hooks?.unmarkedFailurePhase === phase;
+  if (!marked && !unmarked) return;
+  if (marked) delete hooks.failPhase;
+  if (unmarked) delete hooks.unmarkedFailurePhase;
   const error = new Error(`injected_${phase}`);
-  error.phase = phase;
+  if (marked) error.phase = phase;
   throw error;
+}
+
+function removeTemporary(temporary) {
+  try { fs.unlinkSync(temporary); } catch { /* preserve the typed publication result */ }
 }
 
 function publicationError(error, uncertain) {
@@ -488,6 +496,10 @@ function plainObject(value) {
 
 function hasOnlyKeys(value, allowed) {
   return Object.keys(value).every((key) => allowed.has(key)) && Object.keys(value).length === allowed.size;
+}
+
+function hasOnlyOptionalKeys(value, allowed) {
+  return Object.keys(value).every((key) => allowed.has(key));
 }
 
 function positiveInteger(value) {
