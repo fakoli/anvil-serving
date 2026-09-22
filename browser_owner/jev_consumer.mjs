@@ -31,6 +31,7 @@ export async function evaluateJev(policy, projection, signal) {
     await chmod(directory, 0o700);
     const input = join(directory, "projection.json");
     await writeFile(input, encoded, { encoding: "utf8", mode: 0o600, flag: "wx" });
+    if (signal?.aborted) return { outcome: "cancelled" };
     const result = policy.runner
       ? await policy.runner({ executable: policy.executable, args: argumentsFor(input), cwd: policy.cwd, signal })
       : await run(policy.executable, argumentsFor(input), policy.cwd, policy.timeout, signal);
@@ -51,16 +52,21 @@ function argumentsFor(input) { return ["jev", "evaluate", "browser_element_resol
 
 function run(executable, args, cwd, timeout, signal) {
   return new Promise((resolve) => {
-    let child, done = false, timer, stdout = "", stderr = "", overflow = false;
-    const finish = (result) => { if (!done) { done = true; clearTimeout(timer); signal?.removeEventListener("abort", cancel); resolve(result); } };
-    const cancel = () => { child?.kill(); finish({ cancelled: true }); };
+    let child, done = false, timer, grace, reason, stdout = "", stderr = "", overflow = false;
+    const finish = (result) => { if (!done) { done = true; clearTimeout(timer); clearTimeout(grace); signal?.removeEventListener("abort", cancel); resolve(result); } };
+    const signalChild = (name) => {
+      if (!child?.pid) return;
+      try { if (process.platform !== "win32") process.kill(-child.pid, name); else child.kill(name); } catch { child.kill(name); }
+    };
+    const stop = (next) => { if (reason) return; reason = next; signalChild("SIGTERM"); grace = setTimeout(() => signalChild("SIGKILL"), 100); };
+    const cancel = () => stop("cancelled");
     try {
-      child = spawn(executable, args, { cwd, shell: false, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
-      const collect = (name) => (chunk) => { if (overflow) return; const text = chunk.toString("utf8"); if (byteLength(stdout) + byteLength(stderr) + byteLength(text) > outputLimit) { overflow = true; child.kill(); } else if (name === "stdout") stdout += text; else stderr += text; };
+      child = spawn(executable, args, { cwd, shell: false, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+      const collect = (name) => (chunk) => { if (overflow) return; const text = chunk.toString("utf8"); if (byteLength(stdout) + byteLength(stderr) + byteLength(text) > outputLimit) { overflow = true; stop("overflow"); } else if (name === "stdout") stdout += text; else stderr += text; };
       child.stdout.on("data", collect("stdout")); child.stderr.on("data", collect("stderr"));
       child.on("error", () => finish({ code: null, stdout, overflow }));
-      child.on("close", (code) => finish({ code, stdout, overflow }));
-      timer = setTimeout(() => { child.kill(); finish({ timeout: true }); }, timeout);
+      child.on("close", (code) => finish({ code, stdout, overflow, timeout: reason === "timeout", cancelled: reason === "cancelled" }));
+      timer = setTimeout(() => stop("timeout"), timeout);
       if (signal?.aborted) cancel(); else signal?.addEventListener("abort", cancel, { once: true });
     } catch { finish({ code: null, stdout, overflow }); }
   });
@@ -71,18 +77,22 @@ function selectionFrom(text, offered) {
   try { envelope = parseUniqueJson(text); } catch { return { outcome: "malformed_response" }; }
   if (!plain(envelope) || Object.keys(envelope).length !== 3 || envelope.ok !== true || envelope.command !== "jev evaluate" || !plain(envelope.data)) return { outcome: "malformed_response" };
   const annotation = envelope.data;
-  if (annotation.schema !== "anvil.jev.annotation.v1" || annotation.capability !== "browser_element_resolution" || annotation.status !== "completed" || annotation.used !== true || !plain(annotation.answers) || Object.keys(annotation.answers).length !== 1 || !plain(annotation.answers.selection) || annotation.answers.selection.type !== "choice" || typeof annotation.answers.selection.choice !== "string") return { outcome: "malformed_response" };
-  const choice = annotation.answers.selection.choice;
-  if (![...offered, "NO_MATCH_IN_CANDIDATES", "AMBIGUOUS", "NEEDS_VISUAL_EVIDENCE"].includes(choice)) return { outcome: "unknown_selection" };
+  const annotationFields = ["schema", "provider", "model", "capability", "status", "reason", "requested", "used", "request_started", "elapsed_ms", "rubric_digest", "input_digest", "answers", "usage"];
+  if (!closed(annotation, annotationFields) || annotation.schema !== "anvil.jev.annotation.v1" || annotation.capability !== "browser_element_resolution" || annotation.status !== "completed" || annotation.reason !== "validated" || annotation.requested !== true || annotation.used !== true || annotation.request_started !== true || !Number.isInteger(annotation.elapsed_ms) || annotation.elapsed_ms < 0 || typeof annotation.provider !== "string" || typeof annotation.model !== "string" || typeof annotation.rubric_digest !== "string" || typeof annotation.input_digest !== "string" || !plain(annotation.answers) || !closed(annotation.usage, ["input_tokens", "output_tokens"]) || !Number.isInteger(annotation.usage.input_tokens) || annotation.usage.input_tokens < 0 || !Number.isInteger(annotation.usage.output_tokens) || annotation.usage.output_tokens < 0 || !closed(annotation.answers, ["selection"]) || !plain(annotation.answers.selection)) return { outcome: "malformed_response" };
+  const choiceAnswer = annotation.answers.selection, choices = [...offered, "NO_MATCH_IN_CANDIDATES", "AMBIGUOUS", "NEEDS_VISUAL_EVIDENCE"];
+  if (!closed(choiceAnswer, ["type", "probabilities", "confidence", "choice"]) || choiceAnswer.type !== "choice" || typeof choiceAnswer.choice !== "string" || !plain(choiceAnswer.probabilities) || !closed(choiceAnswer.probabilities, choices) || !Number.isFinite(choiceAnswer.confidence) || choiceAnswer.confidence < 0 || choiceAnswer.confidence > 1 || !choices.every((choice) => Number.isFinite(choiceAnswer.probabilities[choice]) && choiceAnswer.probabilities[choice] >= 0 && choiceAnswer.probabilities[choice] <= 1) || Math.abs(Object.values(choiceAnswer.probabilities).reduce((sum, value) => sum + value, 0) - 1) > 0.02) return { outcome: "malformed_response" };
+  const choice = choiceAnswer.choice;
+  if (!choices.includes(choice)) return { outcome: "unknown_selection" };
   return { outcome: "selection", selection: choice };
 }
 
-const plain = (value) => value && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+const plain = (value) => value && typeof value === "object" && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+const closed = (value, keys) => plain(value) && Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
 
 function parseUniqueJson(input) {
   let index = 0;
-  const whitespace = () => { while (/\s/.test(input[index] || "")) index += 1; };
+  const whitespace = () => { while ([" ", "\n", "\r", "\t"].includes(input[index])) index += 1; };
   const string = () => { const start = index; if (input[index++] !== '"') throw Error(); while (index < input.length) { const char = input[index++]; if (char === '"') return JSON.parse(input.slice(start, index)); if (char === "\\") index += 1; if (char < " ") throw Error(); } throw Error(); };
-  const value = () => { whitespace(); if (input[index] === '"') return string(); if (input[index] === "{") { index += 1; const object = {}; whitespace(); if (input[index] === "}") { index += 1; return object; } while (true) { whitespace(); const key = string(); whitespace(); if (input[index++] !== ":" || Object.hasOwn(object, key)) throw Error(); object[key] = value(); whitespace(); if (input[index] === "}") { index += 1; return object; } if (input[index++] !== ",") throw Error(); } } if (input[index] === "[") { index += 1; const array = []; whitespace(); if (input[index] === "]") { index += 1; return array; } while (true) { array.push(value()); whitespace(); if (input[index] === "]") { index += 1; return array; } if (input[index++] !== ",") throw Error(); } } const match = /^(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/.exec(input.slice(index)); if (!match) throw Error(); index += match[0].length; return JSON.parse(match[0]); };
+  const value = () => { whitespace(); if (input[index] === '"') return string(); if (input[index] === "{") { index += 1; const object = Object.create(null), seen = new Set(); whitespace(); if (input[index] === "}") { index += 1; return object; } while (true) { whitespace(); const key = string(); whitespace(); if (input[index++] !== ":" || seen.has(key)) throw Error(); seen.add(key); Object.defineProperty(object, key, { value: value(), enumerable: true, writable: true, configurable: true }); whitespace(); if (input[index] === "}") { index += 1; return object; } if (input[index++] !== ",") throw Error(); } } if (input[index] === "[") { index += 1; const array = []; whitespace(); if (input[index] === "]") { index += 1; return array; } while (true) { array.push(value()); whitespace(); if (input[index] === "]") { index += 1; return array; } if (input[index++] !== ",") throw Error(); } } const match = /^(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/.exec(input.slice(index)); if (!match) throw Error(); index += match[0].length; return JSON.parse(match[0]); };
   const result = value(); whitespace(); if (index !== input.length) throw Error(); return result;
 }

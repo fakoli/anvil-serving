@@ -11,7 +11,7 @@ import { OwnerError, createBrowserOwner } from "./owner.mjs";
 const watchdog = setTimeout(() => { process.stderr.write("browser owner test watchdog expired\n"); process.exit(1); }, 60_000);
 test.after(() => clearTimeout(watchdog));
 const executablePath = () => process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome";
-const page = (kind = "") => kind === "empty" ? "<!doctype html><p>none</p>" : `<!doctype html><main aria-label="Synthetic fixture"><h1>Read-only report</h1><button aria-label="Capture">Capture</button><button disabled>Disabled</button>${kind === "input" || kind === "input-long" ? `<input aria-label="Value" value="${kind === "input-long" ? "x".repeat(257) : "before"}">` : ""}<section role="status">Status</section><img alt="Chart">${kind === "many" ? Array.from({ length: 70 }, (_, index) => `<button aria-label="extra-${index}">extra</button>`).join("") : ""}${kind === "oversized" ? `<div role="${"r".repeat(129)}"></div><button aria-label="${"x".repeat(257)}"></button>` : ""}${kind === "tall" ? '<div style="height: 200vh"></div>' : ""}${kind === "canvas" ? "<canvas></canvas>" : ""}${kind === "shadow" ? "<x-private></x-private>" : ""}${kind === "network" ? '<img src="/asset"><script>window.open("/popup"); new WebSocket(location.origin.replace("http", "ws") + "/socket");</script>' : ""}</main>${kind === "frame" ? '<iframe src="/"></iframe>' : ""}<script>${kind === "shadow" ? 'customElements.define("x-private", class extends HTMLElement { constructor() { super(); this.attachShadow({mode:"open"}).innerHTML="<button>private</button>"; } })' : ""}${kind === "spoof" ? 'Element.prototype.matches=()=>true; Element.prototype.getBoundingClientRect=()=>({width:1,height:1,top:0,right:1,bottom:1,left:0}); document.elementFromPoint=()=>document.body' : ""}</script>`;
+const page = (kind = "") => kind === "empty" ? "<!doctype html><p>none</p>" : `<!doctype html><main aria-label="Synthetic fixture"><h1>Read-only report</h1><button aria-label="Capture">Capture</button><button disabled>Disabled</button>${kind === "input" || kind === "input-long" ? `<input aria-label="Value" value="${kind === "input-long" ? "x".repeat(257) : "before"}">` : ""}${kind === "private" ? '<textarea>SYNTHETIC_PRIVATE_FORM_VALUE</textarea><script>const synthetic_private_script=123;</script>' : ""}<section role="status">Status</section><img alt="Chart">${kind === "many" ? Array.from({ length: 70 }, (_, index) => `<button aria-label="extra-${index}">extra</button>`).join("") : ""}${kind === "oversized" ? `<div role="${"r".repeat(129)}"></div><button aria-label="${"x".repeat(257)}"></button>` : ""}${kind === "tall" ? '<div style="height: 200vh"></div>' : ""}${kind === "canvas" ? "<canvas></canvas>" : ""}${kind === "shadow" ? "<x-private></x-private>" : ""}${kind === "network" ? '<img src="/asset"><script>window.open("/popup"); new WebSocket(location.origin.replace("http", "ws") + "/socket");</script>' : ""}</main>${kind === "frame" ? '<iframe src="/"></iframe>' : ""}<script>${kind === "shadow" ? 'customElements.define("x-private", class extends HTMLElement { constructor() { super(); this.attachShadow({mode:"open"}).innerHTML="<button>private</button>"; } })' : ""}${kind === "spoof" ? 'Element.prototype.matches=()=>true; Element.prototype.getBoundingClientRect=()=>({width:1,height:1,top:0,right:1,bottom:1,left:0}); document.elementFromPoint=()=>document.body' : ""}</script>`;
 const error = (code) => (value) => value instanceof OwnerError && value.code === code;
 const typed = (value) => value instanceof OwnerError;
 const captureRequest = (changes = {}) => ({
@@ -49,7 +49,11 @@ async function owner(origin, limits = {}, clock, prepare, subresourceOrigins = [
 }
 
 const jevFields = ["schema", "request_id", "observation_id", "source", "target", "scope", "coverage", "entities"];
-const answer = (choice) => JSON.stringify({ ok: true, command: "jev evaluate", data: { schema: "anvil.jev.annotation.v1", capability: "browser_element_resolution", status: "completed", used: true, answers: { selection: { type: "choice", choice } } } });
+const answer = (choice, offered) => {
+  const choices = [...offered, "NO_MATCH_IN_CANDIDATES", "AMBIGUOUS", "NEEDS_VISUAL_EVIDENCE"];
+  const probabilityChoice = choices.includes(choice) ? choice : choices[0];
+  return JSON.stringify({ ok: true, command: "jev evaluate", data: { schema: "anvil.jev.annotation.v1", provider: "typesafe", model: "jev-1.13.0", capability: "browser_element_resolution", status: "completed", reason: "validated", requested: true, used: true, request_started: true, elapsed_ms: 1, rubric_digest: "a", input_digest: "b", answers: { selection: { type: "choice", probabilities: Object.fromEntries(choices.map((item) => [item, item === probabilityChoice ? 1 : 0])), confidence: 1, choice } }, usage: { input_tokens: 1, output_tokens: 1 } } });
+};
 const fakeJev = (origin, runner, changes = {}) => ({ enabled: true, origin, fields: jevFields, runner, ...changes });
 
 async function screenshotGate(page) {
@@ -347,10 +351,21 @@ test("owner Jev consumer keeps export default-off and projects only fresh fixtur
   const disabled = await owner(site.origin); const disabledSession = disabled.session(); t.after(async () => { await disabled.close(); await site.close(); });
   await disabledSession.navigate(`${site.origin}/`); const disabledObservation = await disabledSession.capture(captureRequest());
   assert.deepEqual(await disabledSession.jevResolve(disabledObservation.observation_id), { outcome: "disabled" }); assert.equal(calls, 0);
-  const enabled = await owner(site.origin, {}, undefined, undefined, [site.origin], fakeJev(site.origin, async ({ args }) => { calls += 1; const projection = JSON.parse(await readFile(args[4], "utf8")); assert.deepEqual(Object.keys(projection), jevFields); assert.equal(JSON.stringify(projection).includes("navigation_epoch"), false); assert.equal(JSON.stringify(projection).includes("form"), false); return { code: 0, stdout: answer(projection.entities.find((entity) => entity.text === "Capture").id) }; }));
+  const enabled = await owner(site.origin, {}, undefined, undefined, [site.origin], fakeJev(site.origin, async ({ args }) => { calls += 1; const projection = JSON.parse(await readFile(args[4], "utf8")); assert.deepEqual(Object.keys(projection), jevFields); assert.equal(JSON.stringify(projection).includes("navigation_epoch"), false); assert.equal(JSON.stringify(projection).includes("form"), false); return { code: 0, stdout: answer(projection.entities.find((entity) => entity.text === "Capture").id, projection.entities.map((entity) => entity.id)) }; }));
   const session = enabled.session(); t.after(() => enabled.close()); await session.navigate(`${site.origin}/`); const observation = await session.capture(captureRequest());
   const matched = await session.jevResolve(observation.observation_id);
   assert.equal(calls, 1); assert.equal(matched.outcome, "matched"); assert.equal(matched.advisory, true); assert.equal(matched.entity.text, "Capture"); assert.equal(matched.entity.enabled, true);
+});
+
+test("owner Jev projection excludes form and script bytes from every ancestor label", { timeout: 15_000 }, async (t) => {
+  const site = await fixture(); let exported = "";
+  const core = await owner(site.origin, {}, undefined, undefined, [site.origin], fakeJev(site.origin, async ({ args }) => {
+    const projection = JSON.parse(await readFile(args[4], "utf8")); exported = JSON.stringify(projection);
+    return { code: 0, stdout: answer(projection.entities.find((entity) => entity.text === "Capture").id, projection.entities.map((entity) => entity.id)) };
+  }));
+  const session = core.session(); t.after(async () => { await core.close(); await site.close(); }); await session.navigate(`${site.origin}/?mode=private`);
+  const observation = await session.capture(captureRequest({ request_id: "private", require_unique: false })); const result = await session.jevResolve(observation.observation_id);
+  assert.equal(result.outcome, "matched"); assert.equal(observation.coverage.complete, false); assert.ok(observation.coverage.untraversed_regions.includes("restricted_text")); assert.equal(exported.includes("SYNTHETIC_PRIVATE_FORM_VALUE"), false); assert.equal(exported.includes("synthetic_private_script"), false);
 });
 
 test("owner Jev consumer reports bounded semantic outcomes without exporting denied or incomplete records", { timeout: 15_000 }, async (t) => {
@@ -370,10 +385,10 @@ test("owner Jev consumer rejects malformed selections and keeps disabled and non
   let index = 0;
   const core = await owner(site.origin, {}, undefined, undefined, [site.origin], fakeJev(site.origin, async ({ args }) => {
     const projection = JSON.parse(await readFile(args[4], "utf8")); const choice = answers[index++];
-    if (choice === "Disabled") return { code: 0, stdout: answer(projection.entities.find((entity) => entity.text === "Disabled").id) };
-    if (choice === "Read-only report") return { code: 0, stdout: answer(projection.entities.find((entity) => entity.role === "heading").id) };
+    if (choice === "Disabled") return { code: 0, stdout: answer(projection.entities.find((entity) => entity.text === "Disabled").id, projection.entities.map((entity) => entity.id)) };
+    if (choice === "Read-only report") return { code: 0, stdout: answer(projection.entities.find((entity) => entity.role === "heading").id, projection.entities.map((entity) => entity.id)) };
     if (choice === "duplicate") return { code: 0, stdout: '{"ok":true,"ok":true,"command":"jev evaluate","data":{}}' };
-    return { code: 0, stdout: answer(choice) };
+    return { code: 0, stdout: answer(choice, projection.entities.map((entity) => entity.id)) };
   }));
   const session = core.session(); t.after(async () => { await core.close(); await site.close(); }); await session.navigate(`${site.origin}/`);
   for (const expected of ["unknown_selection", "ambiguous", "needs_visual_evidence", "no_match_inconclusive"]) { const observation = await session.capture(captureRequest({ request_id: `semantic-${index}` })); assert.equal((await session.jevResolve(observation.observation_id)).outcome, expected); }
@@ -382,18 +397,35 @@ test("owner Jev consumer rejects malformed selections and keeps disabled and non
   const malformed = await session.capture(captureRequest({ request_id: "malformed" })); assert.equal((await session.jevResolve(malformed.observation_id)).outcome, "malformed_response");
 });
 
+test("owner Jev rechecks every abstention after mutation, navigation, and expiry", { timeout: 30_000 }, async (t) => {
+  const site = await fixture(), abstentions = ["NO_MATCH_IN_CANDIDATES", "AMBIGUOUS", "NEEDS_VISUAL_EVIDENCE"];
+  t.after(() => site.close());
+  for (const change of ["mutation", "navigation"]) for (const choice of abstentions) {
+    const trusted = trustedPageHook(); let release, entered; const wait = new Promise((resolve) => { release = resolve; }), started = new Promise((resolve) => { entered = resolve; });
+    const core = await owner(site.origin, {}, undefined, trusted.prepare, [site.origin], fakeJev(site.origin, async ({ args }) => { const projection = JSON.parse(await readFile(args[4], "utf8")); entered(); await wait; return { code: 0, stdout: answer(choice, projection.entities.map((entity) => entity.id)) }; }));
+    const session = core.session(), page = await trusted.page; t.after(() => core.close()); await session.navigate(`${site.origin}/`); const observation = await session.capture(captureRequest({ request_id: `${change}-${choice}` })); const pending = session.jevResolve(observation.observation_id); await started;
+    if (change === "mutation") await page.evaluate(() => document.querySelector("button").setAttribute("data-after-reply", "yes")); else await page.goto(`${site.origin}/`);
+    release(); assert.equal((await pending).outcome, change === "mutation" ? "stale_observation" : "unknown_observation");
+  }
+  for (const choice of abstentions) {
+    let tick = 0;
+    const core = await owner(site.origin, { ttl: 5 }, () => tick, undefined, [site.origin], fakeJev(site.origin, async ({ args }) => { const projection = JSON.parse(await readFile(args[4], "utf8")); tick = 6; return { code: 0, stdout: answer(choice, projection.entities.map((entity) => entity.id)) }; }));
+    const session = core.session(); t.after(() => core.close()); await session.navigate(`${site.origin}/`); const observation = await session.capture(captureRequest({ request_id: `expiry-${choice}` })); assert.deepEqual(await session.jevResolve(observation.observation_id), { outcome: "expired_observation" });
+  }
+});
+
 test("owner Jev consumer cancels stale replies and uses a real shell-free child with cleanup", { timeout: 15_000 }, async (t) => {
   const site = await fixture(), trusted = trustedPageHook(); let release, entered;
   const delayed = new Promise((resolve) => { release = resolve; }); const started = new Promise((resolve) => { entered = resolve; });
-  const core = await owner(site.origin, {}, undefined, trusted.prepare, [site.origin], fakeJev(site.origin, async () => { entered(); await delayed; return { code: 0, stdout: answer("e-3") }; }));
+  const core = await owner(site.origin, {}, undefined, trusted.prepare, [site.origin], fakeJev(site.origin, async ({ args }) => { const projection = JSON.parse(await readFile(args[4], "utf8")); entered(); await delayed; return { code: 0, stdout: answer(projection.entities.find((entity) => entity.text === "Capture").id, projection.entities.map((entity) => entity.id)) }; }));
   const session = core.session(); const page = await trusted.page; t.after(async () => { await core.close(); await site.close(); }); await session.navigate(`${site.origin}/`); const stale = await session.capture(captureRequest()); const pending = session.jevResolve(stale.observation_id); await started; await page.evaluate(() => document.querySelector("button").setAttribute("data-stale", "yes")); release(); assert.equal((await pending).outcome, "stale_observation");
   const directory = await mkdtemp(join(tmpdir(), "anvil-jev-child-")); t.after(() => rm(directory, { recursive: true, force: true }));
   const executable = join(directory, "anvil-test");
-  await writeFile(executable, `#!${process.execPath}\nconst fs=require('node:fs');const args=process.argv.slice(2);const input=args[4];const projection=JSON.parse(fs.readFileSync(input,'utf8'));fs.writeFileSync('trace.json',JSON.stringify({args,input,exists:fs.existsSync(input)}));console.log(JSON.stringify({ok:true,command:'jev evaluate',data:{schema:'anvil.jev.annotation.v1',capability:'browser_element_resolution',status:'completed',used:true,answers:{selection:{type:'choice',choice:projection.entities.find(x=>x.text==='Capture').id}}}}));`);
+  await writeFile(executable, `#!${process.execPath}\nconst fs=require('node:fs');const args=process.argv.slice(2);const input=args[4];const projection=JSON.parse(fs.readFileSync(input,'utf8'));const choice=projection.entities.find(x=>x.text==='Capture').id;const choices=[...projection.entities.map(x=>x.id),'NO_MATCH_IN_CANDIDATES','AMBIGUOUS','NEEDS_VISUAL_EVIDENCE'];fs.writeFileSync('trace.json',JSON.stringify({args,input,exists:fs.existsSync(input)}));console.log(JSON.stringify({ok:true,command:'jev evaluate',data:{schema:'anvil.jev.annotation.v1',provider:'typesafe',model:'jev-1.13.0',capability:'browser_element_resolution',status:'completed',reason:'validated',requested:true,used:true,request_started:true,elapsed_ms:1,rubric_digest:'a',input_digest:'b',answers:{selection:{type:'choice',probabilities:Object.fromEntries(choices.map(x=>[x,x===choice?1:0])),confidence:1,choice}},usage:{input_tokens:1,output_tokens:1}}}));`);
   await chmod(executable, 0o700);
   const child = await owner(site.origin, {}, undefined, undefined, [site.origin], { enabled: true, origin: site.origin, fields: jevFields, executable, cwd: directory }); const childSession = child.session(); t.after(() => child.close()); await childSession.navigate(`${site.origin}/`); const captured = await childSession.capture(captureRequest({ request_id: "child" })); assert.equal((await childSession.jevResolve(captured.observation_id)).outcome, "matched");
   const trace = JSON.parse(await readFile(join(directory, "trace.json"), "utf8")); assert.deepEqual(trace.args.slice(0, 4), ["jev", "evaluate", "browser_element_resolution", "--input"]); assert.deepEqual(trace.args.slice(5), ["--allow-export", "--json"]); assert.equal(trace.exists, true); assert.equal(existsSync(trace.input), false);
   const sleeper = join(directory, "anvil-sleeper"); await writeFile(sleeper, `#!${process.execPath}\nsetTimeout(()=>{},1000);`); await chmod(sleeper, 0o700);
   const timed = await owner(site.origin, {}, undefined, undefined, [site.origin], { enabled: true, origin: site.origin, fields: jevFields, executable: sleeper, cwd: directory, timeout: 20 }); const timedSession = timed.session(); t.after(() => timed.close()); await timedSession.navigate(`${site.origin}/`); const timedObservation = await timedSession.capture(captureRequest({ request_id: "timeout" })); assert.deepEqual(await timedSession.jevResolve(timedObservation.observation_id), { outcome: "timeout" });
-  const cancelled = await owner(site.origin, {}, undefined, undefined, [site.origin], fakeJev(site.origin, async ({ signal }) => { await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true })); return { code: 0, stdout: answer("e-1") }; })); const cancelledSession = cancelled.session(); t.after(() => cancelled.close()); await cancelledSession.navigate(`${site.origin}/`); const cancelledObservation = await cancelledSession.capture(captureRequest({ request_id: "cancel" })); const controller = new AbortController(); const cancelling = cancelledSession.jevResolve(cancelledObservation.observation_id, { signal: controller.signal }); controller.abort(); await assert.rejects(cancelling, error("cancelled"));
+  const cancelled = await owner(site.origin, {}, undefined, undefined, [site.origin], fakeJev(site.origin, async ({ args, signal }) => { const projection = JSON.parse(await readFile(args[4], "utf8")); await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true })); return { code: 0, stdout: answer(projection.entities[0].id, projection.entities.map((entity) => entity.id)) }; })); const cancelledSession = cancelled.session(); t.after(() => cancelled.close()); await cancelledSession.navigate(`${site.origin}/`); const cancelledObservation = await cancelledSession.capture(captureRequest({ request_id: "cancel" })); const controller = new AbortController(); const cancelling = cancelledSession.jevResolve(cancelledObservation.observation_id, { signal: controller.signal }); controller.abort(); await assert.rejects(cancelling, error("cancelled"));
 });

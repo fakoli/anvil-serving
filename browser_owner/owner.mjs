@@ -202,10 +202,7 @@ class Facade {
     if (!state.jev.enabled) return { outcome: "disabled" };
     if (typeof observationId !== "string") return { outcome: "unknown_observation" };
     const record = state.records.get(observationId);
-    if (!record || record.id !== observationId || record.receipt.observation_id !== observationId) return { outcome: "unknown_observation" };
-    if (this.#expired(record)) { await this.#delete(record); return { outcome: "expired_observation" }; }
-    let origin; try { origin = new URL(state.page.url()).origin; } catch { return { outcome: "stale_observation" }; }
-    if (record.origin !== state.jev.origin || origin !== state.jev.origin || !sameEpoch(record.epochs, await snapshot(state))) return { outcome: "export_denied" };
+    const fresh = await this.#freshJevRecord(observationId, record); if (fresh) return fresh;
     const receipt = record.receipt;
     if (!receipt.entities.length) return { outcome: "empty_inventory" };
     const coverage = coverageFor(receipt.coverage);
@@ -214,6 +211,7 @@ class Facade {
     const result = await evaluateJev(state.jev, projection, signal);
     if (generation !== state.generation || state.closed || signal.aborted || result.outcome === "cancelled") return { outcome: "cancelled" };
     if (result.outcome !== "selection") return result;
+    const afterReply = await this.#freshJevRecord(observationId, record); if (afterReply) return afterReply;
     if (result.selection === "NO_MATCH_IN_CANDIDATES") return coverage.state === "complete" ? { outcome: "no_match_inconclusive" } : { outcome: "incomplete_coverage" };
     if (result.selection === "AMBIGUOUS") return { outcome: "ambiguous" };
     if (result.selection === "NEEDS_VISUAL_EVIDENCE") return { outcome: "needs_visual_evidence" };
@@ -221,6 +219,15 @@ class Facade {
       const entity = await this.#resolve(observationId, result.selection);
       return { outcome: "matched", advisory: true, selection: result.selection, entity };
     } catch (error) { if (error instanceof OwnerError) return { outcome: error.code }; throw error; }
+  }
+  async #freshJevRecord(observationId, record) {
+    const state = this.#state;
+    if (!record || state.records.get(observationId) !== record || record.id !== observationId || record.receipt.observation_id !== observationId) return { outcome: "unknown_observation" };
+    if (this.#expired(record)) { await this.#delete(record); return { outcome: "expired_observation" }; }
+    let origin; try { origin = new URL(state.page.url()).origin; } catch { return { outcome: "stale_observation" }; }
+    if (record.origin !== state.jev.origin || origin !== state.jev.origin) return { outcome: "export_denied" };
+    try { if (!sameEpoch(record.epochs, await snapshot(state))) return { outcome: "stale_observation" }; } catch { return { outcome: "stale_observation" }; }
+    return null;
   }
   #expired(record) { return this.#state.clock() - record.lastRead > this.#state.policy.ttl; }
   async #delete(record) { this.#state.records.delete(record.id); this.#state.bytes -= record.bytes; await dispose(record); }
@@ -242,10 +249,16 @@ function inventoryFor(root, maxEntities) {
   const limit = 2048, textLimit = 256, entities = [], unsupported = new Set(), untraversed = new Set(); let visited = 0, omitted = 0;
   if (document.styleSheets.length) unsupported.add("cssom");
   const text = (node) => {
+    const restrictedSelector = "input,textarea,select,option,script,style,template,noscript";
+    const isRestricted = (candidate) => /^(input|textarea|select|option)$/i.test(candidate.tagName) || Boolean(candidate.textContent);
+    const restrictedDescendant = (node.matches(restrictedSelector) && isRestricted(node)) || [...node.querySelectorAll(restrictedSelector)].some(isRestricted);
     const label = node.getAttribute("aria-label") || node.getAttribute("alt") || "";
-    if (label) return { value: label.slice(0, textLimit), oversized: label.length > textLimit || new TextEncoder().encode(label).byteLength > textLimit };
-    let value = "", seen = 0, oversized = false;
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    if (label) return { value: label.slice(0, textLimit), restricted: restrictedDescendant, oversized: label.length > textLimit || new TextEncoder().encode(label).byteLength > textLimit };
+    let value = "", seen = 0, oversized = false, restricted = restrictedDescendant;
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: (part) => {
+      if (part.parentElement?.closest("input,textarea,select,option,script,style,template,noscript")) { restricted = true; return NodeFilter.FILTER_REJECT; }
+      return NodeFilter.FILTER_ACCEPT;
+    }});
     while (value.length < textLimit && seen < 256) {
       const part = walker.nextNode();
       if (!part) break;
@@ -253,7 +266,7 @@ function inventoryFor(root, maxEntities) {
       value += part.data.slice(0, textLimit - value.length);
       seen += 1;
     }
-    return { value: value.trim(), oversized: oversized || seen >= 256 || Boolean(walker.nextNode()) };
+    return { value: value.trim(), restricted, oversized: oversized || seen >= 256 || Boolean(walker.nextNode()) };
   };
   const facts = (node) => { const rect = node.getBoundingClientRect(), visible = Boolean(rect.width && rect.height && rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth), point = rect.width && rect.height ? document.elementFromPoint(rect.left + Math.min(1, rect.width / 2), rect.top + Math.min(1, rect.height / 2)) : null, interactive = /^(button|input|select|textarea|a)$/i.test(node.tagName) || ["button", "link", "checkbox", "combobox", "textbox"].includes(node.getAttribute("role")), disabled = node.matches(":disabled") || node.getAttribute("aria-disabled") === "true"; return { exists: true, in_viewport: visible, occluded: point ? !(node === point || node.contains(point)) : null, enabled: interactive ? !disabled : null, predicate_reasons: { exists: null, in_viewport: null, occluded: point ? null : "unknown", enabled: interactive ? null : "not_applicable" } }; };
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
@@ -268,6 +281,7 @@ function inventoryFor(root, maxEntities) {
     }
     if (role.length > 128 || new TextEncoder().encode(role).byteLength > 128) { omitted += 1; untraversed.add("role_too_large"); node = walker.nextNode(); continue; }
     const label = text(node);
+    if (label.restricted) untraversed.add("restricted_text");
     if (label.oversized || new TextEncoder().encode(label.value).byteLength > textLimit || entities.length >= maxEntities) {
       omitted += 1;
       if (entities.length >= maxEntities) untraversed.add("entity_cap");

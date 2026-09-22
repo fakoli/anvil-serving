@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import test from "node:test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createJevConsumer, evaluateJev, JevConsumerError } from "./jev_consumer.mjs";
 
 const origin = "http://127.0.0.1:9000";
 const fields = ["schema", "request_id", "observation_id", "source", "target", "scope", "coverage", "entities"];
 const projection = { schema: "browser-element-resolution-projection/v1", request_id: "request", observation_id: "observation", source: "dom", target: { description: "capture", qualifiers: [] }, scope: { kind: "document", root: "document" }, coverage: { state: "complete", reason: null }, entities: [{ id: "e-1", role: "button", text: "Capture", nearby: "", state: { exists: true, in_viewport: true, occluded: false, enabled: true }, predicate_reasons: { exists: null, in_viewport: null, occluded: null, enabled: null } }] };
-const envelope = (choice) => JSON.stringify({ ok: true, command: "jev evaluate", data: { schema: "anvil.jev.annotation.v1", capability: "browser_element_resolution", status: "completed", used: true, answers: { selection: { type: "choice", choice } } } });
+const envelope = (choice, extra = {}) => JSON.stringify({ ok: true, command: "jev evaluate", data: { schema: "anvil.jev.annotation.v1", provider: "typesafe", model: "jev-1.13.0", capability: "browser_element_resolution", status: "completed", reason: "validated", requested: true, used: true, request_started: true, elapsed_ms: 1, rubric_digest: "a", input_digest: "b", answers: { selection: { type: "choice", probabilities: { "e-1": choice === "e-1" ? 1 : 0, NO_MATCH_IN_CANDIDATES: choice === "NO_MATCH_IN_CANDIDATES" ? 1 : 0, AMBIGUOUS: choice === "AMBIGUOUS" ? 1 : 0, NEEDS_VISUAL_EVIDENCE: choice === "NEEDS_VISUAL_EVIDENCE" ? 1 : 0 }, confidence: 1, choice, ...extra } }, usage: { input_tokens: 1, output_tokens: 1 } } });
 
 test("consumer requires a trusted immutable origin and exact field list", () => {
   assert.deepEqual(createJevConsumer({ enabled: false }, new Set([origin])), { enabled: false });
@@ -17,4 +21,20 @@ test("consumer accepts only the completed used selection envelope", async () => 
   assert.deepEqual(await evaluateJev(policy, projection), { outcome: "selection", selection: "e-1" });
   const malformed = createJevConsumer({ enabled: true, origin, fields, runner: async () => ({ code: 0, stdout: '{"ok":true,"ok":true}' }) }, new Set([origin]));
   assert.deepEqual(await evaluateJev(malformed, projection), { outcome: "malformed_response" });
+  for (const stdout of [envelope("e-1", { action: "click" }), envelope("e-1").replace("{", '{"__proto__":1,"__proto__":2,'), `\u00a0${envelope("e-1")}`]) {
+    const rejected = createJevConsumer({ enabled: true, origin, fields, runner: async () => ({ code: 0, stdout }) }, new Set([origin]));
+    assert.deepEqual(await evaluateJev(rejected, projection), { outcome: "malformed_response" });
+  }
+});
+
+test("consumer waits for SIGTERM-resistant children before cleanup", { timeout: 10_000 }, async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "anvil-jev-consumer-")); t.after(() => rm(directory, { recursive: true, force: true }));
+  const executable = join(directory, "anvil-child");
+  await writeFile(executable, `#!${process.execPath}\nconst fs=require('node:fs');const input=process.argv[6];fs.writeFileSync('child.json',JSON.stringify({pid:process.pid,input,exists:fs.existsSync(input)}));process.on('SIGTERM',()=>fs.writeFileSync('term','seen'));if(process.argv.includes('overflow'))process.stdout.write('x'.repeat(70000));setInterval(()=>{},1000);`); await chmod(executable, 0o700);
+  const direct = (timeout, executablePath = executable) => createJevConsumer({ enabled: true, origin, fields, executable: executablePath, cwd: directory, timeout }, new Set([origin]));
+  const inspect = async () => { const child = JSON.parse(await readFile(join(directory, "child.json"), "utf8")); assert.equal(child.exists, true); assert.equal(existsSync(child.input), false); assert.throws(() => process.kill(child.pid, 0), { code: "ESRCH" }); assert.equal(await readFile(join(directory, "term"), "utf8"), "seen"); };
+  assert.deepEqual(await evaluateJev(direct(20), projection), { outcome: "timeout" }); await inspect();
+  await rm(join(directory, "child.json")); await rm(join(directory, "term")); const controller = new AbortController(); const cancelling = evaluateJev(direct(1_000), projection, controller.signal); while (!existsSync(join(directory, "child.json"))) await new Promise((resolve) => setTimeout(resolve, 5)); controller.abort(); assert.deepEqual(await cancelling, { outcome: "cancelled" }); await inspect();
+  const overflow = join(directory, "anvil-overflow"); await writeFile(overflow, `#!${process.execPath}\nconst fs=require('node:fs');const input=process.argv[6];fs.writeFileSync('child.json',JSON.stringify({pid:process.pid,input,exists:fs.existsSync(input)}));process.on('SIGTERM',()=>fs.writeFileSync('term','seen'));process.stdout.write('x'.repeat(70000));setInterval(()=>{},1000);`); await chmod(overflow, 0o700);
+  await rm(join(directory, "child.json")); await rm(join(directory, "term")); assert.deepEqual(await evaluateJev(direct(1_000, overflow), projection), { outcome: "provider_unavailable" }); await inspect();
 });
