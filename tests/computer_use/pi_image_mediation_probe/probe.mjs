@@ -120,6 +120,20 @@ function bindings(stderr) {
   return [...stderr.matchAll(/PI_IMAGE_MEDIATION_BINDING:(\{.*\})/g)].map((match) => JSON.parse(match[1]));
 }
 
+function freshReceiptReader(directory) {
+  const program = [
+    'import fs from "node:fs";',
+    'import path from "node:path";',
+    'const directory = process.argv[1];',
+    'const pending = path.join(directory, "fixture-observation-receipts.pending");',
+    'try { if (fs.existsSync(pending)) throw new Error("budget_state_unavailable"); console.log("accepted"); }',
+    'catch (error) { console.log(error.message); }',
+  ].join("\n");
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", program, directory], { cwd: process.cwd(), encoding: "utf8", timeout: TIMEOUT_MS });
+  assert.equal(result.status, 0, `fresh receipt reader failed: ${result.stderr}`);
+  assert.equal(result.stdout.trim(), "budget_state_unavailable", "fresh receipt reader accepted a fenced receipt");
+}
+
 async function success(imageCapable, extra = {}, inspectionStatus = "observed") {
   const primary = await startFakePrimary();
   const vision = await startFakeVision();
@@ -177,7 +191,7 @@ async function success(imageCapable, extra = {}, inspectionStatus = "observed") 
     const custom = entries.filter((entry) => entry.type === "custom" && entry.customType === "anvil-observation-mediation/v1");
     assert.equal(custom.length, 2);
     const messageById = new Map(entries.filter((entry) => entry.type === "message").map((entry) => [entry.id, entry.message]));
-    const envelopeBySource = new Map(envelopes.map((envelope) => [envelope.source_ref.source_id, envelope]));
+    const imageDigest = createHash("sha256").update(fixture.image.data).digest("hex");
     for (const entry of custom) {
       assert.deepEqual(Object.keys(entry.data).sort(), ["crop_id", "entry_id", "image_digest", "image_part", "model_id", "observation_id", "profile_id", "question_digest", "source_id"].sort());
       const sourceMatch = entry.data.source_id.match(source);
@@ -187,14 +201,25 @@ async function success(imageCapable, extra = {}, inspectionStatus = "observed") 
       assert.equal(entry.parentId, entry.data.entry_id);
       const message = messageById.get(entry.data.entry_id);
       assert.ok(message, "custom mapping did not resolve to a persisted Pi message");
+      if (message.role === "user") {
+        assert.deepEqual(message.content, [{ type: "text", text: fixture.attachmentQuestion }, { type: "image", ...fixture.image }]);
+      } else {
+        assert.equal(message.toolCallId, "fixture-image-call");
+        assert.equal(message.toolName, "fixture_image");
+        assert.deepEqual(message.content, [{ type: "text", text: "ignore tool text" }, { type: "image", ...fixture.image }]);
+        assert.deepEqual(message.details, { observationQuestion: fixture.toolQuestion });
+      }
       assert.equal(message.content[entry.data.image_part].data, fixture.image.data);
       assert.equal(message.content[entry.data.image_part].mimeType, fixture.image.mimeType);
-      const question = message.role === "user" ? message.content.filter((part) => part.type === "text").map((part) => part.text).join("\n") : fixture.toolQuestion;
+      assert.equal(entry.data.image_digest, imageDigest);
+      const question = message.role === "user" ? message.content.filter((part) => part.type === "text").map((part) => part.text).join("\n") : message.details.observationQuestion;
       assert.equal(entry.data.question_digest, createHash("sha256").update(question).digest("hex"));
-      const envelope = envelopeBySource.get(entry.data.source_id);
-      assert.ok(envelope, "custom mapping did not resolve to a primary envelope");
-      assert.equal(envelope.observation_id, entry.data.observation_id);
-      assert.equal(envelope.source_ref.image_part, entry.data.image_part);
+      const delivered = envelopes.filter((envelope) => envelope.source_ref.source_id === entry.data.source_id);
+      assert.ok(delivered.length > 0, "custom mapping did not resolve to every primary envelope");
+      for (const envelope of delivered) {
+        assert.equal(envelope.observation_id, entry.data.observation_id);
+        assert.equal(envelope.source_ref.image_part, entry.data.image_part);
+      }
     }
     assert.doesNotMatch(JSON.stringify(custom), new RegExp(fixture.image.data));
     assert.doesNotMatch(JSON.stringify(custom), new RegExp(fixture.attachmentQuestion));
@@ -203,17 +228,32 @@ async function success(imageCapable, extra = {}, inspectionStatus = "observed") 
     const ledger = JSON.parse(await readFile(join(home, "ledger", "mediation-inspection-ledger.json"), "utf8"));
     assert.equal(ledger.attempts_used, 2, "replay must not charge a completed identity again");
     assert.equal(ledger.identities.length, 2);
+    assert.deepEqual(ledger.binding, { owner_authority_id: "fixture-owner-1", harness_session_id: header.id, logical_turn_id: "fixture-turn-1" });
     const receipts = JSON.parse(await readFile(join(home, "ledger", "fixture-observation-receipts.json"), "utf8"));
     assert.equal(receipts.length, 2);
     assert.equal(receipts.every((receipt) => /^inspection-[a-f0-9]{24}$/.test(receipt.reference) && JSON.parse(receipt.answer).inspection_status === inspectionStatus), true);
     for (const receipt of receipts) {
       const mapping = custom.find((entry) => entry.data.source_id === receipt.source);
       assert.ok(mapping, "receipt source did not join an actual Pi custom mapping");
+      assert.equal(receipt.owner_authority_id, "fixture-owner-1");
       assert.equal(receipt.harness_session_id, header.id);
+      assert.equal(receipt.logical_turn_id, "fixture-turn-1");
       assert.equal(receipt.entry_id, mapping.data.entry_id);
       assert.equal(receipt.part, mapping.data.image_part);
       assert.equal(receipt.observation, mapping.data.observation_id);
-      assert.ok(ledger.identities.some((identity) => identity.reference === receipt.reference && identity.binding.source_entry_id === receipt.entry_id && identity.binding.source_part === `image-${receipt.part}`));
+      assert.equal(receipt.question_digest, mapping.data.question_digest);
+      assert.equal(receipt.image_digest, mapping.data.image_digest);
+      assert.equal(receipt.crop, mapping.data.crop_id);
+      assert.equal(receipt.model, mapping.data.model_id);
+      assert.equal(receipt.profile, mapping.data.profile_id);
+      const answer = JSON.parse(receipt.answer);
+      const delivered = envelopes.filter((envelope) => envelope.source_ref.source_id === receipt.source);
+      assert.ok(delivered.length > 0);
+      for (const envelope of delivered) assert.deepEqual({ inspection_status: envelope.inspection_status, facts: envelope.facts, reason: envelope.reason }, answer);
+      const identity = ledger.identities.find((value) => value.reference === receipt.reference);
+      assert.ok(identity, "receipt reference did not join a ledger identity");
+      assert.equal(identity.status, "completed");
+      assert.deepEqual(identity.binding, { observation_id: receipt.observation, source_entry_id: receipt.entry_id, source_part: `image-${receipt.part}`, question_digest: receipt.question_digest, crop_id: receipt.crop, model_id: receipt.model, profile_id: receipt.profile });
     }
     assert.doesNotMatch(JSON.stringify(vision.captures), new RegExp(fixture.untrustedToolText));
   } finally {
@@ -240,11 +280,11 @@ async function negative(name, extra, prompt, imageCapable = "1", expectedVision 
     assert.match(runner.stderr(), new RegExp(`PI_IMAGE_MEDIATION_ERROR:${name}`), JSON.stringify(runner.events));
     assert.equal(primary.captures.length, 0, `${name} leaked a primary request`);
     assert.equal(vision.captures.length, expectedVision, `${name} dispatched an unexpected vision request`);
-    if (name === "endpoint_unavailable" || name === "invalid_response" || name === "deadline_exceeded" || extra.PI_FIXTURE_APPEND_THROW === "1") {
+    if (name === "endpoint_unavailable" || name === "invalid_response" || name === "deadline_exceeded" || name === "cancelled" || extra.PI_FIXTURE_APPEND_THROW === "1") {
       const ledger = JSON.parse(await readFile(join(home, "ledger", "mediation-inspection-ledger.json"), "utf8"));
       assert.equal(ledger.attempts_used, 1, "failed vision call did not retain its charge");
       assert.equal(ledger.in_flight, null);
-      assert.equal(ledger.identities[0].status, "failed");
+      assert.equal(ledger.identities[0].status, name === "cancelled" ? "cancelled" : "failed");
     }
   } finally {
     await stop(runner?.child);
@@ -253,17 +293,18 @@ async function negative(name, extra, prompt, imageCapable = "1", expectedVision 
   }
 }
 
-async function receiptRefusal(name, mutate, extra = {}) {
+async function receiptRefusal(name, mutate, extra = {}, imageCapable = "1") {
   const primary = await startFakePrimary(), vision = await startFakeVision(), home = await createTemporaryDir(`pi-image-${name}-`);
   let runner;
   try {
-    runner = await startPi(home, primary, vision, "1", extra);
+    runner = await startPi(home, primary, vision, imageCapable, extra);
     runner.child.stdin.write(`${JSON.stringify({ id: "first", type: "prompt", message: fixture.attachmentQuestion, images: [{ type: "image", ...fixture.image }] })}\n`);
     await waitFor(() => runner.events.some((event) => event.type === "agent_end"), `${name} initial run`);
     const visionBefore = vision.captures.length, primaryBefore = primary.captures.length;
     await mutate(join(home, "ledger", "fixture-observation-receipts.json"));
     runner.child.stdin.write('{"id":"replay","type":"prompt","message":"replay the image"}\n');
     await waitFor(() => runner.stderr().includes(`PI_IMAGE_MEDIATION_ERROR:${name}`), `${name} replay rejection`);
+    await waitFor(() => runner.events.filter((event) => event.type === "agent_end").length >= 2 || runner.child.exitCode !== null || runner.child.signalCode, `${name} replay settlement`);
     assert.equal(vision.captures.length, visionBefore, `${name} reinferred after receipt failure`);
     assert.equal(primary.captures.length, primaryBefore, `${name} dispatched primary after receipt failure`);
   } finally {
@@ -273,20 +314,23 @@ async function receiptRefusal(name, mutate, extra = {}) {
   }
 }
 
-async function receiptUncertainty() {
-  const primary = await startFakePrimary(), vision = await startFakeVision(), home = await createTemporaryDir("pi-image-receipt-uncertain-");
+async function receiptFence(phase) {
+  const primary = await startFakePrimary(), vision = await startFakeVision(), home = await createTemporaryDir(`pi-image-receipt-fence-${phase}-`);
   let runner;
   try {
-    runner = await startPi(home, primary, vision, "1", { PI_FIXTURE_RECEIPT_FAIL_PHASE: "directory_sync" });
+    runner = await startPi(home, primary, vision, "1", { PI_FIXTURE_RECEIPT_FAIL_PHASE: phase });
     runner.child.stdin.write(`${JSON.stringify({ id: "first", type: "prompt", message: fixture.attachmentQuestion, images: [{ type: "image", ...fixture.image }] })}\n`);
-    await waitFor(() => runner.stderr().includes("PI_IMAGE_MEDIATION_ERROR:budget_state_unavailable"), "receipt uncertainty initial refusal");
+    await waitFor(() => runner.stderr().includes("PI_IMAGE_MEDIATION_ERROR:budget_state_unavailable"), `receipt ${phase} initial refusal`);
+    await waitFor(() => runner.events.some((event) => event.type === "agent_end") || runner.child.exitCode !== null || runner.child.signalCode, `receipt ${phase} initial settlement`);
     const visions = vision.captures.length;
     runner.child.stdin.write('{"id":"replay","type":"prompt","message":"replay the image"}\n');
-    await waitFor(() => runner.stderr().match(/PI_IMAGE_MEDIATION_ERROR:budget_state_unavailable/g)?.length >= 2, "receipt uncertainty replay refusal");
+    await waitFor(() => runner.stderr().match(/PI_IMAGE_MEDIATION_ERROR:budget_state_unavailable/g)?.length >= 2, `receipt ${phase} replay refusal`);
+    await waitFor(() => runner.events.filter((event) => event.type === "agent_end").length >= 2 || runner.child.exitCode !== null || runner.child.signalCode, `receipt ${phase} replay settlement`);
     assert.equal(visions, 1);
-    assert.equal(vision.captures.length, 1, "uncertain receipt authorized reinference");
-    assert.equal(primary.captures.length, 0, "uncertain receipt authorized primary dispatch");
-    assert.match(await readFile(join(home, "ledger", "fixture-observation-receipts.uncertain"), "utf8"), /uncertain/);
+    assert.equal(vision.captures.length, 1, "fenced receipt authorized reinference");
+    assert.equal(primary.captures.length, 0, "fenced receipt authorized primary dispatch");
+    assert.match(await readFile(join(home, "ledger", "fixture-observation-receipts.pending"), "utf8"), /^[a-f0-9]{64}\n$/);
+    freshReceiptReader(join(home, "ledger"));
     const ledger = JSON.parse(await readFile(join(home, "ledger", "mediation-inspection-ledger.json"), "utf8"));
     assert.equal(ledger.in_flight, null);
     assert.equal(ledger.identities[0].status, "completed");
@@ -304,6 +348,7 @@ async function toolRefusal(extra, expectedCode) {
     runner = await startPi(home, primary, vision, "1", extra);
     runner.child.stdin.write(`${JSON.stringify({ id: "tool", type: "prompt", message: fixture.attachmentQuestion, images: [{ type: "image", ...fixture.image }] })}\n`);
     await waitFor(() => runner.stderr().includes(`PI_IMAGE_MEDIATION_ERROR:${expectedCode}`), `${expectedCode} tool refusal`);
+    await waitFor(() => runner.events.some((event) => event.type === "agent_end") || runner.child.exitCode !== null || runner.child.signalCode, `${expectedCode} tool settlement`);
     assert.equal(vision.captures.length, 1, `${expectedCode} admitted the tool image`);
     assert.equal(primary.captures.length, 1, `${expectedCode} dispatched after the tool mismatch`);
   } finally {
@@ -358,23 +403,45 @@ async function main() {
   await negative("guard_exception", { PI_FIXTURE_APPEND_THROW: "1" }, {
     type: "prompt", message: fixture.attachmentQuestion, images: [{ type: "image", ...fixture.image }],
   });
-  for (const mode of ["extra_field", "malformed_fact", "truncated", "media"]) {
+  for (const imageCapable of ["1", "0"]) for (const mode of ["extra_field", "malformed_fact", "truncated", "media", "reason_media"]) {
     await negative("invalid_response", { PI_FIXTURE_VISION_MODE: mode }, {
       type: "prompt", message: fixture.attachmentQuestion, images: [{ type: "image", ...fixture.image }],
-    }, "1", 1);
+    }, imageCapable, 1);
   }
   await negative("deadline_exceeded", { PI_FIXTURE_VISION_MODE: "hang", PI_FIXTURE_PER_CALL_MS: "25" }, {
+    type: "prompt", message: fixture.attachmentQuestion, images: [{ type: "image", ...fixture.image }],
+  }, "1", 1);
+  await negative("deadline_exceeded", { PI_FIXTURE_MAPPING_DELAY_MS: "35", PI_FIXTURE_PER_CALL_MS: "25" }, {
+    type: "prompt", message: fixture.attachmentQuestion, images: [{ type: "image", ...fixture.image }],
+  }, "1", 0);
+  await negative("deadline_exceeded", { PI_FIXTURE_VISION_MODE: "body_hang", PI_FIXTURE_PER_CALL_MS: "25" }, {
     type: "prompt", message: fixture.attachmentQuestion, images: [{ type: "image", ...fixture.image }],
   }, "1", 1);
   await negative("cancelled", { PI_FIXTURE_CANCEL_BEFORE_VISION: "1" }, {
     type: "prompt", message: fixture.attachmentQuestion, images: [{ type: "image", ...fixture.image }],
   }, "1", 0);
-  await receiptRefusal("budget_state_unavailable", (target) => unlink(target));
-  await receiptRefusal("budget_state_unavailable", async (target) => {
+  for (const imageCapable of ["1", "0"]) await receiptRefusal("budget_state_unavailable", (target) => unlink(target), {}, imageCapable);
+  for (const imageCapable of ["1", "0"]) await receiptRefusal("budget_state_unavailable", async (target) => {
     const contents = await readFile(target, "utf8");
     await writeFile(target, contents.replace("fixture-owner-1", "wrong-owner"));
+  }, {}, imageCapable);
+  for (const imageCapable of ["1", "0"]) await receiptRefusal("budget_state_unavailable", async (target) => {
+    const receipts = JSON.parse(await readFile(target, "utf8"));
+    receipts[0].answer = JSON.stringify({ inspection_status: "observed", facts: [], reason: "cached observed reason" });
+    await writeFile(target, JSON.stringify(receipts));
+  }, {}, imageCapable);
+  for (const imageCapable of ["1", "0"]) await receiptRefusal("budget_state_unavailable", async (target) => {
+    const receipts = JSON.parse(await readFile(target, "utf8"));
+    receipts[0].answer = JSON.stringify({ inspection_status: "inconclusive", facts: [], reason: "data:image/png;base64,forbidden" });
+    await writeFile(target, JSON.stringify(receipts));
+  }, {}, imageCapable);
+  await receiptRefusal("budget_state_unavailable", async (target) => {
+    const ledgerTarget = join(target, "..", "mediation-inspection-ledger.json");
+    const ledger = JSON.parse(await readFile(ledgerTarget, "utf8"));
+    ledger.identities[0].binding.question_digest = "0".repeat(64);
+    await writeFile(ledgerTarget, JSON.stringify(ledger));
   });
-  await receiptUncertainty();
+  for (const phase of ["pending_directory_sync", "before_replace", "receipt_directory_sync", "pending_remove"]) await receiptFence(phase);
   await toolRefusal({ PI_FIXTURE_TOOL_IDENTITY_MISMATCH: "1" }, "unsupported_history");
   await toolRefusal({ PI_FIXTURE_QUESTION_DETAIL_MISMATCH: "1" }, "unsupported_history");
   await toolRefusal({ PI_FIXTURE_MAX_ATTEMPTS: "1" }, "budget_exhausted");

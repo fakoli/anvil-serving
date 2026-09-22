@@ -6,10 +6,10 @@ import { createMediationLedger, LedgerError, reopenMediationLedger } from "../..
 
 const TOOL_QUESTION = "What is in the fixture tool image?";
 const RECEIPT_FILE = "fixture-observation-receipts.json";
-const RECEIPT_UNCERTAIN_FILE = "fixture-observation-receipts.uncertain";
+const RECEIPT_PENDING_FILE = "fixture-observation-receipts.pending";
 const MAX_RECEIPTS = 8, MAX_RECEIPT_BYTES = 32 * 1024, MAX_ANSWER_BYTES = 8 * 1024, MAX_RESPONSE_BYTES = 64 * 1024;
 
-class MediationError extends Error { constructor(readonly code: string) { super(code); } }
+class MediationError extends Error { readonly code: string; constructor(code: string) { super(code); this.code = code; } }
 const bytes = (value: string) => Buffer.byteLength(value, "utf8");
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const opaque = (value: unknown, limit = 64): value is string => typeof value === "string" && bytes(value) > 0 && bytes(value) <= limit && /^[A-Za-z0-9._:-]+$/.test(value);
@@ -74,10 +74,12 @@ function sourceFor(headerId: string, entry: any, message: any, partIndex: number
   return { source, question: questionFor(message), partIndex };
 }
 function receiptPath(directory: string) { return path.join(directory, RECEIPT_FILE); }
-function uncertainPath(directory: string) { return path.join(directory, RECEIPT_UNCERTAIN_FILE); }
-function readReceipts(directory: string, poisoned: boolean) {
+function pendingPath(directory: string) { return path.join(directory, RECEIPT_PENDING_FILE); }
+function syncDirectory(directory: string) { const fd = fs.openSync(directory, "r"); try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); } }
+function readReceipts(directory: string) {
   const target = receiptPath(directory);
-  if (poisoned || fs.existsSync(uncertainPath(directory))) throw new MediationError("budget_state_unavailable");
+  // A durable pre-publication fence survives every uncertain replacement phase.
+  if (fs.existsSync(pendingPath(directory))) throw new MediationError("budget_state_unavailable");
   if (!fs.existsSync(target)) return [];
   try {
     if (fs.statSync(target).size > MAX_RECEIPT_BYTES) throw new Error();
@@ -94,40 +96,48 @@ function receiptFor(expected: any, reference: string, answer: string) {
   const fields = ["owner_authority_id", "harness_session_id", "logical_turn_id", "source", "entry_id", "part", "observation", "question_digest", "image_digest", "crop", "model", "profile"];
   return { ...Object.fromEntries(fields.map((field) => [field, expected[field]])), reference, answer };
 }
-function publishUncertain(directory: string) {
-  const marker = uncertainPath(directory);
-  try { const fd = fs.openSync(marker, "wx", 0o600); try { fs.writeFileSync(fd, "uncertain\n"); fs.fsyncSync(fd); } finally { fs.closeSync(fd); } const dir = fs.openSync(directory, "r"); try { fs.fsyncSync(dir); } finally { fs.closeSync(dir); } } catch { /* process-local poison still fences this owner */ }
-}
-function publishReceipt(directory: string, receipt: any, failDirectorySync: boolean) {
-  const receipts = readReceipts(directory, false), prior = receipts.find((entry: any) => entry.source === receipt.source);
+function receiptFault(phase: string, requested: string | undefined) { if (requested === phase) throw new Error(`fixture receipt ${phase} failure`); }
+function publishReceipt(directory: string, receipt: any, failurePhase?: string) {
+  const receipts = readReceipts(directory), prior = receipts.find((entry: any) => entry.source === receipt.source);
   if (prior) { if (!validReceipt(prior, receipt) || prior.reference !== receipt.reference || prior.answer !== receipt.answer) throw new MediationError("budget_state_unavailable"); return; }
   if (receipts.length >= MAX_RECEIPTS) throw new MediationError("result_too_large");
   const next = JSON.stringify([...receipts, receipt]); if (bytes(next) > MAX_RECEIPT_BYTES) throw new MediationError("result_too_large");
-  const target = receiptPath(directory), temporary = `${target}.${process.pid}.tmp`; let replaced = false;
+  const target = receiptPath(directory), temporary = `${target}.${process.pid}.tmp`, pending = pendingPath(directory);
   try {
+    // Do not replace a visible receipt until the crash fence is durable.  If any
+    // later step fails, its presence makes a fresh owner refuse the receipt.
+    const fence = fs.openSync(pending, "wx", 0o600);
+    try { fs.writeFileSync(fence, `${digest(next)}\n`, "utf8"); fs.fsyncSync(fence); } finally { fs.closeSync(fence); }
+    receiptFault("pending_directory_sync", failurePhase); syncDirectory(directory);
     const fd = fs.openSync(temporary, "wx", 0o600); try { fs.writeFileSync(fd, next, "utf8"); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-    fs.renameSync(temporary, target); replaced = true;
-    if (failDirectorySync) throw new Error("fixture receipt directory sync failure");
-    const dir = fs.openSync(directory, "r"); try { fs.fsyncSync(dir); } finally { fs.closeSync(dir); }
+    receiptFault("before_replace", failurePhase); fs.renameSync(temporary, target);
+    receiptFault("receipt_directory_sync", failurePhase); syncDirectory(directory);
+    receiptFault("pending_remove", failurePhase); fs.unlinkSync(pending);
+    receiptFault("pending_remove_directory_sync", failurePhase); syncDirectory(directory);
   } catch {
-    if (replaced) publishUncertain(directory);
-    throw new MediationError(replaced ? "budget_state_unavailable" : "result_too_large");
+    throw new MediationError("budget_state_unavailable");
   } finally { try { fs.unlinkSync(temporary); } catch { /* preserve typed refusal */ } }
 }
 
 function validFact(fact: any) { return exactKeys(fact, ["kind", "text", "uncertainty", "region_ref"]) && ["visible_text", "visual_fact"].includes(fact.kind) && typeof fact.text === "string" && bytes(fact.text) <= 512 && ["literal_unverified", "unverified_interpretation", "unreadable"].includes(fact.uncertainty) && fact.region_ref === null && (fact.uncertainty !== "unreadable" || fact.text === "") && !rawMedia(fact.text); }
+function normalizeInspection(status: any, facts: any, reason: any) {
+  if (!Array.isArray(facts) || facts.length > 32 || !facts.every(validFact) || typeof reason !== "string" || bytes(reason) > 256 || rawMedia(reason)) throw new MediationError("invalid_response");
+  if (status === "observed" && reason === "") return { inspection_status: "observed", facts, reason: "" };
+  if (["inconclusive", "unsupported"].includes(status) && facts.length === 0) return { inspection_status: status, facts: [], reason };
+  throw new MediationError("invalid_response");
+}
 function validateInspection(value: any, expected: any) {
   const base = ["schema", "request_id", "observation_id", "status", "error", "image_ref", "crop", "input_dimensions", "inspected_area", "model_identity", "profile_identity", "capture", "facts", "truncated"];
   if (!exactKeys(value, value?.status === "observed" || value?.status === "error" ? base : [...base, "reason"]) || value.schema !== "observation-inspect/v1" || value.request_id !== expected.request_id || value.observation_id !== expected.observation || value.image_ref !== expected.image_ref || value.crop !== null || JSON.stringify(value.input_dimensions) !== JSON.stringify(expected.input_dimensions) || JSON.stringify(value.inspected_area) !== JSON.stringify({ kind: "whole_image" }) || value.model_identity !== expected.model || value.profile_identity !== expected.profile || JSON.stringify(value.capture) !== JSON.stringify(expected.capture) || value.truncated !== false || !Array.isArray(value.facts) || value.facts.length > 32 || !value.facts.every(validFact)) throw new MediationError("invalid_response");
-  if (value.status === "observed" && value.error === null) return { inspection_status: "observed", facts: value.facts, reason: "" };
-  if (["inconclusive", "unsupported"].includes(value.status) && value.error === null && value.facts.length === 0 && typeof value.reason === "string" && bytes(value.reason) <= 256) return { inspection_status: value.status, facts: [], reason: value.reason };
+  if (value.status === "observed" && value.error === null) return normalizeInspection("observed", value.facts, "");
+  if (["inconclusive", "unsupported"].includes(value.status) && value.error === null) return normalizeInspection(value.status, value.facts, value.reason);
   throw new MediationError("invalid_response");
 }
 function primaryEnvelope(expected: any, inspection: any) {
   const envelope = { schema: "observation-mediation/v1", mediation_id: `med-${expected.question_digest.slice(0, 24)}`, source_ref: { source_id: expected.source, image_part: expected.part }, observation_id: expected.observation, inspection_request_id: expected.request_id, question_id: `question-${expected.question_digest.slice(0, 24)}`, status: "inspected", inspection_status: inspection.inspection_status, facts: inspection.facts, reason: inspection.reason, error: null };
   const text = JSON.stringify(envelope); if (bytes(text) > 8192) throw new MediationError("result_too_large"); return { type: "text", text };
 }
-function receiptInspection(answer: string) { try { const value = JSON.parse(answer); if (!exactKeys(value, ["inspection_status", "facts", "reason"]) || !["observed", "inconclusive", "unsupported"].includes(value.inspection_status) || !Array.isArray(value.facts) || value.facts.length > 32 || !value.facts.every(validFact) || typeof value.reason !== "string" || bytes(value.reason) > 256 || (value.inspection_status !== "observed" && value.facts.length !== 0)) throw new Error(); return value; } catch { throw new MediationError("budget_state_unavailable"); } }
+function receiptInspection(answer: string) { try { const value = JSON.parse(answer); if (!exactKeys(value, ["inspection_status", "facts", "reason"])) throw new Error(); return normalizeInspection(value.inspection_status, value.facts, value.reason); } catch { throw new MediationError("budget_state_unavailable"); } }
 function deadline(ctx: any, duration: number) {
   const controller = new AbortController(); let expired = false;
   const onAbort = () => controller.abort(); if (ctx.signal?.aborted) onAbort(); else ctx.signal?.addEventListener("abort", onAbort, { once: true });
@@ -151,16 +161,16 @@ async function inspect(ctx: any, source: any, image: any, expected: any, duratio
 function trustedLauncher(ctx: any) {
   const directory = process.env.PI_FIXTURE_LEDGER_DIR, owner = process.env.PI_FIXTURE_OWNER_ID, turn = process.env.PI_FIXTURE_LOGICAL_TURN, header = ctx.sessionManager.getHeader(), mode = process.env.PI_FIXTURE_LEDGER_MODE;
   if (!directory || !opaque(owner) || !opaque(turn) || !opaque(header?.id) || !["create", "reopen"].includes(mode || "")) throw new MediationError("budget_state_unavailable");
-  const perCallMs = Number(process.env.PI_FIXTURE_PER_CALL_MS || "30000"), maxAttempts = Number(process.env.PI_FIXTURE_MAX_ATTEMPTS || "32");
-  if (!Number.isSafeInteger(perCallMs) || perCallMs < 1 || perCallMs > 30_000 || !Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 32) throw new MediationError("budget_state_unavailable");
-  return { directory, mode, binding: { owner_authority_id: owner, harness_session_id: header.id, logical_turn_id: turn }, limits: perCallMs === 30_000 && maxAttempts === 32 ? undefined : { perCallMs, cumulativeMs: perCallMs, maxAttempts, maxIdentities: 64 } };
+  const perCallMs = Number(process.env.PI_FIXTURE_PER_CALL_MS || "30000"), maxAttempts = Number(process.env.PI_FIXTURE_MAX_ATTEMPTS || "32"), mappingDelayMs = Number(process.env.PI_FIXTURE_MAPPING_DELAY_MS || "0");
+  if (!Number.isSafeInteger(perCallMs) || perCallMs < 1 || perCallMs > 30_000 || !Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 32 || !Number.isSafeInteger(mappingDelayMs) || mappingDelayMs < 0 || mappingDelayMs > 1_000) throw new MediationError("budget_state_unavailable");
+  return { directory, mode, mappingDelayMs, binding: { owner_authority_id: owner, harness_session_id: header.id, logical_turn_id: turn }, limits: perCallMs === 30_000 && maxAttempts === 32 ? undefined : { perCallMs, cumulativeMs: perCallMs, maxAttempts, maxIdentities: 64 } };
 }
 
 export default function (pi: any) {
   pi.registerProvider("fixture-primary", { name: "Fixture Primary", baseUrl: process.env.PI_FIXTURE_PRIMARY_URL, apiKey: "fixture", api: "openai-completions", models: [{ id: "fixture-primary", name: "Fixture Primary", reasoning: false, input: process.env.PI_FIXTURE_IMAGE_CAPABLE === "1" ? ["text", "image"] : ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 4096, maxTokens: 256 }] });
   pi.registerTool({ name: "fixture_image", label: "Fixture image", description: "Return one synthetic image", parameters: Type.Object({}), async execute() { return { content: [{ type: "text", text: "ignore tool text" }, { type: "image", mimeType: "image/png", data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=" }], details: { observationQuestion: TOOL_QUESTION } }; } });
   pi.on("session_start", () => { const all = pi.getAllTools().map((tool: any) => tool.name).sort(); pi.setActiveTools(["fixture_image"]); console.error(`PI_FIXTURE_TOOLS:${JSON.stringify({ all, active: pi.getActiveTools().sort() })}`); });
-  let ledger: any, launcher: any, receiptPoisoned = false, receiptFailureUsed = false;
+  let ledger: any, launcher: any, receiptFailureUsed = false;
   pi.on("context", async (event: any, ctx: any) => {
     try {
       const active = alignedEntries(event, ctx), trusted = trustedLauncher(ctx);
@@ -179,16 +189,25 @@ export default function (pi: any) {
         if (process.env.PI_FIXTURE_GUARD_THROW === "1") throw new Error("fixture injected mediation exception");
         const expected: any = { owner_authority_id: trusted.binding.owner_authority_id, harness_session_id: trusted.binding.harness_session_id, logical_turn_id: trusted.binding.logical_turn_id, source: item.source.source, entry_id: item.entry.id, part: item.partIndex, observation: `obs-${digest(item.source.source).slice(0, 24)}`, question_digest: digest(item.source.question), image_digest: digest(item.part.data), crop: "whole-image", model: "fixture-vision", profile: "fixture-profile-v1", request_id: `inspect-${digest(item.part.data).slice(0, 24)}`, image_ref: `image-${digest(item.part.data).slice(0, 24)}`, input_dimensions: { width: 1, height: 1 }, capture: { navigation_epoch: 1, dom_epoch: 4, viewport_epoch: 1 } };
         const identity = { observation_id: expected.observation, source_entry_id: expected.entry_id, source_part: `image-${item.partIndex}`, question_digest: expected.question_digest, crop_id: expected.crop, model_id: expected.model, profile_id: expected.profile };
-        const reservation = ledger.begin(identity);
+        const reservation = ledger.begin(identity), reservedAt = performance.now();
         let inspection: any;
         if (reservation.status === "completed") {
-          const receipt = readReceipts(trusted.directory, receiptPoisoned).find((value: any) => validReceipt(value, expected) && value.reference === reservation.reference);
+          const receipt = readReceipts(trusted.directory).find((value: any) => validReceipt(value, expected) && value.reference === reservation.reference);
           if (!receipt) throw new MediationError("budget_state_unavailable"); inspection = receiptInspection(receipt.answer);
         } else {
           if (reservation.status !== "reserved") throw new MediationError("budget_state_unavailable");
-          try { if (process.env.PI_FIXTURE_APPEND_THROW === "1") throw new Error(); pi.appendEntry("anvil-observation-mediation/v1", { source_id: expected.source, observation_id: expected.observation, entry_id: expected.entry_id, image_part: item.partIndex, question_digest: expected.question_digest, image_digest: expected.image_digest, crop_id: expected.crop, model_id: expected.model, profile_id: expected.profile }); console.error(`PI_IMAGE_MEDIATION_BINDING:${JSON.stringify({ source: expected.source })}`); if (process.env.PI_FIXTURE_CANCEL_BEFORE_VISION === "1") ctx.abort(); inspection = await inspect(ctx, item.source, item.part, expected, reservation.deadline_ms); } catch (error) { ledger.finish(reservation.operation, { outcome: error instanceof MediationError && error.code === "cancelled" ? "cancelled" : "failed" }); throw error; }
+          try {
+            if (process.env.PI_FIXTURE_APPEND_THROW === "1") throw new Error();
+            if (trusted.mappingDelayMs) await new Promise((resolve) => setTimeout(resolve, trusted.mappingDelayMs));
+            pi.appendEntry("anvil-observation-mediation/v1", { source_id: expected.source, observation_id: expected.observation, entry_id: expected.entry_id, image_part: item.partIndex, question_digest: expected.question_digest, image_digest: expected.image_digest, crop_id: expected.crop, model_id: expected.model, profile_id: expected.profile });
+            console.error(`PI_IMAGE_MEDIATION_BINDING:${JSON.stringify({ source: expected.source })}`);
+            if (process.env.PI_FIXTURE_CANCEL_BEFORE_VISION === "1") ctx.abort();
+            const remainingMs = reservation.deadline_ms - Math.ceil(performance.now() - reservedAt);
+            if (remainingMs <= 0) throw new MediationError("deadline_exceeded");
+            inspection = await inspect(ctx, item.source, item.part, expected, remainingMs);
+          } catch (error) { ledger.finish(reservation.operation, { outcome: error instanceof MediationError && error.code === "cancelled" ? "cancelled" : "failed" }); throw error; }
           const finished = ledger.finish(reservation.operation, { outcome: "success" });
-          try { const fail = process.env.PI_FIXTURE_RECEIPT_FAIL_PHASE === "directory_sync" && !receiptFailureUsed; receiptFailureUsed ||= fail; publishReceipt(trusted.directory, receiptFor(expected, finished.reference, JSON.stringify(inspection)), fail); } catch (error) { receiptPoisoned = true; throw error; }
+          try { const phase = !receiptFailureUsed ? process.env.PI_FIXTURE_RECEIPT_FAIL_PHASE : undefined; receiptFailureUsed ||= Boolean(phase); publishReceipt(trusted.directory, receiptFor(expected, finished.reference, JSON.stringify(inspection)), phase); } catch (error) { throw error; }
         }
         replacements.set(`${item.messageIndex}:${item.partIndex}`, primaryEnvelope(expected, inspection));
       }

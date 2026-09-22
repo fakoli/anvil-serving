@@ -61,6 +61,8 @@ export async function startFakeVision() {
       if (parsed.fixture_mode === "inconclusive") inspection = { ...inspection, status: "inconclusive", facts: [], reason: "fixture could not determine the result" };
       if (parsed.fixture_mode === "unsupported") inspection = { ...inspection, status: "unsupported", facts: [], reason: "fixture profile does not support this inspection" };
       if (parsed.fixture_mode === "media") inspection.facts = [{ ...inspection.facts[0], text: "data:image/png;base64,forbidden" }];
+      if (parsed.fixture_mode === "reason_media") inspection = { ...inspection, status: "inconclusive", facts: [], reason: "data:image/png;base64,forbidden" };
+      if (parsed.fixture_mode === "body_hang") { response.writeHead(200, { "content-type": "application/json" }); response.write("{"); return; }
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify(inspection));
     } catch (error) {
