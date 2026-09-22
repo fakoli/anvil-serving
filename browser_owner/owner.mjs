@@ -260,7 +260,7 @@ function inventoryFor(root, maxEntities) {
       if (part.nodeType === Node.ELEMENT_NODE && part.matches(restrictedSelector)) { restricted = true; continue; }
       if (part.nodeType !== Node.TEXT_NODE) continue;
       if (part.parentElement?.closest(restrictedSelector)) { restricted = true; continue; }
-      if (!label && value.length < textLimit) {
+      if (!label) {
         if (part.data.length > textLimit - value.length) oversized = true;
         value += part.data.slice(0, textLimit - value.length);
       }
