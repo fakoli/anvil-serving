@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { createJevConsumer, evaluateJev } from "./jev_consumer.mjs";
 
 export class OwnerError extends Error { constructor(code) { super(code); this.code = code; } }
 const fail = (code) => { throw new OwnerError(code); };
@@ -17,7 +18,7 @@ async function dispose(record) {
   record.handles.clear();
 }
 
-export async function createBrowserOwner({ launch, documentOrigins, subresourceOrigins = documentOrigins, limits = {}, clock = defaultClock }) {
+export async function createBrowserOwner({ launch, documentOrigins, subresourceOrigins = documentOrigins, limits = {}, clock = defaultClock, jev = { enabled: false } }) {
   if (typeof launch !== "function") fail("invalid_launcher");
   const names = new Set(["maxObservations", "maxEntities", "maxMetadata", "maxBytes", "maxPng", "maxPixels", "ttl", "timeout"]);
   if (!limits || typeof limits !== "object" || Array.isArray(limits) || Object.getPrototypeOf(limits) !== Object.prototype || typeof clock !== "function" || Object.keys(limits).some((name) => !names.has(name))) fail("invalid_limits");
@@ -41,7 +42,7 @@ export async function createBrowserOwner({ launch, documentOrigins, subresourceO
   try {
   browser = await launch();
   context = await browser.newContext({ serviceWorkers: "block", acceptDownloads: false });
-  const state = { browser, context, page: null, cdp: null, policy, clock, closed: false, browserClosed: false, session: null, sessionId: randomUUID(), generation: 1, queue: [], running: false, records: new Map(), bytes: 0, navigation: 0 };
+  const state = { browser, context, page: null, cdp: null, policy, jev: createJevConsumer(jev, documents), clock, closed: false, browserClosed: false, session: null, sessionId: randomUUID(), generation: 1, queue: [], running: false, records: new Map(), bytes: 0, navigation: 0 };
   state.invalidate = () => { const records = [...state.records.values()]; state.records.clear(); state.bytes = 0; for (const record of records) void dispose(record); };
   await context.route("**/*", async (route) => {
     let url; try { url = new URL(route.request().url()); } catch { return route.abort(); }
@@ -75,7 +76,7 @@ class Owner {
   session() { if (this.#state.session) fail("session_already_open"); const session = new Facade(this.#state); this.#state.session = session; return session; }
   async close() {
     const state = this.#state;
-    if (!state.closed) { state.closed = true; state.generation += 1; state.invalidate(); state.current?.reject(new OwnerError("owner_closed")); for (const item of state.queue.splice(0)) item.reject(new OwnerError("owner_closed")); await state.context.close().catch(() => {}); }
+    if (!state.closed) { state.closed = true; state.generation += 1; state.invalidate(); state.current?.abort(); state.current?.reject(new OwnerError("owner_closed")); for (const item of state.queue.splice(0)) item.reject(new OwnerError("owner_closed")); await state.context.close().catch(() => {}); }
     if (!state.browserClosed) { state.browserClosed = true; await state.browser.close().catch(() => {}); }
   }
 }
@@ -92,17 +93,19 @@ class Facade {
     const generation = state.generation;
     const pending = new Promise((resolve, reject) => {
       let settled = false, timer, item;
+      const controller = new AbortController();
       const onAbort = () => {
+        controller.abort();
         settle(reject, new OwnerError("cancelled"));
         if (state.current === item) void this.revoke();
         else state.queue.splice(state.queue.indexOf(item), 1);
       };
       const settle = (callback, value) => { if (!settled) { settled = true; clearTimeout(timer); signal?.removeEventListener("abort", onAbort); callback(value); } };
-      item = { reject: (error) => settle(reject, error), run: async () => {
+      item = { abort: () => controller.abort(), reject: (error) => settle(reject, error), run: async () => {
         if (settled) return;
-        try { const result = await work(generation); if (generation !== state.generation || state.closed || settled) fail("revoked"); settle(resolve, result); } catch (error) { settle(reject, error instanceof OwnerError ? error : new OwnerError("owner_failed")); }
+        try { const result = await work(generation, controller.signal); if (generation !== state.generation || state.closed || settled) fail("revoked"); settle(resolve, result); } catch (error) { settle(reject, error instanceof OwnerError ? error : new OwnerError("owner_failed")); }
       }};
-      timer = setTimeout(() => { settle(reject, new OwnerError("deadline_exceeded")); void this.revoke(); }, timeout);
+      timer = setTimeout(() => { controller.abort(); settle(reject, new OwnerError("deadline_exceeded")); void this.revoke(); }, timeout);
       signal?.addEventListener("abort", onAbort, { once: true });
       state.queue.push(item); this.#pump();
     });
@@ -111,7 +114,7 @@ class Facade {
     return pending;
   }
   #pump() { const state = this.#state; if (state.running) return; const item = state.queue.shift(); if (!item) return; state.running = true; state.current = item; item.run().finally(() => { state.current = null; state.running = false; this.#pump(); }); }
-  async revoke() { const state = this.#state; if (state.closed) return; state.closed = true; state.generation += 1; state.invalidate(); state.current?.reject(new OwnerError("revoked")); for (const item of state.queue.splice(0)) item.reject(new OwnerError("revoked")); await state.context.close().catch(() => {}); }
+  async revoke() { const state = this.#state; if (state.closed) return; state.closed = true; state.generation += 1; state.invalidate(); state.current?.abort(); state.current?.reject(new OwnerError("revoked")); for (const item of state.queue.splice(0)) item.reject(new OwnerError("revoked")); await state.context.close().catch(() => {}); }
   navigate(url, options = {}) {
     return this.#enqueue(async () => {
       if (!options || Object.keys(options).length) fail("invalid_navigation_request");
@@ -158,7 +161,7 @@ class Facade {
         entities: entities.map(publicEntity),
       };
       const metadata = bytes(JSON.stringify(receipt)); if (metadata > state.policy.maxMetadata) fail("metadata_too_large");
-      const record = { id: observationId, receipt, handles, image: png, digest: createHash("sha256").update(png).digest("hex"), bytes: png.length + metadata, epochs: end, lastRead: state.clock(), state };
+      const record = { id: observationId, origin: new URL(state.page.url()).origin, receipt, handles, image: png, digest: createHash("sha256").update(png).digest("hex"), bytes: png.length + metadata, epochs: end, lastRead: state.clock(), state };
       if (record.bytes > state.policy.maxBytes) fail("retention_exhausted");
       if (generation !== state.generation || state.closed) fail("revoked");
       while (state.records.size >= state.policy.maxObservations || state.bytes + record.bytes > state.policy.maxBytes) { const oldest = state.records.values().next().value; if (!oldest) fail("retention_exhausted"); state.records.delete(oldest.id); state.bytes -= oldest.bytes; await dispose(oldest); }
@@ -178,8 +181,8 @@ class Facade {
     return { handle, temporary: false };
   }
   async release(observationId) { return this.#enqueue(async () => { if (typeof observationId !== "string") fail("unknown_observation"); const record = this.#state.records.get(observationId); if (!record) fail("unknown_observation"); await this.#delete(record); }); }
-  resolve(observationId, entityId) {
-    return this.#enqueue(async () => {
+  resolve(observationId, entityId) { return this.#enqueue(() => this.#resolve(observationId, entityId)); }
+  async #resolve(observationId, entityId) {
       if (typeof observationId !== "string" || typeof entityId !== "string") fail("unknown_observation");
       const record = this.#state.records.get(observationId); if (!record) fail("unknown_observation");
       if (this.#expired(record)) { await this.#delete(record); fail("expired_observation"); }
@@ -189,7 +192,35 @@ class Facade {
       const facts = await call(this.#state, handle, predicateFacts).catch(() => null);
       if (!facts || !facts.exists || !sameEpoch(record.epochs, await snapshot(this.#state))) fail("stale_observation");
       record.lastRead = this.#state.clock(); return clone(publicEntity({ ...entity, ...facts }));
-    });
+  }
+  jevResolve(observationId, options = {}) {
+    if (!options || Object.keys(options).some((key) => key !== "signal")) return Promise.reject(new OwnerError("invalid_jev_request"));
+    return this.#enqueue((generation, signal) => this.#jevResolve(observationId, generation, signal), { signal: options.signal });
+  }
+  async #jevResolve(observationId, generation, signal) {
+    const state = this.#state;
+    if (!state.jev.enabled) return { outcome: "disabled" };
+    if (typeof observationId !== "string") return { outcome: "unknown_observation" };
+    const record = state.records.get(observationId);
+    if (!record || record.id !== observationId || record.receipt.observation_id !== observationId) return { outcome: "unknown_observation" };
+    if (this.#expired(record)) { await this.#delete(record); return { outcome: "expired_observation" }; }
+    let origin; try { origin = new URL(state.page.url()).origin; } catch { return { outcome: "stale_observation" }; }
+    if (record.origin !== state.jev.origin || origin !== state.jev.origin || !sameEpoch(record.epochs, await snapshot(state))) return { outcome: "export_denied" };
+    const receipt = record.receipt;
+    if (!receipt.entities.length) return { outcome: "empty_inventory" };
+    const coverage = coverageFor(receipt.coverage);
+    if (coverage.state !== "complete" && receipt.require_unique) return { outcome: "incomplete_coverage" };
+    const projection = { schema: "browser-element-resolution-projection/v1", request_id: receipt.request_id, observation_id: receipt.observation_id, source: "dom", target: clone(receipt.target), scope: clone(receipt.scope), coverage, entities: receipt.entities.map(projectionEntity) };
+    const result = await evaluateJev(state.jev, projection, signal);
+    if (generation !== state.generation || state.closed || signal.aborted || result.outcome === "cancelled") return { outcome: "cancelled" };
+    if (result.outcome !== "selection") return result;
+    if (result.selection === "NO_MATCH_IN_CANDIDATES") return coverage.state === "complete" ? { outcome: "no_match_inconclusive" } : { outcome: "incomplete_coverage" };
+    if (result.selection === "AMBIGUOUS") return { outcome: "ambiguous" };
+    if (result.selection === "NEEDS_VISUAL_EVIDENCE") return { outcome: "needs_visual_evidence" };
+    try {
+      const entity = await this.#resolve(observationId, result.selection);
+      return { outcome: "matched", advisory: true, selection: result.selection, entity };
+    } catch (error) { if (error instanceof OwnerError) return { outcome: error.code }; throw error; }
   }
   #expired(record) { return this.#state.clock() - record.lastRead > this.#state.policy.ttl; }
   async #delete(record) { this.#state.records.delete(record.id); this.#state.bytes -= record.bytes; await dispose(record); }
@@ -295,3 +326,13 @@ async function snapshot(state) {
 }
 
 function sameEpoch(left, right) { return left.navigation === right.navigation && left.dom === right.dom && left.viewport === right.viewport && left.width === right.width && left.height === right.height && left.scroll_x === right.scroll_x && left.scroll_y === right.scroll_y && left.overflow === right.overflow && JSON.stringify(left.values) === JSON.stringify(right.values); }
+
+function coverageFor(coverage) {
+  if (coverage.complete) return { state: "complete", reason: null };
+  const reason = [coverage.loading && "loading", coverage.omitted_count && `omitted:${coverage.omitted_count}`, ...coverage.unsupported_regions, ...coverage.untraversed_regions].filter(Boolean).join(",").slice(0, 256);
+  return { state: "partial", reason: reason || "owner_incomplete" };
+}
+
+function projectionEntity(entity) {
+  return { id: entity.id, role: entity.role, text: entity.text, nearby: entity.nearby, state: { exists: entity.exists, in_viewport: entity.in_viewport, occluded: entity.occluded, enabled: entity.enabled }, predicate_reasons: clone(entity.predicate_reasons) };
+}
