@@ -38,3 +38,14 @@ test("consumer waits for SIGTERM-resistant children before cleanup", { timeout: 
   const overflow = join(directory, "anvil-overflow"); await writeFile(overflow, `#!${process.execPath}\nconst fs=require('node:fs');const input=process.argv[6];fs.writeFileSync('child.json',JSON.stringify({pid:process.pid,input,exists:fs.existsSync(input)}));process.on('SIGTERM',()=>fs.writeFileSync('term','seen'));process.stdout.write('x'.repeat(70000));setInterval(()=>{},1000);`); await chmod(overflow, 0o700);
   await rm(join(directory, "child.json")); await rm(join(directory, "term")); assert.deepEqual(await evaluateJev(direct(1_000, overflow), projection), { outcome: "provider_unavailable" }); await inspect();
 });
+
+test("consumer waits for an exited leader's SIGTERM-resistant descendant", { timeout: 10_000 }, async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "anvil-jev-group-")); t.after(() => rm(directory, { recursive: true, force: true }));
+  const executable = join(directory, "anvil-parent"), child = join(directory, "child.json"), late = join(directory, "late");
+  const descendant = `const fs=require('node:fs');const input=process.argv[1];fs.writeFileSync(${JSON.stringify(child)},JSON.stringify({pid:process.pid,input,exists:fs.existsSync(input)}));process.on('SIGTERM',()=>fs.writeFileSync(${JSON.stringify(join(directory, "term"))},'seen'));setTimeout(()=>fs.writeFileSync(${JSON.stringify(late)},'late'),250);setInterval(()=>{},1000);`;
+  await writeFile(executable, `#!${process.execPath}\nconst {spawn}=require('node:child_process');spawn(process.execPath,['-e',${JSON.stringify(descendant)},process.argv[6]],{stdio:'ignore'});setInterval(()=>{},1000);`); await chmod(executable, 0o700);
+  const direct = (timeout) => createJevConsumer({ enabled: true, origin, fields, executable, cwd: directory, timeout }, new Set([origin]));
+  const inspect = async () => { const retained = JSON.parse(await readFile(child, "utf8")); assert.equal(retained.exists, true); assert.equal(existsSync(retained.input), false); assert.throws(() => process.kill(retained.pid, 0), { code: "ESRCH" }); assert.equal(await readFile(join(directory, "term"), "utf8"), "seen"); assert.equal(existsSync(late), false); };
+  assert.deepEqual(await evaluateJev(direct(100), projection), { outcome: "timeout" }); await new Promise((resolve) => setTimeout(resolve, 180)); await inspect();
+  await rm(child); await rm(join(directory, "term")); const controller = new AbortController(); const cancelling = evaluateJev(direct(1_000), projection, controller.signal); while (!existsSync(child)) await new Promise((resolve) => setTimeout(resolve, 5)); controller.abort(); assert.deepEqual(await cancelling, { outcome: "cancelled" }); await new Promise((resolve) => setTimeout(resolve, 280)); await inspect();
+});

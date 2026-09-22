@@ -52,20 +52,29 @@ function argumentsFor(input) { return ["jev", "evaluate", "browser_element_resol
 
 function run(executable, args, cwd, timeout, signal) {
   return new Promise((resolve) => {
-    let child, done = false, timer, grace, reason, stdout = "", stderr = "", overflow = false;
-    const finish = (result) => { if (!done) { done = true; clearTimeout(timer); clearTimeout(grace); signal?.removeEventListener("abort", cancel); resolve(result); } };
+    let child, done = false, closed = false, escalated = false, code, timer, grace, cleanup, reason, stdout = "", stderr = "", overflow = false;
+    const finish = (result) => { if (!done) { done = true; clearTimeout(timer); clearTimeout(grace); clearTimeout(cleanup); signal?.removeEventListener("abort", cancel); resolve(result); } };
     const signalChild = (name) => {
       if (!child?.pid) return;
       try { if (process.platform !== "win32") process.kill(-child.pid, name); else child.kill(name); } catch { child.kill(name); }
     };
-    const stop = (next) => { if (reason) return; reason = next; signalChild("SIGTERM"); grace = setTimeout(() => signalChild("SIGKILL"), 100); };
+    const groupAlive = () => {
+      if (process.platform === "win32" || !child?.pid) return false;
+      try { process.kill(-child.pid, 0); return true; } catch (error) { return error?.code !== "ESRCH"; }
+    };
+    const stopped = () => {
+      if (!closed || done) return;
+      if (groupAlive()) { cleanup = setTimeout(stopped, 10); return; }
+      finish({ code, stdout, overflow, timeout: reason === "timeout", cancelled: reason === "cancelled" });
+    };
+    const stop = (next) => { if (reason) return; reason = next; signalChild("SIGTERM"); grace = setTimeout(() => { escalated = true; signalChild("SIGKILL"); stopped(); }, 100); };
     const cancel = () => stop("cancelled");
     try {
       child = spawn(executable, args, { cwd, shell: false, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
       const collect = (name) => (chunk) => { if (overflow) return; const text = chunk.toString("utf8"); if (byteLength(stdout) + byteLength(stderr) + byteLength(text) > outputLimit) { overflow = true; stop("overflow"); } else if (name === "stdout") stdout += text; else stderr += text; };
       child.stdout.on("data", collect("stdout")); child.stderr.on("data", collect("stderr"));
-      child.on("error", () => finish({ code: null, stdout, overflow }));
-      child.on("close", (code) => finish({ code, stdout, overflow, timeout: reason === "timeout", cancelled: reason === "cancelled" }));
+      child.on("error", () => { closed = true; code = null; if (reason) stopped(); else finish({ code, stdout, overflow }); });
+      child.on("close", (result) => { closed = true; code = result; if (reason) { if (escalated) stopped(); } else finish({ code, stdout, overflow }); });
       timer = setTimeout(() => stop("timeout"), timeout);
       if (signal?.aborted) cancel(); else signal?.addEventListener("abort", cancel, { once: true });
     } catch { finish({ code: null, stdout, overflow }); }

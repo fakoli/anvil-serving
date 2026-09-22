@@ -250,23 +250,22 @@ function inventoryFor(root, maxEntities) {
   if (document.styleSheets.length) unsupported.add("cssom");
   const text = (node) => {
     const restrictedSelector = "input,textarea,select,option,script,style,template,noscript";
-    const isRestricted = (candidate) => /^(input|textarea|select|option)$/i.test(candidate.tagName) || Boolean(candidate.textContent);
-    const restrictedDescendant = (node.matches(restrictedSelector) && isRestricted(node)) || [...node.querySelectorAll(restrictedSelector)].some(isRestricted);
     const label = node.getAttribute("aria-label") || node.getAttribute("alt") || "";
-    if (label) return { value: label.slice(0, textLimit), restricted: restrictedDescendant, oversized: label.length > textLimit || new TextEncoder().encode(label).byteLength > textLimit };
-    let value = "", seen = 0, oversized = false, restricted = restrictedDescendant;
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: (part) => {
-      if (part.parentElement?.closest("input,textarea,select,option,script,style,template,noscript")) { restricted = true; return NodeFilter.FILTER_REJECT; }
-      return NodeFilter.FILTER_ACCEPT;
-    }});
-    while (value.length < textLimit && seen < 256) {
+    let value = "", seen = 0, oversized = label.length > textLimit || new TextEncoder().encode(label).byteLength > textLimit, restricted = node.matches(restrictedSelector);
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    while (seen < 256) {
       const part = walker.nextNode();
       if (!part) break;
-      if (part.data.length > textLimit - value.length) oversized = true;
-      value += part.data.slice(0, textLimit - value.length);
       seen += 1;
+      if (part.nodeType === Node.ELEMENT_NODE && part.matches(restrictedSelector)) { restricted = true; continue; }
+      if (part.nodeType !== Node.TEXT_NODE) continue;
+      if (part.parentElement?.closest(restrictedSelector)) { restricted = true; continue; }
+      if (!label && value.length < textLimit) {
+        if (part.data.length > textLimit - value.length) oversized = true;
+        value += part.data.slice(0, textLimit - value.length);
+      }
     }
-    return { value: value.trim(), restricted, oversized: oversized || seen >= 256 || Boolean(walker.nextNode()) };
+    return { value: (label || value).trim().slice(0, textLimit), restricted, capped: seen >= 256, oversized: oversized || (!label && seen >= 256) };
   };
   const facts = (node) => { const rect = node.getBoundingClientRect(), visible = Boolean(rect.width && rect.height && rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth), point = rect.width && rect.height ? document.elementFromPoint(rect.left + Math.min(1, rect.width / 2), rect.top + Math.min(1, rect.height / 2)) : null, interactive = /^(button|input|select|textarea|a)$/i.test(node.tagName) || ["button", "link", "checkbox", "combobox", "textbox"].includes(node.getAttribute("role")), disabled = node.matches(":disabled") || node.getAttribute("aria-disabled") === "true"; return { exists: true, in_viewport: visible, occluded: point ? !(node === point || node.contains(point)) : null, enabled: interactive ? !disabled : null, predicate_reasons: { exists: null, in_viewport: null, occluded: point ? null : "unknown", enabled: interactive ? null : "not_applicable" } }; };
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
@@ -282,6 +281,7 @@ function inventoryFor(root, maxEntities) {
     if (role.length > 128 || new TextEncoder().encode(role).byteLength > 128) { omitted += 1; untraversed.add("role_too_large"); node = walker.nextNode(); continue; }
     const label = text(node);
     if (label.restricted) untraversed.add("restricted_text");
+    if (label.capped) untraversed.add("text_visit_cap");
     if (label.oversized || new TextEncoder().encode(label.value).byteLength > textLimit || entities.length >= maxEntities) {
       omitted += 1;
       if (entities.length >= maxEntities) untraversed.add("entity_cap");
