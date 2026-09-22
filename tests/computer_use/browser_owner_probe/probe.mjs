@@ -25,9 +25,10 @@ function pngDimensions(image) {
 }
 
 class ReadOnlyBrowserOwner {
-  constructor(page, cdp) {
+  constructor(page, cdp, fixtureUrl) {
     this.page = page;
     this.cdp = cdp;
+    this.fixtureUrl = fixtureUrl;
     this.tail = Promise.resolve();
     this.inFlight = 0;
     this.maxInFlight = 0;
@@ -36,13 +37,19 @@ class ReadOnlyBrowserOwner {
     this.observations = new Map();
   }
 
-  capture(label) {
-    const queued = this.tail.then(() => this.#capture(label));
+  async navigate(url) {
+    if (url !== this.fixtureUrl) throw new Error("navigation_not_permitted");
+    await this.page.goto(url, { waitUntil: "load" });
+    if (this.page.url() !== this.fixtureUrl) throw new Error("navigation_not_permitted");
+  }
+
+  capture(label, beforeScreenshot) {
+    const queued = this.tail.then(() => this.#capture(label, beforeScreenshot));
     this.tail = queued.catch(() => {});
     return queued;
   }
 
-  async #capture(label) {
+  async #capture(label, beforeScreenshot) {
     this.inFlight += 1;
     this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
     this.sequence.push(label);
@@ -51,8 +58,8 @@ class ReadOnlyBrowserOwner {
         epoch: window.__fixtureEpoch,
         url: location.href,
       }));
-      if (!start.url.startsWith("file:")) throw new Error("navigation_not_permitted");
-      const entities = await this.page.locator("[data-owner-entity]").evaluateAll((nodes) =>
+      if (start.url !== this.fixtureUrl) throw new Error("navigation_not_permitted");
+      const entities = await this.page.locator("#owner-scope [data-owner-entity]").evaluateAll((nodes) =>
         nodes.map((node, index) => {
           const tag = node.tagName.toLowerCase();
           const disabled = node.matches(":disabled") || node.getAttribute("aria-disabled") === "true";
@@ -67,17 +74,18 @@ class ReadOnlyBrowserOwner {
           };
         }),
       );
-      const accessibility = await this.cdp.send("Accessibility.getFullAXTree");
-      const image = await this.page.screenshot({ type: "png", fullPage: true });
-      const end = await this.page.evaluate(() => window.__fixtureEpoch);
-      // ponytail: page-wide epoch; track relevant subtrees if unrelated rerenders cause excess reacquisition.
-      if (start.epoch !== end) throw new Error("incoherent_capture");
       const bindings = new Map();
       for (const entity of entities) {
         const handle = await this.page.locator(`#${entity.domId}`).elementHandle();
         if (!handle) throw new Error("missing_dom_binding");
         bindings.set(entity.id, handle);
       }
+      if (beforeScreenshot) await beforeScreenshot(this.page);
+      const accessibility = await this.cdp.send("Accessibility.getFullAXTree");
+      const image = await this.page.locator("#owner-scope").screenshot({ type: "png" });
+      const end = await this.page.evaluate(() => window.__fixtureEpoch);
+      // ponytail: page-wide epoch; track relevant subtrees if unrelated rerenders cause excess reacquisition.
+      if (start.epoch !== end) throw new Error("incoherent_capture");
       const observationId = `observation-${++this.nextObservation}`;
       const receipt = {
         observationId,
@@ -85,8 +93,10 @@ class ReadOnlyBrowserOwner {
         package: { name: "playwright", version: packageVersion, transport: "Playwright Chromium CDP over a local process" },
         navigation: { permitted: true, source: "synthetic file fixture" },
         scope: {
-          kind: "document",
-          coverage: { complete: true, omittedCount: 0, searchedRegions: ["document"], unsupportedRegions: [] },
+          kind: "subtree",
+          root: "synthetic-fixture-main",
+          filter: "marked_entities",
+          coverage: { complete: true, omittedCount: 0, searchedRegions: ["synthetic-fixture-main"], unsupportedRegions: [] },
         },
         entities,
         inventory: {
@@ -142,11 +152,16 @@ async function main() {
   const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true, args: ["--disable-gpu"] });
   try {
     const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
-    await page.goto(pathToFileURL(fixture).href, { waitUntil: "load" });
     const cdp = await page.context().newCDPSession(page);
-    const owner = new ReadOnlyBrowserOwner(page, cdp);
+    const fixtureUrl = pathToFileURL(fixture).href;
+    const owner = new ReadOnlyBrowserOwner(page, cdp, fixtureUrl);
+    await assert.rejects(owner.navigate(pathToFileURL(join(here, "other-fixture.html")).href), /navigation_not_permitted/);
+    assert.equal(page.url(), "about:blank");
+    await owner.navigate(fixtureUrl);
     const first = await owner.capture("initial");
     assert.equal(first.navigation.permitted, true);
+    assert.equal(first.scope.kind, "subtree");
+    assert.equal(first.scope.filter, "marked_entities");
     assert.equal(first.scope.coverage.complete, true);
     assert.equal(first.entities.length, 3);
     assert.equal(first.inventory.disabledCount, 1);
@@ -156,9 +171,15 @@ async function main() {
     assert.ok(first.screenshot.dimensions.width > 0 && first.screenshot.dimensions.height > 0);
     assert.equal(await owner.resolve(first.observationId, "entity-1").then((entity) => entity.label), "Capture report");
 
+    await assert.rejects(
+      owner.capture("incoherent", (ownerPage) => ownerPage.evaluate(() => {
+        document.querySelector("#owner-scope").append(document.createElement("span"));
+      })),
+      /incoherent_capture/,
+    );
     await Promise.all([owner.capture("serialized-a"), owner.capture("serialized-b")]);
     assert.equal(owner.maxInFlight, 1, "owner must serialize captures");
-    assert.deepEqual(owner.sequence, ["initial", "serialized-a", "serialized-b"]);
+    assert.deepEqual(owner.sequence, ["initial", "incoherent", "serialized-a", "serialized-b"]);
 
     await page.evaluate(() => {
       const oldNode = document.querySelector("#capture");
