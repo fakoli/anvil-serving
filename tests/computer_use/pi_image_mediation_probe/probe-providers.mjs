@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { startFakePrimary } from "./fake-primary.mjs";
 import { startFakeVision } from "./fake-vision.mjs";
 
-const watchdog = setTimeout(() => { throw new Error("provider fixture probe timed out"); }, 1_000);
+const watchdog = setTimeout(() => { throw new Error("provider fixture probe timed out"); }, process.argv.includes("--force-shutdown-hang") ? 1_000 : 10_000);
 
 async function assertBoundedShutdown(start, model) {
   const fixture = await start();
@@ -66,7 +66,7 @@ try {
   if (process.argv.includes("--force-shutdown-hang")) await new Promise(() => {});
   process.stdout.write("pi provider fixtures: ok\n");
 } finally {
-  clearTimeout(watchdog);
   await Promise.all([primary.close(), vision.close()]);
   await rm(sessionDir, { recursive: true, force: true });
+  clearTimeout(watchdog);
 }
