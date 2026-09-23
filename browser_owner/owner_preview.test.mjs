@@ -76,3 +76,13 @@ test("preview freezes viewer argv, cleans partial writes, cancels setup, and kil
   try { const pending = pausedSession.preview(pausedObservation.observation_id); await gate; await paused.close(); release(); await assert.rejects(pending, error("owner_closed")); } finally { proto.writeFile = original; await paused.close(); }
   assert.equal(existsSync(fake.attest), true); process.env.PREVIEW_MARKER = marker; const descendants = await owner(site.origin, { viewer: [fake.file], runtimeRoot: dir }); const descendantSession = descendants.session(); await descendantSession.navigate(`${site.origin}/`); const descendantObservation = await descendantSession.capture({ ...request, request_id: "descendant" }); await descendantSession.preview(descendantObservation.observation_id); await new Promise((resolve) => setTimeout(resolve, 180)); await descendants.close(); assert.equal(existsSync(marker), false, "viewer descendant outlived preview cleanup");
 });
+
+
+test("missing viewer fails promptly and leaves no preview PNG", { timeout: 15_000 }, async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "owner-preview-")), site = await fixture(), core = await owner(site.origin, { viewer: [join(dir, "missing-viewer")], runtimeRoot: dir, timeout: 25 }), session = core.session();
+  t.after(async () => { await core.close(); await site.close(); await rm(dir, { recursive: true, force: true }); });
+  await session.navigate(`${site.origin}/`); const observation = await session.capture(request);
+  await assert.rejects(Promise.race([session.preview(observation.observation_id), new Promise((_, reject) => setTimeout(() => reject(new Error("preview_hung")), 500))]), error("preview_failed"));
+  assert.equal((await readdir(join(dir, previewNamespace))).filter((name) => name.endsWith(".png")).length, 0);
+  await Promise.race([core.close(), new Promise((_, reject) => setTimeout(() => reject(new Error("close_hung")), 500))]);
+});

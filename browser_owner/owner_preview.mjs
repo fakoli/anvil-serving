@@ -38,9 +38,10 @@ export function createOwnerPreview(policy, { ttl }) {
         if (cancelled) fail("owner_closed"); await validate(); if (cancelled) fail("owner_closed");
         await new Promise((resolve, reject) => {
           try { child = spawn(argv[0], [...argv.slice(1), path], { shell: false, stdio: "ignore", windowsHide: true, detached: true }); } catch { reject(new Error("preview_failed")); return; }
-          childExit = new Promise((done) => child.once("exit", (code, signal) => { done(); code === 0 && !signal ? resolve() : reject(new Error("preview_failed")); }));
+          let done; childExit = new Promise((resolveExit) => { done = resolveExit; });
+          child.once("exit", (code, signal) => { done(); code === 0 && !signal ? resolve() : reject(new Error("preview_failed")); });
           timer = setTimeout(() => { reject(new Error("preview_timeout")); try { kill(); } catch {} }, timeout);
-          child.once("error", () => reject(new Error("preview_failed")));
+          child.once("error", () => { done(); reject(new Error("preview_failed")); });
         });
         await validate(); if (cancelled) fail("owner_closed");
       } catch (error) { fail(cancelled ? "owner_closed" : (error?.code || (error?.message === "preview_timeout" ? "preview_timeout" : "preview_failed")));
