@@ -1,0 +1,47 @@
+{
+  "schema": "operator-workflow/v1",
+  "observed_at": "2026-09-23T13:04:31.101619+00:00",
+  "reviewer": "independent GPT-5.6 Sol high",
+  "gate_state": "failed_qualification_gate",
+  "findings": [
+    {
+      "task": "django__django-13512",
+      "classification": "model_failure",
+      "finding": "Patch fixed form JSON serialization but omitted admin display serialization. test_prepare_value passed; test_json_display_for_field still escaped Unicode."
+    },
+    {
+      "task": "pylint-dev__pylint-8898",
+      "classification": "model_failure",
+      "finding": "Custom regex-list parser accepts malformed (foo{1,}, foo{1,3}}) instead of raising SystemExit. Trajectory deselected the failing test and incorrectly called it obsolete."
+    },
+    {
+      "task": "django__django-13512",
+      "classification": "upstream_harness_report_discrepancy",
+      "finding": "Official JSON also labels test_label_for_field failed, but raw output shows it passed. Actual admin Unicode failure independently keeps this task unresolved; no campaign score change."
+    }
+  ],
+  "comparison": {
+    "incumbent": {
+      "submitted": 5,
+      "resolved": 3,
+      "attempted": 5
+    },
+    "qwen_medium": {
+      "submitted": 5,
+      "resolved": 4,
+      "attempted": 5
+    },
+    "glm_spark": {
+      "submitted": 3,
+      "resolved": 2,
+      "attempted": 5
+    }
+  },
+  "limitations": [
+    "Same frozen five-task selection and budgets; not full SWE-bench or general coding superiority.",
+    "All incumbent patches applied and tests completed; no environment/transport failure caused the misses."
+  ],
+  "human_gate_required": false,
+  "promoted": false,
+  "disposition": "Retain bounded scores. Required qualification gates failed; no promotion."
+}

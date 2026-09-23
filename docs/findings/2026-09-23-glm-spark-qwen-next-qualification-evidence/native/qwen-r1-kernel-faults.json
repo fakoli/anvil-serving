@@ -1,0 +1,8 @@
+{
+  "events": [
+    "2026-09-23T03:28:24-07:00 primary-node kernel: python invoked oom-killer: gfp_mask=0x100cca(GFP_HIGHUSER_MOVABLE), order=0, oom_score_adj=0",
+    "2026-09-23T03:28:24-07:00 primary-node kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=docker-example-container-qwen-r1.scope,mems_allowed=0,oom_memcg=/system.slice/docker-example-container-qwen-r1.scope,task_memcg=/system.slice/docker-example-container-qwen-r1.scope,task=VLLM::Worker_TP,pid=305542,uid=0",
+    "2026-09-23T03:28:24-07:00 primary-node kernel: Memory cgroup out of memory: Killed process 305542 (VLLM::Worker_TP) total-vm:1304673824kB, anon-rss:3710844kB, file-rss:14139852kB, shmem-rss:14705172kB, UID:0 pgtables:41376kB oom_score_adj:0"
+  ],
+  "classification": "CONSTRAINT_MEMCG in candidate container, not host-wide OOM; no matching GPU Xid"
+}

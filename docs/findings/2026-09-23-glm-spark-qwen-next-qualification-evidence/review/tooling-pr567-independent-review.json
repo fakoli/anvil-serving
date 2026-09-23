@@ -1,0 +1,19 @@
+{
+  "schema": "operator-workflow/v1",
+  "request": "Current-head aggregate PR567 review",
+  "reviewer": "GPT-5.6 Sol high",
+  "head": "e419280a3e9caeac1366c759421467fc1d6111bd",
+  "base_observed": "4d0bbebb",
+  "gate_state": "code_review_accepted",
+  "findings": [],
+  "evidence": [
+    "Six-file diff exact; oracle7explicitcontracts retainstrict tool/order/JSON checks.",
+    "SWE LimitsExceeded priority preserved withofficialgrading; missingtrajectoryremainsharnessfailure.",
+    "Digestmatchingpreservesregistryportsandexactdigest.",
+    "Cleanheadfull9559pass53skip316.43s;focused55pass;ruff,CLIaudit,wheelbuild+cleansmoke pass."
+  ],
+  "merge_condition": "All currentmerge-refrequiredCIchecks pass; fourplatformtests pendingat review.",
+  "human_gate_required": false,
+  "promoted": false,
+  "reviewed_at": "2026-09-23T11:46:00.019675+00:00"
+}

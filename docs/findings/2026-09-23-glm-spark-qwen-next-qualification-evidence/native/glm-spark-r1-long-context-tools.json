@@ -1,0 +1,106 @@
+{
+  "base_url": "http://127.0.0.1:39131/v1",
+  "budget": {
+    "max_completion_tokens": 6144,
+    "reasoning_headroom_tokens": 4096,
+    "visible_answer_tokens": 2048
+  },
+  "checks": [
+    "needle",
+    "long-tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-spark-lil-tp2-nospec-327k-r1",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 209,
+      "reasoning_excerpt": "The user is asking for the launch code that was embedded in the repetitive text. I can see it clearly stated: \"IMPORTANT: The launch code is ZEBRA-42917-QUARTZ.\"\n\nThe user wants me to reply with ONLY ",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": 53,
+      "seconds": 37.3,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 66,
+        "completion_tokens_details": {
+          "reasoning_tokens": 53
+        },
+        "prompt_tokens": 255795,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 255861
+      },
+      "validation_detail": "needle present"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "measured_prompt_tokens": 118293,
+      "minimum_prompt_tokens": 100000,
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_tokens": 0,
+      "requested_context_tokens": 140000,
+      "seconds": 15.642,
+      "test": "long-tools",
+      "usage": {
+        "completion_tokens": 13,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "prompt_tokens": 118293,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 118306
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "37.3s ctx~310000 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=209 reasoning_tokens=53",
+      "name": "needle @ ~310000 ctx",
+      "passed": true
+    },
+    {
+      "detail": "15.6s measured_prompt=118293 valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=0 reasoning_tokens=0",
+      "name": "tool call after >=100K prompt (target 140000)",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

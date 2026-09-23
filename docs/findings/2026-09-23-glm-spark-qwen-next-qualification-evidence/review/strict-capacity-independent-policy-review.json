@@ -1,0 +1,14 @@
+{
+  "schema": "operator-workflow/v1",
+  "reviewer": "GPT-5.6 Sol high",
+  "request": "Strict capacity128 failure disposition",
+  "gate_state": "hold",
+  "findings": [
+    "Required exact-countcell remains promotionblocking underfrozencampaign evenifothercoding/media/contextchecks pass.",
+    "Failures do not proveinferiorgeneralcoding; failedcells cannotcontributethroughput.",
+    "Ifincumbentalsosharedfailure,retainbaseline; noasymmetricrejectionorretroactivegateamendment.",
+    "Supportednewcontrols allowedbutmustpassfailingandnearbygates followedbyfullfrozenqualification."
+  ],
+  "human_gate_required": false,
+  "promoted": false
+}

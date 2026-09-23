@@ -1,0 +1,22 @@
+{
+  "schema": "operator-workflow/v1",
+  "reviewer": "GPT-5.6 Sol high",
+  "gate_state": "evidence_review_complete",
+  "artifact": "glm-spark-r1-swe-scout5-native.json",
+  "overall": {
+    "attempted": 5,
+    "submitted": 3,
+    "resolved": 2,
+    "overall_rate": 0.4,
+    "graded_rate": 0.6666666666666666
+  },
+  "findings": [
+    "Sphinx: 60 calls, patch around turn26, continued tests and new reproduction branches; no convergence to required submission, empty patch.",
+    "Pylint: 60 calls, patch ready, repeated reconsideration and risky stash/apply verification displaced required submission, empty patch.",
+    "No tool exception_info; endpoint and shell operations continued normally. Runner and grader exit0; LimitsExceeded are model termination failures.",
+    "Django submitted but failed official grading; Sympy and Xarray resolved.",
+    "Per-instance timing/tokens null. GLM agent stage overlapped capped offline tests, exclude from controlled latency comparison."
+  ],
+  "promotion_eligible": false,
+  "reviewed_at": "2026-09-23T12:06:17.680614+00:00"
+}

@@ -1,0 +1,22 @@
+{
+  "at": "2026-09-23T11:08:10.766753+00:00",
+  "status": "startup passed, not qualified",
+  "model_gpu_gib_per_rank": 85.33,
+  "weight_load_seconds": 40.76,
+  "visual_offload_gib_observed_per_rank": 0.54,
+  "kv_reserved_gib_per_rank": 3.5,
+  "kv_tokens_reported": 714938,
+  "configured_max_context": 327680,
+  "reported_full_context_concurrency": 2.18,
+  "configured_max_num_seqs": 4,
+  "graph_capture_gib_per_rank": 0.09,
+  "host_peak_bytes": 55834574848,
+  "cgroup_max_events": 12765,
+  "cgroup_oom_events": 0,
+  "cgroup_oom_kill_events": 0,
+  "startup_warnings": [
+    "host cgroup reclamation at ceiling",
+    "GPU allocator mapping OOM warning during warm-up before autotuning; engine recovered and reachedhealth; retain logs, do not conflate with servecrash"
+  ],
+  "speculation": "confirmed speculative_config=None"
+}

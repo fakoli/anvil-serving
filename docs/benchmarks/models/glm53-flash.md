@@ -33,6 +33,10 @@
 
 ### Review narrative
 
+#### 2026-09-23 — Spark challenger and incumbent strict-capacity control
+
+The Spark NVFP4 challenger resolved 2/5 attempted frozen SWE tasks; three were submitted/graded and two attempts hit the 60-call limit. It reached 16/18 Oracle7 and failed strict C4 capacity 0/16. The restored incumbent resolved 3/5 and reached Oracle7 18/18, but also failed strict C4 0/16; 14 captures had wrong counts and two were length-truncated. All failed strict cells are performance-ineligible. Retain r10 APC: retention does not claim the incumbent passed this new gate. No route, client, catalog, or dashboard change followed. [Evidence](../../findings/2026-09-23-glm-spark-qwen-next-qualification.md).
+
 #### 2026-09-17 — mixed 3.5-bpw startup failure
 
 **Status:** failed `compatibility-only` attempt; rejected configuration, `no-promotion`. **Measured:** one managed load of pinned mixed K3/K4 EXL3 on dual RTX PRO 6000 Max-Q, TP2/DCP1, NVFP4 KV, configured 327,680 tokens/C1. Host RAM and 8 GiB swap exhausted before readiness; the desktop session shut down. **Limits:** zero candidate inference requests; no quality, context, latency, or GPU-fit conclusion. Retry requires host-memory containment and loader diagnosis. The exact selected 4-bpw baseline was restored and passed direct and routed short checks. **Evidence:** [dated finding and raw excerpts](../../findings/2026-09-17-glm53-mixed35-startup.md).

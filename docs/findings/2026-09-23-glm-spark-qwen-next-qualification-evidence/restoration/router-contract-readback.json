@@ -1,0 +1,47 @@
+{
+  "observed_at": "2026-09-23T13:24:55.531433+00:00",
+  "primary": {
+    "object": "model_capabilities",
+    "id": "primary-local",
+    "aliases": [
+      "llm.auxiliary",
+      "llm.primary",
+      "llm.voice",
+      "vision.general",
+      "vision.ocr"
+    ],
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+    "context_limit_tokens": 327680,
+    "tools": {
+      "supported": true
+    },
+    "modalities": [
+      "image",
+      "text"
+    ],
+    "thinking": {
+      "supported": true,
+      "default": "enabled",
+      "caller_override": false
+    },
+    "compat": null,
+    "limits": {
+      "max_output_tokens": 65536,
+      "images_per_request": 8,
+      "video_per_request": 0
+    },
+    "readiness": {
+      "loaded": true,
+      "state": "ready",
+      "reason": "identity_passed"
+    }
+  },
+  "effective_config_sha256_before_readmit": "6e546b77bd978c8937d54c294aaabd714cc7cf97c65465065c6391fff2370ac6",
+  "effective_config_sha256_after_readmit": "6e546b77bd978c8937d54c294aaabd714cc7cf97c65465065c6391fff2370ac6",
+  "models_and_capabilities_equal_before_after": true,
+  "initial_campaign_router_fingerprint": "not retained; no router configuration edits performed",
+  "raw_private_source_sha256": {
+    "router-before-final-readmit.json": "4e05ac335bee7f67ba0c2f6411783a2fa833b0b0801b98a4dc0108006aa91b3a",
+    "router-after-final-readmit.json": "d4ec6757a97de1d0f3858825b5573ba80f2f84952080a38d7b4bc13754a1e227"
+  }
+}

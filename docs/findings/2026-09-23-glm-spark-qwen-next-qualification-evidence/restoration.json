@@ -1,0 +1,80 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-23-next-model-qualification",
+  "status": "restored",
+  "mutation_required": true,
+  "completed_at": "2026-09-23T13:27:31.756313+00:00",
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "restoration/start.json",
+      "restoration/mode-before-switch.json",
+      "configuration/baseline-recipe.toml"
+    ],
+    "registry_sha256": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105",
+    "router_config_fingerprint_at_campaign_start": null
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "restoration/restored-recipe-status.json",
+      "restoration/restored-mode-status.json",
+      "restoration/router-final-readmit.json",
+      "restoration/restored-router-transition.json",
+      "restoration/restored-routed-preflight.json"
+    ],
+    "selected_profile": "GLM EXL3 r10 APC, 327680 context, C4, eight images, no speculation",
+    "router_state": "admitting",
+    "promoted": false
+  },
+  "differences": [
+    "Incumbent container recreated from byte-identical starting recipe; same container retained throughout final baseline trials and acceptance.",
+    "Retained candidate model/image/runtime caches; both challenger containers unloaded.",
+    "GPU memory after workload:95509/95489 MiB versus94505/94505 at start, deltas1004/984 MiB. Only two incumbent GPU workers observed; exact allocation cause not isolated. No claim of byte-identical allocator state."
+  ],
+  "post_run_checks": [
+    {
+      "name": "exact_recipe_model_image_identity",
+      "passed": true
+    },
+    {
+      "name": "mode_and_gpu_ownership_match_start",
+      "passed": true
+    },
+    {
+      "name": "direct_health_and_served_identity",
+      "passed": true
+    },
+    {
+      "name": "authenticated_primary_smoke_and_json",
+      "passed": true
+    },
+    {
+      "name": "shared_memory_no_files_or_blockers",
+      "passed": true
+    },
+    {
+      "name": "router_metadata_and_effective_hash_unchanged_across_readmission",
+      "passed": true
+    },
+    {
+      "name": "kernel_Xid_OOM_window_from_1218UTC",
+      "passed": true
+    },
+    {
+      "name": "incumbent_container_OOM_kill_counter_zero",
+      "passed": true
+    }
+  ],
+  "verified": true,
+  "verification_limits": [
+    "Initial full router effective-config fingerprint was not retained; the campaign made no route-file edits. Readback confirms original selected model and limits, and identical pre/post-readmission configuration hash and metadata.",
+    "GPU occupancy differs after workload; owner/configuration restoration is verified, not allocator-byte restoration.",
+    "No repeated cold-start or long-duration production soak claim."
+  ],
+  "client_convergence": {
+    "status": "not-applicable",
+    "reason": "No alias backing identity, advertised contract or client/provider configuration changed."
+  },
+  "not_applicable_reason": null
+}

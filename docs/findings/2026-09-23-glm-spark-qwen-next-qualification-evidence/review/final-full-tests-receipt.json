@@ -1,0 +1,39 @@
+{
+  "command": [
+    "/srv/example/product/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/",
+    "-x",
+    "-q",
+    "-o",
+    "cache_dir=/srv/example/operator/evidence/2026-09-23-next-model-qualification/pytest-cache-final",
+    "--basetemp",
+    "/tmp/anvil-serving-pytest-vw29yhlw"
+  ],
+  "cwd": "/srv/example/product",
+  "exit_code": 0,
+  "finished_at": "2026-09-23T11:44:41.375667+00:00",
+  "interpreter": "/srv/example/product/.venv/bin/python",
+  "pytest_args": [
+    "tests/",
+    "-x",
+    "-q",
+    "-o",
+    "cache_dir=/srv/example/operator/evidence/2026-09-23-next-model-qualification/pytest-cache-final"
+  ],
+  "run_id": "fe143de2-a2a4-43d0-8e0f-f8a5a5472622",
+  "schema": "anvil-serving.test-run/v1",
+  "source": {
+    "dirty": false,
+    "head": "e419280a3e9caeac1366c759421467fc1d6111bd",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source_after": {
+    "dirty": false,
+    "head": "e419280a3e9caeac1366c759421467fc1d6111bd",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "started_at": "2026-09-23T11:39:24.517936+00:00",
+  "state": "passed"
+}

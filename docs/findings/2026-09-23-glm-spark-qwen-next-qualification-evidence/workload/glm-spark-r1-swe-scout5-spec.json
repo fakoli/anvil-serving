@@ -1,0 +1,52 @@
+{
+  "schema": "anvil-serving.benchmark-job-spec/v1",
+  "run_id": "next-glm-spark-r1-swe-scout5",
+  "ownership_id": "next-model-20260923",
+  "suite": "swe",
+  "profile": "scout",
+  "endpoint": {
+    "base_url": "http://127.0.0.1:39131/v1",
+    "model": "glm53-spark-lil-tp2-nospec-327k-r1"
+  },
+  "worker": {
+    "id": "local-benchmark"
+  },
+  "submitted_at": "2026-09-23T11:35:45.980821+00:00",
+  "timeout_s": 21600,
+  "parameters": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "thinking_mode": "enabled",
+    "temperature": 1.0,
+    "model_host_id": "local-benchmark",
+    "client_topology": "co-resident",
+    "identities": {
+      "model": {
+        "repository": "local-inference-lab/GLM-5.3-Flash-NVFP4-Spark",
+        "revision": "a608241037e4c2565356bff7ca293f2133888f88",
+        "served_name": "glm53-spark-lil-tp2-nospec-327k-r1"
+      },
+      "runtime": {
+        "engine_revision": "cff8aebfeb73de96c97b4c5a0550c5a49f27451c",
+        "image_id": "sha256:e5a9b3239e5986f49abc89b0a973a181ce43c2d64e3bc6ad7d2119ee85bfe9df"
+      },
+      "hardware": {
+        "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+        "vram_mib_per_gpu": 97887
+      },
+      "context": {
+        "configured_tokens": 327680
+      },
+      "concurrency": {
+        "requests": 1,
+        "workers": 1
+      }
+    },
+    "top_p": 0.95
+  }
+}

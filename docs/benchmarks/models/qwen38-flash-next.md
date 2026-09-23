@@ -29,6 +29,10 @@
 
 ### Review narrative
 
+#### 2026-09-23 — pinned NVFP4 candidate did not pass strict capacity
+
+The medium profile resolved 4/5 frozen SWE tasks and passed Oracle7 18/18, but its strict C4 repair population was 0/4, so it is performance-ineligible and unqualified. Separate default-xhigh diagnostics passed preflight 26/26, vision 4/4, and a 412,589-token retrieval; those results do not qualify medium. No matched no-MTP control or controlled speed result exists. [Evidence](../../findings/2026-09-23-glm-spark-qwen-next-qualification.md).
+
 #### 2026-09-22 — NVFP4 TP2 with C4 configured admission; serial C1 replacement scout did not advance
 
 The distinct RadixArk NVFP4 recipe used TP2 with C4 configured admission; its

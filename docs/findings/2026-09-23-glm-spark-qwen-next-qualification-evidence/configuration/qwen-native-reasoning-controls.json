@@ -1,0 +1,15 @@
+{
+  "observed_at": "2026-09-23T11:05:32.877678+00:00",
+  "model_revision": "7c4f1bc1a2d6847e0cbc01ac6b823f00251de8dd",
+  "template_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+  "template_source": "verified local pinned HF snapshot; public HF blob unavailable through web tool",
+  "default_effort": "xhigh",
+  "supported_efforts": [
+    "xhigh",
+    "medium",
+    "low"
+  ],
+  "enable_thinking": "true by default; top-level reasoning_effort automatically activates thinking via runtime build_chat_params",
+  "runtime_source": "https://github.com/local-inference-lab/vllm/blob/622912b9b2cfd04784da5b0dfc69ce8aa5aee02d/vllm/entrypoints/openai/chat_completion/protocol.py#L609",
+  "next_experiment": "same recipe, explicitly medium reasoning, matched tasks/caps; requires fresh qualification and independent coding results; current production GLM-specific reasoning overrides cannot be copied blindly"
+}

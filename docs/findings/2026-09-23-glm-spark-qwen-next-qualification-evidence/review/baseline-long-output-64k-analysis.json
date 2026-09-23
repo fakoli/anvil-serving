@@ -1,0 +1,32 @@
+{
+  "source": "baseline-long-output-64k.json",
+  "sha256": "c7fcf161b54145301617d63a486ed5c7aadbd1ce2bd637f5f69efb4e922d0690",
+  "completion_tokens": 65536,
+  "reasoning_tokens": null,
+  "visible_tokens": null,
+  "visible_tokens_note": "Native endpoint did not report reasoning-token split; no character-based token estimate.",
+  "visible_characters": 70772,
+  "reasoning_characters": 201286,
+  "finish_reason": "length",
+  "latency_ms": 883622.4872500006,
+  "chapters": [
+    "requirements-and-contracts",
+    "workspace-layout",
+    "lexer",
+    "parser",
+    "expression-evaluator",
+    "type-validation",
+    "dependency-graph",
+    "cycle-detection",
+    "scheduler",
+    "retry-policy",
+    "cancellation",
+    "event-journal"
+  ],
+  "complete_python_blocks": 11,
+  "syntax_errors": [],
+  "repeated_long_paragraphs": [],
+  "completion_marker": false,
+  "limitations": "Syntax/repetition screening only; no generated code executed, no integrated correctness claim.",
+  "completion_marker_literal": "GUIDE-COMPLETE-24"
+}

@@ -1,0 +1,10 @@
+{
+  "pr": "https://github.com/example/anvil-serving/pull/567",
+  "state": "MERGED",
+  "head": "e419280a3e9caeac1366c759421467fc1d6111bd",
+  "merged_at": "2026-09-23T12:01:14Z",
+  "merge_commit": "e15e5221971bc1110e95ddf0d04e981694e2fbd6",
+  "all_checks": "success except expected Pages deployment skipped",
+  "review_receipt": "tooling-pr567-independent-review.json",
+  "local_checkout_unchanged": true
+}

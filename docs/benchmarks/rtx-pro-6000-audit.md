@@ -35,6 +35,10 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-09-22-model-shortlist-validation-evidence/publication-summary.md`
 (dual-Max-Q Qwen TP2 with C4 configured admission; all retained direct and agentic checks are serial C1, and fixture/scorer defects block agentic planning comparison);
 
+`docs/findings/2026-09-23-glm-spark-qwen-next-qualification.md`;
+`docs/findings/2026-09-23-glm-spark-qwen-next-qualification-evidence/README.md`
+(dual-Max-Q frozen qualification and restored incumbent control; candidate and incumbent strict-C4 failures are retained as performance-ineligible, with no promotion);
+
 `docs/findings/2026-09-13-intelligence-context-scout.md`
 (selected GLM text-primary qualification; post-promotion context and client acceptance retained; fresh boot/reboot tests unrun);
 

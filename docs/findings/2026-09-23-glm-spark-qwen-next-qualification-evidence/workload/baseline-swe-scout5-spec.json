@@ -1,0 +1,52 @@
+{
+  "schema": "anvil-serving.benchmark-job-spec/v1",
+  "run_id": "next-glm-swe-scout5",
+  "ownership_id": "next-model-20260923",
+  "suite": "swe",
+  "profile": "scout",
+  "endpoint": {
+    "base_url": "http://127.0.0.1:39126/v1",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+  },
+  "worker": {
+    "id": "local-benchmark"
+  },
+  "submitted_at": "2026-09-23T11:25:44.311920+00:00",
+  "timeout_s": 21600,
+  "parameters": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "thinking_mode": "enabled",
+    "temperature": 1.0,
+    "model_host_id": "local-benchmark",
+    "client_topology": "co-resident",
+    "identities": {
+      "model": {
+        "repository": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+        "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+        "served_name": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+      },
+      "runtime": {
+        "engine_revision": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+        "image_id": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692"
+      },
+      "hardware": {
+        "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+        "vram_mib_per_gpu": 97887
+      },
+      "context": {
+        "configured_tokens": 327680
+      },
+      "concurrency": {
+        "requests": 1,
+        "workers": 1
+      }
+    },
+    "top_p": 0.95
+  }
+}

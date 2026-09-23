@@ -1,0 +1,9 @@
+{
+  "version": "anvil-serving 1.3.0",
+  "repository_revision": "e419280a3e9caeac1366c759421467fc1d6111bd",
+  "module": "anvil_serving/cli.py",
+  "verified_worktree_source": true,
+  "invocation": "python -m anvil_serving.cli",
+  "observed_at": "2026-09-23T12:10:35.248545+00:00",
+  "agentic_source_sha256": "ebd5ac6b1a4d25d19b08ab5eee84c70bcf5187d354e00afaeeb0e77cc1ac139b"
+}
