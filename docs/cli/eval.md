@@ -107,6 +107,7 @@ run; it is not a reduced remote smoke.
 | `eval benchmark agentic` | Run deterministic agentic and recovery jobs. |
 | `eval benchmark swe` | Run pinned mini-SWE-agent plus the official SWE-bench grader. |
 | `eval benchmark capacity` | Measure throughput and latency. |
+| `eval benchmark stability` | Replay bounded mixed-load scenarios with separate runtime, coverage and retrieval evidence. |
 | `eval benchmark multimodal` | Run a hash-pinned image/video/mixed-media corpus. |
 | `eval benchmark quality` | Run a repeatable quality suite with retained evidence. |
 | `eval benchmark external` | Import and compare advisory external benchmark priors. |
@@ -118,6 +119,11 @@ raise only the recorded corpus ceilings with `--max-images-per-request N`
 (maximum 64) and `--max-videos-per-request N` (maximum 16). Both selected
 ceilings are retained in the evidence artifact; they do not change the serving
 recipe or router policy.
+
+For crash reproduction and controlled configuration investigation, see
+[Runtime stability](../benchmarks/runtime-stability.md). Its scenario-file
+workflow previews offline and requires `--confirm` before generating traffic.
+Native stability artifacts are diagnostic and never enter throughput rankings.
 
 Capacity runs use a deterministic context plan by default. Keep the seed,
 request count, concurrency, context policy, completion cap, and endpoint recipe

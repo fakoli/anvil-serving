@@ -326,6 +326,19 @@ def commands() -> CommandNode:
                 "benchmark",
                 "Run or import benchmark evidence.",
                 children=(
+                    _resource_node(
+                        "stability",
+                        "Replay bounded mixed-load scenarios and retain coverage and failure evidence.",
+                        "anvil_serving.benchmarking.stability",
+                        role="evaluation",
+                        options=CONFIRM_OPTIONS + (
+                            _option("--scenario", summary="Reviewed stability scenario JSON.", value_name="PATH"),
+                            _option("--output", summary="New private evidence artifact.", value_name="PATH"),
+                        ),
+                        mutation="mutate",
+                        argv_prefix=(),
+                        forward_confirm_flag=True,
+                    ),
                     _benchmark_suite(
                         "context", "Measure retrieval and reasoning degradation by context depth."
                     ),

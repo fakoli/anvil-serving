@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import os
+import re
 from collections import Counter
 from pathlib import Path
 import sys
@@ -306,6 +307,8 @@ def _numeric_shape_errors(groups: Sequence[tuple[str, Mapping[str, Any], Sequenc
 
 def _artifact_kind(raw: Mapping[str, Any]) -> str | None:
     schema = _text(raw.get("schema")) or ""
+    if schema == "anvil-serving.stability/v1":
+        return "stability"
     if schema == "anvil-serving.benchmark-evidence/v1":
         return "external_prior" if raw.get("evidence_kind") == "external_prior" else "campaign"
     benchmark_schema = schema in BENCHMARK_SCHEMAS
@@ -336,6 +339,69 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
     kind = _artifact_kind(raw)
     if kind is None:
         raise EvidenceError(f"JSON file is not recognized benchmark evidence: {artifact_path}")
+
+    if kind == "stability":
+        from .benchmarking.stability import expected_identity, fingerprint, validate_scenario
+
+        scenario = _mapping(raw.get("scenario"))
+        config = _mapping(scenario.get("configuration"))
+        errors = []
+        try:
+            validate_scenario(raw.get("scenario"))
+            if raw.get("scenario_sha256") != fingerprint(scenario):
+                errors.append("scenario hash mismatch")
+        except ValueError as exc:
+            errors.append(str(exc))
+        rounds = _list(raw.get("rounds"))
+        if (raw.get("promoted") is not False or raw.get("performance_eligible") is not False
+                or raw.get("scheduler_overlap") != "not_measured"):
+            errors.append("stability evidence cannot claim promotion, performance eligibility or scheduler proof")
+        if raw.get("status") == "completed" and (
+                len(rounds) != scenario.get("rounds") or not rounds
+                or any(raw.get(gate) is not True or any(_mapping(r).get(gate) is not True for r in rounds)
+                       for gate in ("runtime_passed", "coverage_passed", "retrieval_passed"))):
+            errors.append("completed claim lacks all requested rounds and gates")
+        if raw.get("status") == "completed" and not errors:
+            identities = _list(raw.get("identity_observations"))
+            phases = ["start"] + [f"round_{i}_{phase}" for i in range(len(rounds)) for phase in ("before", "after")]
+            expected = expected_identity(scenario)
+            container_id = _mapping(identities[0]).get("container_id") if identities else None
+            if (raw.get("configuration_identity") != "managed_container_observed_labels_matched"
+                    or not isinstance(container_id, str) or not re.fullmatch(r"[0-9a-f]{64}", container_id)
+                    or [_mapping(row).get("phase") for row in identities] != phases
+                    or any(_mapping(row).get("container_id") != container_id
+                           or any(_mapping(row).get(k) != v for k, v in expected.items()) for row in identities)):
+                errors.append("completed claim lacks matched managed identity observations")
+            for pair in rounds:
+                pair = _mapping(pair)
+                if any(_mapping(pair.get(role)).get("status") != "completed"
+                       or _mapping(pair.get(role)).get("usage_verified") is not True
+                       or _mapping(pair.get(role)).get("retrieval_passed") is not True
+                       for role in ("anchor", "contender")):
+                    errors.append("completed claim lacks request-level gates")
+                if scenario["mode"] == "overlap":
+                    times = [_mapping(pair.get("anchor")).get("first_output"),
+                             _mapping(pair.get("contender")).get("response_headers_at"),
+                             pair.get("overlap_output_at"), _mapping(pair.get("contender")).get("first_output")]
+                    if (pair.get("anchor_output_during_contender_response_wait") is not True
+                            or any(type(t) not in (int, float) or not math.isfinite(t) for t in times)
+                            or times != sorted(times)):
+                        errors.append("completed claim lacks client overlap timing")
+        return {
+            "path": _text(artifact_path.as_posix()), "schema": _text(raw.get("schema")),
+            "kind": kind, "model": _text(scenario.get("model")),
+            "recorded_at": _text(raw.get("started_at")), "config_id": _text(config.get("label")),
+            "completeness": _text(raw.get("status")), "quality": {"suites": []},
+            "protocol": {"repetitions": _number(scenario.get("rounds"))},
+            "stability": {"rounds_observed": len(rounds),
+                          "mode": _text(scenario.get("mode")),
+                          "prefix_mode": _text(scenario.get("prefix_mode")),
+                          **{gate: _bool(raw.get(gate)) for gate in
+                             ("runtime_passed", "coverage_passed", "retrieval_passed")}},
+            "performance_eligible": False, "promotion_authorized": False,
+            "validation_errors": errors,
+            "warnings": ["diagnostic exposure only; no throughput ranking or scheduler-overlap proof"],
+        }
 
     if kind in {"campaign", "external_prior"}:
         from .benchmarking.artifacts import (
@@ -770,6 +836,8 @@ def compare_summaries(summaries: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     unknown_fields: dict[str, list[str]] = {}
     for summary in summaries:
         required = required_by_kind.get(str(summary.get("kind")), ())
+        if summary.get("kind") == "stability":
+            unknown_fields.setdefault("stability.performance_comparison_not_supported", []).append(str(summary.get("path")))
         for field in required:
             if _value_at(summary, field.split(".")) is None:
                 unknown_fields.setdefault(field, []).append(str(summary.get("path")))
@@ -965,7 +1033,7 @@ def _parser() -> argparse.ArgumentParser:
     list_parser.add_argument("--suite")
     list_parser.add_argument(
         "--kind", choices=(
-            "benchmark", "capacity", "quality", "speculative", "campaign", "external_prior"
+            "benchmark", "capacity", "quality", "speculative", "campaign", "external_prior", "stability"
         )
     )
     list_parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)

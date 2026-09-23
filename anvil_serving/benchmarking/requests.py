@@ -351,7 +351,7 @@ def detect_max_model_len(base, model=None, key=None, timeout=15):
 
 def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
                 chat_template_kwargs=None, reasoning_effort=None, temperature=None,
-                top_p=None):
+                top_p=None, observer=None, deadline_seconds=None):
     url = base.rstrip("/") + "/chat/completions"
     body = build_body(
         model, prompt, max_tokens, chat_template_kwargs, reasoning_effort,
@@ -373,7 +373,18 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
     done_event_observed = False
     usage = None
     with urllib.request.urlopen(req, timeout=timeout) as response:
-        for raw in response:
+        if observer is not None:
+            observer("response", {
+                "request_id": next((response.headers.get(name) for name in
+                    ("x-request-id", "x-anvil-request-id", "request-id")
+                    if response.headers.get(name)), None),
+            })
+        lines = iter(lambda: response.readline(1024 * 1024 + 1), b"") if observer is not None else response
+        for raw in lines:
+            if observer is not None and len(raw) > 1024 * 1024:
+                raise ValueError("SSE line exceeds 1 MiB")
+            if deadline_seconds is not None and time.perf_counter() - t0 > deadline_seconds:
+                raise TimeoutError("stream exceeded its wall-clock deadline")
             line = raw.decode("utf-8", "replace").strip()
             if not line.startswith("data:"):
                 continue
@@ -384,20 +395,37 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
             try:
                 chunk = json.loads(data)
             except Exception:
+                if observer is not None:
+                    observer("malformed", {})
                 continue
+            if observer is not None and (not isinstance(chunk, dict)
+                    or not isinstance(chunk.get("choices", []), list)):
+                raise ValueError("malformed SSE chunk")
+            if observer is not None and chunk.get("usage") is not None and not isinstance(chunk["usage"], dict):
+                raise ValueError("malformed SSE usage")
             if chunk.get("usage"):
                 usage = chunk["usage"]
             for choice in chunk.get("choices", []):
+                if observer is not None and (not isinstance(choice, dict)
+                        or not isinstance(choice.get("delta", {}), dict)):
+                    raise ValueError("malformed SSE choice or delta")
                 finish_reason = choice.get("finish_reason")
                 if finish_reason is not None:
                     finish_reasons.append(str(finish_reason)[:128])
                 delta = choice.get("delta", {})
                 reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                content = delta.get("content")
+                if observer is not None and any(v is not None and not isinstance(v, str) for v in
+                        (content, delta.get("reasoning_content"), delta.get("reasoning"))):
+                    raise ValueError("non-string SSE content or reasoning")
+                if observer is not None and len(finish_reasons) > 256:
+                    raise ValueError("too many finish reasons")
                 if reasoning:
                     if time_to_first_output is None:
                         time_to_first_output = time.perf_counter() - t0
                     reasoning_chunks += 1
-                content = delta.get("content")
+                if observer is not None and (content or reasoning):
+                    observer("delta", {"content": content, "reasoning": reasoning})
                 if content:
                     if time_to_first_output is None:
                         time_to_first_output = time.perf_counter() - t0

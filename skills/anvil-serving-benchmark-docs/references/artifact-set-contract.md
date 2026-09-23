@@ -46,6 +46,7 @@ schema into another.
 |---|---|
 | Durable context, agentic, and SWE jobs | `anvil-serving.benchmark-evidence/v1` |
 | Capacity and throughput | `anvil-serving.benchmark/v1` |
+| Runtime replay and mixed-load coverage | `anvil-serving.stability/v1` (diagnostic; not performance ranking) |
 | Image, video, and mixed-modality | `multimodal-benchmark-evidence/v1` |
 | Bounded voice pipeline | `voice-benchmark-evidence/v1` |
 | Multi-sample STT | `stt-benchmark-evidence/v1` |
