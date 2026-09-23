@@ -597,6 +597,7 @@ def test_bridge_install_updates_origin_converges_and_preserves_old_artifact_on_b
         entry.write_text("built=" + str(kwargs["parent_origin"]), encoding="utf-8")
         return pi_web._bridge_install_descriptor(
             parent_origin=str(kwargs["parent_origin"]), artifact_sha256=pi_web._artifact_tree_sha256(target),
+            version=str(kwargs["version"]),
         )
 
     monkeypatch.setattr(pi_web, "_build_staged_bridge", staged)
@@ -760,6 +761,7 @@ def test_bridge_readiness_failure_restores_the_previous_artifact_and_manifest(
         entry.write_text("built=" + str(kwargs["parent_origin"]), encoding="utf-8")
         return pi_web._bridge_install_descriptor(
             parent_origin=str(kwargs["parent_origin"]), artifact_sha256=pi_web._artifact_tree_sha256(target),
+            version=str(kwargs["version"]),
         )
 
     monkeypatch.setattr(pi_web, "_build_staged_bridge", staged)
@@ -831,10 +833,11 @@ def test_bridge_snapshot_failure_prevents_promotion(
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Linux-only installer uses patch(1)")
-def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path) -> None:
+@pytest.mark.parametrize("version", ["0.9.0", "0.9.2"])
+def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path, version: str) -> None:
     """The packaged patch, rather than a dirty source checkout, supplies bridge APIs."""
-    patch = files("anvil_serving").joinpath("_pi_web_bridge", "0.9.0-host-bridge.patch")
-    assert pi_web.bridge_manifest()["patch_sha256"] == __import__("hashlib").sha256(patch.read_bytes()).hexdigest()
+    patch = files("anvil_serving").joinpath("_pi_web_bridge", f"{version}-host-bridge.patch")
+    assert pi_web.bridge_manifest(version)["patch_sha256"] == __import__("hashlib").sha256(patch.read_bytes()).hexdigest()
     source = tmp_path / "staging"
     source.mkdir()
     runtime = {
@@ -856,7 +859,7 @@ def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path) 
         target = source / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("\n".join(old_lines) + "\n", encoding="utf-8")
-    pi_web._apply_bridge_patch(source, run=subprocess.run)
+    pi_web._apply_bridge_patch(source, run=subprocess.run, version=version)
     for name in runtime:
         target = source / name
         assert target.is_file(), name
@@ -864,5 +867,11 @@ def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path) 
     bridge = (source / "lib/workbench-bridge.ts").read_text(encoding="utf-8")
     assert "sessions.length > 512" in bridge
     assert "mergeSessionLists(await listAllSessions(), getRpcSessionInfos())" in bridge
-    assert "experimental: { cpus: 2 }" in (source / "next.config.ts").read_text(encoding="utf-8")
+    next_config = (source / "next.config.ts").read_text(encoding="utf-8")
+    if version == "0.9.0":
+        assert "experimental: { cpus: 2 }" in next_config
+    else:
+        # v0.9.2 ships its own experimental block; the patch must merge into it.
+        assert "cpus: 2," in next_config
+        assert next_config.count("experimental:") == 1
     assert not (source / "lib/workbench-bridge.test.mjs").exists()
