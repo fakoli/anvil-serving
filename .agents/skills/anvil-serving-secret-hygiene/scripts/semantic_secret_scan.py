@@ -586,7 +586,19 @@ def scan_signature_snapshot(root: Path) -> dict[str, object]:
         snapshot.mkdir()
         archive = run_git(root, "archive", "--format=tar", head)
         with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
-            bundle.extractall(snapshot, filter="data")
+            # Copy only regular Git files/directories; works on every Python 3.11
+            # patch release without trusting archive links or platform paths.
+            for member in bundle:
+                target = (snapshot / member.name).resolve()
+                if (not target.is_relative_to(snapshot) or "\\" in member.name
+                        or ":" in member.name or not (member.isdir() or member.isfile())):
+                    raise ValueError("unsupported snapshot archive member")
+                if member.isdir():
+                    target.mkdir(parents=True, exist_ok=True)
+                else:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with bundle.extractfile(member) as source:
+                        target.write_bytes(source.read())
         completed = subprocess.run([
             "docker", "run", "--rm", "--network", "none",
             "--volume", f"{snapshot}:/repo:ro", next(iter(pins)),
