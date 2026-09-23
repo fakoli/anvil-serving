@@ -13,7 +13,7 @@ from .jobs import BenchmarkJobError
 
 AGENTIC_SCENARIO_SCHEMA = "anvil-serving.agentic-scenario/v1"
 AGENTIC_OBSERVATION_SCHEMA = "anvil-serving.agentic-observation/v1"
-AGENTIC_ORACLE_REVISION = "3"
+AGENTIC_ORACLE_REVISION = "4"
 SCENARIO_TYPES = frozenset({
     "planning",
     "reasoning",
@@ -322,10 +322,11 @@ def score_agentic_trace(
                     headings = [label for indent, label in matches if len(indent.expandtabs()) == depth]
                 if len(headings) > 1:
                     break
-            observed = headings if len(headings) > 1 else re.findall(
-                rf"\b({labels})\b", normalized_final
+            # The canonical inline workflow is exact; prose mentions are not steps.
+            final_passed = (
+                [item.casefold() for item in headings] == terms
+                or normalized_final == " -> ".join(terms)
             )
-            final_passed = [item.casefold() for item in observed] == terms
     elif isinstance(final, str) and isinstance(expected.get("final"), str):
         final_passed = _normalize(final) == _normalize(expected["final"])
     result_passed = isinstance(final, str) and all(marker in final for marker in markers)
