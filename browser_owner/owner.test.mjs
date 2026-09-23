@@ -7,12 +7,13 @@ import test from "node:test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
+import { createLiveBufferedTransport } from "./live_transport.mjs";
 import { OwnerError, createBrowserOwner } from "./owner.mjs";
 
 const watchdog = setTimeout(() => { process.stderr.write("browser owner test watchdog expired\n"); process.exit(1); }, 60_000);
 test.after(() => clearTimeout(watchdog));
 const executablePath = () => process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome";
-const page = (kind = "") => kind.startsWith("label-") ? `<!doctype html><button aria-label="Bounded capture">${Array.from({ length: Number(kind.slice(6)) }, () => "x<!--split-->").join("")}</button>` : kind === "empty" ? "<!doctype html><p>none</p>" : `<!doctype html><main aria-label="Synthetic fixture"><h1>Read-only report</h1><button aria-label="Capture">Capture</button><button disabled>Disabled</button>${kind === "input" || kind === "input-long" ? `<input aria-label="Value" value="${kind === "input-long" ? "x".repeat(257) : "before"}">` : ""}${kind === "private" ? '<textarea>SYNTHETIC_PRIVATE_FORM_VALUE</textarea><script>const synthetic_private_script=123;</script>' : ""}${kind === "restricted-many" ? `<button aria-label="Bounded capture">${"<script>0</script>".repeat(257)}</button>` : ""}${kind === "split-exact" || kind === "split-overflow" ? `<button>${"x".repeat(128)}<!--split-->${"x".repeat(128)}${kind === "split-overflow" ? "<!--tail-->TAIL" : ""}</button>` : ""}<section role="status">Status</section><img alt="Chart">${kind === "many" ? Array.from({ length: 70 }, (_, index) => `<button aria-label="extra-${index}">extra</button>`).join("") : ""}${kind === "oversized" ? `<div role="${"r".repeat(129)}"></div><button aria-label="${"x".repeat(257)}"></button>` : ""}${kind === "tall" ? '<div style="height: 200vh"></div>' : ""}${kind === "canvas" ? "<canvas></canvas>" : ""}${kind === "shadow" ? "<x-private></x-private>" : ""}${kind === "network" ? '<img src="/asset"><script>window.open("/popup"); new WebSocket(location.origin.replace("http", "ws") + "/socket");</script>' : ""}</main>${kind === "frame" ? '<iframe src="/"></iframe>' : ""}<script>${kind === "shadow" ? 'customElements.define("x-private", class extends HTMLElement { constructor() { super(); this.attachShadow({mode:"open"}).innerHTML="<button>private</button>"; } })' : ""}${kind === "spoof" ? 'Element.prototype.matches=()=>true; Element.prototype.getBoundingClientRect=()=>({width:1,height:1,top:0,right:1,bottom:1,left:0}); document.elementFromPoint=()=>document.body' : ""}</script>`;
+const page = (kind = "") => kind.startsWith("label-") ? `<!doctype html><button aria-label="Bounded capture">${Array.from({ length: Number(kind.slice(6)) }, () => "x<!--split-->").join("")}</button>` : kind === "empty" ? "<!doctype html><p>none</p>" : kind === "cards" ? `<!doctype html>${Array.from({ length: 23 }, (_, index) => `<button aria-label="card-${index}">card-${index}</button>`).join("")}` : kind === "cards-tail-oversized" ? `<!doctype html>${Array.from({ length: 8 }, (_, index) => `<button aria-label="card-${index}">card-${index}</button>`).join("")}<button aria-label="${"x".repeat(257)}"></button>` : `<!doctype html><main aria-label="Synthetic fixture"><h1>Read-only report</h1><button aria-label="Capture">Capture</button><button disabled>Disabled</button>${kind === "input" || kind === "input-long" ? `<input aria-label="Value" value="${kind === "input-long" ? "x".repeat(257) : "before"}">` : ""}${kind === "private" ? '<textarea>SYNTHETIC_PRIVATE_FORM_VALUE</textarea><script>const synthetic_private_script=123;</script>' : ""}${kind === "restricted-many" ? `<button aria-label="Bounded capture">${"<script>0</script>".repeat(257)}</button>` : ""}${kind === "split-exact" || kind === "split-overflow" ? `<button>${"x".repeat(128)}<!--split-->${"x".repeat(128)}${kind === "split-overflow" ? "<!--tail-->TAIL" : ""}</button>` : ""}<section role="status">Status</section><img alt="Chart">${kind === "many" ? Array.from({ length: 70 }, (_, index) => `<button aria-label="extra-${index}">extra</button>`).join("") : ""}${kind === "oversized" ? `<div role="${"r".repeat(129)}"></div><button aria-label="${"x".repeat(257)}"></button>` : ""}${kind === "tall" ? '<div style="height: 200vh"></div>' : ""}${kind === "canvas" ? "<canvas></canvas>" : ""}${kind === "shadow" ? "<x-private></x-private>" : ""}${kind === "network" ? '<img src="/asset"><script>window.open("/popup"); new WebSocket(location.origin.replace("http", "ws") + "/socket");</script>' : ""}</main>${kind === "frame" ? '<iframe src="/"></iframe>' : ""}<script>${kind === "shadow" ? 'customElements.define("x-private", class extends HTMLElement { constructor() { super(); this.attachShadow({mode:"open"}).innerHTML="<button>private</button>"; } })' : ""}${kind === "spoof" ? 'Element.prototype.matches=()=>true; Element.prototype.getBoundingClientRect=()=>({width:1,height:1,top:0,right:1,bottom:1,left:0}); document.elementFromPoint=()=>document.body' : ""}</script>`;
 const error = (code) => (value) => value instanceof OwnerError && value.code === code;
 const typed = (value) => value instanceof OwnerError;
 const captureRequest = (changes = {}) => ({
@@ -190,9 +191,35 @@ test("capture accepts only the closed widget-resolution request contract", { tim
     captureRequest({ scope: { kind: "subtree", root: "document" } }),
     captureRequest({ scope: { kind: "document", root: "caller-selector" } }),
     captureRequest({ require_unique: "yes" }),
+    captureRequest({ entity_offset: -1 }),
+    captureRequest({ entity_offset: 2048 }),
+    captureRequest({ entity_offset: 1.5 }),
     { ...captureRequest(), extra: true },
   ];
   for (const request of invalid) await assert.rejects(session.capture(request), typed);
+});
+
+test("paged captures retain fresh independent eight-entity pages without claiming a union", { timeout: 15_000 }, async (t) => {
+  const site = await fixture(), trusted = trustedPageHook(); const core = await owner(site.origin, {}, undefined, trusted.prepare); const page = await trusted.page; const session = core.session(); t.after(async () => { await core.close(); await site.close(); });
+  await session.navigate(`${site.origin}/?mode=cards`);
+  const pageAt = (entity_offset) => session.capture(captureRequest({ request_id: `page-${entity_offset}`, require_unique: false, entity_offset }));
+  const first = await pageAt(0), second = await pageAt(8), third = await pageAt(16);
+  assert.deepEqual(first.paging, { offset: 0, next_offset: 8 });
+  assert.deepEqual(second.paging, { offset: 8, next_offset: 16 });
+  assert.deepEqual(third.paging, { offset: 16, next_offset: null });
+  assert.equal(first.entities.length, 8); assert.equal(second.entities.length, 8); assert.equal(third.entities.length, 7);
+  assert.deepEqual([...first.entities, ...second.entities, ...third.entities].map((entity) => entity.text), Array.from({ length: 23 }, (_, index) => `card-${index}`));
+  assert.ok(first.coverage.omitted_count >= 15); assert.ok(second.coverage.omitted_count >= 15); assert.ok(third.coverage.omitted_count >= 16);
+  const retained = third.entities[0];
+  await page.evaluate(() => document.querySelector("button").setAttribute("data-mutation", "stale"));
+  await assert.rejects(session.resolve(third.observation_id, retained.id), error("stale_observation"));
+  const boundary = await pageAt(2047); assert.deepEqual(boundary.paging, { offset: 2047, next_offset: null }); assert.equal(boundary.entities.length, 0);
+  await session.navigate(`${site.origin}/?mode=cards-tail-oversized`);
+  const tail = await pageAt(0); assert.deepEqual(tail.paging, { offset: 0, next_offset: null }); assert.equal(tail.entities.length, 8); assert.ok(tail.coverage.omitted_count >= 1);
+  const small = await owner(site.origin, { maxEntities: 3 }); const smallSession = small.session(); t.after(() => small.close());
+  await smallSession.navigate(`${site.origin}/?mode=cards`);
+  const constrained = await smallSession.capture(captureRequest({ request_id: "page-constrained", require_unique: false, entity_offset: 0 }));
+  assert.equal(constrained.entities.length, 3); assert.deepEqual(constrained.paging, { offset: 0, next_offset: 3 });
 });
 
 test("invalid owner limits reject before launch and lower bounds remain enforced", { timeout: 15_000 }, async (t) => {
@@ -224,6 +251,17 @@ test("invalid owner limits reject before launch and lower bounds remain enforced
   const partial = await session.capture(captureRequest());
   assert.equal(partial.coverage.complete, false);
   assert.ok(partial.coverage.omitted_count > 0);
+});
+
+test("fixture continuation is loopback-only and live owners require the branded matching transport", async (t) => {
+  let launched = false;
+  const launch = async () => { launched = true; throw new Error("must_not_launch"); };
+  await assert.rejects(createBrowserOwner({ launch, documentOrigins: ["https://public.example"], subresourceOrigins: ["https://public.example"] }), error("invalid_transport_policy"));
+  await assert.rejects(createBrowserOwner({ launch, documentOrigins: ["https://public.example"], subresourceOrigins: ["https://public.example"], transport: { kind: "live_buffered", handle: async (route) => route.continue() } }), error("invalid_transport_policy"));
+  assert.equal(launched, false);
+  const live = await createLiveBufferedTransport({ documentUrls: ["https://public.example/projects"], lookup: async () => [{ address: "93.184.216.34", family: 4 }], request: () => { throw new Error("must_not_request"); } }); t.after(() => live.close());
+  await assert.rejects(createBrowserOwner({ launch, documentOrigins: ["https://other.example"], subresourceOrigins: ["https://other.example"], transport: live }), error("invalid_transport_policy"));
+  assert.equal(launched, false);
 });
 
 test("owner rejects invalid Jev policy before launch and Windows real subprocesses before allocation", async () => {
