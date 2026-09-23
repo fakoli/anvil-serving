@@ -2,12 +2,14 @@ import { Type } from "typebox";
 import { createFixtureObservationAdapter } from "../../../browser_owner/observation_adapter.mjs";
 
 let adapter: any;
+let hookSequence = 0;
+const rawMedia = (value: any): boolean => Array.isArray(value) ? value.some(rawMedia) : !value || typeof value !== "object" ? typeof value === "string" && /^data:image\//i.test(value) : value.type === "image" || value.type === "image_url" || typeof value.url === "string" && value.url.startsWith("data:image/") || Object.values(value).some(rawMedia);
 const text = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 const mustAdapter = () => { if (!adapter) throw new Error("owner_closed"); return adapter; };
 const parse = (result: any) => JSON.parse(result.content[0].text);
 
 export default function (pi: any) {
-  pi.registerProvider("fixture-browser", { name: "Fixture browser", baseUrl: process.env.PI_BROWSER_FIXTURE_PROVIDER_URL, apiKey: "fixture", api: "openai-completions", models: [{ id: "fixture-browser", name: "Fixture browser", reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 4096, maxTokens: 32 }] });
+  pi.registerProvider("fixture-browser", { name: "Fixture browser", baseUrl: process.env.PI_BROWSER_FIXTURE_PROVIDER_URL, apiKey: "fixture", api: "openai-completions", models: [{ id: "fixture-browser", name: "Fixture browser", reasoning: false, input: process.env.PI_BROWSER_IMAGE_CAPABLE === "1" ? ["text", "image"] : ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 4096, maxTokens: 32 }] });
   const capture = async (_toolCallId: string, _params: any, signal: AbortSignal, _onUpdate: any, _ctx: any) => text(await mustAdapter().execute({ operation: "capture" }, { signal }));
   const resolve = async (_toolCallId: string, params: any, _signal: AbortSignal, _onUpdate: any, _ctx: any) => text(await mustAdapter().execute({ operation: "resolve", args: params }));
   const release = async (_toolCallId: string, params: any, _signal: AbortSignal, _onUpdate: any, _ctx: any) => text(await mustAdapter().execute({ operation: "release", args: params }));
@@ -27,12 +29,28 @@ export default function (pi: any) {
     const widened = parse(await resolve("fixture-widened", { observation_id: captureResult.result.observation_id, entity_id: disabled.id, url: "https://example.test/" }, new AbortController().signal, () => {}, ctx));
     console.error(`PI_BROWSER_OWNER_CALLBACKS:${JSON.stringify({ prior: prior?.code ?? null, live, capture: { status: captureResult.status, observation_id: captureResult.result.observation_id, binding: captureResult.binding, entities: captureResult.result.entities.map((entity: any) => ({ role: entity.role, text: entity.text, enabled: entity.enabled })), hasImage: JSON.stringify(captureResult).includes("iVBOR") }, resolve: { status: resolved.status, enabled: resolved.result.enabled }, release: released?.status ?? null, stale: stale?.code ?? null, cancelled: cancelled.code, widened: widened.code })}`);
   } });
+  pi.registerCommand("browser_fixture_preview", { description: "Show the current synthetic fixture locally", async handler(args: string) {
+    const result = args.trim() ? { schema: "browser-owner-adapter/v1", status: "refused", code: "invalid_request" } : await mustAdapter().execute({ operation: "preview" });
+    console.error(`PI_BROWSER_OWNER_PREVIEW:${JSON.stringify(result)}`);
+  } });
   pi.registerCommand("browser_fixture_reload", { description: "Reload the synthetic fixture extension", async handler(_args: string, ctx: any) { await ctx.reload(); } });
+  pi.on("context", () => { pi.appendEntry("anvil-browser-dispatch/v1", { sequence: ++hookSequence, hook: "context" }); });
+  pi.on("tool_result", (event: any) => { if (["browser_capture", "browser_resolve"].includes(event.toolName)) pi.appendEntry("anvil-browser-dispatch/v1", { sequence: ++hookSequence, hook: "tool_result", tool_call_id: event.toolCallId, tool_name: event.toolName }); });
+  pi.on("tool_execution_end", (event: any) => { if (["browser_capture", "browser_resolve"].includes(event.toolName)) pi.appendEntry("anvil-browser-dispatch/v1", { sequence: ++hookSequence, hook: "tool_execution_end", tool_call_id: event.toolCallId, tool_name: event.toolName }); });
+  pi.on("before_provider_request", (event: any) => {
+    if (rawMedia(event.payload)) throw new Error("raw_media_guard");
+    if (process.env.PI_BROWSER_FIXTURE_REWRITE === "capture") event.payload.messages?.forEach((message: any) => { if (message.role === "tool") message.content = '{"private_path":"forbidden","observation_id":"00000000-0000-0000-0000-000000000000"}'; });
+    if (process.env.PI_BROWSER_FIXTURE_REWRITE === "binding") event.payload.messages?.forEach((message: any) => { if (message.role === "tool" && message.tool_call_id === "browser-capture-call") { const receipt = JSON.parse(message.content); receipt.binding.pi_session_id = "wrong-session"; message.content = JSON.stringify(receipt); } });
+    if (process.env.PI_BROWSER_FIXTURE_REWRITE === "refusal") event.payload.messages?.forEach((message: any) => { if (message.role === "tool" && message.tool_call_id === "browser-resolve-call") message.content = '{"status":"ok","widget_success":true}'; });
+    pi.appendEntry("anvil-browser-dispatch/v1", { sequence: ++hookSequence, hook: "before_provider_request" });
+    return event.payload;
+  });
   pi.on("session_start", async (event: any, ctx: any) => {
     if (adapter) throw new Error("owner_already_open");
     const header = ctx.sessionManager.getHeader();
     if (!header?.id) throw new Error("missing_session_header");
-    adapter = await createFixtureObservationAdapter({ piSessionId: header.id });
+    const viewer = process.env.PI_BROWSER_FIXTURE_PREVIEW_VIEWER, runtimeRoot = process.env.PI_BROWSER_FIXTURE_PREVIEW_ROOT;
+    adapter = await createFixtureObservationAdapter({ piSessionId: header.id, preview: viewer && runtimeRoot ? { viewer: [viewer], runtimeRoot } : undefined });
     pi.setActiveTools(["browser_capture", "browser_resolve", "browser_release"]);
     console.error(`PI_BROWSER_OWNER_READY:${JSON.stringify({ reason: event.reason, session_id: header.id, active: pi.getActiveTools().sort() })}`);
   });
