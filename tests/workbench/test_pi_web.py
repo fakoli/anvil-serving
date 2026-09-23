@@ -875,3 +875,42 @@ def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path, 
         assert "cpus: 2," in next_config
         assert next_config.count("experimental:") == 1
     assert not (source / "lib/workbench-bridge.test.mjs").exists()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only installer uses patch(1)")
+def test_bridge_source_verification_is_version_scoped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A source tree verifies only against the bridge version its pins describe."""
+    source = tmp_path / "source"
+    (source / "components").mkdir(parents=True)
+    (source / "package.json").write_text('{"name": "@agegr/pi-web", "version": "0.9.2"}\n', encoding="utf-8")
+    (source / "components" / "AppShell.tsx").write_text("export function AppShell() {}\n", encoding="utf-8")
+    for command in (
+        ["git", "init", "-q"],
+        ["git", "config", "user.email", "test@example.test"],
+        ["git", "config", "user.name", "Test"],
+        ["git", "add", "-A"],
+        ["git", "commit", "-qm", "reviewed"],
+    ):
+        subprocess.run(command, cwd=source, check=True, capture_output=True, text=True)
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=source, check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    real_manifest = pi_web.bridge_manifest
+    pins = {
+        "schema": "anvil-serving.pi-web-bridge/v1",
+        "package": pi_web.PACKAGE,
+        "version": "0.9.2",
+        "source_commit": head,
+        "package_json_sha256": __import__("hashlib").sha256((source / "package.json").read_bytes()).hexdigest(),
+        "app_shell_sha256": __import__("hashlib").sha256((source / "components" / "AppShell.tsx").read_bytes()).hexdigest(),
+        "patch_sha256": "0" * 64,
+    }
+    monkeypatch.setattr(
+        pi_web, "bridge_manifest",
+        lambda version=pi_web.DEFAULT_VERSION: pins if version == "0.9.2" else real_manifest(version),
+    )
+    verified = pi_web._verify_bridge_source(source, run=subprocess.run, version="0.9.2")
+    assert verified["source_commit"] == head
+    # The same tree must not verify against a different version's reviewed pins.
+    with pytest.raises(pi_web.PiWebError, match="does not match the reviewed pin"):
+        pi_web._verify_bridge_source(source, run=subprocess.run, version="0.9.0")
