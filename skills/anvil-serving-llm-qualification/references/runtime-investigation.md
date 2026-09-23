@@ -28,6 +28,10 @@ every reload; a recipe file or label alone does not prove its settings loaded.
 | Configuration improvement | Parent and one supported change on identical cases, followed by a reverse-order parent control. | Measured benefit and protected regressions, including quality and memory cost. |
 | Hardware envelope | Increase one context, output, concurrency or batching axis from a passing point. | Last repeated passing point and first failure or untested bound, with input/output headroom and simultaneous demand. |
 
+If the parent already causes a GPU fault or engine death, retain that control
+instead of deliberately crashing it again for ordering symmetry. Record why
+the reverse-order control was omitted and the resulting inference limit.
+
 Do not require a new permission exchange for work already authorized. Confirm
 operational previews using that authority; a new promotion, unrelated host
 change, or interruption of an unapproved workload remains outside scope.
@@ -93,8 +97,10 @@ before recovery. Distinguish deliberate client cancellation, timeout, HTTP
 error, engine failure and hardware fault. A CUDA stack may report a later
 synchronization point rather than the first invalid access.
 
-After a reproducible CUDA illegal access, use an isolated managed diagnostic
-recipe with CUDA core dumps and, when useful, line information. Keep dumps
+For first-fault attribution after a reproducible CUDA illegal access, use an
+isolated managed diagnostic recipe with CUDA core dumps and, when useful,
+line information. A bounded configuration-mitigation trial may defer this
+step, but must retain kernel root cause as unresolved. Keep dumps
 private and bounded to available disk; they may contain model/user memory.
 Record the faulting rank/kernel and reduce the failing operation before using
 Compute Sanitizer. Do not enable intrusive diagnostics on a shared production

@@ -26,6 +26,7 @@ measured the RTX 5090 while protecting the RTX PRO 6000.
 | **Controlled decode** | Output tokens per decode interval on a sufficiently long, fixed generation workload | Prefill speed, reasoning quality, or tool reliability |
 | **Protocol-v3 quality** | Visible-answer correctness under an explicit reasoning-headroom budget, with truncation, finish-reason, and repeated-attempt accounting | Broad leaderboard quality beyond the small retained slices |
 | **Long-context validation** | A needle or equivalent correctness check at a stated token length | The model-card maximum, multiple simultaneous maximum windows, or useful recall at every length |
+| **Runtime replay** | A bounded serial or overlapping synthetic workload with independent retrieval, token accounting, and managed identity checks | Scheduler-batch proof, a crash-rate guarantee, natural long-output quality, or a performance ranking |
 | **External prior** | Current official recipe, model-card claim, or dated community lead used to choose candidates | A local RTX PRO 6000 result |
 | **Historical invalid** | A retained run whose protocol flaw prevents the claimed comparison | Promotion evidence; it remains useful for diagnosing the harness |
 
@@ -220,6 +221,14 @@ remain bound in the artifact.
 See [the durable job workflow](context-agentic-swe.md).
 
 ## Evaluation pipeline
+
+The [runtime stability workflow](runtime-stability.md) retains additive
+`anvil-serving.stability/v1` evidence. Keep runtime completion, request overlap,
+token coverage and retrieval separate. Correlate engine and kernel evidence
+before attributing a failure; client cancellation is not engine death. A
+recovered endpoint does not establish a remedy, and a passing mitigation trial
+does not prove the first faulty kernel. Preserve failed arms and exact rollback
+alongside the tested recipe and unmeasured limits.
 
 ```mermaid
 flowchart LR

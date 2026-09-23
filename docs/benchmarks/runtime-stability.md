@@ -100,7 +100,12 @@ Verify managed activity before recovering or starting another experiment.
 
 Runtime completion, token/overlap coverage, and literal retrieval are separate
 booleans, with explicit failure classes for protocol, transport, HTTP, client
-timeout, retrieval and missing coverage. These do not identify a model crash
+timeout, upstream stream errors, absent visible answers, retrieval and missing
+coverage. Completed response metadata remains retained even when answer
+validation fails. A valid terminal reasoning-only response is
+`semantic_output_absent`, not malformed protocol; its usage and finish reason
+help distinguish output-budget exhaustion from an engine error. Stream IDs
+must remain exact and unchanged within a request. These do not identify a model crash
 without owning-engine evidence. Missing or failed coverage blocks a completed scenario. `length` is
 an allowed diagnostic finish reason; it does not establish natural completion.
 `scheduler_overlap` stays `not_measured`, and `performance_eligible` stays

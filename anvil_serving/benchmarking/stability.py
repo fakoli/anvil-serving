@@ -260,6 +260,7 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
                     if first:
                         save()
 
+        validation_failure = "protocol_error"
         try:
             result = stream(config["base_url"], config["model"], prompt, key,
                             config[role + "_max_tokens"], timeout=config["timeout_seconds"],
@@ -267,11 +268,16 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
                             reasoning_effort=config.get("reasoning_effort"),
                             temperature=config.get("temperature", 0.0), observer=observe,
                             deadline_seconds=config["timeout_seconds"])
-            validate_stream_result(result)
-            if row.get("malformed_chunks") or not result.get("finish_reasons"):
+            with lock:
+                row["result"] = result
+            if (not isinstance(result, dict) or row.get("malformed_chunks")
+                    or not result.get("finish_reasons") or not result.get("stream_terminal_observed")):
                 raise ValueError("malformed or unterminated protocol stream")
             if any(reason not in {"stop", "length"} for reason in result["finish_reasons"]):
                 raise ValueError("unexpected finish reason")
+            if result.get("ttft") is None:
+                validation_failure = "semantic_output_absent"
+            validate_stream_result(result)
             usage = result.get("usage") or {}
             actual = usage.get("prompt_tokens")
             with lock:
@@ -285,7 +291,7 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
                 row.update(status="failed", error_type=type(exc).__name__,
                            http_status=getattr(exc, "code", None), error=str(exc)[:1024],
                            failure_classes=["server_stream_error" if "server_error" in row else
-                                            failure_class(exc, "protocol_error" if isinstance(exc, ValueError) else "harness_error")])
+                                            failure_class(exc, validation_failure if isinstance(exc, ValueError) else "harness_error")])
         finally:
             with lock:
                 row.update(end=time.monotonic(), finished_at=utc_now())
