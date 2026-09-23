@@ -44,7 +44,7 @@ export function createOwnerPreview(policy, { ttl }) {
           child.once("error", () => { done(); reject(new Error("preview_failed")); });
         });
         await validate(); if (cancelled) fail("owner_closed");
-      } catch (error) { fail(cancelled ? "owner_closed" : (error?.code || (error?.message === "preview_timeout" ? "preview_timeout" : "preview_failed")));
+      } catch (error) { fail(error?.code || (cancelled ? "owner_closed" : (error?.message === "preview_timeout" ? "preview_timeout" : "preview_failed")));
       } finally { await cleanup(); if (record.previewCleanup === cleanup) delete record.previewCleanup; }
       return Object.freeze({ status: "shown" });
     },

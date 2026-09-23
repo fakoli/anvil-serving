@@ -21,15 +21,15 @@ async function fixture() {
 }
 async function viewer(directory) {
   const file = join(directory, "viewer.mjs"), attest = join(directory, "attest.json");
-  await writeFile(file, `#!${process.execPath}\nimport { createHash } from "node:crypto";import { lstat,readFile,writeFile } from "node:fs/promises";import { dirname } from "node:path";import { spawn } from "node:child_process";const path=process.argv.at(-1);if(process.env.PREVIEW_HANG){setInterval(()=>{},1000);await new Promise(()=>{})}if(process.env.PREVIEW_MARKER){spawn(process.execPath,["-e","setTimeout(()=>require('node:fs').writeFileSync(process.env.PREVIEW_MARKER,'late'),100)"],{stdio:"ignore"});process.exit(0)}const [data,stat,directory]=await Promise.all([readFile(path),lstat(path),lstat(dirname(path))]);await writeFile(process.env.PREVIEW_ATTEST,JSON.stringify({digest:createHash("sha256").update(data).digest("hex"),mode:stat.mode&0o777,directory:directory.mode&0o777}));`);
+  await writeFile(file, `#!${process.execPath}\nimport { createHash } from "node:crypto";import { lstat,readFile,writeFile } from "node:fs/promises";import { dirname } from "node:path";import { spawn } from "node:child_process";const path=process.argv.at(-1);if(process.env.PREVIEW_HANG){setInterval(()=>{},1000);await new Promise(()=>{})}if(process.env.PREVIEW_DELAY){await new Promise(resolve=>setTimeout(resolve,Number(process.env.PREVIEW_DELAY)))}if(process.env.PREVIEW_MARKER){spawn(process.execPath,["-e","setTimeout(()=>require('node:fs').writeFileSync(process.env.PREVIEW_MARKER,'late'),100)"],{stdio:"ignore"});process.exit(0)}const [data,stat,directory]=await Promise.all([readFile(path),lstat(path),lstat(dirname(path))]);await writeFile(process.env.PREVIEW_ATTEST,JSON.stringify({digest:createHash("sha256").update(data).digest("hex"),mode:stat.mode&0o777,directory:directory.mode&0o777}));`);
   await chmod(file, 0o700); return { file, attest };
 }
 function screenshotHook() {
   let image, page;
   return { image: () => image, page: () => page, prepare: async (browser) => { const context = browser.newContext.bind(browser); browser.newContext = async (...args) => { const value = await context(...args); const newPage = value.newPage.bind(value); value.newPage = async (...pageArgs) => { const output = await newPage(...pageArgs), screenshot = output.screenshot.bind(output); page = output; output.screenshot = async (...screenshotArgs) => { image = await screenshot(...screenshotArgs); return image; }; return output; }; return value; }; } };
 }
-async function owner(origin, preview, clock, prepare) {
-  return createBrowserOwner({ launch: async () => { const browser = await chromium.launch({ executablePath: executable, headless: true, args: ["--disable-gpu"] }); await prepare?.(browser); return browser; }, documentOrigins: [origin], subresourceOrigins: [origin], limits: { ttl: 100, timeout: 5_000 }, preview, clock });
+async function owner(origin, preview, clock, prepare, ttl = 60_000) {
+  return createBrowserOwner({ launch: async () => { const browser = await chromium.launch({ executablePath: executable, headless: true, args: ["--disable-gpu"] }); await prepare?.(browser); return browser; }, documentOrigins: [origin], subresourceOrigins: [origin], limits: { ttl, timeout: 5_000 }, preview, clock });
 }
 
 test("preview delivers one retained PNG to the fixed viewer with protected modes and no public path", { timeout: 15_000 }, async (t) => {
@@ -45,7 +45,7 @@ test("preview delivers one retained PNG to the fixed viewer with protected modes
 test("preview refuses disabled, stale, released, expired, closed, and win32 before delivery", { timeout: 15_000 }, async (t) => {
   const dir = await mkdtemp(join(tmpdir(), "owner-preview-")), site = await fixture(), fake = await viewer(dir); let tick = 0;
   const disabled = await owner(site.origin, undefined); const disabledSession = disabled.session(); await disabledSession.navigate(`${site.origin}/`); const disabledObservation = await disabledSession.capture(request); await assert.rejects(disabledSession.preview(disabledObservation.observation_id), error("preview_disabled")); await disabled.close();
-  const hook = screenshotHook(); const core = await owner(site.origin, { viewer: [fake.file], runtimeRoot: dir }, () => tick, hook.prepare); const session = core.session();
+  const hook = screenshotHook(); const core = await owner(site.origin, { viewer: [fake.file], runtimeRoot: dir }, () => tick, hook.prepare, 100); const session = core.session();
   t.after(async () => { await core.close(); await site.close(); await rm(dir, { recursive: true, force: true }); });
   await session.navigate(`${site.origin}/`); const released = await session.capture(request); await session.release(released.observation_id); await assert.rejects(session.preview(released.observation_id), error("unknown_observation"));
   const expired = await session.capture({ ...request, request_id: "expired" }); tick = 101; await assert.rejects(session.preview(expired.observation_id), error("expired_observation")); tick = 0;
@@ -85,4 +85,12 @@ test("missing viewer fails promptly and leaves no preview PNG", { timeout: 15_00
   await assert.rejects(Promise.race([session.preview(observation.observation_id), new Promise((_, reject) => setTimeout(() => reject(new Error("preview_hung")), 500))]), error("preview_failed"));
   assert.equal((await readdir(join(dir, previewNamespace))).filter((name) => name.endsWith(".png")).length, 0);
   await Promise.race([core.close(), new Promise((_, reject) => setTimeout(() => reject(new Error("close_hung")), 500))]);
+});
+
+
+test("preview preserves expired_observation when a retained record expires during its viewer", { timeout: 15_000 }, async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "owner-preview-")), site = await fixture(), fake = await viewer(dir); let tick = 0; const oldAttest = process.env.PREVIEW_ATTEST, oldDelay = process.env.PREVIEW_DELAY; process.env.PREVIEW_ATTEST = fake.attest; process.env.PREVIEW_DELAY = "50";
+  const core = await owner(site.origin, { viewer: [fake.file], runtimeRoot: dir }, () => tick, undefined, 100), session = core.session();
+  t.after(async () => { if (oldAttest === undefined) delete process.env.PREVIEW_ATTEST; else process.env.PREVIEW_ATTEST = oldAttest; if (oldDelay === undefined) delete process.env.PREVIEW_DELAY; else process.env.PREVIEW_DELAY = oldDelay; await core.close(); await site.close(); await rm(dir, { recursive: true, force: true }); });
+  await session.navigate(`${site.origin}/`); const observation = await session.capture(request); const pending = session.preview(observation.observation_id); setTimeout(() => { tick = 101; }, 10); await assert.rejects(pending, error("expired_observation"));
 });
