@@ -106,7 +106,9 @@ Budget one synthesis and keep local-only questions on retained local evidence.
     `references/artifact-set-contract.md` and
     `anvil-serving.benchmark-artifact-set/v1` template around the native raw
     artifacts, dated finding, precision/modality decision table, and required
-    publication-ready result card and publication summary. For a format-only
+    publication-ready result card. Add a publication summary only when compact
+    public communication is requested; otherwise mark that role
+    `not-applicable` with a reason. For a format-only
     refresh backed by complete retained artifacts, reconcile the published
     values without restarting the serve or rerunning the benchmark.
 

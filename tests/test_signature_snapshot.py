@@ -1,5 +1,6 @@
 """The public signature gate must scan committed bytes, never test output."""
 import importlib.util
+import json
 import subprocess
 from pathlib import Path
 
@@ -50,3 +51,18 @@ def test_signature_gate_exports_head_and_preserves_scanner_failure(tmp_path, mon
     with pytest.raises(ValueError, match="commit tracked changes"):
         scanner.scan_signature_snapshot(tmp_path)
     assert len(paths) == 1
+
+
+@pytest.mark.parametrize("depth", [0, 1, 2])
+@pytest.mark.parametrize("field", ["container_id", "containerId"])
+def test_semantic_scanner_detects_container_identity_without_disclosing_it(depth, field):
+    identity = "abc123ef" * 8
+    payload = json.dumps({field: identity})
+    for _ in range(depth):
+        payload = json.dumps({"content": payload})
+    findings = scanner.scan_text(payload, "docs/findings/result.json", "test")
+    assert [item["kind"] for item in findings] == ["operator-container-id"]
+    assert identity not in json.dumps(findings)
+    digest = json.dumps({"sha256": identity, "image": "sha256:" + identity,
+                         "container_id": "<redacted>"})
+    assert scanner.scan_text(digest, "docs/findings/result.json", "test") == []

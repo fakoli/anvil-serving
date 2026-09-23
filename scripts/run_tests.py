@@ -77,15 +77,15 @@ def preflight(cwd: Path, env: dict[str, str]) -> list[str]:
 
 def source_identity() -> dict:
     def git(*args: str) -> bytes:
-        return subprocess.check_output(["git", *args], stderr=subprocess.DEVNULL)
+        return subprocess.check_output(["git", *args], stderr=subprocess.DEVNULL, timeout=10)
     try:
         return {
             "head": git("rev-parse", "HEAD").decode().strip(),
             "tracked_diff_sha256": hashlib.sha256(git("diff", "HEAD", "--binary")).hexdigest(),
             "dirty": bool(git("status", "--porcelain")),
         }
-    except (OSError, subprocess.CalledProcessError):
-        return {"head": None, "dirty": None}
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError("cannot establish Git source identity") from error
 
 
 def write_receipt(path: Path, receipt: dict) -> None:
@@ -110,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         "schema": "anvil-serving.test-run/v1", "run_id": str(uuid.uuid4()),
         "started_at": datetime.now(timezone.utc).isoformat(), "finished_at": None,
         "state": "preflight", "exit_code": None, "interpreter": sys.executable,
-        "cwd": str(Path.cwd()), "source": source_identity(), "pytest_args": args,
+        "cwd": str(Path.cwd()), "source": None, "pytest_args": args,
     }
     # Overwrite any stale success before checking inputs or starting tests.
     write_receipt(options.receipt, receipt)
@@ -122,7 +122,12 @@ def main(argv: list[str] | None = None) -> int:
         raise KeyboardInterrupt
 
     try:
+        signal.signal(signal.SIGTERM, interrupted)
         problems = []
+        try:
+            receipt["source"] = source_identity()
+        except ValueError as error:
+            problems.append(str(error))
         if any(item == "--basetemp" or item.startswith("--basetemp=") for item in args):
             problems.append("run_tests.py owns --basetemp; remove the explicit option")
         if options.timeout is not None and (not 0 < options.timeout < float("inf")):

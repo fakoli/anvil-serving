@@ -97,6 +97,9 @@ def test_planning_accepts_an_ordered_numbered_workflow():
 @pytest.mark.parametrize(("answer", "passed"), [
     ("1. **Inspect** the existing tests and test coverage.\n"
      "2. **Patch** the defect.\n3. **Test** the change.", True),
+    ("1. Inspect\n   - Test coverage is missing.\n2. Patch\n3. Test", True),
+    ("## Inspect\n- Test coverage is missing.\n## Patch\n## Test", True),
+    ("- Inspect\n  - Test coverage is missing.\n- Patch\n- Test", True),
     ("1. Patch\n2. Inspect\n3. Test", False),
     ("1. Inspect\n2. Test\n3. Patch", False),
     ("Inspect -> Patch -> Test", True),
@@ -108,7 +111,7 @@ def test_planning_scores_step_order_not_incidental_substrings(answer, passed):
     trace["final_answer"] = answer
     result = score_agentic_trace(scenario, expected, trace)
     assert result["passed"] is passed
-    assert result["oracle_revision"] == "2"
+    assert result["oracle_revision"] == "3"
 
 
 def test_debug_loop_discloses_unit_scope_and_accepts_semantic_pass_report():

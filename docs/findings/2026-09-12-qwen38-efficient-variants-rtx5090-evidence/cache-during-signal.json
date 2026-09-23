@@ -1514,7 +1514,7 @@
     ],
     "containers": [
       {
-        "container_id": "3edd1815c001d41b80292828bcdeda8333c421112047620c40c893acccf12490",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-12 06:43:41 -0700 PDT",
         "image_id": null,
         "image_reference": "vllm/vllm-openai:nightly",
@@ -1523,7 +1523,7 @@
         "status": "Up 3 minutes"
       },
       {
-        "container_id": "332361622c4b98ab188b9c61abd9dfea6acebde9b864e90d53e297e6d3e09920",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 04:03:47 -0700 PDT",
         "image_id": null,
         "image_reference": "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",
@@ -1532,7 +1532,7 @@
         "status": "Up 3 days (healthy)"
       },
       {
-        "container_id": "8b3d9642aac92e6630fd9aeb3e8fc3884d32fd959e33650df9da735db29df9cb",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 03:40:59 -0700 PDT",
         "image_id": null,
         "image_reference": "sha256:ef5b2c3d632ac7cbb85391faed3b4a097ccc1ba1c642d5c2cb83785029530bf8",
@@ -1541,7 +1541,7 @@
         "status": "Up 3 days (healthy)"
       },
       {
-        "container_id": "3ab7b973b835e9b1e854ea1965067608115538d3581f6c96d82f29c7731b3db6",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 03:38:47 -0700 PDT",
         "image_id": null,
         "image_reference": "anvil-serving-controller:1.0.0-c592e0b",
@@ -1550,7 +1550,7 @@
         "status": "Exited (0) 3 days ago"
       },
       {
-        "container_id": "02bf8aeaca5ad99a354793f2c6aca515362bdbd79459e26bb1990d12398a8650",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-03 13:57:51 -0700 PDT",
         "image_id": null,
         "image_reference": "ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cf2e30bc855cf58cdbdc65d05b5b5e02afa95fb788343a5334d704367ac5c9ac",

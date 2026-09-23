@@ -92,7 +92,7 @@ communication is requested:
 The result card contains one bounded local outcome, the exact setup, three to
 six headline measurements with their conditions, why the result matters, the
 most important caveat or failure, and links to the evidence manifest and
-human evidence index plus publication summary. The exact setup includes the managed recipe or reproduction path and the
+human evidence index plus the publication summary when present. The exact setup includes the managed recipe or reproduction path and the
 measurement layer: direct or routed online endpoint, offline engine, or kernel
 microbenchmark, plus warm/cold state when relevant. The detailed narrative
 follows it; the card does not replace any required identity, method, failure,

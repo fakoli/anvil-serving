@@ -50,7 +50,9 @@ registry, decision summary, friction log, and restoration record.
 Use the included `campaign-state.json`, `dispatch-packet.md`, and
 `coverage-and-gaps.md` working controls to keep stage state, delegated scope,
 and every requested outcome compact and explicit. They are not evidence unless
-the final role ledger deliberately retains them.
+the final role ledger deliberately retains them. Before finalization, move any
+unretained controls outside the public evidence directory and remove their
+links from its index.
 
 During an active scout, retain sanitized identity, configuration, raw run evidence, failures, and
 restoration evidence needed for review. Defer the narrative finding and full
@@ -83,7 +85,10 @@ reproducibility input, not a substitute for the canonical
 `artifact-manifest.json`.
 
 The finalizer uses a closed inventory: every retained regular file must be
-declared exactly once, and paths, symlinks, duplicate JSON keys, and duplicate
+declared in at least one role, with no duplicate path within a role. A file
+may satisfy multiple roles when each role explains its relevance; those
+references bind the same bytes and do not represent independent evidence.
+Unsafe paths, symlinks, duplicate JSON keys, and duplicate
 keys in valid serialized JSON fail closed. A historical plaintext file
 with a `.json` suffix needs a per-file `{path, reason}` compatibility
 declaration in `legacy_plaintext_files`; malformed JSON is never silently

@@ -94,3 +94,27 @@ def test_preflight_rejects_a_different_python_later_on_path(monkeypatch, tmp_pat
 def test_runner_rejects_explicit_basetemp(capsys, tmp_path):
     assert run_tests.main(["--receipt", str(tmp_path / "r.json"), "tests/", "--basetemp=elsewhere"]) == 2
     assert "owns --basetemp" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("error", [
+    OSError("unreadable"), subprocess.CalledProcessError(1, "git"),
+    subprocess.TimeoutExpired("git", 10),
+])
+def test_git_identity_failure_invalidates_receipt_before_lookup(monkeypatch, tmp_path, error):
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text('{"state":"passed","run_id":"stale"}')
+    monkeypatch.setattr(run_tests, "preflight", lambda *_args: [])
+    monkeypatch.setattr(run_tests.subprocess, "Popen", lambda *_args, **_kwargs: pytest.fail("spawned pytest"))
+
+    def git(*_args, **kwargs):
+        current = json.loads(receipt.read_text())
+        assert current["state"] == "preflight" and current["run_id"] != "stale"
+        assert kwargs["timeout"] == 10
+        raise error
+
+    monkeypatch.setattr(run_tests.subprocess, "check_output", git)
+    assert run_tests.main(["--receipt", str(receipt)]) == 2
+    result = json.loads(receipt.read_text())
+    assert result["state"] == "preflight_failed"
+    assert result["source"] is None and result["finished_at"]
+    assert "Git source identity" in result["problems"][0]

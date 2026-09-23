@@ -13,7 +13,7 @@ from .jobs import BenchmarkJobError
 
 AGENTIC_SCENARIO_SCHEMA = "anvil-serving.agentic-scenario/v1"
 AGENTIC_OBSERVATION_SCHEMA = "anvil-serving.agentic-observation/v1"
-AGENTIC_ORACLE_REVISION = "2"
+AGENTIC_ORACLE_REVISION = "3"
 SCENARIO_TYPES = frozenset({
     "planning",
     "reasoning",
@@ -306,11 +306,18 @@ def score_agentic_trace(
         if terms:
             labels = "|".join(re.escape(term) for term in terms)
             # Prefer step headings over incidental words inside their descriptions.
-            headings = re.findall(
-                rf"(?im)^\s*(?:(?:\d+[.)]|[-*+]|\#{{1,6}})\s*)?"
-                rf"(?:\*\*|__|`)?({labels})\b",
-                final if isinstance(final, str) else "",
-            )
+            answer = final if isinstance(final, str) else ""
+            headings = []
+            for prefix in (r"(?:\d+[.)]|\#{1,6})[ \t]+", r"(?:[-*+][ \t]+)?"):
+                matches = re.findall(
+                    rf"(?im)^([ \t]*){prefix}(?:\*\*|__|`)?({labels})\b",
+                    answer,
+                )
+                if matches:
+                    depth = min(len(indent.expandtabs()) for indent, _ in matches)
+                    headings = [label for indent, label in matches if len(indent.expandtabs()) == depth]
+                if len(headings) > 1:
+                    break
             observed = headings if len(headings) > 1 else re.findall(
                 rf"\b({labels})\b", normalized_final
             )

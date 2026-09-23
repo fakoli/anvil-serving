@@ -2,7 +2,7 @@
 
 A benchmark finding should be easy to understand at a glance without becoming
 less precise. Anvil Serving uses a **result card** in the dated finding and a
-separate **publication summary** beside its raw artifacts. Both are derivative
+optional **publication summary** beside its raw artifacts. Both are derivative
 views: the dated finding and retained artifacts remain the evidence.
 
 ## Campaign artifact set v1
@@ -70,7 +70,7 @@ contains:
 4. why the result matters;
 5. the most important caveat or retained failure; and
 6. links to the artifact manifest, human evidence index, and publication
-   summary.
+   summary when present.
 
 The full narrative follows the card and retains exact identity, method,
 distributions or ranges, failures, next experiments, raw links, and the

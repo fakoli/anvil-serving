@@ -1154,7 +1154,7 @@
     ],
     "containers": [
       {
-        "container_id": "4e4212f3011f981a72ccb420a097e742a04fef17d11aeaf44ad67a697c38b514",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 09:52:05 +0000 UTC",
         "image_id": null,
         "image_reference": "grafana/alloy@sha256:b8ec653c44235fbe910879145dac3597d66b0aaecf60bcbbe82580767771a839",
@@ -1163,7 +1163,7 @@
         "status": "Up 25 minutes"
       },
       {
-        "container_id": "de0974313c69c54955306204d1201cbf9d57c0d779f71b6f39016763d20e7872",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 09:51:55 +0000 UTC",
         "image_id": null,
         "image_reference": "grafana/grafana@sha256:f772d434e8fab0049deb2b1b30abd43342bcfca1537614aa8d36080232cf4283",
@@ -1172,7 +1172,7 @@
         "status": "Up 28 minutes"
       },
       {
-        "container_id": "af4f7ca50bc13577d07a91656de5b509dcdbe71412d40487a8141d976d69a875",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 09:51:55 +0000 UTC",
         "image_id": null,
         "image_reference": "python@sha256:b165067c5afc37fa5608a3c05609cc3d51aafd808a30fbfd822ee594fef55ad4",
@@ -1181,7 +1181,7 @@
         "status": "Up 28 minutes"
       },
       {
-        "container_id": "d020fcb761367d85afdf15b0c1cf360268d7192745cdfad6c3f682c061f773c9",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 09:51:55 +0000 UTC",
         "image_id": null,
         "image_reference": "grafana/loki@sha256:d70e4659623f3e109af669cae76fe2a5dd5be54e2298fe8aed380d982fbc2500",
@@ -1190,7 +1190,7 @@
         "status": "Up 25 minutes"
       },
       {
-        "container_id": "5639709f71c2ce19cfea127d93ae80a89a219d29de7442df2bf598e6683a86df",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 09:51:55 +0000 UTC",
         "image_id": null,
         "image_reference": "prom/prometheus@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0",
@@ -1199,7 +1199,7 @@
         "status": "Up 28 minutes"
       },
       {
-        "container_id": "b8c7ab6cd15235e0071e8109e8e07efe2e3ca09730aaf5061a87b29eb669ce9c",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 09:47:08 +0000 UTC",
         "image_id": null,
         "image_reference": "anvil-observatory:wheel-fef029cf342f",
@@ -1208,7 +1208,7 @@
         "status": "Up 32 minutes (healthy)"
       },
       {
-        "container_id": "dc5f56e34c778c93d9b2db6b55b7a47846e8b357a3c4e107b7aa1f231cc9798c",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 09:24:43 +0000 UTC",
         "image_id": null,
         "image_reference": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:0c0637959c3931829f05154087bbefd2c50003fb9b2010200ce0ec82f4d71a53",
@@ -1217,7 +1217,7 @@
         "status": "Up 55 minutes"
       },
       {
-        "container_id": "95011c759f7835dd95e6bba159efd7ccac0957c7d9bbc3c353f27d35d9e89bcd",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-09 07:01:18 +0000 UTC",
         "image_id": null,
         "image_reference": "anvil-serving:1.0.0-81dfc4fa-linux",
@@ -1226,7 +1226,7 @@
         "status": "Up About an hour (healthy)"
       },
       {
-        "container_id": "2b45e60beb526e6a432b444b622ee239ed625941a6ac2f276d46eb4b02e61242",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-08 22:19:08 +0000 UTC",
         "image_id": null,
         "image_reference": "anvil-serving-controller:observatory-f5efd045b7ab",
@@ -1235,7 +1235,7 @@
         "status": "Up About an hour (healthy)"
       },
       {
-        "container_id": "d46b33b68130849fc11750fa4bb442d14045483c9b271a167d1a17194d0d317f",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-08 22:07:42 +0000 UTC",
         "image_id": null,
         "image_reference": "python@sha256:b165067c5afc37fa5608a3c05609cc3d51aafd808a30fbfd822ee594fef55ad4",
@@ -1244,7 +1244,7 @@
         "status": "Up About an hour"
       },
       {
-        "container_id": "0f4cce671f2ea19bce61dcbdd98b49884545da6966432699c3a30897f02df0e5",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-08 08:57:07 +0000 UTC",
         "image_id": null,
         "image_reference": "utkuozdemir/nvidia_gpu_exporter@sha256:7aee2d42836ad29d4adb2722b7cfdc806ec9cc8d45fd0b8971ebbad2d9f3d087",
@@ -1253,7 +1253,7 @@
         "status": "Up About an hour"
       },
       {
-        "container_id": "4880e5f7645435ac15b39fbc5ba9e28d9f4da93f01329b3e8352caaa8755ba42",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-08 08:57:07 +0000 UTC",
         "image_id": null,
         "image_reference": "quay.io/prometheus/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0",
@@ -1262,7 +1262,7 @@
         "status": "Up About an hour"
       },
       {
-        "container_id": "36816142e155a68d0e0f72a3330a66d68756cf7dd421dccf5a5f641f7473a82d",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-07 22:40:44 +0000 UTC",
         "image_id": null,
         "image_reference": "anvil-serving-controller:1.0.0-8fecf386-linux-events022",
@@ -1271,7 +1271,7 @@
         "status": "Up About an hour (healthy)"
       },
       {
-        "container_id": "4c2bd2dc1c72e56fa5677baaa5a61798b179ae47fc0ee6eb5b34526f36aaa721",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-07 22:05:29 +0000 UTC",
         "image_id": null,
         "image_reference": "nats@sha256:e4bf19f15fd3218814a4e3c9e0064e1334bd8aa20d5984b9f1a0afd084f8cc00",
@@ -1280,7 +1280,7 @@
         "status": "Up About an hour (healthy)"
       },
       {
-        "container_id": "26f111aaee22b0ee8e488c05c7c334eb5e2b07815972035afbe51f2e20014552",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-07 21:56:27 +0000 UTC",
         "image_id": null,
         "image_reference": "anvil-serving-controller:1.0.0-8fecf386-linux",
@@ -1289,7 +1289,7 @@
         "status": "Up About an hour (healthy)"
       },
       {
-        "container_id": "390b23ca2c25e726127e744dbddfe5a9d85335b50063e924d11471427c8dd1fb",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-07 21:56:21 +0000 UTC",
         "image_id": null,
         "image_reference": "ghcr.io/open-webui/open-terminal@sha256:3af1a1aab49d653d357a5176c9862af0111ccf4b8b3a5f2bbdef109f196aeca7",
@@ -1298,7 +1298,7 @@
         "status": "Exited (0) 36 hours ago"
       },
       {
-        "container_id": "b2ebd85f876cb2965875786f87769d558667fc666617cea4493ab051c2531d23",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-07 21:54:23 +0000 UTC",
         "image_id": null,
         "image_reference": "sha256:850f58bd038fca955889c093ae95860a67a44fa67e505ab67b814c38508112aa",
@@ -1307,7 +1307,7 @@
         "status": "Up About an hour (healthy)"
       },
       {
-        "container_id": "85a20417aaad4d62b838709e2b89d088484b0e84d4cb694f08db7f78ec22b2cb",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-07 21:54:23 +0000 UTC",
         "image_id": null,
         "image_reference": "ghcr.io/open-webui/open-webui@sha256:6a773e5c3a246b65cbe74ce942b294292c0e5f81c138f703d111bc162f7d7c3d",
@@ -1316,7 +1316,7 @@
         "status": "Up About an hour (healthy)"
       },
       {
-        "container_id": "568fe6f09673efa96eaf26c18db131531b6f400dba98200cbdcead9ac1c30c4b",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-07 21:54:23 +0000 UTC",
         "image_id": null,
         "image_reference": "ghcr.io/open-webui/open-terminal@sha256:3af1a1aab49d653d357a5176c9862af0111ccf4b8b3a5f2bbdef109f196aeca7",
@@ -1325,7 +1325,7 @@
         "status": "Up About an hour (healthy)"
       },
       {
-        "container_id": "91acd9809ad56300c3ad1c68c525ffde835c627d19300f72bfc0546cee1e178c",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-09-07 21:54:23 +0000 UTC",
         "image_id": null,
         "image_reference": "docker.io/searxng/searxng@sha256:ec536bcd1e83577aad4cc07f7ecb9a30858a9a905d2d57c8796abc83f872a036",

@@ -81,3 +81,10 @@ original raw artifacts below are unchanged.
 Real GPU UUIDs, operator paths, credentials, and unsanitized logs remain
 outside this public evidence bundle. This qualification did not change a route
 or authorize promotion; the later promotion is a separate dated decision.
+
+## Container identity redaction
+
+On 2026-09-22, literal container IDs in retained state and cache captures
+were replaced with `<redacted-container-id>`. Measurements, model revisions,
+image digests, and historical outcomes are unchanged. A redacted container
+field no longer proves instance identity.

@@ -106,6 +106,12 @@ SLUGGED_WINDOWS_HOME_PATTERN = re.compile(  # semantic-scan-fixture
 OPERATOR_USER_FIELD_PATTERN = re.compile(
     r'''(?i)["'](?:user|username)["']\s*[:=]\s*["'](?P<name>[^"']+)["']'''
 )
+# Match literal container IDs, including quotes escaped inside serialized JSON.
+# A bare digest or a sha256 field is not a container identity.
+CONTAINER_ID_PATTERN = re.compile(
+    r"[\"']container_?id\\*[\"']\s*[:=]\s*\\*[\"'][0-9a-f]{12,64}\\*[\"']",
+    re.I,
+)
 SAFE_MARKERS = (
     "<redacted>",
     "${",
@@ -225,6 +231,11 @@ def scan_text(text: str, rel_path: str, source: str) -> list[dict[str, object]]:
                             "source": source,
                         }
                     )
+        if CONTAINER_ID_PATTERN.search(line):
+            findings.append({
+                "kind": "operator-container-id", "path": normalized_path,
+                "line": line_number, "source": source,
+            })
         if normalized_path.startswith("docs/findings/"):
             for match in OPERATOR_USER_FIELD_PATTERN.finditer(line):
                 name = match.group("name").strip().lower()

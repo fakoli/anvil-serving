@@ -2,6 +2,7 @@ import csv
 import importlib.util
 import json
 import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -991,3 +992,26 @@ def test_benchmark_producing_skills_delegate_publication_ready_format():
     stt = skill_paths[1].read_text(encoding="utf-8")
     assert "protected/co-resident topology" in stt
     assert "non-promotion decision" in stt
+
+
+@pytest.mark.parametrize("retain_controls", [True, False])
+def test_documented_template_bundle_finalizes_after_control_selection(tmp_path, retain_controls):
+    bundle = tmp_path / "public"
+    shutil.copytree(ARTIFACT_SET_TEMPLATES, bundle)
+    controls = ["campaign-state.json", "dispatch-packet.md", "coverage-and-gaps.md"]
+    if not retain_controls:
+        for name in controls:
+            shutil.move(bundle / name, tmp_path / name)
+        index = bundle / "README.md"
+        text = index.read_text()
+        start = text.index("## Working campaign controls")
+        end = text.index("## Workload and plan")
+        index.write_text(text[:start] + text[end:])
+    files = sorted(p.name for p in bundle.iterdir() if p.name != "artifact-manifest.json")
+    source = _write_finalizer_source(bundle, _manifest_source(files=files))
+    output, manifest = _finalizer_module().finalize(source)
+    first = output.read_bytes()
+    _finalizer_module().finalize(source)
+    assert output.read_bytes() == first
+    retained = {item["path"] for item in manifest["artifact_roles"][0]["files"]}
+    assert set(controls).issubset(retained) is retain_controls
