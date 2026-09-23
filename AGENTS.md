@@ -161,8 +161,10 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
 - **Credentials through secret references.** Use declared environment references
   or protected, untracked secret files. Never put a literal key in a settings
   file, a tracked test fixture, a decision record, or a log line.
-- All new model-calling code MUST use the **Claude Agent SDK** (not the raw `anthropic`
-  SDK or a direct `api.anthropic.com` call). See the golden rule in `CLAUDE.md`.
+- New Claude calls MUST use the **Claude Agent SDK** (not the raw `anthropic` SDK or a
+  direct `api.anthropic.com` call). An explicitly configured local model route may use the
+  harness's supported registered model client and credential resolver; it must preserve the
+  selected alias with no substitution, fallback, promotion, provider, or configuration change.
 
 ## Verification workflow
 

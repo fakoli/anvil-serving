@@ -1,0 +1,20 @@
+{
+  "name": "@anvil-serving/observations",
+  "version": "1.3.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Neutral, bounded retained-observation owner for trusted adapters.",
+  "exports": {
+    "./owner": "./observation_core/owner.mjs",
+    "./png": "./observation_core/png.mjs"
+  },
+  "files": [
+    "observation_core/owner.mjs",
+    "observation_core/png.mjs",
+    "observation_core/README.md",
+    "browser_owner/mediation_ledger.mjs"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}
