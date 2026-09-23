@@ -65,13 +65,17 @@ export async function createBrowserOwner({ launch, documentOrigins, subresourceO
   const page = await context.newPage(); state.page = page; state.cdp = await context.newCDPSession(page);
   await state.cdp.send("Page.enable");
   await state.cdp.send("Page.addScriptToEvaluateOnNewDocument", { worldName: "anvil-owner-epoch", source: `(() => { let dom=0, viewport=0; const observer=new MutationObserver((records)=>{dom+=records.length;}); observer.observe(document,{subtree:true,childList:true,attributes:true,characterData:true}); addEventListener("resize",()=>{viewport+=1;},{passive:true}); addEventListener("scroll",()=>{viewport+=1;},{passive:true,capture:true}); Object.defineProperty(globalThis,"__anvilOwnerEpoch",{value:()=>{dom+=observer.takeRecords().length;return [dom,viewport];}}); })();` });
-  page.on("framenavigated", (frame) => { if (frame === page.mainFrame()) { state.navigation += 1; state.invalidate(); } });
+  const owner = new Owner(state);
+  page.on("framenavigated", (frame) => {
+    if (frame !== page.mainFrame()) return;
+    state.navigation += 1; state.invalidate();
+    if (liveTransport && frame.url() !== state.documentUrl) void owner.close();
+  });
   page.on("popup", (popup) => { void popup.close().catch(() => {}); });
   page.on("download", (download) => { void download.cancel().catch(() => {}); });
   if (typeof context.routeWebSocket !== "function") fail("owner_failed");
   await context.routeWebSocket("**/*", (route) => route.close());
   page.on("close", () => { state.generation += 1; state.invalidate(); });
-  const owner = new Owner(state);
   if (liveTransport) await transport.attachCloser(() => owner.close());
   return owner;
   } catch (error) {
@@ -133,6 +137,7 @@ class Facade {
       if (!options || Object.keys(options).length) fail("invalid_navigation_request");
       let parsed; try { parsed = new URL(url); } catch { fail("navigation_not_permitted"); }
       if (!/^https?:$/.test(parsed.protocol) || !this.#state.policy.documents.has(parsed.origin)) fail("navigation_not_permitted");
+      this.#state.documentUrl = parsed.href;
       const before = this.#state.navigation;
       try { await this.#state.page.goto(parsed.href, { waitUntil: "load", timeout: this.#state.policy.timeout }); } catch { fail("navigation_not_permitted"); }
       let finalUrl; try { finalUrl = new URL(this.#state.page.url()); } catch { fail("navigation_not_permitted"); }

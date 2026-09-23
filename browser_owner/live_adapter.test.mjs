@@ -145,6 +145,25 @@ test("adapter forgets stale records after the owner rejects changed page facts",
   assert.deepEqual(await value.execute({ operation: "resolve", observation_id: captured.result.observation_id, entity_id: captured.result.entities[0].id }), refused("unknown_observation"));
 });
 
+test("adapter revokes script navigation instead of relabeling another document", { timeout: 15_000 }, async (t) => {
+  for (const destination of ["/unlisted", "/projects", "/#changed"]) {
+    await t.test(destination, async () => {
+      const hook = pageHook(); const { value, calls } = await adapter({ page: hook });
+      try {
+        const captured = await value.execute({ operation: "capture", page_id: "home", request: capture("before-navigation") });
+        assert.equal(captured.status, "ok");
+        const page = await hook.page;
+        const navigated = page.waitForEvent("framenavigated", { predicate: (frame) => frame === page.mainFrame(), timeout: 5_000 });
+        await page.evaluate((path) => { location.assign(path); }, destination).catch(() => {});
+        await navigated;
+        assert.equal((await value.execute({ operation: "capture", page_id: "home", request: capture("after-navigation") })).status, "refused");
+        assert.equal((await value.execute({ operation: "resolve", observation_id: captured.result.observation_id, entity_id: captured.result.entities[0].id })).status, "refused");
+        if (destination === "/unlisted") assert.ok(!calls.some((call) => call.url.endsWith("/unlisted")), "denied request reached transport");
+      } finally { await value.close(); }
+    });
+  }
+});
+
 test("adapter cancellation during navigation waits for owner teardown and rejects late navigation", { timeout: 15_000 }, async (t) => {
   let requested, release; const requestedPromise = new Promise((resolve) => { requested = resolve; }); const responseGate = new Promise((resolve) => { release = resolve; });
   let closing, allowClose; const closingPromise = new Promise((resolve) => { closing = resolve; }); const closeGate = new Promise((resolve) => { allowClose = resolve; });

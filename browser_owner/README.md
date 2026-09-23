@@ -49,6 +49,10 @@ for example `unknown_observation`. Successful envelopes are limited to 15 KiB;
 requests to 16 KiB. No screenshot bytes or paths enter these receipts.
 
 Configuration allows one or two exact canonical HTTPS URLs on one origin.
+The live owner closes if the page changes its own URL, including a blocked
+navigation that produces a browser error document. Only explicit owner
+navigation selects another configured page; later captures cannot retain the
+old page ID for a different document.
 Requests select their configured page ID; they cannot supply URLs, browser
 settings or export policy. The adapter offers capture, resolve, release and
 `{ operation: "jev_resolve", observation_id }` only. It exposes no interaction
