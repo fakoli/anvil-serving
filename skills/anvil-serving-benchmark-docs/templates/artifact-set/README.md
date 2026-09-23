@@ -36,7 +36,9 @@ consistent campaign-level index.
   that keeps partial, rejected, and missing outcomes visible
 
 These controls organize execution. They become evidence only when the final
-artifact manifest retains them under an applicable role.
+artifact manifest retains them under an applicable role. Before finalization,
+move unretained controls outside this public evidence directory and remove
+their links from this index.
 
 ## Workload and plan
 

@@ -64,8 +64,9 @@ Publish:
 
 Complete publication through `skills/anvil-serving-benchmark-docs/SKILL.md`,
 including its `anvil-serving.benchmark-artifact-set/v1` manifest,
-publication-ready result card, publication summary, and artifact-consistency
-checks. A format-only migration uses complete retained artifacts and does not
+publication-ready result card and artifact-consistency checks. Add a
+publication summary only when compact public communication is requested;
+otherwise mark the role `not-applicable` with a reason. A format-only migration uses complete retained artifacts and does not
 authorize a model load or benchmark rerun.
 
 Evidence publication does not authorize production promotion.

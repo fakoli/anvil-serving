@@ -4,7 +4,7 @@
   "model": "glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp",
   "health_status": 200,
   "configured_context_tokens": 245760,
-  "container_id": "070342ec04c5c74d7c7fcb3d45e551a1b48c594b1cdbc6225cc9154ada575073",
+  "container_id": "<redacted-container-id>",
   "gpu_free_mib": [3487, 3487],
   "reserve_threshold_mib": 3072,
   "reserve_passed": true,

@@ -3629,7 +3629,7 @@
     ],
     "containers": [
       {
-        "container_id": "4e14d4acb94930509f39cc1d23705f2dd6e9cc663d8f02a2d5a45d22af7b1120",
+        "container_id": "<redacted-container-id>",
         "name": "anvil-router",
         "image_reference": "anvil-serving:0.16.0",
         "image_id": null,
@@ -3638,7 +3638,7 @@
         "status": "Up 51 minutes (healthy)"
       },
       {
-        "container_id": "124b7cfe173885987f8e43882549f00782e96eefb9edf9139518fcbcf5447a2f",
+        "container_id": "<redacted-container-id>",
         "name": "anvil-workbench-workbench-1",
         "image_reference": "anvil-workbench:local",
         "image_id": null,
@@ -3647,7 +3647,7 @@
         "status": "Exited (0) 26 hours ago"
       },
       {
-        "container_id": "310cf9baf8c5e56fdbc2ab1bf9ba81b2ddffbe760585bb6b977a516b5f5d3950",
+        "container_id": "<redacted-container-id>",
         "name": "anvil-workbench-db-1",
         "image_reference": "postgres:17-alpine",
         "image_id": null,
@@ -3656,7 +3656,7 @@
         "status": "Exited (0) 26 hours ago"
       },
       {
-        "container_id": "aa48182ce44d73be880268738625d3baae2b0cb6c6415ec2861b52474a755bdb",
+        "container_id": "<redacted-container-id>",
         "name": "anvil-workbench-neo4j-1",
         "image_reference": "neo4j:2026.01",
         "image_id": null,
@@ -3665,7 +3665,7 @@
         "status": "Exited (137) 26 hours ago"
       },
       {
-        "container_id": "9534f0c6a740872879dcc78ca4852967fdc366974985b815a6bb8e11820023aa",
+        "container_id": "<redacted-container-id>",
         "name": "docker-labs-debug-tools-service-0.0.47",
         "image_reference": "docker/desktop-docker-debug-service:0.0.47",
         "image_id": null,

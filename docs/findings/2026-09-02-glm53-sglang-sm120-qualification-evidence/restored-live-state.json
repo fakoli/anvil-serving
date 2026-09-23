@@ -4,7 +4,7 @@
   "mode": "dual-gpu-exclusive",
   "serve_owner": "tp2-glm53-k3-dflash2-k5-524k-xgrammar",
   "container": "glm53-k3-xgfix-dflash2-k5-524k",
-  "container_id": "45a009b848afcbb8c6b979178f2b493c6f15327a964e93190affcd60811b2ac0",
+  "container_id": "<redacted-container-id>",
   "container_state": "running",
   "health_status": 200,
   "served_model_name": "glm53-flash-exl3-k3-dflash2-k5-fp8-tp2-524k-vision-xgfix",

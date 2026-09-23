@@ -7,7 +7,7 @@ import json
 import math
 from typing import Any, Callable, Mapping
 
-from .agentic import build_agentic_scenario, score_agentic_trace
+from .agentic import _tool_call_matches, build_agentic_scenario, score_agentic_trace
 from .evaluation import normalize_sampling, request_sampling_kwargs
 from .context import (
     NATIVE_CONTEXT_CASES,
@@ -414,7 +414,27 @@ def _normalized_tool_calls(message: Mapping[str, Any]) -> list[dict[str, Any]]:
     return result
 
 
-def _fixture_result(scenario: Mapping[str, Any], call_index: int, call: Mapping[str, Any]) -> Any:
+def _fixture_result(
+    scenario: Mapping[str, Any],
+    expected: Mapping[str, Any],
+    consumed: set[int],
+    call: Mapping[str, Any],
+) -> Any:
+    """Advance only a matched fixture call; observed protocol errors remain scored."""
+    expected_calls = expected.get("tool_calls", [])
+    available = (
+        range(len(expected_calls))
+        if expected.get("tool_mode") == "parallel"
+        else [len(consumed)]
+    )
+    call_index = next((
+        index for index in available
+        if index < len(expected_calls) and index not in consumed
+        and _tool_call_matches(call, expected_calls[index])
+    ), None)
+    if call_index is None:
+        return {"error": "unexpected deterministic tool call"}
+    consumed.add(call_index)
     fixtures = scenario.get("injected_results")
     if isinstance(fixtures, list) and call_index < len(fixtures):
         fixture = fixtures[call_index]
@@ -559,6 +579,7 @@ def _run_agentic_case(
     messages = copy.deepcopy(scenario["messages"])
     sampling_kwargs = sampling_kwargs or {}
     observed_calls = []
+    consumed_fixtures: set[int] = set()
     growth = []
     request_ids = []
     final_answer = ""
@@ -608,11 +629,17 @@ def _run_agentic_case(
                 content = message.get("content")
                 final_answer = content if isinstance(content, str) else ""
                 break
+            expected_batch = len(expected["tool_calls"]) if expected.get("tool_mode") == "parallel" else 1
+            if len(calls) != expected_batch:
+                observed_calls.extend({"name": call["name"], "arguments": call["arguments"]} for call in calls)
+                raise BenchmarkJobError(
+                    "tool_batch_mismatch", "tool calls do not match the required sequential or parallel turn grouping"
+                )
             message.setdefault("role", "assistant")
             messages.append(message)
             for call in calls:
                 observed_calls.append({"name": call["name"], "arguments": call["arguments"]})
-                fixture = _fixture_result(scenario, len(observed_calls) - 1, call)
+                fixture = _fixture_result(scenario, expected, consumed_fixtures, call)
                 messages.append({
                     "role": "tool",
                     "tool_call_id": call["id"],

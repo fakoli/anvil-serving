@@ -33,7 +33,9 @@ path and SHA-256 so a chart can be traced back to native evidence.
 compact working controls. They do not become benchmark proof merely because
 they were copied. Retain them under `run-plan` or `failures-and-friction` only
 when they are sanitized, final, and useful to reproduce or audit the campaign.
-Otherwise leave them out of the final role ledger.
+Otherwise move them outside the public evidence directory before finalization
+and remove their links from the evidence index. No unlisted working file may
+remain in the closed public inventory.
 
 ## Native evidence stays native
 
@@ -158,9 +160,14 @@ The repository helper
 `scripts/finalize_artifact_set.py` accepts an
 `anvil-serving.benchmark-artifact-set-source/v1` file with the ten roles in the
 order above and relative string paths. It fails closed on missing files, path
-escapes, invalid roles/statuses, and self-hashing, then writes the canonical
-hashed manifest. Keep the source file beside the bundle when repeatable
-finalization is useful.
+escapes, symlinks, duplicate paths within a role or JSON keys, invalid roles/statuses, and
+self-hashing, then writes the canonical hashed manifest. A retained legacy
+plaintext file with a `.json` suffix requires a source declaration such as
+`{"path": "gpus-final.json", "reason": "Historical command output"}` in
+`legacy_plaintext_files`; this exception never applies implicitly. Keep the
+source file beside the bundle when repeatable finalization is useful.
+A file may be referenced by multiple roles when each role explains its
+relevance; these references bind the same bytes, not independent evidence.
 
 ## Capacity comparison and replica aggregation
 

@@ -49,6 +49,20 @@ test("adapter forwards an already-aborted capture", { timeout: 15_000 }, async (
   const adapter = await createFixtureObservationAdapter(); t.after(() => adapter.close()); const controller = new AbortController(); controller.abort(); assert.equal((await adapter.execute({ operation: "capture" }, { signal: controller.signal })).code, "cancelled");
 });
 
+test("retained observation receipts keep their session binding after the newest is released", { timeout: 15_000 }, async (t) => {
+  const adapter = await createFixtureObservationAdapter({ piSessionId: "retained-fixture-session" });
+  t.after(() => adapter.close());
+  const first = await adapter.execute({ operation: "capture" }), latest = await adapter.execute({ operation: "capture" });
+  assert.equal(first.status, "ok"); assert.equal(latest.status, "ok");
+  const releasedLatest = await adapter.execute({ operation: "release", args: { observation_id: latest.result.observation_id } });
+  assert.equal(releasedLatest.status, "ok"); assert.deepEqual(releasedLatest.binding, latest.binding);
+  assert.equal((await adapter.execute({ operation: "preview" })).code, "unknown_observation");
+  const resolved = await adapter.execute({ operation: "resolve", args: { observation_id: first.result.observation_id, entity_id: first.result.entities[0].id } });
+  assert.equal(resolved.status, "ok"); assert.deepEqual(resolved.binding, first.binding);
+  const releasedFirst = await adapter.execute({ operation: "release", args: { observation_id: first.result.observation_id } });
+  assert.equal(releasedFirst.status, "ok"); assert.deepEqual(releasedFirst.binding, first.binding);
+});
+
 
 test("adapter close revokes an in-flight preview before viewer completion", { timeout: 15_000 }, async (t) => {
   const fixture = await previewFixture(), started = join(fixture.root, "started"); const previousProof = process.env.FIXTURE_PREVIEW_PROOF, previousStarted = process.env.FIXTURE_PREVIEW_STARTED, previousDelay = process.env.FIXTURE_PREVIEW_DELAY; process.env.FIXTURE_PREVIEW_PROOF = fixture.proof; process.env.FIXTURE_PREVIEW_STARTED = started; process.env.FIXTURE_PREVIEW_DELAY = "250";

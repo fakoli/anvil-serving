@@ -2,7 +2,7 @@
 
 A benchmark finding should be easy to understand at a glance without becoming
 less precise. Anvil Serving uses a **result card** in the dated finding and a
-separate **publication summary** beside its raw artifacts. Both are derivative
+optional **publication summary** beside its raw artifacts. Both are derivative
 views: the dated finding and retained artifacts remain the evidence.
 
 ## Campaign artifact set v1
@@ -70,7 +70,7 @@ contains:
 4. why the result matters;
 5. the most important caveat or retained failure; and
 6. links to the artifact manifest, human evidence index, and publication
-   summary.
+   summary when present.
 
 The full narrative follows the card and retains exact identity, method,
 distributions or ranges, failures, next experiments, raw links, and the
@@ -78,7 +78,8 @@ promotion boundary. Do not force the full report into the screenshot.
 
 ### Publication summary
 
-Put `<!-- benchmark-publication-summary/v1 -->` in a companion Markdown file
+When public communication is requested, put
+`<!-- benchmark-publication-summary/v1 -->` in a companion Markdown file
 beside the raw artifacts. Include:
 
 - canonical facts that posting copy must not contradict;
@@ -98,6 +99,13 @@ The artifact must still provide the immutable model/runtime identity, recipe,
 hardware, configuration, measurement path, workload, sample statistics,
 failures, decision, and raw links. A missing field remains a visible evidence
 gap.
+
+For active scouts, retain public-safe identity, configuration, raw run evidence, failures, and
+restoration evidence first. Defer the narrative finding, publication matrix,
+and platform variants until campaign closure. At closure, finalize all ten
+artifact roles and derive repeated metrics from one authoritative
+`summary.json` or the existing benchmark report. Label configured values as
+configured and do not present them as measured.
 
 ## Patterns adopted from peer repositories
 

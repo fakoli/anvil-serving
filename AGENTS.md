@@ -128,6 +128,12 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
   chronological archive only when guidance/comparisons change and methodology
   only when its contract changes. Separate measured hardware from
   protected/co-resident or topology-only mentions.
+  During active scouts, retain public-safe identity, configuration, raw run
+  evidence, failures, and restoration
+  evidence while deferring narrative and matrix updates until campaign closure.
+  At closure, publish the complete matrix and use one authoritative summary or
+  existing benchmark report for repeated metrics; mark configured values apart
+  from measured results.
 - **Kernel tunes are explicit, pinned artifacts.** Use
   `skills/anvil-serving-kernel-tuning/SKILL.md` for missing MoE/GEMM config
   warnings, kernel bottlenecks, and retuning after runtime or GPU changes.

@@ -46,7 +46,14 @@ class Supervisor:
 
 
 @pytest.fixture
-def setup(tmp_path):
+def setup(tmp_path, monkeypatch):
+    from itertools import count
+    from types import SimpleNamespace
+    from anvil_serving.service_runtime import operations
+
+    # Fake supervisors test lifecycle outcomes, not host scheduling latency.
+    ticks = count(0, .001)
+    monkeypatch.setattr(operations, "time", SimpleNamespace(monotonic=lambda: next(ticks)))
     binding = dict(id="events", resource="events", manager="launchd", engine="none",
                    definition=str(tmp_path / "events.plist"), definition_sha256="a" * 64,
                    label="com.example.events", owner_uid=501)

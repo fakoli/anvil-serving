@@ -16,8 +16,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "562f9a1db10ba58a6a3de9503f6b6987a16f8dc77281ea4a436b5040ed3075e0",
-          "bytes": 2108
+          "sha256": "5b076418de958953ba44f487220424c6764da768ac3ee433eb1cc96a18df4462",
+          "bytes": 2410
         },
         {
           "path": "redaction-provenance.json",
@@ -235,13 +235,13 @@
         },
         {
           "path": "cache-before.json",
-          "sha256": "9ac9b94b514a019a1914dbef52d4f4fb2b92228de78492e21fcba91f01a66a42",
-          "bytes": 60669
+          "sha256": "18282affb0e48136bf3a0e3211a710c0beceb0b5cb2ddcda6c552094dd628fbe",
+          "bytes": 59849
         },
         {
           "path": "cache-after.json",
-          "sha256": "a35ea5d42cace43cfcf4324e3415f17702a01494a2f34c1ae5ba06549f640afa",
-          "bytes": 60596
+          "sha256": "ccde041e6f827ff2ae91f47dfaa12b0e4347c431c211ccfc68ae12bbd157a29e",
+          "bytes": 59776
         }
       ],
       "reason": "Authorized retained default and post-run state."

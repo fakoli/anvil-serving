@@ -32,3 +32,10 @@ tests, tracked Markdown link check and strict MkDocs build passed. The strict
 build used the repository's docs requirements in an isolated tool environment.
 
 The authorized native GLM recipe retains P2P enabled. See the [decision summary](summary.json), [publication summary](publication-summary.md), [comparison](comparison.json), and [chart](benchmark-matrix.svg). The two 380K strict-output failures and the raw diagnostic marker failure remain retained limitations.
+
+## Container identity redaction
+
+On 2026-09-22, literal container IDs in retained state and cache captures
+were replaced with `<redacted-container-id>`. Measurements, model revisions,
+image digests, and historical outcomes are unchanged. A redacted container
+field no longer proves instance identity.
