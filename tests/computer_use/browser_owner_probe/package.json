@@ -1,0 +1,14 @@
+{
+  "name": "anvil-serving-browser-owner-probe",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "probe": "node probe.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

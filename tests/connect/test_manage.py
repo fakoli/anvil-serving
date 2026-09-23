@@ -372,6 +372,108 @@ def test_up_many_upgrade_requires_prior_bytes_and_new_paths(tmp_path: Path, monk
     assert hashlib.sha256(native.read_bytes()).hexdigest() == hashlib.sha256(b"native-v1").hexdigest()
 
 
+def test_authelia_schema_upgrade_failure_retries_only_new_generation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A possibly-started new provider retains a bound fix-forward recovery."""
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(); units.chmod(0o755)
+    initial = SyntheticRunner(); initial.unit_root = units
+    targets = manage._targets(value, None)
+    manage.up_many(manifest, targets, apply=True, runner=initial, unit_root=units)
+    root = Path(value["config_root"])
+    old_generation = manage._verify_owned_tree(root)[0]
+    old_record = json.loads((tmp_path / ".rendered.anvil-connect-activation.json").read_text())
+    new_authelia = tmp_path / "authelia-v2"
+    digest = _executable(new_authelia, b"authelia-v2")
+    changed = copy.deepcopy(value)
+    changed["components"] = {**value["components"], "authelia": str(new_authelia)}
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+    monkeypatch.setattr(manage, "_component_lock", lambda: {"caddy": old_record["components"]["caddy"], "authelia": digest})
+    users = tmp_path / "users.yml"; users.write_text("users: {}\n")
+    archive = tmp_path / "backups" / "auth-test.zip"; archive.parent.mkdir(); archive.write_bytes(b"fixture")
+    monkeypatch.setattr(manage, "_safe_authelia_users_file", lambda _: users)
+    monkeypatch.setattr(manage, "_changed_authelia_upgrade", lambda data, selected, digests: (old_generation, old_record))
+    from anvil_serving.connect import user_backup
+    receipt = {"file": str(archive), "sha256": "a" * 64}
+    monkeypatch.setattr(user_backup, "snapshot", lambda *_, **__: receipt)
+    monkeypatch.setattr(user_backup, "read_snapshot", lambda *_, **__: {"users.yml": b"users: {}\n"})
+
+    failed = SyntheticRunner(fail_start="anvil-connect-authelia.service"); failed.unit_root = units
+    with pytest.raises(manage.ManageError):
+        manage.up_many(manifest, targets, upgrade=True, apply=True, runner=failed, unit_root=units)
+    marker = tmp_path / ".rendered.anvil-connect-authelia-upgrade.json"
+    assert marker.is_file()
+    assert manage._verify_owned_tree(root)[0] != old_generation
+    assert "authelia-v2" in (units / "anvil-connect-authelia.service").read_text()
+    assert not any(call and call[0] == value["components"]["authelia"] for call in failed.calls)
+
+    drifted = copy.deepcopy(changed)
+    drifted["gateway"]["gateway"]["max_concurrent"] = 63
+    manifest.write_text(json.dumps(drifted), encoding="utf-8")
+    with pytest.raises(manage.ManageError, match="does not match"):
+        manage.up_many(manifest, targets, upgrade=True, apply=True, runner=SyntheticRunner(), unit_root=units)
+    manifest.write_text(json.dumps(changed), encoding="utf-8")
+
+    archive.unlink()
+    monkeypatch.setattr(user_backup, "read_snapshot", lambda path, **_: (_ for _ in ()).throw(manage.ManageError("missing archive")) if not path.exists() else {"users.yml": b"users: {}\n"})
+    with pytest.raises(manage.ManageError, match="missing archive"):
+        manage.up_many(manifest, targets, upgrade=True, apply=True, runner=SyntheticRunner(), unit_root=units)
+    archive.write_bytes(b"fixture")
+    # The pending marker binds the validated declaration, not insignificant
+    # JSON serialization details written by an operator's formatter.
+    manifest.write_text(json.dumps(changed, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    recovered = SyntheticRunner(); recovered.unit_root = units
+    result = manage.up_many(manifest, targets, upgrade=True, apply=True, runner=recovered, unit_root=units)
+    assert not marker.exists()
+    assert result["authelia_upgrade_recovery_completed"] is True
+    record = json.loads((tmp_path / ".rendered.anvil-connect-activation.json").read_text())
+    assert record["components"]["authelia"] == digest
+
+
+def test_authelia_schema_upgrade_recovery_marker_tamper_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    root = Path(value["config_root"])
+    root.mkdir()
+    marker = tmp_path / ".rendered.anvil-connect-authelia-upgrade.json"
+    marker.write_text("{}\n")
+    with pytest.raises(manage.ManageError, match="recovery marker"):
+        manage._read_authelia_upgrade_marker(root, data=value, digests={"native": "a" * 64, "caddy": "b" * 64, "authelia": "c" * 64}, manifest=manifest, targets=(manage.Target("gateway"),), unit_root=tmp_path)
+
+
+def test_up_preview_reports_even_an_invalid_authelia_recovery_marker(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    marker = tmp_path / ".rendered.anvil-connect-authelia-upgrade.json"
+    marker.symlink_to(tmp_path / "missing-marker")
+    preview = manage.up(manifest, manage.Target("gateway"), runner=SyntheticRunner())
+    assert preview["activation_blockers"] == [
+        "Authelia migration recovery is pending; rerun the identical connect up command with --upgrade --confirm."
+    ]
+
+
+def test_authelia_recovery_marker_read_disappearance_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    root = Path(value["config_root"])
+    marker = tmp_path / ".rendered.anvil-connect-authelia-upgrade.json"
+    marker.write_text("{}\n"); marker.chmod(0o600)
+    original = manage._read_regular
+    monkeypatch.setattr(manage, "_read_regular", lambda path, maximum: None if path == marker else original(path, maximum))
+    with pytest.raises(manage.ManageError, match="recovery marker"):
+        manage._read_authelia_upgrade_marker(root, data=value, digests={"native": "a" * 64, "caddy": "b" * 64, "authelia": "c" * 64}, manifest=manifest, targets=(manage.Target("gateway"),), unit_root=tmp_path)
+    assert marker.exists()
+
+
+def test_authelia_upgrade_pending_receipt_does_not_claim_unknown_backup() -> None:
+    blocked = manage._authelia_upgrade_pending(False)
+    assert blocked.may_have_executed is False
+    assert blocked.recovery == {
+        "recovery_required": True,
+        "recovery_hint": "Authelia migration recovery is pending; rerun the identical connect up command with --upgrade --confirm",
+    }
+    pending = manage._authelia_upgrade_pending(True)
+    assert pending.recovery["backup_retained"] is True
+
+
 def test_up_many_waits_for_gateway_admin_before_starting_connector(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manifest, value, native = deployment(tmp_path, monkeypatch)
     units = tmp_path / "units"

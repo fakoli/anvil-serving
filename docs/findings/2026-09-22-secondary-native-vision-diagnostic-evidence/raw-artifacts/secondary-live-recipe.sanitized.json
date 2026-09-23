@@ -1,0 +1,27 @@
+{
+  "command": "models recipes status lyf/Qwen3.8-27B-Huihui-NInfer-NVFP4-MTP3-160K-Baked --registry [REDACTED_PATH] --container CONTAINER-REDACTED",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "{\n  \"container\": \"CONTAINER-REDACTED\",\n  \"container_id\": \"CONTAINER-REDACTED\",\n  \"health\": null,\n  \"host_memory\": {\n    \"current_bytes\": null,\n    \"effective_limit_bytes\": null,\n    \"effective_swap_limit_bytes\": null,\n    \"events\": null,\n    \"exit_code\": 0,\n    \"limit_bytes\": 0,\n    \"oom_killed\": false,\n    \"peak_bytes\": null,\n    \"ram_plus_swap_limit_bytes\": 0\n  },\n  \"image\": \"anvil-ninfer@sha256:22fa89d51912535dfb0ebc6cf035e33a99a06b6a27b592dfef1f112d5e349b43\",\n  \"image_id\": \"sha256:22fa89d51912535dfb0ebc6cf035e33a99a06b6a27b592dfef1f112d5e349b43\",\n  \"model\": \"lyf/Qwen3.8-27B-Huihui-NInfer-NVFP4-MTP3-160K-Baked\",\n  \"revision\": \"181446902fc777c479749e98cf2abf2250263a8d\",\n  \"running\": true,\n  \"schema\": \"recipe-container-status/v1\",\n  \"state\": \"running\"\n}\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

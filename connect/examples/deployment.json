@@ -47,7 +47,7 @@
     }
   ],
   "components": {
-    "authelia": "/opt/anvil-connect/components/authelia/4.39.20/authelia",
+    "authelia": "/opt/anvil-connect/components/authelia/4.39.28/authelia",
     "caddy": "/opt/anvil-connect/components/caddy/2.11.3/caddy"
   },
   "config_root": "/etc/anvil-connect/rendered",

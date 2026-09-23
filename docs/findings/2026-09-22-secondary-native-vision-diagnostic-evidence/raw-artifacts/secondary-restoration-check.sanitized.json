@@ -1,0 +1,26 @@
+{
+  "after": {
+    "container_id": "CONTAINER-REDACTED",
+    "image_id": "sha256:22fa89d51912535dfb0ebc6cf035e33a99a06b6a27b592dfef1f112d5e349b43",
+    "revision": "181446902fc777c479749e98cf2abf2250263a8d",
+    "running": true,
+    "state": "running"
+  },
+  "before": {
+    "container_id": "CONTAINER-REDACTED",
+    "image_id": "sha256:22fa89d51912535dfb0ebc6cf035e33a99a06b6a27b592dfef1f112d5e349b43",
+    "revision": "181446902fc777c479749e98cf2abf2250263a8d",
+    "running": true,
+    "state": "running"
+  },
+  "before_after_equal": {
+    "container_id": true,
+    "image_id": true,
+    "revision": true,
+    "running": true,
+    "state": true
+  },
+  "claim": "Same existing container and image remained running after bounded requests; does not prove absence of transient pressure or exclusive GPU use.",
+  "lifecycle_changes": false,
+  "observed_at": "2026-09-22T11:38:35.773835+00:00"
+}

@@ -86,9 +86,10 @@ password-reset links and passkey verification codes.
 
 The pinned Authelia flow consumes the link while validating the password page,
 before the new password is submitted. A refresh or second tab can therefore show
-an already-used-link error. Request a replacement instead of reopening the same
-link. The email provides that recovery action; it does not change the upstream
-token lifecycle or fix an unavailable password field.
+an already-used-link error or leave the password fields disabled. Choose
+**Cancel**, then **Reset password?**, and request a replacement instead of
+reopening the same link. The email also provides that recovery action; it does
+not change the upstream token lifecycle.
 
 Password recovery proves access to the account's email address. Password hints
 and security questions are not prerequisites. Changing a known password in account

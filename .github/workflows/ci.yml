@@ -125,6 +125,27 @@ jobs:
       - name: Ruff check
         run: ruff check --config pyproject.toml .
 
+  browser-owner:
+    name: browser owner (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: browser_owner/package-lock.json
+      - name: Install pinned browser owner dependencies
+        run: npm ci --prefix browser_owner
+      - name: Install Chromium for the real owner suite
+        run: npm exec --prefix browser_owner -- playwright install --with-deps chromium
+      - name: Run browser owner suite
+        run: |
+          cd browser_owner
+          export CHROMIUM_EXECUTABLE="$(node --input-type=module -e 'import { chromium } from "playwright"; process.stdout.write(chromium.executablePath())')"
+          test -x "$CHROMIUM_EXECUTABLE"
+          npm test
+
   build:
     name: build + clean wheel smoke (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

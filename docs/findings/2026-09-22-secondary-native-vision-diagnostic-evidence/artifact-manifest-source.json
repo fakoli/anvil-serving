@@ -1,0 +1,133 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "workload-manifest.json",
+        "raw-artifacts/corpus.json",
+        "raw-artifacts/assets/adversarial-1.png",
+        "raw-artifacts/assets/adversarial-2.png",
+        "raw-artifacts/assets/charts-1.png",
+        "raw-artifacts/assets/charts-2.png",
+        "raw-artifacts/assets/disabled-1.png",
+        "raw-artifacts/assets/disabled-2.png",
+        "raw-artifacts/assets/icons-1.png",
+        "raw-artifacts/assets/icons-2.png",
+        "raw-artifacts/assets/missing-1.png",
+        "raw-artifacts/assets/missing-2.png",
+        "raw-artifacts/assets/small-text-1.png",
+        "raw-artifacts/assets/small-text-2.png"
+      ],
+      "reason": "",
+      "role": "workload-manifest",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "run-plan.md"
+      ],
+      "reason": "",
+      "role": "run-plan",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "configuration-identity.json",
+        "redaction-notes.md"
+      ],
+      "reason": "",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "raw-artifacts/secondary-diagnostic-native-1024.sanitized.json",
+        "raw-artifacts/secondary-preflight.sanitized.json",
+        "raw-artifacts/secondary-preflight-native-policy.sanitized.json",
+        "raw-artifacts/secondary-preflight-native-1024.sanitized.json",
+        "raw-artifacts/secondary-live-recipe.sanitized.json",
+        "raw-artifacts/secondary-live-gpus.sanitized.json",
+        "raw-artifacts/secondary-live-memory.sanitized.json",
+        "raw-artifacts/secondary-live-logs.sanitized.json",
+        "raw-artifacts/secondary-live-endpoint.sanitized.json",
+        "raw-artifacts/secondary-post-recipe.sanitized.json",
+        "raw-artifacts/secondary-post-gpus.sanitized.json",
+        "raw-artifacts/secondary-post-memory.sanitized.json",
+        "raw-artifacts/secondary-post-timestamp.sanitized.json",
+        "raw-artifacts/secondary-restoration-check.sanitized.json",
+        "raw-artifacts/secondary-diagnostic-sol-review.sanitized.md"
+      ],
+      "reason": "",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "friction-log.md",
+        "raw-artifacts/secondary-diagnostic-sol-review.sanitized.md"
+      ],
+      "reason": "",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json",
+        "raw-artifacts/secondary-restoration-check.sanitized.json"
+      ],
+      "reason": "",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "",
+      "role": "publication-summary",
+      "status": "retained"
+    }
+  ],
+  "campaign": {
+    "capability": "multimodal",
+    "completed_at": "2026-09-22T11:32:42Z",
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "dirty_state": "not-recorded",
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "id": "2026-09-22-secondary-native-vision-diagnostic",
+    "promotion_authorized": false,
+    "repository_revision": "not-recorded",
+    "started_at": "2026-09-22T11:32:39Z"
+  },
+  "native_evidence_schemas": [
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1"
+}

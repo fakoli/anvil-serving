@@ -72,9 +72,28 @@ sys.path.insert(0, str(repo))
 from anvil_serving.connect.render import render
 manifest = json.loads((repo / "connect/examples/deployment.json").read_text(encoding="utf-8"))
 manifest["config_root"] = str(work / "rendered")
+manifest.pop("service_user", None)
+manifest["service_identities"] = {
+    "gateway": {"uid": 1201, "gid": 1201},
+    "edge": {"uid": 1202, "gid": 1202},
+    "idp": {"uid": 1203, "gid": 1203},
+    "connectors": {"dashboard": {"uid": 1204, "gid": 1204}},
+    "clients": {"dashboard-api": {"uid": 1205, "gid": 1205}},
+    "ingress": {"group_id": 1290, "directory": str(work / "ingress")},
+}
+manifest["service_limits"] = {
+    "gateway": {"memory_max_bytes": 805306368, "tasks_max": 128},
+    "edge": {"memory_max_bytes": 536870912, "tasks_max": 64},
+    "idp": {"memory_max_bytes": 536870912, "tasks_max": 64},
+    "connectors": {"dashboard": {"memory_max_bytes": 402653184, "tasks_max": 64}},
+    "clients": {"dashboard-api": {"memory_max_bytes": 268435456, "tasks_max": 32}},
+}
+manifest["gateway"]["state_directory"] = str(work / "gateway-state")
+manifest["connectors"][0]["state_directory"] = str(work / "connector-dashboard-state")
+manifest["caddy"]["state_directory"] = str(work / "caddy-state")
 manifest["caddy"]["tls"] = {"mode": "provided", "certificate_file": str(work / "secrets" / "caddy-certificate.pem"), "key_file": str(work / "secrets" / "caddy-key.pem")}
 auth = manifest["authelia"]
-auth["state_directory"] = str(work / "state")
+auth["state_directory"] = str(work / "authelia-state")
 for key in ("users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file"):
     auth[key] = str(work / "secrets" / key)
 for name, content in render(manifest)["files"].items():

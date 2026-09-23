@@ -18,7 +18,7 @@ import zipfile
 
 import pytest
 
-from anvil_serving.connect import manage, users
+from anvil_serving.connect import manage, user_purge, users
 from anvil_serving.connect.cli import dispatch
 from anvil_serving.operator_output import UsageError
 
@@ -453,6 +453,34 @@ def test_code_exports_a_fresh_password_setup_link(environment):
     assert not state["calls"]
 
 
+def test_empty_oidc_export_accepts_only_pinned_provider_absence(monkeypatch, tmp_path):
+    state = tmp_path / "idp"
+    state.mkdir(mode=0o700)
+    data = {"authelia": {"state_directory": str(state)}, "components": {"authelia": "/opt/authelia"}}
+    monkeypatch.setattr(users, "role_identity", lambda *_args: (os.geteuid(), os.getegid()))
+    monkeypatch.setattr(manage, "_safe_private_runtime_directory", lambda *_args: None)
+    monkeypatch.setattr(manage, "_role_service_identity", lambda *_args: None)
+    commands = []
+
+    def runner(argv, timeout, identity):
+        commands.append((argv, timeout, identity))
+        return manage.RunResult(1, b"", b"Error: no data to export\nUsage:\n  authelia storage user identifiers export\n")
+
+    assert users._oidc_identifiers(data, tmp_path / "authelia.yml", runner, missing_ok=True) == []
+    argv, timeout, identity = commands.pop()
+    assert argv[:5] == ("/opt/authelia", "storage", "user", "identifiers", "export")
+    assert argv[-4:] == ("--config", str(tmp_path / "authelia.yml"), "--config.experimental.filters", "template")
+    assert timeout == 15 and identity is None
+
+    def unexpected(argv, timeout, identity):
+        return manage.RunResult(1, b"", b"Error: storage unavailable\n")
+
+    with pytest.raises(manage.ManageError, match="opaque-identifier export failed"):
+        users._oidc_identifiers(data, tmp_path / "authelia.yml", unexpected, missing_ok=True)
+    with pytest.raises(manage.ManageError, match="opaque-identifier export failed"):
+        users._oidc_identifiers(data, tmp_path / "authelia.yml", runner, missing_ok=False)
+
+
 def test_cli_default_manifest_and_conditional_apply(monkeypatch):
     calls = []
     monkeypatch.setattr(users, "operate", lambda *args, **kwargs: calls.append((args, kwargs)) or {})
@@ -750,12 +778,16 @@ def test_password_setup_refusal_timeout_is_bounded(monkeypatch):
 
 
 @pytest.mark.parametrize(("passkey_login", "passkey_uv_two_factors"), ((False, False), (True, False), (True, True)))
-def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(
+def test_real_authelia_password_setup_links_complete_in_a_fresh_session(
         environment, monkeypatch, capsys, passkey_login, passkey_uv_two_factors):
     """Opt-in real provider smoke, isolated files/loopback; no live systemd calls."""
     binary = os.environ.get("ANVIL_CONNECT_TEST_AUTHELIA")
     if not binary:
         pytest.skip("set ANVIL_CONNECT_TEST_AUTHELIA to the pinned executable")
+    binary_path = Path(binary)
+    lock = json.loads((Path(__file__).parents[2] / "anvil_serving/connect/components.lock.json").read_text())
+    expected_digest = next(item["binary_sha256"] for item in lock["components"] if item["name"] == "authelia")
+    assert hashlib.sha256(binary_path.read_bytes()).hexdigest() == expected_digest
     run, db, state, private = environment
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
@@ -771,7 +803,7 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(
     legacy.write_bytes(db.read_bytes())
     legacy.chmod(0o600)
     data["authelia"]["users_file"] = str(legacy)
-    monkeypatch.setattr(manage, "_component_lock", lambda: {"authelia": hashlib.sha256(Path(binary).read_bytes()).hexdigest()})
+    monkeypatch.setattr(manage, "_component_lock", lambda: {"authelia": expected_digest})
     root = Path(data["config_root"])
     key = private / "storage-key"
     key.write_text("synthetic-storage-secret-for-isolated-test")
@@ -952,4 +984,75 @@ def test_real_authelia_password_setup_links_complete_in_a_fresh_browser(
     run("access", "dev", grants=["pi:member"], apply=True)
     check_passwords(second_password)
     assert [request["operation"] for request in requests] == ["human-suspend", "human-set"]
-    generate_totp()  # Restored access does not recreate the removed factor.
+    retained = subprocess.run([binary, "storage", "user", "totp", "generate", "dev", "--config", str(root / "authelia/configuration.yml")],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+    assert retained.returncode != 0  # Restored access preserves the retained factor.
+    with sqlite3.connect(f"file:{private / 'authelia.sqlite3'}?mode=ro", uri=True) as connection:
+        user_purge._schema(connection)
+
+
+def test_real_authelia_schema24_migrates_to_schema29_without_losing_authentication_data(tmp_path):
+    """Opt-in migration proof using disposable state and the two pinned binaries."""
+    current = os.environ.get("ANVIL_CONNECT_TEST_AUTHELIA")
+    previous = os.environ.get("ANVIL_CONNECT_TEST_AUTHELIA_PREVIOUS")
+    if not current or not previous:
+        pytest.skip("set ANVIL_CONNECT_TEST_AUTHELIA and ANVIL_CONNECT_TEST_AUTHELIA_PREVIOUS")
+    lock = json.loads((Path(__file__).parents[2] / "anvil_serving/connect/components.lock.json").read_text())
+    current_digest = next(item["binary_sha256"] for item in lock["components"] if item["name"] == "authelia")
+    assert hashlib.sha256(Path(current).read_bytes()).hexdigest() == current_digest
+    assert hashlib.sha256(Path(previous).read_bytes()).hexdigest() == "d6ef74f039b89d0eb8873dd0e8219ea2016ee25c4ddb6695acd56ebb72b7c3f8"
+    database, users_file, config_path = tmp_path / "authelia.sqlite3", tmp_path / "users.yml", tmp_path / "authelia.yml"
+    users_file.write_text("users: {}\n")
+    config_path.write_text(json.dumps({
+        "server": {"address": "tcp://127.0.0.1:19091"},
+        "authentication_backend": {"file": {"path": str(users_file)}},
+        "access_control": {"default_policy": "deny", "rules": [{"domain": "auth.example.test", "policy": "one_factor"}]},
+        "session": {"secret": "synthetic-session-secret-for-schema-migration", "cookies": [{"domain": "auth.example.test", "authelia_url": "https://auth.example.test"}]},
+        "identity_validation": {"reset_password": {"jwt_secret": "synthetic-reset-secret-for-schema-migration"}},
+        "storage": {"encryption_key": "synthetic-storage-secret-for-schema-migration", "local": {"path": str(database)}},
+        "notifier": {"filesystem": {"filename": str(tmp_path / "notifications.txt")}},
+    }))
+    def migrate(binary: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [binary, "storage", "migrate", "up", "--config", str(config_path)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15,
+        )
+    assert migrate(previous).returncode == 0
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO authentication_logs (successful, username) VALUES (?, ?)",
+            (True, "preserved-user"),
+        )
+    assert migrate(current).returncode == 0
+    with sqlite3.connect(f"file:{database}?mode=ro", uri=True) as connection:
+        user_purge._schema(connection)
+        assert connection.execute("SELECT username FROM authentication_logs").fetchone() == ("preserved-user",)
+
+@pytest.mark.parametrize(
+    ("operation", "username", "kwargs"),
+    (
+        ("create", "developer", {"email": "developer@example.test"}),
+        ("access", "owner", {"grants": ["workbench:member"]}),
+        ("suspend", "owner", {}),
+        ("reset-password", "owner", {}),
+        ("reset-mfa", "owner", {}),
+        ("code", "owner", {}),
+        ("backup", None, {}),
+    ),
+)
+def test_pending_authelia_upgrade_blocks_confirmed_account_operations_before_actions(
+        environment, operation, username, kwargs):
+    run, database, state, private = environment
+    users.read_manifest("unused")["gateway"] = {
+        "gateway": {"resources": [{"rule": {"id": "workbench", "access": "browser"}}]},
+    }
+    root = private.parent / "rendered"
+    marker = manage._authelia_upgrade_marker(root)
+    marker.write_text("pending\n")
+    before = database.read_bytes()
+
+    with pytest.raises(manage.ManageError, match="Authelia migration recovery is pending"):
+        run(operation, username, apply=True, **kwargs)
+
+    assert database.read_bytes() == before
+    assert state["calls"] == []

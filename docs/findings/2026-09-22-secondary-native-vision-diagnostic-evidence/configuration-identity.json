@@ -1,0 +1,28 @@
+{
+  "campaign_id": "2026-09-22-secondary-native-vision-diagnostic",
+  "configuration": {
+    "chat_template_kwargs": null,
+    "concurrency": 1,
+    "max_tokens": 1024,
+    "temperature": 0.0,
+    "thinking_mode": "unsupported"
+  },
+  "container_id": "CONTAINER-REDACTED",
+  "dirty_state": "not recorded in retained evidence",
+  "endpoint": "REDACTED_URL",
+  "engine_revision": "70434721b1ae29d0616f3de9b376c8a4d91590b5",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "gpu_uuid": "GPU-REDACTED",
+  "host": "REDACTED_HOST",
+  "identity_limitations": [
+    "Serve flags, environment controls, topology, and exclusive-use evidence were not retained.",
+    "The private original-hash manifest is deliberately outside this sanitized draft."
+  ],
+  "measurement_path": "native direct endpoint diagnostic",
+  "model": "qwen38-huihui-ninfer-schemafix-mtp3-160k",
+  "model_revision": "181446902fc777c479749e98cf2abf2250263a8d",
+  "repository_revision": "not recorded in retained evidence",
+  "runtime": "NInfer",
+  "runtime_image": "sha256:22fa89d51912535dfb0ebc6cf035e33a99a06b6a27b592dfef1f112d5e349b43",
+  "schema": "sanitized-secondary-vision-identity/v1"
+}
