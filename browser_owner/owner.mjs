@@ -192,11 +192,17 @@ class Facade {
     if (!state.preview) fail("preview_disabled");
     if (typeof observationId !== "string") fail("unknown_observation");
     const record = state.records.get(observationId); if (!record) fail("unknown_observation");
-    if (this.#expired(record)) { await this.#delete(record); fail("expired_observation"); }
-    if (!sameEpoch(record.epochs, await snapshot(state))) fail("stale_observation");
+    const validate = async () => {
+      if (state.closed) fail("owner_closed");
+      if (state.records.get(observationId) !== record || record.id !== observationId || record.receipt.observation_id !== observationId) fail("unknown_observation");
+      if (this.#expired(record)) { await this.#delete(record); fail("expired_observation"); }
+      if (!record.image || createHash("sha256").update(record.image).digest("hex") !== record.digest) fail("preview_invalid");
+      if (!sameEpoch(record.epochs, await snapshot(state))) fail("stale_observation");
+    };
+    await validate();
     let result;
-    try { result = await state.preview.show(record); } catch (error) { fail(error?.code || "preview_failed"); }
-    record.lastRead = state.clock(); return result;
+    try { result = await state.preview.show(record, validate); } catch (error) { fail(error?.code || "preview_failed"); }
+    await validate(); record.lastRead = state.clock(); return result;
   }
   async #resolve(observationId, entityId) {
       if (typeof observationId !== "string" || typeof entityId !== "string") fail("unknown_observation");

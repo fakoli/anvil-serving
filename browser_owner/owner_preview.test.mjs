@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, utimes, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, open, readFile, readdir, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import test from "node:test";
 import { tmpdir } from "node:os";
@@ -21,7 +21,7 @@ async function fixture() {
 }
 async function viewer(directory) {
   const file = join(directory, "viewer.mjs"), attest = join(directory, "attest.json");
-  await writeFile(file, `#!${process.execPath}\nimport { createHash } from "node:crypto";import { lstat,readFile,writeFile } from "node:fs/promises";import { dirname } from "node:path";const path=process.argv.at(-1);if(process.env.PREVIEW_HANG){setInterval(()=>{},1000);await new Promise(()=>{})}const [data,stat,directory]=await Promise.all([readFile(path),lstat(path),lstat(dirname(path))]);await writeFile(process.env.PREVIEW_ATTEST,JSON.stringify({digest:createHash("sha256").update(data).digest("hex"),mode:stat.mode&0o777,directory:directory.mode&0o777}));`);
+  await writeFile(file, `#!${process.execPath}\nimport { createHash } from "node:crypto";import { lstat,readFile,writeFile } from "node:fs/promises";import { dirname } from "node:path";import { spawn } from "node:child_process";const path=process.argv.at(-1);if(process.env.PREVIEW_HANG){setInterval(()=>{},1000);await new Promise(()=>{})}if(process.env.PREVIEW_MARKER){spawn(process.execPath,["-e","setTimeout(()=>require('node:fs').writeFileSync(process.env.PREVIEW_MARKER,'late'),100)"],{stdio:"ignore"});process.exit(0)}const [data,stat,directory]=await Promise.all([readFile(path),lstat(path),lstat(dirname(path))]);await writeFile(process.env.PREVIEW_ATTEST,JSON.stringify({digest:createHash("sha256").update(data).digest("hex"),mode:stat.mode&0o777,directory:directory.mode&0o777}));`);
   await chmod(file, 0o700); return { file, attest };
 }
 function screenshotHook() {
@@ -61,4 +61,18 @@ test("preview cleans failed viewers and scavenges only expired regular owner fil
   await session.navigate(`${site.origin}/`); const observation = await session.capture(request); await assert.rejects(session.preview(observation.observation_id), error("preview_unavailable"));
   assert.equal(existsSync(old), false); assert.equal(existsSync(join(dir, "outside")), true); assert.equal((await lstat(join(root, "preview-11111111-1111-1111-1111-111111111111.png"))).isSymbolicLink(), true);
   await rm(join(root, "preview-11111111-1111-1111-1111-111111111111.png")); await assert.rejects(session.preview(observation.observation_id), error("preview_timeout"));
+});
+
+
+test("preview freezes viewer argv, cleans partial writes, cancels setup, and kills viewer descendants", { timeout: 15_000 }, async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "owner-preview-")), site = await fixture(), fake = await viewer(dir), marker = join(dir, "descendant");
+  const oldAttest = process.env.PREVIEW_ATTEST, oldMarker = process.env.PREVIEW_MARKER; process.env.PREVIEW_ATTEST = fake.attest;
+  t.after(async () => { if (oldAttest === undefined) delete process.env.PREVIEW_ATTEST; else process.env.PREVIEW_ATTEST = oldAttest; if (oldMarker === undefined) delete process.env.PREVIEW_MARKER; else process.env.PREVIEW_MARKER = oldMarker; await site.close(); await rm(dir, { recursive: true, force: true }); });
+  const argv = [fake.file], frozen = await owner(site.origin, { viewer: argv, runtimeRoot: dir }); const frozenSession = frozen.session(); await frozenSession.navigate(`${site.origin}/`); const frozenObservation = await frozenSession.capture(request); argv[0] = "/bin/false"; await frozenSession.preview(frozenObservation.observation_id); await frozen.close(); assert.equal(existsSync(fake.attest), true, "mutated caller argv changed the selected viewer");
+  const partial = await owner(site.origin, { viewer: [fake.file], runtimeRoot: dir }); const partialSession = partial.session(); await partialSession.navigate(`${site.origin}/`); const partialObservation = await partialSession.capture({ ...request, request_id: "partial" }); const probe = await open(join(dir, "prototype"), "w"), prototype = Object.getPrototypeOf(probe), write = prototype.writeFile; await probe.close(); let injected = false; prototype.writeFile = async function (...args) { if (!injected) { injected = true; throw new Error("EIO"); } return write.apply(this, args); };
+  try { await assert.rejects(partialSession.preview(partialObservation.observation_id), error("preview_failed")); } finally { prototype.writeFile = write; await partial.close(); }
+  assert.equal((await readdir(join(dir, previewNamespace))).filter((name) => name.endsWith(".png")).length, 0, "partial write leaked a preview file");
+  let entered, release; const gate = new Promise((resolve) => { entered = resolve; }), unblock = new Promise((resolve) => { release = resolve; }); const paused = await owner(site.origin, { viewer: [fake.file], runtimeRoot: dir }); const pausedSession = paused.session(); await pausedSession.navigate(`${site.origin}/`); const pausedObservation = await pausedSession.capture({ ...request, request_id: "paused" }); const handle = await open(join(dir, "prototype-2"), "w"), proto = Object.getPrototypeOf(handle), original = proto.writeFile; await handle.close(); let pause = true; proto.writeFile = async function (...args) { if (pause) { pause = false; entered(); await unblock; } return original.apply(this, args); };
+  try { const pending = pausedSession.preview(pausedObservation.observation_id); await gate; await paused.close(); release(); await assert.rejects(pending, error("owner_closed")); } finally { proto.writeFile = original; await paused.close(); }
+  assert.equal(existsSync(fake.attest), true); process.env.PREVIEW_MARKER = marker; const descendants = await owner(site.origin, { viewer: [fake.file], runtimeRoot: dir }); const descendantSession = descendants.session(); await descendantSession.navigate(`${site.origin}/`); const descendantObservation = await descendantSession.capture({ ...request, request_id: "descendant" }); await descendantSession.preview(descendantObservation.observation_id); await new Promise((resolve) => setTimeout(resolve, 180)); await descendants.close(); assert.equal(existsSync(marker), false, "viewer descendant outlived preview cleanup");
 });

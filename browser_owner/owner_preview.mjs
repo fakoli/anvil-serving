@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { chmod, lstat, mkdir, open, readdir, rm } from "node:fs/promises";
-import { basename, isAbsolute, join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { spawn } from "node:child_process";
 
 const namespace = "anvil-owner-preview-v1";
@@ -12,35 +12,38 @@ export function createOwnerPreview(policy, { ttl }) {
   if (!policy || typeof policy !== "object" || Array.isArray(policy) || Object.getPrototypeOf(policy) !== Object.prototype || Object.keys(policy).some((key) => !["viewer", "runtimeRoot", "timeout"].includes(key))) fail("invalid_preview_policy");
   const { viewer, runtimeRoot, timeout = 5_000 } = policy;
   if (!Array.isArray(viewer) || !viewer.length || viewer.some((part) => typeof part !== "string" || !part.length || part.includes("\0")) || !isAbsolute(viewer[0]) || typeof runtimeRoot !== "string" || !isAbsolute(runtimeRoot) || runtimeRoot.includes("\0") || !Number.isInteger(timeout) || timeout < 1 || timeout > 10_000) fail("invalid_preview_policy");
-  const directory = join(runtimeRoot, namespace);
+  const argv = Object.freeze([...viewer]), directory = join(runtimeRoot, namespace);
   const ready = async () => {
     await mkdir(directory, { recursive: true, mode: 0o700 }).catch(() => fail("preview_unavailable"));
     const info = await lstat(directory).catch(() => null);
     if (!info || !info.isDirectory() || info.isSymbolicLink()) fail("preview_unavailable");
     await chmod(directory, 0o700).catch(() => fail("preview_unavailable"));
-    await scavenge(directory, ttl);
+    await scavenge(directory, Math.max(ttl, timeout));
   };
   return Object.freeze({
-    async show(record) {
+    async show(record, validate) {
       if (process.platform === "win32") fail("preview_unsupported");
-      await ready();
-      if (!record.image || createHash("sha256").update(record.image).digest("hex") !== record.digest) fail("preview_invalid");
+      await validate(); await ready(); await validate();
       const path = join(directory, `preview-${randomUUID()}.png`);
-      const handle = await open(path, "wx", 0o600).catch(() => fail("preview_unavailable"));
-      try { await handle.writeFile(record.image); await chmod(path, 0o600); } finally { await handle.close().catch(() => {}); }
-      let child, timer, complete = false;
+      let child, childExit, handle, timer, complete = false, cancelled = false;
+      const kill = () => { if (child?.pid) process.kill(-child.pid, "SIGKILL"); };
       const cleanup = async () => {
-        if (complete) return; complete = true; clearTimeout(timer); child?.kill("SIGKILL"); await rm(path, { force: true }).catch(() => {});
+        if (complete) return; complete = true; cancelled = true; clearTimeout(timer); try { kill(); } catch {} await childExit?.catch(() => {}); await handle?.close().catch(() => {}); await rm(path, { force: true }).catch(() => {});
       };
-      record.previewCleanup = cleanup;
       try {
+        handle = await open(path, "wx", 0o600).catch(() => fail("preview_unavailable"));
+        record.previewCleanup = cleanup;
+        await validate(); if (cancelled) fail("owner_closed");
+        await handle.writeFile(record.image); await chmod(path, 0o600); await handle.close(); handle = undefined;
+        if (cancelled) fail("owner_closed"); await validate(); if (cancelled) fail("owner_closed");
         await new Promise((resolve, reject) => {
-          try { child = spawn(viewer[0], [...viewer.slice(1), path], { shell: false, stdio: "ignore", windowsHide: true }); } catch { reject(new Error("preview_failed")); return; }
-          timer = setTimeout(() => { reject(new Error("preview_timeout")); child.kill("SIGKILL"); }, timeout);
+          try { child = spawn(argv[0], [...argv.slice(1), path], { shell: false, stdio: "ignore", windowsHide: true, detached: true }); } catch { reject(new Error("preview_failed")); return; }
+          childExit = new Promise((done) => child.once("exit", (code, signal) => { done(); code === 0 && !signal ? resolve() : reject(new Error("preview_failed")); }));
+          timer = setTimeout(() => { reject(new Error("preview_timeout")); try { kill(); } catch {} }, timeout);
           child.once("error", () => reject(new Error("preview_failed")));
-          child.once("exit", (code, signal) => code === 0 && !signal ? resolve() : reject(new Error("preview_failed")));
         });
-      } catch (error) { fail(error.message === "preview_timeout" ? "preview_timeout" : "preview_failed");
+        await validate(); if (cancelled) fail("owner_closed");
+      } catch (error) { fail(cancelled ? "owner_closed" : (error?.code || (error?.message === "preview_timeout" ? "preview_timeout" : "preview_failed")));
       } finally { await cleanup(); if (record.previewCleanup === cleanup) delete record.previewCleanup; }
       return Object.freeze({ status: "shown" });
     },
@@ -48,9 +51,9 @@ export function createOwnerPreview(policy, { ttl }) {
   });
 }
 
-async function scavenge(directory, ttl) {
+async function scavenge(directory, age) {
   const entries = await readdir(directory, { withFileTypes: true }).catch(() => fail("preview_unavailable"));
-  const cutoff = Date.now() - Math.min(ttl, 60_000);
+  const cutoff = Date.now() - age;
   for (const entry of entries) {
     if (!fileName.test(entry.name)) continue;
     if (entry.isSymbolicLink() || !entry.isFile()) fail("preview_unavailable");
