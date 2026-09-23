@@ -10,7 +10,9 @@ import { createFixtureObservationAdapter } from "../../../browser_owner/observat
 
 if (!process.argv.includes("--image-mode")) {
   for (const mode of ["0", "1"]) {
-    const result = spawnSync(process.execPath, [process.argv[1], "--image-mode"], { cwd: process.cwd(), env: { ...process.env, PI_BROWSER_IMAGE_CAPABLE: mode }, encoding: "utf8" });
+    const result = spawnSync(process.execPath, [process.argv[1], "--image-mode"], { cwd: process.cwd(), env: { ...process.env, PI_BROWSER_IMAGE_CAPABLE: mode }, encoding: "utf8", timeout: 20_000, killSignal: "SIGKILL" });
+    assert.equal(result.error?.code, undefined, `image mode ${mode} timed out or failed to start: ${result.error?.message ?? "unknown error"}`);
+    assert.equal(result.signal, null, `image mode ${mode} was terminated by ${result.signal}`);
     assert.equal(result.status, 0, result.stderr);
   }
   process.stdout.write("pi browser owner dispatch: ok (image modes 0,1)\n");
