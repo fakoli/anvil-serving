@@ -14,13 +14,17 @@ import (
 func browserLifetimeGateway(t *testing.T) GatewayConfig {
 	t.Helper()
 	declaration := gatewaySettings(t)
+	addresses := availableAddresses(t, 4)
+	declaration.Gateway.Listen = addresses[0]
+	declaration.Gateway.Resources[0].TunnelAddress = addresses[1]
+	declaration.TunnelListen = addresses[2]
 	declaration.Gateway.Resources = append(declaration.Gateway.Resources, config.Resource{
 		Rule: config.Rule{
 			ID: "dashboard", Host: "dash.example.test", PathPrefix: "/",
 			Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none",
 			Limits: config.Limits{RequestBytes: 4096, Concurrent: 1, BufferBytes: 4096, IdleSeconds: 60, DurationSeconds: 120},
 		},
-		Connector: "origin-b", TunnelAddress: availableAddress(t),
+		Connector: "origin-b", TunnelAddress: addresses[3],
 	})
 	declaration.OIDC = OIDC{Issuer: "https://auth.example.test", ClientID: "connect-browser", ClientSecretEnv: "OIDC_CLIENT_SECRET"}
 	return declaration
@@ -49,7 +53,7 @@ func TestBrowserSessionLifetimeDeclarationDefaultsAndBounds(t *testing.T) {
 		}
 		decoded, err := ReadGateway(bytes.NewReader(encoded))
 		if err != nil || decoded.BrowserSessionLifetimeSeconds == nil || *decoded.BrowserSessionLifetimeSeconds != seconds || decoded.BrowserSessionLifetime() != time.Duration(seconds)*time.Second {
-			t.Fatalf("valid browser lifetime %d was not retained", seconds)
+			t.Fatalf("valid browser lifetime %d was not retained: %v", seconds, err)
 		}
 	}
 }
