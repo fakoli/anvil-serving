@@ -35,7 +35,7 @@ async function fixtureDigest() {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome", headless: true, args: ["--disable-gpu"] }); try { const context = await browser.newContext({ serviceWorkers: "block", acceptDownloads: false }), page = await context.newPage(); await page.goto(url, { waitUntil: "load" }); return createHash("sha256").update(await page.screenshot({ type: "png", caret: "initial" })).digest("hex"); } finally { await browser.close(); await new Promise((resolve) => server.close(resolve)); }
 }
 const home = await mkdtemp(join(tmpdir(), "pi-browser-owner-"));
-const previewRoot = join(home, "preview-root"), previewViewer = join(home, "preview-viewer.mjs"), previewProof = join(home, "preview-proof.json"), neutralPreviewRoot = join(home, "neutral-preview-root"), neutralPreviewProof = join(home, "neutral-preview-proof.json");
+const previewRoot = join(home, "preview-root"), previewViewer = join(home, "preview-viewer.mjs"), previewProof = join(home, "preview-proof.json");
 await writeFile(previewViewer, `#!${process.execPath}\nimport { createHash } from "node:crypto";import { lstat,readFile,writeFile } from "node:fs/promises";const path=process.argv.at(-1),[image,stat]=await Promise.all([readFile(path),lstat(path)]);await writeFile(process.env.PI_BROWSER_FIXTURE_PREVIEW_PROOF,JSON.stringify({digest:createHash("sha256").update(image).digest("hex"),mode:stat.mode&0o777}));`); await chmod(previewViewer, 0o700);
 const expectedPreviewDigest = await fixtureDigest();
 const providerCaptures = [];
