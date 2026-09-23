@@ -1,0 +1,38 @@
+schema = "anvil-serving.serve-recipes/v1"
+[[recipe]]
+model = "local-inference-lab/GLM-5.3-Flash-NVFP4-Spark"
+name = "next-glm53-spark-tp2-nospec-r1"
+expected_container = "next-glm53-spark-tp2-nospec-r1"
+status = "experimental"
+source = "Pinned LIL Spark TP2 preset on Sep23 canonical image; no speculation, no external cache, explicit327680 context and3.5GiB KV/rank; unqualified first-load diagnosis."
+family = "glm5.3-flash-multimodal-moe"
+[recipe.download]
+repo = "local-inference-lab/GLM-5.3-Flash-NVFP4-Spark"
+revision = "a608241037e4c2565356bff7ca293f2133888f88"
+volume = "vllm-hfcache"
+require_complete_cache = true
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+[recipe.serve]
+engine = "vllm-lil-karmic-fcd71"
+image = "ghcr.io/local-inference-lab/vllm:karmic-kraken-20260923-fcd71e8abd3c987b@sha256:e5a9b3239e5986f49abc89b0a973a181ce43c2d64e3bc6ad7d2119ee85bfe9df"
+model_env = "MODEL"
+allow_cuda_visible_devices_index = true
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53249
+host_memory_reserve_mib = 12288
+context_tokens = 327680
+port = 39131
+served_model_name = "glm53-spark-lil-tp2-nospec-327k-r1"
+startup_timeout_seconds = 3600
+ipc = "host"
+shm_size = "32gb"
+ulimits = ["memlock=-1", "stack=67108864:67108864"]
+named_volumes = ["next-glm53-lil-fcd71-runtime:/cache"]
+quantization = "NVFP4 routed experts with MXFP8 attention/dense; FP8 KV; FP32 recurrent; MTP off; visual-only CPU offload1.5GiB"
+entrypoint = ["bash", "-lc", "test \"$(cat /sys/fs/cgroup/memory.max)\" = 55834574848 && test \"$(cat /sys/fs/cgroup/memory.swap.max)\" = 1048576 || { echo containment-failed >&2; exit 78; }; echo containment-passed; exec /opt/venv/bin/python -m runtime.entrypoint \"$@\"", "anvil-lil-glm53"]
+env = ["PRESET=glm53-spark-tp2", "HF_HUB_OFFLINE=1", "TRANSFORMERS_OFFLINE=1", "CUDA_VISIBLE_DEVICES=0,1", "CUDA_DEVICE_ORDER=PCI_BUS_ID", "PORT=39131", "TP=2", "DCP=2", "CACHE_MODE=vram", "MAX_MODEL_LEN=327680", "MAX_NUM_SEQS=4", "MAX_NUM_BATCHED_TOKENS=3072", "KV_CACHE_MEMORY_BYTES=3758096384", "KV_CACHE_DTYPE=fp8", "SPECULATOR=off", "MTP_DEPTH=0", "MAMBA_SSM_CACHE_DTYPE=float32", "SERVED_MODEL_NAME=glm53-spark-lil-tp2-nospec-327k-r1", "VLLM_ENGINE_READY_TIMEOUT_S=3600"]
+flags = ["--model /root/.cache/huggingface/hub/models--local-inference-lab--GLM-5.3-Flash-NVFP4-Spark/snapshots/a608241037e4c2565356bff7ca293f2133888f88", "--limit-mm-per-prompt '{\"image\":8,\"video\":0}'", "--override-generation-config '{\"max_new_tokens\":65536,\"temperature\":1.0,\"top_p\":0.95}'", "--cpu-offload-gb 1.5", "--cpu-offload-params visual"]
+note = "No-MTP control for reported long-output regression; no claim MTP is causal. Visual1.5GiB CPU offload mirrors hardware-matched user report, eight images and65536 output require qualification.52GiB hard host RAM/1MiB swap. No route change."

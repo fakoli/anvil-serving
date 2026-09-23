@@ -1,0 +1,33 @@
+{
+  "observed_at": "2026-09-23T13:25:44.644821+00:00",
+  "exit_code": 0,
+  "processes": [
+    {
+      "gpu_uuid": "GPU-00000000-0000-0000-0000-000000000001",
+      "pid": "728880",
+      "process_name": "VLLM::Worker_TP0_DCP0_EP0",
+      "used_gpu_memory [MiB]": "95500 MiB",
+      "incumbent_container_cgroup_match": true
+    },
+    {
+      "gpu_uuid": "GPU-00000000-0000-0000-0000-000000000002",
+      "pid": "728881",
+      "process_name": "VLLM::Worker_TP1_DCP1_EP1",
+      "used_gpu_memory [MiB]": "95480 MiB",
+      "incumbent_container_cgroup_match": true
+    }
+  ],
+  "starting_memory_mib_per_gpu": [
+    94505,
+    94505
+  ],
+  "ending_memory_mib_per_gpu": [
+    95509,
+    95489
+  ],
+  "memory_delta_mib": [
+    1004,
+    984
+  ],
+  "interpretation": "Same incumbent GPU process owner; VRAM occupancy differs after workload. Allocation cause not independently isolated; no extra GPU compute process observed."
+}

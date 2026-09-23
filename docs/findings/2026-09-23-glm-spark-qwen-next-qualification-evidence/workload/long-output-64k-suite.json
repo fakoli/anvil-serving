@@ -1,0 +1,50 @@
+{
+  "suite": "long-output-stability-64k-v1",
+  "date": "2026-09-23",
+  "work_class": "coding-agent-infrastructure",
+  "evidence_use": "diagnostic",
+  "validator_strength": "deterministic_marker",
+  "evals": [
+    {
+      "id": "natural-long-technical-guide",
+      "prompt": "Write a complete engineering implementation guide for a Python standard-library local coding-agent task runner. This is a long-form technical deliverable, not an outline or summary. Provide all 24 chapters listed below, in order, as Markdown headings exactly `## CHAPTER <slug>`. Each chapter must contain at least 400 words of concrete discussion AND one distinct, substantive executable Python example of at least 20 lines. Keep the architecture consistent across chapters. Cover invariants, error handling, and a worked example in each chapter. Avoid filler, repeated paragraphs, placeholders, ellipses and unrelated topics. Do not shorten later chapters. Explain scheduling, dependencies, cancellation, persistence and tool execution coherently. This may take around 20000-30000 output tokens; the response budget is large enough. Do not ask to continue in another reply. End only after every chapter with the exact final line GUIDE-COMPLETE-24.\n\nChapters:\nrequirements-and-contracts\nworkspace-layout\nlexer\nparser\nexpression-evaluator\ntype-validation\ndependency-graph\ncycle-detection\nscheduler\nretry-policy\ncancellation\nevent-journal\natomic-storage\ncheckpoint-recovery\nresource-limits\ntool-protocol\nhttp-interface\ncli-interface\nobservability\nsecurity-boundaries\nunit-testing\nintegration-testing\nload-testing\noperations-and-examples",
+      "visible_answer_tokens": 49152,
+      "reasoning_headroom_tokens": 16384,
+      "checks": [
+        {
+          "name": "all-chapters",
+          "contains_all": [
+            "## CHAPTER requirements-and-contracts",
+            "## CHAPTER workspace-layout",
+            "## CHAPTER lexer",
+            "## CHAPTER parser",
+            "## CHAPTER expression-evaluator",
+            "## CHAPTER type-validation",
+            "## CHAPTER dependency-graph",
+            "## CHAPTER cycle-detection",
+            "## CHAPTER scheduler",
+            "## CHAPTER retry-policy",
+            "## CHAPTER cancellation",
+            "## CHAPTER event-journal",
+            "## CHAPTER atomic-storage",
+            "## CHAPTER checkpoint-recovery",
+            "## CHAPTER resource-limits",
+            "## CHAPTER tool-protocol",
+            "## CHAPTER http-interface",
+            "## CHAPTER cli-interface",
+            "## CHAPTER observability",
+            "## CHAPTER security-boundaries",
+            "## CHAPTER unit-testing",
+            "## CHAPTER integration-testing",
+            "## CHAPTER load-testing",
+            "## CHAPTER operations-and-examples"
+          ]
+        },
+        {
+          "name": "completion-marker",
+          "contains": "GUIDE-COMPLETE-24"
+        }
+      ]
+    }
+  ]
+}

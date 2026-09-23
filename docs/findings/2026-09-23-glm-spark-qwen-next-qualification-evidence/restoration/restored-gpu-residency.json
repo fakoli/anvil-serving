@@ -1,0 +1,5 @@
+{
+  "observed_at": "2026-09-23T13:24:55.667714+00:00",
+  "exit_code": 0,
+  "csv": "index, uuid, name, driver_version, memory.total [MiB], memory.used [MiB], utilization.gpu [%]\n0, GPU-00000000-0000-0000-0000-000000000001, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 615.71.09, 97887 MiB, 95509 MiB, 0 %\n1, GPU-00000000-0000-0000-0000-000000000002, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 615.71.09, 97887 MiB, 95489 MiB, 0 %\n"
+}

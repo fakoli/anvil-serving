@@ -1,0 +1,226 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "closed_inventory": true,
+  "campaign": {
+    "id": "2026-09-23-next-model-qualification",
+    "capability": "text/image coding and tool use",
+    "repository_revision": "e419280a3e9caeac1366c759421467fc1d6111bd",
+    "dirty_state": "Clean final oracle-7 source; retained earlier launcher/source receipts distinguish earlier scout revisions.",
+    "started_at": "2026-09-23T09:52:12Z",
+    "completed_at": "2026-09-23T13:27:31.756313+00:00",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": true,
+    "promoted": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.swe-run/v1",
+    "multimodal-benchmark-evidence/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload/long-output-64k-suite.json",
+        "workload/long-output-suite.json",
+        "workload/manifest.json",
+        "workload/strict128-raw-boundary-suite.json",
+        "workload/swe-scout-selection-v1.json"
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "workload/baseline-agentic-oracle7-spec.json",
+        "workload/baseline-swe-scout5-spec.json",
+        "workload/campaign-plan.md",
+        "workload/glm-spark-r1-swe-scout5-spec.json",
+        "workload/qwen-medium-agentic-oracle7-spec.json",
+        "workload/qwen-medium-swe-scout5-spec.json"
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration/baseline-recipe.toml",
+        "configuration/feasibility-r0.json",
+        "configuration/glm-spark-r1-feasibility-observed.json",
+        "configuration/glm-spark-recipe-r1.toml",
+        "configuration/glm-spark-t06-trial.json",
+        "configuration/launcher-current.json",
+        "configuration/launcher-oracle7.json",
+        "configuration/qwen-disabled-trial.json",
+        "configuration/qwen-medium-trial.json",
+        "configuration/qwen-native-reasoning-controls.json",
+        "configuration/qwen-parser-boundary-research.json",
+        "configuration/qwen-recipe-r1.toml",
+        "configuration/qwen-recipe-r2.toml",
+        "sanitization-receipts.json"
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "native/baseline-agentic-oracle5-native.json",
+        "native/baseline-agentic-oracle7-native.json",
+        "native/baseline-capacity-c4-strict128.json",
+        "native/baseline-capacity-c4-unique.json",
+        "native/baseline-eight-images.json",
+        "native/baseline-long-context-tools.json",
+        "native/baseline-long-output-64k.json",
+        "native/baseline-long-output.json",
+        "native/baseline-preflight.json",
+        "native/baseline-swe-native.json",
+        "native/baseline-swe-reports/django-patch.diff",
+        "native/baseline-swe-reports/django-test_output.txt",
+        "native/baseline-swe-reports/django__django-13512-report.json",
+        "native/baseline-swe-reports/pydata__xarray-4356-report.json",
+        "native/baseline-swe-reports/pylint-dev__pylint-8898-report.json",
+        "native/baseline-swe-reports/pylint-patch.diff",
+        "native/baseline-swe-reports/pylint-test_output.txt",
+        "native/baseline-swe-reports/sphinx-doc__sphinx-9658-report.json",
+        "native/baseline-swe-reports/sympy__sympy-12096-report.json",
+        "native/baseline-swe-scout5-native.json",
+        "native/glm-spark-r1-agentic-oracle6-native.json",
+        "native/glm-spark-r1-agentic-oracle7-native.json",
+        "native/glm-spark-r1-capacity-c4-strict128.json",
+        "native/glm-spark-r1-eight-images.json",
+        "native/glm-spark-r1-long-context-tools.json",
+        "native/glm-spark-r1-long-output-64k.json",
+        "native/glm-spark-r1-preflight.json",
+        "native/glm-spark-r1-swe-native.json",
+        "native/glm-spark-r1-swe-reports/django__django-13512-report.json",
+        "native/glm-spark-r1-swe-reports/pydata__xarray-4356-report.json",
+        "native/glm-spark-r1-swe-reports/sympy__sympy-12096-report.json",
+        "native/glm-spark-r1-swe-scout5-native.json",
+        "native/glm-spark-t06-agentic-oracle7-native.json",
+        "native/glm-spark-t06-capacity-c4-strict128.json",
+        "native/kernel-glm-spark-r1-through-1144.json",
+        "native/kernel-qwen-r2-medium-final.json",
+        "native/qwen-disabled-agentic-oracle7-native.json",
+        "native/qwen-disabled-capacity-c4-strict128.json",
+        "native/qwen-medium-agentic-oracle7-native.json",
+        "native/qwen-medium-capacity-c4-strict128.json",
+        "native/qwen-medium-raw-boundary.json",
+        "native/qwen-medium-status-1211.json",
+        "native/qwen-medium-swe-reports/django__django-13512-report.json",
+        "native/qwen-medium-swe-reports/pydata__xarray-4356-report.json",
+        "native/qwen-medium-swe-reports/pylint-dev__pylint-8898-report.json",
+        "native/qwen-medium-swe-reports/pylint-patch.diff",
+        "native/qwen-medium-swe-reports/pylint-test-output.txt",
+        "native/qwen-medium-swe-reports/sphinx-doc__sphinx-9658-report.json",
+        "native/qwen-medium-swe-reports/sympy__sympy-12096-report.json",
+        "native/qwen-medium-swe-scout5-native.json",
+        "native/qwen-r1-kernel-faults.json",
+        "native/qwen-r2-agentic-native.json",
+        "native/qwen-r2-agentic-oracle6-native.json",
+        "native/qwen-r2-capacity-c4-strict128.json",
+        "native/qwen-r2-context-extended.json",
+        "native/qwen-r2-eight-images.json",
+        "native/qwen-r2-long-context-tools.json",
+        "native/qwen-r2-long-output-64k.json",
+        "native/qwen-r2-long-output.json",
+        "native/qwen-r2-preflight.json",
+        "native/qwen-r2-swe-native.json",
+        "native/qwen-status-r1-fault.json"
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "review/baseline-long-output-64k-analysis.json",
+        "review/baseline-long-output-64k-independent-review.json",
+        "review/baseline-swe-scout5-independent-review.json",
+        "review/bounded-logs-readback.json",
+        "review/final-full-tests-receipt.json",
+        "review/glm-spark-long-output-independent-review.json",
+        "review/glm-spark-r1-long-output-64k-analysis.json",
+        "review/glm-spark-startup-independent-review.json",
+        "review/glm-spark-swe-scout5-co-residency.json",
+        "review/glm-spark-swe-scout5-independent-review.json",
+        "review/oracle7-independent-review.json",
+        "review/qwen-long-output-independent-review.json",
+        "review/qwen-medium-swe-scout5-independent-review.json",
+        "review/qwen-r2-long-output-64k-analysis.json",
+        "review/strict-capacity-independent-policy-review.json",
+        "review/tooling-pr567-independent-review.json",
+        "review/tooling-pr567-merge.json"
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "restoration/kernel-baseline-final.json",
+        "restoration/mode-before-switch.json",
+        "restoration/restored-direct-health.json",
+        "restoration/restored-gpu-process-ownership.json",
+        "restoration/restored-gpu-residency.json",
+        "restoration/restored-gpus.json",
+        "restoration/restored-mode-status.json",
+        "restoration/restored-recipe-status.json",
+        "restoration/restored-routed-preflight.json",
+        "restoration/restored-router-transition.json",
+        "restoration/restored-shared-memory.json",
+        "restoration/router-contract-readback.json",
+        "restoration/router-final-readmit-preview.json",
+        "restoration/router-final-readmit.json",
+        "restoration/start.json"
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social/public-copy package requested; the dated finding and documentation matrix publish this no-promotion result."
+    }
+  ]
+}

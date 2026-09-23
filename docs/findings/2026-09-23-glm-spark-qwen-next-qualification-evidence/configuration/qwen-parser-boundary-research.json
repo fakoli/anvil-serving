@@ -1,0 +1,19 @@
+{
+  "reviewed_at": "2026-09-23T11:52:09.633838+00:00",
+  "runtime_revision": "622912b9b2cfd04784da5b0dfc69ce8aa5aee02d",
+  "selected_parser": "reasoning-parser qwen3 (Python Qwen3ParserReasoningAdapter), tool-call-parser qwen3_xml",
+  "observed": "Retained naturalguide visible content starts two newlines. Capacity failures did not retain raw content, so separator cause remains unproven. Wrongwordcounts independentlyfailed.",
+  "confirmed": [
+    "Pinned Python grammar terminates at </think> and preserves subsequent TEXT_CHUNK whitespace.",
+    "Rust Qwen3 with_after_end two-newlines CONSUMES them; initial research inference that Rust preserves separator was corrected before action.",
+    "Exactpin doesnotexposea Rustreasoningparser CLIselector/envtoggle. Rustbindingsprovideonlytoolparserbridge."
+  ],
+  "sources": [
+    "https://github.com/local-inference-lab/vllm/blob/622912b9b2cfd04784da5b0dfc69ce8aa5aee02d/vllm/parser/qwen3.py",
+    "https://github.com/local-inference-lab/vllm/blob/622912b9b2cfd04784da5b0dfc69ce8aa5aee02d/vllm/parser/engine/registered_adapters.py",
+    "https://github.com/local-inference-lab/vllm/blob/622912b9b2cfd04784da5b0dfc69ce8aa5aee02d/rust/src/parser/src/reasoning/delimited.rs",
+    "https://github.com/local-inference-lab/vllm/blob/622912b9b2cfd04784da5b0dfc69ce8aa5aee02d/rust/src/parser/python/src/lib.rs",
+    "https://github.com/local-inference-lab/vllm/blob/622912b9b2cfd04784da5b0dfc69ce8aa5aee02d/vllm/reasoning/__init__.py"
+  ],
+  "decision": "No unsupportedparserswitch/routertrim/validatorchange. Probe exactcapacityrawresponse ifmediumstillfailsmarker."
+}

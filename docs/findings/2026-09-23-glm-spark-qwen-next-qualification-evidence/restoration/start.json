@@ -1,0 +1,6 @@
+{
+  "observed_at": "2026-09-23T09:52:12.825179+00:00",
+  "product_revision": "eb8ed5c4bf4acc7e40cbfced8ae817ea088239a7",
+  "recipe_sha256": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105",
+  "gpu": "uuid, name, driver_version, memory.total [MiB], memory.used [MiB], utilization.gpu [%]\nGPU-00000000-0000-0000-0000-000000000001, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 615.71.09, 97887 MiB, 94505 MiB, 0 %\nGPU-00000000-0000-0000-0000-000000000002, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 615.71.09, 97887 MiB, 94505 MiB, 0 %\n"
+}

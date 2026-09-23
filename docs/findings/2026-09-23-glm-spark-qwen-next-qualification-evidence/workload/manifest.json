@@ -1,0 +1,57 @@
+{
+  "schema": "local-workload-manifest/v1",
+  "campaign": "2026-09-23-next-model-qualification",
+  "capacity": {
+    "source": "anvil_serving/benchmarking/requests.py",
+    "source_revision": "e419280a3e9caeac1366c759421467fc1d6111bd",
+    "prompt_function": "make_prompt",
+    "seed": 0,
+    "nominal_context_tokens": 32768,
+    "completion_cap": 8192,
+    "word_target": 128,
+    "canaries": true,
+    "cache_mode": "unique",
+    "strict": true,
+    "concurrency": 4,
+    "main_population": 16,
+    "repair_population": 4,
+    "important_limit": "Filler token count is nominal; native artifacts contain exact observed input usage. Synthetic repeated-word adherence is not general coding intelligence."
+  },
+  "agentic": {
+    "oracle_revision": "7",
+    "source": "anvil_serving/benchmarking/agentic.py",
+    "source_revision": "e419280a3e9caeac1366c759421467fc1d6111bd",
+    "source_sha256": "ebd5ac6b1a4d25d19b08ab5eee84c70bcf5187d354e00afaeeb0e77cc1ac139b",
+    "attempts": 18,
+    "role": "Strict disclosed tool/protocol fixtures, separate from real repository coding."
+  },
+  "coding": {
+    "selection": "swe-scout-selection-v1.json",
+    "agent": "mini-swe-agent@a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+    "grader": "swe-bench@f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+    "dataset": "princeton-nlp/SWE-bench_Verified@c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "license_note": "Use upstream dataset and individual task repository licenses; no dataset or repositories vendored here.",
+    "count": 5,
+    "one_worker": true,
+    "calls_per_task": 60,
+    "completion_cap_per_call": 16384,
+    "smoke_task_separate": "psf__requests-2317, 40-call smoke budget"
+  },
+  "vision": {
+    "repository_corpus": "docs/findings/2026-09-18-glm53-vision-evidence/eight-images/corpus.json",
+    "sha256": "a3c84fbd456b1824bb2bc2383a8043efe6376b39d4ca2db831b8e02e09c096c3",
+    "license": "CC0-1.0 synthetic cards",
+    "requests": 4,
+    "images_per_request": 8,
+    "assertions": "Ordered and reverse card OCR, min/max and sum; two repetitions each."
+  },
+  "long_generation": {
+    "suite": "long-output-64k-suite.json",
+    "completion_cap": 65536,
+    "role": "Natural long-generation continuity diagnostic; marker/syntax checks do not certify integrated program correctness."
+  },
+  "raw_boundary": {
+    "suite": "strict128-raw-boundary-suite.json",
+    "role": "Later single nonstreaming diagnostic with full visible response. Does not recover past streaming responses."
+  }
+}

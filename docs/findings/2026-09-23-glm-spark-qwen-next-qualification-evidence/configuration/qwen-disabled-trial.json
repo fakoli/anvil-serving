@@ -1,0 +1,25 @@
+{
+  "config_id": "qwen-r2-thinking-disabled",
+  "parent": "qwen-r2-medium",
+  "frozen_at": "2026-09-23T12:06:57.380824+00:00",
+  "delta": {
+    "reasoning_effort": "medium -> omitted",
+    "thinking_mode": "default -> disabled using enable_thinking=false"
+  },
+  "evidence": "Pinned checkpoint chat template lines165-166 emits completed thinking prefix including separator before generation; supported native control, no parser patch. Medium raw diagnostic begins with two newlines and 142 code words.",
+  "hypothesis": "Moving thinking separator into prompt may remove leading visible separator; whether exact output counts improve is unknown.",
+  "unchanged": [
+    "r2 recipe",
+    "checkpoint",
+    "runtime",
+    "MTP3",
+    "temperature1",
+    "top_p0.95",
+    "C4",
+    "32768 nominal context",
+    "8192 output cap",
+    "128 code words",
+    "unique cache and canaries"
+  ],
+  "plan": "Second and final supported request-control repair: four-request strict capacity cell, then nearby oracle7. Failure remains retained; no validator relaxation."
+}

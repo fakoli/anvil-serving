@@ -1,0 +1,204 @@
+{
+  "source": "/srv/example/operator/evidence/2026-09-23-next-model-qualification/qwen-r2-long-output-64k.json",
+  "sha256": "53b19d412509ed84f82b8ffb466666089b165e3e09c7e20d9cec231b352243e0",
+  "visible_tokens": 23150,
+  "finish_reason": "stop",
+  "latency_ms": 249592.64032499958,
+  "chapters": [
+    {
+      "chapter": "requirements-and-contracts",
+      "prose_words": 414,
+      "python_lines": [
+        59
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "workspace-layout",
+      "prose_words": 370,
+      "python_lines": [
+        51
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "lexer",
+      "prose_words": 383,
+      "python_lines": [
+        47
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "parser",
+      "prose_words": 348,
+      "python_lines": [
+        187
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "expression-evaluator",
+      "prose_words": 320,
+      "python_lines": [
+        125
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "type-validation",
+      "prose_words": 333,
+      "python_lines": [
+        83
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "dependency-graph",
+      "prose_words": 318,
+      "python_lines": [
+        63
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "cycle-detection",
+      "prose_words": 342,
+      "python_lines": [
+        48
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "scheduler",
+      "prose_words": 303,
+      "python_lines": [
+        91
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "retry-policy",
+      "prose_words": 297,
+      "python_lines": [
+        56
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "cancellation",
+      "prose_words": 286,
+      "python_lines": [
+        46
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "event-journal",
+      "prose_words": 292,
+      "python_lines": [
+        81
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "atomic-storage",
+      "prose_words": 285,
+      "python_lines": [
+        36
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "checkpoint-recovery",
+      "prose_words": 313,
+      "python_lines": [
+        53
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "resource-limits",
+      "prose_words": 319,
+      "python_lines": [
+        66
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "tool-protocol",
+      "prose_words": 290,
+      "python_lines": [
+        66
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "http-interface",
+      "prose_words": 286,
+      "python_lines": [
+        66
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "cli-interface",
+      "prose_words": 288,
+      "python_lines": [
+        64
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "observability",
+      "prose_words": 316,
+      "python_lines": [
+        58
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "security-boundaries",
+      "prose_words": 303,
+      "python_lines": [
+        52
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "unit-testing",
+      "prose_words": 277,
+      "python_lines": [
+        45
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "integration-testing",
+      "prose_words": 295,
+      "python_lines": [
+        70
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "load-testing",
+      "prose_words": 289,
+      "python_lines": [
+        34
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "operations-and-examples",
+      "prose_words": 305,
+      "python_lines": [
+        69
+      ],
+      "syntax_errors": []
+    }
+  ],
+  "repeated_long_paragraphs": [],
+  "completion_marker": true,
+  "limits": "Syntax/repetition screening only, not executed integration correctness."
+}

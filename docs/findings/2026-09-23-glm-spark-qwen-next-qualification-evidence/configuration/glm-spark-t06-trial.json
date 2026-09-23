@@ -1,0 +1,31 @@
+{
+  "version": "glm-spark-r1-t06",
+  "parent": "glm-spark-r1-nospec",
+  "changed": {
+    "request_temperature": {
+      "from": 1.0,
+      "to": 0.6
+    }
+  },
+  "unchanged": [
+    "checkpoint",
+    "runtime",
+    "recipe",
+    "native thinking enabled",
+    "top_p0.95",
+    "noMTP",
+    "context327680",
+    "C4"
+  ],
+  "reason": "r1 attemperature1 missed JSON-only contract once and strict128-word counting all16; test lower sampling randomness already used by incumbent Pi route, retaining all r1 failures. This is a hypothesis, not guaranteed cure.",
+  "targeted_probe": {
+    "requests": 4,
+    "concurrency": 4,
+    "input_target": 32768,
+    "completion_cap": 8192,
+    "response_words": 128,
+    "strict": true
+  },
+  "regression": "oracle7 scout, same tasks/budgets; full qualification only if successor passes",
+  "created_at": "2026-09-23T11:31:52.244394+00:00"
+}

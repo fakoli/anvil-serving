@@ -1,0 +1,87 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 8192,
+    "reasoning_headroom_tokens": 6144,
+    "visible_answer_tokens": 2048
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "llm.primary",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nThat's it \u2014 Python's built-in `sum()` does exactly this. If you want it as a reusable function:\n\n```python\ntotal = sum(xs)\n```\n\nOr, if you're avoiding built-ins for some reason:\n\n```python\nfrom functools import reduce\ntotal = reduce(lambda a, b: a + b, xs, 0)\n```\n\nBut `sum(xs)` is the idiomatic choice.",
+      "content_chars": 326,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nThat's it \u2014 Python's built-in `sum()` does exactly this. If you want it as a reusable function:\n\n```python\ntotal = sum(xs)\n```\n\nOr, if you're avoiding built-ins for some reason:",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 573,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most idiomatic way is:\n\n```python\nsum(xs)\n```\n\nThat's the one-liner. But maybe they want it as",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 3.36,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 233,
+        "prompt_tokens": 28,
+        "total_tokens": 261
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 206,
+      "reasoning_excerpt": "The user wants me to return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.\n\nThis is a simple, benign request. They want just the JSON object with no additional text. I should comply ex",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.884,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 58,
+        "prompt_tokens": 30,
+        "total_tokens": 88
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "3.4s got=\"```python\\nsum(xs)\\n```\\n\\nThat's it \u2014 Python's built-\" finish='stop' visible=326 reasoning_chars=573 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=206 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

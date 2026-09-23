@@ -1,0 +1,26 @@
+{
+  "config_id": "qwen-r2-medium",
+  "parent": "qwen-r2-native-xhigh",
+  "frozen_at": "2026-09-23T11:43:01.106518+00:00",
+  "delta": {
+    "request_reasoning_effort": {
+      "from": "template default xhigh",
+      "to": "medium"
+    },
+    "thinking_mode": "default, with supported top-level reasoning_effort medium enabling thinking"
+  },
+  "unchanged": [
+    "exactr2recipe",
+    "checkpoint7c4f1bc1",
+    "runtimebeta3221",
+    "GPUembeddingoffload0",
+    "MTP3",
+    "temp1",
+    "top_p0.95",
+    "8192completioncap forcountcell",
+    "524288configuredcontext"
+  ],
+  "evidence": "qwen-native-reasoning-controls.json; pinnedchattemplate acceptsxhigh/medium/low andruntimeprotocol passesreasoning_effort totemplate",
+  "hypothesis": "Medium omits extended-deliberation instruction and may producevisibleanswerswithin8192cap whilepreserving tool/codingquality. Must replayfailedcell andnearbygates; cannotinferqualification fromrecoveredsmoke.",
+  "additional_hypothesis": "Retained natural-guide outputs start with two newlines; may explaincanarystartfailures, butsamecapacityrawresponseswerenotretained, soactualcauseunproven. Captureone targeteddeterministicprobeifneeded."
+}

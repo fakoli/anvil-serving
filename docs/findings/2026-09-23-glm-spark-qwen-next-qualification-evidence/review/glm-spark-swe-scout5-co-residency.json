@@ -1,0 +1,6 @@
+{
+  "at": "2026-09-23T11:39:25.665198+00:00",
+  "run": "next-glm-spark-r1-swe-scout5",
+  "overlap": "Offline product test suite capped to2CPU cores and8GiB hostRAM;noGPUuse",
+  "decision": "GLM alreadyfailedpromotiongates. Retain officialcoding correctness results, butdo notcompareitsagentlatency as controlledperformance againstQwen/incumbent runswithouttheoverlap. Qwenandbaselinefinalperformance mustnot overlapthissuite."
+}

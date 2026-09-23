@@ -7,6 +7,8 @@
 
 **2026-09-19 current decision:** [GLM-5.3-Flash r10 APC](../../findings/2026-09-19-glm53-apc-promotion.md) received explicit human approval and fresh bounded acceptance on this pair. The 32-request shared-prefix finalist reduced mean visible TTFT 23.70 s → 7.62 s (−67.84%) and raised requests/s 0.146 → 0.462; unique-prefix requests/s changed 0.144 → 0.141 (−2.39%), inside the frozen 5% gate. The [historical campaign](../../findings/2026-09-19-glm53-apc.md) retains the 75.58% cache-reuse measurement, failures, and restored-r9 close. Exact r9 is the rollback. This is not a full-window concurrency, video, soak, or broad intelligence result.
 
+**2026-09-23 GLM Spark and Qwen Flash Next qualification:** Qwen medium resolved 4/5 frozen SWE tasks and passed Oracle7 18/18, while Spark resolved 2/5 attempted tasks; three were submitted/graded and two attempts hit the 60-call limit. It reached Oracle7 16/18. Strict C4 capacity failed for Qwen medium 0/4, Spark 0/16, and the incumbent control 0/16; none is eligible for a performance claim. The exact incumbent was restored with authenticated smoke and JSON checks passing. Retain GLM r10 APC; no rollout followed. See the [finding](../../findings/2026-09-23-glm-spark-qwen-next-qualification.md).
+
 **2026-09-21 MiMo replacement trial:** the GLM control completed a nominal-32K/C4 16-word final cell 100/100 eligible; its short-output limits and possible first-eight warm prefixes remain explicit. MiMo V3 loaded at 81.41 GiB/rank but both correctness probes exhausted reasoning without visible content, so no capacity or throughput test ran. This is `no-promotion`, not a MiMo hardware performance result; the one-task GLM SWE official 0/1 is infrastructure-confounded and final restoration is verified. See the [finding](../../findings/2026-09-21-mimo-v26-qualification.md).
 
 **2026-09-22 Qwen3.8 Flash Next shortlist trial:** the RadixArk NVFP4 candidate used TP2 with C4 configured admission; all direct and agentic checks were serial C1. It loaded at 65.55 GiB/rank without OOM and passed six direct preflight groups. Qwen recorded 16/18 greedy and 15/18 native-sampling observations, while paired GLM recorded 16/18; retained fixture/scorer defects block broad agentic ranking. No context, capacity, throughput, vision, or quality result follows; retain GLM and do not promote this candidate. See the [finding](../../findings/2026-09-22-model-shortlist-validation.md).
@@ -17,8 +19,8 @@
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-09-19. **Evidence
-interpretation reviewed:** 2026-09-19.
+history. **Last locally measured:** 2026-09-23. **Evidence
+interpretation reviewed:** 2026-09-23.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).

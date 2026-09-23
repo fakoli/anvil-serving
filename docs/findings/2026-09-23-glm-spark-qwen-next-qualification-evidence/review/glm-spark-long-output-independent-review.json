@@ -1,0 +1,27 @@
+{
+  "schema": "operator-workflow/v1",
+  "request": "Independent GLM Spark 64K natural-output diagnostic review",
+  "reviewer": "GPT-5.6 Sol high",
+  "gate_state": "diagnostic_only",
+  "source": "glm-spark-r1-long-output-64k.json",
+  "observed": {
+    "visible_tokens": 37029,
+    "reasoning_tokens": 1798,
+    "latency_ms": 332090.4516789997,
+    "finish_reason": "stop",
+    "chapters": 24,
+    "syntax_valid_python_examples": 24,
+    "chapters_at_least400prose_words": 22,
+    "repeated_long_paragraphs": 0
+  },
+  "findings": [
+    "No late-run degeneration, loops or off-topic drift in samples near6K,12K andend.",
+    "workspace-layout389 andparser394 prosewords miss400.",
+    "recover emits run_resumed absent from closed EVENT_KEYS; snapshot_written likewise omitted.",
+    "Final TASKFILE puts multiple fields on one line but own parser requires NEWLINE after each field.",
+    "CI=1 conflicts with condition env.CI==true; operations narrative contradicts transitive skip."
+  ],
+  "comparison": "GLM better long diagnostic adherence/continuity than Qwen23/24 shortchapters, but raw latency differs with output length. Neither generated guide proves executable coding correctness.",
+  "human_gate_required": false,
+  "promoted": false
+}

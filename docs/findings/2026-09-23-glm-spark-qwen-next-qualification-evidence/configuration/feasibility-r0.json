@@ -1,0 +1,217 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "next-model-20260923",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 262144,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "common primary-agent target, includes media and protocol",
+        "observed_at": "2026-09-23",
+        "notes": ""
+      },
+      "output_reserve": {
+        "value": 65536,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "incumbent output contract",
+        "observed_at": "2026-09-23",
+        "notes": ""
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "sequences",
+      "status": "assumed",
+      "source": "first-fit C1 lane;C4 separate measured gate",
+      "observed_at": "2026-09-23",
+      "notes": ""
+    },
+    "physical_vram_bytes": {
+      "value": 102641958912,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "start.json nvidia-smi; per-device constraint",
+      "observed_at": "2026-09-23",
+      "notes": ""
+    },
+    "vram_reserves": {
+      "driver_uncertainty": {
+        "kind": "policy",
+        "variable": {
+          "value": 1073741824,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "model-only GPUs; first-load1GiB floor, measured representative headroom required",
+          "observed_at": "2026-09-23",
+          "notes": ""
+        }
+      }
+    }
+  },
+  "candidates": [
+    {
+      "id": "lil-glm-spark-nospec",
+      "runtime_context_limit_tokens": {
+        "value": 1048576,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "spark-model.safetensors.index.json and LIL preset",
+        "observed_at": "2026-09-23",
+        "notes": ""
+      },
+      "resident_components": {
+        "target_draft_vision_device_allocation": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Checkpoint bytes do not prove runtime residency; TP duplication, PLE offload, dequantization and discarded MTP matter. Capture first-load logs."
+        },
+        "runtime_graph_scratch_recurrent": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Exact pinned runtime peak must be measured; no TP2 per-rank allocation log available."
+        },
+        "reserved_KV": {
+          "value": 3758096384,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "spark-model.safetensors.index.json and LIL preset",
+          "observed_at": "2026-09-23",
+          "notes": "Entire explicit reserved pool modeled fixed here; effective token capacity must be measured."
+        }
+      },
+      "per_sequence_components": {
+        "request_state": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Measured C1 then C4 mixed workload required."
+        }
+      },
+      "per_token_components": {
+        "additional_outside_reserved_pool": {
+          "status": "unknown",
+          "unit": "bytes/token",
+          "notes": "Reserved-pool sufficiency and recurrent checkpoint granularity remain unmeasured."
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "C1 feasibility only",
+        "observed_at": "2026-09-23",
+        "notes": ""
+      },
+      "tracked_variables": {
+        "checkpoint_tensor_bytes": {
+          "value": 187617588984,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "spark-model.safetensors.index.json and LIL preset",
+          "observed_at": "2026-09-23",
+          "notes": ""
+        },
+        "loader_host_peak": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Hard containment52GiB RAM plus1MiB swap,12GiB OS admission reserve before any GPU load."
+        }
+      }
+    },
+    {
+      "id": "lil-qwen38-mtp3",
+      "runtime_context_limit_tokens": {
+        "value": 524288,
+        "unit": "tokens",
+        "status": "confirmed",
+        "source": "HF index from researcher; upstream Qwen TP2 MaxQ benchmark",
+        "observed_at": "2026-09-23",
+        "notes": ""
+      },
+      "resident_components": {
+        "target_draft_vision_device_allocation": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Checkpoint bytes do not prove runtime residency; TP duplication, PLE offload, dequantization and discarded MTP matter. Capture first-load logs."
+        },
+        "runtime_graph_scratch_recurrent": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Exact pinned runtime peak must be measured; no TP2 per-rank allocation log available."
+        },
+        "reserved_KV": {
+          "value": 8589934592,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "HF index from researcher; upstream Qwen TP2 MaxQ benchmark",
+          "observed_at": "2026-09-23",
+          "notes": "Entire explicit reserved pool modeled fixed here; effective token capacity must be measured."
+        }
+      },
+      "per_sequence_components": {
+        "request_state": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Measured C1 then C4 mixed workload required."
+        }
+      },
+      "per_token_components": {
+        "additional_outside_reserved_pool": {
+          "status": "unknown",
+          "unit": "bytes/token",
+          "notes": "Reserved-pool sufficiency and recurrent checkpoint granularity remain unmeasured."
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "copies",
+        "status": "assumed",
+        "source": "C1 feasibility only",
+        "observed_at": "2026-09-23",
+        "notes": ""
+      },
+      "tracked_variables": {
+        "checkpoint_tensor_bytes": {
+          "value": 105798973864,
+          "unit": "bytes",
+          "status": "confirmed",
+          "source": "HF index from researcher; upstream Qwen TP2 MaxQ benchmark",
+          "observed_at": "2026-09-23",
+          "notes": ""
+        },
+        "loader_host_peak": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Hard containment52GiB RAM plus1MiB swap,12GiB OS admission reserve before any GPU load."
+        }
+      }
+    }
+  ],
+  "tracked_variables": {
+    "host_ram_bytes": {
+      "value": 96357842944,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "free-m snapshot",
+      "observed_at": "2026-09-23",
+      "notes": ""
+    },
+    "candidate_memory_limit_bytes": {
+      "value": 55834574848,
+      "unit": "bytes",
+      "status": "assumed",
+      "source": "managed containment",
+      "observed_at": "2026-09-23",
+      "notes": ""
+    },
+    "os_reserve_bytes": {
+      "value": 12884901888,
+      "unit": "bytes",
+      "status": "assumed",
+      "source": "candidate operations",
+      "observed_at": "2026-09-23",
+      "notes": ""
+    }
+  }
+}

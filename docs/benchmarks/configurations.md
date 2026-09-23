@@ -35,6 +35,17 @@ and links back to the exact TOML, dated finding, dossier, and raw evidence.
 Decision terms such as `current`, `rollback`, and `no-promotion` describe the
 latest published evidence decision, not an operator's live deployment.
 
+## 2026-09-23 unqualified NVFP4 contracts
+
+Neither candidate passed the strict C4 capacity gate, so these are retained qualification records rather than reusable measured recipes. The links below open the sanitized immutable TOMLs, including their exact image digests. The request-profile row identifies the request limits used by the campaign; it does not make a profile qualified.
+
+| Candidate | Exact sanitized contract | Configured context / C | MTP and request-profile limits |
+|---|---|---|---|
+| Qwen3.8 Flash Next NVFP4 | [Qwen r2 TOML](../findings/2026-09-23-glm-spark-qwen-next-qualification-evidence/configuration/qwen-recipe-r2.toml) | 524,288 tokens / C16; TP2; up to 8 images | MTP3; generation cap 65,536, temperature 1.0, top-p 0.95. Medium reasoning was tested separately for SWE, Oracle7, and the 0/4 strict repair population; default-xhigh diagnostics remain separate. |
+| GLM-5.3-Flash Spark NVFP4 | [Spark r1 TOML](../findings/2026-09-23-glm-spark-qwen-next-qualification-evidence/configuration/glm-spark-recipe-r1.toml) | 327,680 tokens / C4; TP2/DCP2; up to 8 images | MTP disabled (`MTP_DEPTH=0`); generation cap 65,536, temperature 1.0, top-p 0.95. |
+
+See the [dated finding](../findings/2026-09-23-glm-spark-qwen-next-qualification.md) for gate outcomes and the [evidence manifest](../findings/2026-09-23-glm-spark-qwen-next-qualification-evidence/artifact-manifest.json) for the complete retained bundle.
+
 ## Translate the recipe to a container runtime
 
 Anvil Serving's recipe loader turns these fields into a container invocation.

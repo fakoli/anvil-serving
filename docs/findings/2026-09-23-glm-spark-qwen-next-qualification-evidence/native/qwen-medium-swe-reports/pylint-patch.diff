@@ -1,0 +1,63 @@
+diff --git a/pylint/config/argument.py b/pylint/config/argument.py
+index 30a5fd175..6f88f2b65 100644
+--- a/pylint/config/argument.py
++++ b/pylint/config/argument.py
+@@ -102,6 +102,40 @@ def _py_version_transformer(value: str) -> tuple[int, ...]:
+     return version
+ 
+ 
++def _split_multiple_regexes(value: str) -> list[str]:
++    """Split a string of regular expressions on commas that are not part of
++    the regular expressions themselves.
++
++    A comma is only used as a separator when it is not nested inside a group
++    (parentheses, square brackets or curly braces) and is not escaped with a
++    backslash. Empty parts are discarded.
++    """
++    parts: list[str] = []
++    current: list[str] = []
++    nesting_level = 0
++    escaped = False
++    for char in value:
++        if escaped:
++            current.append(char)
++            escaped = False
++        elif char == "\\":
++            current.append(char)
++            escaped = True
++        elif char in "([{":
++            current.append(char)
++            nesting_level += 1
++        elif char in ")]}":
++            current.append(char)
++            nesting_level = max(nesting_level - 1, 0)
++        elif char == "," and nesting_level == 0:
++            parts.append("".join(current))
++            current = []
++        else:
++            current.append(char)
++    parts.append("".join(current))
++    return [part.strip() for part in parts if part.strip()]
++
++
+ def _regex_transformer(value: str) -> Pattern[str]:
+     """Return `re.compile(value)`."""
+     try:
+@@ -114,7 +148,7 @@ def _regex_transformer(value: str) -> Pattern[str]:
+ def _regexp_csv_transfomer(value: str) -> Sequence[Pattern[str]]:
+     """Transforms a comma separated list of regular expressions."""
+     patterns: list[Pattern[str]] = []
+-    for pattern in _csv_transformer(value):
++    for pattern in _split_multiple_regexes(value):
+         patterns.append(_regex_transformer(pattern))
+     return patterns
+ 
+@@ -122,7 +156,7 @@ def _regexp_csv_transfomer(value: str) -> Sequence[Pattern[str]]:
+ def _regexp_paths_csv_transfomer(value: str) -> Sequence[Pattern[str]]:
+     """Transforms a comma separated list of regular expressions paths."""
+     patterns: list[Pattern[str]] = []
+-    for pattern in _csv_transformer(value):
++    for pattern in _split_multiple_regexes(value):
+         patterns.append(
+             re.compile(
+                 str(pathlib.PureWindowsPath(pattern)).replace("\\", "\\\\")

@@ -1,0 +1,53 @@
+{
+  "schema": "anvil-serving.benchmark-job-spec/v1",
+  "run_id": "next-qwen-r2-medium-swe-scout5",
+  "ownership_id": "next-model-20260923",
+  "suite": "swe",
+  "profile": "scout",
+  "endpoint": {
+    "base_url": "http://127.0.0.1:39130/v1",
+    "model": "qwen38-flash-next-lil-qad-tp2-mtp3-524k-r2"
+  },
+  "worker": {
+    "id": "local-benchmark"
+  },
+  "submitted_at": "2026-09-23T11:43:01.106798+00:00",
+  "timeout_s": 21600,
+  "parameters": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "thinking_mode": "default",
+    "temperature": 1.0,
+    "model_host_id": "local-benchmark",
+    "client_topology": "co-resident",
+    "identities": {
+      "model": {
+        "repository": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4",
+        "revision": "7c4f1bc1a2d6847e0cbc01ac6b823f00251de8dd",
+        "served_name": "qwen38-flash-next-lil-qad-tp2-mtp3-524k-r2"
+      },
+      "runtime": {
+        "engine_revision": "622912b9b2cfd04784da5b0dfc69ce8aa5aee02d",
+        "image_id": "sha256:bf2c8f5da6f1de82b345367102b528692231a23eadc1b49c180c82c397c77522"
+      },
+      "hardware": {
+        "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+        "vram_mib_per_gpu": 97887
+      },
+      "context": {
+        "configured_tokens": 524288
+      },
+      "concurrency": {
+        "requests": 1,
+        "workers": 1
+      }
+    },
+    "top_p": 0.95,
+    "reasoning_effort": "medium"
+  }
+}

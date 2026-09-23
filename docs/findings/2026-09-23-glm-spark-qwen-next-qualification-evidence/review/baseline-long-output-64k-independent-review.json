@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.independent-static-review/v1",
+  "reviewer": "GPT-5.6 Sol, high reasoning; independent of evaluated model and evidence author",
+  "artifact": "native/baseline-long-output-64k.json",
+  "verdict": "incomplete_with_static_correctness_defects",
+  "code_executed": false,
+  "visible_token_count": null,
+  "observations": [
+    "Eleven complete chapters, chapter twelve partial, chapters thirteen through twenty-four and GUIDE-COMPLETE-24 absent.",
+    "Chapters two, three and nine also slightly below the requested 400 prose words.",
+    "Parser consumes opening brackets before self.at_punct checks; the guide dependency/retry maps fall into ParseError.",
+    "Scheduler _admit() admits tasks at startup without pending_deps gating, allowing prerequisite order violations.",
+    "Unquoted [gen] produces Var while build_spec requires Str.",
+    "Frozen TaskSpec contains mutable list and dict members.",
+    "Cancellation and retry helpers are not integrated into the visible scheduler.",
+    "No exact duplicate prose or repeated thirty-word prose windows observed; output remains on topic through truncation."
+  ],
+  "interpretation": "Completion-cap exhaustion with static integration defects; no observed visible repetition loop. Static review does not establish executed program correctness."
+}

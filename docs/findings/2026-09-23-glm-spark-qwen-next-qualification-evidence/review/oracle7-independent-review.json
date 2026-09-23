@@ -1,0 +1,16 @@
+{
+  "schema": "operator-workflow/v1",
+  "request": "Independent oracle7 final freeze review",
+  "gate_state": "passed",
+  "reviewer": "GPT-5.6 Sol high",
+  "source_commit": "e419280a3e9caeac1366c759421467fc1d6111bd",
+  "test_receipt": "oracle7-tests-r2.log",
+  "tests_passed": 55,
+  "findings": [
+    "Canonical standalone workflow removes ambiguous headings and terminal punctuation.",
+    "Reuse normalized_exact; delete ordered_terms regex and re import.",
+    "Historical oracle4-6 evidence immutable; paired oracle7 reruns required."
+  ],
+  "human_gate_required": false,
+  "promoted": false
+}

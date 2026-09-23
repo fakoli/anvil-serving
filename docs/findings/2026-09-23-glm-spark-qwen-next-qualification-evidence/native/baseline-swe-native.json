@@ -1,0 +1,210 @@
+{
+  "created_at": "2026-09-23T09:56:50.512750Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "endpoint": {
+    "base_url": "http://127.0.0.1:39126/v1",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+  },
+  "failure": {
+    "class": "test_failure",
+    "stage": "official_grader"
+  },
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.12.14"
+      },
+      "resolved_packages_sha256": "91f4c167ea6f42a331c18b615976ca653978236da44945562ed5bd2b7528974e",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "LimitsExceeded",
+      "failure_class": null,
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "540771c738efc0c5a5541d09db9e2cf30aadecfb0636fbf1faa4d41fc9fc0ee0",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "psf__requests-2317",
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-80eae8ce1f93866b",
+        "chatcmpl-83973be6b5db0319",
+        "chatcmpl-844785b9470ba0f2",
+        "chatcmpl-84647b760a33b1c0",
+        "chatcmpl-8682fe003269575b",
+        "chatcmpl-87ab082c8088ae4b",
+        "chatcmpl-8a19b936920f3140",
+        "chatcmpl-8b8620c491ec7858",
+        "chatcmpl-8d6789fc75734b0e",
+        "chatcmpl-8f1ba9cbc5e75f80",
+        "chatcmpl-8f600f0c5165cf45",
+        "chatcmpl-90b70821660382bf",
+        "chatcmpl-91c67b0c0eaad79a",
+        "chatcmpl-92ee87017fbe7004",
+        "chatcmpl-9320e32995920528",
+        "chatcmpl-971b15b064f03855",
+        "chatcmpl-9810deb2e42c5740",
+        "chatcmpl-98b5398deeb6b600",
+        "chatcmpl-9adad8164bc2c76a",
+        "chatcmpl-9d27fadd435900c7",
+        "chatcmpl-9e2a7d561d19f6b3",
+        "chatcmpl-9e5bd0c44a7b7c97",
+        "chatcmpl-9e96d0390b470362",
+        "chatcmpl-a02da54893af3cc3",
+        "chatcmpl-a0b14de64e62cd3c",
+        "chatcmpl-a20a3d07f0d213db",
+        "chatcmpl-a620af784d97c0c5",
+        "chatcmpl-a67d565bf3901da4",
+        "chatcmpl-a7ff1173eda71101",
+        "chatcmpl-ad66fdb3026b8d7f",
+        "chatcmpl-ada1b0998ff2bb88",
+        "chatcmpl-b1d0dc2faeed2428",
+        "chatcmpl-b5cb6839b24594e5",
+        "chatcmpl-b6bc8e81764ccf2c",
+        "chatcmpl-b6c2a189301369d9",
+        "chatcmpl-b71fe43931908248",
+        "chatcmpl-bacf360d83030ea8",
+        "chatcmpl-bb75dc0111c2968f",
+        "chatcmpl-bcd4b805500a7a96",
+        "chatcmpl-bdbd23044a9087bf"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/srv/example/operator-home/benchmark-runs/next-model-20260923/next-glm-swe-smoke/work/mini-output/psf__requests-2317/psf__requests-2317.traj.json",
+        "sha256": "e8c60b532997d79a1f69c4a3649a15eb84d8fcb3ebe26b06ce5cf03ebd3ef490"
+      }
+    }
+  ],
+  "official_grader_complete": false,
+  "ownership_id": "next-model-20260923",
+  "plan_sha256": "fc1222c1638c975578bc6e9756b1547cb3b5ad13e51b1d40bb38d6d4dbb19cef",
+  "profile": "smoke",
+  "profile_sha256": "090745451099214af7c222f736769737911453fe9e9c5d14ffc04f5a4a3e4586",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "enabled"
+  },
+  "run_id": "next-glm-swe-smoke",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "psf__requests-2317"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "62a72708eb956865ca7c4f26fc97591fca5efa60b0b596236b3fccc168b0ee73"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [
+        "/srv/example/operator-home/benchmark-harness-cache/swe-python-environments/656cef6c79321ff3244984321b336422f2d5913dadd685f3e00241a4ed181190/bin/python",
+        "/srv/example/operator-home/benchmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/run/benchmarks/swebench.py",
+        "--output",
+        "/srv/example/operator-home/benchmark-runs/next-model-20260923/next-glm-swe-smoke/work/mini-output",
+        "--model",
+        "openai/glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+        "--subset",
+        "verified",
+        "--split",
+        "test",
+        "--filter",
+        "^(?:psf__requests\\-2317)$",
+        "--workers",
+        "1",
+        "--environment-class",
+        "docker",
+        "--config",
+        "/srv/example/operator-home/benchmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/config/benchmarks/swebench.yaml",
+        "--config",
+        "/srv/example/operator-home/benchmark-runs/next-model-20260923/next-glm-swe-smoke/work/anvil-swe-config.yaml"
+      ],
+      "duration_s": 271.748662,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n",
+      "stdout": "minisweagent: INFO: Results will be saved to                                    \n/srv/example/operator-home/benchm\nark-runs/next-model-20260923/next-glm-swe-smoke/work/mini-output                \nLogging to '/srv/example/operator-home/benchmark-runs/next-model-20260923/next-glm-swe-smoke/work/mini-output/minisweagent.log'\nminisweagent: INFO: Loading dataset princeton-nlp/SWE-Bench_Verified, split     \ntest...                                                                         \nminisweagent: INFO: Instance filter: 500 -> 1 instances                         \nminisweagent: INFO: Running on 1 instances...                                   \nminisweagent: INFO: Building agent config from specs:                           \n['/srv/example/operator-home/benc\nhmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/\nminisweagent/config/benchmarks/swebench.yaml',                                  \n'/srv/example/operator-home/bench\nmark-runs/next-model-20260923/next-glm-swe-smoke/work/anvil-swe-config.yaml']   \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-5f8cce03 -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.psf_1776_requests-2317:latest sleep 2h      \nminisweagent.environment: INFO: Started container minisweagent-5f8cce03 with ID \n399979b016f337fde0da846ba4331198825dc987e74a06aef377aeed7ff3259b                \nminisweagent: INFO: Saved trajectory to                                         \n'/srv/example/operator-home/bench\nmark-runs/next-model-20260923/next-glm-swe-smoke/work/mini-output/psf__requests-\n2317/psf__requests-2317.traj.json'                                              \n  Overall Progress ($0.00) ━━━━━━━━━━━━━━━━━━━━━━━ 1/1 100% 0:04:29 eta: 0:00:00\n┏━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n┃ Exit Status    ┃ Count ┃ Most recent instances                               ┃\n┡━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩\n│ LimitsExceeded │     1 │ psf__requests-2317                                  │\n└────────────────┴───────┴─────────────────────────────────────────────────────┘"
+    },
+    {
+      "command": [
+        "/srv/example/operator-home/benchmark-harness-cache/swe-python-environments/656cef6c79321ff3244984321b336422f2d5913dadd685f3e00241a4ed181190/bin/python",
+        "-m",
+        "swebench.harness.run_evaluation",
+        "--dataset_name",
+        "princeton-nlp/SWE-bench_Verified",
+        "--split",
+        "test",
+        "--predictions_path",
+        "/srv/example/operator-home/benchmark-runs/next-model-20260923/next-glm-swe-smoke/work/predictions.jsonl",
+        "--max_workers",
+        "1",
+        "--run_id",
+        "next-glm-swe-smoke",
+        "--timeout",
+        "1800",
+        "--report_dir",
+        "/srv/example/operator-home/benchmark-runs/next-model-20260923/next-glm-swe-smoke/work/official-grader",
+        "--instance_ids",
+        "psf__requests-2317"
+      ],
+      "duration_s": 5.152176,
+      "failure_class": "test_failure",
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "failed",
+      "stderr": "<frozen runpy>:128: RuntimeWarning: 'swebench.harness.run_evaluation' found in sys.modules after import of package 'swebench.harness', but prior to execution of 'swebench.harness.run_evaluation'; this may result in unpredictable behaviour\n2026-09-23 03:01:23,022 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/main/README.md \"HTTP/1.1 307 Temporary Redirect\"\n2026-09-23 03:01:23,108 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/princeton-nlp/SWE-bench_Verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/README.md?%2Fdatasets%2Fprinceton-nlp%2FSWE-bench_Verified%2Fresolve%2Fmain%2FREADME.md=&etag=%22f362a6ce9579a3ee1922e3402463feef139b7d00%22 \"HTTP/1.1 200 OK\"\n2026-09-23 03:01:23,201 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-23 03:01:23,456 - httpx - INFO - HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/princeton-nlp/SWE-bench_Verified/princeton-nlp/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-23 03:01:23,549 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/revision/c104f840cc67f8b6eec6f759ebc8b2693d585d4a \"HTTP/1.1 200 OK\"\n2026-09-23 03:01:23,636 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/.huggingface.yaml \"HTTP/1.1 404 Not Found\"\n2026-09-23 03:01:23,767 - httpx - INFO - HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=princeton-nlp/SWE-bench_Verified \"HTTP/1.1 200 OK\"\n2026-09-23 03:01:23,854 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/tree/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/data?recursive=true&expand=false \"HTTP/1.1 200 OK\"\n2026-09-23 03:01:23,933 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/tree/c104f840cc67f8b6eec6f759ebc8b2693d585d4a?recursive=false&expand=false \"HTTP/1.1 200 OK\"\n2026-09-23 03:01:24,015 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/dataset_infos.json \"HTTP/1.1 404 Not Found\"\n2026-09-23 03:01:24,130 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/main/README.md \"HTTP/1.1 307 Temporary Redirect\"\n2026-09-23 03:01:24,139 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/princeton-nlp/SWE-bench_Verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/README.md?%2Fdatasets%2Fprinceton-nlp%2FSWE-bench_Verified%2Fresolve%2Fmain%2FREADME.md=&etag=%22f362a6ce9579a3ee1922e3402463feef139b7d00%22 \"HTTP/1.1 200 OK\"\n2026-09-23 03:01:24,222 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-23 03:01:24,310 - httpx - INFO - HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/princeton-nlp/SWE-bench_Verified/princeton-nlp/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-23 03:01:24,394 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/.huggingface.yaml \"HTTP/1.1 404 Not Found\"\n2026-09-23 03:01:24,485 - httpx - INFO - HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=princeton-nlp/SWE-bench_Verified \"HTTP/1.1 200 OK\"\n2026-09-23 03:01:24,568 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/dataset_infos.json \"HTTP/1.1 404 Not Found\"\n",
+      "stdout": "No instances to run.\nCleaning cached images...\nRemoved 0 images.\nTotal instances: 1\nInstances submitted: 1\nInstances completed: 0\nInstances incomplete: 0\nInstances resolved: 0\nInstances unresolved: 0\nInstances with empty patches: 1\nInstances with errors: 0\nUnstopped containers: 0\nUnremoved images: 1\nReport written to openai__glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec.next-glm-swe-smoke.json\n"
+    }
+  ],
+  "state": "incomplete",
+  "summary": {
+    "attempted": 1,
+    "graded": 0,
+    "resolve_rate": null,
+    "resolved": 0
+  },
+  "task_container_network": "none"
+}

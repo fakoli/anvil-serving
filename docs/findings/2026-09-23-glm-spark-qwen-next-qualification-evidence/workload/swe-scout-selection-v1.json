@@ -1,0 +1,39 @@
+{
+  "schema": "local-evidence-selection/v1",
+  "frozen_at": "2026-09-23T11:25:24.199573+00:00",
+  "dataset_revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+  "dataset_sha256": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd",
+  "seed": "next-model-20260923-swe-scout-v1",
+  "rule": "Sort every Verified test instance by sha256(seed + vertical bar + instance_id), retain first from each repo until five; exclude previously observed smoke instance psf__requests-2317. Selection uses IDs/repo only, no task text or outcomes.",
+  "instances": [
+    {
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "repo": "sphinx-doc/sphinx"
+    },
+    {
+      "instance_id": "sympy__sympy-12096",
+      "repo": "sympy/sympy"
+    },
+    {
+      "instance_id": "django__django-13512",
+      "repo": "django/django"
+    },
+    {
+      "instance_id": "pydata__xarray-4356",
+      "repo": "pydata/xarray"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-8898",
+      "repo": "pylint-dev/pylint"
+    }
+  ],
+  "profile": "scout",
+  "max_steps": 60,
+  "max_completion_tokens": 16384,
+  "required_comparators": [
+    "GLM EXL3 incumbent",
+    "GLM Spark",
+    "Qwen selected supported reasoning policy"
+  ],
+  "interpretation": "Small stratified scout, not full SWE-bench score; matched budget, report all outcomes and aggregate agent duration separately from official grading."
+}

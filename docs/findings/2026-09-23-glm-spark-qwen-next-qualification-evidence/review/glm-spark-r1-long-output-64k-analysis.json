@@ -1,0 +1,204 @@
+{
+  "source": "/srv/example/operator/evidence/2026-09-23-next-model-qualification/glm-spark-r1-long-output-64k.json",
+  "sha256": "4ffeb1bea4dfee78b980bcc842909c73cdcfc4c4e6bd0c7d393891765775076c",
+  "visible_tokens": 37029,
+  "finish_reason": "stop",
+  "latency_ms": 332090.4516789997,
+  "chapters": [
+    {
+      "chapter": "requirements-and-contracts",
+      "prose_words": 473,
+      "python_lines": [
+        59
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "workspace-layout",
+      "prose_words": 389,
+      "python_lines": [
+        71
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "lexer",
+      "prose_words": 405,
+      "python_lines": [
+        75
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "parser",
+      "prose_words": 394,
+      "python_lines": [
+        96
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "expression-evaluator",
+      "prose_words": 451,
+      "python_lines": [
+        104
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "type-validation",
+      "prose_words": 556,
+      "python_lines": [
+        85
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "dependency-graph",
+      "prose_words": 479,
+      "python_lines": [
+        69
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "cycle-detection",
+      "prose_words": 541,
+      "python_lines": [
+        64
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "scheduler",
+      "prose_words": 508,
+      "python_lines": [
+        84
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "retry-policy",
+      "prose_words": 536,
+      "python_lines": [
+        53
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "cancellation",
+      "prose_words": 516,
+      "python_lines": [
+        58
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "event-journal",
+      "prose_words": 521,
+      "python_lines": [
+        87
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "atomic-storage",
+      "prose_words": 526,
+      "python_lines": [
+        87
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "checkpoint-recovery",
+      "prose_words": 571,
+      "python_lines": [
+        84
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "resource-limits",
+      "prose_words": 570,
+      "python_lines": [
+        85
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "tool-protocol",
+      "prose_words": 563,
+      "python_lines": [
+        105
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "http-interface",
+      "prose_words": 540,
+      "python_lines": [
+        101
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "cli-interface",
+      "prose_words": 549,
+      "python_lines": [
+        95
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "observability",
+      "prose_words": 516,
+      "python_lines": [
+        83
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "security-boundaries",
+      "prose_words": 621,
+      "python_lines": [
+        75
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "unit-testing",
+      "prose_words": 471,
+      "python_lines": [
+        53
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "integration-testing",
+      "prose_words": 570,
+      "python_lines": [
+        73
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "load-testing",
+      "prose_words": 567,
+      "python_lines": [
+        88
+      ],
+      "syntax_errors": []
+    },
+    {
+      "chapter": "operations-and-examples",
+      "prose_words": 438,
+      "python_lines": [
+        48
+      ],
+      "syntax_errors": []
+    }
+  ],
+  "repeated_long_paragraphs": [],
+  "completion_marker": true,
+  "limits": "Syntax/repetition screening only, not executed integration correctness."
+}

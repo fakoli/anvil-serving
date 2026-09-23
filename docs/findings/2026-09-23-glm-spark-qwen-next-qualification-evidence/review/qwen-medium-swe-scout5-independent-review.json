@@ -1,0 +1,23 @@
+{
+  "schema": "operator-workflow/v1",
+  "reviewer": "GPT-5.6 Sol high",
+  "gate_state": "evidence_review_complete",
+  "artifact": "qwen-medium-swe-scout5-native.json",
+  "overall": {
+    "attempted": 5,
+    "submitted": 5,
+    "graded": 5,
+    "resolved": 4,
+    "resolve_rate": 0.8
+  },
+  "findings": [
+    "Pylint submitted patch applied and official tests executed:19 passed,1 failed. Sole FAIL_TO_PASS miss test_csv_regex_error.",
+    "Scalar nesting_level for parentheses/brackets/braces with decrement clamped at0 accepted invalid regex (foo{1,}, foo{1,3}}) instead of raising SystemExit. Genuine malformed-regex correctness failure.",
+    "Distutils import warnings did not prevent editable installation or20test execution.",
+    "All other4 tasks officially resolved. Small fixed scout, not full SWE-bench score; aggregate agent536.237341s/grader97.122177s only, per-instance token/timing unknown.",
+    "Medium18/18 oracle does not erase strict-output0/4; no promotion. Paired incumbent pending."
+  ],
+  "reviewed_at": "2026-09-23T12:21:25.960156+00:00",
+  "human_gate_required": false,
+  "promoted": false
+}

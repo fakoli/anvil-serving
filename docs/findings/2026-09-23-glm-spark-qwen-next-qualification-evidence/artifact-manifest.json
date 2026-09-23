@@ -1,0 +1,728 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-23-next-model-qualification",
+    "capability": "text/image coding and tool use",
+    "repository_revision": "e419280a3e9caeac1366c759421467fc1d6111bd",
+    "dirty_state": "Clean final oracle-7 source; retained earlier launcher/source receipts distinguish earlier scout revisions.",
+    "started_at": "2026-09-23T09:52:12Z",
+    "completed_at": "2026-09-23T13:27:31.756313+00:00",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": true,
+    "promoted": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.swe-run/v1",
+    "multimodal-benchmark-evidence/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "f9de944035b6ce33d0c4227be60ff93ded995a39a3161f5ecfe450eaa21b4da4",
+          "bytes": 3803
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "f9956a84a95c78cf26a7dc30ebe58426dee8b27595062606be74f879530e23de",
+          "bytes": 4169
+        }
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "5ac42952f72e58d4ab9a4fe892b7f61005ce41d2f4db274ed31b5bbdda6ff6fd",
+          "bytes": 10106
+        }
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload/long-output-64k-suite.json",
+          "sha256": "c80058f149c05c225ca063d2caadc283a55769903c45fc605656ca3f7d3f2651",
+          "bytes": 2952
+        },
+        {
+          "path": "workload/long-output-suite.json",
+          "sha256": "9cf36db3bc3bc4e0f249b034da5c2d444868106803ce858c9cb9b2e837e7f1bd",
+          "bytes": 2947
+        },
+        {
+          "path": "workload/manifest.json",
+          "sha256": "4c2602483d11370deab2be5c29663e7ae74a80dbf9bf21703ad51aba4cf323a6",
+          "bytes": 2488
+        },
+        {
+          "path": "workload/strict128-raw-boundary-suite.json",
+          "sha256": "825127a615e888ae3f688cd17951f3bf6ad8b2f0f0f75fe529ab0a391efa0579",
+          "bytes": 101478
+        },
+        {
+          "path": "workload/swe-scout-selection-v1.json",
+          "sha256": "58604e6ab090eea1f1c8e649c10a7fd9f68b4d2c5273e60d295160ff24da35f2",
+          "bytes": 1389
+        }
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload/baseline-agentic-oracle7-spec.json",
+          "sha256": "1e7abc572232d0d9a4e212f384fa30e71f83cd0b85a8c016019572db8b6d7194",
+          "bytes": 1369
+        },
+        {
+          "path": "workload/baseline-swe-scout5-spec.json",
+          "sha256": "f42abf7f09a200deda5be6b05a6a6f41a4e9508531ab30d00c900868c6e938ae",
+          "bytes": 1508
+        },
+        {
+          "path": "workload/campaign-plan.md",
+          "sha256": "5487187f6d74e45e3542d6bafdb7ded2eb184273c5e6f585f3e1a52224989849",
+          "bytes": 5725
+        },
+        {
+          "path": "workload/glm-spark-r1-swe-scout5-spec.json",
+          "sha256": "5934f64ea9d9a2e29c2d147cb4ec08c1f5a34471e52a800162a8a039d590802a",
+          "bytes": 1467
+        },
+        {
+          "path": "workload/qwen-medium-agentic-oracle7-spec.json",
+          "sha256": "589356607b70fe8505b6ba29b169714cae04f21818a1d0d36d551b6d9e2c8fd8",
+          "bytes": 1379
+        },
+        {
+          "path": "workload/qwen-medium-swe-scout5-spec.json",
+          "sha256": "4acddc7fa03ccc414f27cfb12a5b9d953de95bd3b6ce1ddf9c60231ac546ac68",
+          "bytes": 1518
+        }
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration/baseline-recipe.toml",
+          "sha256": "8b50f1da820ce91d2c95566ecc7f3c8a3f7ea4c1c4a4538cfbe27d8197b63dae",
+          "bytes": 5343
+        },
+        {
+          "path": "configuration/feasibility-r0.json",
+          "sha256": "2c4f400dbb20de3e1a78fdf369e9ddcfcb466a4366d7f1243af6f024bff6107c",
+          "bytes": 6933
+        },
+        {
+          "path": "configuration/glm-spark-r1-feasibility-observed.json",
+          "sha256": "8f53e0e3bcad4b9a61d3f3a0f70e4ffb41a1bbedc20d2893904394df44398b52",
+          "bytes": 826
+        },
+        {
+          "path": "configuration/glm-spark-recipe-r1.toml",
+          "sha256": "e1fb8c648107b12383b30fbfe7791cf04949da8d28491fbf84288533f632c426",
+          "bytes": 2864
+        },
+        {
+          "path": "configuration/glm-spark-t06-trial.json",
+          "sha256": "9b806240849ffbf08e0826acb7cbb031221abf45eaf2831cdd90e6fa9de0dd87",
+          "bytes": 876
+        },
+        {
+          "path": "configuration/launcher-current.json",
+          "sha256": "cd051a41f5e8bc774defaf5db5ee84979b74e27198072e66b533fbd0eb900888",
+          "bytes": 227
+        },
+        {
+          "path": "configuration/launcher-oracle7.json",
+          "sha256": "484dd39245b78c5905f315a35793ec49271d523d03a08d167e02d80e0bddf906",
+          "bytes": 375
+        },
+        {
+          "path": "configuration/qwen-disabled-trial.json",
+          "sha256": "7879b0992594ef662ecbbd613c0c3072103d59ac4ecec5e2c2e0e63e3a1c75e9",
+          "bytes": 1056
+        },
+        {
+          "path": "configuration/qwen-medium-trial.json",
+          "sha256": "12d0acaa6c2b7fcf02d7d602ae62d95f8a948e0a4eb18f025e9d6e2d6c746b59",
+          "bytes": 1182
+        },
+        {
+          "path": "configuration/qwen-native-reasoning-controls.json",
+          "sha256": "a48def93c24b63d89576852acadbe8d9a404585f1b538848ee64ce87b22dc048",
+          "bytes": 933
+        },
+        {
+          "path": "configuration/qwen-parser-boundary-research.json",
+          "sha256": "8ebfd65a85f2d4139e1a569600ed3edae2408023e9ddbf3d3725be88c5ec7b04",
+          "bytes": 1613
+        },
+        {
+          "path": "configuration/qwen-recipe-r1.toml",
+          "sha256": "5d18cd497ac8349379ca2ac58ca4a1462f0f5012f410ec06da1f19b3172210be",
+          "bytes": 2796
+        },
+        {
+          "path": "configuration/qwen-recipe-r2.toml",
+          "sha256": "22aa32ea7d0f6d77e36f0826b73421dc15548f46d7bbd7d0121b4b27729e4fa3",
+          "bytes": 2991
+        },
+        {
+          "path": "sanitization-receipts.json",
+          "sha256": "8854da0f5a84414693dcadea330bdddf108dce41bf8b45d94cfc0e2b8502c6f9",
+          "bytes": 48489
+        }
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native/baseline-agentic-oracle5-native.json",
+          "sha256": "5a0135302eccf298355642f692593b3c83ba0b32b2101d573612d29472628ff9",
+          "bytes": 38324
+        },
+        {
+          "path": "native/baseline-agentic-oracle7-native.json",
+          "sha256": "df6e69c248e83711c6ab03d104e2263dacc8483be7699d4fa11498581da3020e",
+          "bytes": 37098
+        },
+        {
+          "path": "native/baseline-capacity-c4-strict128.json",
+          "sha256": "bbdae80c5fbc02765ccbd632d816c6b63eab3debae08358da6bf0d4fd648338a",
+          "bytes": 51850
+        },
+        {
+          "path": "native/baseline-capacity-c4-unique.json",
+          "sha256": "69898926a650c98e20e665e84a1eb4d03dbd320b9631d981f4681257e4c17c2c",
+          "bytes": 27758
+        },
+        {
+          "path": "native/baseline-eight-images.json",
+          "sha256": "c7d5e90cd0bb56a2562b93dddb264a8595c1eca5c3bc47a8569078934888b02a",
+          "bytes": 22754
+        },
+        {
+          "path": "native/baseline-long-context-tools.json",
+          "sha256": "67fb8aebbad33208677c4e885b54f8486bb16c7f1e4d96a812523cfb535e88ed",
+          "bytes": 2925
+        },
+        {
+          "path": "native/baseline-long-output-64k.json",
+          "sha256": "321a154ec2d89a3a67bd5ea97d12ff717b18abb2793162e6ae929bef1df54690",
+          "bytes": 158838
+        },
+        {
+          "path": "native/baseline-long-output.json",
+          "sha256": "42317a5d1282693031f562ddb5cb2867f4c0265645dc17bc6d27ed4168eed78d",
+          "bytes": 12201
+        },
+        {
+          "path": "native/baseline-preflight.json",
+          "sha256": "c5741c09ad5c15091cdf556703570b1885b0a6783b8886ef7d21c04767898a61",
+          "bytes": 20403
+        },
+        {
+          "path": "native/baseline-swe-native.json",
+          "sha256": "5094cf405249a1f64e736f36361ee7482ad5296e0c60eac7d71f20d9faf168d8",
+          "bytes": 14531
+        },
+        {
+          "path": "native/baseline-swe-reports/django-patch.diff",
+          "sha256": "56293f34cabdd84bb662d630186316539dfef307584d4a82beca3dc638b7321c",
+          "bytes": 534
+        },
+        {
+          "path": "native/baseline-swe-reports/django-test_output.txt",
+          "sha256": "4043782b7b6570cf8cabf127295d4735f14d0f5cb77ea2adfacc34db3880dcb5",
+          "bytes": 18469
+        },
+        {
+          "path": "native/baseline-swe-reports/django__django-13512-report.json",
+          "sha256": "3cd6e37cf77501fb74f3b30ca7c05e59264375be0edf3ce1cf3af17ebcd5b943",
+          "bytes": 3705
+        },
+        {
+          "path": "native/baseline-swe-reports/pydata__xarray-4356-report.json",
+          "sha256": "82e22888e5eeb6d61826906d73fb5aff65c0b3b64b857e5100ab70696e08e57c",
+          "bytes": 62003
+        },
+        {
+          "path": "native/baseline-swe-reports/pylint-dev__pylint-8898-report.json",
+          "sha256": "c7bf3d9a65df546184f31b46b6a64f026fb3d1d37604e314627cedb6b836d1d7",
+          "bytes": 2242
+        },
+        {
+          "path": "native/baseline-swe-reports/pylint-patch.diff",
+          "sha256": "27b8f7faf194ee98c5ff663fdcdaa0c678007b041d65649aeee729fe0b092a7a",
+          "bytes": 2262
+        },
+        {
+          "path": "native/baseline-swe-reports/pylint-test_output.txt",
+          "sha256": "887ae9032676ca79eff8487f5ba944f3a7ef6ded19f6be494dd5a273f25f6b85",
+          "bytes": 21443
+        },
+        {
+          "path": "native/baseline-swe-reports/sphinx-doc__sphinx-9658-report.json",
+          "sha256": "7235348e4c4e18f41418b612f2121da12080340892ef15b499ea0ff30dff5aa6",
+          "bytes": 2649
+        },
+        {
+          "path": "native/baseline-swe-reports/sympy__sympy-12096-report.json",
+          "sha256": "3aafac38c8f48903ceb094cf767baf3a5d60527b357faf3e137407324221445b",
+          "bytes": 2398
+        },
+        {
+          "path": "native/baseline-swe-scout5-native.json",
+          "sha256": "397f4931634b83ebdead6b130f61b5f52ba01a8ef730c149ab8be0eaf9f50d2e",
+          "bytes": 30160
+        },
+        {
+          "path": "native/glm-spark-r1-agentic-oracle6-native.json",
+          "sha256": "b4920356d20203ebb912d4e100c43f770e6ef5e8468a3f57b2ce3621d4ffd49b",
+          "bytes": 37376
+        },
+        {
+          "path": "native/glm-spark-r1-agentic-oracle7-native.json",
+          "sha256": "fb38a2091b305fa3e955e9c8b0e77008c32773edc28341692a370a25578a1ada",
+          "bytes": 36848
+        },
+        {
+          "path": "native/glm-spark-r1-capacity-c4-strict128.json",
+          "sha256": "df638013b1963dbdcd3fb7379bbb56b0c496e92d1b9dd6f786bcf9f68914f3fe",
+          "bytes": 51865
+        },
+        {
+          "path": "native/glm-spark-r1-eight-images.json",
+          "sha256": "a35bc0c47e508e7d31858698b9a197f3edc5c422f12e9f746c1c1692f5f3bef0",
+          "bytes": 23576
+        },
+        {
+          "path": "native/glm-spark-r1-long-context-tools.json",
+          "sha256": "d19c0ebeb50a128fe6d440a0fae2b4ae92ac261b48306feb190dcffb71ce41f7",
+          "bytes": 3045
+        },
+        {
+          "path": "native/glm-spark-r1-long-output-64k.json",
+          "sha256": "a3d540450fa6aff5f29888d4d7d2428cb90f9b500a5708530b15432e7886d770",
+          "bytes": 339489
+        },
+        {
+          "path": "native/glm-spark-r1-preflight.json",
+          "sha256": "e0c1be74af8075094267b00c1947693ce9a7d09b33f1a3da840d8a4d4fa57901",
+          "bytes": 22845
+        },
+        {
+          "path": "native/glm-spark-r1-swe-native.json",
+          "sha256": "05937a0359c19a2c1a86a8d63ea2c62e8bedf5df8975d29ae1d3cb1d601ef555",
+          "bytes": 14378
+        },
+        {
+          "path": "native/glm-spark-r1-swe-reports/django__django-13512-report.json",
+          "sha256": "3cd6e37cf77501fb74f3b30ca7c05e59264375be0edf3ce1cf3af17ebcd5b943",
+          "bytes": 3705
+        },
+        {
+          "path": "native/glm-spark-r1-swe-reports/pydata__xarray-4356-report.json",
+          "sha256": "82e22888e5eeb6d61826906d73fb5aff65c0b3b64b857e5100ab70696e08e57c",
+          "bytes": 62003
+        },
+        {
+          "path": "native/glm-spark-r1-swe-reports/sympy__sympy-12096-report.json",
+          "sha256": "3aafac38c8f48903ceb094cf767baf3a5d60527b357faf3e137407324221445b",
+          "bytes": 2398
+        },
+        {
+          "path": "native/glm-spark-r1-swe-scout5-native.json",
+          "sha256": "68981fa63dc237c69b4ed7ffd23b61c90d32a6be38ebebf4479491fa188f30e9",
+          "bytes": 30250
+        },
+        {
+          "path": "native/glm-spark-t06-agentic-oracle7-native.json",
+          "sha256": "ed643fad75eac61662d470a74f138d387c4cef7c05c55aa2d98e7075b4852506",
+          "bytes": 36580
+        },
+        {
+          "path": "native/glm-spark-t06-capacity-c4-strict128.json",
+          "sha256": "0319f68692d6cdb23177397919c4664250dd322b0f653daf4abbd246fa6f470f",
+          "bytes": 20505
+        },
+        {
+          "path": "native/kernel-glm-spark-r1-through-1144.json",
+          "sha256": "5f0c25313ced7c87c180bbe4e3990f9187ba62775a78071a9284631feb9d40cb",
+          "bytes": 142
+        },
+        {
+          "path": "native/kernel-qwen-r2-medium-final.json",
+          "sha256": "9f05df7c54deee6643bd38e20ec281030601da75666f784d44a1613b1b54cc0e",
+          "bytes": 179
+        },
+        {
+          "path": "native/qwen-disabled-agentic-oracle7-native.json",
+          "sha256": "0c16f4c8745f748d3669bed9708337951c8a74031515de99fb5644e762ebc980",
+          "bytes": 36814
+        },
+        {
+          "path": "native/qwen-disabled-capacity-c4-strict128.json",
+          "sha256": "f24de494b29a02f80832de40c2c3f8bed60149a68ad3af6badb412ab77284581",
+          "bytes": 20462
+        },
+        {
+          "path": "native/qwen-medium-agentic-oracle7-native.json",
+          "sha256": "8bb439014d1341fefc3ebc642ea4ed9bd940614fe1d194d6affdd1a9293d6668",
+          "bytes": 36809
+        },
+        {
+          "path": "native/qwen-medium-capacity-c4-strict128.json",
+          "sha256": "4b8ec9f730e6221004fd22238cfa2e7edf783fbed0fd9f9cfac5af8717d39852",
+          "bytes": 20487
+        },
+        {
+          "path": "native/qwen-medium-raw-boundary.json",
+          "sha256": "983e50733300c5ea5e4ad65588ecc44942795c4d376f606b186fe08149f521dd",
+          "bytes": 14259
+        },
+        {
+          "path": "native/qwen-medium-status-1211.json",
+          "sha256": "cf642cff12574ebc2b63ba5888e7a392af2160dcb1b6103901d92a9d74cdfe63",
+          "bytes": 1991
+        },
+        {
+          "path": "native/qwen-medium-swe-reports/django__django-13512-report.json",
+          "sha256": "e503be7f6fe03b15e02572eaf5734be9893b165314f638e6cf7b1b086a0f7eb5",
+          "bytes": 3688
+        },
+        {
+          "path": "native/qwen-medium-swe-reports/pydata__xarray-4356-report.json",
+          "sha256": "82e22888e5eeb6d61826906d73fb5aff65c0b3b64b857e5100ab70696e08e57c",
+          "bytes": 62003
+        },
+        {
+          "path": "native/qwen-medium-swe-reports/pylint-dev__pylint-8898-report.json",
+          "sha256": "c7bf3d9a65df546184f31b46b6a64f026fb3d1d37604e314627cedb6b836d1d7",
+          "bytes": 2242
+        },
+        {
+          "path": "native/qwen-medium-swe-reports/pylint-patch.diff",
+          "sha256": "043c707bf899e37097aaa3d0118ea3252d5a3f14f446892be6bba6f7c541a4a9",
+          "bytes": 2455
+        },
+        {
+          "path": "native/qwen-medium-swe-reports/pylint-test-output.txt",
+          "sha256": "0828dc8b421bd64dce3f742d8d8fcc717a58bec1c62eda4d55a829d398f92625",
+          "bytes": 21636
+        },
+        {
+          "path": "native/qwen-medium-swe-reports/sphinx-doc__sphinx-9658-report.json",
+          "sha256": "7235348e4c4e18f41418b612f2121da12080340892ef15b499ea0ff30dff5aa6",
+          "bytes": 2649
+        },
+        {
+          "path": "native/qwen-medium-swe-reports/sympy__sympy-12096-report.json",
+          "sha256": "3aafac38c8f48903ceb094cf767baf3a5d60527b357faf3e137407324221445b",
+          "bytes": 2398
+        },
+        {
+          "path": "native/qwen-medium-swe-scout5-native.json",
+          "sha256": "a843727f41ebe516c76db3805c2bc6adc65fba2313c539d9b26b8167800b7af1",
+          "bytes": 28767
+        },
+        {
+          "path": "native/qwen-r1-kernel-faults.json",
+          "sha256": "af6b59ea0a0cb8fc552cc1451e9d16d64c80c7d52e64809dcf258d409c1f4fe1",
+          "bytes": 852
+        },
+        {
+          "path": "native/qwen-r2-agentic-native.json",
+          "sha256": "c8abb27e99e05b8ad85f5be8b71c301f0da807255e312c3a4a5ddc791076d8ae",
+          "bytes": 38586
+        },
+        {
+          "path": "native/qwen-r2-agentic-oracle6-native.json",
+          "sha256": "1185bcf1c4bf052ee33ca785661cbf22cad0c1ebf03cc93c49b0af3ec230dfe9",
+          "bytes": 35634
+        },
+        {
+          "path": "native/qwen-r2-capacity-c4-strict128.json",
+          "sha256": "a2d16d63678a2336da40496997354938ad5828e5db6bcacfe1d45a434344bc8b",
+          "bytes": 26842
+        },
+        {
+          "path": "native/qwen-r2-context-extended.json",
+          "sha256": "bff40a180e37ecd721e336b3780beca921b00c1026bb20b1747df09b39561b5d",
+          "bytes": 1922
+        },
+        {
+          "path": "native/qwen-r2-eight-images.json",
+          "sha256": "11d7b75328b76abb5fd8bac061f199724769c76be8b6ce4de6fc8c2ba03b0ebc",
+          "bytes": 23629
+        },
+        {
+          "path": "native/qwen-r2-long-context-tools.json",
+          "sha256": "4ed64d0c66e4a922c3bd5c86fb716ae6ede32eecde8b2e23886cb2492cb6cb39",
+          "bytes": 3278
+        },
+        {
+          "path": "native/qwen-r2-long-output-64k.json",
+          "sha256": "a8a8d5775235fcf7d8bea0dd4e559783f78138b7b71e6ce0be1c09c0101be2eb",
+          "bytes": 230521
+        },
+        {
+          "path": "native/qwen-r2-long-output.json",
+          "sha256": "18f986da3993dfe2f90eb7eda2b5ab4a130508cba319646da31f9a36fd06528c",
+          "bytes": 187365
+        },
+        {
+          "path": "native/qwen-r2-preflight.json",
+          "sha256": "f1e450cd0fcf1b8d1e6a0a4afb232dd8e2081d11f1d6e0ace36f56b69786de6e",
+          "bytes": 25553
+        },
+        {
+          "path": "native/qwen-r2-swe-native.json",
+          "sha256": "fa9df922973b162dfd13d187d356fd76541b8608afaeec72260a69f163ba04a0",
+          "bytes": 14023
+        },
+        {
+          "path": "native/qwen-status-r1-fault.json",
+          "sha256": "b3873233ad8b5eb6ec25625824ad15b45277d1ffe4030777e3cac8bd1c167da4",
+          "bytes": 1723
+        }
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "e2e6bcd90dd67194ddfd521075f09b34ef146db51f56d295610b52e23945ea7d",
+          "bytes": 5553
+        },
+        {
+          "path": "review/baseline-long-output-64k-analysis.json",
+          "sha256": "8c2c6ef0726c2729f10ee3ca3ea183193405a1ff6fd165c27abb1e747a6b1f11",
+          "bytes": 1025
+        },
+        {
+          "path": "review/baseline-long-output-64k-independent-review.json",
+          "sha256": "309e3e3d297d009e0746e6dc0149b6e22aaa99ee27ca51b5d3fe10ac9166c114",
+          "bytes": 1326
+        },
+        {
+          "path": "review/baseline-swe-scout5-independent-review.json",
+          "sha256": "0c18373762dce2bb562a8052f313ddfe423849de486448339ee98a367383972e",
+          "bytes": 1746
+        },
+        {
+          "path": "review/bounded-logs-readback.json",
+          "sha256": "6293cfb9af523456ed258a192676a84a17104a0ca5cad85498ac3778a8be44e0",
+          "bytes": 359
+        },
+        {
+          "path": "review/final-full-tests-receipt.json",
+          "sha256": "ecbc2cf6d60314cd9524134dc2d2c40d0e48b62ee16530a422dffd0e1e7e9848",
+          "bytes": 1180
+        },
+        {
+          "path": "review/glm-spark-long-output-independent-review.json",
+          "sha256": "d7bf0e84ae19284788122e39acb54d5e450b2df2b0d412862e67cd33d5a50003",
+          "bytes": 1244
+        },
+        {
+          "path": "review/glm-spark-r1-long-output-64k-analysis.json",
+          "sha256": "b6469649ba4c4307149aa265b9f85102ea0aeb7a0511568a9fff2a461c72aa60",
+          "bytes": 3932
+        },
+        {
+          "path": "review/glm-spark-startup-independent-review.json",
+          "sha256": "fc7f811d4a91aa47e4bbd76b1373858485b5c5ee742587bc368f0e96d7c010de",
+          "bytes": 769
+        },
+        {
+          "path": "review/glm-spark-swe-scout5-co-residency.json",
+          "sha256": "d7ef60d4fd10755e4c401db2770fa05c3c8186cb86520600a3804f3ccb2affff",
+          "bytes": 429
+        },
+        {
+          "path": "review/glm-spark-swe-scout5-independent-review.json",
+          "sha256": "b77e509027a6b4e5111e7df6e4620c56a2f044c8a073d9abec7e4189a8382fbd",
+          "bytes": 1069
+        },
+        {
+          "path": "review/oracle7-independent-review.json",
+          "sha256": "640daf908e0002baea4439d29c5ac8ab5c4ed13400e747f40ff72ca4c22912c6",
+          "bytes": 598
+        },
+        {
+          "path": "review/qwen-long-output-independent-review.json",
+          "sha256": "a0e7ea20f092ffbd1932ed9848e2276353f771d2422a98f316892a6a67fadfaf",
+          "bytes": 746
+        },
+        {
+          "path": "review/qwen-medium-swe-scout5-independent-review.json",
+          "sha256": "e1301195f0e01034c0f1033b94a58cb72c24149d5ec0e99a086a67ddd90f2261",
+          "bytes": 1118
+        },
+        {
+          "path": "review/qwen-r2-long-output-64k-analysis.json",
+          "sha256": "35511d262f75b923a54816301f7491cde1ce1abbff1c4847ab0516edc08ed12c",
+          "bytes": 3927
+        },
+        {
+          "path": "review/strict-capacity-independent-policy-review.json",
+          "sha256": "afe835bc36266c2ebbec3a67761960c8e98ffd3330eb4be51235fefcb3597fa4",
+          "bytes": 642
+        },
+        {
+          "path": "review/tooling-pr567-independent-review.json",
+          "sha256": "e0ac2756e60d2d874971a9e1e198d9c6c1bbc7e6c6febdd9fc52c585c6892492",
+          "bytes": 850
+        },
+        {
+          "path": "review/tooling-pr567-merge.json",
+          "sha256": "62d2e4de6669a6e63c1fd0a4ce7ed4d4466d931dd99ad0fdde70d2b166308a74",
+          "bytes": 405
+        }
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "347bf103cee0bfd3495597641d1d378c39a7db0cc96d218774d8466640ec4522",
+          "bytes": 2939
+        },
+        {
+          "path": "restoration/kernel-baseline-final.json",
+          "sha256": "4505eab965291a090167db97519c0dd727a282b8214ec6508761eef577232e60",
+          "bytes": 182
+        },
+        {
+          "path": "restoration/mode-before-switch.json",
+          "sha256": "d49fec384a7e81933cb90804911450accdd89dc25fe750d0eaf2bcaec268e0cd",
+          "bytes": 2565
+        },
+        {
+          "path": "restoration/restored-direct-health.json",
+          "sha256": "b6e2d047e24487275daa9b1a5d0023601fff39184b5c314fda252f61da28a040",
+          "bytes": 1009
+        },
+        {
+          "path": "restoration/restored-gpu-process-ownership.json",
+          "sha256": "a36255804eb875e2d183416a5881f3963742591f64f093bcabac347ad7cbc78c",
+          "bytes": 922
+        },
+        {
+          "path": "restoration/restored-gpu-residency.json",
+          "sha256": "4c16cbb9e2e9a1fd274a56843f3daa0b33b8649116d840417e9daded716d2858",
+          "bytes": 462
+        },
+        {
+          "path": "restoration/restored-gpus.json",
+          "sha256": "13f6a93142198cb803efcefcd81eca00d620e14c42c8a2cea3cb7bb40d73ab1e",
+          "bytes": 724
+        },
+        {
+          "path": "restoration/restored-mode-status.json",
+          "sha256": "d49fec384a7e81933cb90804911450accdd89dc25fe750d0eaf2bcaec268e0cd",
+          "bytes": 2565
+        },
+        {
+          "path": "restoration/restored-recipe-status.json",
+          "sha256": "51693cc4db6b339226491ab86809d4782f3cf9b84c4bc6078659ce15d221a866",
+          "bytes": 2067
+        },
+        {
+          "path": "restoration/restored-routed-preflight.json",
+          "sha256": "2afb8cb0720fee119fb17a2929c54fc0dd4605ffc3dba3254b7f824b8db7be9b",
+          "bytes": 3197
+        },
+        {
+          "path": "restoration/restored-router-transition.json",
+          "sha256": "f50f21466cf6e217d3d970c1f54de99140f117a9e37016f9d24ecb57e475b5e0",
+          "bytes": 962
+        },
+        {
+          "path": "restoration/restored-shared-memory.json",
+          "sha256": "d18dba4aece3f71b164672cc12d07130425c57d7b507a722f4b4a60424e79354",
+          "bytes": 684
+        },
+        {
+          "path": "restoration/router-contract-readback.json",
+          "sha256": "2b80804bda7c55428d27b6e0855368164b74b2eee5015d026c22a23d6fea408c",
+          "bytes": 1465
+        },
+        {
+          "path": "restoration/router-final-readmit-preview.json",
+          "sha256": "4ff2be8df837d3b0e7fca5757abd5663983b4598d41f60ce41b92c68ec24b3e4",
+          "bytes": 603
+        },
+        {
+          "path": "restoration/router-final-readmit.json",
+          "sha256": "c4f388c3dc532fdf06b8b301c79ca270bbe00d04e6184e6c173bc655c3a8bc51",
+          "bytes": 1080
+        },
+        {
+          "path": "restoration/start.json",
+          "sha256": "088902b0ad34a84b751d6b2f8e9c13bf3bf087b83605dc994eededae6209847c",
+          "bytes": 584
+        }
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "86581ea17838ff59d7853df7e88e8b17b64210ab91573d179ea256f62e6c6317",
+          "bytes": 12641
+        }
+      ],
+      "reason": "Native and derived evidence retained with profile and scope limits."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social/public-copy package requested; the dated finding and documentation matrix publish this no-promotion result."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

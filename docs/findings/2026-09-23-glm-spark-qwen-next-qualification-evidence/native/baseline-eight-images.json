@@ -1,0 +1,783 @@
+{
+  "aggregates": {
+    "case": {
+      "eight-images-ordered": {
+        "attempts": 2,
+        "latency_p50_seconds": 4.427009,
+        "latency_p95_seconds": 4.480709,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "eight-images-reversed": {
+        "attempts": 2,
+        "latency_p50_seconds": 4.7838755,
+        "latency_p95_seconds": 4.955519,
+        "pass_rate": 1.0,
+        "passed": 2
+      }
+    },
+    "modality": {
+      "image": {
+        "attempts": 4,
+        "latency_p50_seconds": 4.5464705,
+        "latency_p95_seconds": 4.955519,
+        "pass_rate": 1.0,
+        "passed": 4
+      }
+    }
+  },
+  "attempts": [
+    {
+      "case_id": "eight-images-ordered",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-A.png",
+          "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+        },
+        {
+          "bytes": 9861,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-B.png",
+          "sha256": "fffe6b1b1f5819e0aacd015cb0bbbc1b43037c744238ea6ac3d8a0ea8ac2bff6"
+        },
+        {
+          "bytes": 9214,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-C.png",
+          "sha256": "6c8253ac2e97def51f996475ae4ce5436f5e69b4aaf8f96b410a9c0af9aeb799"
+        },
+        {
+          "bytes": 9970,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-D.png",
+          "sha256": "a7882977d87bd1e59d84029c34da4f41c2f16adfc4b65f16a08ad973c10e9154"
+        },
+        {
+          "bytes": 9969,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-E.png",
+          "sha256": "8e7ffb4c775589abcbc5e4507aed01a9d966fd635b1dc3cff87801155a73385f"
+        },
+        {
+          "bytes": 8930,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-F.png",
+          "sha256": "56b90ce7cd4edce9c9c3425135a2db924fcb9a822c4088ef6d4af692632b2de4"
+        },
+        {
+          "bytes": 10211,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-G.png",
+          "sha256": "87c4b85945a40b630f8d8e7548f6a55153f750904086e13aed1f99e2830de4e9"
+        },
+        {
+          "bytes": 9622,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-H.png",
+          "sha256": "6387a21bea8cb2f91a29f4139fcc79424b819b1b5c0e00f49a1c5cef6584bdd8"
+        }
+      ],
+      "modality": "image",
+      "output": "CARD A: VALUE 17\nCARD B: VALUE 42\nCARD C: VALUE 9\nCARD D: VALUE 63\nCARD E: VALUE 28\nCARD F: VALUE 51\nCARD G: VALUE 34\nCARD H: VALUE 76\nMAX H 76\nMIN C 9\nSUM 320",
+      "passed": true,
+      "reasoning": {
+        "chars": 295,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 4.373309,
+      "usage": {
+        "completion_tokens": 222,
+        "prompt_tokens": 4344,
+        "prompt_tokens_details": null,
+        "total_tokens": 4566
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "CARD A",
+              "17",
+              "CARD B",
+              "42",
+              "CARD C",
+              "9",
+              "CARD D",
+              "63",
+              "CARD E",
+              "28",
+              "CARD F",
+              "51",
+              "CARD G",
+              "34",
+              "CARD H",
+              "76"
+            ]
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "320"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "MAX H 76"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "MIN C 9"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "eight-images-ordered",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-A.png",
+          "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+        },
+        {
+          "bytes": 9861,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-B.png",
+          "sha256": "fffe6b1b1f5819e0aacd015cb0bbbc1b43037c744238ea6ac3d8a0ea8ac2bff6"
+        },
+        {
+          "bytes": 9214,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-C.png",
+          "sha256": "6c8253ac2e97def51f996475ae4ce5436f5e69b4aaf8f96b410a9c0af9aeb799"
+        },
+        {
+          "bytes": 9970,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-D.png",
+          "sha256": "a7882977d87bd1e59d84029c34da4f41c2f16adfc4b65f16a08ad973c10e9154"
+        },
+        {
+          "bytes": 9969,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-E.png",
+          "sha256": "8e7ffb4c775589abcbc5e4507aed01a9d966fd635b1dc3cff87801155a73385f"
+        },
+        {
+          "bytes": 8930,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-F.png",
+          "sha256": "56b90ce7cd4edce9c9c3425135a2db924fcb9a822c4088ef6d4af692632b2de4"
+        },
+        {
+          "bytes": 10211,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-G.png",
+          "sha256": "87c4b85945a40b630f8d8e7548f6a55153f750904086e13aed1f99e2830de4e9"
+        },
+        {
+          "bytes": 9622,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-H.png",
+          "sha256": "6387a21bea8cb2f91a29f4139fcc79424b819b1b5c0e00f49a1c5cef6584bdd8"
+        }
+      ],
+      "modality": "image",
+      "output": "CARD A: VALUE 17\nCARD B: VALUE 42\nCARD C: VALUE 9\nCARD D: VALUE 63\nCARD E: VALUE 28\nCARD F: VALUE 51\nCARD G: VALUE 34\nCARD H: VALUE 76\nMAX H 76\nMIN C 9\nSUM 320",
+      "passed": true,
+      "reasoning": {
+        "chars": 584,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 4.480709,
+      "usage": {
+        "completion_tokens": 311,
+        "prompt_tokens": 4344,
+        "prompt_tokens_details": null,
+        "total_tokens": 4655
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "CARD A",
+              "17",
+              "CARD B",
+              "42",
+              "CARD C",
+              "9",
+              "CARD D",
+              "63",
+              "CARD E",
+              "28",
+              "CARD F",
+              "51",
+              "CARD G",
+              "34",
+              "CARD H",
+              "76"
+            ]
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "320"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "MAX H 76"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "MIN C 9"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "eight-images-reversed",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 9622,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-H.png",
+          "sha256": "6387a21bea8cb2f91a29f4139fcc79424b819b1b5c0e00f49a1c5cef6584bdd8"
+        },
+        {
+          "bytes": 10211,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-G.png",
+          "sha256": "87c4b85945a40b630f8d8e7548f6a55153f750904086e13aed1f99e2830de4e9"
+        },
+        {
+          "bytes": 8930,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-F.png",
+          "sha256": "56b90ce7cd4edce9c9c3425135a2db924fcb9a822c4088ef6d4af692632b2de4"
+        },
+        {
+          "bytes": 9969,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-E.png",
+          "sha256": "8e7ffb4c775589abcbc5e4507aed01a9d966fd635b1dc3cff87801155a73385f"
+        },
+        {
+          "bytes": 9970,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-D.png",
+          "sha256": "a7882977d87bd1e59d84029c34da4f41c2f16adfc4b65f16a08ad973c10e9154"
+        },
+        {
+          "bytes": 9214,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-C.png",
+          "sha256": "6c8253ac2e97def51f996475ae4ce5436f5e69b4aaf8f96b410a9c0af9aeb799"
+        },
+        {
+          "bytes": 9861,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-B.png",
+          "sha256": "fffe6b1b1f5819e0aacd015cb0bbbc1b43037c744238ea6ac3d8a0ea8ac2bff6"
+        },
+        {
+          "bytes": 8679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-A.png",
+          "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+        }
+      ],
+      "modality": "image",
+      "output": "CARD H: VALUE 76\nCARD G: VALUE 34\nCARD F: VALUE 51\nCARD E: VALUE 28\nCARD D: VALUE 63\nCARD C: VALUE 9\nCARD B: VALUE 42\nCARD A: VALUE 17\nMAX H 76\nMIN C 9\nSUM 320",
+      "passed": true,
+      "reasoning": {
+        "chars": 414,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 4.612232,
+      "usage": {
+        "completion_tokens": 263,
+        "prompt_tokens": 4344,
+        "prompt_tokens_details": null,
+        "total_tokens": 4607
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "CARD H",
+              "76",
+              "CARD G",
+              "34",
+              "CARD F",
+              "51",
+              "CARD E",
+              "28",
+              "CARD D",
+              "63",
+              "CARD C",
+              "9",
+              "CARD B",
+              "42",
+              "CARD A",
+              "17"
+            ]
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "320"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "MAX H 76"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "MIN C 9"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "eight-images-reversed",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 9622,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-H.png",
+          "sha256": "6387a21bea8cb2f91a29f4139fcc79424b819b1b5c0e00f49a1c5cef6584bdd8"
+        },
+        {
+          "bytes": 10211,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-G.png",
+          "sha256": "87c4b85945a40b630f8d8e7548f6a55153f750904086e13aed1f99e2830de4e9"
+        },
+        {
+          "bytes": 8930,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-F.png",
+          "sha256": "56b90ce7cd4edce9c9c3425135a2db924fcb9a822c4088ef6d4af692632b2de4"
+        },
+        {
+          "bytes": 9969,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-E.png",
+          "sha256": "8e7ffb4c775589abcbc5e4507aed01a9d966fd635b1dc3cff87801155a73385f"
+        },
+        {
+          "bytes": 9970,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-D.png",
+          "sha256": "a7882977d87bd1e59d84029c34da4f41c2f16adfc4b65f16a08ad973c10e9154"
+        },
+        {
+          "bytes": 9214,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-C.png",
+          "sha256": "6c8253ac2e97def51f996475ae4ce5436f5e69b4aaf8f96b410a9c0af9aeb799"
+        },
+        {
+          "bytes": 9861,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-B.png",
+          "sha256": "fffe6b1b1f5819e0aacd015cb0bbbc1b43037c744238ea6ac3d8a0ea8ac2bff6"
+        },
+        {
+          "bytes": 8679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "card-A.png",
+          "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+        }
+      ],
+      "modality": "image",
+      "output": "CARD H: VALUE 76\nCARD G: VALUE 34\nCARD F: VALUE 51\nCARD E: VALUE 28\nCARD D: VALUE 63\nCARD C: VALUE 9\nCARD B: VALUE 42\nCARD A: VALUE 17\nMAX H 76\nMIN C 9\nSUM 320",
+      "passed": true,
+      "reasoning": {
+        "chars": 703,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 4.955519,
+      "usage": {
+        "completion_tokens": 346,
+        "prompt_tokens": 4344,
+        "prompt_tokens_details": null,
+        "total_tokens": 4690
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "CARD H",
+              "76",
+              "CARD G",
+              "34",
+              "CARD F",
+              "51",
+              "CARD E",
+              "28",
+              "CARD D",
+              "63",
+              "CARD C",
+              "9",
+              "CARD B",
+              "42",
+              "CARD A",
+              "17"
+            ]
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "320"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "MAX H 76"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "MIN C 9"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    }
+  ],
+  "configuration": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "concurrency": 1,
+    "max_images_per_request": 8,
+    "max_tokens": 4096,
+    "max_videos_per_request": 1,
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "enabled",
+    "timeout_seconds": 180.0
+  },
+  "corpus": {
+    "cases": [
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "CARD A",
+              "17",
+              "CARD B",
+              "42",
+              "CARD C",
+              "9",
+              "CARD D",
+              "63",
+              "CARD E",
+              "28",
+              "CARD F",
+              "51",
+              "CARD G",
+              "34",
+              "CARD H",
+              "76"
+            ]
+          },
+          {
+            "type": "contains_casefold",
+            "value": "320"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "MAX H 76"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "MIN C 9"
+          }
+        ],
+        "id": "eight-images-ordered",
+        "media": [
+          {
+            "bytes": 8679,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-A.png",
+            "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+          },
+          {
+            "bytes": 9861,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-B.png",
+            "sha256": "fffe6b1b1f5819e0aacd015cb0bbbc1b43037c744238ea6ac3d8a0ea8ac2bff6"
+          },
+          {
+            "bytes": 9214,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-C.png",
+            "sha256": "6c8253ac2e97def51f996475ae4ce5436f5e69b4aaf8f96b410a9c0af9aeb799"
+          },
+          {
+            "bytes": 9970,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-D.png",
+            "sha256": "a7882977d87bd1e59d84029c34da4f41c2f16adfc4b65f16a08ad973c10e9154"
+          },
+          {
+            "bytes": 9969,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-E.png",
+            "sha256": "8e7ffb4c775589abcbc5e4507aed01a9d966fd635b1dc3cff87801155a73385f"
+          },
+          {
+            "bytes": 8930,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-F.png",
+            "sha256": "56b90ce7cd4edce9c9c3425135a2db924fcb9a822c4088ef6d4af692632b2de4"
+          },
+          {
+            "bytes": 10211,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-G.png",
+            "sha256": "87c4b85945a40b630f8d8e7548f6a55153f750904086e13aed1f99e2830de4e9"
+          },
+          {
+            "bytes": 9622,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-H.png",
+            "sha256": "6387a21bea8cb2f91a29f4139fcc79424b819b1b5c0e00f49a1c5cef6584bdd8"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Read all eight images. Transcribe each in the supplied image order, exactly one line formatted CARD <letter>: VALUE <number>. Then add three lines: MAX <letter> <value>, MIN <letter> <value>, SUM <total>. Compute these across all eight images. No other text.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "CARD H",
+              "76",
+              "CARD G",
+              "34",
+              "CARD F",
+              "51",
+              "CARD E",
+              "28",
+              "CARD D",
+              "63",
+              "CARD C",
+              "9",
+              "CARD B",
+              "42",
+              "CARD A",
+              "17"
+            ]
+          },
+          {
+            "type": "contains_casefold",
+            "value": "320"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "MAX H 76"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "MIN C 9"
+          }
+        ],
+        "id": "eight-images-reversed",
+        "media": [
+          {
+            "bytes": 9622,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-H.png",
+            "sha256": "6387a21bea8cb2f91a29f4139fcc79424b819b1b5c0e00f49a1c5cef6584bdd8"
+          },
+          {
+            "bytes": 10211,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-G.png",
+            "sha256": "87c4b85945a40b630f8d8e7548f6a55153f750904086e13aed1f99e2830de4e9"
+          },
+          {
+            "bytes": 8930,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-F.png",
+            "sha256": "56b90ce7cd4edce9c9c3425135a2db924fcb9a822c4088ef6d4af692632b2de4"
+          },
+          {
+            "bytes": 9969,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-E.png",
+            "sha256": "8e7ffb4c775589abcbc5e4507aed01a9d966fd635b1dc3cff87801155a73385f"
+          },
+          {
+            "bytes": 9970,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-D.png",
+            "sha256": "a7882977d87bd1e59d84029c34da4f41c2f16adfc4b65f16a08ad973c10e9154"
+          },
+          {
+            "bytes": 9214,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-C.png",
+            "sha256": "6c8253ac2e97def51f996475ae4ce5436f5e69b4aaf8f96b410a9c0af9aeb799"
+          },
+          {
+            "bytes": 9861,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-B.png",
+            "sha256": "fffe6b1b1f5819e0aacd015cb0bbbc1b43037c744238ea6ac3d8a0ea8ac2bff6"
+          },
+          {
+            "bytes": 8679,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "card-A.png",
+            "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Read all eight images. Transcribe each in the supplied image order, exactly one line formatted CARD <letter>: VALUE <number>. Then add three lines: MAX <letter> <value>, MIN <letter> <value>, SUM <total>. Compute these across all eight images. No other text.",
+        "repetitions": 2,
+        "sampling": null
+      }
+    ],
+    "path": "/srv/example/product/docs/findings/2026-09-18-glm53-vision-evidence/eight-images/corpus.json",
+    "provenance": {
+      "scope": "Eight distinct cards, ordered and reversed, independent exact OCR ordering and sum assertions.",
+      "synthetic": {
+        "license": "CC0-1.0"
+      }
+    },
+    "schema": "multimodal-corpus/v1",
+    "sha256": "a3c84fbd456b1824bb2bc2383a8043efe6376b39d4ca2db831b8e02e09c096c3"
+  },
+  "failed_attempts": 0,
+  "finished_at": "2026-09-23T10:15:25Z",
+  "identity": {
+    "base_url": "http://127.0.0.1:39126/v1",
+    "engine_build_ref": null,
+    "engine_revision": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+    "hardware": "2x-rtx-pro6000-blackwell-maxq",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+    "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "runtime_image": "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "served_models": [
+      "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+    ]
+  },
+  "passed": true,
+  "passed_attempts": 4,
+  "requests": 4,
+  "run_id": "multimodal-20260923T101507Z",
+  "schema": "multimodal-benchmark-evidence/v1",
+  "started_at": "2026-09-23T10:15:07Z"
+}

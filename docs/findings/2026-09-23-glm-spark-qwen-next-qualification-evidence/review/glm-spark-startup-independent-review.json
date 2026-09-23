@@ -1,0 +1,14 @@
+{
+  "schema": "operator-workflow/v1",
+  "reviewer": "GPT-5.6 Sol high",
+  "request": "GLM startup allocator warning and five-task selection",
+  "gate_state": "review_complete",
+  "findings": [
+    "12MiB mapping OOM immediately after44weightshards and beforeB12xplanning;KValloc~105slater,notKV/batchrootcause.",
+    "12MiB matcheslarge_segment_size_mb12,only.625MiBfreeaboveallocation. Internalallocatorfallbackunproven;recoveredstartup,hostoom/kill0.",
+    "No validityblockerforfixedhashfive-repositoryscout;smallselectioncannotrepresentfullVerifiedscore."
+  ],
+  "recommendation": "Continue diagnostics; beforefreeze require repeatedcoldstart evidence or onevariableallocatorAB, no unsupportedKV/batchrepair.",
+  "human_gate_required": false,
+  "promoted": false
+}

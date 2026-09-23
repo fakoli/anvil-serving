@@ -1,0 +1,430 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-23-next-model-qualification",
+  "complete": true,
+  "identity": {
+    "measured_hardware": "2x RTX PRO 6000 Blackwell Max-Q, 97887 MiB per GPU, PCIe TP2",
+    "driver": "615.71.09",
+    "launcher_revision": "e419280a3e9caeac1366c759421467fc1d6111bd",
+    "configuration_directory": "configuration/"
+  },
+  "workload": {
+    "manifest": "workload/manifest.json",
+    "five_task_selection": "workload/swe-scout-selection-v1.json",
+    "oracle_revision": 7,
+    "strict_capacity": {
+      "words": 128,
+      "completion_cap": 8192,
+      "concurrency": 4,
+      "nominal_context": 32768,
+      "cache_mode": "unique",
+      "canaries": true
+    },
+    "long_guide": {
+      "completion_cap": 65536,
+      "repetitions": 1
+    }
+  },
+  "measurement": {
+    "path": "online direct endpoints; official repository-test grading offline",
+    "warm_cold_state": "Loaded runtime; mixed prompt-cache state per native artifact. Repair cells may reuse prompts. No latency attribution across unmatched cache states.",
+    "sample_count": 5,
+    "statistics": [
+      "SWE resolved/all attempts; separate submitted/graded count",
+      "No performance ranking from failed strict cells"
+    ]
+  },
+  "profiles": {
+    "incumbent": {
+      "native_files": {
+        "preflight": "native/baseline-preflight.json",
+        "oracle7": "native/baseline-agentic-oracle7-native.json",
+        "eight_images": "native/baseline-eight-images.json",
+        "context": "native/baseline-long-context-tools.json",
+        "swe_five": "native/baseline-swe-scout5-native.json",
+        "strict_capacity": "native/baseline-capacity-c4-strict128.json",
+        "long_64k": "native/baseline-long-output-64k.json"
+      },
+      "limitations": [],
+      "preflight": {
+        "passed": true,
+        "checks": 6,
+        "passed_checks": 6,
+        "observations": 26,
+        "passed_observations": 26
+      },
+      "oracle7": {
+        "attempted": 18,
+        "pass_rate": 1.0,
+        "passed": 18,
+        "native_suite_required_pass_rate": 0.75,
+        "campaign_required_pass_rate": 1.0,
+        "campaign_gate_passed": true
+      },
+      "eight_images": {
+        "passed": 4,
+        "attempted": 4
+      },
+      "context": {
+        "passed": true,
+        "prompt_tokens": [
+          255795,
+          118293
+        ]
+      },
+      "long_64k": {
+        "completion_tokens": 65536,
+        "reasoning_tokens": null,
+        "visible_tokens": null,
+        "visible_characters": 70772,
+        "finish_reason": "length",
+        "chapters_started": 12,
+        "chapters_complete": 11,
+        "structural_marker_pass_rate": 0.0,
+        "full_coding_correctness": "not established; independent static defects retained"
+      },
+      "strict_capacity": {
+        "attempted": 16,
+        "passed": 0,
+        "failed": 16,
+        "performance_eligible": false,
+        "diagnosis": {
+          "stop_wrong_count": 14,
+          "length_capture_truncated": 2,
+          "own_marker_at_start_observed": 16,
+          "foreign_markers_observed": 0,
+          "foreign_absence_proven_for_truncated_captures": false
+        }
+      },
+      "swe_five": {
+        "attempted": 5,
+        "graded": 5,
+        "resolved": 3,
+        "all_attempts_resolve_rate": 0.6,
+        "agent_duration_s": 2050.639483,
+        "grader_duration_s": 97.005113,
+        "instances": [
+          {
+            "instance_id": "sphinx-doc__sphinx-9658",
+            "exit_status": "Submitted",
+            "resolved": true
+          },
+          {
+            "instance_id": "sympy__sympy-12096",
+            "exit_status": "Submitted",
+            "resolved": true
+          },
+          {
+            "instance_id": "django__django-13512",
+            "exit_status": "Submitted",
+            "resolved": false
+          },
+          {
+            "instance_id": "pydata__xarray-4356",
+            "exit_status": "Submitted",
+            "resolved": true
+          },
+          {
+            "instance_id": "pylint-dev__pylint-8898",
+            "exit_status": "Submitted",
+            "resolved": false
+          }
+        ]
+      }
+    },
+    "glm_spark": {
+      "native_files": {
+        "preflight": "native/glm-spark-r1-preflight.json",
+        "oracle7": "native/glm-spark-r1-agentic-oracle7-native.json",
+        "eight_images": "native/glm-spark-r1-eight-images.json",
+        "context": "native/glm-spark-r1-long-context-tools.json",
+        "long_64k": "native/glm-spark-r1-long-output-64k.json",
+        "strict_capacity": "native/glm-spark-r1-capacity-c4-strict128.json",
+        "swe_five": "native/glm-spark-r1-swe-scout5-native.json"
+      },
+      "limitations": [
+        "Offline product tests overlapped part of agent execution; no controlled speed ranking.",
+        "Repeated cold-start reliability not established."
+      ],
+      "preflight": {
+        "passed": true,
+        "checks": 6,
+        "passed_checks": 6,
+        "observations": 26,
+        "passed_observations": 26
+      },
+      "oracle7": {
+        "attempted": 18,
+        "pass_rate": 0.8888888888888888,
+        "passed": 16,
+        "native_suite_required_pass_rate": 0.75,
+        "campaign_required_pass_rate": 1.0,
+        "campaign_gate_passed": false
+      },
+      "eight_images": {
+        "passed": 4,
+        "attempted": 4
+      },
+      "context": {
+        "passed": true,
+        "prompt_tokens": [
+          255795,
+          118293
+        ]
+      },
+      "long_64k": {
+        "completion_tokens": 38827,
+        "reasoning_tokens": 1798,
+        "visible_tokens": 37029,
+        "finish_reason": "stop",
+        "structural_marker_pass_rate": 1.0,
+        "full_coding_correctness": "not established"
+      },
+      "strict_capacity": {
+        "attempted": 16,
+        "passed": 0,
+        "failed": 16,
+        "performance_eligible": false
+      },
+      "swe_five": {
+        "attempted": 5,
+        "graded": 3,
+        "resolved": 2,
+        "all_attempts_resolve_rate": 0.4,
+        "agent_duration_s": 1441.833844,
+        "grader_duration_s": 61.493051,
+        "instances": [
+          {
+            "instance_id": "sphinx-doc__sphinx-9658",
+            "exit_status": "LimitsExceeded",
+            "resolved": null
+          },
+          {
+            "instance_id": "sympy__sympy-12096",
+            "exit_status": "Submitted",
+            "resolved": true
+          },
+          {
+            "instance_id": "django__django-13512",
+            "exit_status": "Submitted",
+            "resolved": false
+          },
+          {
+            "instance_id": "pydata__xarray-4356",
+            "exit_status": "Submitted",
+            "resolved": true
+          },
+          {
+            "instance_id": "pylint-dev__pylint-8898",
+            "exit_status": "LimitsExceeded",
+            "resolved": null
+          }
+        ]
+      }
+    },
+    "qwen_medium": {
+      "native_files": {
+        "oracle7": "native/qwen-medium-agentic-oracle7-native.json",
+        "strict_capacity": "native/qwen-medium-capacity-c4-strict128.json",
+        "swe_five": "native/qwen-medium-swe-scout5-native.json"
+      },
+      "limitations": [
+        "Only oracle7, four-request strict repair and five-task SWE were run with medium. This is not a fully frozen medium qualification.",
+        "No matched no-MTP control; no speculative-speedup claim."
+      ],
+      "oracle7": {
+        "attempted": 18,
+        "pass_rate": 1.0,
+        "passed": 18,
+        "native_suite_required_pass_rate": 0.75,
+        "campaign_required_pass_rate": 1.0,
+        "campaign_gate_passed": true
+      },
+      "strict_capacity": {
+        "attempted": 4,
+        "passed": 0,
+        "failed": 4,
+        "performance_eligible": false
+      },
+      "swe_five": {
+        "attempted": 5,
+        "graded": 5,
+        "resolved": 4,
+        "all_attempts_resolve_rate": 0.8,
+        "agent_duration_s": 536.237341,
+        "grader_duration_s": 97.122177,
+        "instances": [
+          {
+            "instance_id": "sphinx-doc__sphinx-9658",
+            "exit_status": "Submitted",
+            "resolved": true
+          },
+          {
+            "instance_id": "sympy__sympy-12096",
+            "exit_status": "Submitted",
+            "resolved": true
+          },
+          {
+            "instance_id": "django__django-13512",
+            "exit_status": "Submitted",
+            "resolved": true
+          },
+          {
+            "instance_id": "pydata__xarray-4356",
+            "exit_status": "Submitted",
+            "resolved": true
+          },
+          {
+            "instance_id": "pylint-dev__pylint-8898",
+            "exit_status": "Submitted",
+            "resolved": false
+          }
+        ]
+      },
+      "request_policy": "medium reasoning, temperature 1.0/top_p 0.95"
+    },
+    "qwen_default_xhigh": {
+      "request_policy": "default xhigh, native thinking, temperature 1.0/top_p 0.95",
+      "native_files": {
+        "preflight": "native/qwen-r2-preflight.json",
+        "eight_images": "native/qwen-r2-eight-images.json",
+        "context": "native/qwen-r2-long-context-tools.json",
+        "long_64k": "native/qwen-r2-long-output-64k.json",
+        "strict_capacity": "native/qwen-r2-capacity-c4-strict128.json"
+      },
+      "limitations": [
+        "These results do not qualify the separately tested medium request profile.",
+        "No matched no-MTP control."
+      ],
+      "preflight": {
+        "passed": true,
+        "checks": 6,
+        "passed_checks": 6,
+        "observations": 26,
+        "passed_observations": 26
+      },
+      "eight_images": {
+        "passed": 4,
+        "attempted": 4
+      },
+      "context": {
+        "passed": true,
+        "prompt_tokens": [
+          255839,
+          118444
+        ]
+      },
+      "long_64k": {
+        "completion_tokens": 59576,
+        "reasoning_tokens": 36426,
+        "visible_tokens": 23150,
+        "finish_reason": "stop",
+        "structural_marker_pass_rate": 1.0,
+        "full_coding_correctness": "not established"
+      },
+      "strict_capacity": {
+        "attempted": 16,
+        "passed": 0,
+        "failed": 16,
+        "performance_eligible": false
+      }
+    }
+  },
+  "gates": [
+    {
+      "name": "required_strict_output",
+      "state": "failed_all_tested_profiles"
+    },
+    {
+      "name": "candidate_promotion",
+      "state": "not_qualified"
+    },
+    {
+      "name": "incumbent_restoration",
+      "state": "verified"
+    }
+  ],
+  "headline_results": [
+    {
+      "metric": "SWE five-task resolved/all attempts",
+      "incumbent": [
+        3,
+        5
+      ],
+      "glm_spark": [
+        2,
+        5
+      ],
+      "qwen_medium": [
+        4,
+        5
+      ]
+    },
+    {
+      "metric": "oracle7 passed/all assertions",
+      "incumbent": [
+        18,
+        18
+      ],
+      "glm_spark": [
+        16,
+        18
+      ],
+      "qwen_medium": [
+        18,
+        18
+      ]
+    },
+    {
+      "metric": "strict128 valid requests",
+      "incumbent": [
+        0,
+        16
+      ],
+      "glm_spark": [
+        0,
+        16
+      ],
+      "qwen_default_xhigh": [
+        0,
+        16
+      ],
+      "qwen_medium": [
+        0,
+        4
+      ]
+    }
+  ],
+  "failures": [
+    "Both challengers failed required strict output cells.",
+    "GLM Spark failed two strict JSON assertions; Qwen disabled failed planning and JSON.",
+    "Qwen initial CPU-embedding profile hit contained host-memory OOM."
+  ],
+  "limitations": [
+    "Five-task scout is not a full SWE-bench score or an estimate of general coding ability.",
+    "Single natural-guide samples cannot establish long-session stability.",
+    "Direct diagnostic settings differ from the deployed Pi request policy.",
+    "Context retrieval does not prove long-context coding, 65K output at that window or full-window concurrency.",
+    "No candidate reached finalist capacity or client propagation gates.",
+    "Incumbent also failed the new strict128 cell; retention is not a claim of superior output control or a new full qualification."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": true,
+    "promoted": false,
+    "next_gate": "No promotion; a supported new profile must pass the failed gates and full frozen qualification before reconsideration."
+  },
+  "evidence": [
+    "workload/manifest.json",
+    "configuration/launcher-oracle7.json",
+    "review/strict-capacity-independent-policy-review.json"
+  ],
+  "restoration": "restoration.json"
+}

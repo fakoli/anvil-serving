@@ -1,0 +1,38 @@
+schema = "anvil-serving.serve-recipes/v1"
+[[recipe]]
+model = "local-inference-lab/Qwen3.8-Flash-Next-NVFP4"
+name = "next-qwen38-lil-tp2-mtp3-r2"
+expected_container = "next-qwen38-lil-tp2-mtp3-r2"
+status = "experimental"
+source = "LIL qwen38-tp2 measured MaxQ recipe; exact beta3221, explicit image/output bounds, bounded host RAM; unqualified locally."
+family = "qwen3.8-flash-next-multimodal-moe"
+[recipe.download]
+repo = "local-inference-lab/Qwen3.8-Flash-Next-NVFP4"
+revision = "7c4f1bc1a2d6847e0cbc01ac6b823f00251de8dd"
+volume = "vllm-hfcache"
+require_complete_cache = true
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+[recipe.serve]
+engine = "vllm-lil-karmic-beta3221"
+image = "ghcr.io/local-inference-lab/vllm:karmic-kraken-beta-20260922-3221ccacf71002ea@sha256:bf2c8f5da6f1de82b345367102b528692231a23eadc1b49c180c82c397c77522"
+model_env = "MODEL"
+allow_cuda_visible_devices_index = true
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53249
+host_memory_reserve_mib = 12288
+context_tokens = 524288
+port = 39130
+served_model_name = "qwen38-flash-next-lil-qad-tp2-mtp3-524k-r2"
+startup_timeout_seconds = 3600
+ipc = "host"
+shm_size = "32gb"
+ulimits = ["memlock=-1", "stack=67108864:67108864"]
+named_volumes = ["next-qwen38-lil-beta3221-runtime:/cache"]
+quantization = "NVFP4 QAD; FP8 KV; FP32 recurrent state; MTP3; GPU-resident PLE tables via supported VLLM_PLE_CPU_OFFLOAD=0"
+entrypoint = ["bash", "-lc", "test \"$(cat /sys/fs/cgroup/memory.max)\" = 55834574848 && test \"$(cat /sys/fs/cgroup/memory.swap.max)\" = 1048576 || { echo containment-failed >&2; exit 78; }; echo containment-passed; exec /opt/venv/bin/python -m runtime.entrypoint \"$@\"", "anvil-lil-qwen38"]
+env = ["PROFILE=qwen38-flash-next", "HARDWARE_PROFILE=rtx-pro-6000-pcie", "HF_HUB_OFFLINE=1", "TRANSFORMERS_OFFLINE=1", "CUDA_VISIBLE_DEVICES=0,1", "CUDA_DEVICE_ORDER=PCI_BUS_ID", "PORT=39130", "TP=2", "DCP=1", "CACHE_MODE=vram", "MAX_MODEL_LEN=524288", "MAX_NUM_SEQS=16", "MAX_NUM_BATCHED_TOKENS=6019", "KV_CACHE_MEMORY_BYTES=8589934592", "MTP_DEPTH=3", "MAMBA_SSM_CACHE_DTYPE=float32", "SERVED_MODEL_NAME=qwen38-flash-next-lil-qad-tp2-mtp3-524k-r2", "VLLM_ENGINE_READY_TIMEOUT_S=3600", "VLLM_PLE_CPU_OFFLOAD=0"]
+flags = ["--model /root/.cache/huggingface/hub/models--local-inference-lab--Qwen3.8-Flash-Next-NVFP4/snapshots/7c4f1bc1a2d6847e0cbc01ac6b823f00251de8dd", "--limit-mm-per-prompt '{\"image\":8,\"video\":0}'", "--override-generation-config '{\"max_new_tokens\":65536,\"temperature\":1.0,\"top_p\":0.95}'"]
+note = "First-load feasibility diagnosis; retain published16slots and8GiB KV per GPU. Eight-image admission and65536 output are explicit unqualified extensions; image/runtime/model pinned. PLE tables explicitly GPU-resident to remove26.8GiB host allocation after r1 compilation memcg OOM. Source622912b9b b12x_ple._resolve_ple_table_memory supports legacy0 -> device. No host-memory limit increase. No live route change."
