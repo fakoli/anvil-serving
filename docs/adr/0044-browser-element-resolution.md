@@ -1,6 +1,6 @@
 # ADR 0044: Guarded advisory browser element resolution
 
-Status: accepted interface dependency; browser consumer and deployment remain separate.
+Status: implemented advisory consumer and bounded pilot adapter; installed and live acceptance remain separate.
 
 ## Decision
 
@@ -20,7 +20,7 @@ The full canonical request, including model and fixed questions, is bounded 32 K
 
 Anvil provides a stateless `anvil jev bridge --json` entry point for trusted local consumers. Its stdin envelope has exactly `jev` (validated Jev configuration), boolean `allow_api`, boolean `allow_export`, `capability`, and `input` (the projection). The shared advise path checks disabled, capability, API and explicit export gates before constructing the projection, looking up a key or calling the provider. The bridge does not load project state; caller-supplied policy is only appropriate behind a trusted local owner boundary.
 
-The planned Serving consumer instead invokes the existing project-aware command without a shell:
+The Serving consumer invokes the existing project-aware command without a shell:
 
 ```text
 anvil jev evaluate browser_element_resolution --input <private-selected-json> --allow-export --json
@@ -34,4 +34,6 @@ After a reply, the browser owner re-resolves the retained record and validates o
 
 ## Remaining gates
 
-The synthetic Anvil corpus and fake-provider tests prove plumbing, not Jev accuracy. Serving still needs owner-backed projection, bounded subprocess integration, real browser fixtures, neutral-client and Pi wiring. Aggregate allowed-origin browser network budgets remain a required pre-production transport/install gate. Raw images stay outside primary requests; vision qualification, action authorization, installed enablement and live deployment retain their own gates.
+The synthetic Anvil corpus and fake-provider tests prove plumbing, not Jev accuracy. Serving now provides owner-backed projection, bounded subprocess integration, real browser fixtures and a session-bound live adapter exported as `@anvil-serving/observations/browser`. Its trusted harness supplies browser launch, up to two exact same-origin HTTPS document URLs and explicit Jev export policy. Eight-entity pages retain partial coverage; paging never establishes global absence or uniqueness. See [the adapter contract](../../browser_owner/README.md).
+
+The pilot transport limits admitted, retained and forwarded response bytes, requests, concurrency and time. Node socket/TLS buffering can receive bytes before application admission; this does not satisfy the general-production strict wire-byte quota gate. That gate remains open. Installed Pi wiring, exact-runtime process cleanup and independently checked live receipts remain acceptance gates. Raw images stay outside primary requests; vision qualification, action authorization, installed enablement and general live deployment retain their own gates.

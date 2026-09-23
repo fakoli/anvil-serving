@@ -146,7 +146,7 @@ jobs:
           test -x "$CHROMIUM_EXECUTABLE"
           npm test
 
-      - name: Test and pack neutral observations library
+      - name: Test and pack observations library
         run: |
           node --test observation_core/png.test.mjs observation_core/owner.test.mjs
           pack_dir="$(mktemp -d)"
@@ -154,9 +154,9 @@ jobs:
           export pack_dir install_dir
           trap 'node --input-type=module -e "import { rmSync } from \"node:fs\"; rmSync(process.env.pack_dir, { recursive: true, force: true }); rmSync(process.env.install_dir, { recursive: true, force: true });"' EXIT
           npm pack --json --pack-destination "$pack_dir" > "$RUNNER_TEMP/observation-pack.json"
-          node --input-type=module -e 'import fs from "node:fs"; const expected = ["LICENSE", "README.md", "browser_owner/mediation_ledger.mjs", "observation_core/README.md", "observation_core/owner.mjs", "observation_core/png.mjs", "package.json"]; const actual = JSON.parse(fs.readFileSync(process.argv[1], "utf8"))[0].files.map((file) => file.path).sort(); if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`unexpected package files: ${JSON.stringify(actual)}`);' "$RUNNER_TEMP/observation-pack.json"
+          node --input-type=module -e 'import fs from "node:fs"; const expected = ["LICENSE", "README.md", "browser_owner/README.md", "browser_owner/jev_consumer.mjs", "browser_owner/live_adapter.mjs", "browser_owner/live_transport.mjs", "browser_owner/mediation_ledger.mjs", "browser_owner/owner.mjs", "browser_owner/owner_preview.mjs", "observation_core/README.md", "observation_core/owner.mjs", "observation_core/png.mjs", "package.json"]; const actual = JSON.parse(fs.readFileSync(process.argv[1], "utf8"))[0].files.map((file) => file.path).sort(); if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`unexpected package files: ${JSON.stringify(actual)}`);' "$RUNNER_TEMP/observation-pack.json"
           npm install "$pack_dir"/*.tgz --prefix "$install_dir" --ignore-scripts --offline --no-audit --no-fund
-          (cd "$install_dir" && node --input-type=module -e 'await Promise.all([import("@anvil-serving/observations/owner"), import("@anvil-serving/observations/png")]);')
+          (cd "$install_dir" && node --input-type=module -e 'await Promise.all([import("@anvil-serving/observations/owner"), import("@anvil-serving/observations/png"), import("@anvil-serving/observations/browser")]);')
 
   build:
     name: build + clean wheel smoke (${{ matrix.os }})
