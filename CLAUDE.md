@@ -185,8 +185,11 @@ write shell wrappers for normal use. Review documentation against this rule.
 3. Return dictionaries from library code; CLI wrappers print.
 4. Durable lifecycle, host, routing, voice, and benchmark operations belong in
    the `anvil-serving` CLI and, where useful, MCP/controller surfaces.
-5. New model-calling code uses the Claude Agent SDK, never the raw Anthropic SDK
-   or a direct `api.anthropic.com` request.
+5. New Claude calls use the Claude Agent SDK, never the raw Anthropic SDK or a
+   direct `api.anthropic.com` request. An explicitly configured local model route
+   may use the harness's supported registered model client and credential resolver;
+   it preserves the selected alias with no substitution, fallback, promotion,
+   provider, or configuration change.
 6. Do not claim a local qualification without recorded test evidence.
 7. Do not modify `specs/archive/`.
 
