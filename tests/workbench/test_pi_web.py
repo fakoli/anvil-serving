@@ -597,6 +597,7 @@ def test_bridge_install_updates_origin_converges_and_preserves_old_artifact_on_b
         entry.write_text("built=" + str(kwargs["parent_origin"]), encoding="utf-8")
         return pi_web._bridge_install_descriptor(
             parent_origin=str(kwargs["parent_origin"]), artifact_sha256=pi_web._artifact_tree_sha256(target),
+            version=str(kwargs["version"]),
         )
 
     monkeypatch.setattr(pi_web, "_build_staged_bridge", staged)
@@ -760,6 +761,7 @@ def test_bridge_readiness_failure_restores_the_previous_artifact_and_manifest(
         entry.write_text("built=" + str(kwargs["parent_origin"]), encoding="utf-8")
         return pi_web._bridge_install_descriptor(
             parent_origin=str(kwargs["parent_origin"]), artifact_sha256=pi_web._artifact_tree_sha256(target),
+            version=str(kwargs["version"]),
         )
 
     monkeypatch.setattr(pi_web, "_build_staged_bridge", staged)
@@ -831,10 +833,11 @@ def test_bridge_snapshot_failure_prevents_promotion(
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Linux-only installer uses patch(1)")
-def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path) -> None:
+@pytest.mark.parametrize("version", ["0.9.0", "0.9.2"])
+def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path, version: str) -> None:
     """The packaged patch, rather than a dirty source checkout, supplies bridge APIs."""
-    patch = files("anvil_serving").joinpath("_pi_web_bridge", "0.9.0-host-bridge.patch")
-    assert pi_web.bridge_manifest()["patch_sha256"] == __import__("hashlib").sha256(patch.read_bytes()).hexdigest()
+    patch = files("anvil_serving").joinpath("_pi_web_bridge", f"{version}-host-bridge.patch")
+    assert pi_web.bridge_manifest(version)["patch_sha256"] == __import__("hashlib").sha256(patch.read_bytes()).hexdigest()
     source = tmp_path / "staging"
     source.mkdir()
     runtime = {
@@ -856,7 +859,7 @@ def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path) 
         target = source / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("\n".join(old_lines) + "\n", encoding="utf-8")
-    pi_web._apply_bridge_patch(source, run=subprocess.run)
+    pi_web._apply_bridge_patch(source, run=subprocess.run, version=version)
     for name in runtime:
         target = source / name
         assert target.is_file(), name
@@ -864,5 +867,50 @@ def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path) 
     bridge = (source / "lib/workbench-bridge.ts").read_text(encoding="utf-8")
     assert "sessions.length > 512" in bridge
     assert "mergeSessionLists(await listAllSessions(), getRpcSessionInfos())" in bridge
-    assert "experimental: { cpus: 2 }" in (source / "next.config.ts").read_text(encoding="utf-8")
+    next_config = (source / "next.config.ts").read_text(encoding="utf-8")
+    if version == "0.9.0":
+        assert "experimental: { cpus: 2 }" in next_config
+    else:
+        # v0.9.2 ships its own experimental block; the patch must merge into it.
+        assert "cpus: 2," in next_config
+        assert next_config.count("experimental:") == 1
     assert not (source / "lib/workbench-bridge.test.mjs").exists()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only installer uses patch(1)")
+def test_bridge_source_verification_is_version_scoped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A source tree verifies only against the bridge version its pins describe."""
+    source = tmp_path / "source"
+    (source / "components").mkdir(parents=True)
+    (source / "package.json").write_text('{"name": "@agegr/pi-web", "version": "0.9.2"}\n', encoding="utf-8")
+    (source / "components" / "AppShell.tsx").write_text("export function AppShell() {}\n", encoding="utf-8")
+    for command in (
+        ["git", "init", "-q"],
+        ["git", "config", "user.email", "test@example.test"],
+        ["git", "config", "user.name", "Test"],
+        ["git", "add", "-A"],
+        ["git", "commit", "-qm", "reviewed"],
+    ):
+        subprocess.run(command, cwd=source, check=True, capture_output=True, text=True)
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=source, check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    real_manifest = pi_web.bridge_manifest
+    pins = {
+        "schema": "anvil-serving.pi-web-bridge/v1",
+        "package": pi_web.PACKAGE,
+        "version": "0.9.2",
+        "source_commit": head,
+        "package_json_sha256": __import__("hashlib").sha256((source / "package.json").read_bytes()).hexdigest(),
+        "app_shell_sha256": __import__("hashlib").sha256((source / "components" / "AppShell.tsx").read_bytes()).hexdigest(),
+        "patch_sha256": "0" * 64,
+    }
+    monkeypatch.setattr(
+        pi_web, "bridge_manifest",
+        lambda version=pi_web.DEFAULT_VERSION: pins if version == "0.9.2" else real_manifest(version),
+    )
+    verified = pi_web._verify_bridge_source(source, run=subprocess.run, version="0.9.2")
+    assert verified["source_commit"] == head
+    # The same tree must not verify against a different version's reviewed pins.
+    with pytest.raises(pi_web.PiWebError, match="does not match the reviewed pin"):
+        pi_web._verify_bridge_source(source, run=subprocess.run, version="0.9.0")
