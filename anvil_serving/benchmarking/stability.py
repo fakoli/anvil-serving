@@ -237,6 +237,11 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
                 if kind == "response":
                     row["request_id"] = data.get("request_id")
                     row["response_headers_at"] = time.monotonic()
+                elif kind == "stream_id":
+                    if row.setdefault("stream_id", data["request_id"]) != data["request_id"]:
+                        raise ValueError("SSE response identity changed within a request")
+                elif kind == "server_error":
+                    row["server_error"] = data["error"]
                 elif kind == "malformed":
                     row["malformed_chunks"] = row.get("malformed_chunks", 0) + 1
                 elif kind == "delta":
@@ -279,7 +284,8 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
             with lock:
                 row.update(status="failed", error_type=type(exc).__name__,
                            http_status=getattr(exc, "code", None), error=str(exc)[:1024],
-                           failure_classes=[failure_class(exc, "protocol_error" if isinstance(exc, ValueError) else "harness_error")])
+                           failure_classes=["server_stream_error" if "server_error" in row else
+                                            failure_class(exc, "protocol_error" if isinstance(exc, ValueError) else "harness_error")])
         finally:
             with lock:
                 row.update(end=time.monotonic(), finished_at=utc_now())

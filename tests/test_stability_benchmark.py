@@ -259,7 +259,7 @@ def test_pre_network_delay_cannot_claim_overlap(tmp_path):
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Synthetic executable replaces local managed inventory")
-@pytest.mark.parametrize("fault", [None, "drip", "non_string", "oversize"])
+@pytest.mark.parametrize("fault", [None, "drip", "non_string", "oversize", "server_error", "id_change", "long_id", "non_string_id"])
 def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault):
     from anvil_serving import serve_recipes as recipes
     entered = threading.Event()
@@ -288,6 +288,16 @@ def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault)
                 def emit(value):
                     self.wfile.write(("data: " + json.dumps(value) + "\n\n").encode())
                     self.wfile.flush()
+                if fault in {"long_id", "non_string_id"}:
+                    emit({"id": "a" * 513 if fault == "long_id" else 7, "choices": []})
+                    return
+                if fault == "id_change":
+                    emit({"id": "first-id", "choices": []})
+                    emit({"id": "second-id", "choices": []})
+                    return
+                if fault == "server_error":
+                    emit({"id": "synthetic-engine-request", "error": {"type": "EngineDeadError", "message": "synthetic engine failure"}})
+                    return
                 if fault == "non_string":
                     emit({"choices": [{"delta": {"reasoning_content": ["invalid"]}}]})
                     return
@@ -339,7 +349,11 @@ def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault)
             assert observed["failure_class"] == "client_timeout"
             assert observed["server_compute_stopped"] == "unknown"
         elif fault:
-            assert observed["rounds"][0]["anchor"]["failure_classes"] == ["protocol_error"]
+            anchor = observed["rounds"][0]["anchor"]
+            assert anchor["failure_classes"] == ["server_stream_error" if fault == "server_error" else "protocol_error"]
+            if fault == "server_error":
+                assert anchor["stream_id"] == "synthetic-engine-request"
+                assert "EngineDeadError" in anchor["server_error"]
             assert observed["rounds"][0]["contender"]["status"] == "not_run"
         else:
             assert observed["coverage_passed"] is True
