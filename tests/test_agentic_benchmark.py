@@ -113,12 +113,18 @@ def test_planning_scores_step_order_not_incidental_substrings(answer, passed):
     trace["final_answer"] = answer
     result = score_agentic_trace(scenario, expected, trace)
     assert result["passed"] is passed
-    assert result["oracle_revision"] == "4"
+    assert result["oracle_revision"] == "5"
 
 
 def test_debug_loop_discloses_unit_scope_and_accepts_semantic_pass_report():
     scenario, expected = build_agentic_scenario("debug-loop")
     assert "unit tests" in scenario["messages"][0]["content"]
+    edit = next(tool["function"] for tool in scenario["tools"]
+                if tool["function"]["name"] == "apply_edit")
+    contract = edit["parameters"]["properties"]["edit"]["description"]
+    assert "complete replacement source line" in contract
+    assert "literal text without a trailing newline" in contract
+    assert "description of the change" in contract
     trace = passing_trace(expected)
     trace["final_answer"] = "The requested fix is applied and the unit tests now pass."
 
@@ -126,6 +132,13 @@ def test_debug_loop_discloses_unit_scope_and_accepts_semantic_pass_report():
 
     assert result["passed"] is True
     assert result["stages"]["result_incorporation"] == {"passed": True}
+
+    trace["tool_calls"] = [dict(call) for call in expected["tool_calls"]]
+    trace["tool_calls"][2] = {
+        "name": "apply_edit",
+        "arguments": {"path": "calc.py", "edit": "Replace subtraction with addition"},
+    }
+    assert score_agentic_trace(scenario, expected, trace)["failure_class"] == "protocol_failure"
 
 
 @pytest.mark.parametrize(

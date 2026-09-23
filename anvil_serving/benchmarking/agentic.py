@@ -13,7 +13,7 @@ from .jobs import BenchmarkJobError
 
 AGENTIC_SCENARIO_SCHEMA = "anvil-serving.agentic-scenario/v1"
 AGENTIC_OBSERVATION_SCHEMA = "anvil-serving.agentic-observation/v1"
-AGENTIC_ORACLE_REVISION = "4"
+AGENTIC_ORACLE_REVISION = "5"
 SCENARIO_TYPES = frozenset({
     "planning",
     "reasoning",
@@ -36,7 +36,7 @@ RECOVERY_RESULT_TYPES = (
 
 
 def _tool(name: str, required: list[str]) -> dict[str, Any]:
-    return {
+    tool = {
         "type": "function",
         "function": {
             "name": name,
@@ -49,6 +49,12 @@ def _tool(name: str, required: list[str]) -> dict[str, Any]:
             },
         },
     }
+    if name == "apply_edit":
+        tool["function"]["parameters"]["properties"]["edit"]["description"] = (
+            "The complete replacement source line, as literal text without a trailing newline. "
+            "Do not supply a diff, Markdown fences, or a description of the change."
+        )
+    return tool
 
 
 def build_agentic_scenario(

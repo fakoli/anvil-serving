@@ -651,11 +651,14 @@ def run_swe_benchmark(
                 str(prediction.get("model_patch") or "").encode("utf-8")
             ).hexdigest(),
             "grader": {"name": "swe-bench", "revision": plan["harnesses"]["grader"]["revision"], "completed": False, "resolved": None},
-            "failure_class": None if trajectory is not None else "broken_harness",
+            "failure_class": (
+                "broken_harness" if trajectory is None else
+                "model_failure" if info.get("exit_status") == "LimitsExceeded" else None
+            ),
         })
     result["summary"]["attempted"] = len(result["instances"])
     agent_failure = None
-    if any(instance["failure_class"] for instance in result["instances"]):
+    if any(instance["failure_class"] == "broken_harness" for instance in result["instances"]):
         failure = classify_swe_failure(
             stage="agent",
             returncode=1,
@@ -666,6 +669,13 @@ def run_swe_benchmark(
             "class": failure,
             "stage": "agent",
             "code": "missing_swe_trajectory",
+        }
+    elif any(instance["failure_class"] == "model_failure" for instance in result["instances"]):
+        agent_stage.update({"status": "failed", "failure_class": "model_failure"})
+        agent_failure = {
+            "class": "model_failure",
+            "stage": "agent",
+            "code": "swe_limits_exceeded",
         }
 
     grader_started = time.monotonic()
