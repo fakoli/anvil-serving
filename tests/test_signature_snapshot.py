@@ -4,6 +4,7 @@ import io
 import json
 import subprocess
 import tarfile
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -16,7 +17,8 @@ SPEC.loader.exec_module(scanner)
 
 
 @pytest.mark.parametrize("scanner_exit", [0, 1, 125])
-def test_signature_gate_exports_head_and_preserves_scanner_failure(tmp_path, monkeypatch, scanner_exit):
+@pytest.mark.parametrize("aliased_temporary_path", [False, True])
+def test_signature_gate_exports_head_and_preserves_scanner_failure(tmp_path, monkeypatch, scanner_exit, aliased_temporary_path):
     def git(*args):
         subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True)
 
@@ -49,6 +51,17 @@ def test_signature_gate_exports_head_and_preserves_scanner_failure(tmp_path, mon
         raise AssertionError("snapshot must copy only regular files")
 
     monkeypatch.setattr(scanner.tarfile.TarFile, "extractall", unsupported_extractall)
+    if aliased_temporary_path:
+        original_temporary = scanner.tempfile.TemporaryDirectory
+
+        @contextmanager
+        def temporary_alias(**kwargs):
+            with original_temporary(**kwargs) as directory:
+                alias = Path(directory) / "child"
+                alias.mkdir()
+                yield str(alias / "..")
+
+        monkeypatch.setattr(scanner.tempfile, "TemporaryDirectory", temporary_alias)
     result = scanner.scan_signature_snapshot(tmp_path)
     assert result["ok"] is (scanner_exit == 0)
     assert result["exit_code"] == scanner_exit and len(result["head"]) == 40
