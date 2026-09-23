@@ -6,13 +6,20 @@
   "description": "Neutral, bounded retained-observation owner for trusted adapters.",
   "exports": {
     "./owner": "./observation_core/owner.mjs",
-    "./png": "./observation_core/png.mjs"
+    "./png": "./observation_core/png.mjs",
+    "./browser": "./browser_owner/live_adapter.mjs"
   },
   "files": [
     "observation_core/owner.mjs",
     "observation_core/png.mjs",
     "observation_core/README.md",
-    "browser_owner/mediation_ledger.mjs"
+    "browser_owner/mediation_ledger.mjs",
+    "browser_owner/live_adapter.mjs",
+    "browser_owner/live_transport.mjs",
+    "browser_owner/owner.mjs",
+    "browser_owner/jev_consumer.mjs",
+    "browser_owner/owner_preview.mjs",
+    "browser_owner/README.md"
   ],
   "engines": {
     "node": ">=22"

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { JevConsumerError, createJevConsumer, evaluateJev } from "./jev_consumer.mjs";
+import { isLiveBufferedTransport } from "./live_transport.mjs";
 import { createOwnerPreview } from "./owner_preview.mjs";
 
 export class OwnerError extends Error { constructor(code) { super(code); this.code = code; } }
@@ -20,7 +21,7 @@ async function dispose(record) {
   record.handles.clear();
 }
 
-export async function createBrowserOwner({ launch, documentOrigins, subresourceOrigins = documentOrigins, limits = {}, clock = defaultClock, jev = { enabled: false }, preview }) {
+export async function createBrowserOwner({ launch, documentOrigins, subresourceOrigins = documentOrigins, limits = {}, clock = defaultClock, jev = { enabled: false }, preview, transport = { kind: "fixture_continue" } }) {
   if (typeof launch !== "function") fail("invalid_launcher");
   const names = new Set(["maxObservations", "maxEntities", "maxMetadata", "maxBytes", "maxPng", "maxPixels", "ttl", "timeout"]);
   if (!limits || typeof limits !== "object" || Array.isArray(limits) || Object.getPrototypeOf(limits) !== Object.prototype || typeof clock !== "function" || Object.keys(limits).some((name) => !names.has(name))) fail("invalid_limits");
@@ -40,13 +41,17 @@ export async function createBrowserOwner({ launch, documentOrigins, subresourceO
   };
   const validOrigins = (origins) => origins instanceof Set && origins.size > 0 && [...origins].every((origin) => { try { const url = new URL(origin); return url.origin === origin && /^https?:$/.test(url.protocol); } catch { return false; } });
   if (!validOrigins(policy.documents) || !validOrigins(policy.subresources)) fail("invalid_origin_policy");
+  const loopback = (origin) => { const host = new URL(origin).hostname; return host === "127.0.0.1" || host === "[::1]"; };
+  const fixtureTransport = transport && Object.getPrototypeOf(transport) === Object.prototype && Object.keys(transport).length === 1 && transport.kind === "fixture_continue";
+  const liveTransport = isLiveBufferedTransport(transport) && transport.matchesOwnerPolicy(policy.documents, policy.subresources);
+  if ((!fixtureTransport && !liveTransport) || (fixtureTransport && (![...policy.documents, ...policy.subresources].every(loopback)))) fail("invalid_transport_policy");
   let consumer, previewPolicy;
   try { consumer = createJevConsumer(jev, documents); previewPolicy = createOwnerPreview(preview, { ttl: policy.ttl }); } catch (error) { if (error instanceof JevConsumerError || error?.code) fail(error.code); throw error; }
   let browser, context;
   try {
   browser = await launch();
   context = await browser.newContext({ serviceWorkers: "block", acceptDownloads: false });
-  const state = { browser, context, page: null, cdp: null, policy, jev: consumer, preview: previewPolicy, clock, closed: false, browserClosed: false, session: null, sessionId: randomUUID(), generation: 1, queue: [], running: false, records: new Map(), bytes: 0, navigation: 0 };
+  const state = { browser, context, page: null, cdp: null, policy, jev: consumer, preview: previewPolicy, transport, clock, closed: false, browserClosed: false, session: null, sessionId: randomUUID(), generation: 1, queue: [], running: false, records: new Map(), bytes: 0, navigation: 0 };
   state.invalidate = () => { const records = [...state.records.values()]; state.records.clear(); state.bytes = 0; for (const record of records) void dispose(record); };
   await context.route("**/*", async (route) => {
     let url; try { url = new URL(route.request().url()); } catch { return route.abort(); }
@@ -54,19 +59,27 @@ export async function createBrowserOwner({ launch, documentOrigins, subresourceO
     let frame;
     if (navigation) { try { frame = request.frame(); } catch { return route.abort(); } }
     if (!/^https?:$/.test(url.protocol) || !allowed.has(url.origin) || (navigation && state.page && frame !== state.page.mainFrame())) return route.abort();
+    if (liveTransport) return transport.handle(route);
     return route.continue();
   });
   const page = await context.newPage(); state.page = page; state.cdp = await context.newCDPSession(page);
   await state.cdp.send("Page.enable");
   await state.cdp.send("Page.addScriptToEvaluateOnNewDocument", { worldName: "anvil-owner-epoch", source: `(() => { let dom=0, viewport=0; const observer=new MutationObserver((records)=>{dom+=records.length;}); observer.observe(document,{subtree:true,childList:true,attributes:true,characterData:true}); addEventListener("resize",()=>{viewport+=1;},{passive:true}); addEventListener("scroll",()=>{viewport+=1;},{passive:true,capture:true}); Object.defineProperty(globalThis,"__anvilOwnerEpoch",{value:()=>{dom+=observer.takeRecords().length;return [dom,viewport];}}); })();` });
-  page.on("framenavigated", (frame) => { if (frame === page.mainFrame()) { state.navigation += 1; state.invalidate(); } });
+  const owner = new Owner(state);
+  page.on("framenavigated", (frame) => {
+    if (frame !== page.mainFrame()) return;
+    state.navigation += 1; state.invalidate();
+    if (liveTransport && frame.url() !== state.documentUrl) void owner.close();
+  });
   page.on("popup", (popup) => { void popup.close().catch(() => {}); });
   page.on("download", (download) => { void download.cancel().catch(() => {}); });
   if (typeof context.routeWebSocket !== "function") fail("owner_failed");
   await context.routeWebSocket("**/*", (route) => route.close());
   page.on("close", () => { state.generation += 1; state.invalidate(); });
-  return new Owner(state);
+  if (liveTransport) await transport.attachCloser(() => owner.close());
+  return owner;
   } catch (error) {
+    await transport?.close?.({ notify: false }).catch(() => {});
     await context?.close().catch(() => {});
     await browser?.close().catch(() => {});
     if (error instanceof OwnerError) throw error;
@@ -80,7 +93,7 @@ class Owner {
   session() { if (this.#state.session) fail("session_already_open"); const session = new Facade(this.#state); this.#state.session = session; return session; }
   async close() {
     const state = this.#state;
-    if (!state.closed) { state.closed = true; state.generation += 1; state.invalidate(); state.current?.abort(); state.current?.reject(new OwnerError("owner_closed")); for (const item of state.queue.splice(0)) item.reject(new OwnerError("owner_closed")); await state.context.close().catch(() => {}); }
+    if (!state.closed) { state.closed = true; state.generation += 1; state.invalidate(); state.current?.abort(); state.current?.reject(new OwnerError("owner_closed")); for (const item of state.queue.splice(0)) item.reject(new OwnerError("owner_closed")); await state.transport?.close?.({ notify: false }).catch(() => {}); await state.context.close().catch(() => {}); }
     if (!state.browserClosed) { state.browserClosed = true; await state.browser.close().catch(() => {}); }
   }
 }
@@ -118,12 +131,13 @@ class Facade {
     return pending;
   }
   #pump() { const state = this.#state; if (state.running) return; const item = state.queue.shift(); if (!item) return; state.running = true; state.current = item; item.run().finally(() => { state.current = null; state.running = false; this.#pump(); }); }
-  async revoke() { const state = this.#state; if (state.closed) return; state.closed = true; state.generation += 1; state.invalidate(); state.current?.abort(); state.current?.reject(new OwnerError("revoked")); for (const item of state.queue.splice(0)) item.reject(new OwnerError("revoked")); await state.context.close().catch(() => {}); }
+  async revoke() { const state = this.#state; if (state.closed) return; state.closed = true; state.generation += 1; state.invalidate(); state.current?.abort(); state.current?.reject(new OwnerError("revoked")); for (const item of state.queue.splice(0)) item.reject(new OwnerError("revoked")); await state.transport?.close?.({ notify: false }).catch(() => {}); await state.context.close().catch(() => {}); }
   navigate(url, options = {}) {
     return this.#enqueue(async () => {
       if (!options || Object.keys(options).length) fail("invalid_navigation_request");
       let parsed; try { parsed = new URL(url); } catch { fail("navigation_not_permitted"); }
       if (!/^https?:$/.test(parsed.protocol) || !this.#state.policy.documents.has(parsed.origin)) fail("navigation_not_permitted");
+      this.#state.documentUrl = parsed.href;
       const before = this.#state.navigation;
       try { await this.#state.page.goto(parsed.href, { waitUntil: "load", timeout: this.#state.policy.timeout }); } catch { fail("navigation_not_permitted"); }
       let finalUrl; try { finalUrl = new URL(this.#state.page.url()); } catch { fail("navigation_not_permitted"); }
@@ -146,7 +160,8 @@ class Facade {
       ({ handle: root, temporary: rootTemporary } = await this.#rootFor(request.scope));
       const start = await snapshot(state);
       if (start.width * start.height > state.policy.maxPixels) fail("screenshot_too_large");
-      const inventory = await call(state, root, inventoryFor, [state.policy.maxEntities]);
+      const paged = Object.hasOwn(request, "entity_offset");
+      const inventory = await call(state, root, inventoryFor, paged ? [Math.min(8, state.policy.maxEntities), request.entity_offset] : [state.policy.maxEntities, null]);
       handles = await retainedHandles(state, root, inventory.entities.map((entity) => entity.node_index));
       const png = await state.page.screenshot({ type: "png", caret: "initial", timeout: state.policy.timeout });
       if (png.length > state.policy.maxPng) fail("screenshot_too_large");
@@ -164,6 +179,7 @@ class Facade {
         coverage: { complete: !inventory.omitted_count && !inventory.loading && !inventory.unsupported_regions.length && !inventory.untraversed_regions.length, omitted_count: inventory.omitted_count, loading: inventory.loading, unsupported_regions: inventory.unsupported_regions, untraversed_regions: inventory.untraversed_regions },
         entities: entities.map(publicEntity),
       };
+      if (paged) receipt.paging = { offset: request.entity_offset, next_offset: inventory.next_offset };
       const metadata = bytes(JSON.stringify(receipt)); if (metadata > state.policy.maxMetadata) fail("metadata_too_large");
       const record = { id: observationId, origin: new URL(state.page.url()).origin, receipt, handles, image: png, digest: createHash("sha256").update(png).digest("hex"), bytes: png.length + metadata, epochs: end, lastRead: state.clock(), state };
       if (record.bytes > state.policy.maxBytes) fail("retention_exhausted");
@@ -256,7 +272,7 @@ class Facade {
 }
 
 function validateRequest(value) {
-  const allowed = new Set(["schema", "request_id", "target", "predicates", "scope", "require_unique"]);
+  const allowed = new Set(["schema", "request_id", "target", "predicates", "scope", "require_unique", "entity_offset"]);
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !allowed.has(key)) || value.schema !== "widget-resolution/v1") fail("invalid_capture_request");
   const target = value.target;
   if (typeof value.request_id !== "string" || !bytes(value.request_id) || bytes(value.request_id) > 64 || !target || typeof target !== "object" || Array.isArray(target) || Object.keys(target).some((key) => key !== "description" && key !== "qualifiers") || typeof target.description !== "string" || !bytes(target.description) || bytes(target.description) > 512 || !Array.isArray(target.qualifiers) || target.qualifiers.length > 8 || target.qualifiers.some((item) => typeof item !== "string" || !bytes(item) || bytes(item) > 128)) fail("invalid_capture_request");
@@ -264,11 +280,12 @@ function validateRequest(value) {
   if (!Array.isArray(value.predicates) || value.predicates.some((item) => typeof item !== "string" || !names.has(item)) || new Set(value.predicates).size !== value.predicates.length || typeof value.require_unique !== "boolean") fail("invalid_capture_request");
   const scope = value.scope;
   if (!scope || typeof scope !== "object" || Array.isArray(scope) || Object.keys(scope).some((key) => key !== "kind" && key !== "root") || !["document", "subtree"].includes(scope.kind) || typeof scope.root !== "string" || (scope.kind === "document" && scope.root !== "document") || (scope.kind === "subtree" && !/^[0-9a-f-]{36}:e-[1-9][0-9]*$/.test(scope.root))) fail("invalid_capture_request");
+  if (Object.hasOwn(value, "entity_offset") && (!Number.isInteger(value.entity_offset) || value.entity_offset < 0 || value.entity_offset > 2047)) fail("invalid_capture_request");
   return clone(value);
 }
 
-function inventoryFor(root, maxEntities) {
-  const limit = 2048, textLimit = 256, entities = [], unsupported = new Set(), untraversed = new Set(); let visited = 0, omitted = 0;
+function inventoryFor(root, maxEntities, entityOffset) {
+  const limit = 2048, textLimit = 256, entities = [], unsupported = new Set(), untraversed = new Set(), paged = Number.isInteger(entityOffset); let visited = 0, omitted = 0, candidates = 0, later = false;
   if (document.styleSheets.length) unsupported.add("cssom");
   const text = (node) => {
     const restrictedSelector = "input,textarea,select,option,script,style,template,noscript";
@@ -305,18 +322,26 @@ function inventoryFor(root, maxEntities) {
     const label = text(node);
     if (label.restricted) untraversed.add("restricted_text");
     if (label.capped) untraversed.add("text_visit_cap");
-    if (label.oversized || new TextEncoder().encode(label.value).byteLength > textLimit || entities.length >= maxEntities) {
+    if (label.oversized || new TextEncoder().encode(label.value).byteLength > textLimit) {
       omitted += 1;
-      if (entities.length >= maxEntities) untraversed.add("entity_cap");
       if (label.oversized) untraversed.add("text_too_large");
       node = walker.nextNode();
       continue;
     }
+    if (paged && candidates < entityOffset) {
+      candidates += 1; omitted += 1; node = walker.nextNode(); continue;
+    }
+    if (entities.length >= maxEntities) {
+      omitted += 1; untraversed.add("entity_cap");
+      if (paged) later = true;
+      candidates += 1; node = walker.nextNode(); continue;
+    }
     entities.push({ node_index: visited - 1, role, text: label.value, nearby: "", source: "dom", ...facts(node) });
+    candidates += 1;
     node = walker.nextNode();
   }
   if (node) { omitted += 1; untraversed.add("node_visit_cap"); }
-  return { entities, omitted_count: omitted, loading: document.readyState !== "complete", unsupported_regions: [...unsupported].sort(), untraversed_regions: [...untraversed].sort() };
+  return { entities, omitted_count: omitted, loading: document.readyState !== "complete", unsupported_regions: [...unsupported].sort(), untraversed_regions: [...untraversed].sort(), next_offset: paged && later ? entityOffset + maxEntities : null };
 }
 
 function predicateFacts(node) {
