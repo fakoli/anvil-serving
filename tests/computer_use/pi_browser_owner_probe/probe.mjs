@@ -3,11 +3,19 @@ import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
 import { readFileSync, realpathSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createFixtureObservationAdapter } from "../../../browser_owner/observation_adapter.mjs";
 
+if (!process.argv.includes("--image-mode")) {
+  for (const mode of ["0", "1"]) {
+    const result = spawnSync(process.execPath, [process.argv[1], "--image-mode"], { cwd: process.cwd(), env: { ...process.env, PI_BROWSER_IMAGE_CAPABLE: mode }, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+  }
+  process.stdout.write("pi browser owner dispatch: ok (image modes 0,1)\n");
+  process.exit(0);
+}
 const pi = process.env.PI_BINARY || "pi";
 const version = spawnSync(pi, ["--version"], { encoding: "utf8" });
 assert.equal(version.status, 0, version.stderr);
@@ -17,9 +25,20 @@ assert.ok(selectedPi, "Pi executable was not resolved");
 const packageIdentity = JSON.parse(readFileSync(join(dirname(realpathSync(selectedPi)), "package.json"), "utf8"));
 assert.deepEqual({ name: packageIdentity.name, version: packageIdentity.version }, { name: "@earendil-works/pi-coding-agent", version: "0.85.1" });
 const home = await mkdtemp(join(tmpdir(), "pi-browser-owner-"));
-const provider = createServer((_request, response) => { response.writeHead(200, { "content-type": "text/event-stream" }); response.end(`data: ${JSON.stringify({ id: "fixture", object: "chat.completion.chunk", choices: [{ index: 0, delta: { role: "assistant", content: "fixture" }, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`); });
+const providerCaptures = [];
+const rawMedia = (value) => Array.isArray(value) ? value.some(rawMedia) : !value || typeof value !== "object" ? typeof value === "string" && /^data:image\//i.test(value) : value.type === "image" || value.type === "image_url" || typeof value.url === "string" && value.url.startsWith("data:image/") || Object.values(value).some(rawMedia);
+const provider = createServer((request, response) => {
+  const chunks = []; request.on("data", (chunk) => chunks.push(chunk)); request.on("end", () => {
+    const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8")); providerCaptures.push(parsed);
+    const messages = JSON.stringify(parsed.messages), tool = messages.includes('"role":"tool"'), negative = messages.includes("[browser-negative]");
+    const toolCall = (!tool || negative && !messages.includes("browser-resolve-call")) && { index: 0, id: negative ? "browser-resolve-call" : "browser-capture-call", type: "function", function: { name: negative ? "browser_resolve" : "browser_capture", arguments: negative ? '{"observation_id":"00000000-0000-0000-0000-000000000000","entity_id":"e-1"}' : "{}" } };
+    response.writeHead(200, { "content-type": "text/event-stream" });
+    response.write(`data: ${JSON.stringify({ id: "fixture", object: "chat.completion.chunk", choices: [{ index: 0, delta: toolCall ? { role: "assistant", tool_calls: [toolCall] } : { role: "assistant", content: "fixture" }, finish_reason: null }] })}\n\n`);
+    response.write(`data: ${JSON.stringify({ id: "fixture", object: "chat.completion.chunk", choices: [{ index: 0, delta: {}, finish_reason: toolCall ? "tool_calls" : "stop" }] })}\n\n`); response.end("data: [DONE]\n\n");
+  });
+});
 await new Promise((resolve, reject) => provider.once("error", reject).listen(0, "127.0.0.1", resolve));
-const child = spawn(pi, ["--mode", "rpc", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--extension", "./tests/computer_use/pi_browser_owner_probe/extension.ts", "--provider", "fixture-browser", "--model", "fixture-browser", "--session-dir", join(home, "sessions")], { cwd: process.cwd(), env: { PATH: process.env.PATH || "", HOME: home, PI_CODING_AGENT_DIR: join(home, "agent"), PI_CODING_AGENT_SESSION_DIR: join(home, "sessions"), PI_OFFLINE: "1", PI_BROWSER_FIXTURE_PROVIDER_URL: `http://127.0.0.1:${provider.address().port}/v1`, CHROMIUM_EXECUTABLE: process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome" }, stdio: ["pipe", "pipe", "pipe"] });
+const child = spawn(pi, ["--mode", "rpc", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--extension", "./tests/computer_use/pi_browser_owner_probe/extension.ts", "--provider", "fixture-browser", "--model", "fixture-browser", "--session-dir", join(home, "sessions")], { cwd: process.cwd(), env: { PATH: process.env.PATH || "", HOME: home, PI_CODING_AGENT_DIR: join(home, "agent"), PI_CODING_AGENT_SESSION_DIR: join(home, "sessions"), PI_OFFLINE: "1", PI_BROWSER_FIXTURE_PROVIDER_URL: `http://127.0.0.1:${provider.address().port}/v1`, PI_BROWSER_IMAGE_CAPABLE: process.env.PI_BROWSER_IMAGE_CAPABLE || "1", CHROMIUM_EXECUTABLE: process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome" }, stdio: ["pipe", "pipe", "pipe"] });
 let stdout = "", stderr = "";
 child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8"); child.stdout.on("data", (part) => { stdout += part; }); child.stderr.on("data", (part) => { stderr += part; });
 const wait = async (match) => { const end = Date.now() + 12_000; while (!match()) { if (Date.now() > end) throw new Error(`timeout: ${stderr}`); await new Promise((resolve) => setTimeout(resolve, 20)); } };
@@ -33,6 +52,26 @@ try {
   assert.deepEqual(ready.active, ["browser_capture", "browser_release", "browser_resolve"]);
   const state = await rpc("state", "get_state");
   assert.equal(state?.data?.sessionId, ready.session_id);
+  await rpc("agent-capture", "prompt", { message: "[browser-dispatch]" });
+  await wait(() => records().some((event) => event.type === "agent_end") && providerCaptures.length === 2);
+  assert.equal(providerCaptures.length, 2, "capture dispatch did not make exactly two provider requests");
+  assert.equal(rawMedia(providerCaptures[0]) || rawMedia(providerCaptures[1]), false, "provider payload received media");
+  const events = records();
+  const captureCall = events.find((event) => event.type === "message_end" && event.message?.role === "assistant" && event.message?.content?.some((part) => part.type === "toolCall" && part.name === "browser_capture"));
+  const captureResult = events.find((event) => event.type === "message_end" && event.message?.role === "toolResult" && event.message?.toolName === "browser_capture");
+  assert.ok(captureCall && captureResult, "Pi did not persist browser capture call/result events");
+  assert.ok(events.some((event) => event.type === "tool_execution_start") && events.some((event) => event.type === "tool_execution_end"), "Pi did not emit tool execution events");
+  const receipt = JSON.parse(captureResult.message.content[0].text);
+  assert.equal(receipt.schema, "browser-owner-adapter/v1"); assert.equal(receipt.status, "ok"); assert.match(receipt.result.observation_id, /^[0-9a-f-]{36}$/);
+  assert.equal(JSON.stringify(providerCaptures[1]).includes(receipt.result.observation_id), true, "request #2 did not carry the exact persisted receipt");
+  const persisted = (await readFile(state.data.sessionFile, "utf8")).trim().split("\n").map(JSON.parse);
+  const persistedResult = persisted.find((entry) => entry.type === "message" && entry.message?.role === "toolResult" && entry.message?.toolName === "browser_capture");
+  assert.equal(persistedResult?.message?.content?.[0]?.text, captureResult.message.content[0].text, "Pi did not persist the exact bounded capture receipt");
+  assert.ok((stderr.match(/PI_BROWSER_OWNER_CONTEXT/g) || []).length >= 2 && (stderr.match(/PI_BROWSER_OWNER_BEFORE_PROVIDER/g) || []).length >= 2, "context/provider hooks did not precede both dispatch requests");
+  await rpc("agent-negative", "prompt", { message: "[browser-negative]" });
+  await wait(() => events.length < records().length && providerCaptures.length === 4);
+  const negativeResult = records().find((event) => event.type === "message_end" && event.message?.role === "toolResult" && event.message?.toolName === "browser_resolve");
+  assert.equal(JSON.parse(negativeResult.message.content[0].text).code, "unknown_observation");
   await rpc("proof", "prompt", { message: "/browser_fixture_proof" });
   await wait(() => stderr.includes("PI_BROWSER_OWNER_CALLBACKS:"));
   const callbacks = logged("PI_BROWSER_OWNER_CALLBACKS")[0];

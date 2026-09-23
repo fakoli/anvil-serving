@@ -2,12 +2,13 @@ import { Type } from "typebox";
 import { createFixtureObservationAdapter } from "../../../browser_owner/observation_adapter.mjs";
 
 let adapter: any;
+const rawMedia = (value: any): boolean => Array.isArray(value) ? value.some(rawMedia) : !value || typeof value !== "object" ? typeof value === "string" && /^data:image\//i.test(value) : value.type === "image" || value.type === "image_url" || typeof value.url === "string" && value.url.startsWith("data:image/") || Object.values(value).some(rawMedia);
 const text = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 const mustAdapter = () => { if (!adapter) throw new Error("owner_closed"); return adapter; };
 const parse = (result: any) => JSON.parse(result.content[0].text);
 
 export default function (pi: any) {
-  pi.registerProvider("fixture-browser", { name: "Fixture browser", baseUrl: process.env.PI_BROWSER_FIXTURE_PROVIDER_URL, apiKey: "fixture", api: "openai-completions", models: [{ id: "fixture-browser", name: "Fixture browser", reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 4096, maxTokens: 32 }] });
+  pi.registerProvider("fixture-browser", { name: "Fixture browser", baseUrl: process.env.PI_BROWSER_FIXTURE_PROVIDER_URL, apiKey: "fixture", api: "openai-completions", models: [{ id: "fixture-browser", name: "Fixture browser", reasoning: false, input: process.env.PI_BROWSER_IMAGE_CAPABLE === "1" ? ["text", "image"] : ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 4096, maxTokens: 32 }] });
   const capture = async (_toolCallId: string, _params: any, signal: AbortSignal, _onUpdate: any, _ctx: any) => text(await mustAdapter().execute({ operation: "capture" }, { signal }));
   const resolve = async (_toolCallId: string, params: any, _signal: AbortSignal, _onUpdate: any, _ctx: any) => text(await mustAdapter().execute({ operation: "resolve", args: params }));
   const release = async (_toolCallId: string, params: any, _signal: AbortSignal, _onUpdate: any, _ctx: any) => text(await mustAdapter().execute({ operation: "release", args: params }));
@@ -28,6 +29,8 @@ export default function (pi: any) {
     console.error(`PI_BROWSER_OWNER_CALLBACKS:${JSON.stringify({ prior: prior?.code ?? null, live, capture: { status: captureResult.status, observation_id: captureResult.result.observation_id, binding: captureResult.binding, entities: captureResult.result.entities.map((entity: any) => ({ role: entity.role, text: entity.text, enabled: entity.enabled })), hasImage: JSON.stringify(captureResult).includes("iVBOR") }, resolve: { status: resolved.status, enabled: resolved.result.enabled }, release: released?.status ?? null, stale: stale?.code ?? null, cancelled: cancelled.code, widened: widened.code })}`);
   } });
   pi.registerCommand("browser_fixture_reload", { description: "Reload the synthetic fixture extension", async handler(_args: string, ctx: any) { await ctx.reload(); } });
+  pi.on("context", () => { console.error("PI_BROWSER_OWNER_CONTEXT"); });
+  pi.on("before_provider_request", (event: any) => { if (rawMedia(event.payload)) throw new Error("raw_media_guard"); console.error("PI_BROWSER_OWNER_BEFORE_PROVIDER"); return event.payload; });
   pi.on("session_start", async (event: any, ctx: any) => {
     if (adapter) throw new Error("owner_already_open");
     const header = ctx.sessionManager.getHeader();
