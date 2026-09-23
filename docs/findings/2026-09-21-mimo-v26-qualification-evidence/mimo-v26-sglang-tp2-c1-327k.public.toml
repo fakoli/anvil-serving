@@ -1,0 +1,39 @@
+# Public reconstruction only; not an executable operator recipe.
+schema = "anvil-serving.public-recipe-reconstruction/v1"
+
+[candidate]
+name = "mimo-v26-sglang-tp2-c1-327k"
+status = "experimental-correctness-failed"
+model = "XiaomiMiMo/MiMo-V2.6-Flash-RL"
+revision = "3b38d063180c3e4aed9691fdc735f3d10b266ee4"
+engine = "sglang"
+engine_release = "v0.5.20"
+engine_commit = "94602c9c2b7cbdb8efd5c52802dac6a1c180089e"
+image_digest = "sha256:2b6c8893bb821bc9ac3fb95bc5c7ab8bddf748cf288a0ad6ad60ee96c49610ee"
+quantization = "official mixed MXFP4 experts and FP8; native non-experts; auto KV; no speculation"
+tensor_parallel_size = 2
+context_tokens = 327680
+max_running_requests = 1
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53248
+host_memory_reserve_mib = 12288
+chunked_prefill_size = 2048
+mem_fraction_static = 0.95
+cuda_graph_max_batch_size_decode = 1
+moe_runner_backend = "flashinfer_mxfp4"
+reasoning_parser = "mimo"
+tool_call_parser = "mimo"
+trust_remote_code = true
+
+[identity]
+served_model_name = "mimo-v26-flash-rl-mxfp4-sglang-tp2-c1-327k"
+image_identity = "image-identity.json"
+launcher_identity = "launcher.json"
+
+[boundary]
+operator_cache_path = "not retained"
+listener = "not retained"
+containment_entrypoint = "not retained"
+promotion_authorized = false
+superseded_flags = ["--cuda-graph-max-bs (ambiguous)", "AutoMoE default expert-block scales (startup OOM pressure)"]
+observed_v3 = "Healthy load at 81.41 GiB per rank with flashinfer_mxfp4; default SWA ratio 0.8 leaves 91,342 full-KV tokens below the requested 327,680. Correctness failed before capacity testing."

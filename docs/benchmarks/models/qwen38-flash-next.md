@@ -20,14 +20,32 @@
     - **Important limitation:** EXL3 strict120 has zero performance-eligible
       responses because leading line feeds violated the canary contract.
       Neither its timings nor a one-point quality gap establish superiority.
-    - **Review dates:** retained evidence through 2026-09-14; dossier reviewed
-      2026-09-17.
+    - **Review dates:** retained evidence through 2026-09-22; dossier reviewed
+      2026-09-22.
 
-[Latest finding](../../findings/2026-09-13-intelligence-context-scout.md) ·
-[raw evidence](../../findings/2026-09-13-intelligence-context-scout-evidence/README.md) ·
+[Latest finding](../../findings/2026-09-22-model-shortlist-validation.md) ·
+[raw evidence](../../findings/2026-09-22-model-shortlist-validation-evidence/README.md) ·
 [configuration history](#engine-quantization-kv-context-and-concurrency-recipe).
 
 ### Review narrative
+
+#### 2026-09-22 — NVFP4 TP2 with C4 configured admission; serial C1 replacement scout did not advance
+
+The distinct RadixArk NVFP4 recipe used TP2 with C4 configured admission; its
+direct and agentic checks were serial C1. It loaded on native Linux and passed
+six direct preflight groups. Its native agentic results were 16/18 greedy and 15/18 with
+official sampling. Those artifacts pass their internal 0.75 floor, but the
+campaign requires 18/18 deterministic success, so this candidate did not
+advance to context, capacity, performance, vision, deep-coding, or SWE work.
+Both greedy misses violate exact tool-call count/arguments; positional fixture
+drift then limits interpretation. The sampling replay had three misses. A
+paired GLM 16/18 scout exposed a planning-scorer false negative, so these
+artifacts cannot rank broad coding or show Qwen is worse. **Outcome:**
+`no-promotion`; retain GLM while harness validity blocks heavy qualification.
+
+The startup log retains a nonfatal custom-allreduce UUID-to-index parse warning
+and fallback; readiness and direct preflight still passed, so it is a runtime
+caveat rather than a clean-start claim.
 
 #### 2026-09-13–14 — EXL3 alternative retains quality and formatting gaps
 
@@ -241,6 +259,7 @@ functional, quality, capacity, and client gates.
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-09-22 | [RadixArk NVFP4 TP2, C4 configured admission, serial C1 replacement scout](../../findings/2026-09-22-model-shortlist-validation.md) | direct preflight 6/6; agentic 16/18 and 15/18 miss the campaign 18/18 gate; `no-promotion` |
 | 2026-09-13–14 | [EXL3 quality, context, agentic, SWE, and image scout](../../findings/2026-09-13-intelligence-context-scout.md) | `no-promotion`; strict120 performance ineligible |
 | 2026-08-26 | [Full multimodal corpus, context curve, and vision-route/client promotion](../../findings/2026-08-26-qwen38-flash-next-vision-promotion.md) | then-current text/image/OCR/video Primary; direct 30/30; live 57/60 strict; edges 8/8; 25/25 context requests |
 | 2026-08-26 | [QSA-fast plus matched MTP3 qualification and fix-forward promotion](../../findings/2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md) | then-current text Primary; 154.9 tok/s at 4K and 134.1 at 128K; direct/routed/client gates pass |

@@ -2,6 +2,18 @@
 
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
+## 2026-09-22 model shortlist validation
+
+| Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
+|---|---|---|---|---|---|---|
+| 2026-09-22 | Qwen3.8 Flash Next replacement scout | RadixArk NVFP4 `7b719225`, SGLang `4ccff141`, TP2 with C4 configured admission, 262,144 tokens, no MTP, GPU-resident FP8 PLE, automatic BF16 KV | 2x RTX PRO 6000 Blackwell Max-Q | cold load and six serial C1 direct preflight groups passed; Qwen 16/18 greedy and 15/18 native-sampling results, plus paired GLM 16/18, cannot rank broad coding because fixture/scorer defects invalidate planning comparisons; no capacity or performance cell | retain GLM; interesting but unqualified candidate; heavy qualification blocked by harness validity, `no-promotion` | [Qwen dossier](models/qwen38-flash-next.md) · [finding](../findings/2026-09-22-model-shortlist-validation.md) |
+
+
+## 2026-09-21 MiMo replacement qualification
+
+| Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
+|---|---|---|---|---|---|---|
+| 2026-09-21 | MiMo v2.6 Flash replacement trial | Pinned MiMo v2.6 Flash RL, SGLang v0.5.20, mixed MXFP4/FP8, TP2/C1 reconstruction | 2x RTX PRO 6000 Blackwell Max-Q | V3 transport health and load passed at 81.41 GiB/rank, but both bounded correctness probes returned zero visible content; no capacity/throughput claim; GLM C4 100/100 eligible; SWE official 0/1 is confounded | retain GLM, `no-promotion`; final restoration verified | [MiMo dossier](models/mimo-v26-flash.md) · [finding](../findings/2026-09-21-mimo-v26-qualification.md) |
 
 ## 2026-09-19 APC promotion
 

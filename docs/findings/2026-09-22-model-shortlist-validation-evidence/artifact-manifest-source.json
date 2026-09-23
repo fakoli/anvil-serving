@@ -1,0 +1,142 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "campaign": {
+    "id": "2026-09-22-model-shortlist-validation",
+    "capability": "llm",
+    "repository_revision": "dd7b5532a513725c0a4d3ac83b6848c7309a4b96",
+    "dirty_state": "documentation-only public publication worktree",
+    "started_at": "2026-09-22",
+    "completed_at": "2026-09-22",
+    "evidence_labels": [
+      "functional",
+      "compatibility-only",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "retain-baseline",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark-result/v1",
+    "recipe-container-status/v1",
+    "benchmark-restoration/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "qwen-agentic-scout-spec.json",
+        "qwen-agentic-scout-native-sampling-spec.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "qwen-config.json",
+        "qwen-effective-settings.json",
+        "qwen-generation_config.json",
+        "qwen-image-identity.json",
+        "qwen-models.json",
+        "glm-final-status.json",
+        "router-final-status.json",
+        "gpus-restored.json",
+        "mode-restored.json",
+        "shared-memory-restored.txt"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "qwen-startup-complete.txt",
+        "qwen-ready-status.json",
+        "qwen-after-scout-status.json",
+        "qwen-preflight-basic.json",
+        "qwen-preflight-tools.json",
+        "qwen-agentic-scout-native.json",
+        "qwen-agentic-native-sampling-native.json",
+        "qwen-agentic-native-sampling-submit.json",
+        "glm-agentic-scout-native.json",
+        "glm-agentic-scout-artifact.json",
+        "glm-restored-direct-preflight.json",
+        "glm-restored-router-preflight.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "qwen-unload.txt",
+        "glm-restored-direct-preflight.json",
+        "glm-restored-router-preflight.json",
+        "router-final-status.json",
+        "glm-final-status.json",
+        "gpus-restored.json",
+        "mode-restored.json",
+        "shared-memory-restored.txt"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": ""
+    }
+  ]
+}

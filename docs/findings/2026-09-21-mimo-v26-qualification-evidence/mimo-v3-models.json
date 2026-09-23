@@ -1,0 +1,14 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "mimo-v26-flash-rl-mxfp4-sglang-tp2-c1-327k",
+      "object": "model",
+      "created": 1790045724,
+      "owned_by": "sglang",
+      "root": "mimo-v26-flash-rl-mxfp4-sglang-tp2-c1-327k",
+      "parent": null,
+      "max_model_len": 327680
+    }
+  ]
+}

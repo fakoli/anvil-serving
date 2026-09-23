@@ -1,0 +1,23 @@
+{
+  "suite": "mimo-sampling-smoke",
+  "evidence_use": "diagnostic",
+  "validator_strength": "deterministic_marker",
+  "evals": [
+    {
+      "id": "preflight-coding-prompt",
+      "prompt": "Write a Python one-liner that returns the sum of a list `xs`.",
+      "visible_answer_tokens": 1024,
+      "reasoning_headroom_tokens": 8192,
+      "checks": [
+        {
+          "name": "sum operation",
+          "contains": "sum"
+        },
+        {
+          "name": "input identifier",
+          "contains": "xs"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-21-mimo-v26-qualification",
+  "status": "restored",
+  "mutation_required": true,
+  "verified_at": "2026-09-22T03:06:05.637288+00:00",
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "glm-status-before.json",
+      "baseline-hashes.json",
+      "gpus-before.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "glm-final-status.json",
+      "router-final-readmit.json",
+      "router-final-status.json",
+      "gpus-final.json"
+    ]
+  },
+  "differences": [
+    "GLM container restarted from exact baseline recipe/image/checkpoint; no route or configuration changes",
+    "MiMo candidate containers removed",
+    "Inactive temporary build artifacts preserved on disk with original-path symlinks; mapping retained in private tmp-preservation-final.json"
+  ],
+  "post_run_checks": [
+    {
+      "check": "image_id parity",
+      "passed": true,
+      "value": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692"
+    },
+    {
+      "check": "revision parity",
+      "passed": true,
+      "value": "a5fee929cf4888b1824323e33e8a19b60129e025"
+    },
+    {
+      "check": "model parity",
+      "passed": true,
+      "value": "brandonmusic/GLM-5.3-Flash-tr3-4bpw"
+    },
+    {
+      "check": "serve-recipes.glm53-exl3-327k-r10-vision8-apc-nospec.toml hash parity",
+      "passed": true,
+      "sha256": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105"
+    },
+    {
+      "check": "serves.glm53-exl3-327k-r10-vision8-apc-nospec.toml hash parity",
+      "passed": true,
+      "sha256": "df3e9d39b26cbcaaa913049b34f46b6724337dc80514ecc02f634e87ccb8c899"
+    },
+    {
+      "check": "router.toml hash parity",
+      "passed": true,
+      "sha256": "d8fe0e7424d2b995e83729cdfd99b3f9dc72f1d04390d95aa5bbda612a4d9008"
+    },
+    {
+      "check": "direct thinking-enabled preflight six checks including20toolrequests",
+      "passed": true,
+      "evidence": "glm-final-restore-preflight.json"
+    },
+    {
+      "check": "authenticated routed llm.primary smoke",
+      "passed": true,
+      "evidence": "glm-final-router-smoke.json"
+    },
+    {
+      "check": "router exact model readiness and admission",
+      "passed": true,
+      "evidence": "router-final-status.json"
+    }
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}

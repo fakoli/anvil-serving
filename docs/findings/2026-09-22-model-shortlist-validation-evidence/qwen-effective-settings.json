@@ -1,0 +1,12 @@
+{
+  "ple_offload_embedding": "False",
+  "mamba_ssm_dtype": "None",
+  "moe_runner_backend": "'flashinfer_cutlass'",
+  "reasoning_parser": "'auto'",
+  "tool_call_parser": "'auto'",
+  "speculative_algorithm": "None",
+  "cuda_graph_max_bs_decode": "4",
+  "quantization": "'modelopt_fp4'",
+  "context_length": "262144",
+  "tp_size": "2"
+}

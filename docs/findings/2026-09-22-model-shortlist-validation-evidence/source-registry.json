@@ -1,0 +1,105 @@
+{
+  "observed_at": "2026-09-22T06:56:25.121681+00:00",
+  "sources": [
+    {
+      "url": "https://artificialanalysis.ai/models/glm-5-3-flash/",
+      "evidence_type": "independent-benchmark",
+      "age_class": "current-live",
+      "decision_impact": "baseline42",
+      "id": "source-01",
+      "published_or_observed": "observed 2026-09-22; publication date not recorded for dynamic leaderboard",
+      "observed_at": "2026-09-22T06:56:25.121681+00:00",
+      "hardware_runtime_relevance": "external prior; not a local TP2/C4 measurement"
+    },
+    {
+      "url": "https://artificialanalysis.ai/models/qwen3-8-flash-next",
+      "evidence_type": "independent-benchmark",
+      "age_class": "current-live",
+      "decision_impact": "candidate40",
+      "id": "source-02",
+      "published_or_observed": "observed 2026-09-22; publication date not recorded for dynamic leaderboard",
+      "observed_at": "2026-09-22T06:56:25.121681+00:00",
+      "hardware_runtime_relevance": "external prior; not a local TP2/C4 measurement"
+    },
+    {
+      "url": "https://artificialanalysis.ai/models/deepseek-v4-1-flash",
+      "evidence_type": "independent-benchmark",
+      "age_class": "current-live",
+      "decision_impact": "defer39",
+      "id": "source-03",
+      "published_or_observed": "observed 2026-09-22; publication date not recorded for dynamic leaderboard",
+      "observed_at": "2026-09-22T06:56:25.121681+00:00",
+      "hardware_runtime_relevance": "external prior; not a local TP2/C4 measurement"
+    },
+    {
+      "url": "https://artificialanalysis.ai/models/ling-3-0-flash",
+      "evidence_type": "independent-benchmark",
+      "age_class": "current-live",
+      "decision_impact": "deprioritize25",
+      "id": "source-04",
+      "published_or_observed": "observed 2026-09-22; publication date not recorded for dynamic leaderboard",
+      "observed_at": "2026-09-22T06:56:25.121681+00:00",
+      "hardware_runtime_relevance": "external prior; not a local TP2/C4 measurement"
+    },
+    {
+      "url": "https://artificialanalysis.ai/models/minimax-m3",
+      "evidence_type": "independent-benchmark",
+      "age_class": "current-live",
+      "decision_impact": "deprioritize30",
+      "id": "source-05",
+      "published_or_observed": "observed 2026-09-22; publication date not recorded for dynamic leaderboard",
+      "observed_at": "2026-09-22T06:56:25.121681+00:00",
+      "hardware_runtime_relevance": "external prior; not a local TP2/C4 measurement"
+    },
+    {
+      "url": "https://arena.ai/leaderboard/code",
+      "evidence_type": "human-preference",
+      "age_class": "current-live",
+      "decision_impact": "Qwen preliminary coding upside; overlapping DeepSeek and GLM intervals",
+      "id": "source-06",
+      "published_or_observed": "observed 2026-09-22; publication date not recorded for dynamic leaderboard",
+      "observed_at": "2026-09-22T06:56:25.121681+00:00",
+      "hardware_runtime_relevance": "external prior; not a local TP2/C4 measurement"
+    },
+    {
+      "url": "https://artificialanalysis.ai/evaluations/gdpval-aa",
+      "evidence_type": "independent-benchmark",
+      "age_class": "current-live",
+      "decision_impact": "agentic work-task prior",
+      "id": "source-07",
+      "published_or_observed": "observed 2026-09-22; publication date not recorded for dynamic leaderboard",
+      "observed_at": "2026-09-22T06:56:25.121681+00:00",
+      "hardware_runtime_relevance": "external prior; not a local TP2/C4 measurement"
+    },
+    {
+      "url": "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-Flash-Next",
+      "evidence_type": "official-runtime-recipe",
+      "age_class": "current-live",
+      "decision_impact": "pin updated runtime and distinguish TP1 from proposed TP2",
+      "id": "source-08",
+      "published_or_observed": "observed 2026-09-22; source publication date not recorded",
+      "observed_at": "2026-09-22T06:56:25.121681+00:00",
+      "hardware_runtime_relevance": "external prior; not a local TP2/C4 measurement"
+    },
+    {
+      "url": "https://huggingface.co/RadixArk/Qwen3.8-Flash-Next-NVFP4/tree/7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+      "evidence_type": "artifact",
+      "age_class": "current-live",
+      "decision_impact": "exact candidate",
+      "id": "source-09",
+      "published_or_observed": "observed 2026-09-22; source publication date not recorded",
+      "observed_at": "2026-09-22T06:56:25.121681+00:00",
+      "hardware_runtime_relevance": "external prior; not a local TP2/C4 measurement"
+    },
+    {
+      "url": "https://github.com/sgl-project/sglang/blob/4ccff141dbe992794f9da6c3aa23535b4f72000d/python/sglang/srt/models/qwen4_exp.py",
+      "evidence_type": "official-runtime-source",
+      "age_class": "current-live",
+      "decision_impact": "FP8 PLE GPU resident memory feasibility",
+      "id": "source-10",
+      "published_or_observed": "observed 2026-09-22; source publication date not recorded",
+      "observed_at": "2026-09-22T06:56:25.121681+00:00",
+      "hardware_runtime_relevance": "external prior; not a local TP2/C4 measurement"
+    }
+  ]
+}

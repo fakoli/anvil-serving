@@ -1,0 +1,613 @@
+{
+  "base_url": "http://127.0.0.1:<redacted-port>/v1",
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "needle"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nIf you want it as a reusable function on one line:\n\n```python\ndef list_sum(xs): return sum(xs)\n```\n\nThe built-in `sum()` is the idiomatic choice — it's concise, readable, and faster than a manual loop. (For the curious, a manual alternative would be `functools.reduce(lambda a, b: a + b, xs, 0)`, but there's no reason to use that over `sum()`.)",
+      "content_chars": 368,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nIf you want it as a reusable function on one line:\n\n```python\ndef list_sum(xs): return sum(xs)\n```\n\nThe built-in `sum()` is the idiomatic choice — it's concise, readable, and fa",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 752,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most idiomatic way is:\n\n```python\nsum(xs)\n```\n\nThat's it. But maybe they want it as a lambda o",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 4.276,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 299,
+        "prompt_tokens": 28,
+        "prompt_tokens_details": null,
+        "total_tokens": 327
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 178,
+      "reasoning_excerpt": "The user wants me to return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose. This is a simple, harmless request. I should just output the JSON exactly as requested.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 0.788,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 52,
+        "prompt_tokens": 30,
+        "prompt_tokens_details": null,
+        "total_tokens": 82
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 14.526,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 14.544,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 2,
+      "seconds": 20.117,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 3,
+      "seconds": 20.49,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 5,
+      "seconds": 21.774,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 4,
+      "seconds": 21.792,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 6,
+      "seconds": 22.168,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 7,
+      "seconds": 22.543,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 8,
+      "seconds": 23.829,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 10,
+      "seconds": 23.847,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 9,
+      "seconds": 24.223,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 12,
+      "seconds": 24.598,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 11,
+      "seconds": 25.886,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 13,
+      "seconds": 25.904,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 14,
+      "seconds": 26.279,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 15,
+      "seconds": 26.652,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 16,
+      "seconds": 27.94,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 17,
+      "seconds": 27.957,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 18,
+      "seconds": 27.974,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_excerpt": "The user wants the weather in Oakland. I have a get_weather tool. Let me call it.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "request_index": 19,
+      "seconds": 27.988,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": null,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "event_count": 37,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 123,
+      "reasoning_excerpt": "The user wants to know the weather in Oakland. I have a get_weather tool available. Let me call it with the city \"Oakland\".",
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "seconds": 5.885,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 42,
+        "prompt_tokens": 166,
+        "total_tokens": 208
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 123,
+      "reasoning_excerpt": "The user wants to know the weather in Oakland. I have a get_weather tool available. Let me call it with the city \"Oakland\".",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 0.678,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 42,
+        "prompt_tokens": 166,
+        "prompt_tokens_details": null,
+        "total_tokens": 208
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "OAKLAND 72F",
+      "content_chars": 11,
+      "content_excerpt": "OAKLAND 72F",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 162,
+      "reasoning_excerpt": "The user wants me to reply exactly \"OAKLAND 72F\" using the tool result. The tool result showed Oakland, 72°F, sunny. The user wants an exact reply: \"OAKLAND 72F\".",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 0.908,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 55,
+        "prompt_tokens": 70,
+        "prompt_tokens_details": null,
+        "total_tokens": 125
+      },
+      "validation_detail": "tool result retained"
+    },
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 238,
+      "reasoning_excerpt": "The user has provided a long repetitive text and embedded within it is \"IMPORTANT: The launch code is ZEBRA-42917-QUARTZ.\" The question asks what the launch code is, and to reply with ONLY the code.\n\n",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 2.788,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 78,
+        "prompt_tokens": 6803,
+        "prompt_tokens_details": null,
+        "total_tokens": 6881
+      },
+      "validation_detail": "needle present"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "4.3s got='```python\\nsum(xs)\\n```\\n\\nIf you want it as a reusabl' finish='stop' visible=368 reasoning_chars=752 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=178 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "20/20 clean (sample: 14.5s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=81 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x20",
+      "passed": true
+    },
+    {
+      "detail": "5.9s done=True events=37 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "1.6s tool result retained finish='stop' visible=11 reasoning_chars=162 reasoning_tokens=None",
+      "name": "tool-result continuation",
+      "passed": true
+    },
+    {
+      "detail": "2.8s ctx~8192 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=238 reasoning_tokens=None",
+      "name": "needle @ ~8192 ctx",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

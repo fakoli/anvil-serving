@@ -1,0 +1,302 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-22-model-shortlist-validation",
+    "capability": "llm",
+    "repository_revision": "dd7b5532a513725c0a4d3ac83b6848c7309a4b96",
+    "dirty_state": "documentation-only public publication worktree",
+    "started_at": "2026-09-22",
+    "completed_at": "2026-09-22",
+    "evidence_labels": [
+      "functional",
+      "compatibility-only",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "retain-baseline",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark-result/v1",
+    "recipe-container-status/v1",
+    "benchmark-restoration/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "4a674d877963dae2c0155a380e35d7a8eaa8e612b8b5ad39261dd6b6fb63b75a",
+          "bytes": 3521
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "56decfc2aee450506774affac90154d743a94160b56ee4d250b663d924ebd07e",
+          "bytes": 5087
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "qwen-agentic-scout-spec.json",
+          "sha256": "cdb4bf57ab115ebf3fd3f903ab20c93574b9ac121f15ec4e846bc7cbd7c4223e",
+          "bytes": 1323
+        },
+        {
+          "path": "qwen-agentic-scout-native-sampling-spec.json",
+          "sha256": "11bfb32b7689ee85d77e23b84d3cd01590379b0871c2768dd0f46c6b580272cb",
+          "bytes": 1349
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.md",
+          "sha256": "c99a33093890f748b618f07e03b8a2337217fcf20352802d878cd6cb1cec1bd4",
+          "bytes": 5536
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "623ad18a29bca245ee4bb9e56b82936d1b2352033eeb811acf8467d66585c187",
+          "bytes": 961
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "qwen-config.json",
+          "sha256": "e765305daba0951974308f4d32c075b52a6a45974730d273f2216718a994d624",
+          "bytes": 4983
+        },
+        {
+          "path": "qwen-effective-settings.json",
+          "sha256": "c358376cee93d0e28b67c05a8c21a577daa3b38dd63500734a5a14c1a5e77295",
+          "bytes": 333
+        },
+        {
+          "path": "qwen-generation_config.json",
+          "sha256": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
+          "bytes": 202
+        },
+        {
+          "path": "qwen-image-identity.json",
+          "sha256": "0169f2fb4c134c46a3e8c883595dc2af7b1653d1dc8198d32c827c81a863d1d5",
+          "bytes": 1258
+        },
+        {
+          "path": "qwen-models.json",
+          "sha256": "c1d67c3e18db806c86a9eb8316632056dade9f2649447108c390b81525d2e923",
+          "bytes": 309
+        },
+        {
+          "path": "glm-final-status.json",
+          "sha256": "dad1dd01db1e8b78b5afb8564c07c1648d642ecc5b9cd507684d67d0aa28387f",
+          "bytes": 1000
+        },
+        {
+          "path": "router-final-status.json",
+          "sha256": "f9c22c10950404941717bc4e78ab353f28040999c1e54edb2311130166a87a12",
+          "bytes": 652
+        },
+        {
+          "path": "gpus-restored.json",
+          "sha256": "889ebf5e1a7916ba9fb9645992778ad66634ab07cec359ddc2fc55597881e988",
+          "bytes": 672
+        },
+        {
+          "path": "mode-restored.json",
+          "sha256": "3058bd9ababc38b4a4e722d0247b3b3ddc649c6ae93a1f951033870ad14cfba4",
+          "bytes": 793
+        },
+        {
+          "path": "shared-memory-restored.txt",
+          "sha256": "d2e7c78d1d654526a659e08a2c586debc5d2c39c227bff918dfc983767dbb698",
+          "bytes": 128
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "qwen-startup-complete.txt",
+          "sha256": "d86159cf79203214b6b0317589f3fa7b3631a92ff9f92503ec6f30230aa06abe",
+          "bytes": 54515
+        },
+        {
+          "path": "qwen-ready-status.json",
+          "sha256": "d0f77e45aac41cc48e8c98a2773fc78e5e003efedcf37011133ae5a9868fac4c",
+          "bytes": 903
+        },
+        {
+          "path": "qwen-after-scout-status.json",
+          "sha256": "2669795386a43381b579fc249219a1aadc11627a03ca891a7a47c0b8bccd1587",
+          "bytes": 903
+        },
+        {
+          "path": "qwen-preflight-basic.json",
+          "sha256": "18fafc82945433ddd394cb465c0219d4a1b15bf94e896ff1b2e76c3f1e176711",
+          "bytes": 2793
+        },
+        {
+          "path": "qwen-preflight-tools.json",
+          "sha256": "a5de49b9c12b45aa5c31b55e9e1dc20e8840b1df70c3efa23f9c7bd3a9620262",
+          "bytes": 6264
+        },
+        {
+          "path": "qwen-agentic-scout-native.json",
+          "sha256": "86a95bf0202d5e63a276ae8046873687a667ac4d049119412915702d9b4a42d3",
+          "bytes": 39553
+        },
+        {
+          "path": "qwen-agentic-native-sampling-native.json",
+          "sha256": "4765bb9c4a37c9826d53da551311e788b57fdf1b13c6109164dbe5b438b3514a",
+          "bytes": 46306
+        },
+        {
+          "path": "qwen-agentic-native-sampling-submit.json",
+          "sha256": "d133ee5b5db5c8c26c0a5e805438188d2a81e45751ce703ced448d6c785e3b93",
+          "bytes": 3737
+        },
+        {
+          "path": "glm-agentic-scout-native.json",
+          "sha256": "9cbf843029a7348595e051ab436fe1f13b92c79e4dbcc1065d1edf52243b5beb",
+          "bytes": 37762
+        },
+        {
+          "path": "glm-agentic-scout-artifact.json",
+          "sha256": "e42d696943cf1889472451005b9562ebd389e0db0072fdd11e58322ae2987fc6",
+          "bytes": 4083
+        },
+        {
+          "path": "glm-restored-direct-preflight.json",
+          "sha256": "a36d290a1330d2f67401b258fdab06747ecab6be7a606eb26dcf8fa0750d2186",
+          "bytes": 3361
+        },
+        {
+          "path": "glm-restored-router-preflight.json",
+          "sha256": "80f79b23c5a5d4568959525ab635bc87795fa628961d8bdef342b08e25dca300",
+          "bytes": 3346
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "0bd2933b8d1a64ff3ad2a0cc6bd223db9f9e8d5895635bcd074ae8cfc2b820c4",
+          "bytes": 1197
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "f8b19c987dea495d680147ec0b4e544ead231e4943de4607d43a0fe0a664893d",
+          "bytes": 1108
+        },
+        {
+          "path": "qwen-unload.txt",
+          "sha256": "d2220bec3d3c722faf27d2bf280f8c8a26be1230ed06850271a9b5e56241bdad",
+          "bytes": 57
+        },
+        {
+          "path": "glm-restored-direct-preflight.json",
+          "sha256": "a36d290a1330d2f67401b258fdab06747ecab6be7a606eb26dcf8fa0750d2186",
+          "bytes": 3361
+        },
+        {
+          "path": "glm-restored-router-preflight.json",
+          "sha256": "80f79b23c5a5d4568959525ab635bc87795fa628961d8bdef342b08e25dca300",
+          "bytes": 3346
+        },
+        {
+          "path": "router-final-status.json",
+          "sha256": "f9c22c10950404941717bc4e78ab353f28040999c1e54edb2311130166a87a12",
+          "bytes": 652
+        },
+        {
+          "path": "glm-final-status.json",
+          "sha256": "dad1dd01db1e8b78b5afb8564c07c1648d642ecc5b9cd507684d67d0aa28387f",
+          "bytes": 1000
+        },
+        {
+          "path": "gpus-restored.json",
+          "sha256": "889ebf5e1a7916ba9fb9645992778ad66634ab07cec359ddc2fc55597881e988",
+          "bytes": 672
+        },
+        {
+          "path": "mode-restored.json",
+          "sha256": "3058bd9ababc38b4a4e722d0247b3b3ddc649c6ae93a1f951033870ad14cfba4",
+          "bytes": 793
+        },
+        {
+          "path": "shared-memory-restored.txt",
+          "sha256": "d2e7c78d1d654526a659e08a2c586debc5d2c39c227bff918dfc983767dbb698",
+          "bytes": 128
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "42d84b4dee24c7a06c41a9fdd28677b0da737abad7ec5ac4cda706d8f93926d1",
+          "bytes": 1701
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "489507375d0d698c710463241ddce7c5ee7bdca0b44e4ea13d8d60e8c387a7f2",
+          "bytes": 3476
+        }
+      ],
+      "reason": ""
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "anvil-serving.benchmark-job-spec/v1",
+  "run_id": "shortlist-qwen-agentic-scout",
+  "ownership_id": "shortlist-20260922",
+  "suite": "agentic",
+  "profile": "scout",
+  "endpoint": {
+    "base_url": "http://127.0.0.1:<redacted-port>/v1",
+    "model": "qwen38-flash-next-nvfp4-sglang-tp2-c4-256k-v1"
+  },
+  "worker": {
+    "id": "local-benchmark"
+  },
+  "submitted_at": "2026-09-22T07:02:05.194713+00:00",
+  "timeout_s": 1800,
+  "parameters": {
+    "thinking_mode": "enabled",
+    "temperature": 0.0,
+    "model_host_id": "local-benchmark",
+    "client_topology": "co-resident",
+    "identities": {
+      "model": {
+        "repository": "RadixArk/Qwen3.8-Flash-Next-NVFP4",
+        "revision": "7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+        "served_name": "qwen38-flash-next-nvfp4-sglang-tp2-c4-256k-v1"
+      },
+      "runtime": {
+        "engine_revision": "4ccff141dbe992794f9da6c3aa23535b4f72000d",
+        "image_id": "sha256:8ac9dedd8c3c98bec7b91f4c2c7b697e4f429e336428dd8167140075e295bae7"
+      },
+      "hardware": {
+        "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+        "vram_mib_per_gpu": 97887
+      },
+      "context": {
+        "configured_tokens": 262144
+      },
+      "concurrency": {
+        "requests": 1,
+        "workers": 1
+      }
+    },
+    "advertised_context": 262144
+  }
+}

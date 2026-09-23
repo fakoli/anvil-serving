@@ -1,0 +1,30 @@
+{
+  "container": "mimo-v26-sglang-tp2-c1-327k",
+  "container_id": "REDACTED_CONTAINER_ID",
+  "health": null,
+  "host_memory": {
+    "current_bytes": 43309768704,
+    "effective_limit_bytes": 55834574848,
+    "effective_swap_limit_bytes": 0,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "exit_code": 0,
+    "limit_bytes": 55834574848,
+    "oom_killed": false,
+    "peak_bytes": 49299709952,
+    "ram_plus_swap_limit_bytes": 55834574848
+  },
+  "image": "sha256:2b6c8893bb821bc9ac3fb95bc5c7ab8bddf748cf288a0ad6ad60ee96c49610ee",
+  "image_id": "sha256:2b6c8893bb821bc9ac3fb95bc5c7ab8bddf748cf288a0ad6ad60ee96c49610ee",
+  "model": "XiaomiMiMo/MiMo-V2.6-Flash-RL",
+  "revision": "3b38d063180c3e4aed9691fdc735f3d10b266ee4",
+  "running": true,
+  "schema": "recipe-container-status/v1",
+  "state": "running"
+}

@@ -1,0 +1,127 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-21-mimo-v26-qualification",
+  "complete": true,
+  "identity": {
+    "candidate_repository": "XiaomiMiMo/MiMo-V2.6-Flash-RL",
+    "candidate_revision": "3b38d063180c3e4aed9691fdc735f3d10b266ee4",
+    "runtime": "SGLang v0.5.20",
+    "runtime_revision": "94602c9c2b7cbdb8efd5c52802dac6a1c180089e",
+    "hardware": "2x RTX PRO 6000 Blackwell Max-Q",
+    "baseline": "GLM-5.3-Flash EXL3 r10 APC, TP2/C4"
+  },
+  "workload": {
+    "baseline_capacity": {
+      "requests": 100,
+      "concurrency": 4,
+      "nominal_context": 32768,
+      "response_words": 16,
+      "max_tokens": 2048,
+      "prompt_cache_mode": "unique within each cell; first eight final requests may reuse the scout cache",
+      "request_canaries": true,
+      "strict_output": true
+    },
+    "candidate_correctness": {
+      "same_greedy_preflight_first_check": "failed",
+      "official_sampling_probe": {
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "requests": 1,
+        "visible_budget": 1024,
+        "reasoning_headroom": 8192
+      },
+      "partial_batch": "interrupted during JSON after first coding smoke failed"
+    }
+  },
+  "measurement": {
+    "path": "online direct",
+    "warm_cold_state": "Baseline already running; candidate cold load followed by engine warmup and correctness probes",
+    "sample_count": 100,
+    "statistics": [
+      "Baseline request percentiles use nearest rank. No performance-eligible MiMo population."
+    ]
+  },
+  "gates": [
+    {
+      "gate": "baseline capacity C4",
+      "status": "passed",
+      "evidence": "glm-capacity-c4-16word-final.json"
+    },
+    {
+      "gate": "Candidate native-scale cold load",
+      "status": "passed",
+      "evidence": "mimo-v3-startup.log"
+    },
+    {
+      "gate": "candidate correctness",
+      "status": "failed",
+      "evidence": "mimo-v3-sampling-smoke.json"
+    },
+    {
+      "gate": "Candidate capacity, vision, long context and repository coding",
+      "status": "not-run",
+      "reason": "correctness gate failed"
+    },
+    {
+      "gate": "GLM final restoration",
+      "status": "passed",
+      "evidence": "restoration.json"
+    }
+  ],
+  "headline_results": [
+    {
+      "name": "GLM controlled capacity",
+      "eligible": 100,
+      "requests": 100,
+      "evidence": "glm-capacity-c4-16word-final.json"
+    },
+    {
+      "name": "MiMo official-sampling diagnostic",
+      "pass_count": 0,
+      "requests": 1,
+      "visible_characters": 0,
+      "finish_reason": "length",
+      "completion_tokens": 9216,
+      "latency_ms": 74834.97632504441,
+      "performance_eligible": false
+    }
+  ],
+  "failures": [
+    "V1 rejected an ambiguous legacy CUDA-graph flag.",
+    "V2 hit CUDA OOM before weight loading; source review identified avoidable expert-scale widening.",
+    "V3 loaded with compact scales but failed correctness at temperature 0 and official temperature 1/top_p 0.95. Exact corruption cause is unknown.",
+    "GLM SWE officially resolved 0/1. The bug-specific test passed; two HTTP 502 failures and a legacy pytest API error confound model attribution."
+  ],
+  "limitations": [
+    "This runtime/recipe failure does not rank upstream model quality.",
+    "Configured context was 327,680 tokens; V3 allocated 91,342 aggregate full-attention KV tokens.",
+    "MiMo C4, vision, long-context and SWE tests were not run after correctness failed.",
+    "Failed responses and engine token counters do not support a speed claim.",
+    "GLM p99 at N=100 is one order statistic; cache warmth of the first eight requests is unverified.",
+    "The greedy preflight batch was interrupted after its first failed check; no final native JSON exists for that partial batch.",
+    "SWE was one smoke task. Its official unresolved result was retained without regrading."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "compatibility-only",
+      "failed-correctness",
+      "measured-baseline"
+    ],
+    "decision_labels": [
+      "retain-baseline",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Establish a correct SM120/TP2 runtime or checkpoint path, then pass preflight before capacity, vision and long-context qualification."
+  },
+  "evidence": [
+    "glm-capacity-c4-16word-final.json",
+    "mimo-v3-startup.log",
+    "mimo-v3-preflight.log",
+    "mimo-v3-sampling-smoke.json",
+    "glm-swe-native.json",
+    "glm-swe-official-report.json",
+    "glm-swe-test-output.txt",
+    "restoration.json"
+  ]
+}

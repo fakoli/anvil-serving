@@ -1,0 +1,15 @@
+{
+  "architecture": "amd64",
+  "image_id": "sha256:2b6c8893bb821bc9ac3fb95bc5c7ab8bddf748cf288a0ad6ad60ee96c49610ee",
+  "labels": {
+    "org.opencontainers.image.revision": "94602c9c2b7cbdb8efd5c52802dac6a1c180089e",
+    "org.opencontainers.image.source": "https://github.com/sgl-project/sglang",
+    "org.opencontainers.image.version": "lmsysorg/sglang:v0.5.20"
+  },
+  "os": "linux",
+  "repo_digests": [
+    "anvil-mimo-sglang@sha256:2b6c8893bb821bc9ac3fb95bc5c7ab8bddf748cf288a0ad6ad60ee96c49610ee"
+  ],
+  "requested_identity": "sha256:2b6c8893bb821bc9ac3fb95bc5c7ab8bddf748cf288a0ad6ad60ee96c49610ee",
+  "schema": "docker-image-identity/v1"
+}

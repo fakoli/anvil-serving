@@ -1,0 +1,9 @@
+{
+  "schema": "anvil-serving.tool-log-recovery/v1",
+  "source": "current campaign tool transcript",
+  "tool_chunk_id": "577899",
+  "observed_at": "2026-09-22T02:42:21.922Z",
+  "scope": "managed recipe logs tail30; includes CUDA OOM traceback",
+  "limitation": "stdout-only log contains containment marker; stderr excerpt recovered from actual tool output after candidate removal; full container log unavailable",
+  "sha256": "0fe3597075f5d9db567b046f5bfc1d580e437f28920de6da30db7f1a2f3ceaaf"
+}

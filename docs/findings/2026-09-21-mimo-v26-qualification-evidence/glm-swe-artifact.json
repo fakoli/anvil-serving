@@ -1,0 +1,149 @@
+{
+  "data": {
+    "created_at": "2026-09-22T02:55:15.904075Z",
+    "failure": null,
+    "partial": false,
+    "provenance": {
+      "endpoint": {
+        "base_url": "http://127.0.0.1:<redacted-port>/v1",
+        "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+      },
+      "finished_at": "2026-09-22T02:55:15.903967Z",
+      "started_at": "2026-09-22T02:30:50.893259Z",
+      "submitted_at": "2026-09-22T02:30:50.723776+00:00",
+      "worker": {
+        "id": "local-benchmark"
+      }
+    },
+    "results": {
+      "evidence": {
+        "completeness": "completed",
+        "created_at": "2026-09-22T02:55:15.892221Z",
+        "evidence_kind": "measured",
+        "failure": null,
+        "identities": {
+          "concurrency": {
+            "requests": 1,
+            "workers": 1
+          },
+          "context": {
+            "configured_tokens": 327680
+          },
+          "dataset": {
+            "name": "SWE-bench_Verified",
+            "split": "test"
+          },
+          "hardware": {
+            "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+            "vram_mib_per_gpu": 97887
+          },
+          "harnesses": {
+            "mini-swe-agent": {
+              "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+              "source": "https://github.com/SWE-agent/mini-swe-agent"
+            },
+            "swe-bench": {
+              "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+              "source": "https://github.com/SWE-bench/SWE-bench"
+            },
+            "swe-bench-verified": {
+              "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+              "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+            },
+            "worker-base": {
+              "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+            }
+          },
+          "image": {
+            "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+            "kind": "image",
+            "reused": true
+          },
+          "model": {
+            "repository": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+            "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+            "served_name": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+          },
+          "runtime": {
+            "engine_revision": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+            "image_id": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692"
+          },
+          "served_model": {
+            "configured_context": 327680,
+            "id": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+          },
+          "topology": {
+            "kind": "co-resident-benchmark-client",
+            "worker_id": "local-benchmark"
+          }
+        },
+        "promotion": {
+          "authorized": false,
+          "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+        },
+        "run": {
+          "ownership_id": "mimo-v26-campaign",
+          "profile": "smoke",
+          "run_id": "glm-mimo-swe-smoke",
+          "spec_sha256": "1e56422d88548e771edd4633163c87442553025781164d627e22b00a9cbd967b",
+          "suite": "swe"
+        },
+        "schema": "anvil-serving.benchmark-evidence/v1",
+        "stages": [
+          {
+            "evidence": [
+              {
+                "bytes": 10867,
+                "path": "evidence/0-assets.json",
+                "sha256": "8d578ac5d9fcabc91d9b2511092ee0f7e1ae6751152374858cafb2bd941c4c2c"
+              }
+            ],
+            "name": "asset_preparation",
+            "sequence": 0,
+            "status": "completed"
+          },
+          {
+            "evidence": [
+              {
+                "bytes": 2055,
+                "path": "evidence/0-preflight.json",
+                "sha256": "33072228faa53a992c1cc693caa04d11fd6e2d563faee7bf2fce5cabbd654250"
+              }
+            ],
+            "name": "preflight",
+            "sequence": 1,
+            "status": "completed"
+          },
+          {
+            "evidence": [
+              {
+                "bytes": 16057,
+                "path": "evidence/2-swe.json",
+                "sha256": "9af211848499c031415771557aada473b922befb8666f56460ea15223a833cb0"
+              }
+            ],
+            "name": "swe",
+            "sequence": 2,
+            "status": "completed"
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "graded": 1,
+          "resolve_rate": 0.0,
+          "resolved": 0
+        }
+      }
+    },
+    "run": {
+      "ownership_id": "mimo-v26-campaign",
+      "profile": "smoke",
+      "run_id": "glm-mimo-swe-smoke",
+      "spec_sha256": "1e56422d88548e771edd4633163c87442553025781164d627e22b00a9cbd967b",
+      "suite": "swe"
+    },
+    "schema": "anvil-serving.benchmark-result/v1",
+    "status": "completed"
+  },
+  "ok": true
+}

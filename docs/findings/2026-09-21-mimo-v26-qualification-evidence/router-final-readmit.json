@@ -1,0 +1,9 @@
+{
+  "action": "readmit",
+  "applied": true,
+  "result": {
+    "readmitted": true,
+    "reason": "readiness_passed",
+    "status": "REDACTED_ACTIVE_ROUTER_STATE"
+  }
+}

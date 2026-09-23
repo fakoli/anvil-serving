@@ -1,0 +1,2 @@
+Filesystem       1B-blocks      Used   Available Use% Mounted on
+tmpfs          48179113984 828051456 47351062528   2% /dev/shm

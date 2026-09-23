@@ -1,0 +1,54 @@
+{
+  "schema": "anvil-serving.derived-capacity-summary/v1",
+  "source_artifact": "glm-capacity-c4-16word-final.json",
+  "source_schema": "anvil-serving.benchmark/v1",
+  "measurement_protocol": "capacity-v4-reasoning",
+  "completion": {
+    "requests": 100,
+    "completed": 100,
+    "failed": 0,
+    "responses_received": 100,
+    "performance_eligible": true
+  },
+  "workload": {
+    "concurrency": 4,
+    "prompt_cache_mode": "unique",
+    "response_words": 16,
+    "max_tokens": 2048,
+    "request_canaries": true,
+    "context_distribution": {
+      "32768": 100
+    },
+    "context_seed": 0,
+    "shared_prefix_tokens": 0
+  },
+  "timing": {
+    "wall_clock_ms": 621629.899090156,
+    "timestamp_precision": "nanosecond-unix-fields; ISO labels are second precision",
+    "timing_methodology": {
+      "artifact_timestamps": "time.time_ns Unix timestamps; independent artifacts may align them only when the operator supplied the same explicit clock_domain_id",
+      "clock": "client time.perf_counter",
+      "controlled_output": "--response-words adherence is recorded; observe preserves historical behavior while strict rejects non-exact or truncated completions; visible response capture is capped at 8192 characters",
+      "decode": "usage completion tokens after the first token divided by client-observed generation time; completion tokens may include reasoning tokens",
+      "distributions": "request-level mean, sample standard deviation, normal-approximation 95% confidence interval for the mean, min, p25, p50, p75, p90, p95, p99, and max using the nearest-rank percentile method",
+      "effective_prefill": "usage.prompt_tokens divided by client-observed time to first output; includes queueing, scheduling, prefill, and first-token work",
+      "generation": "client-observed E2E minus time to first output",
+      "mean_inter_token_latency": "legacy key for a TPOT proxy: client-observed generation time divided by completion tokens after the first token; not raw per-token ITL",
+      "p99": "numeric nearest-rank p99 is always retained for compatibility; it is descriptive only below 100 eligible samples",
+      "request_canaries": "when enabled, each response must begin with its own synthetic marker and contain no other ANVIL_REQ marker; bounded/truncated captures fail closed and are excluded from performance metrics",
+      "time_to_first_output": "request start through the first non-empty streamed reasoning or content delta",
+      "tpot": "client-observed mean time per output token after the first output; identical to the legacy mean_inter_token_latency key",
+      "ttft": "request start through the first non-empty streamed content delta"
+    }
+  },
+  "exact_metrics": {
+    "throughput_tok_s": 21.765362347922913,
+    "ttft_p50_ms": 21977.72536193952,
+    "e2e_p50_ms": 26028.98690593429,
+    "ttft_mean_ms": 21890.545473033562,
+    "e2e_mean_ms": 24772.144607813098,
+    "tpot_mean_ms": 132.38756074134355
+  },
+  "p99_interpretation": "N=100 p99 values are retained in the native artifact as one observed order statistic; they are not claimed as stable service-level tails.",
+  "cache_caveat": "Prompts are unique within this cell. The preceding eight-request scout used the same canary seed; the first eight final requests may have been warm. Engine cache-hit counters were not returned. Any candidate comparison must retain the matched scout/final sequence."
+}
